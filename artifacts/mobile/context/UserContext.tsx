@@ -58,6 +58,8 @@ interface UserContextValue {
   updateProfile: (updates: Partial<UserProfile>) => void;
   logout: () => void;
   loginWithGoogle: (data: Partial<UserProfile>) => void;
+  /** Registrierung ohne Google (lokal); echte SMS-Verifizierung folgt über Backend/Firebase. */
+  registerLocalCustomer: (data: { name: string; email: string; phone: string }) => void;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -94,12 +96,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     save(merged);
   }, [save]);
 
+  const registerLocalCustomer = useCallback((data: { name: string; email: string; phone: string }) => {
+    const updated: UserProfile = {
+      ...DEFAULT_PROFILE,
+      name: data.name.trim(),
+      email: data.email.trim(),
+      phone: data.phone.trim(),
+      isLoggedIn: true,
+      photoUri: null,
+    };
+    save(updated);
+  }, [save]);
+
   const logout = useCallback(() => {
     save(DEFAULT_PROFILE);
   }, [save]);
 
   return (
-    <UserContext.Provider value={{ profile, updateProfile, logout, loginWithGoogle }}>
+    <UserContext.Provider value={{ profile, updateProfile, logout, loginWithGoogle, registerLocalCustomer }}>
       {children}
     </UserContext.Provider>
   );

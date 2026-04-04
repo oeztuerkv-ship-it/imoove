@@ -35,6 +35,14 @@ import { rs, rf } from "@/utils/scale";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
 
+/** Platzhalter bis SMS über Backend (z. B. Twilio) oder Firebase Phone Auth angebunden ist. */
+const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
+
+function isPlausibleEmail(s: string): boolean {
+  const t = s.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+}
+
 const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; featherIcon?: string; isPaypal?: boolean; isEuro?: boolean; isVoucher?: boolean; isApp?: boolean }[] = [
   { id: "app", label: "App bezahlen", isApp: true },
   { id: "cash", label: "Bar", isEuro: true },
@@ -128,7 +136,7 @@ export default function HomeScreen() {
   const obBlockPad = isSmallScreen ? 14 : 20;
 
   const { loading: driverLoading, isLoggedIn: isDriverLoggedIn } = useDriver();
-  const { profile, updateProfile, loginWithGoogle } = useUser();
+  const { profile, updateProfile, loginWithGoogle, registerLocalCustomer } = useUser();
 
   const {
     origin, destination, selectedVehicle, paymentMethod, isExempted,
@@ -142,6 +150,23 @@ export default function HomeScreen() {
 
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
+
+  type OnboardingCustomerStep = "social" | "register" | "verify";
+  const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
+  const [obRegName, setObRegName] = useState("");
+  const [obRegEmail, setObRegEmail] = useState("");
+  const [obRegPhone, setObRegPhone] = useState("");
+  const [obRegSms, setObRegSms] = useState("");
+
+  useEffect(() => {
+    if (!showOnboarding) {
+      setOnboardingCustomerStep("social");
+      setObRegName("");
+      setObRegEmail("");
+      setObRegPhone("");
+      setObRegSms("");
+    }
+  }, [showOnboarding]);
 
   /* ── After driver login, navigate to dashboard ── */
   useEffect(() => {
@@ -266,6 +291,32 @@ export default function HomeScreen() {
       setGoogleSignInLoading(false);
     }
   }, [loginWithGoogle]);
+
+  const handleOnboardingRequestSms = useCallback(() => {
+    const name = obRegName.trim();
+    const email = obRegEmail.trim();
+    const phone = obRegPhone.trim();
+    if (!name || !phone || !isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", "Bitte gültigen Namen, E-Mail und Telefonnummer eingeben.");
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setObRegSms("");
+    setOnboardingCustomerStep("verify");
+  }, [obRegName, obRegEmail, obRegPhone]);
+
+  const handleOnboardingCompleteRegister = useCallback(() => {
+    if (obRegSms.trim() !== DEV_SMS_CODE) {
+      Alert.alert("Falscher Code", "Der eingegebene Code ist ungültig.");
+      return;
+    }
+    registerLocalCustomer({
+      name: obRegName.trim(),
+      email: obRegEmail.trim(),
+      phone: obRegPhone.trim(),
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [obRegSms, obRegName, obRegEmail, obRegPhone, registerLocalCustomer]);
 
   /* ── Route fetch ── */
   useEffect(() => {
@@ -1133,42 +1184,172 @@ export default function HomeScreen() {
 
             {/* ── KUNDEN-BLOCK ── */}
             <View style={[styles.onboardingBlock, { backgroundColor: colors.card, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
-              <Text style={{ fontSize: isSmallScreen ? 13 : 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-                Neu bei Imoove?{" "}
-                <Text style={{ color: "#DC2626", fontFamily: "Inter_700Bold" }}>Jetzt registrieren</Text>
-              </Text>
-              <View style={{ gap: isSmallScreen ? 8 : 10 }}>
-                <Pressable
-                  style={[styles.socialBtn, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    opacity: googleSignInLoading ? 0.7 : 1,
-                    paddingVertical: isSmallScreen ? 13 : 16,
-                  }]}
-                  onPress={handleGoogleSignIn}
-                  disabled={googleSignInLoading}
-                >
-                  {googleSignInLoading
-                    ? <ActivityIndicator size="small" color="#4285F4" style={{ width: 22, height: 22 }} />
-                    : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                  <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
-                    {googleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
+              {onboardingCustomerStep === "social" ? (
+                <>
+                  <Text style={{ fontSize: isSmallScreen ? 13 : 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" }}>
+                    Neu bei Imoove?
                   </Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.socialBtn, {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    paddingVertical: isSmallScreen ? 13 : 16,
-                  }]}
-                  onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
-                >
-                  <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                  <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
-                    Weiter mit Apple
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: "#DC2626",
+                      borderColor: "#DC2626",
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                    }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setOnboardingCustomerStep("register");
+                    }}
+                  >
+                    <Feather name="user-plus" size={20} color="#fff" />
+                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                      Jetzt registrieren
+                    </Text>
+                  </Pressable>
+                  <View style={{ gap: isSmallScreen ? 8 : 10 }}>
+                    <Pressable
+                      style={[styles.socialBtn, {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        opacity: googleSignInLoading ? 0.7 : 1,
+                        paddingVertical: isSmallScreen ? 13 : 16,
+                      }]}
+                      onPress={handleGoogleSignIn}
+                      disabled={googleSignInLoading}
+                    >
+                      {googleSignInLoading
+                        ? <ActivityIndicator size="small" color="#4285F4" style={{ width: 22, height: 22 }} />
+                        : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
+                        {googleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.socialBtn, {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        paddingVertical: isSmallScreen ? 13 : 16,
+                      }]}
+                      onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
+                    >
+                      <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
+                        Weiter mit Apple
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : onboardingCustomerStep === "register" ? (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("social")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Konto erstellen</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    Mit E-Mail und SMS-Code (Testphase). Anschließend kannst du Fahrten buchen.
                   </Text>
-                </Pressable>
-              </View>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="user" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground }]}
+                      placeholder="Vor- und Nachname"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obRegName}
+                      onChangeText={setObRegName}
+                      autoCapitalize="words"
+                      returnKeyType="next"
+                    />
+                  </View>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="mail" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground }]}
+                      placeholder="E-Mail"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obRegEmail}
+                      onChangeText={setObRegEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="next"
+                    />
+                  </View>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="phone" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground }]}
+                      placeholder="Telefonnummer (für SMS-Code)"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obRegPhone}
+                      onChangeText={setObRegPhone}
+                      keyboardType="phone-pad"
+                      returnKeyType="done"
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: "#DC2626",
+                      borderColor: "#DC2626",
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                    }]}
+                    onPress={handleOnboardingRequestSms}
+                  >
+                    <Feather name="message-circle" size={20} color="#fff" />
+                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                      SMS-Code anfordern
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("register")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>SMS-Bestätigung</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    Echte SMS-Versendung folgt mit Server-Anbindung (z. B. Twilio oder Firebase Phone Auth von Google).{"\n\n"}
+                    Testcode: <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>{DEV_SMS_CODE}</Text>
+                  </Text>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="hash" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground, letterSpacing: 4 }]}
+                      placeholder="6-stelliger Code"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obRegSms}
+                      onChangeText={(t) => setObRegSms(t.replace(/\D/g, "").slice(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      returnKeyType="done"
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: obRegSms.trim().length === 6 ? "#DC2626" : colors.muted,
+                      borderColor: obRegSms.trim().length === 6 ? "#DC2626" : colors.border,
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                    }]}
+                    onPress={handleOnboardingCompleteRegister}
+                    disabled={obRegSms.trim().length !== 6}
+                  >
+                    <Feather name="check" size={20} color={obRegSms.trim().length === 6 ? "#fff" : colors.mutedForeground} />
+                    <Text style={[styles.socialBtnText, {
+                      color: obRegSms.trim().length === 6 ? "#fff" : colors.mutedForeground,
+                      fontSize: isSmallScreen ? 15 : 16,
+                    }]}
+                    >
+                      Registrierung abschließen
+                    </Text>
+                  </Pressable>
+                </>
+              )}
             </View>
 
             {/* ── DIVIDER ── */}
@@ -1682,6 +1863,12 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 10,
     borderRadius: 14, borderWidth: 1,
     paddingHorizontal: 14, paddingVertical: 14,
+  },
+  onboardingInputField: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    paddingVertical: 0,
   },
   onboardingDriverBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",

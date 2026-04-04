@@ -62,6 +62,12 @@ function GoogleGLogo({ size = 22 }: { size?: number }) {
 }
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
+const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
+
+function isPlausibleEmail(s: string): boolean {
+  const t = s.trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+}
 
 /* ── Menu row ── */
 function Row({
@@ -489,11 +495,14 @@ export default function ProfileScreen() {
   const topPad = isWeb ? 44 : insets.top;
   const bottomPad = isWeb ? 20 : insets.bottom;
 
-  const { profile, loginWithGoogle, updateProfile, logout } = useUser();
+  const { profile, loginWithGoogle, updateProfile, logout, registerLocalCustomer } = useUser();
 
   const [profileStep, setProfileStep] = useState<"social" | "register">("social");
+  const [regSubStep, setRegSubStep] = useState<"form" | "verify">("form");
   const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
+  const [regSms, setRegSms] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
@@ -533,12 +542,39 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleRegister = () => {
+  const goRegister = () => {
+    setRegName("");
+    setRegEmail("");
+    setRegPhone("");
+    setRegSms("");
+    setRegSubStep("form");
+    setProfileStep("register");
+  };
+
+  const handleRegisterRequestSms = () => {
     const name = regName.trim();
+    const email = regEmail.trim();
     const phone = regPhone.trim();
-    if (!name || !phone) return;
-    updateProfile({ name, phone, isLoggedIn: true });
+    if (!name || !phone || !isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", "Bitte gültigen Namen, E-Mail und Telefonnummer eingeben.");
+      return;
+    }
+    setRegSms("");
+    setRegSubStep("verify");
+  };
+
+  const handleRegisterComplete = () => {
+    if (regSms.trim() !== DEV_SMS_CODE) {
+      Alert.alert("Falscher Code", "Der eingegebene Code ist ungültig.");
+      return;
+    }
+    registerLocalCustomer({
+      name: regName.trim(),
+      email: regEmail.trim(),
+      phone: regPhone.trim(),
+    });
     setProfileStep("social");
+    setRegSubStep("form");
   };
 
   return (
@@ -713,15 +749,23 @@ export default function ProfileScreen() {
               {profileStep === "social" ? (
                 /* ── Social buttons ── */
                 <View style={[styles.loginCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-                    Neu bei Imoove?{" "}
-                    <Text
-                      style={{ color: colors.primary, fontFamily: "Inter_700Bold" }}
-                      onPress={() => { setRegName(""); setRegPhone(""); setProfileStep("register"); }}
-                    >
-                      Jetzt registrieren
-                    </Text>
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" }}>
+                    Neu bei Imoove?
                   </Text>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.socialBtn,
+                      {
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
+                        opacity: pressed ? 0.9 : 1,
+                      },
+                    ]}
+                    onPress={goRegister}
+                  >
+                    <Feather name="user-plus" size={20} color="#fff" />
+                    <Text style={[styles.socialBtnText, { color: "#fff" }]}>Jetzt registrieren</Text>
+                  </Pressable>
 
                   <View style={{ gap: 10 }}>
                     {/* Google */}
@@ -748,16 +792,16 @@ export default function ProfileScreen() {
                     </Pressable>
                   </View>
                 </View>
-              ) : (
-                /* ── Register form ── */
+              ) : regSubStep === "form" ? (
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("social")}>
                     <Feather name="arrow-left" size={16} color={colors.foreground} />
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
                   </Pressable>
 
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 4 }}>
-                    Gib deinen Namen und deine Telefonnummer ein, damit wir dich erkennen können.
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>Konto erstellen</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
+                    Name, E-Mail und Telefon – anschließend bestätigst du per SMS-Code (Testphase).
                   </Text>
 
                   <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -769,6 +813,21 @@ export default function ProfileScreen() {
                       value={regName}
                       onChangeText={setRegName}
                       autoCapitalize="words"
+                      returnKeyType="next"
+                    />
+                  </View>
+
+                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Feather name="mail" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground }]}
+                      placeholder="E-Mail"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={regEmail}
+                      onChangeText={setRegEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
                       returnKeyType="next"
                     />
                   </View>
@@ -787,13 +846,60 @@ export default function ProfileScreen() {
                   </View>
 
                   <Pressable
-                    style={[styles.registerBtn, { backgroundColor: regName.trim() && regPhone.trim() ? colors.primary : colors.muted }]}
-                    onPress={handleRegister}
-                    disabled={!regName.trim() || !regPhone.trim()}
+                    style={[styles.registerBtn, {
+                      backgroundColor:
+                        regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? colors.primary : colors.muted,
+                    }]}
+                    onPress={handleRegisterRequestSms}
+                    disabled={!regName.trim() || !regPhone.trim() || !isPlausibleEmail(regEmail)}
                   >
-                    <Feather name="check" size={18} color={regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground} />
-                    <Text style={[styles.registerBtnText, { color: regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground }]}>
-                      Konto erstellen
+                    <Feather
+                      name="message-circle"
+                      size={18}
+                      color={regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? "#fff" : colors.mutedForeground}
+                    />
+                    <Text style={[styles.registerBtnText, {
+                      color: regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? "#fff" : colors.mutedForeground,
+                    }]}
+                    >
+                      SMS-Code anfordern
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setRegSubStep("form")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>SMS-Bestätigung</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
+                    Echte SMS folgt mit Backend (Twilio / Firebase Phone Auth). Testcode: {DEV_SMS_CODE}
+                  </Text>
+
+                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Feather name="hash" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground, letterSpacing: 3 }]}
+                      placeholder="6-stelliger Code"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={regSms}
+                      onChangeText={(t) => setRegSms(t.replace(/\D/g, "").slice(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      returnKeyType="done"
+                    />
+                  </View>
+
+                  <Pressable
+                    style={[styles.registerBtn, { backgroundColor: regSms.trim().length === 6 ? colors.primary : colors.muted }]}
+                    onPress={handleRegisterComplete}
+                    disabled={regSms.trim().length !== 6}
+                  >
+                    <Feather name="check" size={18} color={regSms.trim().length === 6 ? "#fff" : colors.mutedForeground} />
+                    <Text style={[styles.registerBtnText, { color: regSms.trim().length === 6 ? "#fff" : colors.mutedForeground }]}>
+                      Registrierung abschließen
                     </Text>
                   </Pressable>
                 </View>
