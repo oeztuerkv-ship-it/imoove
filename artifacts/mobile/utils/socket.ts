@@ -3,7 +3,9 @@
  * React Native has WebSocket built-in — no extra packages needed.
  */
 
-const API_BASE = process.env["EXPO_PUBLIC_API_URL"] ?? "";
+import { getApiBaseUrl } from "./apiBase";
+
+const API_BASE = getApiBaseUrl();
 const WS_URL = API_BASE
   .replace(/^https:\/\//, "wss://")
   .replace(/^http:\/\//, "ws://")

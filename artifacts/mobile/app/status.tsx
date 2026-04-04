@@ -22,6 +22,7 @@ import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { rs, rf } from "@/utils/scale";
 import { connectToRide, disconnectSocket, sendCustomerLocation } from "@/utils/socket";
@@ -73,7 +74,7 @@ function ScallopRow({ backgroundColor }: { backgroundColor: string }) {
   );
 }
 
-const API_BASE = process.env["EXPO_PUBLIC_API_URL"] ?? "";
+const API_BASE = getApiBaseUrl();
 
 export default function StatusScreen() {
   const colors = useColors();

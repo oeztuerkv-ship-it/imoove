@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -61,7 +62,7 @@ function GoogleGLogo({ size = 22 }: { size?: number }) {
   );
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
+const API_URL = getApiBaseUrl();
 const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
 
 function isPlausibleEmail(s: string): boolean {

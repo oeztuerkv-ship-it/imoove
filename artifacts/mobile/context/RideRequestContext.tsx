@@ -8,6 +8,8 @@ import React, {
   useState,
 } from "react";
 
+import { getApiBaseUrl } from "@/utils/apiBase";
+
 export type RequestStatus =
   | "pending"
   | "accepted"
@@ -84,7 +86,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   completeRequest: async () => {},
 });
 
-const API_BASE = process.env["EXPO_PUBLIC_API_URL"] ?? "";
+const API_BASE = getApiBaseUrl();
 const PASSENGER_ID_KEY = "@imoove_passenger_id";
 
 function uuid(): string {

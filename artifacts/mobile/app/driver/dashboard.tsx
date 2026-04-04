@@ -26,6 +26,7 @@ import { type DriverProfile, useDriver } from "@/context/DriverContext";
 import { useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 
@@ -39,7 +40,7 @@ const MOCK_RIDES = [
   { id: "F-007", date: "29.03.2026", time: "07:55", from: "Berkheim", to: "Flughafen Stuttgart", km: 25.2, duration: 28, amount: 68.80, payment: "Bar" },
 ];
 
-const API_BASE = process.env["EXPO_PUBLIC_API_URL"] ?? "";
+const API_BASE = getApiBaseUrl();
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;

@@ -31,9 +31,10 @@ import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { rs, rf } from "@/utils/scale";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
+const API_URL = getApiBaseUrl();
 
 /** Platzhalter bis SMS über Backend (z. B. Twilio) oder Firebase Phone Auth angebunden ist. */
 const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";

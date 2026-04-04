@@ -18,10 +18,11 @@ import {
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 
-const API_BASE = process.env["EXPO_PUBLIC_API_URL"] ?? "";
+const API_BASE = getApiBaseUrl();
 
 const NIGHT_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
