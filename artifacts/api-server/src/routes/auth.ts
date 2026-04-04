@@ -9,10 +9,7 @@ const GOOGLE_CLIENT_ID =
   "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 
-const API_BASE = (() => {
-  const domain = process.env.REPLIT_DEV_DOMAIN ?? "";
-  return domain ? `https://${domain}/api` : "";
-})();
+const API_BASE = process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api` : "http://localhost:3000/api";
 
 const CALLBACK_URI = () => `${API_BASE}/auth/google/callback`;
 
