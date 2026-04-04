@@ -1,0 +1,1703 @@
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
+import * as Location from "expo-location";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { RealMapView } from "@/components/RealMapView";
+import { useDriver } from "@/context/DriverContext";
+import { calculateCopayment, type PaymentMethod, VEHICLES, useRide } from "@/context/RideContext";
+import { useRideRequests } from "@/context/RideRequestContext";
+import { useUser } from "@/context/UserContext";
+import { useColors } from "@/hooks/useColors";
+import { formatEuro } from "@/utils/fareCalculator";
+import { type GeoLocation, searchLocation } from "@/utils/routing";
+import { rs, rf } from "@/utils/scale";
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
+
+const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; featherIcon?: string; isPaypal?: boolean; isEuro?: boolean; isVoucher?: boolean; isApp?: boolean }[] = [
+  { id: "app", label: "App bezahlen", isApp: true },
+  { id: "cash", label: "Bar", isEuro: true },
+  { id: "paypal", label: "PayPal", isPaypal: true },
+  { id: "voucher", label: "Transportschein", isVoucher: true },
+];
+
+const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: string; seats: string }> = {
+  standard: { icon: "taxi", color: "#1F2937", bg: "#F3F4F6", seats: "Bis zu 4 Pers." },
+  xl: { icon: "bus", color: "#1F2937", bg: "#F3F4F6", seats: "Bis zu 6 Pers." },
+  wheelchair: { icon: "wheelchair-accessibility", color: "#0369A1", bg: "#E0F2FE", seats: "Rollstuhlgerecht" },
+};
+
+function ServiceBadge({ icon, label }: { icon: string; label: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FEF3C7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#FDE68A" }}>
+      <MaterialCommunityIcons name={icon as any} size={13} color="#92400E" />
+      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#92400E" }}>{label}</Text>
+    </View>
+  );
+}
+
+interface PresetLocation {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: "airplane" | "train";
+  location: GeoLocation;
+}
+
+const PRESET_DESTINATIONS: PresetLocation[] = [
+  {
+    id: "airport-t12",
+    title: "Abflug Terminal 1–2",
+    subtitle: "Flughafen Stuttgart",
+    icon: "airplane",
+    location: { lat: 48.6900, lon: 9.2205, displayName: "Flughafen Stuttgart Terminal 1-2", city: "Stuttgart" },
+  },
+  {
+    id: "airport-t34",
+    title: "Abflug Terminal 3–4",
+    subtitle: "Flughafen Stuttgart",
+    icon: "airplane",
+    location: { lat: 48.6892, lon: 9.2222, displayName: "Flughafen Stuttgart Terminal 3-4", city: "Stuttgart" },
+  },
+  {
+    id: "hbf-stuttgart",
+    title: "Hauptbahnhof Stuttgart",
+    subtitle: "Arnulf-Klett-Platz 2, Stuttgart",
+    icon: "train",
+    location: { lat: 48.7842, lon: 9.1826, displayName: "Hauptbahnhof Stuttgart", city: "Stuttgart" },
+  },
+];
+
+async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error();
+    const data = await resp.json();
+    const a = data.address ?? {};
+    const road = a.road ?? "";
+    const houseNumber = a.house_number ? ` ${a.house_number}` : "";
+    const city = a.city ?? a.town ?? a.village ?? a.municipality ?? "";
+    const displayName = road
+      ? `${road}${houseNumber}${city ? `, ${city}` : ""}`
+      : data.display_name?.split(",")[0] ?? "Aktueller Standort";
+    return { lat, lon, displayName, street: road, city };
+  } catch {
+    return { lat, lon, displayName: "Aktueller Standort" };
+  }
+}
+
+const TAB_HEIGHT = 56;
+
+export default function HomeScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+  const topPad = isWeb ? 44 : insets.top;
+  const bottomPad = isWeb ? 20 : insets.bottom;
+  // Responsive onboarding helpers
+  const isSmallScreen = screenHeight < 700;    // iPhone SE / iPhone 8
+  const isMediumScreen = screenHeight < 850;   // iPhone 13/14
+  const obLogoSize = isSmallScreen ? 28 : 36;
+  const obLogoPad = isSmallScreen ? 10 : 14;
+  const obLogoRadius = isSmallScreen ? 16 : 20;
+  const obGap = isSmallScreen ? 14 : isMediumScreen ? 18 : 24;
+  const obTitleSize = isSmallScreen ? 28 : 36;
+  const obBlockPad = isSmallScreen ? 14 : 20;
+
+  const { loading: driverLoading, isLoggedIn: isDriverLoggedIn } = useDriver();
+  const { profile, updateProfile, loginWithGoogle } = useUser();
+
+  const {
+    origin, destination, selectedVehicle, paymentMethod, isExempted,
+    route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
+    setOrigin, setDestination, setSelectedVehicle, setPaymentMethod, setIsExempted,
+    setScheduledTime, fetchRoute, resetRide, history,
+  } = useRide();
+
+  const { myActiveRequests } = useRideRequests();
+  const ridesBadge = myActiveRequests.length;
+
+  /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
+  const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
+
+  /* ── After driver login, navigate to dashboard ── */
+  useEffect(() => {
+    if (isDriverLoggedIn) {
+      router.replace("/driver/dashboard");
+    }
+  }, [isDriverLoggedIn]);
+
+  /* ── Search overlay state ── */
+  const [isSearchActive, setIsSearchActive] = useState(false);
+
+  /* ── Auto-open search when navigated with ?search=1 ── */
+  const { search: searchParam } = useLocalSearchParams<{ search?: string }>();
+  useEffect(() => {
+    if (searchParam === "1") {
+      setIsSearchActive(true);
+    }
+  }, [searchParam]);
+  const [isEditingOrigin, setIsEditingOrigin] = useState(false);
+
+  const [userGps, setUserGps] = useState<{ lat: number; lon: number } | null>(null);
+
+  const [originQuery, setOriginQuery] = useState("");
+  const [originResults, setOriginResults] = useState<GeoLocation[]>([]);
+  const [isSearchingOrigin, setIsSearchingOrigin] = useState(false);
+  const originInputRef = useRef<TextInput>(null);
+  const originDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [destQuery, setDestQuery] = useState("");
+  const [destResults, setDestResults] = useState<GeoLocation[]>([]);
+  const [isSearchingDest, setIsSearchingDest] = useState(false);
+  const destInputRef = useRef<TextInput>(null);
+  const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ── Saved home / work ── */
+  const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
+  const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
+  const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
+
+  /* ── Edit-Preset Modal ── */
+  const [editPreset, setEditPreset] = useState<"home" | "work" | null>(null);
+  const [editPresetQuery, setEditPresetQuery] = useState("");
+  const [editPresetResults, setEditPresetResults] = useState<GeoLocation[]>([]);
+  const [editPresetLoading, setEditPresetLoading] = useState(false);
+  const [selectedEditResult, setSelectedEditResult] = useState<GeoLocation | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@imoove_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
+    AsyncStorage.getItem("@imoove_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
+  }, []);
+
+  const savePreset = (type: "home" | "work", loc: GeoLocation) => {
+    if (type === "home") {
+      setSavedHome(loc);
+      AsyncStorage.setItem("@imoove_home", JSON.stringify(loc)).catch(() => {});
+    } else {
+      setSavedWork(loc);
+      AsyncStorage.setItem("@imoove_work", JSON.stringify(loc)).catch(() => {});
+    }
+    setSavingPreset(null);
+    setIsSearchActive(false);
+    setDestQuery("");
+    setDestResults([]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  /* Edit-Preset-Suche */
+  const editPresetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!editPreset) return;
+    if (editPresetDebounceRef.current) clearTimeout(editPresetDebounceRef.current);
+    if (editPresetQuery.length < 2) { setEditPresetResults([]); setSelectedEditResult(null); return; }
+    editPresetDebounceRef.current = setTimeout(async () => {
+      setEditPresetLoading(true);
+      try {
+        const locs = await searchLocation(editPresetQuery, userGps ?? undefined);
+        setEditPresetResults(locs);
+      } catch { setEditPresetResults([]); }
+      finally { setEditPresetLoading(false); }
+    }, 300);
+  }, [editPresetQuery, editPreset]);
+
+  /* ── Schedule modal ── */
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [schedDay, setSchedDay] = useState(0);
+  const [schedHour, setSchedHour] = useState(12);
+  const [schedMinute, setSchedMinute] = useState(0);
+
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [mapCenterKey, setMapCenterKey] = useState(0);
+  const [googleSignInLoading, setGoogleSignInLoading] = useState(false);
+
+  /* ── Google OAuth ── */
+  const handleGoogleSignIn = useCallback(async () => {
+    setGoogleSignInLoading(true);
+    try {
+      const returnUrl = Linking.createURL("google-auth");
+      const startRes = await fetch(`${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`);
+      if (!startRes.ok) throw new Error("OAuth-Start fehlgeschlagen");
+      const { authUrl } = (await startRes.json()) as { authUrl: string; state: string };
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+      if (result.type !== "success") return;
+
+      const rawUrl = result.url.includes("://")
+        ? result.url.replace(/^[a-z][a-z0-9+\-.]*:\/\//, "https://")
+        : result.url;
+      const returnedUrl = new URL(rawUrl);
+      const errorParam = returnedUrl.searchParams.get("error");
+      if (errorParam) throw new Error(`Google-Fehler: ${errorParam}`);
+
+      const resultState = returnedUrl.searchParams.get("result");
+      if (!resultState) throw new Error("Kein Ergebnis-Token empfangen.");
+
+      const profileRes = await fetch(`${API_URL}/auth/google/profile?result=${resultState}`);
+      if (!profileRes.ok) throw new Error("Profil konnte nicht geladen werden.");
+      const data = (await profileRes.json()) as { googleId: string; name: string; email: string; photoUri: string | null };
+      loginWithGoogle({ name: data.name, email: data.email, photoUri: data.photoUri, googleId: data.googleId });
+    } catch (e: any) {
+      Alert.alert("Fehler", e.message ?? "Google-Anmeldung fehlgeschlagen.");
+    } finally {
+      setGoogleSignInLoading(false);
+    }
+  }, [loginWithGoogle]);
+
+  /* ── Route fetch ── */
+  useEffect(() => {
+    if (destination) fetchRoute();
+  }, [destination, selectedVehicle]);
+
+  /* ── Auto-select vehicle from patient profile ── */
+  useEffect(() => {
+    if (profile.rollstuhl) setSelectedVehicle("wheelchair");
+  }, [profile.rollstuhl]);
+
+  /* ── Auto-focus dest when search opens ── */
+  useEffect(() => {
+    if (isSearchActive) {
+      setDestQuery("");
+      setDestResults([]);
+      setOriginQuery(origin.displayName.split(",")[0]);
+      setOriginResults([]);
+      setIsEditingOrigin(false);
+      setTimeout(() => destInputRef.current?.focus(), 180);
+    }
+  }, [isSearchActive]);
+
+  /* ── Switch focus when editing origin ── */
+  useEffect(() => {
+    if (!isSearchActive) return;
+    if (isEditingOrigin) {
+      setTimeout(() => originInputRef.current?.focus(), 80);
+    } else {
+      setTimeout(() => destInputRef.current?.focus(), 80);
+    }
+  }, [isEditingOrigin, isSearchActive]);
+
+  /* ── Origin search ── */
+  const handleOriginQueryChange = useCallback((text: string) => {
+    setOriginQuery(text);
+    if (originDebounceRef.current) clearTimeout(originDebounceRef.current);
+    if (text.length < 2) { setOriginResults([]); setIsSearchingOrigin(false); return; }
+    setIsSearchingOrigin(true);
+    originDebounceRef.current = setTimeout(async () => {
+      try {
+        const locs = await searchLocation(text, userGps ?? undefined);
+        setOriginResults(locs.slice(0, 5));
+      } catch { setOriginResults([]); }
+      finally { setIsSearchingOrigin(false); }
+    }, 300);
+  }, [userGps]);
+
+  const handleOriginSelect = (loc: GeoLocation) => {
+    setOrigin(loc);
+    setOriginQuery(loc.displayName.split(",")[0]);
+    setOriginResults([]);
+    setIsEditingOrigin(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTimeout(() => destInputRef.current?.focus(), 100);
+  };
+
+  /* ── Destination search ── */
+  const handleDestQueryChange = useCallback((text: string) => {
+    setDestQuery(text);
+    if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+    if (text.length < 2) { setDestResults([]); setIsSearchingDest(false); return; }
+    setIsSearchingDest(true);
+    destDebounceRef.current = setTimeout(async () => {
+      try {
+        const locs = await searchLocation(text, userGps ?? undefined);
+        setDestResults(locs.slice(0, 6));
+      } catch { setDestResults([]); }
+      finally { setIsSearchingDest(false); }
+    }, 300);
+  }, [userGps]);
+
+  const handleDestinationSelect = (loc: GeoLocation) => {
+    if (savingPreset) {
+      savePreset(savingPreset, loc);
+      return;
+    }
+    setDestination(loc);
+    setDestQuery("");
+    setDestResults([]);
+    setIsSearchActive(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const closeSearch = () => {
+    setIsSearchActive(false);
+    setSavingPreset(null);
+    setDestQuery("");
+    setDestResults([]);
+    setOriginQuery("");
+    setOriginResults([]);
+    setIsEditingOrigin(false);
+  };
+
+  /* ── Booking ── */
+  const handleBook = () => {
+    if (!fareBreakdown) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.push("/ride");
+  };
+
+
+  /* ── Schedule modal ── */
+  const openScheduleModal = () => {
+    const now = scheduledTime ?? new Date();
+    const diffDays = Math.round((now.getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000);
+    setSchedDay(Math.max(0, Math.min(6, diffDays)));
+    setSchedHour(scheduledTime ? scheduledTime.getHours() : 12);
+    setSchedMinute(scheduledTime ? Math.round(scheduledTime.getMinutes() / 5) * 5 : 0);
+    setShowScheduleModal(true);
+  };
+
+  const handleScheduleConfirm = () => {
+    const base = new Date();
+    base.setDate(base.getDate() + schedDay);
+    base.setHours(schedHour, schedMinute, 0, 0);
+    setScheduledTime(base);
+    setShowScheduleModal(false);
+  };
+
+  /* ── GPS ── */
+  const handleGpsLocate = async (silent = false) => {
+    setGpsLoading(true);
+    if (!silent) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") { setGpsLoading(false); return; }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setUserGps({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      const geoLoc = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+      setOrigin(geoLoc);
+      if (!silent) setMapCenterKey(k => k + 1);
+      if (isSearchActive) setOriginQuery(geoLoc.displayName.split(",")[0]);
+      if (!silent) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+    finally { setGpsLoading(false); }
+  };
+
+  useEffect(() => { handleGpsLocate(true); }, []);
+
+  const recentDest = history[0];
+
+  const schedSummaryLabel = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + schedDay);
+    const names = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+    return schedDay === 0 ? "Heute" : schedDay === 1 ? "Morgen" : names[d.getDay()];
+  })();
+
+  /* ── Driver guard: while AsyncStorage loads, show nothing; when logged in, redirect ── */
+  if (driverLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#fff", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#DC2626" />
+      </View>
+    );
+  }
+  if (isDriverLoggedIn) {
+    return <Redirect href="/driver/dashboard" />;
+  }
+
+  /* ── Results to show in overlay ── */
+  const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
+  const showDestResults = !isEditingOrigin && destResults.length > 0;
+  const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
+
+  return (
+    <View style={styles.root}>
+      {/* ── FULL-SCREEN MAP ── */}
+      {profile.isLoggedIn ? (
+        <RealMapView
+          origin={origin}
+          destination={destination}
+          polyline={route?.polyline}
+          style={StyleSheet.absoluteFill}
+          centerKey={mapCenterKey}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0f0f0f" }]} />
+      )}
+
+      {profile.isLoggedIn ? (<>
+
+      {/* ── ORIGIN CHIP (overlaid on map) — nur ohne Ziel sichtbar ── */}
+      {!destination && (
+        <View style={[styles.originChip, { top: topPad + 8 }]}>
+          <View style={styles.originChipRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.originChipLabel}>Start</Text>
+              <Text style={styles.originChipText} numberOfLines={1}>
+                {origin.displayName.split(",").slice(0, 2).join(",")}
+              </Text>
+            </View>
+            {gpsLoading
+              ? <ActivityIndicator size="small" color="#DC2626" />
+              : (
+                <Pressable style={styles.originLocBtn} onPress={() => { handleGpsLocate(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}>
+                  <Feather name="map-pin" size={rs(13)} color="#fff" />
+                </Pressable>
+              )}
+          </View>
+        </View>
+      )}
+
+      {/* ── TOP-RIGHT FABS ── */}
+      {destination && (
+        <Pressable
+          style={[styles.cancelFab, { top: topPad + 12 }]}
+          onPress={() => { resetRide(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        >
+          <Feather name="x" size={15} color="#fff" />
+          <Text style={styles.cancelFabText}>Abbrechen</Text>
+        </Pressable>
+      )}
+
+      {/* ── BOTTOM SHEET ── */}
+      <View style={[styles.sheet, { backgroundColor: colors.surface, maxHeight: destination ? "90%" : "84%" }]}>
+        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+
+        {/* Suche / Route-Anzeige */}
+        {destination ? (
+          /* ── Zwei-Zeilen-Karte mit Trennlinie (Option B) ── */
+          <Pressable
+            style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
+          >
+            {/* Start-Zeile */}
+            <View style={styles.routeCardRow}>
+              <View style={styles.routeCardDotOrigin} />
+              <Text style={[styles.routeCardText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {origin.displayName}
+              </Text>
+            </View>
+            {/* Trennlinie */}
+            <View style={[styles.routeCardSep, { backgroundColor: colors.border }]} />
+            {/* Ziel-Zeile */}
+            <View style={styles.routeCardRow}>
+              <View style={[styles.routeCardDotDest, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.routeCardText, { color: colors.foreground, fontFamily: "Inter_500Medium" }]} numberOfLines={1}>
+                {destination.displayName}
+              </Text>
+              <Pressable
+                hitSlop={12}
+                onPress={(e) => { e.stopPropagation(); resetRide(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                style={styles.searchClearBtn}
+              >
+                <View style={[styles.searchClearCircle, { backgroundColor: colors.mutedForeground + "30" }]}>
+                  <Feather name="x" size={12} color={colors.foreground} />
+                </View>
+              </Pressable>
+            </View>
+          </Pressable>
+        ) : (
+          /* ── Einzelne Such-Pille ── */
+          <View style={styles.searchRow}>
+            <Pressable
+              style={[styles.searchPlaceholder, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
+            >
+              <View style={[styles.searchIconCircle, { backgroundColor: colors.primary }]}>
+                <Feather name="search" size={13} color="#fff" />
+              </View>
+              <Text style={[styles.searchPlaceholderText, { color: "#888" }]} numberOfLines={1}>
+                Wohin soll's gehen?
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.spaeterBtn, {
+                backgroundColor: scheduledTime ? "#FEF3C7" : colors.card,
+                borderColor: scheduledTime ? "#F59E0B" : colors.border,
+              }]}
+              onPress={openScheduleModal}
+            >
+              <Feather name="calendar" size={14} color={scheduledTime ? "#D97706" : colors.foreground} />
+              <Text style={[styles.spaeterText, { color: scheduledTime ? "#D97706" : colors.foreground }]}>
+                {scheduledTime
+                  ? `${scheduledTime.getHours().toString().padStart(2,"0")}:${scheduledTime.getMinutes().toString().padStart(2,"0")}`
+                  : "Reservieren"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" style={styles.sheetScroll}>
+          {!destination ? (
+            <>
+              {/* Quick destinations */}
+              <View style={[styles.quickSection, { borderColor: colors.border }]}>
+                <Pressable
+                  style={styles.quickRow}
+                  onPress={() => {
+                    if (savedHome) { setDestination(savedHome); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }
+                    else { setSavingPreset("home"); setIsSearchActive(true); }
+                  }}
+                >
+                  <View style={[styles.quickIconWrap, { backgroundColor: savedHome ? "#FEF2F2" : colors.muted }]}>
+                    <Feather name="home" size={16} color={savedHome ? colors.primary : colors.foreground} />
+                  </View>
+                  <View style={styles.quickTextWrap}>
+                    <Text style={[styles.quickTitle, { color: colors.foreground }]}>Zuhause</Text>
+                    <Text style={[styles.quickSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {savedHome ? savedHome.displayName.split(",")[0] : "Wohnadresse speichern"}
+                    </Text>
+                  </View>
+                  <Pressable
+                    hitSlop={12}
+                    onPress={(e) => { e.stopPropagation(); setEditPreset("home"); setEditPresetQuery(""); setEditPresetResults([]); setSelectedEditResult(null); }}
+                  >
+                    <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+                  </Pressable>
+                </Pressable>
+                <View style={[styles.quickDivider, { backgroundColor: colors.border }]} />
+                <Pressable
+                  style={styles.quickRow}
+                  onPress={() => {
+                    if (savedWork) { setDestination(savedWork); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }
+                    else { setSavingPreset("work"); setIsSearchActive(true); }
+                  }}
+                >
+                  <View style={[styles.quickIconWrap, { backgroundColor: savedWork ? "#FEF2F2" : colors.muted }]}>
+                    <Feather name="briefcase" size={16} color={savedWork ? colors.primary : colors.foreground} />
+                  </View>
+                  <View style={styles.quickTextWrap}>
+                    <Text style={[styles.quickTitle, { color: colors.foreground }]}>Arbeit</Text>
+                    <Text style={[styles.quickSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {savedWork ? savedWork.displayName.split(",")[0] : "Arbeitsadresse speichern"}
+                    </Text>
+                  </View>
+                  <Pressable
+                    hitSlop={12}
+                    onPress={(e) => { e.stopPropagation(); setEditPreset("work"); setEditPresetQuery(""); setEditPresetResults([]); setSelectedEditResult(null); }}
+                  >
+                    <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+                  </Pressable>
+                </Pressable>
+                {recentDest && (
+                  <>
+                    <View style={[styles.quickDivider, { backgroundColor: colors.border }]} />
+                    <Pressable style={styles.quickRow} onPress={() => setIsSearchActive(true)}>
+                      <View style={[styles.quickIconWrap, { backgroundColor: colors.muted }]}>
+                        <Ionicons name="time-outline" size={16} color={colors.foreground} />
+                      </View>
+                      <View style={styles.quickTextWrap}>
+                        <Text style={[styles.quickTitle, { color: colors.foreground }]} numberOfLines={1}>
+                          {recentDest.destination.split(",")[0]}
+                        </Text>
+                        <Text style={[styles.quickSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                          {recentDest.destination.split(",").slice(1, 3).join(",").trim() || recentDest.origin.split(",")[0]}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+
+              {/* Vehicle cards */}
+              <View style={styles.vehicleSection}>
+                <View style={styles.vehicleCards}>
+                  {VEHICLES.map((v) => {
+                    const isSelected = selectedVehicle === v.id;
+                    const cfg = VEHICLE_ICON_CONFIG[v.id];
+                    return (
+                      <Pressable
+                        key={v.id}
+                        style={[styles.vehicleCard, {
+                          backgroundColor: isSelected ? colors.primary + "14" : colors.card,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        }]}
+                        onPress={() => { setSelectedVehicle(v.id); Haptics.selectionAsync(); }}
+                      >
+                        <View style={[styles.vehicleIconWrap, { backgroundColor: isSelected ? colors.primary + "22" : cfg?.bg }]}>
+                          <MaterialCommunityIcons name={cfg?.icon as any} size={26} color={isSelected ? colors.primary : cfg?.color} />
+                        </View>
+                        <Text style={[styles.vehicleCardName, {
+                          color: isSelected ? colors.primary : colors.foreground,
+                          fontFamily: isSelected ? "Inter_700Bold" : "Inter_500Medium",
+                        }]}>{v.name}</Text>
+                        <Text style={[styles.vehicleSeats, { color: isSelected ? colors.primary + "aa" : colors.mutedForeground }]}>{cfg?.seats}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Promo */}
+              <View style={styles.promoBanner}>
+                <View style={styles.promoTextWrap}>
+                  <Text style={styles.promoTitle}>Imoove – in deiner Stadt</Text>
+                  <Text style={styles.promoSub}>MOVE YOUR WAY. Jetzt buchen.</Text>
+                </View>
+                <MaterialCommunityIcons name="taxi" size={38} color="#FEF2F2" style={{ marginLeft: 8 }} />
+              </View>
+            </>
+          ) : (
+            /* Buchungs-Panel */
+            <View style={styles.fareSection}>
+
+              {/* ── 1. ZEITWAHL ── */}
+              <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>WANN?</Text>
+              <View style={styles.timingRow}>
+                <Pressable
+                  style={[styles.timingBtn, !scheduledTime && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  onPress={() => { setScheduledTime(null); Haptics.selectionAsync(); }}
+                >
+                  <Feather name="zap" size={16} color={!scheduledTime ? "#fff" : colors.foreground} />
+                  <Text style={[styles.timingBtnText, { color: !scheduledTime ? "#fff" : colors.foreground }]}>Sofort</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.timingBtn, !!scheduledTime && { backgroundColor: "#F59E0B", borderColor: "#F59E0B" }]}
+                  onPress={openScheduleModal}
+                >
+                  <Feather name="calendar" size={16} color={scheduledTime ? "#fff" : colors.foreground} />
+                  <Text style={[styles.timingBtnText, { color: scheduledTime ? "#fff" : colors.foreground }]}>
+                    {scheduledTime
+                      ? `${scheduledTime.getHours().toString().padStart(2,"0")}:${scheduledTime.getMinutes().toString().padStart(2,"0")} Uhr`
+                      : "Reservieren"}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* ── 2. FAHRZEUG ── */}
+              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 14 }]}>FAHRZEUG</Text>
+              <View style={styles.vehicleCards}>
+                {VEHICLES.map((v) => {
+                  const isSelected = selectedVehicle === v.id;
+                  const cfg = VEHICLE_ICON_CONFIG[v.id];
+                  return (
+                    <Pressable
+                      key={v.id}
+                      style={[styles.vehicleCard, {
+                        backgroundColor: isSelected ? colors.primary + "14" : colors.card,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      }]}
+                      onPress={() => { setSelectedVehicle(v.id); Haptics.selectionAsync(); }}
+                    >
+                      <View style={[styles.vehicleIconWrap, { backgroundColor: isSelected ? colors.primary + "22" : cfg?.bg }]}>
+                        <MaterialCommunityIcons name={cfg?.icon as any} size={26} color={isSelected ? colors.primary : cfg?.color} />
+                      </View>
+                      <Text style={[styles.vehicleCardName, {
+                        color: isSelected ? colors.primary : colors.foreground,
+                        fontFamily: isSelected ? "Inter_700Bold" : "Inter_500Medium",
+                      }]}>{v.name}</Text>
+                      <Text style={[styles.vehicleSeats, { color: isSelected ? colors.primary + "aa" : colors.mutedForeground }]}>{cfg?.seats}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* ── Service-Badges aus Patienten-Profil ── */}
+              {(profile.rollator || profile.blindenhund || profile.sauerstoff || profile.begleitperson ||
+                profile.abholungTuer || profile.begleitungAnmeldung || profile.tragehilfe || profile.dialyse) && (
+                <View style={{ gap: 6, marginTop: 4 }}>
+                  <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>SERVICE</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    {profile.rollator && <ServiceBadge icon="walk" label="Rollator" />}
+                    {profile.blindenhund && <ServiceBadge icon="dog" label="Assistenzhund" />}
+                    {profile.sauerstoff && <ServiceBadge icon="air-filter" label="Sauerstoff" />}
+                    {profile.begleitperson && <ServiceBadge icon="account-multiple" label="Begleitperson" />}
+                    {profile.abholungTuer && <ServiceBadge icon="door-open" label={profile.abholungStockwerk ? `Tür (${profile.abholungStockwerk})` : "Abh. Tür"} />}
+                    {profile.begleitungAnmeldung && <ServiceBadge icon="walk" label="Bis Anmeldung" />}
+                    {profile.dialyse && <ServiceBadge icon="water" label="Dialyse" />}
+                    {profile.tragehilfe && <ServiceBadge icon="human-handsup" label="Tragehilfe" />}
+                  </View>
+                </View>
+              )}
+
+              {/* ── Patientennotiz ── */}
+              {!!profile.patientNotiz && (
+                <View style={{ backgroundColor: "#FFFBEB", borderRadius: 12, borderWidth: 1, borderColor: "#FDE68A", padding: 12, flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+                  <Feather name="file-text" size={14} color="#92400E" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#92400E", marginBottom: 2 }}>NOTIZ FÜR DEN FAHRER</Text>
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#78350F", lineHeight: 18 }}>{profile.patientNotiz}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* ── 3. ZAHLUNG ── */}
+              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 14 }]}>ZAHLUNG</Text>
+              <View style={styles.paymentGrid}>
+                {PAYMENT_OPTIONS.map((opt) => {
+                  const isSelected = paymentMethod === opt.id;
+                  const iconColor = isSelected ? "#fff" : colors.foreground;
+                  return (
+                    <Pressable
+                      key={opt.id}
+                      style={[styles.paymentBtn, {
+                        backgroundColor: isSelected ? colors.primary : colors.card,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      }]}
+                      onPress={() => {
+                        setPaymentMethod(opt.id);
+                        if (opt.id !== "voucher") setIsExempted(false);
+                        Haptics.selectionAsync();
+                      }}
+                    >
+                      {opt.isEuro ? (
+                        <Text style={[styles.euroSymbol, { color: iconColor }]}>€</Text>
+                      ) : opt.isApp ? (
+                        <Feather name="smartphone" size={14} color={iconColor} />
+                      ) : opt.isPaypal ? (
+                        <Text style={[styles.paypalText, { color: isSelected ? "#fff" : "#1565C0" }]}>P</Text>
+                      ) : opt.isVoucher ? (
+                        <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={iconColor} />
+                      ) : (
+                        <Feather name={opt.featherIcon as any} size={14} color={iconColor} />
+                      )}
+                      <Text style={[styles.paymentBtnText, { color: isSelected ? "#fff" : colors.foreground }]}>{opt.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {paymentMethod === "voucher" && (
+                <View style={[styles.voucherPanel, { backgroundColor: "#EFF6FF", borderColor: "#93C5FD" }]}>
+                  <View style={styles.voucherPriceRow}>
+                    <View>
+                      <Text style={styles.voucherLabel}>Voraussichtlicher Eigenanteil</Text>
+                      {fareBreakdown && (
+                        <Text style={styles.voucherAmount}>
+                          {formatEuro(calculateCopayment(fareBreakdown.total, isExempted))}{isExempted ? "  (befreit)" : ""}
+                        </Text>
+                      )}
+                      <Text style={styles.voucherSub}>Restbetrag wird direkt mit der Krankenkasse abgerechnet.</Text>
+                    </View>
+                  </View>
+                  <Pressable style={styles.exemptRow} onPress={() => { setIsExempted(!isExempted); Haptics.selectionAsync(); }}>
+                    <View style={[styles.exemptCheckbox, { borderColor: isExempted ? "#2563EB" : "#93C5FD", backgroundColor: isExempted ? "#2563EB" : "transparent" }]}>
+                      {isExempted && <Feather name="check" size={12} color="#fff" />}
+                    </View>
+                    <Text style={[styles.exemptText, { color: "#1D4ED8" }]}>Ich bin von der Zuzahlung befreit</Text>
+                  </Pressable>
+                  <View style={styles.voucherHint}>
+                    <MaterialCommunityIcons name="ticket-percent-outline" size={14} color="#2563EB" />
+                    <Text style={styles.voucherHintText}>Gültigen Transportschein beim Fahrer bereithalten.</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* ── 4. PREIS (nach Routenberechnung) ── */}
+              {isLoadingRoute ? (
+                <View style={[styles.loadingRow, { marginTop: 14 }]}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Route wird berechnet...</Text>
+                </View>
+              ) : routeError ? (
+                <View style={[styles.loadingRow, { marginTop: 14 }]}>
+                  <Feather name="alert-circle" size={18} color={colors.destructive} />
+                  <Text style={[styles.loadingText, { color: colors.destructive }]}>{routeError}</Text>
+                </View>
+              ) : fareBreakdown ? (
+                <View style={[styles.routeStrip, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
+                  <View style={styles.routeStripItem}>
+                    <Text style={[styles.routeStripVal, { color: colors.foreground }]}>{route?.distanceKm?.toFixed(1)} km</Text>
+                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground }]}>Strecke</Text>
+                  </View>
+                  <View style={[styles.routeStripDivider, { backgroundColor: colors.border }]} />
+                  <View style={[styles.routeStripItem, styles.fareHighlight]}>
+                    {paymentMethod === "voucher" ? (
+                      <>
+                        <Text style={[styles.routeStripVal, { color: "#2563EB" }]}>
+                          {formatEuro(calculateCopayment(fareBreakdown.total, isExempted))}
+                        </Text>
+                        <Text style={[styles.routeStripLabel, { color: "#2563EB" }]}>Eigenanteil</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={[styles.routeStripVal, { color: colors.primary }]} numberOfLines={1}>
+                          {Math.round(fareBreakdown.total / 1.08)}–{Math.round(fareBreakdown.total)} €
+                        </Text>
+                        <Text style={[styles.routeStripLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              ) : null}
+
+            </View>
+          )}
+        </ScrollView>
+
+        {destination && !isLoadingRoute && !routeError && (
+          <View style={[styles.stickyBookRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <Pressable
+              style={[styles.bookBtn, { backgroundColor: paymentMethod ? "#22C55E" : "#9CA3AF" }]}
+              onPress={paymentMethod ? handleBook : undefined}
+            >
+              <Text style={styles.bookBtnText}>
+                {paymentMethod ? "Taxi jetzt bestellen" : "Zahlungsart wählen"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+
+      {/* ── BOTTOM TAB BAR ── */}
+      <View style={[styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: bottomPad }]}>
+        {[
+          { icon: "home" as const, label: "Start", active: true, badge: 0, onPress: () => {} },
+          { icon: "calendar" as const, label: "Fahrten", active: false, badge: ridesBadge, onPress: () => router.replace("/my-rides") },
+          { icon: "credit-card" as const, label: "Geldbörse", active: false, badge: 0, onPress: () => router.replace("/wallet") },
+          { icon: "user" as const, label: "Account", active: false, badge: 0, onPress: () => router.replace("/profile") },
+        ].map((tab) => (
+          <Pressable key={tab.label} style={styles.tabItem} onPress={tab.onPress}>
+            <View style={[styles.tabIconWrap, { backgroundColor: tab.active ? colors.primary : colors.muted }]}>
+              <Feather name={tab.icon} size={13} color={tab.active ? "#fff" : "#111111"} />
+              {tab.badge > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.tabLabel, { color: tab.active ? colors.primary : "#111111" }]}>{tab.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* ══════════════════════════════════════════════════
+          ── VOLLBILD-SUCH-OVERLAY ──
+          Erscheint über allem, Vorschläge über Tastatur
+      ══════════════════════════════════════════════════ */}
+      {isSearchActive && (
+        <View style={[styles.searchOverlay, { backgroundColor: colors.surface }]}>
+          {/* Suche-Header (fester Bereich oben) */}
+          <View style={[styles.searchHeader, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+            {/* Zeile: Zurück + (optional Banner) + Abbrechen */}
+            <View style={styles.searchHeaderRow}>
+              <Pressable style={styles.backBtn} onPress={closeSearch}>
+                <Feather name="arrow-left" size={22} color={colors.foreground} />
+              </Pressable>
+
+              {savingPreset ? (
+                <View style={[styles.saveModeBanner, { backgroundColor: colors.primary + "14" }]}>
+                  <Feather name={savingPreset === "home" ? "home" : "briefcase"} size={13} color={colors.primary} />
+                  <Text style={[styles.saveModeBannerText, { color: colors.primary }]}>
+                    {savingPreset === "home" ? "Wohnadresse speichern" : "Arbeitsadresse speichern"}
+                  </Text>
+                </View>
+              ) : <View style={{ flex: 1 }} />}
+
+              <Pressable style={styles.cancelBtn} onPress={closeSearch}>
+                <Text style={[styles.cancelBtnText, { color: colors.primary }]}>Abbrechen</Text>
+              </Pressable>
+            </View>
+
+            {/* Start → Ziel Card */}
+            <View style={[styles.twoFieldCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {/* Punkte + Linie links */}
+              <View style={styles.dotsCol}>
+                <View style={[styles.dotOrigin, isEditingOrigin && { borderColor: colors.primary }]} />
+                <View style={[styles.dotLine, { backgroundColor: colors.border }]} />
+                <View style={[styles.dotDestination, { backgroundColor: isEditingOrigin ? colors.border : colors.primary }]} />
+              </View>
+
+              {/* Felder rechts */}
+              <View style={styles.fieldsCol}>
+                {/* START-Feld */}
+                <Pressable
+                  style={[styles.fieldWrap, isEditingOrigin && { borderBottomColor: colors.primary }]}
+                  onPress={() => { setIsEditingOrigin(true); }}
+                >
+                  <TextInput
+                    ref={originInputRef}
+                    style={[styles.fieldInput, { color: colors.foreground }]}
+                    value={originQuery}
+                    onChangeText={handleOriginQueryChange}
+                    placeholder="Startadresse eingeben..."
+                    placeholderTextColor={colors.mutedForeground}
+                    onFocus={() => setIsEditingOrigin(true)}
+                    returnKeyType="next"
+                    autoCorrect={false}
+                  />
+                  {gpsLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Pressable
+                      onPress={() => handleGpsLocate()}
+                      hitSlop={8}
+                      style={styles.gpsIconBtn}
+                    >
+                      <Feather name="navigation" size={15} color={colors.primary} />
+                    </Pressable>
+                  )}
+                </Pressable>
+
+                <View style={[styles.fieldSeparator, { backgroundColor: colors.border }]} />
+
+                {/* ZIEL-Feld */}
+                <View style={[styles.fieldWrap, !isEditingOrigin && { borderBottomColor: colors.primary }]}>
+                  <TextInput
+                    ref={destInputRef}
+                    style={[styles.fieldInput, { color: colors.foreground }]}
+                    value={destQuery}
+                    onChangeText={handleDestQueryChange}
+                    placeholder="Ziel eingeben..."
+                    placeholderTextColor={colors.mutedForeground}
+                    onFocus={() => setIsEditingOrigin(false)}
+                    returnKeyType="search"
+                    autoCorrect={false}
+                  />
+                  {isSearchingDest && <ActivityIndicator size="small" color={colors.primary} />}
+                  {destQuery.length > 0 && !isSearchingDest && (
+                    <Pressable onPress={() => { setDestQuery(""); setDestResults([]); }} hitSlop={8}>
+                      <Feather name="x" size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Ergebnisliste — bleibt ÜBER der Tastatur dank KeyboardAvoidingView */}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={0}
+          >
+            <ScrollView
+              keyboardShouldPersistTaps="always"
+              showsVerticalScrollIndicator={false}
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.resultsContent}
+            >
+              {/* Origin-Suchergebnisse */}
+              {showOriginResults && (
+                <View style={[styles.resultGroup, { borderColor: colors.border }]}>
+                  {isSearchingOrigin && originResults.length === 0 ? (
+                    <View style={styles.searchingRow}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={[styles.searchingText, { color: colors.mutedForeground }]}>Suche läuft...</Text>
+                    </View>
+                  ) : (
+                    originResults.map((loc, i) => (
+                      <React.Fragment key={i}>
+                        {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
+                        <Pressable style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]} onPress={() => handleOriginSelect(loc)}>
+                          <View style={[styles.resultIcon, { backgroundColor: "#F0F9FF" }]}>
+                            <Feather name="map-pin" size={15} color="#3B82F6" />
+                          </View>
+                          <View style={styles.resultText}>
+                            <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={1}>
+                              {loc.displayName.split(",")[0]}
+                            </Text>
+                            <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                              {loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      </React.Fragment>
+                    ))
+                  )}
+                </View>
+              )}
+
+              {/* Dest-Suchergebnisse (live) */}
+              {showDestResults && (
+                <View style={[styles.resultGroup, { borderColor: colors.border }]}>
+                  {destResults.map((loc, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
+                      <Pressable style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]} onPress={() => handleDestinationSelect(loc)}>
+                        <View style={[styles.resultIcon, { backgroundColor: colors.muted }]}>
+                          <Feather name="map-pin" size={15} color={colors.primary} />
+                        </View>
+                        <View style={styles.resultText}>
+                          <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={1}>
+                            {loc.displayName.split(",")[0]}
+                          </Text>
+                          <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </React.Fragment>
+                  ))}
+                </View>
+              )}
+
+              {/* Preset-Vorschläge (sofort sichtbar) */}
+              {showPresets && (
+                <>
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>BELIEBTE ZIELE</Text>
+                  <View style={[styles.resultGroup, { borderColor: colors.border }]}>
+                    {PRESET_DESTINATIONS.map((preset, i) => (
+                      <React.Fragment key={preset.id}>
+                        {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
+                        <Pressable
+                          style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
+                          onPress={() => handleDestinationSelect(preset.location)}
+                        >
+                          <View style={[styles.resultIcon, {
+                            backgroundColor: preset.icon === "airplane" ? "#EFF6FF" : "#F0FDF4",
+                          }]}>
+                            {preset.icon === "airplane"
+                              ? <Ionicons name="airplane" size={15} color="#3B82F6" />
+                              : <Ionicons name="train" size={15} color="#22C55E" />}
+                          </View>
+                          <View style={styles.resultText}>
+                            <Text style={[styles.resultTitle, { color: colors.foreground }]}>{preset.title}</Text>
+                            <Text style={[styles.resultSub, { color: colors.mutedForeground }]}>{preset.subtitle}</Text>
+                          </View>
+                          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                        </Pressable>
+                      </React.Fragment>
+                    ))}
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      )}
+
+      </>) : (
+        /* ── WELCOME OVERLAY (not logged in) ── */
+        <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
+          {/* Bottom dark gradient */}
+          <View style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "65%",
+            backgroundColor: "rgba(10,10,10,0.72)",
+            borderTopLeftRadius: 28, borderTopRightRadius: 28,
+          }} />
+
+          {/* Branding */}
+          <View style={{
+            position: "absolute", bottom: 160 + bottomPad, left: 0, right: 0,
+            alignItems: "center", gap: 10,
+          }}>
+            <View style={{ backgroundColor: "#DC2626", borderRadius: 20, padding: 14, marginBottom: 4 }}>
+              <MaterialCommunityIcons name="taxi" size={34} color="#fff" />
+            </View>
+            <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -1.5 }}>imoove</Text>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.70)", textAlign: "center", paddingHorizontal: 40 }}>
+              Mobilität ohne Grenzen
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* ── OBLIGATORISCHES ONBOARDING OVERLAY ── */}
+      {showOnboarding && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: colors.background }]}>
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              paddingHorizontal: 24,
+              paddingTop: topPad + 16,
+              paddingBottom: bottomPad + 16,
+              gap: obGap,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo + Branding */}
+            <View style={[styles.onboardingBranding, { gap: isSmallScreen ? 4 : 6, marginBottom: isSmallScreen ? 4 : 8 }]}>
+              <View style={{ backgroundColor: "#DC2626", borderRadius: obLogoRadius, padding: obLogoPad, marginBottom: isSmallScreen ? 4 : 8 }}>
+                <MaterialCommunityIcons name="taxi" size={obLogoSize} color="#fff" />
+              </View>
+              <Text style={[styles.onboardingTitle, { color: colors.foreground, fontSize: obTitleSize }]}>imoove</Text>
+              <Text style={[styles.onboardingTagline, { color: colors.mutedForeground, fontSize: isSmallScreen ? 13 : 15 }]}>
+                Mobilität ohne Grenzen
+              </Text>
+            </View>
+
+            {/* ── KUNDEN-BLOCK ── */}
+            <View style={[styles.onboardingBlock, { backgroundColor: colors.card, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
+              <Text style={{ fontSize: isSmallScreen ? 13 : 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                Neu bei Imoove?{" "}
+                <Text style={{ color: "#DC2626", fontFamily: "Inter_700Bold" }}>Jetzt registrieren</Text>
+              </Text>
+              <View style={{ gap: isSmallScreen ? 8 : 10 }}>
+                <Pressable
+                  style={[styles.socialBtn, {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: googleSignInLoading ? 0.7 : 1,
+                    paddingVertical: isSmallScreen ? 13 : 16,
+                  }]}
+                  onPress={handleGoogleSignIn}
+                  disabled={googleSignInLoading}
+                >
+                  {googleSignInLoading
+                    ? <ActivityIndicator size="small" color="#4285F4" style={{ width: 22, height: 22 }} />
+                    : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
+                  <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
+                    {googleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.socialBtn, {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    paddingVertical: isSmallScreen ? 13 : 16,
+                  }]}
+                  onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
+                >
+                  <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
+                  <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
+                    Weiter mit Apple
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* ── DIVIDER ── */}
+            <View style={styles.onboardingDivider}>
+              <View style={[styles.onboardingDividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.onboardingDividerText, { color: colors.mutedForeground }]}>oder</Text>
+              <View style={[styles.onboardingDividerLine, { backgroundColor: colors.border }]} />
+            </View>
+
+            {/* ── FAHRER-BLOCK ── */}
+            <View style={[styles.onboardingBlock, { backgroundColor: colors.card, borderColor: colors.border, padding: isSmallScreen ? 12 : 14 }]}>
+              <Pressable
+                style={[styles.socialBtn, {
+                  backgroundColor: "#111111",
+                  borderColor: "#111111",
+                  paddingVertical: isSmallScreen ? 13 : 16,
+                }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/driver/login");
+                }}
+              >
+                <MaterialCommunityIcons name="steering" size={20} color="#ffffff" />
+                <Text style={[styles.socialBtnText, { color: "#ffffff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                  Fahrer-Login
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* ── SCHEDULE MODAL ── */}
+      <Modal visible={showScheduleModal} transparent animationType="slide" onRequestClose={() => setShowScheduleModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowScheduleModal(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <View style={styles.modalTitleRow}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Vorbestellung</Text>
+              <Pressable onPress={() => setShowScheduleModal(false)} style={styles.modalCloseBtn}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>DATUM</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayChipRow} contentContainerStyle={{ gap: 8 }}>
+              {Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(); d.setDate(d.getDate() + i);
+                const names = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+                const label = i === 0 ? "Heute" : i === 1 ? "Morgen"
+                  : `${names[d.getDay()]} ${d.getDate().toString().padStart(2,"0")}.${(d.getMonth()+1).toString().padStart(2,"0")}.`;
+                const active = schedDay === i;
+                return (
+                  <Pressable key={i}
+                    style={[styles.dayChip, active ? { backgroundColor: "#F59E0B", borderColor: "#F59E0B" } : { backgroundColor: colors.muted, borderColor: colors.border }]}
+                    onPress={() => { setSchedDay(i); Haptics.selectionAsync(); }}
+                  >
+                    <Text style={[styles.dayChipText, { color: active ? "#fff" : colors.foreground }]}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>UHRZEIT</Text>
+            <View style={styles.timePicker}>
+              <View style={styles.timeColumn}>
+                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedHour((h) => (h + 1) % 24); Haptics.selectionAsync(); }}>
+                  <Feather name="chevron-up" size={22} color={colors.foreground} />
+                </Pressable>
+                <Text style={[styles.timeValue, { color: colors.foreground }]}>{schedHour.toString().padStart(2,"0")}</Text>
+                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedHour((h) => (h + 23) % 24); Haptics.selectionAsync(); }}>
+                  <Feather name="chevron-down" size={22} color={colors.foreground} />
+                </Pressable>
+                <Text style={[styles.timeUnit, { color: colors.mutedForeground }]}>Std.</Text>
+              </View>
+              <Text style={[styles.timeColon, { color: colors.foreground }]}>:</Text>
+              <View style={styles.timeColumn}>
+                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedMinute((m) => (m + 5) % 60); Haptics.selectionAsync(); }}>
+                  <Feather name="chevron-up" size={22} color={colors.foreground} />
+                </Pressable>
+                <Text style={[styles.timeValue, { color: colors.foreground }]}>{schedMinute.toString().padStart(2,"0")}</Text>
+                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedMinute((m) => (m + 55) % 60); Haptics.selectionAsync(); }}>
+                  <Feather name="chevron-down" size={22} color={colors.foreground} />
+                </Pressable>
+                <Text style={[styles.timeUnit, { color: colors.mutedForeground }]}>Min.</Text>
+              </View>
+            </View>
+            <View style={[styles.schedSummary, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+              <Feather name="calendar" size={15} color="#D97706" />
+              <Text style={styles.schedSummaryText}>{schedSummaryLabel} · {schedHour.toString().padStart(2,"0")}:{schedMinute.toString().padStart(2,"0")} Uhr</Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                style={[styles.modalBtnSecondary, { flex: 1, borderColor: colors.border, backgroundColor: colors.muted }]}
+                onPress={() => { setScheduledTime(null); setShowScheduleModal(false); }}
+              >
+                <Text style={[styles.modalBtnSecondaryText, { color: colors.foreground }]}>Abbrechen</Text>
+              </Pressable>
+              <Pressable style={[styles.modalBtnPrimary, { flex: 1, backgroundColor: "#F59E0B" }]} onPress={handleScheduleConfirm}>
+                <Feather name="check" size={18} color="#fff" />
+                <Text style={styles.modalBtnPrimaryText}>Bestätigen</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Adresse bearbeiten Modal ── */}
+      <Modal visible={!!editPreset} transparent animationType="fade" onRequestClose={() => setEditPreset(null)}>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+          <Pressable style={styles.modalOverlay} onPress={() => setEditPreset(null)}>
+            <Pressable style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+              <View style={styles.modalTitleRow}>
+                <Feather name={editPreset === "home" ? "home" : "briefcase"} size={18} color={colors.primary} />
+                <Text style={[styles.modalTitle, { color: colors.foreground, marginLeft: 8 }]}>
+                  {editPreset === "home" ? "Wohnadresse" : "Arbeitsadresse"}
+                </Text>
+                <Pressable onPress={() => setEditPreset(null)} style={[styles.modalCloseBtn, { marginLeft: "auto" }]}>
+                  <Feather name="x" size={20} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+
+              {/* Eingabefeld */}
+              <View style={[styles.editPresetInputWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Feather name="search" size={16} color={colors.mutedForeground} style={{ marginRight: 8 }} />
+                <TextInput
+                  autoFocus
+                  placeholder="Adresse eingeben…"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.editPresetInput, { color: colors.foreground }]}
+                  value={editPresetQuery}
+                  onChangeText={setEditPresetQuery}
+                  returnKeyType="search"
+                />
+                {editPresetLoading && <ActivityIndicator size="small" color={colors.primary} />}
+                {editPresetQuery.length > 0 && !editPresetLoading && (
+                  <Pressable hitSlop={8} onPress={() => { setEditPresetQuery(""); setEditPresetResults([]); }}>
+                    <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Ergebnisliste */}
+              {editPresetResults.length > 0 && (
+                <ScrollView
+                  style={{ maxHeight: 240 }}
+                  keyboardShouldPersistTaps="always"
+                  keyboardDismissMode="on-drag"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {editPresetResults.map((loc, idx) => {
+                    const isSelected = selectedEditResult?.displayName === loc.displayName;
+                    return (
+                      <Pressable
+                        key={idx}
+                        style={[
+                          styles.editPresetResult,
+                          { borderColor: colors.border },
+                          isSelected && { backgroundColor: "#FEF2F2" },
+                        ]}
+                        onPress={() => setSelectedEditResult(loc)}
+                      >
+                        <Feather name="map-pin" size={14} color={isSelected ? colors.primary : colors.mutedForeground} style={{ marginTop: 2 }} />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: isSelected ? colors.primary : colors.foreground }} numberOfLines={1}>
+                            {loc.displayName.split(",")[0]}
+                          </Text>
+                          <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
+                            {loc.displayName.split(",").slice(1).join(",").trim()}
+                          </Text>
+                        </View>
+                        {isSelected && <Feather name="check" size={16} color={colors.primary} />}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
+              {/* Speichern-Button */}
+              <Pressable
+                style={[
+                  styles.modalBtnPrimary,
+                  { backgroundColor: selectedEditResult ? colors.success : colors.muted },
+                ]}
+                disabled={!selectedEditResult}
+                onPress={() => {
+                  if (!selectedEditResult || !editPreset) return;
+                  savePreset(editPreset, selectedEditResult);
+                  setEditPreset(null);
+                  setEditPresetQuery("");
+                  setEditPresetResults([]);
+                  setSelectedEditResult(null);
+                }}
+              >
+                <Feather name="check" size={16} color={selectedEditResult ? "#fff" : colors.mutedForeground} />
+                <Text style={[styles.modalBtnPrimaryText, { color: selectedEditResult ? "#fff" : colors.mutedForeground }]}>
+                  Speichern
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+
+  /* ── Map overlays ── */
+  originChip: {
+    position: "absolute", left: rs(20), right: rs(20),
+    backgroundColor: "rgba(255,255,255,0.97)", borderRadius: rs(14),
+    paddingHorizontal: rs(14), paddingVertical: rs(7),
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10, shadowRadius: 8, elevation: 5, zIndex: 10,
+  },
+  originChipLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular", color: "#B0B7C3", marginBottom: rs(2), letterSpacing: 0.6, textTransform: "uppercase" },
+  originChipRow: { flexDirection: "row", alignItems: "center", gap: rs(8) },
+  originChipText: { flex: 1, fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#111", letterSpacing: -0.2 },
+  originLocBtn: {
+    width: rs(26), height: rs(26), borderRadius: rs(13),
+    backgroundColor: "#DC2626",
+    alignItems: "center", justifyContent: "center",
+  },
+
+  cancelFab: {
+    position: "absolute", right: 16, flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "#DC2626", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18, shadowRadius: 6, elevation: 5, zIndex: 10,
+  },
+  cancelFabText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  topRightFabs: { position: "absolute", right: 16, flexDirection: "column", gap: 8, zIndex: 10 },
+  fab: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+  },
+  driverFab: { backgroundColor: "#111" },
+  avatarCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
+  avatarLetter: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+
+  /* ── Bottom sheet ── */
+  sheet: {
+    position: "absolute", bottom: TAB_HEIGHT, left: 0, right: 0,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    shadowColor: "#000", shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 16, maxHeight: "76%",
+  },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 10, marginBottom: 4 },
+  sheetScroll: { flexShrink: 1 },
+
+  /* Search pill */
+  searchRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 10 },
+  searchPlaceholder: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    gap: 10, paddingHorizontal: 12, paddingVertical: 13,
+    borderRadius: 50, borderWidth: 1,
+  },
+  searchIconCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
+  searchPlaceholderText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  spaeterBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 50, borderWidth: 1 },
+  spaeterText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  /* Route card (Option B – zwei Zeilen mit Trennlinie) */
+  routeCard: {
+    marginHorizontal: 16, marginTop: 10, marginBottom: 2,
+    borderRadius: 14, borderWidth: 1, overflow: "hidden",
+  },
+  routeCardRow: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 14, paddingVertical: 13, gap: 10,
+  },
+  routeCardDotOrigin: {
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: "#999", borderWidth: 1.5, borderColor: "#555",
+  },
+  routeCardDotDest: { width: 9, height: 9, borderRadius: 5 },
+  routeCardText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  routeCardSep: { height: 1, marginLeft: 14, marginRight: 14 },
+
+  /* Quick destinations */
+  quickSection: { marginHorizontal: 16, marginBottom: 4, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  quickRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  quickIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  quickTextWrap: { flex: 1 },
+  quickTitle: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  quickSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
+
+  /* Vehicle cards */
+  vehicleSection: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
+  vehicleCards: { flexDirection: "row", gap: 10 },
+  vehicleCard: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, gap: 5 },
+  vehicleIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
+  vehicleCardName: { fontSize: 13 },
+  vehicleSeats: { fontSize: 10, fontFamily: "Inter_400Regular" },
+
+  /* Promo */
+  promoBanner: { marginHorizontal: 16, marginTop: 12, marginBottom: 28, backgroundColor: "#DC2626", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center" },
+  promoTextWrap: { flex: 1 },
+  promoTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FEF3C7" },
+  promoSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#FDE68A", marginTop: 3 },
+  promoEmoji: { fontSize: 36, marginLeft: 8 },
+
+  /* Fare panel */
+  fareSection: { padding: 14, gap: 12, paddingBottom: 8 },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, justifyContent: "center", paddingVertical: 16 },
+  loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  routeStrip: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, paddingVertical: 18 },
+  routeStripItem: { flex: 1, alignItems: "center", gap: 4 },
+  fareHighlight: { borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, marginHorizontal: 8, marginVertical: 4, backgroundColor: "#F3F4F6", borderColor: "#D1D5DB" },
+  routeStripVal: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  routeStripLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  routeStripDivider: { width: 1, height: 32 },
+  panelLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -6 },
+  timingRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  timingBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 7, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5,
+    borderColor: "#E5E7EB", backgroundColor: "#F9FAFB",
+  },
+  timingBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  paymentRow: { flexDirection: "row", gap: 8 },
+  paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  paymentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, minWidth: "46%" },
+  paymentBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  paypalText: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  euroSymbol: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  voucherPanel: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 10 },
+  voucherPriceRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+  voucherLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#1D4ED8", letterSpacing: 0.4 },
+  voucherAmount: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#1D4ED8", marginTop: 2 },
+  voucherSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#3B82F6", marginTop: 4, lineHeight: 16 },
+  exemptRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  exemptCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, justifyContent: "center", alignItems: "center" },
+  exemptText: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  voucherHint: { flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#93C5FD" },
+  voucherHintText: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#2563EB", flex: 1 },
+  bookRow: { flexDirection: "row", gap: 10 },
+  stickyBookRow: {
+    flexDirection: "row", gap: 10,
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  bookBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 22, borderRadius: 16, gap: 8 },
+  bookBtnText: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: "#fff", letterSpacing: 0.4 },
+  scheduleBtn: { width: 52, height: 52, borderRadius: 14, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
+  searchClearBtn: { padding: 2, marginLeft: 4 },
+  searchClearCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center" },
+
+  /* Tab bar */
+  tabBar: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    flexDirection: "row",
+    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(7),
+    shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
+  },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
+  tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
+  tabLabel: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
+  tabBadge: {
+    position: "absolute", top: -5, right: -8,
+    minWidth: 17, height: 17, borderRadius: 9,
+    backgroundColor: "#DC2626",
+    alignItems: "center", justifyContent: "center",
+    paddingHorizontal: rs(3),
+  },
+  tabBadgeText: { fontSize: rf(10), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(13) },
+
+  /* ══ SEARCH OVERLAY ══ */
+  searchOverlay: {
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
+  },
+  searchHeader: {
+    paddingHorizontal: 16, paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "column", gap: 8,
+  },
+  searchHeaderRow: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: "center", alignItems: "center",
+  },
+  cancelBtn: {
+    paddingHorizontal: 8, paddingVertical: 6,
+  },
+  cancelBtnText: {
+    fontSize: 14, fontFamily: "Inter_500Medium",
+  },
+  saveModeBanner: {
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+  },
+  saveModeBannerText: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1,
+  },
+  twoFieldCard: {
+    flexDirection: "row", alignItems: "stretch",
+    borderRadius: 16, borderWidth: 1,
+    overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+  },
+  dotsCol: {
+    width: 32, alignItems: "center",
+    paddingTop: 18, paddingBottom: 18,
+    gap: 2,
+  },
+  dotOrigin: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: "#222", borderWidth: 2, borderColor: "#555",
+  },
+  dotLine: { flex: 1, width: 2, borderRadius: 1, marginVertical: 3 },
+  dotDestination: { width: 10, height: 10, borderRadius: 5 },
+  fieldsCol: { flex: 1 },
+  fieldWrap: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 8, paddingVertical: 14, gap: 8,
+    borderBottomWidth: 0,
+  },
+  fieldInput: {
+    flex: 1, fontSize: 14, fontFamily: "Inter_400Regular",
+    paddingVertical: 0,
+  },
+  fieldSeparator: { height: 1, marginLeft: 8, marginRight: 8, opacity: 0.4 },
+  gpsIconBtn: { padding: 4 },
+
+  /* Results list */
+  resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
+  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
+  resultGroup: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  resultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  resultText: { flex: 1 },
+  resultTitle: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  resultSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  resultDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
+  searchingRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
+  searchingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+
+  /* Schedule modal */
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  modalCard: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 12 },
+  modalTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  modalCloseBtn: { padding: 4 },
+  pickerLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
+  dayChipRow: { marginHorizontal: -4 },
+  dayChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  dayChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  timePicker: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  timeColumn: { alignItems: "center", gap: 8 },
+  timeBtn: { width: 48, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  timeValue: { fontSize: 36, fontFamily: "Inter_700Bold", minWidth: 60, textAlign: "center" },
+  timeUnit: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  timeColon: { fontSize: 36, fontFamily: "Inter_700Bold", marginBottom: 20 },
+  schedSummary: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
+  schedSummaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#92400E" },
+  modalBtnPrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 14 },
+  modalBtnPrimaryText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  editPresetInputWrap: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  editPresetInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  editPresetResult: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  modalBtnSecondary: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 14, borderWidth: 1.5 },
+  modalBtnSecondaryText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  socialBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 14, paddingVertical: 16, borderRadius: 14, borderWidth: 1,
+  },
+  socialBtnText: { fontSize: 16, fontFamily: "Inter_500Medium" },
+
+  /* ── ONBOARDING ── */
+  onboardingScroll: {
+    flexGrow: 1, paddingHorizontal: 24, gap: 20,
+  },
+  onboardingBranding: {
+    alignItems: "center", gap: 6, marginBottom: 8,
+  },
+  onboardingTitle: {
+    fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: -1.5,
+  },
+  onboardingTagline: {
+    fontSize: 15, fontFamily: "Inter_400Regular",
+  },
+  onboardingBlock: {
+    borderRadius: 20, borderWidth: 1, padding: 20, gap: 14,
+  },
+  onboardingBlockHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  onboardingBlockLabel: {
+    fontSize: 17, fontFamily: "Inter_700Bold",
+  },
+  onboardingBlockSub: {
+    fontSize: 13, fontFamily: "Inter_400Regular", marginTop: -8,
+  },
+  onboardingInput: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 14, borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 14,
+  },
+  onboardingDriverBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10, borderRadius: 14, paddingVertical: 16,
+  },
+  onboardingRegisterLink: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 6,
+  },
+  onboardingRegisterLinkText: {
+    fontSize: 13, fontFamily: "Inter_400Regular",
+  },
+  onboardingDivider: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    marginVertical: -4,
+  },
+  onboardingDividerLine: { flex: 1, height: 1 },
+  onboardingDividerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+});

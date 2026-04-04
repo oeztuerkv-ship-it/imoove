@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Imoove",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "mobile",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vedat.mobile",
+      "config": {
+        "googleMapsApiKey": "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ"
+      },
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.634150078903-s92ovie5ksjg5mbctlg5egh1j1c6o2mm"
+            ]
+          }
+        ]
+      }
+    },
+    "android": {
+      "package": "com.vedat.imoove",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
