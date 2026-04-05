@@ -1,0 +1,4 @@
+# Umgebungsvariablen & Geheimnisse (nie committen)
+.env
+.env.*
+!.env.example
