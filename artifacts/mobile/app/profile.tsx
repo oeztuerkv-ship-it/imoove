@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
@@ -21,6 +22,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { OnrodaOrMark } from "@/components/OnrodaOrMark";
+import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -738,10 +742,18 @@ export default function ProfileScreen() {
             <View style={styles.loginSection}>
               {/* App branding */}
               <View style={styles.brandBlock}>
-                <View style={[styles.brandIcon, { backgroundColor: colors.primary }]}>
-                  <MaterialCommunityIcons name="taxi" size={32} color="#fff" />
-                </View>
-                <Text style={[styles.brandTitle, { color: colors.foreground }]}>Imoove</Text>
+                <OnrodaOrMark size={rs(72)} />
+                <Text style={[styles.brandTitle, { color: colors.foreground }]}>Onroda</Text>
+                <View
+                  style={{
+                    height: 3,
+                    width: rs(40),
+                    borderRadius: 2,
+                    backgroundColor: ONRODA_MARK_RED,
+                    marginTop: rs(2),
+                    marginBottom: rs(2),
+                  }}
+                />
                 <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
                   Move Your Way.
                 </Text>
@@ -749,47 +761,57 @@ export default function ProfileScreen() {
 
               {profileStep === "social" ? (
                 /* ── Social buttons ── */
-                <View style={[styles.loginCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" }}>
-                    Neu bei Imoove?
-                  </Text>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.socialBtn,
-                      {
-                        backgroundColor: colors.primary,
-                        borderColor: colors.primary,
-                        opacity: pressed ? 0.9 : 1,
-                      },
-                    ]}
-                    onPress={goRegister}
-                  >
-                    <Feather name="user-plus" size={20} color="#fff" />
-                    <Text style={[styles.socialBtnText, { color: "#fff" }]}>Jetzt registrieren</Text>
-                  </Pressable>
-
+                <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <NeuBeiOnrodaRegisterRow
+                    mutedColor={colors.mutedForeground}
+                    marginBottom={rs(10)}
+                    fontSize={rf(14)}
+                    onRegisterPress={goRegister}
+                  />
                   <View style={{ gap: 10 }}>
-                    {/* Google */}
                     <Pressable
-                      style={({ pressed }) => [styles.socialBtn, { backgroundColor: colors.background, borderColor: colors.border, opacity: (pressed || googleLoading) ? 0.75 : 1 }]}
+                      style={({ pressed }) => [
+                        styles.socialBtn,
+                        {
+                          backgroundColor: "#FFFFFF",
+                          borderColor: colors.border,
+                          opacity: (pressed || googleLoading) ? 0.9 : 1,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 1,
+                        },
+                      ]}
                       onPress={handleGoogleLogin}
                       disabled={googleLoading}
                     >
                       {googleLoading
-                        ? <ActivityIndicator size="small" color="#4285F4" style={{ width: 22, height: 22 }} />
+                        ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
                         : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                      <Text style={[styles.socialBtnText, { color: colors.foreground }]}>
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
                         {googleLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
                       </Text>
                     </Pressable>
 
-                    {/* Apple */}
                     <Pressable
-                      style={({ pressed }) => [styles.socialBtn, { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                      style={({ pressed }) => [
+                        styles.socialBtn,
+                        {
+                          backgroundColor: "#FFFFFF",
+                          borderColor: colors.border,
+                          opacity: pressed ? 0.9 : 1,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 1,
+                        },
+                      ]}
                       onPress={() => Alert.alert("Apple Login", "Apple-Anmeldung ist in Kürze verfügbar.")}
                     >
                       <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground }]}>Weiter mit Apple</Text>
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -849,7 +871,7 @@ export default function ProfileScreen() {
                   <Pressable
                     style={[styles.registerBtn, {
                       backgroundColor:
-                        regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? colors.primary : colors.muted,
+                        regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? "#111111" : colors.muted,
                     }]}
                     onPress={handleRegisterRequestSms}
                     disabled={!regName.trim() || !regPhone.trim() || !isPlausibleEmail(regEmail)}
@@ -894,7 +916,7 @@ export default function ProfileScreen() {
                   </View>
 
                   <Pressable
-                    style={[styles.registerBtn, { backgroundColor: regSms.trim().length === 6 ? colors.primary : colors.muted }]}
+                    style={[styles.registerBtn, { backgroundColor: regSms.trim().length === 6 ? "#111111" : colors.muted }]}
                     onPress={handleRegisterComplete}
                     disabled={regSms.trim().length !== 6}
                   >
@@ -904,6 +926,23 @@ export default function ProfileScreen() {
                     </Text>
                   </Pressable>
                 </View>
+              )}
+
+              {profileStep === "register" && (
+                <FahrerRegistrierenFooter
+                  colors={{
+                    foreground: colors.foreground,
+                    mutedForeground: colors.mutedForeground,
+                    muted: colors.muted,
+                    border: colors.border,
+                  }}
+                  padding={rs(14)}
+                  gap={rs(10)}
+                  onAnmeldenPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push("/driver/login");
+                  }}
+                />
               )}
             </View>
           </KeyboardAvoidingView>
@@ -950,10 +989,6 @@ const styles = StyleSheet.create({
   /* Login section */
   loginSection: { paddingHorizontal: rs(24), marginBottom: rs(8), gap: rs(28) },
   brandBlock: { alignItems: "center", gap: rs(10), paddingTop: rs(16) },
-  brandIcon: {
-    width: rs(72), height: rs(72), borderRadius: rs(22),
-    justifyContent: "center", alignItems: "center",
-  },
   brandTitle: { fontSize: rf(28), fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   brandSub: { fontSize: rf(14), fontFamily: "Inter_400Regular", textAlign: "center" },
 

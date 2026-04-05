@@ -44,7 +44,7 @@ async function nominatimSearch(query: string): Promise<GeoResult[]> {
     });
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-      { headers: { "Accept-Language": "de", "User-Agent": "ImooveApp/1.0" } }
+      { headers: { "Accept-Language": "de", "User-Agent": "OnrodaApp/1.0" } }
     );
     if (!res.ok) return [];
     return await res.json();

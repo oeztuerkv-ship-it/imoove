@@ -84,7 +84,7 @@ export default function DriverLoginScreen() {
               <Feather name="mail" size={16} color={colors.mutedForeground} style={{ marginRight: 8 }} />
               <TextInput
                 style={[styles.input, { color: colors.foreground }]}
-                placeholder="fahrer@imoove.de"
+                placeholder="fahrer@Onroda.de"
                 placeholderTextColor={colors.mutedForeground}
                 value={email}
                 onChangeText={setEmail}
@@ -144,7 +144,7 @@ export default function DriverLoginScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               Alert.alert(
                 "Fahrer-Registrierung",
-                "Um dich als Fahrer zu registrieren, wende dich bitte direkt an die Imoove-Zentrale:\n\n📞 0711 / 123 456\n✉ fahrer@imoove.de\n\nWir melden uns innerhalb von 24 Stunden.",
+                "Um dich als Fahrer zu registrieren, wende dich bitte direkt an die Onroda-Zentrale:\n\n📞 0711 / 123 456\n✉ fahrer@onroda.de\n\nWir melden uns innerhalb von 24 Stunden.",
                 [{ text: "OK" }]
               );
             }}

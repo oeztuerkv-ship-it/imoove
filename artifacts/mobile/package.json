@@ -55,6 +55,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "babel-preset-expo": "^55.0.15",
     "expo-auth-session": "^7.0.10",
     "expo-av": "~16.0.8",
     "expo-crypto": "^15.0.8",

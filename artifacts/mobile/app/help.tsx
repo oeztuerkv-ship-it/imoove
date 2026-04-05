@@ -40,7 +40,7 @@ const FAQ = [
   },
   {
     q: "Wie kontaktiere ich den Support?",
-    a: "Sie erreichen uns unter support@imoove.de oder telefonisch unter 0711 / 24 24 24.",
+    a: "Sie erreichen uns unter support@Onroda.de oder telefonisch unter 0711 / 24 24 24.",
   },
 ];
 
@@ -88,7 +88,7 @@ export default function HelpScreen() {
               24/7 Erreichbar
             </Text>
             <Text style={[styles.contactSub, { color: colors.mutedForeground }]}>
-              0711 / 24 24 24 · support@imoove.de
+              0711 / 24 24 24 · support@Onroda.de
             </Text>
           </View>
         </View>

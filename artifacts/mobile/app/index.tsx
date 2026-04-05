@@ -23,12 +23,15 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
+import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
 import { calculateCopayment, type PaymentMethod, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
+import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -129,9 +132,6 @@ export default function HomeScreen() {
   // Responsive onboarding helpers
   const isSmallScreen = screenHeight < 700;    // iPhone SE / iPhone 8
   const isMediumScreen = screenHeight < 850;   // iPhone 13/14
-  const obLogoSize = isSmallScreen ? 28 : 36;
-  const obLogoPad = isSmallScreen ? 10 : 14;
-  const obLogoRadius = isSmallScreen ? 16 : 20;
   const obGap = isSmallScreen ? 14 : isMediumScreen ? 18 : 24;
   const obTitleSize = isSmallScreen ? 28 : 36;
   const obBlockPad = isSmallScreen ? 14 : 20;
@@ -215,17 +215,17 @@ export default function HomeScreen() {
   const [selectedEditResult, setSelectedEditResult] = useState<GeoLocation | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem("@imoove_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
-    AsyncStorage.getItem("@imoove_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
+    AsyncStorage.getItem("@Onroda_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
+    AsyncStorage.getItem("@Onroda_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
   }, []);
 
   const savePreset = (type: "home" | "work", loc: GeoLocation) => {
     if (type === "home") {
       setSavedHome(loc);
-      AsyncStorage.setItem("@imoove_home", JSON.stringify(loc)).catch(() => {});
+      AsyncStorage.setItem("@Onroda_home", JSON.stringify(loc)).catch(() => {});
     } else {
       setSavedWork(loc);
-      AsyncStorage.setItem("@imoove_work", JSON.stringify(loc)).catch(() => {});
+      AsyncStorage.setItem("@Onroda_work", JSON.stringify(loc)).catch(() => {});
     }
     setSavingPreset(null);
     setIsSearchActive(false);
@@ -705,7 +705,7 @@ export default function HomeScreen() {
               {/* Promo */}
               <View style={styles.promoBanner}>
                 <View style={styles.promoTextWrap}>
-                  <Text style={styles.promoTitle}>Imoove – in deiner Stadt</Text>
+                  <Text style={styles.promoTitle}>Onroda – in deiner Stadt</Text>
                   <Text style={styles.promoSub}>MOVE YOUR WAY. Jetzt buchen.</Text>
                 </View>
                 <MaterialCommunityIcons name="taxi" size={38} color="#FEF2F2" style={{ marginLeft: 8 }} />
@@ -1146,10 +1146,8 @@ export default function HomeScreen() {
             position: "absolute", bottom: 160 + bottomPad, left: 0, right: 0,
             alignItems: "center", gap: 10,
           }}>
-            <View style={{ backgroundColor: "#DC2626", borderRadius: 20, padding: 14, marginBottom: 4 }}>
-              <MaterialCommunityIcons name="taxi" size={34} color="#fff" />
-            </View>
-            <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -1.5 }}>imoove</Text>
+            <OnrodaOrMark size={76} style={{ marginBottom: 4 }} />
+            <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -1.5 }}>Onroda</Text>
             <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.70)", textAlign: "center", paddingHorizontal: 40 }}>
               Mobilität ohne Grenzen
             </Text>
@@ -1159,7 +1157,7 @@ export default function HomeScreen() {
 
       {/* ── OBLIGATORISCHES ONBOARDING OVERLAY ── */}
       {showOnboarding && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: colors.background }]}>
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9999, backgroundColor: "#FFFFFF" }]}>
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
@@ -1174,66 +1172,84 @@ export default function HomeScreen() {
           >
             {/* Logo + Branding */}
             <View style={[styles.onboardingBranding, { gap: isSmallScreen ? 4 : 6, marginBottom: isSmallScreen ? 4 : 8 }]}>
-              <View style={{ backgroundColor: "#DC2626", borderRadius: obLogoRadius, padding: obLogoPad, marginBottom: isSmallScreen ? 4 : 8 }}>
-                <MaterialCommunityIcons name="taxi" size={obLogoSize} color="#fff" />
-              </View>
-              <Text style={[styles.onboardingTitle, { color: colors.foreground, fontSize: obTitleSize }]}>imoove</Text>
+              <OnrodaOrMark
+                size={isSmallScreen ? 64 : 80}
+                style={{ marginBottom: isSmallScreen ? 4 : 8 }}
+              />
+              <Text style={[styles.onboardingTitle, { color: colors.foreground, fontSize: obTitleSize }]}>
+                Onroda
+              </Text>
+              <View
+                style={{
+                  height: 3,
+                  width: 44,
+                  borderRadius: 2,
+                  backgroundColor: ONRODA_MARK_RED,
+                  alignSelf: "center",
+                  marginTop: 2,
+                  marginBottom: 2,
+                }}
+              />
               <Text style={[styles.onboardingTagline, { color: colors.mutedForeground, fontSize: isSmallScreen ? 13 : 15 }]}>
                 Mobilität ohne Grenzen
               </Text>
             </View>
 
             {/* ── KUNDEN-BLOCK ── */}
-            <View style={[styles.onboardingBlock, { backgroundColor: colors.card, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
+            <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
               {onboardingCustomerStep === "social" ? (
                 <>
-                  <Text style={{ fontSize: isSmallScreen ? 13 : 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" }}>
-                    Neu bei Imoove?
-                  </Text>
-                  <Pressable
-                    style={[styles.socialBtn, {
-                      backgroundColor: "#DC2626",
-                      borderColor: "#DC2626",
-                      paddingVertical: isSmallScreen ? 13 : 16,
-                    }]}
-                    onPress={() => {
+                  <NeuBeiOnrodaRegisterRow
+                    mutedColor={colors.mutedForeground}
+                    marginBottom={isSmallScreen ? 6 : 10}
+                    fontSize={isSmallScreen ? 13 : 14}
+                    onRegisterPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setObRegName("");
+                      setObRegEmail("");
+                      setObRegPhone("");
+                      setObRegSms("");
                       setOnboardingCustomerStep("register");
                     }}
-                  >
-                    <Feather name="user-plus" size={20} color="#fff" />
-                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
-                      Jetzt registrieren
-                    </Text>
-                  </Pressable>
+                  />
                   <View style={{ gap: isSmallScreen ? 8 : 10 }}>
                     <Pressable
                       style={[styles.socialBtn, {
-                        backgroundColor: colors.surface,
+                        backgroundColor: "#FFFFFF",
                         borderColor: colors.border,
-                        opacity: googleSignInLoading ? 0.7 : 1,
                         paddingVertical: isSmallScreen ? 13 : 16,
+                        opacity: googleSignInLoading ? 0.75 : 1,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                        elevation: 1,
                       }]}
                       onPress={handleGoogleSignIn}
                       disabled={googleSignInLoading}
                     >
                       {googleSignInLoading
-                        ? <ActivityIndicator size="small" color="#4285F4" style={{ width: 22, height: 22 }} />
+                        ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
                         : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
                         {googleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
                       </Text>
                     </Pressable>
                     <Pressable
                       style={[styles.socialBtn, {
-                        backgroundColor: colors.surface,
+                        backgroundColor: "#FFFFFF",
                         borderColor: colors.border,
                         paddingVertical: isSmallScreen ? 13 : 16,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                        elevation: 1,
                       }]}
                       onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
                     >
                       <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16 }]}>
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
                         Weiter mit Apple
                       </Text>
                     </Pressable>
@@ -1292,8 +1308,8 @@ export default function HomeScreen() {
                   </View>
                   <Pressable
                     style={[styles.socialBtn, {
-                      backgroundColor: "#DC2626",
-                      borderColor: "#DC2626",
+                      backgroundColor: "#111111",
+                      borderColor: "#111111",
                       paddingVertical: isSmallScreen ? 13 : 16,
                     }]}
                     onPress={handleOnboardingRequestSms}
@@ -1333,8 +1349,8 @@ export default function HomeScreen() {
                   </View>
                   <Pressable
                     style={[styles.socialBtn, {
-                      backgroundColor: obRegSms.trim().length === 6 ? "#DC2626" : colors.muted,
-                      borderColor: obRegSms.trim().length === 6 ? "#DC2626" : colors.border,
+                      backgroundColor: obRegSms.trim().length === 6 ? "#111111" : colors.muted,
+                      borderColor: obRegSms.trim().length === 6 ? "#111111" : colors.border,
                       paddingVertical: isSmallScreen ? 13 : 16,
                     }]}
                     onPress={handleOnboardingCompleteRegister}
@@ -1353,32 +1369,50 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* ── DIVIDER ── */}
-            <View style={styles.onboardingDivider}>
-              <View style={[styles.onboardingDividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.onboardingDividerText, { color: colors.mutedForeground }]}>oder</Text>
-              <View style={[styles.onboardingDividerLine, { backgroundColor: colors.border }]} />
-            </View>
+            {onboardingCustomerStep === "social" ? (
+              <>
+                {/* ── DIVIDER ── */}
+                <View style={styles.onboardingDivider}>
+                  <View style={[styles.onboardingDividerLine, { backgroundColor: colors.border }]} />
+                  <Text style={[styles.onboardingDividerText, { color: colors.mutedForeground }]}>oder</Text>
+                  <View style={[styles.onboardingDividerLine, { backgroundColor: colors.border }]} />
+                </View>
 
-            {/* ── FAHRER-BLOCK ── */}
-            <View style={[styles.onboardingBlock, { backgroundColor: colors.card, borderColor: colors.border, padding: isSmallScreen ? 12 : 14 }]}>
-              <Pressable
-                style={[styles.socialBtn, {
-                  backgroundColor: "#111111",
-                  borderColor: "#111111",
-                  paddingVertical: isSmallScreen ? 13 : 16,
-                }]}
-                onPress={() => {
+                {/* ── FAHRER-LOGIN (nur Social-Ansicht) ── */}
+                <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: isSmallScreen ? 12 : 14 }]}>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: "#000000",
+                      borderColor: "#000000",
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                    }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push("/driver/login");
+                    }}
+                  >
+                    <MaterialCommunityIcons name="steering" size={20} color="#FFFFFF" />
+                    <Text style={[styles.socialBtnText, { color: "#FFFFFF", fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
+                      Fahrer-Login
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <FahrerRegistrierenFooter
+                colors={{
+                  foreground: colors.foreground,
+                  mutedForeground: colors.mutedForeground,
+                  muted: colors.muted,
+                  border: colors.border,
+                }}
+                padding={isSmallScreen ? 12 : 14}
+                onAnmeldenPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   router.push("/driver/login");
                 }}
-              >
-                <MaterialCommunityIcons name="steering" size={20} color="#ffffff" />
-                <Text style={[styles.socialBtnText, { color: "#ffffff", fontSize: isSmallScreen ? 15 : 16 }]}>
-                  Fahrer-Login
-                </Text>
-              </Pressable>
-            </View>
+              />
+            )}
           </ScrollView>
         </View>
       )}

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Imoove",
+    "name": "Onroda",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0A"
+      "backgroundColor": "#F2F2F2"
     },
     "ios": {
       "supportsTablet": false,
@@ -30,7 +30,7 @@
       }
     },
     "android": {
-      "package": "com.vedat.imoove",
+      "package": "com.vedat.Onroda",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ"

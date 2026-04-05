@@ -53,7 +53,7 @@ export default function RideScreen() {
   /* Prüft ob ein Payment-Token für die gewählte Methode hinterlegt ist */
   const checkPaymentToken = async (): Promise<boolean> => {
     if (!paymentMethod || !TOKEN_REQUIRED.includes(paymentMethod)) return true;
-    const token = await AsyncStorage.getItem(`@imoove_payment_token_${paymentMethod}`).catch(() => null);
+    const token = await AsyncStorage.getItem(`@Onroda_payment_token_${paymentMethod}`).catch(() => null);
     return !!token;
   };
 

@@ -1,47 +1,26 @@
-import express, { Express } from "express";
+import express, { type Express } from "express";
 import cors from "cors";
 import path from "path";
-import { fileURLToPath } from "url";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import ridesRouter from "./routes/rides";
+import adminRouter from "./routes/admin";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-// --- WEBSEITEN-DIREKT-VERSAND ---
-app.get('/', (req, res, next) => {
-  const host = req.get('host');
-  if (host === 'onroda.de' || host === 'www.onroda.de') {
-    // ACHTUNG: Hier jetzt 'static' statt 'dist/public'
-    const filePath = path.join(process.cwd(), 'static', 'index.html');
-    return res.sendFile(filePath);
-  }
-  next();
-});
-// --- WEBSEITEN-DIREKT-VERSAND ENDE ---
+function hostname(req: express.Request): string {
+  return (req.get("host") ?? "").split(":")[0]?.toLowerCase() ?? "";
+}
 
-// ... hier geht der restliche Code weiter (pinoHttp, etc.)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// --- DER INTELLIGENTE TÜRSTEHER ---
-app.use((req, res, next) => {
-  const host = req.get('host');
-  
-  if (host === 'api.onroda.de') {
-    return next();
-  }
-
-  // Wir erzwingen den Pfad ausgehend vom Hauptverzeichnis
-  const publicPath = path.join(process.cwd(), 'dist', 'public');
-  
-  // Dieser Log zeigt uns in PM2 genau, was passiert
-  console.log(`Anfrage für ${host} - Suche in: ${publicPath}`);
-
-  express.static(publicPath)(req, res, next);
-});
-// --- DER INTELLIGENTE TÜRSTEHER ENDE ---
+function isApiHost(h: string): boolean {
+  return (
+    h === "api.onroda.de" ||
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "::1"
+  );
+}
 
 app.use(
   pinoHttp({
@@ -65,7 +44,41 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+/*
+ * WICHTIG: API- und Admin-Routen zuerst – vor Static/Marketing,
+ * sonst kann express.static oder Host-Logik Anfragen verschlucken.
+ */
 app.use("/api", router);
 app.use(ridesRouter);
+app.use(adminRouter);
+
+/* Root: Marketing-Domain → statische Landingpage; API-Host → kurze JSON-Info */
+app.get("/", (req, res, next) => {
+  const host = hostname(req);
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    const filePath = path.join(process.cwd(), "static", "index.html");
+    return res.sendFile(filePath);
+  }
+  if (isApiHost(host)) {
+    return res.json({
+      ok: true,
+      service: "onroda-api",
+      health: "/api/healthz",
+      healthV1: "/api/v1/health",
+      admin: "/admin",
+    });
+  }
+  next();
+});
+
+/* Weitere Hosts: optionales Static-Frontend unter dist/public (falls vorhanden) */
+app.use((req, res, next) => {
+  const host = hostname(req);
+  if (isApiHost(host)) {
+    return next();
+  }
+  const publicPath = path.join(process.cwd(), "dist", "public");
+  express.static(publicPath)(req, res, next);
+});
 
 export default app;

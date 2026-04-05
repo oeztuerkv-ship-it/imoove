@@ -45,7 +45,7 @@ export default function ImpressumScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Section title="Angaben gemäß § 5 TMG">
-            <InfoLine label="Unternehmen" value="Imoove GmbH" />
+            <InfoLine label="Unternehmen" value="Onroda GmbH" />
             <InfoLine label="Straße" value="Musterstraße 1" />
             <InfoLine label="PLZ / Ort" value="73728 Esslingen am Neckar" />
             <InfoLine label="Land" value="Deutschland" />
@@ -55,8 +55,8 @@ export default function ImpressumScreen() {
 
           <Section title="Kontakt">
             <InfoLine label="Telefon" value="+49 711 24 24 24" />
-            <InfoLine label="E-Mail" value="info@imoove.de" />
-            <InfoLine label="Website" value="www.imoove.de" />
+            <InfoLine label="E-Mail" value="info@Onroda.de" />
+            <InfoLine label="Website" value="www.Onroda.de" />
           </Section>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />

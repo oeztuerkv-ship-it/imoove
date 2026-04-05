@@ -721,7 +721,7 @@ function TabProfil({ driver, onLogout }: { driver: DriverProfile; onLogout: () =
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>Lizenzierter Fahrer</Text>
-            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Imoove Esslingen</Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Onroda Esslingen</Text>
           </View>
         </View>
       </View>

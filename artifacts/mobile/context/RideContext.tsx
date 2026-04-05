@@ -117,7 +117,7 @@ interface RideContextValue extends RideState {
 
 const RideContext = createContext<RideContextValue | null>(null);
 const HISTORY_KEY = "@taxi_ride_history";
-const RESET_KEY   = "@imoove_reset_v1";
+const RESET_KEY   = "@Onroda_reset_v1";
 
 export function RideProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
