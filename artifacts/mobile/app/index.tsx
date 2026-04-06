@@ -95,8 +95,47 @@ const VEHICLE_HEADLINES: Record<VehicleType, { line1: string; line2: string }> =
   wheelchair: { line1: "Barrierefrei unterwegs?", line2: "Wir sind für dich da" },
 };
 
+/** Karussell inkl. Info-Karte Krankenfahrten (kein Fahrzeugtyp). */
+type HomeBannerSlideId = VehicleType | "krankenfahrten";
+
+const HOME_SLIDER_ORDER: HomeBannerSlideId[] = [
+  "onroda",
+  "standard",
+  "krankenfahrten",
+  "xl",
+  "wheelchair",
+];
+
+const KRANKENFAHRTEN_LONG_COPY = [
+  "Organisiere deine Krankenfahrt mit Verordnung – zuverlässig und termintreu.",
+  "Unterlagen und Krankenschein bitte zur Fahrt bereithalten. Bei Rückfragen erreichst du uns über Hilfe & Support.",
+];
+
+function getBannerHeadlines(id: HomeBannerSlideId): { line1: string; line2: string } {
+  if (id === "krankenfahrten") {
+    return { line1: "Krankenfahrten buchen", line2: "Ärztlich verordnete Fahrten" };
+  }
+  return VEHICLE_HEADLINES[id];
+}
+
+function getBannerMeta(id: HomeBannerSlideId): string {
+  if (id === "krankenfahrten") return "Krankenfahrten · Mit ärztlicher Verordnung";
+  const v = VEHICLES.find((x) => x.id === id)!;
+  const cfg = VEHICLE_ICON_CONFIG[id];
+  return `${v.name} · ${cfg.seats}`;
+}
+
+function getBannerLongCopy(id: HomeBannerSlideId): string[] {
+  if (id === "krankenfahrten") return KRANKENFAHRTEN_LONG_COPY;
+  return VEHICLE_LONG_COPY[id];
+}
+
 const SLIDER_BEIGE = "#EDE4D3";
 const SLIDER_BEIGE_DEEP = "#E8DCC8";
+
+/** Einheitliche Kartenmaße (Breite relativ zum Panel, feste Zeilenhöhe). */
+const SLIDER_CARD_GAP = 10;
+const SLIDER_CARD_FIXED_ROW_H = 144;
 
 type VehicleSliderColors = {
   foreground: string;
@@ -104,8 +143,18 @@ type VehicleSliderColors = {
   primary: string;
 };
 
-function VehicleTrustIllustration({ vehicleId }: { vehicleId: VehicleType }) {
-  const accent = vehicleId === "wheelchair" ? "#0369A1" : ONRODA_MARK_RED;
+function BannerTrustIllustration({ slideId }: { slideId: HomeBannerSlideId }) {
+  if (slideId === "krankenfahrten") {
+    return (
+      <View style={styles.vehicleRefIllu}>
+        <MaterialCommunityIcons name="hexagon" size={72} color="#DC2626" style={styles.vehicleRefHex} />
+        <View style={styles.vehicleRefShield}>
+          <MaterialCommunityIcons name="medical-bag" size={40} color="#FFFFFF" />
+        </View>
+      </View>
+    );
+  }
+  const accent = slideId === "wheelchair" ? "#0369A1" : ONRODA_MARK_RED;
   return (
     <View style={styles.vehicleRefIllu}>
       <MaterialCommunityIcons name="hexagon" size={72} color={accent} style={styles.vehicleRefHex} />
@@ -121,31 +170,30 @@ function HorizontalVehicleSlider({
   colors,
   viewportWidth,
   selectedVehicle,
-  expandedVehicleId,
+  expandedBannerId,
   onSlideSnap,
   onMehrErfahren,
 }: {
   colors: VehicleSliderColors;
   viewportWidth: number;
   selectedVehicle: VehicleType | null;
-  expandedVehicleId: VehicleType | null;
-  onSlideSnap: (id: VehicleType) => void;
-  onMehrErfahren: (id: VehicleType) => void;
+  expandedBannerId: HomeBannerSlideId | null;
+  onSlideSnap: (id: HomeBannerSlideId) => void;
+  onMehrErfahren: (id: HomeBannerSlideId) => void;
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const programmaticScrollRef = useRef(false);
-  const slideW = Math.min(268, Math.max(220, viewportWidth - 36));
-  const gap = 10;
-  const step = slideW + gap;
-  const sideInset = Math.max(12, (viewportWidth - slideW) / 2);
+  const slideW = Math.min(320, Math.max(248, Math.round(viewportWidth * 0.88)));
+  const step = slideW + SLIDER_CARD_GAP;
+  const nSlides = HOME_SLIDER_ORDER.length;
   const [dotIndex, setDotIndex] = useState(0);
 
   const scrollToIndex = useCallback(
     (index: number, animated: boolean) => {
-      const clamped = Math.max(0, Math.min(VEHICLES.length - 1, index));
+      const clamped = Math.max(0, Math.min(nSlides - 1, index));
       scrollRef.current?.scrollTo({ x: clamped * step, animated });
     },
-    [step],
+    [step, nSlides],
   );
 
   useEffect(() => {
@@ -163,7 +211,7 @@ function HorizontalVehicleSlider({
       endProgrammaticSoon();
       return;
     }
-    const idx = VEHICLES.findIndex((x) => x.id === selectedVehicle);
+    const idx = HOME_SLIDER_ORDER.indexOf(selectedVehicle);
     if (idx < 0) return;
     setDotIndex(idx);
     programmaticScrollRef.current = true;
@@ -175,10 +223,10 @@ function HorizontalVehicleSlider({
     if (programmaticScrollRef.current) return;
     const x = e.nativeEvent.contentOffset.x;
     const idx = Math.round(x / step);
-    const clamped = Math.max(0, Math.min(VEHICLES.length - 1, idx));
+    const clamped = Math.max(0, Math.min(nSlides - 1, idx));
     setDotIndex(clamped);
-    const v = VEHICLES[clamped];
-    if (v) onSlideSnap(v.id);
+    const id = HOME_SLIDER_ORDER[clamped];
+    if (id) onSlideSnap(id);
   };
 
   return (
@@ -191,36 +239,37 @@ function HorizontalVehicleSlider({
         snapToInterval={step}
         snapToAlignment="start"
         disableIntervalMomentum
-        contentContainerStyle={[styles.vehicleSliderSnapContent, { paddingLeft: sideInset, paddingRight: sideInset }]}
+        contentContainerStyle={[styles.vehicleSliderSnapContent, { paddingLeft: 0, paddingRight: 16 }]}
         onMomentumScrollEnd={onScrollEnd}
         onScrollEndDrag={onScrollEnd}
         scrollEventThrottle={16}
       >
-        {VEHICLES.map((v, i) => {
-          const expanded = expandedVehicleId === v.id;
-          const selected = selectedVehicle != null && selectedVehicle === v.id;
-          const headlines = VEHICLE_HEADLINES[v.id];
-          const cfg = VEHICLE_ICON_CONFIG[v.id];
-          const borderW = expanded ? 2.5 : selected ? 2 : 0;
-          const borderColor = expanded ? ONRODA_MARK_RED : selected ? colors.primary : "transparent";
+        {HOME_SLIDER_ORDER.map((slideId, i) => {
+          const expanded = expandedBannerId === slideId;
+          const snapFocused = dotIndex === i;
+          const borderW = expanded ? 2.5 : snapFocused ? 2 : 0;
+          const borderColor = expanded ? ONRODA_MARK_RED : snapFocused ? colors.primary : "transparent";
+          const headlines = getBannerHeadlines(slideId);
+          const metaLine = getBannerMeta(slideId);
+          const longCopy = getBannerLongCopy(slideId);
           return (
             <View
-              key={v.id}
+              key={slideId}
               style={[
                 styles.vehicleRefCard,
                 {
                   width: slideW,
-                  marginRight: i < VEHICLES.length - 1 ? gap : 0,
+                  marginRight: i < nSlides - 1 ? SLIDER_CARD_GAP : 0,
                   backgroundColor: SLIDER_BEIGE,
                   borderWidth: borderW,
                   borderColor,
-                  shadowOpacity: expanded ? 0.16 : selected ? 0.1 : 0.06,
+                  shadowOpacity: expanded ? 0.16 : snapFocused ? 0.1 : 0.06,
                   shadowRadius: expanded ? 16 : 10,
-                  elevation: expanded ? 10 : selected ? 5 : 3,
+                  elevation: expanded ? 10 : snapFocused ? 5 : 3,
                 },
               ]}
             >
-              <View style={styles.vehicleRefCardInner}>
+              <View style={[styles.vehicleRefCardInner, { height: SLIDER_CARD_FIXED_ROW_H }]}>
                 <View style={styles.vehicleRefLeft}>
                   <Text style={[styles.vehicleRefLine1, { color: colors.foreground }]} numberOfLines={2}>
                     {headlines.line1}
@@ -229,29 +278,29 @@ function HorizontalVehicleSlider({
                     {headlines.line2}
                   </Text>
                   <Text style={[styles.vehicleRefMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {v.name} · {cfg.seats}
+                    {metaLine}
                   </Text>
                   <Pressable
                     style={({ pressed }) => [
                       styles.vehicleRefCta,
                       { opacity: pressed ? 0.92 : 1, backgroundColor: ONRODA_MARK_RED },
                     ]}
-                    onPress={() => onMehrErfahren(v.id)}
+                    onPress={() => onMehrErfahren(slideId)}
                   >
                     <Text style={styles.vehicleRefCtaText}>Mehr erfahren</Text>
                   </Pressable>
                 </View>
-                <VehicleTrustIllustration vehicleId={v.id} />
+                <BannerTrustIllustration slideId={slideId} />
               </View>
               {expanded && (
                 <View style={[styles.vehicleSliderExpand, { borderTopColor: SLIDER_BEIGE_DEEP }]}>
-                  {VEHICLE_LONG_COPY[v.id].map((line, j) => (
+                  {longCopy.map((line, j) => (
                     <Text
                       key={j}
                       style={[
                         styles.vehicleSliderExpandLine,
                         { color: colors.mutedForeground },
-                        j < VEHICLE_LONG_COPY[v.id].length - 1 && { marginBottom: 10 },
+                        j < longCopy.length - 1 && { marginBottom: 10 },
                       ]}
                     >
                       {line}
@@ -264,9 +313,9 @@ function HorizontalVehicleSlider({
         })}
       </ScrollView>
       <View style={styles.vehicleSliderDots}>
-        {VEHICLES.map((v, i) => (
+        {HOME_SLIDER_ORDER.map((slideId, i) => (
           <View
-            key={v.id}
+            key={slideId}
             style={[
               styles.vehicleSliderDot,
               i === dotIndex
@@ -495,7 +544,7 @@ export default function HomeScreen() {
   const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
   const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
   const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
-  const [expandedVehicleId, setExpandedVehicleId] = useState<VehicleType | null>(null);
+  const [expandedBannerId, setExpandedBannerId] = useState<HomeBannerSlideId | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showComboHint = useCallback((msg: string) => {
@@ -622,7 +671,7 @@ export default function HomeScreen() {
   }, [destination, selectedVehicle, fetchRoute]);
 
   useEffect(() => {
-    if (destination) setExpandedVehicleId(null);
+    if (destination) setExpandedBannerId(null);
   }, [destination]);
 
   /* ── Suchmaske: Fokus Abholort (nach Reservierungszeit) oder Ziel (Standard) ── */
@@ -768,8 +817,9 @@ export default function HomeScreen() {
   );
 
   const handleVehicleSlideSnap = useCallback(
-    (id: VehicleType) => {
+    (id: HomeBannerSlideId) => {
       Haptics.selectionAsync();
+      if (id === "krankenfahrten") return;
       if (id === "onroda" && paymentMethod === "voucher") {
         setPaymentMethod(null);
         showComboHint(FIXPREIS_VOUCHER_HINT);
@@ -780,15 +830,17 @@ export default function HomeScreen() {
   );
 
   const handleVehicleMehrErfahren = useCallback(
-    (id: VehicleType) => {
+    (id: HomeBannerSlideId) => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (id === "onroda" && paymentMethod === "voucher") {
-        setPaymentMethod(null);
-        showComboHint(FIXPREIS_VOUCHER_HINT);
+      if (id !== "krankenfahrten") {
+        if (id === "onroda" && paymentMethod === "voucher") {
+          setPaymentMethod(null);
+          showComboHint(FIXPREIS_VOUCHER_HINT);
+        }
+        setSelectedVehicle(id);
       }
-      setSelectedVehicle(id);
-      setExpandedVehicleId((prev) => (prev === id ? null : id));
+      setExpandedBannerId((prev) => (prev === id ? null : id));
     },
     [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
   );
@@ -1047,7 +1099,7 @@ export default function HomeScreen() {
                   }}
                   viewportWidth={vehicleSliderViewportHome}
                   selectedVehicle={selectedVehicle}
-                  expandedVehicleId={expandedVehicleId}
+                  expandedBannerId={expandedBannerId}
                   onSlideSnap={handleVehicleSlideSnap}
                   onMehrErfahren={handleVehicleMehrErfahren}
                 />
@@ -1999,7 +2051,7 @@ const styles = StyleSheet.create({
 
   /* Fahrzeug-Slider (Beige-Karten, Snap, Punkte – Referenz-Layout) */
   vehicleSection: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
-  vehicleSliderWrap: { width: "100%" },
+  vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
   vehicleSliderSnapContent: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -2015,8 +2067,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    minHeight: 118,
+    paddingVertical: 12,
   },
   vehicleRefLeft: { flex: 1, paddingRight: 8, justifyContent: "center" },
   vehicleRefLine1: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 22 },
