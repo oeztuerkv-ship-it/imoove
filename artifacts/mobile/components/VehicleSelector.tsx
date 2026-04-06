@@ -1,17 +1,22 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Animated,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
+import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import { calculateFare, formatEuro } from "@/utils/fareCalculator";
+import { calculateFare, calculateOnrodaFixFare, formatEuro } from "@/utils/fareCalculator";
+
+const CAR_ICON_COLOR = "#171717";
+const WHEELCHAIR_ICON_COLOR = "#0369A1";
 
 interface VehicleSelectorProps {
   selected: VehicleType;
@@ -44,31 +49,35 @@ function VehicleCard({
 
   const price = distanceKm
     ? formatEuro(
-        Math.round(calculateFare(distanceKm).total * vehicle.multiplier * 100) / 100
+        vehicle.id === "onroda"
+          ? calculateOnrodaFixFare(distanceKm).total
+          : Math.round(calculateFare(distanceKm).total * vehicle.multiplier * 100) / 100,
       )
     : null;
 
+  const active = ONRODA_MARK_RED;
   return (
-    <Animated.View style={{ transform: [{ scale }], flex: 1 }}>
+    <Animated.View style={{ transform: [{ scale }], width: 118, flexShrink: 0 }}>
       <Pressable
         onPress={handlePress}
         style={[
           styles.card,
           {
-            backgroundColor: isSelected ? colors.primary : colors.card,
-            borderColor: isSelected ? colors.primary : colors.border,
+            backgroundColor: isSelected ? active + "22" : colors.card,
+            borderColor: isSelected ? active : colors.border,
+            borderWidth: isSelected ? 2.5 : 1.5,
           },
         ]}
       >
-        <Ionicons
+        <MaterialCommunityIcons
           name={vehicle.icon as any}
           size={26}
-          color={isSelected ? colors.primaryForeground : colors.foreground}
+          color={vehicle.id === "wheelchair" ? WHEELCHAIR_ICON_COLOR : CAR_ICON_COLOR}
         />
         <Text
           style={[
             styles.cardName,
-            { color: isSelected ? colors.primaryForeground : colors.foreground },
+            { color: isSelected ? active : colors.foreground },
           ]}
         >
           {vehicle.name}
@@ -77,7 +86,7 @@ function VehicleCard({
           <Text
             style={[
               styles.cardPrice,
-              { color: isSelected ? colors.primaryForeground : colors.primary },
+              { color: isSelected ? active : colors.primary },
             ]}
           >
             {price}
@@ -87,9 +96,7 @@ function VehicleCard({
             style={[
               styles.cardDesc,
               {
-                color: isSelected
-                  ? colors.primaryForeground + "bb"
-                  : colors.mutedForeground,
+                color: isSelected ? active + "cc" : colors.mutedForeground,
               },
             ]}
           >
@@ -103,7 +110,7 @@ function VehicleCard({
 
 export function VehicleSelector({ selected, onSelect, distanceKm }: VehicleSelectorProps) {
   return (
-    <View style={styles.row}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {VEHICLES.map((v) => (
         <VehicleCard
           key={v.id}
@@ -113,14 +120,16 @@ export function VehicleSelector({ selected, onSelect, distanceKm }: VehicleSelec
           distanceKm={distanceKm}
         />
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
+    paddingVertical: 2,
+    paddingRight: 8,
   },
   card: {
     borderRadius: 14,
@@ -132,15 +141,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardName: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
   cardPrice: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
   cardDesc: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },

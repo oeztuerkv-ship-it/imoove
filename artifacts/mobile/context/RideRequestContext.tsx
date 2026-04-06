@@ -63,6 +63,8 @@ interface RideRequestContextValue {
   arriveAtCustomer: (id: string) => Promise<void>;
   startDriving: (id: string) => Promise<void>;
   completeRequest: (id: string, finalFare?: number) => Promise<void>;
+  /** Manuelles Neuladen der Aufträge (z. B. „Erneut suchen“). */
+  refreshRequests: () => Promise<void>;
 }
 
 const RideRequestContext = createContext<RideRequestContextValue>({
@@ -84,6 +86,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   arriveAtCustomer: async () => {},
   startDriving: async () => {},
   completeRequest: async () => {},
+  refreshRequests: async () => {},
 });
 
 const API_BASE = getApiBaseUrl();
@@ -292,6 +295,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         arriveAtCustomer,
         startDriving,
         completeRequest,
+        refreshRequests: fetchAll,
       }}
     >
       {children}

@@ -8,7 +8,11 @@ interface RealMapViewProps {
   polyline?: [number, number][];
   style?: StyleProp<ViewStyle>;
   centerKey?: number;
+  /** Abstand nach oben (Safe Area + Origin-Chip / FAB), damit die Karte darunter sichtbar bleibt. */
+  edgePaddingTop?: number;
   edgePaddingBottom?: number;
+  /** Echte GPS-Position – für Zoom/Fit statt nur Abhol-Adresse (blauer Punkt sichtbar). */
+  userLocation?: { lat: number; lon: number } | null;
   driverMarker?: { lat: number; lon: number; heading?: number } | null;
   customerLiveMarker?: { lat: number; lon: number } | null;
   [key: string]: unknown;

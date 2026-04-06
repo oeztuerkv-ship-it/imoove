@@ -1,9 +1,13 @@
+export type FareKind = "taxameter" | "onroda_fix";
+
 export interface FareBreakdown {
   baseFare: number;
   distanceCharge: number;
   waitingCharge: number;
   total: number;
   distanceKm: number;
+  /** Standard-Taxameter-Schätzung vs. Onroda-Fixpreisformel */
+  fareKind?: FareKind;
 }
 
 /**
@@ -30,6 +34,7 @@ export function calculateFare(
       waitingCharge: 0,
       total: BASE_FARE,
       distanceKm: 0,
+      fareKind: "taxameter",
     };
   }
 
@@ -51,6 +56,24 @@ export function calculateFare(
     waitingCharge: Math.round(waitingCharge * 10) / 10,
     total: Math.round(total * 10) / 10,
     distanceKm: Math.round(distanceKm * 100) / 100,
+    fareKind: "taxameter",
+  };
+}
+
+/** Onroda Fixpreis: 3,50 € Basis + 2,20 € pro km (lt. Produktvorgabe). */
+export function calculateOnrodaFixFare(distanceKm: number): FareBreakdown {
+  const BASE = 3.5;
+  const PER_KM = 2.2;
+  const d = Math.max(0, distanceKm);
+  const distanceCharge = Math.round(d * PER_KM * 100) / 100;
+  const total = Math.round((BASE + distanceCharge) * 100) / 100;
+  return {
+    baseFare: BASE,
+    distanceCharge,
+    waitingCharge: 0,
+    total,
+    distanceKm: Math.round(d * 100) / 100,
+    fareKind: "onroda_fix",
   };
 }
 

@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState, useRef } from "react";
@@ -16,6 +16,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
+
+const NB_CAR_ICON = "#171717";
+const NB_WHEELCHAIR_ICON = "#0369A1";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
@@ -348,7 +351,11 @@ export default function NewBookingScreen() {
     if (!formComplete || submitting) return;
     setSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const vehicleLabel = selectedVehicle === "standard" ? "Standard" : selectedVehicle === "xl" ? "XL" : "Rollstuhl";
+    const vehicleLabel =
+      selectedVehicle === "standard" ? "Standard" :
+      selectedVehicle === "xl" ? "XL" :
+      selectedVehicle === "onroda" ? "Onroda" :
+      "Rollstuhl";
     const customerName = profile?.name
       ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
       : "Gast";
@@ -453,7 +460,11 @@ export default function NewBookingScreen() {
                     onPress={() => { setSelectedVehicle(v.id as VehicleType); Haptics.selectionAsync(); }}
                   >
                     <View style={[styles.vehicleIcon, { backgroundColor: active ? "#DC262622" : colors.border + "40" }]}>
-                      <Feather name={v.icon as any} size={22} color={active ? "#DC2626" : colors.mutedForeground} />
+                      <MaterialCommunityIcons
+                        name={v.icon as any}
+                        size={22}
+                        color={v.id === "wheelchair" ? NB_WHEELCHAIR_ICON : NB_CAR_ICON}
+                      />
                     </View>
                     <Text style={[styles.vehicleName, { color: active ? "#DC2626" : colors.foreground }]} numberOfLines={2}>
                       {v.name}

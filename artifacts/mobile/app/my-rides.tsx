@@ -195,7 +195,14 @@ export default function MyRidesScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
         <View style={{ width: 40 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meine Fahrten</Text>
-        <View style={{ width: 40 }} />
+        <Pressable
+          style={styles.backBtn}
+          hitSlop={12}
+          onPress={() => router.push("/reserve-ride")}
+          accessibilityLabel="Neue Buchung – Reservieren"
+        >
+          <Feather name="plus-circle" size={24} color="#DC2626" />
+        </Pressable>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -288,6 +295,17 @@ export default function MyRidesScreen() {
                       <Feather name="clock" size={14} color="#D97706" />
                       <Text style={[styles.driverHintText, { color: "#D97706" }]}>Auftrag aufgegeben — Fahrer wird gesucht …</Text>
                     </View>
+                  )}
+
+                  {(req.status === "pending" || req.status === "accepted" || req.status === "arrived" || req.status === "in_progress") && (
+                    <Pressable
+                      style={[styles.liveMapRow, { borderColor: colors.border }]}
+                      onPress={() => router.push("/status")}
+                    >
+                      <Feather name="map" size={16} color="#DC2626" />
+                      <Text style={[styles.liveMapText, { color: colors.foreground }]}>Live-Karte & Status</Text>
+                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    </Pressable>
                   )}
 
                   {(req.status === "pending" || req.status === "accepted") && (
@@ -462,7 +480,7 @@ export default function MyRidesScreen() {
                 : "Plane deine nächste Fahrt direkt hier."}
             </Text>
             {(activeTab === "alle" || activeTab === "abgeschlossen") && (
-              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/?search=1")}>
+              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/reserve-ride")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
               </Pressable>
@@ -521,6 +539,8 @@ const styles = StyleSheet.create({
 
   driverHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1 },
   driverHintText:  { fontSize: rf(13), fontFamily: "Inter_500Medium" },
+  liveMapRow:      { flexDirection: "row", alignItems: "center", gap: rs(10), paddingVertical: rs(12), paddingHorizontal: rs(12), borderRadius: rs(12), borderWidth: 1, marginTop: rs(2) },
+  liveMapText:     { flex: 1, fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   cancelHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1, marginTop: rs(2) },
   cancelHintText:  { fontSize: rf(13), fontFamily: "Inter_500Medium" },
 

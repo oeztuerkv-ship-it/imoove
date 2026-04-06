@@ -16,10 +16,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { calculateCopayment, type PaymentMethod, VEHICLES, useRide } from "@/context/RideContext";
+import { calculateCopayment, type PaymentMethod, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { rs, rf } from "@/utils/scale";
 import { useUser } from "@/context/UserContext";
+import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
 
@@ -30,6 +31,13 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   voucher: "Transportschein",
   app: "App",
 };
+
+/** Gleiche Logik wie auf dem Booking-Screen (Fixpreis vs. Taxi). */
+function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: boolean): string {
+  if (!vehicle) return hasScheduledTime ? "Reservieren" : "Jetzt buchen";
+  if (hasScheduledTime) return vehicle === "onroda" ? "Fixpreis reservieren" : "Reservieren";
+  return vehicle === "onroda" ? "Fixpreis buchen" : "Jetzt buchen";
+}
 
 /* Zahlungsmethoden, die einen hinterlegten Token benötigen */
 const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "card", "app"];
@@ -44,22 +52,22 @@ export default function RideScreen() {
   const { origin, destination, route, fareBreakdown, selectedVehicle, paymentMethod, isExempted, scheduledTime } = useRide();
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
-  const vehicle = VEHICLES.find((v) => v.id === selectedVehicle)!;
   const btnScale = useRef(new Animated.Value(1)).current;
 
   const [noTokenVisible, setNoTokenVisible] = useState(false);
   const [preAuthLoading, setPreAuthLoading] = useState(false);
+  const [tokenErrorMethod, setTokenErrorMethod] = useState<PaymentMethod | null>(null);
 
-  /* Prüft ob ein Payment-Token für die gewählte Methode hinterlegt ist */
-  const checkPaymentToken = async (): Promise<boolean> => {
-    if (!paymentMethod || !TOKEN_REQUIRED.includes(paymentMethod)) return true;
-    const token = await AsyncStorage.getItem(`@Onroda_payment_token_${paymentMethod}`).catch(() => null);
+  /* Prüft Token nur für explizit gewählte Online-Zahlung (Bar als Fallback ohne Token). */
+  const checkPaymentTokenFor = async (m: PaymentMethod): Promise<boolean> => {
+    if (!TOKEN_REQUIRED.includes(m)) return true;
+    const token = await AsyncStorage.getItem(`@Onroda_payment_token_${m}`).catch(() => null);
     return !!token;
   };
 
   /* Pre-Authorization: Betrag reservieren (Platzhalter für echte PayPal/Stripe-Integration) */
-  const runPreAuthorization = async (amount: number): Promise<boolean> => {
-    if (paymentMethod !== "paypal" && paymentMethod !== "card") return true;
+  const runPreAuthorization = async (amount: number, pm: PaymentMethod): Promise<boolean> => {
+    if (pm !== "paypal" && pm !== "card") return true;
     setPreAuthLoading(true);
     try {
       // TODO: echte Pre-Auth API-Anfrage hier einfügen
@@ -74,20 +82,27 @@ export default function RideScreen() {
   };
 
   const handleOrder = async () => {
-    if (!fareBreakdown) return;
+    if (!fareBreakdown || !paymentMethod) return;
+    if (selectedVehicle === "onroda" && paymentMethod === "voucher") {
+      Alert.alert("Nicht möglich", "Fixpreis ist bei Transportschein nicht verfügbar.");
+      return;
+    }
 
-    /* ── 1. Token-Validierung ── */
-    const hasToken = await checkPaymentToken();
+    const pm = paymentMethod;
+
+    /* ── 1. Token nur bei Karte/PayPal/App (nicht bei Bar als Standard) ── */
+    const hasToken = await checkPaymentTokenFor(pm);
     if (!hasToken) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setTokenErrorMethod(pm);
       setNoTokenVisible(true);
       return;
     }
 
     /* ── 2. Pre-Authorization ── */
     const copayment = calculateCopayment(fareBreakdown.total, isExempted);
-    const chargeAmount = paymentMethod === "voucher" ? copayment : fareBreakdown.total;
-    const preAuthOk = await runPreAuthorization(chargeAmount);
+    const chargeAmount = pm === "voucher" ? copayment : fareBreakdown.total;
+    const preAuthOk = await runPreAuthorization(chargeAmount, pm);
     if (!preAuthOk) {
       Alert.alert("Zahlung fehlgeschlagen", "Die Vorautorisierung konnte nicht durchgeführt werden. Bitte Zahlungsmittel prüfen.");
       return;
@@ -100,14 +115,18 @@ export default function RideScreen() {
     ]).start(async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const paymentLabel =
-        paymentMethod === "cash" ? "Bar" :
-        paymentMethod === "paypal" ? "PayPal" :
-        paymentMethod === "app" ? "App" :
-        paymentMethod === "card" ? "Kreditkarte" :
-        paymentMethod === "voucher"
+        pm === "cash" ? "Bar" :
+        pm === "paypal" ? "PayPal" :
+        pm === "app" ? "App" :
+        pm === "card" ? "Kreditkarte" :
+        pm === "voucher"
           ? (isExempted ? "Krankenkasse (Befreit: 0,00 €)" : `Krankenkasse (Eigenanteil: ${formatEuro(copayment)})`)
           : "Bar";
-      const vehicleLabel = selectedVehicle === "standard" ? "Standard" : selectedVehicle === "xl" ? "XL" : "Rollstuhl";
+      const vehicleLabel =
+        selectedVehicle === "standard" ? "Standard" :
+        selectedVehicle === "xl" ? "XL" :
+        selectedVehicle === "onroda" ? "Onroda" :
+        "Rollstuhl";
       await addRequest({
         from: origin.displayName.split(",")[0],
         fromFull: origin.displayName,
@@ -128,7 +147,7 @@ export default function RideScreen() {
         passengerId: passengerId || undefined,
         scheduledAt: scheduledTime ?? null,
       });
-      router.replace("/my-rides");
+      router.replace("/status");
     });
   };
 
@@ -143,6 +162,24 @@ export default function RideScreen() {
       scheduledTime.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) +
       " Uhr"
     : null;
+
+  if (!selectedVehicle || !fareBreakdown || !destination) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: "center", paddingHorizontal: 24 }]}>
+        <Text style={{ fontSize: 16, fontFamily: "Inter_500Medium", color: colors.foreground, textAlign: "center", marginBottom: 16 }}>
+          Buchung unvollständig. Bitte Fahrzeug und Preis auf der Startseite wählen.
+        </Text>
+        <Pressable
+          onPress={handleBack}
+          style={{ alignSelf: "center", paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, backgroundColor: colors.primary }}
+        >
+          <Text style={{ fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.primaryForeground }}>Zurück</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const vehicle = VEHICLES.find((v) => v.id === selectedVehicle)!;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -201,8 +238,15 @@ export default function RideScreen() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>FAHRZEUG</Text>
           <View style={styles.vehicleRow}>
-            <View style={[styles.vehicleIcon, { backgroundColor: selectedVehicle === "wheelchair" ? "#E0F2FE" : colors.primary + "18" }]}>
-              <MaterialCommunityIcons name={vehicle.icon as any} size={22} color={selectedVehicle === "wheelchair" ? "#0369A1" : colors.primary} />
+            <View style={[styles.vehicleIcon, {
+              backgroundColor: selectedVehicle === "wheelchair" ? "#E0F2FE" : "#F3F4F6",
+            }]}
+            >
+              <MaterialCommunityIcons
+                name={vehicle.icon as any}
+                size={22}
+                color={selectedVehicle === "wheelchair" ? "#0369A1" : "#171717"}
+              />
             </View>
             <View style={{ gap: 2 }}>
               <Text style={[styles.vehicleName, { color: colors.foreground }]}>{vehicle.name}</Text>
@@ -229,15 +273,19 @@ export default function RideScreen() {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNG</Text>
             <View style={styles.paymentChip}>
-              {paymentMethod === "paypal" ? (
+              {!paymentMethod ? (
+                <Feather name="alert-circle" size={18} color={colors.mutedForeground} />
+              ) : paymentMethod === "paypal" ? (
                 <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#1565C0" }}>P</Text>
               ) : paymentMethod === "card" ? (
                 <Feather name="credit-card" size={18} color={colors.primary} />
+              ) : paymentMethod === "app" ? (
+                <Feather name="smartphone" size={18} color={colors.primary} />
               ) : (
                 <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: colors.primary }}>€</Text>
               )}
               <Text style={[styles.paymentChipText, { color: colors.foreground }]}>
-                {paymentMethod ? PAYMENT_LABELS[paymentMethod] : ""}
+                {paymentMethod ? PAYMENT_LABELS[paymentMethod] : "Keine Zahlungsart"}
               </Text>
             </View>
           </View>
@@ -263,24 +311,40 @@ export default function RideScreen() {
                 {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
               </Text>
             </View>
+          ) : fareBreakdown?.fareKind === "onroda_fix" ? (
+            <View style={[styles.priceBox, { borderColor: ONRODA_MARK_RED + "66", backgroundColor: ONRODA_MARK_RED + "12" }]}>
+              <Text style={[styles.bottomLabel, { color: ONRODA_MARK_RED }]}>Garantierter Festpreis</Text>
+              <Text style={[styles.bottomPrice, { color: ONRODA_MARK_RED }]}>
+                {formatEuro(fareBreakdown.total)}
+              </Text>
+            </View>
           ) : (
-            <View style={[styles.priceBox, { borderColor: "#D1D5DB", backgroundColor: "#F3F4F6" }]}>
-              <Text style={[styles.bottomLabel, { color: colors.mutedForeground }]}>Schätzpreis Taxameter</Text>
-              <Text style={[styles.bottomPrice, { color: colors.foreground }]}>
-                {fareBreakdown
-                  ? `${Math.round(fareBreakdown.total / 1.08)} – ${Math.round(fareBreakdown.total)} €`
-                  : "–"}
+            <View style={[styles.priceBox, { borderColor: ONRODA_MARK_RED + "66", backgroundColor: ONRODA_MARK_RED + "12" }]}>
+              <Text style={[styles.bottomLabel, { color: ONRODA_MARK_RED }]}>Schätzpreis</Text>
+              <Text style={[styles.bottomPrice, { color: ONRODA_MARK_RED }]}>
+                {`${Math.round(fareBreakdown.total / 1.08)}–${Math.round(fareBreakdown.total)} €`}
               </Text>
             </View>
           )}
           <Animated.View style={{ transform: [{ scale: btnScale }], flex: 1 }}>
             <Pressable
-              style={[styles.orderBtn, { backgroundColor: preAuthLoading ? colors.muted : colors.success }]}
+              style={[
+                styles.orderBtn,
+                {
+                  backgroundColor: preAuthLoading || !paymentMethod ? colors.muted : colors.success,
+                  opacity: !paymentMethod ? 0.85 : 1,
+                },
+              ]}
               onPress={handleOrder}
-              disabled={preAuthLoading}
+              disabled={preAuthLoading || !paymentMethod}
             >
-              <Text style={[styles.orderBtnText, { color: preAuthLoading ? colors.mutedForeground : "#fff" }]}>
-                {preAuthLoading ? "Vorautorisierung…" : "Jetzt zahlungspflichtig bestellen"}
+              <Text
+                style={[
+                  styles.orderBtnText,
+                  { color: preAuthLoading || !paymentMethod ? colors.mutedForeground : "#fff" },
+                ]}
+              >
+                {preAuthLoading ? "Vorautorisierung…" : rideConfirmCtaLabel(selectedVehicle, scheduledTime !== null)}
               </Text>
             </Pressable>
           </Animated.View>
@@ -288,7 +352,12 @@ export default function RideScreen() {
       </View>
 
       {/* ── Kein Zahlungsmittel hinterlegt ── */}
-      <Modal visible={noTokenVisible} transparent animationType="fade" onRequestClose={() => setNoTokenVisible(false)}>
+      <Modal
+        visible={noTokenVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setNoTokenVisible(false); setTokenErrorMethod(null); }}
+      >
         <View style={styles.noTokenOverlay}>
           <View style={[styles.noTokenCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.noTokenIcon, { backgroundColor: "#FEF2F2" }]}>
@@ -298,16 +367,16 @@ export default function RideScreen() {
               Kein Zahlungsmittel hinterlegt
             </Text>
             <Text style={[styles.noTokenBody, { color: colors.mutedForeground }]}>
-              Für die Zahlung per {paymentMethod ? PAYMENT_LABELS[paymentMethod] : ""} muss ein Konto in der Geldbörse verknüpft sein.
+              Für die Zahlung per {tokenErrorMethod ? PAYMENT_LABELS[tokenErrorMethod] : "dieser Methode"} muss ein Konto in der Geldbörse verknüpft sein.
             </Text>
             <Pressable
               style={[styles.noTokenBtn, { backgroundColor: "#DC2626" }]}
-              onPress={() => { setNoTokenVisible(false); router.push("/wallet"); }}
+              onPress={() => { setNoTokenVisible(false); setTokenErrorMethod(null); router.push("/wallet"); }}
             >
               <Feather name="credit-card" size={15} color="#fff" />
               <Text style={styles.noTokenBtnText}>Zur Geldbörse</Text>
             </Pressable>
-            <Pressable onPress={() => setNoTokenVisible(false)} style={styles.noTokenCancel}>
+            <Pressable onPress={() => { setNoTokenVisible(false); setTokenErrorMethod(null); }} style={styles.noTokenCancel}>
               <Text style={[styles.noTokenCancelText, { color: colors.mutedForeground }]}>Abbrechen</Text>
             </Pressable>
           </View>
@@ -353,8 +422,8 @@ const styles = StyleSheet.create({
   priceBox: { borderWidth: 1.5, borderRadius: rs(12), paddingHorizontal: rs(12), paddingVertical: rs(8), gap: rs(2) },
   bottomLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   bottomPrice: { fontSize: rf(22), fontFamily: "Inter_700Bold" },
-  orderBtn: { flex: 1, paddingVertical: rs(17), borderRadius: rs(14), alignItems: "center", justifyContent: "center" },
-  orderBtnText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  orderBtn: { flex: 1, paddingVertical: rs(12), borderRadius: rs(12), alignItems: "center", justifyContent: "center" },
+  orderBtnText: { fontSize: rf(13), fontFamily: "Inter_700Bold", textAlign: "center" },
   noTokenOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: rs(24) },
   noTokenCard: { width: "100%", borderRadius: rs(20), borderWidth: 1, padding: rs(24), alignItems: "center", gap: rs(12) },
   noTokenIcon: { width: rs(60), height: rs(60), borderRadius: rs(18), justifyContent: "center", alignItems: "center", marginBottom: rs(4) },

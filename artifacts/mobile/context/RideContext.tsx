@@ -7,10 +7,10 @@ import React, {
   useState,
 } from "react";
 
-import { calculateFare, type FareBreakdown } from "@/utils/fareCalculator";
+import { calculateFare, calculateOnrodaFixFare, type FareBreakdown } from "@/utils/fareCalculator";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
 
-export type VehicleType = "standard" | "xl" | "wheelchair";
+export type VehicleType = "standard" | "xl" | "wheelchair" | "onroda";
 export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app";
 
 export interface VehicleOption {
@@ -22,22 +22,31 @@ export interface VehicleOption {
   icon: string;
 }
 
+/** Karussell-Reihenfolge: Onroda zuerst, dann Taxi-Klassen. */
 export const VEHICLES: VehicleOption[] = [
+  {
+    id: "onroda",
+    name: "Onroda",
+    description: "Fixpreis-Garantie",
+    multiplier: 1.0,
+    minSeats: 4,
+    icon: "car-side",
+  },
   {
     id: "standard",
     name: "Standard",
-    description: "Bis zu 4 Personen",
+    description: "4 Personen",
     multiplier: 1.0,
     minSeats: 4,
-    icon: "taxi",
+    icon: "car-side",
   },
   {
     id: "xl",
     name: "XL",
-    description: "Bis zu 6 Personen",
+    description: "bis zu 6 Personen",
     multiplier: 1.6,
     minSeats: 6,
-    icon: "bus",
+    icon: "van-passenger",
   },
   {
     id: "wheelchair",
@@ -64,7 +73,8 @@ export interface RideHistoryEntry {
 
 export type RideStatus = "idle" | "searching" | "active" | "completed";
 
-const DEFAULT_ORIGIN: GeoLocation = {
+/** Standard-Abholpunkt (Karte / Reset); Reservierung setzt Origin bei manueller Auswahl. */
+export const DEFAULT_ORIGIN: GeoLocation = {
   lat: 48.7394,
   lon: 9.3114,
   displayName: "Esslingen am Neckar, Stadtmitte",
@@ -73,7 +83,7 @@ const DEFAULT_ORIGIN: GeoLocation = {
 interface RideState {
   origin: GeoLocation;
   destination: GeoLocation | null;
-  selectedVehicle: VehicleType;
+  selectedVehicle: VehicleType | null;
   paymentMethod: PaymentMethod | null;
   isExempted: boolean;
   scheduledTime: Date | null;
@@ -122,7 +132,7 @@ const RESET_KEY   = "@Onroda_reset_v1";
 export function RideProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
   const [destination, setDestination] = useState<GeoLocation | null>(null);
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>("standard");
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [isExempted, setIsExempted] = useState(false);
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
@@ -161,13 +171,26 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
     try {
       const result = await getRoute(origin, destination);
       setRoute(result);
-      const vehicle = VEHICLES.find((v) => v.id === selectedVehicle)!;
+      if (!selectedVehicle) {
+        setFareBreakdown(null);
+        return;
+      }
+      if (selectedVehicle === "onroda") {
+        setFareBreakdown(calculateOnrodaFixFare(result.distanceKm));
+        return;
+      }
+      const vehicle = VEHICLES.find((v) => v.id === selectedVehicle);
+      if (!vehicle) {
+        setFareBreakdown(null);
+        return;
+      }
       const breakdown = calculateFare(result.distanceKm);
       const ESTIMATE_BUFFER = 1.08; // +8% Puffer über Taxameter (Schätzpreis)
       const adjusted: FareBreakdown = {
         ...breakdown,
         total: Math.round(breakdown.total * vehicle.multiplier * ESTIMATE_BUFFER * 100) / 100,
         distanceCharge: Math.round(breakdown.distanceCharge * vehicle.multiplier * 100) / 100,
+        fareKind: "taxameter",
       };
       setFareBreakdown(adjusted);
     } catch {
@@ -191,7 +214,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         origin: origin.displayName,
         distanceKm: route.distanceKm,
         totalFare: fareBreakdown.total,
-        vehicleType: selectedVehicle,
+        vehicleType: selectedVehicle!,
         paymentMethod: paymentMethod ?? "cash",
         scheduledTime: scheduledTime?.toISOString() ?? null,
         createdAt: new Date().toISOString(),
@@ -212,7 +235,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         origin: origin.displayName,
         distanceKm: route.distanceKm,
         totalFare: fareBreakdown.total,
-        vehicleType: selectedVehicle,
+        vehicleType: selectedVehicle!,
         paymentMethod: paymentMethod ?? "cash",
         scheduledTime: scheduledTime?.toISOString() ?? null,
         createdAt: new Date().toISOString(),
@@ -234,6 +257,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
     setRideStatus("idle");
     setRouteError(null);
     setPaymentMethod(null);
+    setSelectedVehicle(null);
   }, []);
 
   return (

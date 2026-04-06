@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +19,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -27,7 +29,7 @@ import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
-import { calculateCopayment, type PaymentMethod, VEHICLES, useRide } from "@/context/RideContext";
+import { calculateCopayment, type PaymentMethod, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
@@ -47,6 +49,9 @@ function isPlausibleEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
+const FIXPREIS_VOUCHER_HINT = "Fixpreis ist bei Transportschein nicht verfügbar";
+const SEARCH_OVERLAY_BG = "#FFFFFF";
+
 const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; featherIcon?: string; isPaypal?: boolean; isEuro?: boolean; isVoucher?: boolean; isApp?: boolean }[] = [
   { id: "app", label: "App bezahlen", isApp: true },
   { id: "cash", label: "Bar", isEuro: true },
@@ -54,17 +59,298 @@ const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; featherIcon?: string;
   { id: "voucher", label: "Transportschein", isVoucher: true },
 ];
 
+const VEHICLE_CAR_ICON = "#171717";
+
 const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: string; seats: string }> = {
-  standard: { icon: "taxi", color: "#1F2937", bg: "#F3F4F6", seats: "Bis zu 4 Pers." },
-  xl: { icon: "bus", color: "#1F2937", bg: "#F3F4F6", seats: "Bis zu 6 Pers." },
+  standard: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "4 Personen" },
+  xl: { icon: "van-passenger", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "bis zu 6 Personen" },
   wheelchair: { icon: "wheelchair-accessibility", color: "#0369A1", bg: "#E0F2FE", seats: "Rollstuhlgerecht" },
+  onroda: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "Fixpreis-Garantie" },
 };
+
+const VEHICLE_LONG_COPY: Record<VehicleType, string[]> = {
+  onroda: [
+    "Festpreis wird vor der Buchung angezeigt und bleibt während der Fahrt unverändert.",
+    "Ideal, wenn du den Endpreis vorab kennen möchtest.",
+  ],
+  standard: [
+    "Klassisches Taxi für den Alltag – bis zu 4 Personen.",
+    "Der angezeigte Betrag ist ein Schätzpreis (Taxameter).",
+  ],
+  xl: [
+    "Mehr Platz für Gruppen und Gepäck – bis zu 6 Personen.",
+    "Höherer Tariffaktor gegenüber dem Standard-Fahrzeug.",
+  ],
+  wheelchair: [
+    "Fahrzeug mit rollstuhlgerechter Ausstattung.",
+    "Bitte wählen, wenn du eine barrierefreie Beförderung brauchst.",
+  ],
+};
+
+/** Beige-Slider: zweizeilige Headline wie Marketing-Karte */
+const VEHICLE_HEADLINES: Record<VehicleType, { line1: string; line2: string }> = {
+  onroda: { line1: "Festpreis sicher?", line2: "Verlass dich auf uns" },
+  standard: { line1: "Taxi gebucht?", line2: "Dein Standard-Wagen" },
+  xl: { line1: "Mehr Platz nötig?", line2: "Bis zu 6 Personen" },
+  wheelchair: { line1: "Barrierefrei unterwegs?", line2: "Wir sind für dich da" },
+};
+
+const SLIDER_BEIGE = "#EDE4D3";
+const SLIDER_BEIGE_DEEP = "#E8DCC8";
+
+type VehicleSliderColors = {
+  foreground: string;
+  mutedForeground: string;
+  primary: string;
+};
+
+function VehicleTrustIllustration({ vehicleId }: { vehicleId: VehicleType }) {
+  const accent = vehicleId === "wheelchair" ? "#0369A1" : ONRODA_MARK_RED;
+  return (
+    <View style={styles.vehicleRefIllu}>
+      <MaterialCommunityIcons name="hexagon" size={72} color={accent} style={styles.vehicleRefHex} />
+      <View style={styles.vehicleRefShield}>
+        <MaterialCommunityIcons name="shield" size={42} color="#FFFFFF" />
+        <MaterialCommunityIcons name="check-bold" size={21} color="#1F2937" style={styles.vehicleRefCheck} />
+      </View>
+    </View>
+  );
+}
+
+function HorizontalVehicleSlider({
+  colors,
+  viewportWidth,
+  selectedVehicle,
+  expandedVehicleId,
+  onSlideSnap,
+  onMehrErfahren,
+}: {
+  colors: VehicleSliderColors;
+  viewportWidth: number;
+  selectedVehicle: VehicleType | null;
+  expandedVehicleId: VehicleType | null;
+  onSlideSnap: (id: VehicleType) => void;
+  onMehrErfahren: (id: VehicleType) => void;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+  const programmaticScrollRef = useRef(false);
+  const slideW = Math.min(268, Math.max(220, viewportWidth - 36));
+  const gap = 10;
+  const step = slideW + gap;
+  const sideInset = Math.max(12, (viewportWidth - slideW) / 2);
+  const [dotIndex, setDotIndex] = useState(0);
+
+  const scrollToIndex = useCallback(
+    (index: number, animated: boolean) => {
+      const clamped = Math.max(0, Math.min(VEHICLES.length - 1, index));
+      scrollRef.current?.scrollTo({ x: clamped * step, animated });
+    },
+    [step],
+  );
+
+  useEffect(() => {
+    const endProgrammaticSoon = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          programmaticScrollRef.current = false;
+        });
+      });
+    };
+    if (selectedVehicle == null) {
+      setDotIndex(0);
+      programmaticScrollRef.current = true;
+      scrollRef.current?.scrollTo({ x: 0, animated: false });
+      endProgrammaticSoon();
+      return;
+    }
+    const idx = VEHICLES.findIndex((x) => x.id === selectedVehicle);
+    if (idx < 0) return;
+    setDotIndex(idx);
+    programmaticScrollRef.current = true;
+    scrollToIndex(idx, false);
+    endProgrammaticSoon();
+  }, [selectedVehicle, scrollToIndex]);
+
+  const onScrollEnd = (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+    if (programmaticScrollRef.current) return;
+    const x = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(x / step);
+    const clamped = Math.max(0, Math.min(VEHICLES.length - 1, idx));
+    setDotIndex(clamped);
+    const v = VEHICLES[clamped];
+    if (v) onSlideSnap(v.id);
+  };
+
+  return (
+    <View style={styles.vehicleSliderWrap}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={step}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        contentContainerStyle={[styles.vehicleSliderSnapContent, { paddingLeft: sideInset, paddingRight: sideInset }]}
+        onMomentumScrollEnd={onScrollEnd}
+        onScrollEndDrag={onScrollEnd}
+        scrollEventThrottle={16}
+      >
+        {VEHICLES.map((v, i) => {
+          const expanded = expandedVehicleId === v.id;
+          const selected = selectedVehicle != null && selectedVehicle === v.id;
+          const headlines = VEHICLE_HEADLINES[v.id];
+          const cfg = VEHICLE_ICON_CONFIG[v.id];
+          const borderW = expanded ? 2.5 : selected ? 2 : 0;
+          const borderColor = expanded ? ONRODA_MARK_RED : selected ? colors.primary : "transparent";
+          return (
+            <View
+              key={v.id}
+              style={[
+                styles.vehicleRefCard,
+                {
+                  width: slideW,
+                  marginRight: i < VEHICLES.length - 1 ? gap : 0,
+                  backgroundColor: SLIDER_BEIGE,
+                  borderWidth: borderW,
+                  borderColor,
+                  shadowOpacity: expanded ? 0.16 : selected ? 0.1 : 0.06,
+                  shadowRadius: expanded ? 16 : 10,
+                  elevation: expanded ? 10 : selected ? 5 : 3,
+                },
+              ]}
+            >
+              <View style={styles.vehicleRefCardInner}>
+                <View style={styles.vehicleRefLeft}>
+                  <Text style={[styles.vehicleRefLine1, { color: colors.foreground }]} numberOfLines={2}>
+                    {headlines.line1}
+                  </Text>
+                  <Text style={[styles.vehicleRefLine2, { color: colors.foreground }]} numberOfLines={2}>
+                    {headlines.line2}
+                  </Text>
+                  <Text style={[styles.vehicleRefMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
+                    {v.name} · {cfg.seats}
+                  </Text>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.vehicleRefCta,
+                      { opacity: pressed ? 0.92 : 1, backgroundColor: ONRODA_MARK_RED },
+                    ]}
+                    onPress={() => onMehrErfahren(v.id)}
+                  >
+                    <Text style={styles.vehicleRefCtaText}>Mehr erfahren</Text>
+                  </Pressable>
+                </View>
+                <VehicleTrustIllustration vehicleId={v.id} />
+              </View>
+              {expanded && (
+                <View style={[styles.vehicleSliderExpand, { borderTopColor: SLIDER_BEIGE_DEEP }]}>
+                  {VEHICLE_LONG_COPY[v.id].map((line, j) => (
+                    <Text
+                      key={j}
+                      style={[
+                        styles.vehicleSliderExpandLine,
+                        { color: colors.mutedForeground },
+                        j < VEHICLE_LONG_COPY[v.id].length - 1 && { marginBottom: 10 },
+                      ]}
+                    >
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </ScrollView>
+      <View style={styles.vehicleSliderDots}>
+        {VEHICLES.map((v, i) => (
+          <View
+            key={v.id}
+            style={[
+              styles.vehicleSliderDot,
+              i === dotIndex
+                ? [styles.vehicleSliderDotActive, { backgroundColor: ONRODA_MARK_RED }]
+                : { backgroundColor: colors.mutedForeground, opacity: 0.28 },
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Kompakte Fahrzeugwahl nur im Buchungsmodus (gleiche Namen/Untertitel wie überall). */
+function CompactBookingVehicleRow({
+  colors,
+  selectedVehicle,
+  paymentMethod,
+  onSelect,
+}: {
+  colors: { card: string; border: string; foreground: string; mutedForeground: string; primary: string };
+  selectedVehicle: VehicleType | null;
+  paymentMethod: PaymentMethod | null;
+  onSelect: (id: VehicleType) => void;
+}) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookingVehicleScroll}>
+      {VEHICLES.map((v) => {
+        const cfg = VEHICLE_ICON_CONFIG[v.id];
+        const sel = selectedVehicle != null && selectedVehicle === v.id;
+        const onrodaBlockedByVoucher = v.id === "onroda" && paymentMethod === "voucher";
+        return (
+          <Pressable
+            key={v.id}
+            onPress={() => onSelect(v.id)}
+            style={[
+              styles.bookingVehicleChip,
+              {
+                backgroundColor: colors.card,
+                borderColor: sel ? colors.primary : colors.border,
+                borderWidth: sel ? 2 : 1.5,
+                opacity: onrodaBlockedByVoucher ? 0.48 : 1,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.bookingVehicleIconCircle,
+                { backgroundColor: v.id === "wheelchair" ? "#E0F2FE" : "#F3F4F6" },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={cfg.icon as any}
+                size={26}
+                color={v.id === "wheelchair" ? "#0369A1" : VEHICLE_CAR_ICON}
+              />
+            </View>
+            <Text
+              style={[styles.bookingVehicleName, { color: sel ? colors.primary : colors.foreground }]}
+              numberOfLines={1}
+            >
+              {v.name}
+            </Text>
+            <Text style={[styles.bookingVehicleSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+              {cfg.seats}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function bookingCtaLabel(vehicle: VehicleType | null, hasScheduledTime: boolean): string {
+  if (!vehicle) return hasScheduledTime ? "Reservieren" : "Jetzt buchen";
+  if (hasScheduledTime) return vehicle === "onroda" ? "Fixpreis reservieren" : "Reservieren";
+  return vehicle === "onroda" ? "Fixpreis buchen" : "Jetzt buchen";
+}
 
 function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FEF3C7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#FDE68A" }}>
       <MaterialCommunityIcons name={icon as any} size={13} color="#92400E" />
-      <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#92400E" }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#92400E" }}>{label}</Text>
     </View>
   );
 }
@@ -125,7 +411,8 @@ const TAB_HEIGHT = 56;
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const vehicleSliderViewportHome = screenWidth - 32;
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const bottomPad = isWeb ? 20 : insets.bottom;
@@ -201,11 +488,21 @@ export default function HomeScreen() {
   const [isSearchingDest, setIsSearchingDest] = useState(false);
   const destInputRef = useRef<TextInput>(null);
   const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Nach Zeitbestätigung: Suchmaske öffnen und zuerst Abholort fokussieren. */
+  const focusPickupFieldOnSearchOpenRef = useRef(false);
 
   /* ── Saved home / work ── */
   const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
   const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
   const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
+  const [expandedVehicleId, setExpandedVehicleId] = useState<VehicleType | null>(null);
+  const [comboHint, setComboHint] = useState<string | null>(null);
+  const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showComboHint = useCallback((msg: string) => {
+    if (comboHintTimerRef.current) clearTimeout(comboHintTimerRef.current);
+    setComboHint(msg);
+    comboHintTimerRef.current = setTimeout(() => setComboHint(null), 4200);
+  }, []);
 
   /* ── Edit-Preset Modal ── */
   const [editPreset, setEditPreset] = useState<"home" | "work" | null>(null);
@@ -217,6 +514,12 @@ export default function HomeScreen() {
   useEffect(() => {
     AsyncStorage.getItem("@Onroda_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
     AsyncStorage.getItem("@Onroda_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
   }, []);
 
   const savePreset = (type: "home" | "work", loc: GeoLocation) => {
@@ -249,12 +552,6 @@ export default function HomeScreen() {
       finally { setEditPresetLoading(false); }
     }, 300);
   }, [editPresetQuery, editPreset]);
-
-  /* ── Schedule modal ── */
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [schedDay, setSchedDay] = useState(0);
-  const [schedHour, setSchedHour] = useState(12);
-  const [schedMinute, setSchedMinute] = useState(0);
 
   const [gpsLoading, setGpsLoading] = useState(false);
   const [mapCenterKey, setMapCenterKey] = useState(0);
@@ -322,20 +619,32 @@ export default function HomeScreen() {
   /* ── Route fetch ── */
   useEffect(() => {
     if (destination) fetchRoute();
-  }, [destination, selectedVehicle]);
+  }, [destination, selectedVehicle, fetchRoute]);
 
-  /* ── Auto-select vehicle from patient profile ── */
   useEffect(() => {
-    if (profile.rollstuhl) setSelectedVehicle("wheelchair");
-  }, [profile.rollstuhl]);
+    if (destination) setExpandedVehicleId(null);
+  }, [destination]);
 
-  /* ── Auto-focus dest when search opens ── */
+  /* ── Suchmaske: Fokus Abholort (nach Reservierungszeit) oder Ziel (Standard) ── */
   useEffect(() => {
-    if (isSearchActive) {
+    if (!isSearchActive) return;
+    setOriginQuery(origin.displayName.split(",")[0]);
+    setOriginResults([]);
+    const openForRouteAfterSchedule = focusPickupFieldOnSearchOpenRef.current;
+    if (openForRouteAfterSchedule) {
+      focusPickupFieldOnSearchOpenRef.current = false;
+      setIsEditingOrigin(true);
+      if (destination) {
+        const destLine = destination.displayName.split(",")[0]?.trim() || destination.displayName;
+        setDestQuery(destLine);
+      } else {
+        setDestQuery("");
+        setDestResults([]);
+      }
+      setTimeout(() => originInputRef.current?.focus(), 220);
+    } else {
       setDestQuery("");
       setDestResults([]);
-      setOriginQuery(origin.displayName.split(",")[0]);
-      setOriginResults([]);
       setIsEditingOrigin(false);
       setTimeout(() => destInputRef.current?.focus(), 180);
     }
@@ -413,30 +722,82 @@ export default function HomeScreen() {
   };
 
   /* ── Booking ── */
+  const canConfirmBook =
+    selectedVehicle != null &&
+    paymentMethod != null &&
+    fareBreakdown != null &&
+    !(selectedVehicle === "onroda" && paymentMethod === "voucher");
+
+  const bookHintText =
+    selectedVehicle == null && paymentMethod == null
+      ? "Fahrzeug und Zahlungsart wählen – dann wird der Button grün."
+      : selectedVehicle == null
+        ? "Fahrzeug wählen – dann wird der Button grün."
+        : "Zahlungsart wählen – dann wird der Button grün.";
+
   const handleBook = () => {
-    if (!fareBreakdown) return;
+    if (!fareBreakdown || !paymentMethod || selectedVehicle == null) return;
+    if (selectedVehicle === "onroda" && paymentMethod === "voucher") return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.push("/ride");
   };
 
+  const handleBookingVehicleSelect = useCallback(
+    (id: VehicleType) => {
+      if (id === "onroda" && paymentMethod === "voucher") {
+        setPaymentMethod(null);
+        showComboHint(FIXPREIS_VOUCHER_HINT);
+      }
+      setSelectedVehicle(id);
+      Haptics.selectionAsync();
+    },
+    [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
+  );
 
-  /* ── Schedule modal ── */
-  const openScheduleModal = () => {
-    const now = scheduledTime ?? new Date();
-    const diffDays = Math.round((now.getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000);
-    setSchedDay(Math.max(0, Math.min(6, diffDays)));
-    setSchedHour(scheduledTime ? scheduledTime.getHours() : 12);
-    setSchedMinute(scheduledTime ? Math.round(scheduledTime.getMinutes() / 5) * 5 : 0);
-    setShowScheduleModal(true);
-  };
+  const handlePaymentSelect = useCallback(
+    (opt: (typeof PAYMENT_OPTIONS)[number]) => {
+      if (opt.id === "voucher" && selectedVehicle === "onroda") {
+        setSelectedVehicle(null);
+        showComboHint(FIXPREIS_VOUCHER_HINT);
+      }
+      if (opt.id !== "voucher") setIsExempted(false);
+      setPaymentMethod(opt.id);
+      Haptics.selectionAsync();
+    },
+    [selectedVehicle, setSelectedVehicle, setPaymentMethod, setIsExempted, showComboHint],
+  );
 
-  const handleScheduleConfirm = () => {
-    const base = new Date();
-    base.setDate(base.getDate() + schedDay);
-    base.setHours(schedHour, schedMinute, 0, 0);
-    setScheduledTime(base);
-    setShowScheduleModal(false);
-  };
+  const handleVehicleSlideSnap = useCallback(
+    (id: VehicleType) => {
+      Haptics.selectionAsync();
+      if (id === "onroda" && paymentMethod === "voucher") {
+        setPaymentMethod(null);
+        showComboHint(FIXPREIS_VOUCHER_HINT);
+      }
+      setSelectedVehicle(id);
+    },
+    [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
+  );
+
+  const handleVehicleMehrErfahren = useCallback(
+    (id: VehicleType) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (id === "onroda" && paymentMethod === "voucher") {
+        setPaymentMethod(null);
+        showComboHint(FIXPREIS_VOUCHER_HINT);
+      }
+      setSelectedVehicle(id);
+      setExpandedVehicleId((prev) => (prev === id ? null : id));
+    },
+    [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
+  );
+
+
+  const openScheduleModal = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/reserve-ride");
+  }, []);
 
   /* ── GPS ── */
   const handleGpsLocate = async (silent = false) => {
@@ -460,13 +821,6 @@ export default function HomeScreen() {
 
   const recentDest = history[0];
 
-  const schedSummaryLabel = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + schedDay);
-    const names = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
-    return schedDay === 0 ? "Heute" : schedDay === 1 ? "Morgen" : names[d.getDay()];
-  })();
-
   /* ── Driver guard: while AsyncStorage loads, show nothing; when logged in, redirect ── */
   if (driverLoading) {
     return (
@@ -484,6 +838,14 @@ export default function HomeScreen() {
   const showDestResults = !isEditingOrigin && destResults.length > 0;
   const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
 
+  /** Karte: Platz für Chip/FAB oben und Sheet unten – nicht zu extrem zoomen (Standortpunkt sichtbar). */
+  const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
+  const mapEdgePaddingBottom = Math.round(
+    destination
+      ? Math.min(380, Math.max(260, screenHeight * 0.32 + TAB_HEIGHT))
+      : Math.min(460, TAB_HEIGHT + screenHeight * 0.4),
+  );
+
   return (
     <View style={styles.root}>
       {/* ── FULL-SCREEN MAP ── */}
@@ -494,6 +856,9 @@ export default function HomeScreen() {
           polyline={route?.polyline}
           style={StyleSheet.absoluteFill}
           centerKey={mapCenterKey}
+          edgePaddingTop={mapEdgePaddingTop}
+          edgePaddingBottom={mapEdgePaddingBottom}
+          userLocation={userGps}
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0f0f0f" }]} />
@@ -673,42 +1038,19 @@ export default function HomeScreen() {
                 )}
               </View>
 
-              {/* Vehicle cards */}
               <View style={styles.vehicleSection}>
-                <View style={styles.vehicleCards}>
-                  {VEHICLES.map((v) => {
-                    const isSelected = selectedVehicle === v.id;
-                    const cfg = VEHICLE_ICON_CONFIG[v.id];
-                    return (
-                      <Pressable
-                        key={v.id}
-                        style={[styles.vehicleCard, {
-                          backgroundColor: isSelected ? colors.primary + "14" : colors.card,
-                          borderColor: isSelected ? colors.primary : colors.border,
-                        }]}
-                        onPress={() => { setSelectedVehicle(v.id); Haptics.selectionAsync(); }}
-                      >
-                        <View style={[styles.vehicleIconWrap, { backgroundColor: isSelected ? colors.primary + "22" : cfg?.bg }]}>
-                          <MaterialCommunityIcons name={cfg?.icon as any} size={26} color={isSelected ? colors.primary : cfg?.color} />
-                        </View>
-                        <Text style={[styles.vehicleCardName, {
-                          color: isSelected ? colors.primary : colors.foreground,
-                          fontFamily: isSelected ? "Inter_700Bold" : "Inter_500Medium",
-                        }]}>{v.name}</Text>
-                        <Text style={[styles.vehicleSeats, { color: isSelected ? colors.primary + "aa" : colors.mutedForeground }]}>{cfg?.seats}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Promo */}
-              <View style={styles.promoBanner}>
-                <View style={styles.promoTextWrap}>
-                  <Text style={styles.promoTitle}>Onroda – in deiner Stadt</Text>
-                  <Text style={styles.promoSub}>MOVE YOUR WAY. Jetzt buchen.</Text>
-                </View>
-                <MaterialCommunityIcons name="taxi" size={38} color="#FEF2F2" style={{ marginLeft: 8 }} />
+                <HorizontalVehicleSlider
+                  colors={{
+                    foreground: colors.foreground,
+                    mutedForeground: colors.mutedForeground,
+                    primary: colors.primary,
+                  }}
+                  viewportWidth={vehicleSliderViewportHome}
+                  selectedVehicle={selectedVehicle}
+                  expandedVehicleId={expandedVehicleId}
+                  onSlideSnap={handleVehicleSlideSnap}
+                  onMehrErfahren={handleVehicleMehrErfahren}
+                />
               </View>
             </>
           ) : (
@@ -738,33 +1080,20 @@ export default function HomeScreen() {
                 </Pressable>
               </View>
 
-              {/* ── 2. FAHRZEUG ── */}
+              {/* ── 2. FAHRZEUG (kompakt – Beige-Slider nur auf der Hauptseite) ── */}
               <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 14 }]}>FAHRZEUG</Text>
-              <View style={styles.vehicleCards}>
-                {VEHICLES.map((v) => {
-                  const isSelected = selectedVehicle === v.id;
-                  const cfg = VEHICLE_ICON_CONFIG[v.id];
-                  return (
-                    <Pressable
-                      key={v.id}
-                      style={[styles.vehicleCard, {
-                        backgroundColor: isSelected ? colors.primary + "14" : colors.card,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                      }]}
-                      onPress={() => { setSelectedVehicle(v.id); Haptics.selectionAsync(); }}
-                    >
-                      <View style={[styles.vehicleIconWrap, { backgroundColor: isSelected ? colors.primary + "22" : cfg?.bg }]}>
-                        <MaterialCommunityIcons name={cfg?.icon as any} size={26} color={isSelected ? colors.primary : cfg?.color} />
-                      </View>
-                      <Text style={[styles.vehicleCardName, {
-                        color: isSelected ? colors.primary : colors.foreground,
-                        fontFamily: isSelected ? "Inter_700Bold" : "Inter_500Medium",
-                      }]}>{v.name}</Text>
-                      <Text style={[styles.vehicleSeats, { color: isSelected ? colors.primary + "aa" : colors.mutedForeground }]}>{cfg?.seats}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <CompactBookingVehicleRow
+                colors={{
+                  card: colors.card,
+                  border: colors.border,
+                  foreground: colors.foreground,
+                  mutedForeground: colors.mutedForeground,
+                  primary: colors.primary,
+                }}
+                selectedVehicle={selectedVehicle}
+                paymentMethod={paymentMethod}
+                onSelect={handleBookingVehicleSelect}
+              />
 
               {/* ── Service-Badges aus Patienten-Profil ── */}
               {(profile.rollator || profile.blindenhund || profile.sauerstoff || profile.begleitperson ||
@@ -789,8 +1118,8 @@ export default function HomeScreen() {
                 <View style={{ backgroundColor: "#FFFBEB", borderRadius: 12, borderWidth: 1, borderColor: "#FDE68A", padding: 12, flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
                   <Feather name="file-text" size={14} color="#92400E" style={{ marginTop: 2 }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#92400E", marginBottom: 2 }}>NOTIZ FÜR DEN FAHRER</Text>
-                    <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#78350F", lineHeight: 18 }}>{profile.patientNotiz}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#92400E", marginBottom: 2 }}>NOTIZ FÜR DEN FAHRER</Text>
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "#78350F", lineHeight: 20 }}>{profile.patientNotiz}</Text>
                   </View>
                 </View>
               )}
@@ -800,36 +1129,38 @@ export default function HomeScreen() {
               <View style={styles.paymentGrid}>
                 {PAYMENT_OPTIONS.map((opt) => {
                   const isSelected = paymentMethod === opt.id;
-                  const iconColor = isSelected ? "#fff" : colors.foreground;
+                  const voucherBlockedByOnroda = opt.isVoucher && selectedVehicle === "onroda";
                   return (
                     <Pressable
                       key={opt.id}
                       style={[styles.paymentBtn, {
-                        backgroundColor: isSelected ? colors.primary : colors.card,
+                        backgroundColor: colors.card,
                         borderColor: isSelected ? colors.primary : colors.border,
+                        borderWidth: isSelected ? 2 : 1.5,
+                        opacity: voucherBlockedByOnroda ? 0.48 : 1,
                       }]}
-                      onPress={() => {
-                        setPaymentMethod(opt.id);
-                        if (opt.id !== "voucher") setIsExempted(false);
-                        Haptics.selectionAsync();
-                      }}
+                      onPress={() => handlePaymentSelect(opt)}
                     >
                       {opt.isEuro ? (
-                        <Text style={[styles.euroSymbol, { color: iconColor }]}>€</Text>
+                        <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
                       ) : opt.isApp ? (
-                        <Feather name="smartphone" size={14} color={iconColor} />
+                        <Feather name="smartphone" size={14} color={colors.foreground} />
                       ) : opt.isPaypal ? (
-                        <Text style={[styles.paypalText, { color: isSelected ? "#fff" : "#1565C0" }]}>P</Text>
+                        <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
                       ) : opt.isVoucher ? (
-                        <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={iconColor} />
+                        <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
                       ) : (
-                        <Feather name={opt.featherIcon as any} size={14} color={iconColor} />
+                        <Feather name={opt.featherIcon as any} size={14} color={colors.foreground} />
                       )}
-                      <Text style={[styles.paymentBtnText, { color: isSelected ? "#fff" : colors.foreground }]}>{opt.label}</Text>
+                      <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
                     </Pressable>
                   );
                 })}
               </View>
+
+              {comboHint ? (
+                <Text style={[styles.comboHintText, { color: ONRODA_MARK_RED }]}>{comboHint}</Text>
+              ) : null}
 
               {paymentMethod === "voucher" && (
                 <View style={[styles.voucherPanel, { backgroundColor: "#EFF6FF", borderColor: "#93C5FD" }]}>
@@ -868,30 +1199,43 @@ export default function HomeScreen() {
                   <Feather name="alert-circle" size={18} color={colors.destructive} />
                   <Text style={[styles.loadingText, { color: colors.destructive }]}>{routeError}</Text>
                 </View>
-              ) : fareBreakdown ? (
-                <View style={[styles.routeStrip, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14 }]}>
-                  <View style={styles.routeStripItem}>
-                    <Text style={[styles.routeStripVal, { color: colors.foreground }]}>{route?.distanceKm?.toFixed(1)} km</Text>
-                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground }]}>Strecke</Text>
+              ) : route?.distanceKm != null ? (
+                <View style={[styles.routeStrip, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14, alignItems: "stretch" }]}>
+                  <View style={[styles.routeStripItem, { justifyContent: "center" }]}>
+                    <Text style={[styles.routeStripDistance, { color: colors.mutedForeground }]}>
+                      {Number(route.distanceKm).toFixed(1)} km
+                    </Text>
                   </View>
-                  <View style={[styles.routeStripDivider, { backgroundColor: colors.border }]} />
-                  <View style={[styles.routeStripItem, styles.fareHighlight]}>
-                    {paymentMethod === "voucher" ? (
-                      <>
-                        <Text style={[styles.routeStripVal, { color: "#2563EB" }]}>
-                          {formatEuro(calculateCopayment(fareBreakdown.total, isExempted))}
-                        </Text>
-                        <Text style={[styles.routeStripLabel, { color: "#2563EB" }]}>Eigenanteil</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={[styles.routeStripVal, { color: colors.primary }]} numberOfLines={1}>
-                          {Math.round(fareBreakdown.total / 1.08)}–{Math.round(fareBreakdown.total)} €
-                        </Text>
-                        <Text style={[styles.routeStripLabel, { color: colors.mutedForeground }]}>Schätzpreis</Text>
-                      </>
-                    )}
-                  </View>
+                  <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: colors.border }]} />
+                  {!fareBreakdown ? (
+                    <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                      <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Preis</Text>
+                      <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: colors.mutedForeground, textAlign: "center" }} numberOfLines={2}>
+                        Bitte Fahrzeug wählen
+                      </Text>
+                    </View>
+                  ) : paymentMethod === "voucher" ? (
+                    <View style={[styles.routeStripItem, styles.fareHighlight]}>
+                      <Text style={[styles.routeStripVal, { color: "#2563EB" }]}>
+                        {formatEuro(calculateCopayment(fareBreakdown.total, isExempted))}
+                      </Text>
+                      <Text style={[styles.routeStripLabel, { color: "#2563EB" }]}>Eigenanteil</Text>
+                    </View>
+                  ) : fareBreakdown.fareKind === "onroda_fix" ? (
+                    <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: ONRODA_MARK_RED + "55", backgroundColor: ONRODA_MARK_RED + "12" }]}>
+                      <Text style={[styles.routeStripLabel, { color: ONRODA_MARK_RED, marginBottom: 2 }]}>Garantierter Festpreis</Text>
+                      <Text style={{ fontSize: 30, fontFamily: "Inter_700Bold", color: ONRODA_MARK_RED }} numberOfLines={1}>
+                        {formatEuro(fareBreakdown.total)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: ONRODA_MARK_RED + "55", backgroundColor: ONRODA_MARK_RED + "12" }]}>
+                      <Text style={[styles.routeStripLabel, { color: ONRODA_MARK_RED, marginBottom: 2 }]}>Schätzpreis</Text>
+                      <Text style={{ fontSize: 30, fontFamily: "Inter_700Bold", color: ONRODA_MARK_RED }} numberOfLines={1}>
+                        {Math.round(fareBreakdown.total / 1.08)}–{Math.round(fareBreakdown.total)} €
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ) : null}
 
@@ -899,16 +1243,47 @@ export default function HomeScreen() {
           )}
         </ScrollView>
 
-        {destination && !isLoadingRoute && !routeError && (
-          <View style={[styles.stickyBookRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-            <Pressable
-              style={[styles.bookBtn, { backgroundColor: paymentMethod ? "#22C55E" : "#9CA3AF" }]}
-              onPress={paymentMethod ? handleBook : undefined}
-            >
-              <Text style={styles.bookBtnText}>
-                {paymentMethod ? "Taxi jetzt bestellen" : "Zahlungsart wählen"}
-              </Text>
-            </Pressable>
+        {destination && !isLoadingRoute && !routeError && route && (
+          <View style={[styles.stickyBookRow, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: 18 + bottomPad + 12 }]}>
+            <View style={styles.stickyBookCol}>
+              <Pressable
+                disabled={!canConfirmBook}
+                style={[
+                  styles.bookBtn,
+                  canConfirmBook
+                    ? {
+                        backgroundColor: "#16A34A",
+                        borderWidth: 2,
+                        borderColor: "#BBF7D0",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 5,
+                        elevation: 3,
+                      }
+                    : {
+                        backgroundColor: colors.muted,
+                        borderWidth: 1.5,
+                        borderColor: colors.border,
+                      },
+                ]}
+                onPress={handleBook}
+              >
+                <Text
+                  style={[
+                    styles.bookBtnText,
+                    { color: canConfirmBook ? "#fff" : colors.mutedForeground },
+                  ]}
+                >
+                  {bookingCtaLabel(selectedVehicle, scheduledTime !== null)}
+                </Text>
+              </Pressable>
+              {!canConfirmBook && (
+                <Text style={[styles.bookBtnHint, { color: colors.mutedForeground }]}>
+                  {bookHintText}
+                </Text>
+              )}
+            </View>
           </View>
         )}
       </View>
@@ -940,9 +1315,9 @@ export default function HomeScreen() {
           Erscheint über allem, Vorschläge über Tastatur
       ══════════════════════════════════════════════════ */}
       {isSearchActive && (
-        <View style={[styles.searchOverlay, { backgroundColor: colors.surface }]}>
+        <View style={[styles.searchOverlay, { backgroundColor: SEARCH_OVERLAY_BG }]}>
           {/* Suche-Header (fester Bereich oben) */}
-          <View style={[styles.searchHeader, { paddingTop: topPad + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <View style={[styles.searchHeader, { paddingTop: topPad + 8, backgroundColor: SEARCH_OVERLAY_BG, borderBottomColor: "#E5E7EB" }]}>
             {/* Zeile: Zurück + (optional Banner) + Abbrechen */}
             <View style={styles.searchHeaderRow}>
               <Pressable style={styles.backBtn} onPress={closeSearch}>
@@ -963,8 +1338,25 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
+            {scheduledTime && !savingPreset && (
+              <View style={{ paddingHorizontal: 4, paddingBottom: 10 }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#B45309" }} numberOfLines={1}>
+                  Vorbestellung · {scheduledTime.getHours().toString().padStart(2, "0")}:{scheduledTime.getMinutes().toString().padStart(2, "0")} Uhr
+                </Text>
+              </View>
+            )}
+
             {/* Start → Ziel Card */}
-            <View style={[styles.twoFieldCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {selectedVehicle === "onroda" && fareBreakdown?.fareKind === "onroda_fix" && (
+              <View style={styles.searchFixpreisBanner}>
+                <MaterialCommunityIcons name="tag-outline" size={17} color={ONRODA_MARK_RED} />
+                <Text style={styles.searchFixpreisBannerText}>
+                  Garantierter Festpreis für diese Route: {formatEuro(fareBreakdown.total)}
+                </Text>
+              </View>
+            )}
+
+            <View style={[styles.twoFieldCard, { backgroundColor: SEARCH_OVERLAY_BG, borderColor: "#E5E7EB" }]}>
               {/* Punkte + Linie links */}
               <View style={styles.dotsCol}>
                 <View style={[styles.dotOrigin, isEditingOrigin && { borderColor: colors.primary }]} />
@@ -1031,15 +1423,15 @@ export default function HomeScreen() {
 
           {/* Ergebnisliste — bleibt ÜBER der Tastatur dank KeyboardAvoidingView */}
           <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            style={{ flex: 1, backgroundColor: SEARCH_OVERLAY_BG }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={0}
           >
             <ScrollView
               keyboardShouldPersistTaps="always"
               showsVerticalScrollIndicator={false}
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.resultsContent}
+              style={{ flex: 1, backgroundColor: SEARCH_OVERLAY_BG }}
+              contentContainerStyle={[styles.resultsContent, { backgroundColor: SEARCH_OVERLAY_BG }]}
             >
               {/* Origin-Suchergebnisse */}
               {showOriginResults && (
@@ -1417,79 +1809,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── SCHEDULE MODAL ── */}
-      <Modal visible={showScheduleModal} transparent animationType="slide" onRequestClose={() => setShowScheduleModal(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setShowScheduleModal(false)}>
-          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-            <View style={styles.modalTitleRow}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Vorbestellung</Text>
-              <Pressable onPress={() => setShowScheduleModal(false)} style={styles.modalCloseBtn}>
-                <Feather name="x" size={20} color={colors.mutedForeground} />
-              </Pressable>
-            </View>
-            <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>DATUM</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayChipRow} contentContainerStyle={{ gap: 8 }}>
-              {Array.from({ length: 7 }, (_, i) => {
-                const d = new Date(); d.setDate(d.getDate() + i);
-                const names = ["So","Mo","Di","Mi","Do","Fr","Sa"];
-                const label = i === 0 ? "Heute" : i === 1 ? "Morgen"
-                  : `${names[d.getDay()]} ${d.getDate().toString().padStart(2,"0")}.${(d.getMonth()+1).toString().padStart(2,"0")}.`;
-                const active = schedDay === i;
-                return (
-                  <Pressable key={i}
-                    style={[styles.dayChip, active ? { backgroundColor: "#F59E0B", borderColor: "#F59E0B" } : { backgroundColor: colors.muted, borderColor: colors.border }]}
-                    onPress={() => { setSchedDay(i); Haptics.selectionAsync(); }}
-                  >
-                    <Text style={[styles.dayChipText, { color: active ? "#fff" : colors.foreground }]}>{label}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Text style={[styles.pickerLabel, { color: colors.mutedForeground }]}>UHRZEIT</Text>
-            <View style={styles.timePicker}>
-              <View style={styles.timeColumn}>
-                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedHour((h) => (h + 1) % 24); Haptics.selectionAsync(); }}>
-                  <Feather name="chevron-up" size={22} color={colors.foreground} />
-                </Pressable>
-                <Text style={[styles.timeValue, { color: colors.foreground }]}>{schedHour.toString().padStart(2,"0")}</Text>
-                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedHour((h) => (h + 23) % 24); Haptics.selectionAsync(); }}>
-                  <Feather name="chevron-down" size={22} color={colors.foreground} />
-                </Pressable>
-                <Text style={[styles.timeUnit, { color: colors.mutedForeground }]}>Std.</Text>
-              </View>
-              <Text style={[styles.timeColon, { color: colors.foreground }]}>:</Text>
-              <View style={styles.timeColumn}>
-                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedMinute((m) => (m + 5) % 60); Haptics.selectionAsync(); }}>
-                  <Feather name="chevron-up" size={22} color={colors.foreground} />
-                </Pressable>
-                <Text style={[styles.timeValue, { color: colors.foreground }]}>{schedMinute.toString().padStart(2,"0")}</Text>
-                <Pressable style={[styles.timeBtn, { backgroundColor: colors.muted }]} onPress={() => { setSchedMinute((m) => (m + 55) % 60); Haptics.selectionAsync(); }}>
-                  <Feather name="chevron-down" size={22} color={colors.foreground} />
-                </Pressable>
-                <Text style={[styles.timeUnit, { color: colors.mutedForeground }]}>Min.</Text>
-              </View>
-            </View>
-            <View style={[styles.schedSummary, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
-              <Feather name="calendar" size={15} color="#D97706" />
-              <Text style={styles.schedSummaryText}>{schedSummaryLabel} · {schedHour.toString().padStart(2,"0")}:{schedMinute.toString().padStart(2,"0")} Uhr</Text>
-            </View>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <Pressable
-                style={[styles.modalBtnSecondary, { flex: 1, borderColor: colors.border, backgroundColor: colors.muted }]}
-                onPress={() => { setScheduledTime(null); setShowScheduleModal(false); }}
-              >
-                <Text style={[styles.modalBtnSecondaryText, { color: colors.foreground }]}>Abbrechen</Text>
-              </Pressable>
-              <Pressable style={[styles.modalBtnPrimary, { flex: 1, backgroundColor: "#F59E0B" }]} onPress={handleScheduleConfirm}>
-                <Feather name="check" size={18} color="#fff" />
-                <Text style={styles.modalBtnPrimaryText}>Bestätigen</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       {/* ── Adresse bearbeiten Modal ── */}
       <Modal visible={!!editPreset} transparent animationType="fade" onRequestClose={() => setEditPreset(null)}>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
@@ -1548,10 +1867,10 @@ export default function HomeScreen() {
                       >
                         <Feather name="map-pin" size={14} color={isSelected ? colors.primary : colors.mutedForeground} style={{ marginTop: 2 }} />
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: isSelected ? colors.primary : colors.foreground }} numberOfLines={1}>
+                          <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isSelected ? colors.primary : colors.foreground }} numberOfLines={1}>
                             {loc.displayName.split(",")[0]}
                           </Text>
-                          <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
+                          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
                             {loc.displayName.split(",").slice(1).join(",").trim()}
                           </Text>
                         </View>
@@ -1602,9 +1921,9 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.10, shadowRadius: 8, elevation: 5, zIndex: 10,
   },
-  originChipLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular", color: "#B0B7C3", marginBottom: rs(2), letterSpacing: 0.6, textTransform: "uppercase" },
+  originChipLabel: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#B0B7C3", marginBottom: rs(2), letterSpacing: 0.6, textTransform: "uppercase" },
   originChipRow: { flexDirection: "row", alignItems: "center", gap: rs(8) },
-  originChipText: { flex: 1, fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#111", letterSpacing: -0.2 },
+  originChipText: { flex: 1, fontSize: rf(17), fontFamily: "Inter_600SemiBold", color: "#111", letterSpacing: -0.2 },
   originLocBtn: {
     width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: "#DC2626",
@@ -1617,7 +1936,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18, shadowRadius: 6, elevation: 5, zIndex: 10,
   },
-  cancelFabText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  cancelFabText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   topRightFabs: { position: "absolute", right: 16, flexDirection: "column", gap: 8, zIndex: 10 },
   fab: {
     width: 40, height: 40, borderRadius: 20,
@@ -1648,9 +1967,9 @@ const styles = StyleSheet.create({
     borderRadius: 50, borderWidth: 1,
   },
   searchIconCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  searchPlaceholderText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  searchPlaceholderText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
   spaeterBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 50, borderWidth: 1 },
-  spaeterText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  spaeterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   /* Route card (Option B – zwei Zeilen mit Trennlinie) */
   routeCard: {
@@ -1666,7 +1985,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#999", borderWidth: 1.5, borderColor: "#555",
   },
   routeCardDotDest: { width: 9, height: 9, borderRadius: 5 },
-  routeCardText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  routeCardText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   routeCardSep: { height: 1, marginLeft: 14, marginRight: 14 },
 
   /* Quick destinations */
@@ -1674,63 +1993,134 @@ const styles = StyleSheet.create({
   quickRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   quickIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   quickTextWrap: { flex: 1 },
-  quickTitle: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  quickSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  quickTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  quickSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
   quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 
-  /* Vehicle cards */
-  vehicleSection: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
-  vehicleCards: { flexDirection: "row", gap: 10 },
-  vehicleCard: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, gap: 5 },
-  vehicleIconWrap: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  vehicleCardName: { fontSize: 13 },
-  vehicleSeats: { fontSize: 10, fontFamily: "Inter_400Regular" },
-
-  /* Promo */
-  promoBanner: { marginHorizontal: 16, marginTop: 12, marginBottom: 28, backgroundColor: "#DC2626", borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center" },
-  promoTextWrap: { flex: 1 },
-  promoTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FEF3C7" },
-  promoSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#FDE68A", marginTop: 3 },
-  promoEmoji: { fontSize: 36, marginLeft: 8 },
+  /* Fahrzeug-Slider (Beige-Karten, Snap, Punkte – Referenz-Layout) */
+  vehicleSection: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
+  vehicleSliderWrap: { width: "100%" },
+  vehicleSliderSnapContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 8,
+  },
+  vehicleRefCard: {
+    borderRadius: 22,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+  },
+  vehicleRefCardInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    minHeight: 118,
+  },
+  vehicleRefLeft: { flex: 1, paddingRight: 8, justifyContent: "center" },
+  vehicleRefLine1: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 22 },
+  vehicleRefLine2: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 22, marginTop: 2 },
+  vehicleRefMeta: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 8, opacity: 0.85 },
+  vehicleRefCta: {
+    alignSelf: "flex-start",
+    marginTop: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 100,
+  },
+  vehicleRefCtaText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
+  vehicleRefIllu: { width: 84, height: 90, justifyContent: "center", alignItems: "center" },
+  vehicleRefHex: { position: "absolute" },
+  vehicleRefShield: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 56,
+    height: 56,
+  },
+  vehicleRefCheck: { position: "absolute" },
+  bookingVehicleScroll: { flexDirection: "row", gap: 10, paddingVertical: 4, paddingRight: 4 },
+  bookingVehicleChip: {
+    width: 100,
+    flexShrink: 0,
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    gap: 6,
+  },
+  bookingVehicleIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bookingVehicleName: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
+  bookingVehicleSub: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13 },
+  vehicleSliderExpand: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  vehicleSliderExpandLine: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  vehicleSliderDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  vehicleSliderDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.18)",
+  },
+  vehicleSliderDotActive: { width: 22, borderRadius: 4 },
 
   /* Fare panel */
   fareSection: { padding: 14, gap: 12, paddingBottom: 8 },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, justifyContent: "center", paddingVertical: 16 },
-  loadingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  loadingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
   routeStrip: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, paddingVertical: 18 },
   routeStripItem: { flex: 1, alignItems: "center", gap: 4 },
   fareHighlight: { borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, marginHorizontal: 8, marginVertical: 4, backgroundColor: "#F3F4F6", borderColor: "#D1D5DB" },
-  routeStripVal: { fontSize: 26, fontFamily: "Inter_700Bold" },
-  routeStripLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  routeStripVal: { fontSize: 28, fontFamily: "Inter_700Bold" },
+  routeStripDistance: { fontSize: 16, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
+  routeStripLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
   routeStripDivider: { width: 1, height: 32 },
-  panelLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -6 },
+  routeStripDividerShort: { height: 22, alignSelf: "center" },
+  panelLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -6 },
   timingRow: { flexDirection: "row", gap: 10, marginTop: 10 },
   timingBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 7, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5,
     borderColor: "#E5E7EB", backgroundColor: "#F9FAFB",
   },
-  timingBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  timingBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   paymentRow: { flexDirection: "row", gap: 8 },
   paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   paymentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, minWidth: "46%" },
-  paymentBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  paypalText: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  euroSymbol: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  paymentBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  paypalText: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  euroSymbol: { fontSize: 17, fontFamily: "Inter_700Bold" },
   voucherPanel: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 10 },
   voucherPriceRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  voucherLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#1D4ED8", letterSpacing: 0.4 },
-  voucherAmount: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#1D4ED8", marginTop: 2 },
-  voucherSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#3B82F6", marginTop: 4, lineHeight: 16 },
+  voucherLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#1D4ED8", letterSpacing: 0.4 },
+  voucherAmount: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#1D4ED8", marginTop: 2 },
+  voucherSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#3B82F6", marginTop: 4, lineHeight: 17 },
   exemptRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   exemptCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, justifyContent: "center", alignItems: "center" },
-  exemptText: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  exemptText: { fontSize: 14, fontFamily: "Inter_500Medium", flex: 1 },
   voucherHint: { flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#93C5FD" },
-  voucherHintText: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#2563EB", flex: 1 },
+  voucherHintText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#2563EB", flex: 1 },
   bookRow: { flexDirection: "row", gap: 10 },
   stickyBookRow: {
     flexDirection: "row", gap: 10,
-    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 20,
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
@@ -1738,8 +2128,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  bookBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 22, borderRadius: 16, gap: 8 },
-  bookBtnText: { fontSize: 18, fontFamily: "Inter_600SemiBold", color: "#fff", letterSpacing: 0.4 },
+  stickyBookCol: { flex: 1, gap: 8 },
+  bookBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 14, gap: 6 },
+  bookBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.15 },
+  bookBtnHint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
   scheduleBtn: { width: 52, height: 52, borderRadius: 14, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
   searchClearBtn: { padding: 2, marginLeft: 4 },
   searchClearCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center" },
@@ -1754,7 +2146,7 @@ const styles = StyleSheet.create({
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
-  tabLabel: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
+  tabLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium" },
   tabBadge: {
     position: "absolute", top: -5, right: -8,
     minWidth: 17, height: 17, borderRadius: 9,
@@ -1762,7 +2154,7 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     paddingHorizontal: rs(3),
   },
-  tabBadgeText: { fontSize: rf(10), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(13) },
+  tabBadgeText: { fontSize: rf(11), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(14) },
 
   /* ══ SEARCH OVERLAY ══ */
   searchOverlay: {
@@ -1784,14 +2176,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 6,
   },
   cancelBtnText: {
-    fontSize: 14, fontFamily: "Inter_500Medium",
+    fontSize: 15, fontFamily: "Inter_500Medium",
   },
   saveModeBanner: {
     flex: 1, flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
   saveModeBannerText: {
-    fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1,
+    fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1,
   },
   twoFieldCard: {
     flexDirection: "row", alignItems: "stretch",
@@ -1818,7 +2210,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   fieldInput: {
-    flex: 1, fontSize: 14, fontFamily: "Inter_400Regular",
+    flex: 1, fontSize: 15, fontFamily: "Inter_400Regular",
     paddingVertical: 0,
   },
   fieldSeparator: { height: 1, marginLeft: 8, marginRight: 8, opacity: 0.4 },
@@ -1826,48 +2218,62 @@ const styles = StyleSheet.create({
 
   /* Results list */
   resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
-  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
+  comboHintText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 17,
+  },
+  searchFixpreisBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: ONRODA_MARK_RED + "44",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  searchFixpreisBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#7F1D1D",
+    lineHeight: 18,
+  },
+  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
   resultGroup: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   resultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   resultText: { flex: 1 },
-  resultTitle: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  resultSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  resultTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  resultSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
   resultDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
   searchingRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
-  searchingText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  searchingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 
   /* Schedule modal */
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   modalCard: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
   modalHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 12 },
   modalTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  modalTitle: { fontSize: 19, fontFamily: "Inter_700Bold" },
   modalCloseBtn: { padding: 4 },
-  pickerLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
-  dayChipRow: { marginHorizontal: -4 },
-  dayChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-  dayChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  timePicker: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  timeColumn: { alignItems: "center", gap: 8 },
-  timeBtn: { width: 48, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  timeValue: { fontSize: 36, fontFamily: "Inter_700Bold", minWidth: 60, textAlign: "center" },
-  timeUnit: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  timeColon: { fontSize: 36, fontFamily: "Inter_700Bold", marginBottom: 20 },
-  schedSummary: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
-  schedSummaryText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#92400E" },
   modalBtnPrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 14 },
-  modalBtnPrimaryText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  modalBtnPrimaryText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
   editPresetInputWrap: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
-  editPresetInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  editPresetInput: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
   editPresetResult: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   modalBtnSecondary: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 14, borderWidth: 1.5 },
-  modalBtnSecondaryText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  modalBtnSecondaryText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   socialBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 14, paddingVertical: 16, borderRadius: 14, borderWidth: 1,
   },
-  socialBtnText: { fontSize: 16, fontFamily: "Inter_500Medium" },
+  socialBtnText: { fontSize: 17, fontFamily: "Inter_500Medium" },
 
   /* ── ONBOARDING ── */
   onboardingScroll: {
@@ -1880,7 +2286,7 @@ const styles = StyleSheet.create({
     fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: -1.5,
   },
   onboardingTagline: {
-    fontSize: 15, fontFamily: "Inter_400Regular",
+    fontSize: 16, fontFamily: "Inter_400Regular",
   },
   onboardingBlock: {
     borderRadius: 20, borderWidth: 1, padding: 20, gap: 14,
@@ -1889,10 +2295,10 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 8,
   },
   onboardingBlockLabel: {
-    fontSize: 17, fontFamily: "Inter_700Bold",
+    fontSize: 18, fontFamily: "Inter_700Bold",
   },
   onboardingBlockSub: {
-    fontSize: 13, fontFamily: "Inter_400Regular", marginTop: -8,
+    fontSize: 14, fontFamily: "Inter_400Regular", marginTop: -8,
   },
   onboardingInput: {
     flexDirection: "row", alignItems: "center", gap: 10,
@@ -1901,7 +2307,7 @@ const styles = StyleSheet.create({
   },
   onboardingInputField: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: "Inter_400Regular",
     paddingVertical: 0,
   },
@@ -1914,12 +2320,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   onboardingRegisterLinkText: {
-    fontSize: 13, fontFamily: "Inter_400Regular",
+    fontSize: 14, fontFamily: "Inter_400Regular",
   },
   onboardingDivider: {
     flexDirection: "row", alignItems: "center", gap: 12,
     marginVertical: -4,
   },
   onboardingDividerLine: { flex: 1, height: 1 },
-  onboardingDividerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  onboardingDividerText: { fontSize: 13, fontFamily: "Inter_400Regular" },
 });

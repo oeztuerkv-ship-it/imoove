@@ -4,9 +4,10 @@ import * as Location from "expo-location";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
+  Easing,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -20,7 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RealMapView } from "@/components/RealMapView";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
-import { useRideRequests } from "@/context/RideRequestContext";
+import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -76,6 +77,12 @@ function ScallopRow({ backgroundColor }: { backgroundColor: string }) {
 
 const API_BASE = getApiBaseUrl();
 
+/** Fahrer-Suche: eine volle Umdrehung, linear (Netflix-ähnlich). */
+const SEARCH_SPIN_DURATION_MS = 1300;
+const SEARCH_LOADER_RED = "#DC2626";
+const SEARCH_RING_BORDER = 2.5;
+const NO_DRIVER_WAIT_MS = 60_000;
+
 export default function StatusScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -84,7 +91,7 @@ export default function StatusScreen() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { destination, origin, fareBreakdown, route, paymentMethod, completeRide, cancelRide } = useRide();
-  const { completedRequest, acceptedRequest, lastAddedRequestId, cancelRequest } = useRideRequests();
+  const { completedRequest, acceptedRequest, lastAddedRequestId, cancelRequest, refreshRequests } = useRideRequests();
   const { driver: driverProfile } = useDriver();
 
   const driverName = driverProfile?.name ?? FALLBACK_DRIVER.name;
@@ -100,12 +107,13 @@ export default function StatusScreen() {
   const [userRating, setUserRating] = useState(5);
   const [now, setNow] = useState(() => Date.now());
   const [driverMarker, setDriverMarker] = useState<{ lat: number; lon: number } | null>(null);
+  const [noDriverModal, setNoDriverModal] = useState(false);
+  const [searchWave, setSearchWave] = useState(0);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const searchRing1 = useRef(new Animated.Value(0)).current;
-  const searchRing2 = useRef(new Animated.Value(0)).current;
-  const searchRing3 = useRef(new Animated.Value(0)).current;
+  const searchSpinAnim = useRef(new Animated.Value(0)).current;
+  const searchGlowAnim = useRef(new Animated.Value(0.4)).current;
   const prevPhaseRef = useRef<string>("searching");
 
   useEffect(() => {
@@ -126,6 +134,11 @@ export default function StatusScreen() {
     : "searching";
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
+
+  const customerPhaseRef = useRef(customerPhase);
+  const acceptedRequestRef = useRef<RideRequest | null>(acceptedRequest);
+  customerPhaseRef.current = customerPhase;
+  acceptedRequestRef.current = acceptedRequest;
 
   // WebSocket for real-time driver GPS + HTTP fallback
   useEffect(() => {
@@ -194,21 +207,46 @@ export default function StatusScreen() {
 
   useEffect(() => {
     if (customerPhase !== "searching") return;
-    const makeRing = (val: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(val, { toValue: 1, duration: 2600, useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0, duration: 0, useNativeDriver: true }),
-        ])
-      );
-    const anim = Animated.parallel([
-      makeRing(searchRing1, 0),
-      makeRing(searchRing2, 870),
-      makeRing(searchRing3, 1740),
-    ]);
-    anim.start();
-    return () => anim.stop();
+    searchSpinAnim.setValue(0);
+    const spin = Animated.loop(
+      Animated.timing(searchSpinAnim, {
+        toValue: 1,
+        duration: SEARCH_SPIN_DURATION_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    spin.start();
+    return () => {
+      spin.stop();
+      searchSpinAnim.setValue(0);
+    };
+  }, [customerPhase]);
+
+  useEffect(() => {
+    if (customerPhase !== "searching") return;
+    searchGlowAnim.setValue(0.92);
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(searchGlowAnim, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(searchGlowAnim, {
+          toValue: 0.88,
+          duration: 1200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    glow.start();
+    return () => {
+      glow.stop();
+      searchGlowAnim.setValue(1);
+    };
   }, [customerPhase]);
 
   useEffect(() => {
@@ -238,11 +276,27 @@ export default function StatusScreen() {
 
   const handleCancel = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setNoDriverModal(false);
     const cancelId = lastAddedRequestId ?? acceptedRequest?.id;
     if (cancelId) await cancelRequest(cancelId);
     cancelRide();
     router.replace("/");
   };
+
+  useEffect(() => {
+    if (customerPhase !== "searching") {
+      setNoDriverModal(false);
+      return;
+    }
+    setNoDriverModal(false);
+    const t = setTimeout(() => {
+      if (customerPhaseRef.current !== "searching") return;
+      if (acceptedRequestRef.current != null) return;
+      setNoDriverModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }, NO_DRIVER_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [customerPhase, searchWave]);
 
   const handleMessage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -271,6 +325,11 @@ export default function StatusScreen() {
     : selectedTip !== null ? TIP_OPTIONS[selectedTip].amt
     : 0;
   const grandTotal = totalFare + tipAmount;
+
+  const searchSpinDegrees = searchSpinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
 
   if (isCompleted) {
     return (
@@ -420,70 +479,118 @@ export default function StatusScreen() {
           driverMarker={driverMarker}
         />
 
-        {/* Stornieren-Button oben links */}
-        <Pressable style={[styles.backBtn, { top: topPad + 12 }]} onPress={handleCancel}>
-          <Feather name="arrow-left" size={20} color="#111" />
-        </Pressable>
-
         {/* Such-Animation + Route-Info unten */}
         <View style={[styles.searchBottomCard, { paddingBottom: bottomPad + 16 }]}>
-          {/* Such-Animation */}
-          <View style={styles.searchAnimRow}>
-            <View style={styles.ringContainerSmall}>
-              {[searchRing1, searchRing2, searchRing3].map((ring, i) => (
-                <Animated.View
-                  key={i}
-                  style={[
-                    styles.searchRingSmall,
-                    {
-                      opacity: ring.interpolate({ inputRange: [0, 0.12, 0.88, 1], outputRange: [0, 0.5, 0, 0] }),
-                      transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [0.5, 2.8] }) }],
-                    },
-                  ]}
-                />
-              ))}
-              <View style={styles.ringCenterSmall}>
-                <MaterialCommunityIcons name="taxi" size={20} color="#DC2626" />
+          <View style={styles.searchCardInnerBorder}>
+            {/* Such-Animation: rotierender Ring (linear, GPU) */}
+            <View style={styles.searchAnimRow}>
+              <View style={styles.searchLoaderWrap}>
+                <Animated.View style={{ opacity: searchGlowAnim }} pointerEvents="none">
+                  <Animated.View
+                    style={[
+                      styles.netflixRing,
+                      { transform: [{ rotate: searchSpinDegrees }] },
+                    ]}
+                  />
+                </Animated.View>
+                <View style={styles.searchLoaderIconCenter} pointerEvents="none">
+                  <MaterialCommunityIcons name="taxi" size={22} color={SEARCH_LOADER_RED} />
+                </View>
+              </View>
+              <View style={styles.searchAnimTextCol}>
+                <Text style={styles.searchCardTitle}>Suche Fahrer...</Text>
+                <Text style={styles.searchCardSub}>Deine Anfrage wird bearbeitet</Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}
+                onPress={() => {
+                  Alert.alert(
+                    "Fahrt stornieren?",
+                    "Die Suche wird beendet und du kehrst zur Startseite zurück.",
+                    [
+                      { text: "Nein", style: "cancel" },
+                      { text: "Ja, stornieren", style: "destructive", onPress: () => { void handleCancel(); } },
+                    ],
+                  );
+                }}
+                hitSlop={8}
+              >
+                <Text style={styles.searchCancelBtnText}>Fahrt{"\n"}stornieren</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.searchCardDivider} />
+
+            <View style={styles.searchRouteRow}>
+              <View style={[styles.searchRouteDot, { backgroundColor: "#22C55E" }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.searchRouteLabel}>Von</Text>
+                <Text style={styles.searchRouteAddr} numberOfLines={1}>
+                  {origin?.displayName ?? "Esslingen am Neckar"}
+                </Text>
               </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.searchCardTitle}>Suche Fahrer...</Text>
-              <Text style={styles.searchCardSub}>Deine Anfrage wird bearbeitet</Text>
+            <View style={styles.searchRouteLine} />
+            <View style={styles.searchRouteRow}>
+              <View style={[styles.searchRouteDot, { backgroundColor: "#DC2626" }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.searchRouteLabel}>Nach</Text>
+                <Text style={styles.searchRouteAddr} numberOfLines={1}>
+                  {destination?.displayName ?? "–"}
+                </Text>
+              </View>
             </View>
-            <ActivityIndicator color="#DC2626" size="small" />
-          </View>
 
-          {/* Trennlinie */}
-          <View style={styles.searchCardDivider} />
+            {route?.distanceKm != null && (
+              <View style={styles.searchDistanceRow}>
+                <Text style={styles.searchDistanceLabel}>Strecke</Text>
+                <Text style={styles.searchDistanceValue}>{Number(route.distanceKm).toFixed(1)} km</Text>
+              </View>
+            )}
 
-          {/* Von / Nach */}
-          <View style={styles.searchRouteRow}>
-            <View style={[styles.searchRouteDot, { backgroundColor: "#22C55E" }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.searchRouteLabel}>Von</Text>
-              <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                {origin?.displayName ?? "Esslingen am Neckar"}
-              </Text>
-            </View>
+            {fareBreakdown && (
+              <View style={styles.searchPriceRow}>
+                <Text style={styles.searchPriceLabel}>Geschätzter Preis</Text>
+                <View style={styles.searchPricePill}>
+                  <Text style={styles.searchPriceValue}>{formatEuro(fareBreakdown.total)}</Text>
+                </View>
+              </View>
+            )}
           </View>
-          <View style={styles.searchRouteLine} />
-          <View style={styles.searchRouteRow}>
-            <View style={[styles.searchRouteDot, { backgroundColor: "#DC2626" }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.searchRouteLabel}>Nach</Text>
-              <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                {destination?.displayName ?? "–"}
-              </Text>
-            </View>
-          </View>
-
-          {fareBreakdown && (
-            <View style={styles.searchPriceRow}>
-              <Text style={styles.searchPriceLabel}>Geschätzter Preis</Text>
-              <Text style={styles.searchPriceValue}>{formatEuro(fareBreakdown.total)}</Text>
-            </View>
-          )}
         </View>
+
+        <Modal visible={noDriverModal} transparent animationType="fade" onRequestClose={() => setNoDriverModal(false)}>
+          <Pressable style={styles.noDriverOverlay} onPress={() => setNoDriverModal(false)}>
+            <Pressable style={styles.noDriverCard} onPress={() => {}}>
+              <Text style={styles.noDriverTitle}>Kein Fahrer gefunden</Text>
+              <Text style={styles.noDriverBody}>
+                Innerhalb einer Minute hat sich niemand gemeldet. Du kannst die Suche erneut starten oder die Fahrt stornieren.
+              </Text>
+              <View style={styles.noDriverBtnRow}>
+                <Pressable
+                  style={[styles.noDriverBtnSecondary, { borderColor: "#D4D4D4" }]}
+                  onPress={() => {
+                    setNoDriverModal(false);
+                    void handleCancel();
+                  }}
+                >
+                  <Text style={styles.noDriverBtnSecondaryText}>Fahrt stornieren</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.noDriverBtnPrimary}
+                  onPress={() => {
+                    setNoDriverModal(false);
+                    setSearchWave((w) => w + 1);
+                    void refreshRequests();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                >
+                  <Text style={styles.noDriverBtnPrimaryText}>Erneut suchen</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     );
   }
@@ -645,48 +752,174 @@ const styles = StyleSheet.create({
   },
   logoText: { fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#111", letterSpacing: -0.5 },
 
-  /* Such-Phase: dunkle Karte unten (Uber-Stil) */
+  /* Such-Phase: helles Panel, schwarzer Rahmen, schwarze Schrift */
   searchBottomCard: {
     position: "absolute",
     bottom: 0, left: 0, right: 0,
-    backgroundColor: "#1C1C1E",
-    paddingTop: rs(20),
-    paddingHorizontal: rs(18),
-    borderTopLeftRadius: rs(20),
-    borderTopRightRadius: rs(20),
+    backgroundColor: "#FFFFFF",
+    paddingTop: rs(16),
+    paddingHorizontal: rs(14),
+    borderTopLeftRadius: rs(24),
+    borderTopRightRadius: rs(24),
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: "#1A1A1A",
   },
-  searchAnimRow: { flexDirection: "row", alignItems: "center", gap: rs(14), marginBottom: rs(14) },
-  ringContainerSmall: {
-    width: rs(44), height: rs(44),
-    alignItems: "center", justifyContent: "center",
+  searchCardInnerBorder: {
+    borderWidth: 2.5,
+    borderColor: "#0A0A0A",
+    borderRadius: rs(18),
+    paddingHorizontal: rs(16),
+    paddingTop: rs(18),
+    paddingBottom: rs(14),
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: rs(8),
+    elevation: 6,
   },
-  searchRingSmall: {
+  searchAnimRow: { flexDirection: "row", alignItems: "center", gap: rs(12), marginBottom: rs(14) },
+  searchAnimTextCol: { flex: 1, minWidth: 0 },
+  searchCancelBtn: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: rs(8),
+    paddingHorizontal: rs(10),
+    maxWidth: rs(112),
+  },
+  searchCancelBtnText: {
+    fontSize: rf(14),
+    fontFamily: "Inter_600SemiBold",
+    color: "#DC2626",
+    textAlign: "center",
+    lineHeight: rf(18),
+  },
+  searchLoaderWrap: {
+    width: rs(56),
+    height: rs(56),
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: SEARCH_LOADER_RED,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: rs(10),
+    elevation: 8,
+  },
+  netflixRing: {
+    width: rs(50),
+    height: rs(50),
+    borderRadius: rs(25),
+    borderWidth: SEARCH_RING_BORDER,
+    borderColor: "transparent",
+    borderTopColor: SEARCH_LOADER_RED,
+    borderRightColor: SEARCH_LOADER_RED,
+  },
+  searchLoaderIconCenter: {
     position: "absolute",
-    width: rs(44), height: rs(44),
-    borderRadius: rs(22),
-    borderWidth: 2, borderColor: "#DC2626",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  ringCenterSmall: {
-    width: rs(36), height: rs(36), borderRadius: rs(18),
-    backgroundColor: "#2C1010",
-    alignItems: "center", justifyContent: "center",
-  },
-  searchCardTitle: { fontSize: rf(15), fontFamily: "Inter_700Bold", color: "#fff", marginBottom: rs(2) },
-  searchCardSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
-  searchCardDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#374151", marginBottom: rs(12) },
+  searchCardTitle: { fontSize: rf(17), fontFamily: "Inter_700Bold", color: "#111111", marginBottom: rs(3) },
+  searchCardSub: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#525252" },
+  searchCardDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#D4D4D4", marginBottom: rs(12) },
 
-  searchRouteRow: { flexDirection: "row", alignItems: "center", gap: rs(12), paddingVertical: rs(7) },
-  searchRouteDot: { width: rs(10), height: rs(10), borderRadius: rs(5), flexShrink: 0 },
-  searchRouteLine: { width: 1, height: rs(12), marginLeft: rs(4), backgroundColor: "#374151" },
-  searchRouteLabel: { fontSize: rf(10), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginBottom: 1 },
-  searchRouteAddr: { fontSize: rf(13), fontFamily: "Inter_500Medium", color: "#fff" },
-  searchPriceRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#374151",
-    marginTop: rs(8), paddingTop: rs(12), paddingBottom: rs(4),
+  searchRouteRow: { flexDirection: "row", alignItems: "center", gap: rs(12), paddingVertical: rs(8) },
+  searchRouteDot: { width: rs(11), height: rs(11), borderRadius: rs(6), flexShrink: 0 },
+  searchRouteLine: { width: 1, height: rs(14), marginLeft: rs(4), backgroundColor: "#D4D4D4" },
+  searchRouteLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium", color: "#525252", marginBottom: 2 },
+  searchRouteAddr: { fontSize: rf(14), fontFamily: "Inter_500Medium", color: "#111111" },
+  searchDistanceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: rs(8),
+    marginTop: rs(2),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#D4D4D4",
   },
-  searchPriceLabel: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
-  searchPriceValue: { fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#fff" },
+  searchDistanceLabel: { fontSize: rf(13), fontFamily: "Inter_500Medium", color: "#525252" },
+  searchDistanceValue: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", color: "#111111" },
+  searchPriceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#D4D4D4",
+    marginTop: rs(6),
+    paddingTop: rs(12),
+    paddingBottom: rs(2),
+  },
+  searchPriceLabel: { fontSize: rf(14), fontFamily: "Inter_500Medium", color: "#374151" },
+  searchPricePill: {
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(8),
+    borderRadius: rs(11),
+    backgroundColor: "rgba(220, 38, 38, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(220, 38, 38, 0.28)",
+  },
+  searchPriceValue: {
+    fontSize: rf(21),
+    fontFamily: "Inter_700Bold",
+    color: "#111111",
+    letterSpacing: -0.3,
+  },
+
+  noDriverOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: rs(22),
+  },
+  noDriverCard: {
+    width: "100%",
+    maxWidth: rs(360),
+    backgroundColor: "#FFFFFF",
+    borderRadius: rs(18),
+    borderWidth: 2,
+    borderColor: "#111111",
+    paddingHorizontal: rs(20),
+    paddingVertical: rs(22),
+    gap: rs(14),
+  },
+  noDriverTitle: {
+    fontSize: rf(19),
+    fontFamily: "Inter_700Bold",
+    color: "#111111",
+    textAlign: "center",
+  },
+  noDriverBody: {
+    fontSize: rf(15),
+    fontFamily: "Inter_400Regular",
+    color: "#404040",
+    textAlign: "center",
+    lineHeight: rf(22),
+  },
+  noDriverBtnRow: { flexDirection: "row", gap: rs(10), marginTop: rs(4) },
+  noDriverBtnPrimary: {
+    flex: 1,
+    backgroundColor: "#DC2626",
+    paddingVertical: rs(14),
+    borderRadius: rs(12),
+    alignItems: "center",
+  },
+  noDriverBtnPrimaryText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
+  noDriverBtnSecondary: {
+    flex: 1,
+    borderWidth: 1.5,
+    paddingVertical: rs(14),
+    borderRadius: rs(12),
+    alignItems: "center",
+    backgroundColor: "#FAFAFA",
+  },
+  noDriverBtnSecondaryText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#111111" },
 
   completedBg: { flex: 1, backgroundColor: "#F3F4F6" },
   completedScroll: { paddingHorizontal: rs(20), paddingBottom: rs(40), gap: 0 },

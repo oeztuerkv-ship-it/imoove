@@ -480,15 +480,16 @@ export default function DriverNavigationScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
               <MaterialCommunityIcons
                 name={
-                  (params.paymentMethod ?? "").toLowerCase().includes("karte") || (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte") ? "credit-card-outline"
+                  (params.paymentMethod ?? "").startsWith("Krankenkasse") ? "ticket-percent-outline"
+                  : (params.paymentMethod ?? "").toLowerCase().includes("karte") || (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte") ? "credit-card-outline"
                   : (params.paymentMethod ?? "").toLowerCase().includes("paypal") ? "cellphone"
                   : "currency-eur"
                 }
                 size={15}
-                color="#94A3B8"
+                color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
               />
-              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#94A3B8" }}>
-                {params.paymentMethod || "Bar"}
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#94A3B8" }} numberOfLines={1}>
+                {(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "Krankenkasse" : (params.paymentMethod || "Bar")}
               </Text>
             </View>
           </View>

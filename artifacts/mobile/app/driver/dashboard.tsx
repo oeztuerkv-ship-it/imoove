@@ -30,6 +30,16 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 
+/** Krankenkassen-/Eigenanteil-Fahrten (vom Kunden gebucht). */
+function isKrankenkasseRide(paymentMethod: string) {
+  return paymentMethod.startsWith("Krankenkasse");
+}
+
+function parseEuroDriverInput(text: string): number | null {
+  const n = parseFloat(text.replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
 const MOCK_RIDES = [
   { id: "F-001", date: "01.04.2026", time: "08:14", from: "Bahnhof Esslingen", to: "Plochingen", km: 6.2, duration: 14, amount: 19.90, payment: "Bar" },
   { id: "F-002", date: "01.04.2026", time: "09:42", from: "Marktplatz", to: "Flughafen Stuttgart", km: 28.4, duration: 31, amount: 78.50, payment: "Kreditkarte" },
@@ -315,7 +325,9 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
         <View style={styles.schedStatDivider} />
         <View style={styles.schedStatItem}>
           <Feather name="credit-card" size={12} color="#6B7280" />
-          <Text style={styles.schedStatText}>{req.paymentMethod}</Text>
+          <Text style={styles.schedStatText}>
+            {isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod}
+          </Text>
         </View>
         <View style={styles.schedStatDivider} />
         <View style={styles.schedStatItem}>
@@ -745,6 +757,11 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
   const [phase, setPhase] = useState<ActivePhase>("pickup");
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [finalPriceInput, setFinalPriceInput] = useState(req.estimatedFare.toFixed(2).replace(".", ","));
+  const isKK = isKrankenkasseRide(req.paymentMethod);
+  const [kkEigenOpen, setKkEigenOpen] = useState(false);
+  const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
+    req.estimatedFare.toFixed(2).replace(".", ","),
+  );
   const [now, setNow] = useState(() => Date.now());
   const [driverCoords, setDriverCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [distanceToCustomer, setDistanceToCustomer] = useState<number | null>(null);
@@ -756,6 +773,11 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
     const timer = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    setDriverEigenanteil(req.estimatedFare.toFixed(2).replace(".", ","));
+    setKkEigenOpen(false);
+  }, [req.id, req.estimatedFare]);
 
   // WebSocket — connect to ride room and receive customer live GPS
   useEffect(() => {
@@ -922,7 +944,13 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
     : { lat: req.toLat ?? 48.69, lon: req.toLon ?? 9.2216, displayName: req.toFull };
 
   const handleFinishTap = () => {
-    setFinalPriceInput(req.estimatedFare.toFixed(2).replace(".", ","));
+    if (isKK) {
+      const parsed = parseEuroDriverInput(driverEigenanteil);
+      const euro = parsed ?? req.estimatedFare;
+      setFinalPriceInput(euro.toFixed(2).replace(".", ","));
+    } else {
+      setFinalPriceInput(req.estimatedFare.toFixed(2).replace(".", ","));
+    }
     setShowPriceModal(true);
   };
 
@@ -982,7 +1010,9 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[activeStyles.customerName, { color: colors.foreground }]}>{req.customerName}</Text>
-            <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]}>{req.vehicle} · {req.paymentMethod}</Text>
+            <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+              {req.vehicle} · {isKK ? "Krankenkasse" : req.paymentMethod}
+            </Text>
           </View>
           <View style={activeStyles.fareBox}>
             <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
@@ -1026,23 +1056,117 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
             <Text style={[activeStyles.statLabel, { color: colors.mutedForeground }]}>Strecke</Text>
           </View>
           <View style={[activeStyles.statDiv, { backgroundColor: colors.border }]} />
-          <View style={activeStyles.statItem}>
-            {req.paymentMethod.startsWith("Krankenkasse") ? (
+          {isKK ? (
+            <Pressable
+              style={({ pressed }) => [
+                activeStyles.statItem,
+                kkEigenOpen && { backgroundColor: colors.muted, borderRadius: 12 },
+                pressed && { opacity: 0.92 },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setKkEigenOpen((o) => !o);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Krankenkasse, Eigenanteil bearbeiten"
+            >
               <MaterialCommunityIcons name="ticket-percent-outline" size={14} color="#2563EB" />
-            ) : (
+              <Text style={[activeStyles.statValue, { color: "#2563EB" }]}>
+                {`${formatEuro(parseEuroDriverInput(driverEigenanteil) ?? req.estimatedFare)} kassieren`}
+              </Text>
+              <Text style={[activeStyles.statLabel, { color: "#2563EB" }]}>Krankenkasse</Text>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: "#3B82F6", marginTop: 2 }}>
+                {kkEigenOpen ? "Zum Schließen antippen" : "Antippen · Eigenanteil"}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={activeStyles.statItem}>
               <Feather name="credit-card" size={14} color={colors.mutedForeground} />
-            )}
-            <Text style={[activeStyles.statValue, { color: req.paymentMethod.startsWith("Krankenkasse") ? "#2563EB" : colors.foreground }]}>
-              {req.paymentMethod.startsWith("Krankenkasse") ? `${formatEuro(req.estimatedFare)} kassieren` : req.paymentMethod}
-            </Text>
-            <Text style={[activeStyles.statLabel, { color: req.paymentMethod.startsWith("Krankenkasse") ? "#2563EB" : colors.mutedForeground }]}>
-              {req.paymentMethod.startsWith("Krankenkasse") ? "Krankenkasse" : "Zahlung"}
-            </Text>
-          </View>
+              <Text style={[activeStyles.statValue, { color: colors.foreground }]}>{req.paymentMethod}</Text>
+              <Text style={[activeStyles.statLabel, { color: colors.mutedForeground }]}>Zahlungsart</Text>
+            </View>
+          )}
         </View>
 
+        {isKK && kkEigenOpen && (
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 12,
+              gap: 10,
+            }}
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>Eigenanteil</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                backgroundColor: colors.muted,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginRight: 6 }}>€</Text>
+              <TextInput
+                style={{
+                  flex: 1,
+                  fontSize: 18,
+                  fontFamily: "Inter_700Bold",
+                  color: colors.foreground,
+                  paddingVertical: 10,
+                }}
+                value={driverEigenanteil}
+                onChangeText={setDriverEigenanteil}
+                keyboardType="decimal-pad"
+                placeholder="0,00"
+                placeholderTextColor={colors.mutedForeground}
+                selectTextOnFocus
+              />
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setDriverEigenanteil("0,00");
+                }}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  backgroundColor: colors.muted,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>Befreit (0 €)</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setDriverEigenanteil(req.estimatedFare.toFixed(2).replace(".", ","));
+                }}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  backgroundColor: colors.muted,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>Wie gebucht</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
         {/* Krankenkasse hint */}
-        {req.paymentMethod.startsWith("Krankenkasse") && (
+        {isKK && (
           <View style={{ backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#93C5FD", padding: 12, flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
             <MaterialCommunityIcons name="ticket-percent-outline" size={18} color="#2563EB" style={{ marginTop: 1 }} />
             <View style={{ flex: 1 }}>
@@ -1050,7 +1174,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
               <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: "#2563EB", marginTop: 2, lineHeight: 17 }}>
                 {req.paymentMethod.includes("Befreit")
                   ? "Kunde ist befreit — nichts kassieren (0,00 €)."
-                  : `Nur ${formatEuro(req.estimatedFare)} kassieren. Transportschein bereithalten lassen.`}
+                  : `Nur den Eigenanteil bei Krankenkasse kassieren. Unterlagen / Nachweis der Krankenkasse bereithalten.`}
               </Text>
             </View>
           </View>
