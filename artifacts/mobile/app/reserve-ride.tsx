@@ -27,7 +27,6 @@ import {
 } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
-import { type GeoLocation, searchLocation } from "@/utils/routing";
 
 const GROUP_RADIUS = 10;
 const WHEEL_ITEM = 44;
@@ -51,9 +50,27 @@ function buildScheduledDate(dayOffset: number, hour: number, minuteIndex: number
   return d;
 }
 
-function shortPlace(displayName: string) {
-  const p = displayName.split(",");
-  return (p[0] ?? displayName).trim() || "—";
+function AddressRoutePanel({
+  originDisplay: originLabel,
+  destinationDisplay,
+  colors,
+}: {
+  originDisplay: string;
+  destinationDisplay: string;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={[styles.addressRoutePanel, { backgroundColor: colors.background }]}>
+      <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground }]}>Abholung</Text>
+      <Text style={[styles.addressRouteValue, { color: colors.foreground }]} numberOfLines={6}>
+        {originLabel}
+      </Text>
+      <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Ziel</Text>
+      <Text style={[styles.addressRouteValue, { color: colors.foreground }]} numberOfLines={6}>
+        {destinationDisplay}
+      </Text>
+    </View>
+  );
 }
 
 function TimeWheel({
@@ -170,21 +187,7 @@ export default function ReserveRideScreen() {
     resetRide,
   } = useRide();
 
-  const [step, setStep] = useState<Step>("where");
-
-  /** Manuell gewählte Abholadresse (kein automatischer Standort). */
-  const [pickupResolved, setPickupResolved] = useState<GeoLocation | null>(null);
-  const [pickupQuery, setPickupQuery] = useState("");
-  const [pickupResults, setPickupResults] = useState<GeoLocation[]>([]);
-  const [pickupLoading, setPickupLoading] = useState(false);
-  const pickupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const [destQuery, setDestQuery] = useState(() =>
-    destination ? shortPlace(destination.displayName) : "",
-  );
-  const [destResults, setDestResults] = useState<GeoLocation[]>([]);
-  const [destLoading, setDestLoading] = useState(false);
-  const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [step, setStep] = useState<Step>(() => (destination ? "extras" : "where"));
 
   const [dayOffset, setDayOffset] = useState(0);
   const [hour, setHour] = useState(0);
@@ -198,79 +201,6 @@ export default function ReserveRideScreen() {
   const [noteModal, setNoteModal] = useState(false);
   const [luggageModal, setLuggageModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
-
-  /** True, wenn der Screen mit bereits gesetztem Ziel (z. B. von der Karte / Fahrt-reservieren) geöffnet wurde → keine doppelte Adresseingabe in „Extras“. */
-  const openedWithDestination = useRef(!!destination);
-  const didSeedAddresses = useRef(false);
-  const [addressFieldsLocked, setAddressFieldsLocked] = useState(false);
-
-  /* Abholung: ohne GPS-Bias – Nutzer gibt Adresse selbst ein. */
-  useEffect(() => {
-    if (pickupQuery.length < 2) {
-      setPickupResults([]);
-      return;
-    }
-    if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
-    pickupDebounceRef.current = setTimeout(async () => {
-      setPickupLoading(true);
-      try {
-        const locs = await searchLocation(
-          pickupQuery,
-          destination ? { lat: destination.lat, lon: destination.lon } : undefined,
-        );
-        setPickupResults(locs);
-      } catch {
-        setPickupResults([]);
-      } finally {
-        setPickupLoading(false);
-      }
-    }, 320);
-    return () => {
-      if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
-    };
-  }, [pickupQuery, destination]);
-
-  /* Ziel: optional nur regionaler Bias nach gewählter Abholung, nicht Standort vom Gerät. */
-  useEffect(() => {
-    if (destQuery.length < 2) {
-      setDestResults([]);
-      return;
-    }
-    if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
-    destDebounceRef.current = setTimeout(async () => {
-      setDestLoading(true);
-      try {
-        const locs = await searchLocation(
-          destQuery,
-          pickupResolved ? { lat: pickupResolved.lat, lon: pickupResolved.lon } : undefined,
-        );
-        setDestResults(locs);
-      } catch {
-        setDestResults([]);
-      } finally {
-        setDestLoading(false);
-      }
-    }, 320);
-    return () => {
-      if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
-    };
-  }, [destQuery, pickupResolved]);
-
-  useEffect(() => {
-    if (pickupResolved) setOrigin(pickupResolved);
-  }, [pickupResolved, setOrigin]);
-
-  /** Route war schon bekannt beim Öffnen → Adressen ins Formular übernehmen und Schritt „Wo“ überspringen. */
-  useEffect(() => {
-    if (didSeedAddresses.current) return;
-    if (!openedWithDestination.current || !destination) return;
-    didSeedAddresses.current = true;
-    setPickupResolved(origin);
-    setPickupQuery(shortPlace(origin.displayName));
-    setDestQuery(shortPlace(destination.displayName));
-    setStep("extras");
-    setAddressFieldsLocked(true);
-  }, [destination, origin]);
 
   useEffect(() => {
     if (step === "review" && destination && selectedVehicle) {
@@ -321,14 +251,11 @@ export default function ReserveRideScreen() {
     setWheelKey((k) => k + 1);
   }, [setScheduledTime]);
 
-  const canProceedWhere = pickupResolved != null && destination != null;
+  const canProceedWhere = destination != null;
   const wheelchairNeedsTransportschein =
     selectedVehicle === "wheelchair" && transportschein === null;
   const canProceedExtras =
-    pickupResolved != null &&
-    selectedVehicle != null &&
-    destination != null &&
-    !wheelchairNeedsTransportschein;
+    selectedVehicle != null && destination != null && !wheelchairNeedsTransportschein;
   const canProceedWhen = true;
 
   const goNext = useCallback(async () => {
@@ -360,7 +287,7 @@ export default function ReserveRideScreen() {
   ]);
 
   const handleBook = useCallback(() => {
-    if (!pickupResolved || !destination || !selectedVehicle) {
+    if (!destination || !selectedVehicle) {
       Alert.alert("Unvollständig", "Bitte Abholung, Ziel und Fahrzeug prüfen.");
       return;
     }
@@ -371,7 +298,7 @@ export default function ReserveRideScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     commitSchedule();
     router.push("/ride");
-  }, [pickupResolved, destination, selectedVehicle, isLoadingRoute, fareBreakdown, commitSchedule]);
+  }, [destination, selectedVehicle, isLoadingRoute, fareBreakdown, commitSchedule]);
 
   const arrowDisabled =
     step === "where"
@@ -395,41 +322,12 @@ export default function ReserveRideScreen() {
     step === "review"
       ? isLoadingRoute
         ? "Preis wird berechnet…"
-        : "Reservieren"
+        : "Planung bestätigen"
       : "Weiter";
 
   const reviewCtaGreen = step === "review" && !footerPrimaryDisabled && !isLoadingRoute;
 
   const stepIndex = step === "where" ? 1 : step === "extras" ? 2 : step === "when" ? 3 : 4;
-
-  const pickDestination = (loc: GeoLocation) => {
-    setDestination(loc);
-    setDestQuery(shortPlace(loc.displayName));
-    setDestResults([]);
-    Haptics.selectionAsync();
-  };
-
-  const pickPickup = (loc: GeoLocation) => {
-    setPickupResolved(loc);
-    setPickupQuery(shortPlace(loc.displayName));
-    setPickupResults([]);
-    Haptics.selectionAsync();
-  };
-
-  const clearDestination = useCallback(() => {
-    setDestination(null);
-    setDestQuery("");
-    setDestResults([]);
-    Haptics.selectionAsync();
-  }, [setDestination]);
-
-  const clearPickup = useCallback(() => {
-    setPickupResolved(null);
-    setPickupQuery("");
-    setPickupResults([]);
-    setOrigin(DEFAULT_ORIGIN);
-    Haptics.selectionAsync();
-  }, [setOrigin]);
 
   const handleCancelReservation = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -437,11 +335,6 @@ export default function ReserveRideScreen() {
     setOrigin(DEFAULT_ORIGIN);
     setIsExempted(false);
     setStep("where");
-    setPickupResolved(null);
-    setPickupQuery("");
-    setPickupResults([]);
-    setDestQuery("");
-    setDestResults([]);
     setDriverNote("");
     setTransportschein(null);
     setLuggage("none");
@@ -449,9 +342,6 @@ export default function ReserveRideScreen() {
     setHour(0);
     setMinuteIndex(0);
     setWheelKey((k) => k + 1);
-    setAddressFieldsLocked(false);
-    didSeedAddresses.current = false;
-    openedWithDestination.current = false;
     router.back();
   }, [resetRide, setOrigin, setIsExempted]);
 
@@ -464,7 +354,7 @@ export default function ReserveRideScreen() {
         <View style={styles.headerCenter}>
           <View style={styles.titleFrame}>
             <Text style={[styles.headerTitle, { color: colors.primary }]} numberOfLines={2}>
-              FAHRT reservieren
+              Abholung planen
             </Text>
           </View>
           <Text style={[styles.headerStep, { color: colors.mutedForeground }]}>
@@ -490,283 +380,21 @@ export default function ReserveRideScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {step === "where" && (
-          <>
-            <Text style={[styles.sectionLabel, { marginTop: 16, color: colors.foreground }]}>
-              Abholadresse
-            </Text>
-            <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-              Bitte Adresse eingeben oder aus der Liste wählen – nicht automatisch vom Standort.
-            </Text>
-            <View
-              style={[
-                styles.destEditCard,
-                { borderColor: colors.primary, backgroundColor: colors.background },
-              ]}
-            >
-              <View style={styles.destEditInner}>
-                <Feather name="navigation" size={18} color={colors.primary} style={{ marginRight: 4 }} />
-                <TextInput
-                  style={[styles.destEditInput, { color: colors.foreground }]}
-                  value={pickupQuery}
-                  onChangeText={(t) => {
-                    setPickupQuery(t);
-                    if (pickupResolved) {
-                      const prev = shortPlace(pickupResolved.displayName);
-                      if (t !== prev) {
-                        setPickupResolved(null);
-                        setOrigin(DEFAULT_ORIGIN);
-                      }
-                    }
-                  }}
-                  placeholder="Abholung: Straße, PLZ Ort …"
-                  placeholderTextColor={colors.mutedForeground}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                />
-                {(pickupQuery.length > 0 || pickupResolved != null) && (
-                  <Pressable
-                    hitSlop={10}
-                    onPress={clearPickup}
-                    style={styles.destClearBtn}
-                    accessibilityLabel="Abholadresse löschen"
-                  >
-                    <Feather name="x" size={17} color={colors.mutedForeground} />
-                  </Pressable>
-                )}
-                {pickupLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-              </View>
-            </View>
-            {pickupResults.length > 0 && (
-              <View style={[styles.resultsBox, { borderColor: colors.border }]}>
-                {pickupResults.map((loc, i) => (
-                  <Pressable
-                    key={`pu-${loc.lat}-${loc.lon}-${i}`}
-                    style={[
-                      styles.resultRow,
-                      { backgroundColor: colors.background },
-                      i < pickupResults.length - 1 && {
-                        borderBottomWidth: StyleSheet.hairlineWidth,
-                        borderBottomColor: colors.border,
-                      },
-                    ]}
-                    onPress={() => pickPickup(loc)}
-                  >
-                    <Feather name="map-pin" size={16} color={colors.primary} />
-                    <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
-                      {loc.displayName}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+        <AddressRoutePanel
+          originDisplay={origin.displayName}
+          destinationDisplay={destination?.displayName ?? "—"}
+          colors={colors}
+        />
 
-            <Text style={[styles.sectionLabel, { marginTop: 22, color: colors.foreground }]}>
-              Zieladresse
-            </Text>
-            <View
-              style={[
-                styles.destEditCard,
-                { borderColor: colors.primary, backgroundColor: colors.background },
-              ]}
-            >
-              <View style={styles.destEditInner}>
-                <Feather name="search" size={18} color={colors.primary} style={{ marginRight: 4 }} />
-                <TextInput
-                  style={[styles.destEditInput, { color: colors.foreground }]}
-                  value={destQuery}
-                  onChangeText={(t) => {
-                    setDestQuery(t);
-                    if (destination && t !== shortPlace(destination.displayName)) {
-                      setDestination(null);
-                    }
-                  }}
-                  placeholder="Wohin soll&apos;s gehen? …"
-                  placeholderTextColor={colors.mutedForeground}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                />
-                {(destQuery.length > 0 || destination != null) && (
-                  <Pressable
-                    hitSlop={10}
-                    onPress={clearDestination}
-                    style={styles.destClearBtn}
-                    accessibilityLabel="Zieladresse löschen"
-                  >
-                    <Feather name="x" size={17} color={colors.mutedForeground} />
-                  </Pressable>
-                )}
-                {destLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-              </View>
-            </View>
-            {destResults.length > 0 && (
-              <View style={[styles.resultsBox, { borderColor: colors.border }]}>
-                {destResults.map((loc, i) => (
-                  <Pressable
-                    key={`de-${loc.lat}-${loc.lon}-${i}`}
-                    style={[
-                      styles.resultRow,
-                      { backgroundColor: colors.background },
-                      i < destResults.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-                    ]}
-                    onPress={() => pickDestination(loc)}
-                  >
-                    <Feather name="map-pin" size={16} color={colors.primary} />
-                    <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
-                      {loc.displayName}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </>
-        )}
+        {step === "where" ? (
+          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+            Abholung und Ziel sind fest gesetzt. Zum Ändern „Abbrechen“ und Route vorher neu wählen.
+          </Text>
+        ) : null}
 
         {step === "extras" && (
           <>
-            {addressFieldsLocked ? (
-              <View
-                style={[
-                  styles.lockedRouteCard,
-                  { borderColor: colors.border, backgroundColor: colors.background },
-                ]}
-              >
-                <Text style={[styles.lockedRouteLabel, { color: colors.mutedForeground }]}>Abholung</Text>
-                <Text style={[styles.lockedRouteValue, { color: colors.foreground }]} numberOfLines={4}>
-                  {origin.displayName}
-                </Text>
-                <Text style={[styles.lockedRouteLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Ziel</Text>
-                <Text style={[styles.lockedRouteValue, { color: colors.foreground }]} numberOfLines={4}>
-                  {destination?.displayName ?? "—"}
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Abholadresse</Text>
-                <View
-                  style={[
-                    styles.destEditCard,
-                    { borderColor: colors.primary, backgroundColor: colors.background },
-                  ]}
-                >
-                  <View style={styles.destEditInner}>
-                    <Feather name="navigation" size={18} color={colors.primary} style={{ marginRight: 4 }} />
-                    <TextInput
-                      style={[styles.destEditInput, { color: colors.foreground }]}
-                      value={pickupQuery}
-                      onChangeText={(t) => {
-                        setPickupQuery(t);
-                        if (pickupResolved) {
-                          const prev = shortPlace(pickupResolved.displayName);
-                          if (t !== prev) {
-                            setPickupResolved(null);
-                            setOrigin(DEFAULT_ORIGIN);
-                          }
-                        }
-                      }}
-                      placeholder="Abholung …"
-                      placeholderTextColor={colors.mutedForeground}
-                      returnKeyType="search"
-                      autoCorrect={false}
-                    />
-                    {(pickupQuery.length > 0 || pickupResolved != null) && (
-                      <Pressable hitSlop={10} onPress={clearPickup} style={styles.destClearBtn} accessibilityLabel="Abholadresse löschen">
-                        <Feather name="x" size={17} color={colors.mutedForeground} />
-                      </Pressable>
-                    )}
-                    {pickupLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-                  </View>
-                </View>
-                {pickupResults.length > 0 && (
-                  <View style={[styles.resultsBox, { borderColor: colors.border }]}>
-                    {pickupResults.map((loc, i) => (
-                      <Pressable
-                        key={`ex-pu-${loc.lat}-${loc.lon}-${i}`}
-                        style={[
-                          styles.resultRow,
-                          { backgroundColor: colors.background },
-                          i < pickupResults.length - 1 && {
-                            borderBottomWidth: StyleSheet.hairlineWidth,
-                            borderBottomColor: colors.border,
-                          },
-                        ]}
-                        onPress={() => pickPickup(loc)}
-                      >
-                        <Feather name="map-pin" size={16} color={colors.primary} />
-                        <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
-                          {loc.displayName}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-
-                <Text style={[styles.sectionLabel, { marginTop: 18, color: colors.foreground }]}>
-                  Wohin soll&apos;s gehen?
-                </Text>
-                <View
-                  style={[
-                    styles.destEditCard,
-                    { borderColor: colors.primary, backgroundColor: colors.background },
-                  ]}
-                >
-                  <View style={styles.destEditInner}>
-                    <Feather name="search" size={18} color={colors.primary} style={{ marginRight: 4 }} />
-                    <TextInput
-                      style={[styles.destEditInput, { color: colors.foreground }]}
-                      value={destQuery}
-                      onChangeText={(t) => {
-                        setDestQuery(t);
-                        if (destination) {
-                          const prev = shortPlace(destination.displayName);
-                          if (t !== prev) setDestination(null);
-                        }
-                      }}
-                      placeholder="Ziel eingeben …"
-                      placeholderTextColor={colors.mutedForeground}
-                      returnKeyType="search"
-                      autoCorrect={false}
-                    />
-                    {(destQuery.length > 0 || destination != null) && (
-                      <Pressable
-                        hitSlop={10}
-                        onPress={clearDestination}
-                        style={styles.destClearBtn}
-                        accessibilityLabel="Zieladresse löschen"
-                      >
-                        <Feather name="x" size={17} color={colors.mutedForeground} />
-                      </Pressable>
-                    )}
-                    {destLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-                  </View>
-                </View>
-                {destResults.length > 0 && (
-                  <View style={[styles.resultsBox, { borderColor: colors.border }]}>
-                    {destResults.map((loc, i) => (
-                      <Pressable
-                        key={`ex-de-${loc.lat}-${loc.lon}-${i}`}
-                        style={[
-                          styles.resultRow,
-                          { backgroundColor: colors.background },
-                          i < destResults.length - 1 && {
-                            borderBottomWidth: StyleSheet.hairlineWidth,
-                            borderBottomColor: colors.border,
-                          },
-                        ]}
-                        onPress={() => pickDestination(loc)}
-                      >
-                        <Feather name="map-pin" size={16} color={colors.primary} />
-                        <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
-                          {loc.displayName}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
-
-            <Text style={[styles.sectionLabel, { marginTop: 18, color: colors.foreground }]}>
+            <Text style={[styles.sectionLabel, styles.sectionLabelAfterRoute, { color: colors.foreground }]}>
               Notiz & Fahrzeug
             </Text>
             <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.background }]}>
@@ -920,7 +548,9 @@ export default function ReserveRideScreen() {
 
         {step === "when" && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Abholzeit</Text>
+            <Text style={[styles.sectionLabel, styles.sectionLabelAfterRoute, { color: colors.foreground }]}>
+              Abholzeit
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -994,29 +624,10 @@ export default function ReserveRideScreen() {
 
         {step === "review" && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Übersicht & Preis</Text>
+            <Text style={[styles.sectionLabel, styles.sectionLabelAfterRoute, { color: colors.foreground }]}>
+              Übersicht & Preis
+            </Text>
             <View style={[styles.infoGroup, { borderColor: colors.border, backgroundColor: colors.background }]}>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Von</Text>
-                <Text style={[styles.infoRowValue, { color: colors.foreground }]} numberOfLines={2}>
-                  {shortPlace(origin.displayName)}
-                </Text>
-              </View>
-              <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Nach</Text>
-                <Text style={[styles.infoRowValue, { color: colors.foreground }]} numberOfLines={2}>
-                  {destination ? shortPlace(destination.displayName) : "—"}
-                </Text>
-              </View>
-              <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Ziel</Text>
-                <Text style={[styles.infoRowValueMultiline, { color: colors.foreground }]} numberOfLines={4}>
-                  {destination?.displayName ?? "—"}
-                </Text>
-              </View>
-              <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />
               <View style={styles.infoRow}>
                 <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Abholzeit</Text>
                 <Text style={[styles.infoRowValue, { color: colors.foreground }]}>
@@ -1198,21 +809,22 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     maxWidth: "92%",
   },
-  lockedRouteCard: {
-    marginHorizontal: 16,
-    marginTop: 12,
+  addressRoutePanel: {
+    marginHorizontal: 20,
+    marginTop: 16,
     padding: 16,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#000000",
   },
-  lockedRouteLabel: {
+  addressRouteLabel: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.35,
     marginBottom: 4,
     textTransform: "uppercase",
   },
-  lockedRouteValue: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  addressRouteValue: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
   headerAbbrechen: { fontSize: 17, fontFamily: "Inter_400Regular" },
   headerTitle: {
     fontSize: 16,
@@ -1229,57 +841,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 18,
     paddingHorizontal: 20,
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  destEditCard: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: GROUP_RADIUS,
-    borderWidth: 1.5,
-    overflow: "hidden",
-  },
-  destEditInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  destEditInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: "Inter_400Regular",
-    paddingVertical: 4,
-    minHeight: 28,
-  },
-  destClearBtn: { padding: 6 },
-  resultsBox: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderRadius: GROUP_RADIUS,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-  resultRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
-  resultText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  pickedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  pickedBannerText: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
   sectionLabel: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
@@ -1289,8 +853,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 20,
   },
+  sectionLabelAfterRoute: {
+    marginTop: 18,
+  },
   scroll: { flex: 1 },
-  dayRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 8 },
+  dayRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 8 },
   dayChip: {
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -1340,7 +907,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   group: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     borderRadius: GROUP_RADIUS,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
@@ -1357,7 +924,7 @@ const styles = StyleSheet.create({
   rowRight: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6 },
   rowValue: { fontSize: 17, fontFamily: "Inter_400Regular", flex: 1, textAlign: "right" },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
-  vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 16, justifyContent: "space-between" },
+  vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 20, justifyContent: "space-between" },
   vehicleCard: {
     width: "48%",
     alignItems: "center",
@@ -1388,14 +955,14 @@ const styles = StyleSheet.create({
   transportscheinHint: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginTop: 4,
     marginBottom: 10,
   },
   transportscheinRow: {
     flexDirection: "row",
     gap: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     marginBottom: 4,
   },
   transportscheinChip: {
@@ -1415,7 +982,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   infoGroup: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginBottom: 16,
     borderRadius: GROUP_RADIUS,
     borderWidth: StyleSheet.hairlineWidth,
@@ -1438,7 +1005,7 @@ const styles = StyleSheet.create({
   priceEmphasis: { fontSize: 22, fontFamily: "Inter_700Bold" },
   infoSeparator: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
   errorText: { marginHorizontal: 20, marginTop: 8, fontSize: 14, fontFamily: "Inter_500Medium" },
-  footer: { paddingHorizontal: 16, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  footer: { paddingHorizontal: 20, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
   clearTimeBtn: { alignSelf: "center", paddingVertical: 8, marginBottom: 4 },
   clearTimeText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   btnPrimary: {
