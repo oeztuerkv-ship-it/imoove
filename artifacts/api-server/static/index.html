@@ -3,67 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Onroda - Die schnelle und zuverlässige Taxi-App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ONRODA | Premium Mobility & Krankenfahrten</title>
     <style>
-        .hero-gradient {
-            background: linear-gradient(90deg, #ffffff 50%, #f3f4f6 50%);
-        }
-        @media (max-width: 1024px) {
-            .hero-gradient { background: #ffffff; }
-        }
+        :root { --gold: #ffcc00; --black: #000000; --dark-grey: #121212; --light-grey: #1e1e1e; --white: #ffffff; }
+        body { margin: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--black); color: var(--white); line-height: 1.6; scroll-behavior: smooth; }
+        
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: rgba(0,0,0,0.9); position: fixed; width: 90%; z-index: 1000; border-bottom: 1px solid #333; backdrop-filter: blur(10px); }
+        .logo { font-size: 1.6rem; font-weight: 900; color: var(--gold); letter-spacing: 4px; text-transform: uppercase; }
+        .nav-links a { color: var(--white); text-decoration: none; margin-left: 25px; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; transition: 0.3s; }
+        .nav-links a:hover { color: var(--gold); }
+
+        .hero { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url('https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80') center/cover; padding: 0 20px; }
+        .hero h1 { font-size: clamp(3rem, 8vw, 5rem); margin-bottom: 10px; color: var(--gold); letter-spacing: 8px; font-weight: 900; }
+        .hero p { font-size: clamp(1rem, 3vw, 1.4rem); max-width: 800px; margin-bottom: 40px; color: #eee; font-weight: 300; }
+        
+        .cta-group { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        .cta-button { padding: 18px 40px; background-color: var(--gold); color: var(--black); text-decoration: none; font-weight: 800; border-radius: 4px; font-size: 1rem; transition: 0.3s; text-transform: uppercase; }
+        .cta-button.secondary { background-color: transparent; color: var(--gold); border: 2px solid var(--gold); }
+        .cta-button:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(255, 204, 0, 0.2); }
+
+        .section { padding: 100px 10%; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .card { background: var(--light-grey); padding: 50px 40px; border-radius: 4px; transition: 0.4s; position: relative; overflow: hidden; }
+        .card:hover { transform: translateY(-10px); background: #252525; }
+        .card::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--gold); }
+        .card h3 { color: var(--gold); font-size: 1.5rem; margin-bottom: 20px; text-transform: uppercase; }
+        .card p { color: #ccc; }
+
+        .digital-box { background: var(--gold); color: var(--black); padding: 60px 10%; text-align: center; margin-top: 50px; border-radius: 4px; }
+        .digital-box h2 { font-size: 2.5rem; font-weight: 900; margin-bottom: 20px; text-transform: uppercase; }
+        .digital-box p { font-size: 1.2rem; font-weight: 600; max-width: 900px; margin: 0 auto; }
+
+        footer { padding: 80px 10% 40px; background: #080808; border-top: 1px solid #222; margin-top: 100px; }
+        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 50px; }
+        .footer-col h4 { color: var(--gold); margin-bottom: 25px; text-transform: uppercase; letter-spacing: 2px; }
+        .footer-col p, .footer-col li { color: #888; font-size: 0.95rem; margin-bottom: 12px; list-style: none; padding: 0; }
+        
+        .bottom-bar { border-top: 1px solid #222; margin-top: 50px; padding-top: 30px; text-align: center; color: #444; font-size: 0.8rem; }
     </style>
 </head>
-<body class="font-sans text-gray-900 overflow-x-hidden">
+<body>
 
-    <nav class="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-50">
-        <div class="flex items-center space-x-8">
-            <div class="text-2xl font-bold tracking-tighter text-red-600">ONRODA</div>
-            <div class="hidden lg:flex space-x-6 text-sm font-medium text-gray-600">
-                <a href="#">Fahrgäste</a>
-                <a href="#">Fahrer*innen</a>
-                <a href="#">Geschäftsreisen</a>
-            </div>
-        </div>
-        <div class="flex items-center space-x-4">
-            <a href="#" class="hidden md:block text-sm font-medium">Sicherheit</a>
-            <button class="bg-red-600 text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-red-700 transition">App herunterladen</button>
+    <nav>
+        <div class="logo">ONRODA</div>
+        <div class="nav-links">
+            <a href="#services">Leistungen</a>
+            <a href="#partner">Partner werden</a>
+            <a href="/partners/">Login</a>
         </div>
     </nav>
 
-    <section class="hero-gradient min-h-[80vh] flex flex-col lg:flex-row items-center">
-        <div class="lg:w-1/2 px-6 lg:px-20 py-12 lg:py-24">
-            <h1 class="text-5xl lg:text-7xl font-bold leading-tight mb-8">
-                Die schnelle, sichere und zuverlässige Taxi-App
-            </h1>
-            <p class="text-xl text-gray-600 mb-10 max-w-lg">
-                Auf dem Weg zur Arbeit, zum Flughafen oder zur Verabredung? Dann buche jetzt mit Onroda – Berlins neuer Kraft auf der Straße.
-            </p>
-            <div class="flex flex-wrap gap-4">
-                <button class="bg-red-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-red-700 shadow-lg transition">App herunterladen</button>
-                <button class="border-2 border-gray-900 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition">Mehr erfahren</button>
+    <header class="hero">
+        <h1>ONRODA</h1>
+        <p>Wir digitalisieren die Mobilität in Leinfelden-Echterdingen. <br>Exklusiv. Sicher. Zukunftsweisend.</p>
+        <div class="cta-group">
+            <a href="/partners/" class="cta-button">Partner-Portal</a>
+            <a href="#partner" class="cta-button secondary">Jetzt Registrieren</a>
+        </div>
+    </header>
+
+    <section id="services" class="section">
+        <div class="grid">
+            <div class="card">
+                <h3>Krankenfahrten</h3>
+                <p>Zuverlässige und empathische Beförderung zu medizinischen Terminen. Wir kümmern uns um den sicheren Weg, damit Sie sich auf Ihre Gesundheit konzentrieren können.</p>
+            </div>
+            <div class="card">
+                <h3>Premium Taxi</h3>
+                <p>Höchster Standard für anspruchsvolle Fahrgäste. Pünktlichkeit und Diskretion sind das Fundament von Vedat Öztürks ONRODA-Service.</p>
+            </div>
+            <div class="card">
+                <h3>Business Travel</h3>
+                <p>Effiziente Mobilitätslösungen für Unternehmen. Digital abrechnen, stressfrei ankommen.</p>
             </div>
         </div>
 
-        <div class="lg:w-1/2 w-full h-[50vh] lg:h-[80vh] bg-cover bg-center" 
-             style="background-image: url('https://images.unsplash.com/photo-1556122071-e404be745493?auto=format&fit=crop&q=80&w=1000');">
-             </div>
-    </section>
-
-    <section class="px-6 lg:px-20 py-16 bg-gray-50">
-        <div class="grid md:grid-cols-2 gap-8">
-            <div class="bg-white p-10 rounded-3xl shadow-sm hover:shadow-md transition">
-                <h3 class="text-2xl font-bold mb-4">Fahrer*innen</h3>
-                <p class="text-gray-600 mb-6">Verdiene mehr und arbeite flexibler mit der Onroda App für Taxifahrer*innen.</p>
-                <a href="#" class="text-red-600 font-bold hover:underline">Jetzt registrieren →</a>
-            </div>
-            <div class="bg-white p-10 rounded-3xl shadow-sm hover:shadow-md transition">
-                <h3 class="text-2xl font-bold mb-4">Geschäftsreisen</h3>
-                <p class="text-gray-600 mb-6">Buche Business-Taxis für dein Team, ohne Papierkram und aufwändige Abrechnung.</p>
-                <a href="#" class="text-red-600 font-bold hover:underline">Mehr erfahren →</a>
-            </div>
+        <div class="digital-box">
+            <h2>Digitalisierung der Zukunft</h2>
+            <p>Onroda setzt auf modernste Algorithmen und voll-digitale Prozesse. Wir vernetzen Flottenpartner und Fahrgäste effizienter als je zuvor – für eine nachhaltige Mobilität von morgen.</p>
         </div>
     </section>
+
+    <section id="partner" class="section" style="text-align: center; background: var(--dark-grey);">
+        <h2 style="color: var(--gold); font-size: 2.5rem; text-transform: uppercase;">Flottenpartner werden</h2>
+        <p style="max-width: 700px; margin: 20px auto 40px; color: #aaa;">Steigern Sie Ihren Umsatz und werden Sie Teil der Onroda-Familie. Registrieren Sie Ihre Flotte in nur wenigen Minuten über unser Partner-Portal.</p>
+        <a href="/partners/" class="cta-button">Jetzt als Partner registrieren</a>
+    </section>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4>Impressum</h4>
+                <p><strong>Vedat Öztürk</strong><br>
+                Oberdorfstr. 53<br>
+                70771 Leinfelden-Echterdingen</p>
+            </div>
+            <div class="footer-col">
+                <h4>Kontakt</h4>
+                <p>E-Mail: info@onroda.de<br>
+                Region: Stuttgart / L.-Echterdingen</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quicklinks</h4>
+                <ul>
+                    <li>Datenschutz</li>
+                    <li>AGB</li>
+                    <li>Partner-Registrierung</li>
+                </ul>
+            </div>
+        </div>
+        <div class="bottom-bar">
+            © 2026 ONRODA. Vedat Öztürk. Alle Rechte vorbehalten.
+        </div>
+    </footer>
 
 </body>
 </html>
