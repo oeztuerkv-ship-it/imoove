@@ -249,7 +249,11 @@ export default function FahrtReservierenScreen() {
           <Text style={[styles.headerAbbrechen, { color: primary }]}>Abbrechen</Text>
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Fahrt reservieren</Text>
+          <View style={styles.titleFrame}>
+            <Text style={[styles.headerTitle, { color: primary }]} numberOfLines={2}>
+              Abholung planen
+            </Text>
+          </View>
           <Text style={[styles.headerStep, { color: colors.mutedForeground }]}>Schritt 1 von 4</Text>
         </View>
         <Pressable
@@ -461,10 +465,19 @@ const styles = StyleSheet.create({
   },
   headerSide: { width: 88, justifyContent: "center" },
   headerSideRight: { width: 88, alignItems: "flex-end", justifyContent: "center" },
-  headerCenter: { flex: 1, alignItems: "center" },
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
+  titleFrame: {
+    borderWidth: 2,
+    borderColor: "#000000",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: "center",
+    maxWidth: "92%",
+  },
   headerAbbrechen: { fontSize: 17, fontFamily: "Inter_400Regular" },
-  headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
-  headerStep: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 4 },
+  headerTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
+  headerStep: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,

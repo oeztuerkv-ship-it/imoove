@@ -57,25 +57,62 @@ function shortPlace(displayName: string) {
   return (p[0] ?? displayName).trim() || "—";
 }
 
+/** Stadt für Anzeige „neben“ der Adresszeile (Context/Photon). */
+function cityFromLoc(loc: GeoLocation): string | null {
+  const c = loc.city?.trim();
+  if (c) return c;
+  const parts = loc.displayName.split(",").map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const first = parts[0].toLowerCase();
+  for (let i = 1; i < parts.length; i++) {
+    const seg = parts[i];
+    if (!seg) continue;
+    const low = seg.toLowerCase();
+    if (low === first) continue;
+    if (low.includes("deutschland") || low === "germany") continue;
+    return seg;
+  }
+  return null;
+}
+
 function AddressRoutePanel({
-  originDisplay: originLabel,
-  destinationDisplay,
+  origin,
+  destination,
   colors,
 }: {
-  originDisplay: string;
-  destinationDisplay: string;
+  origin: GeoLocation;
+  destination: GeoLocation | null;
   colors: ReturnType<typeof useColors>;
 }) {
+  const originCity = cityFromLoc(origin);
+  const destCity = destination ? cityFromLoc(destination) : null;
+  const originLine = shortPlace(origin.displayName);
+  const destLine = destination ? shortPlace(destination.displayName) : "—";
+
   return (
     <View style={[styles.addressRoutePanel, { backgroundColor: colors.background }]}>
       <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground }]}>Abholung</Text>
-      <Text style={[styles.addressRouteValue, { color: colors.foreground }]} numberOfLines={6}>
-        {originLabel}
-      </Text>
+      <View style={styles.addressRouteLineRow}>
+        <Text style={[styles.addressRouteValue, styles.addressRouteLineMain, { color: colors.foreground }]} numberOfLines={5}>
+          {originLine}
+        </Text>
+        {originCity && originCity.toLowerCase() !== originLine.toLowerCase() ? (
+          <Text style={[styles.addressRouteCity, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {originCity}
+          </Text>
+        ) : null}
+      </View>
       <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Ziel</Text>
-      <Text style={[styles.addressRouteValue, { color: colors.foreground }]} numberOfLines={6}>
-        {destinationDisplay}
-      </Text>
+      <View style={styles.addressRouteLineRow}>
+        <Text style={[styles.addressRouteValue, styles.addressRouteLineMain, { color: colors.foreground }]} numberOfLines={5}>
+          {destLine}
+        </Text>
+        {destination && destCity && destCity.toLowerCase() !== destLine.toLowerCase() ? (
+          <Text style={[styles.addressRouteCity, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {destCity}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -227,7 +264,7 @@ export default function ReserveRideScreen() {
   const skipNextPickupSearchRef = useRef(false);
   const skipNextDestSearchRef = useRef(false);
 
-  /* Nur beim ersten Betreten: aus „Fahrt reservieren“ übernehmen — nicht bei jedem Focus erneut (sonst wirkt es wie „Reset“). */
+  /* Nur beim ersten Betreten: Adressen aus dem vorherigen Screen übernehmen — nicht bei jedem Focus erneut (sonst wirkt es wie „Reset“). */
   const didSeedWhereStepRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
@@ -679,11 +716,7 @@ export default function ReserveRideScreen() {
             </Text>
           </>
         ) : (
-          <AddressRoutePanel
-            originDisplay={origin.displayName}
-            destinationDisplay={destination?.displayName ?? "—"}
-            colors={colors}
-          />
+          <AddressRoutePanel origin={origin} destination={destination} colors={colors} />
         )}
 
         {step === "extras" && (
@@ -1119,6 +1152,23 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   addressRouteValue: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  addressRouteLineRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  addressRouteLineMain: {
+    flex: 1,
+    minWidth: 140,
+  },
+  addressRouteCity: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 20,
+    flexShrink: 0,
+    maxWidth: "48%",
+  },
   whereEditRow: {
     flexDirection: "row",
     alignItems: "center",
