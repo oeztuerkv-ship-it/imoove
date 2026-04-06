@@ -5,7 +5,7 @@ import * as Linking from "expo-linking";
 import * as Location from "expo-location";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -130,12 +130,17 @@ function getBannerLongCopy(id: HomeBannerSlideId): string[] {
   return VEHICLE_LONG_COPY[id];
 }
 
-const SLIDER_BEIGE = "#EDE4D3";
-const SLIDER_BEIGE_DEEP = "#E8DCC8";
+const SLIDER_CARD_BG = "#F5F5F5";
+const SLIDER_CARD_BORDER_SEP = "#E8E8E8";
 
-/** Einheitliche Kartenmaße (Breite relativ zum Panel, feste Zeilenhöhe). */
-const SLIDER_CARD_GAP = 10;
-const SLIDER_CARD_FIXED_ROW_H = 144;
+/** Kompakte Karten (FreeNow-ähnlich): gleiche Breite/Höhe, enger Abstand. */
+const SLIDER_CARD_GAP = 8;
+const SLIDER_CARD_FIXED_H = 148;
+
+function getBannerShortTitle(id: HomeBannerSlideId): string {
+  if (id === "krankenfahrten") return "Krankenfahrten";
+  return VEHICLES.find((v) => v.id === id)!.name;
+}
 
 type VehicleSliderColors = {
   foreground: string;
@@ -143,30 +148,126 @@ type VehicleSliderColors = {
   primary: string;
 };
 
-function BannerTrustIllustration({ slideId }: { slideId: HomeBannerSlideId }) {
+/** Kompakte Illustration (fester Kasten – kein Layout-Springen beim Scrollen). */
+const BANNER_HEX_SIZE = 40;
+const BANNER_SHIELD_ICON = 26;
+const BANNER_CHECK_SIZE = 13;
+
+const BannerTrustIllustration = memo(function BannerTrustIllustration({ slideId }: { slideId: HomeBannerSlideId }) {
   if (slideId === "krankenfahrten") {
     return (
-      <View style={styles.vehicleRefIllu}>
-        <MaterialCommunityIcons name="hexagon" size={72} color="#DC2626" style={styles.vehicleRefHex} />
-        <View style={styles.vehicleRefShield}>
-          <MaterialCommunityIcons name="medical-bag" size={40} color="#FFFFFF" />
+      <View style={styles.homeBannerIlluBox} collapsable={false}>
+        <MaterialCommunityIcons
+          name="hexagon"
+          size={BANNER_HEX_SIZE}
+          color="#DC2626"
+          style={styles.vehicleRefHex}
+        />
+        <View style={styles.homeBannerIlluShield}>
+          <MaterialCommunityIcons name="medical-bag" size={BANNER_SHIELD_ICON} color="#FFFFFF" />
         </View>
       </View>
     );
   }
   const accent = slideId === "wheelchair" ? "#0369A1" : ONRODA_MARK_RED;
   return (
-    <View style={styles.vehicleRefIllu}>
-      <MaterialCommunityIcons name="hexagon" size={72} color={accent} style={styles.vehicleRefHex} />
-      <View style={styles.vehicleRefShield}>
-        <MaterialCommunityIcons name="shield" size={42} color="#FFFFFF" />
-        <MaterialCommunityIcons name="check-bold" size={21} color="#1F2937" style={styles.vehicleRefCheck} />
+    <View style={styles.homeBannerIlluBox} collapsable={false}>
+      <MaterialCommunityIcons name="hexagon" size={BANNER_HEX_SIZE} color={accent} style={styles.vehicleRefHex} />
+      <View style={styles.homeBannerIlluShield}>
+        <MaterialCommunityIcons name="shield" size={BANNER_SHIELD_ICON + 2} color="#FFFFFF" />
+        <MaterialCommunityIcons name="check-bold" size={BANNER_CHECK_SIZE} color="#1F2937" style={styles.vehicleRefCheck} />
       </View>
     </View>
   );
-}
+});
 
-function HorizontalVehicleSlider({
+type HomeBannerSlideCardProps = {
+  slideId: HomeBannerSlideId;
+  index: number;
+  nSlides: number;
+  slideW: number;
+  expanded: boolean;
+  snapFocused: boolean;
+  foreground: string;
+  mutedForeground: string;
+  primary: string;
+  onMehrErfahren: (id: HomeBannerSlideId) => void;
+};
+
+const HomeBannerSlideCard = memo(function HomeBannerSlideCard({
+  slideId,
+  index,
+  nSlides,
+  slideW,
+  expanded,
+  snapFocused,
+  foreground,
+  mutedForeground,
+  primary,
+  onMehrErfahren,
+}: HomeBannerSlideCardProps) {
+  const borderW = expanded ? 2.5 : snapFocused ? 2 : 0;
+  const borderColor = expanded ? ONRODA_MARK_RED : snapFocused ? primary : "transparent";
+  const headlines = getBannerHeadlines(slideId);
+  const shortTitle = getBannerShortTitle(slideId);
+  const longCopy = getBannerLongCopy(slideId);
+
+  return (
+    <View
+      style={[
+        styles.homeBannerCompactCard,
+        {
+          width: slideW,
+          marginRight: index < nSlides - 1 ? SLIDER_CARD_GAP : 0,
+          backgroundColor: SLIDER_CARD_BG,
+          borderWidth: borderW,
+          borderColor,
+          shadowOpacity: expanded ? 0.12 : snapFocused ? 0.09 : 0.06,
+          shadowRadius: expanded ? 10 : snapFocused ? 8 : 5,
+          elevation: expanded ? 6 : snapFocused ? 4 : 2,
+        },
+      ]}
+      collapsable={false}
+    >
+      <View style={[styles.homeBannerCompactInner, { minHeight: SLIDER_CARD_FIXED_H }]}>
+        <BannerTrustIllustration slideId={slideId} />
+        <Text style={[styles.homeBannerCompactTitle, { color: foreground }]} numberOfLines={2}>
+          {shortTitle}
+        </Text>
+        <Text style={[styles.homeBannerCompactSub, { color: mutedForeground }]} numberOfLines={2}>
+          {headlines.line2}
+        </Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.homeBannerCompactCta,
+            { opacity: pressed ? 0.92 : 1, backgroundColor: ONRODA_MARK_RED },
+          ]}
+          onPress={() => onMehrErfahren(slideId)}
+        >
+          <Text style={styles.homeBannerCompactCtaText}>Mehr erfahren</Text>
+        </Pressable>
+      </View>
+      {expanded && (
+        <View style={[styles.vehicleSliderExpand, { borderTopColor: SLIDER_CARD_BORDER_SEP }]}>
+          {longCopy.map((line, j) => (
+            <Text
+              key={j}
+              style={[
+                styles.vehicleSliderExpandLine,
+                { color: mutedForeground },
+                j < longCopy.length - 1 && { marginBottom: 8 },
+              ]}
+            >
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+});
+
+const HorizontalVehicleSlider = memo(function HorizontalVehicleSlider({
   colors,
   viewportWidth,
   selectedVehicle,
@@ -183,7 +284,10 @@ function HorizontalVehicleSlider({
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const programmaticScrollRef = useRef(false);
-  const slideW = Math.min(320, Math.max(248, Math.round(viewportWidth * 0.88)));
+  const slideW = useMemo(
+    () => Math.min(124, Math.max(100, Math.round(viewportWidth * 0.315))),
+    [viewportWidth],
+  );
   const step = slideW + SLIDER_CARD_GAP;
   const nSlides = HOME_SLIDER_ORDER.length;
   const [dotIndex, setDotIndex] = useState(0);
@@ -239,78 +343,27 @@ function HorizontalVehicleSlider({
         snapToInterval={step}
         snapToAlignment="start"
         disableIntervalMomentum
+        removeClippedSubviews={Platform.OS === "android"}
+        overScrollMode="never"
         contentContainerStyle={[styles.vehicleSliderSnapContent, { paddingLeft: 0, paddingRight: 16 }]}
         onMomentumScrollEnd={onScrollEnd}
         onScrollEndDrag={onScrollEnd}
-        scrollEventThrottle={16}
       >
-        {HOME_SLIDER_ORDER.map((slideId, i) => {
-          const expanded = expandedBannerId === slideId;
-          const snapFocused = dotIndex === i;
-          const borderW = expanded ? 2.5 : snapFocused ? 2 : 0;
-          const borderColor = expanded ? ONRODA_MARK_RED : snapFocused ? colors.primary : "transparent";
-          const headlines = getBannerHeadlines(slideId);
-          const metaLine = getBannerMeta(slideId);
-          const longCopy = getBannerLongCopy(slideId);
-          return (
-            <View
-              key={slideId}
-              style={[
-                styles.vehicleRefCard,
-                {
-                  width: slideW,
-                  marginRight: i < nSlides - 1 ? SLIDER_CARD_GAP : 0,
-                  backgroundColor: SLIDER_BEIGE,
-                  borderWidth: borderW,
-                  borderColor,
-                  shadowOpacity: expanded ? 0.16 : snapFocused ? 0.1 : 0.06,
-                  shadowRadius: expanded ? 16 : 10,
-                  elevation: expanded ? 10 : snapFocused ? 5 : 3,
-                },
-              ]}
-            >
-              <View style={[styles.vehicleRefCardInner, { height: SLIDER_CARD_FIXED_ROW_H }]}>
-                <View style={styles.vehicleRefLeft}>
-                  <Text style={[styles.vehicleRefLine1, { color: colors.foreground }]} numberOfLines={2}>
-                    {headlines.line1}
-                  </Text>
-                  <Text style={[styles.vehicleRefLine2, { color: colors.foreground }]} numberOfLines={2}>
-                    {headlines.line2}
-                  </Text>
-                  <Text style={[styles.vehicleRefMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {metaLine}
-                  </Text>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.vehicleRefCta,
-                      { opacity: pressed ? 0.92 : 1, backgroundColor: ONRODA_MARK_RED },
-                    ]}
-                    onPress={() => onMehrErfahren(slideId)}
-                  >
-                    <Text style={styles.vehicleRefCtaText}>Mehr erfahren</Text>
-                  </Pressable>
-                </View>
-                <BannerTrustIllustration slideId={slideId} />
-              </View>
-              {expanded && (
-                <View style={[styles.vehicleSliderExpand, { borderTopColor: SLIDER_BEIGE_DEEP }]}>
-                  {longCopy.map((line, j) => (
-                    <Text
-                      key={j}
-                      style={[
-                        styles.vehicleSliderExpandLine,
-                        { color: colors.mutedForeground },
-                        j < longCopy.length - 1 && { marginBottom: 10 },
-                      ]}
-                    >
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          );
-        })}
+        {HOME_SLIDER_ORDER.map((slideId, i) => (
+          <HomeBannerSlideCard
+            key={slideId}
+            slideId={slideId}
+            index={i}
+            nSlides={nSlides}
+            slideW={slideW}
+            expanded={expandedBannerId === slideId}
+            snapFocused={dotIndex === i}
+            foreground={colors.foreground}
+            mutedForeground={colors.mutedForeground}
+            primary={colors.primary}
+            onMehrErfahren={onMehrErfahren}
+          />
+        ))}
       </ScrollView>
       <View style={styles.vehicleSliderDots}>
         {HOME_SLIDER_ORDER.map((slideId, i) => (
@@ -327,7 +380,7 @@ function HorizontalVehicleSlider({
       </View>
     </View>
   );
-}
+});
 
 /** Kompakte Fahrzeugwahl nur im Buchungsmodus (gleiche Namen/Untertitel wie überall). */
 function CompactBookingVehicleRow({
@@ -462,6 +515,14 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const vehicleSliderViewportHome = screenWidth - 32;
+  const homeBannerSliderColors = useMemo(
+    (): VehicleSliderColors => ({
+      foreground: colors.foreground,
+      mutedForeground: colors.mutedForeground,
+      primary: colors.primary,
+    }),
+    [colors.foreground, colors.mutedForeground, colors.primary],
+  );
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const bottomPad = isWeb ? 20 : insets.bottom;
@@ -848,7 +909,7 @@ export default function HomeScreen() {
 
   const openScheduleModal = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/reserve-ride");
+    router.push("/fahrt-reservieren");
   }, []);
 
   /* ── GPS ── */
@@ -1092,11 +1153,7 @@ export default function HomeScreen() {
 
               <View style={styles.vehicleSection}>
                 <HorizontalVehicleSlider
-                  colors={{
-                    foreground: colors.foreground,
-                    mutedForeground: colors.mutedForeground,
-                    primary: colors.primary,
-                  }}
+                  colors={homeBannerSliderColors}
                   viewportWidth={vehicleSliderViewportHome}
                   selectedVehicle={selectedVehicle}
                   expandedBannerId={expandedBannerId}
@@ -2055,8 +2112,60 @@ const styles = StyleSheet.create({
   vehicleSliderSnapContent: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
+  homeBannerCompactCard: {
+    borderRadius: 18,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+  },
+  homeBannerCompactInner: {
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  homeBannerIlluBox: {
+    width: 52,
+    height: 54,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  homeBannerIlluShield: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 38,
+    height: 38,
+  },
+  homeBannerCompactTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    letterSpacing: -0.25,
+    lineHeight: 16,
+    width: "100%",
+  },
+  homeBannerCompactSub: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+    lineHeight: 13,
+    marginTop: 4,
+    width: "100%",
+    opacity: 0.92,
+  },
+  homeBannerCompactCta: {
+    alignSelf: "stretch",
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeBannerCompactCtaText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
   vehicleRefCard: {
     borderRadius: 22,
     overflow: "hidden",
@@ -2110,12 +2219,12 @@ const styles = StyleSheet.create({
   bookingVehicleName: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
   bookingVehicleSub: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13 },
   vehicleSliderExpand: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  vehicleSliderExpandLine: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  vehicleSliderExpandLine: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
   vehicleSliderDots: {
     flexDirection: "row",
     justifyContent: "center",

@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -153,6 +153,8 @@ export default function ReserveRideScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
   const colors = useColors();
+  const { fromStep1 } = useLocalSearchParams<{ fromStep1?: string }>();
+  const seededFromPreStep = useRef(false);
 
   const {
     setScheduledTime,
@@ -254,6 +256,17 @@ export default function ReserveRideScreen() {
   useEffect(() => {
     if (pickupResolved) setOrigin(pickupResolved);
   }, [pickupResolved, setOrigin]);
+
+  /** Nach Screen „Fahrt reservieren“: Kontext ist gesetzt → lokales „Wo“ übernehmen, zu Schritt Extras springen. */
+  useEffect(() => {
+    if (fromStep1 !== "1" || seededFromPreStep.current) return;
+    if (!destination) return;
+    seededFromPreStep.current = true;
+    setPickupResolved(origin);
+    setPickupQuery(shortPlace(origin.displayName));
+    setDestQuery(shortPlace(destination.displayName));
+    setStep("extras");
+  }, [fromStep1, origin, destination]);
 
   useEffect(() => {
     if (step === "review" && destination && selectedVehicle) {

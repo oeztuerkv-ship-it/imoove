@@ -198,7 +198,7 @@ export default function MyRidesScreen() {
         <Pressable
           style={styles.backBtn}
           hitSlop={12}
-          onPress={() => router.push("/reserve-ride")}
+          onPress={() => router.push("/fahrt-reservieren")}
           accessibilityLabel="Neue Buchung – Reservieren"
         >
           <Feather name="plus-circle" size={24} color="#DC2626" />
@@ -480,7 +480,7 @@ export default function MyRidesScreen() {
                 : "Plane deine nächste Fahrt direkt hier."}
             </Text>
             {(activeTab === "alle" || activeTab === "abgeschlossen") && (
-              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/reserve-ride")}>
+              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/fahrt-reservieren")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
               </Pressable>
