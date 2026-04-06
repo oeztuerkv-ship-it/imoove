@@ -1,195 +1,128 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Onroda</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONRODA | Die schnelle, sichere und zuverlässige Taxi-App</title>
+    <style>
+        :root {
+            --onroda-red: #d5001c; /* Das kräftige Rot von Freenow inspiriert */
+            --text-dark: #1a1a1a;
+            --text-grey: #4a4a4a;
+            --bg-light: #ffffff;
+            --bg-footer: #000000;
+        }
+        
+        body { margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: var(--bg-light); color: var(--text-dark); line-height: 1.5; }
+        
+        /* Navigation */
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: white; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #f0f0f0; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: var(--onroda-red); letter-spacing: 1px; }
+        .nav-links a { color: var(--text-dark); text-decoration: none; margin-left: 20px; font-weight: 500; font-size: 0.9rem; }
+        
+        /* Hero Section */
+        .hero { padding: 80px 5% 40px; display: flex; flex-wrap: wrap; align-items: center; }
+        .hero-text { flex: 1; min-width: 300px; padding-right: 20px; }
+        .hero-text h1 { font-size: 3.5rem; line-height: 1.1; margin-bottom: 20px; color: var(--onroda-red); font-weight: 800; }
+        .hero-text p { font-size: 1.2rem; color: var(--text-grey); margin-bottom: 30px; max-width: 500px; }
+        
+        .cta-group { display: flex; gap: 15px; }
+        .btn-red { background: var(--onroda-red); color: white; padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
+        .btn-outline { border: 1px solid #ccc; color: var(--text-dark); padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+        /* Feature Cards */
+        .section { padding: 40px 5%; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: #f8f8f8; padding: 30px; border-radius: 15px; }
+        .card h3 { font-size: 1.5rem; margin-top: 0; color: var(--onroda-red); }
+        .card p { color: var(--text-grey); font-size: 0.95rem; }
 
-<style>
-body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background: #fff;
-}
+        /* Footer */
+        footer { background: var(--bg-footer); color: white; padding: 60px 5% 20px; margin-top: 60px; }
+        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; }
+        .footer-col h4 { color: var(--onroda-red); margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+        .footer-col ul { list-style: none; padding: 0; margin: 0; }
+        .footer-col li { margin-bottom: 10px; color: #ccc; font-size: 0.9rem; }
+        
+        .help-box { background: white; color: black; padding: 40px; border-radius: 10px; }
+        .help-box h3 { font-size: 1.8rem; margin-top: 0; }
 
-/* DOWNLOAD SECTION */
-.download-section {
-    background: #aebed0;
-    padding: 80px 20px;
-    text-align: center;
-}
-
-.download-section h2 {
-    font-size: 42px;
-    margin-bottom: 30px;
-}
-
-.btn {
-    display: inline-block;
-    padding: 12px 22px;
-    margin: 5px;
-    border-radius: 20px;
-    font-size: 14px;
-    text-decoration: none;
-    transition: 0.3s;
-}
-
-.btn-red {
-    background: #ff2d55;
-    color: white;
-}
-
-.btn-red:hover {
-    background: #e0244a;
-}
-
-/* FOOTER */
-.footer {
-    background: #000;
-    color: #fff;
-    padding: 60px 40px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-}
-
-.footer-left {
-    max-width: 60%;
-}
-
-.footer h4 {
-    font-size: 14px;
-    margin-bottom: 15px;
-    color: #ccc;
-}
-
-.footer ul {
-    list-style: none;
-    padding: 0;
-}
-
-.footer ul li {
-    margin-bottom: 8px;
-    font-size: 13px;
-    color: #aaa;
-}
-
-.footer-columns {
-    display: flex;
-    gap: 60px;
-}
-
-/* HELP BOX */
-.help-box {
-    background: #f2f2f2;
-    color: #000;
-    padding: 30px;
-    border-radius: 10px;
-    width: 300px;
-}
-
-.help-box h3 {
-    margin-top: 0;
-}
-
-.help-box p {
-    font-size: 14px;
-    margin: 6px 0;
-}
-
-/* RESPONSIVE */
-@media(max-width:900px) {
-    .footer {
-        flex-direction: column;
-        gap: 30px;
-    }
-
-    .footer-left {
-        max-width: 100%;
-    }
-}
-</style>
+        .copyright { border-top: 1px solid #333; margin-top: 40px; padding-top: 20px; font-size: 0.8rem; color: #666; text-align: left; }
+    </style>
 </head>
-
 <body>
 
-<!-- DOWNLOAD -->
-<section class="download-section">
-    <h2>Jetzt herunterladen</h2>
-    <a href="#" class="btn btn-red">Fahrgast-App</a>
-    <a href="#" class="btn btn-red">Fahrer-App</a>
-</section>
+    <nav>
+        <div class="logo">ONRODA</div>
+        <div class="nav-links">
+            <a href="#">Fahrgäste</a>
+            <a href="#">Fahrer*innen</a>
+            <a href="#">Geschäftsreisen</a>
+            <a href="/partners/">Login</a>
+        </div>
+    </nav>
 
-<!-- FOOTER -->
-<footer class="footer">
+    <header class="hero">
+        <div class="hero-text">
+            <h1>Die schnelle, sichere und zuverlässige Taxi-App</h1>
+            <p>Auf dem Weg zur Arbeit, zum Flughafen oder zur Verabredung? Dann buche jetzt mit ONRODA, deiner zuverlässigen Wahl in L.-Echterdingen.</p>
+            <div class="cta-group">
+                <a href="/partners/" class="btn-red">Jetzt Registrieren</a>
+                <a href="#" class="btn-outline">Mehr erfahren</a>
+            </div>
+        </div>
+    </header>
 
-    <div class="footer-left">
-        <h2>Onroda</h2>
+    <section class="section">
+        <div class="grid">
+            <div class="card">
+                <h3>Krankenfahrten</h3>
+                <p>Zuverlässige und empathische Beförderung zu medizinischen Terminen in L.-Echterdingen. Wir kümmern uns um den sicheren Weg.</p>
+            </div>
+            <div class="card">
+                <h3>Premium Taxi</h3>
+                <p>Höchster Standard für anspruchsvolle Fahrgäste. Pünktlichkeit ist unsere Leidenschaft.</p>
+            </div>
+            <div class="card">
+                <h3>Digitalisierung der Zukunft</h3>
+                <p>Onroda setzt auf modernste Algorithmen. Wir vernetzen Flottenpartner und Fahrgäste effizienter als je zuvor.</p>
+            </div>
+        </div>
+    </section>
 
-        <div class="footer-columns">
-
-            <div>
-                <h4>FAHRGÄSTE</h4>
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4>Fahrgäste</h4>
                 <ul>
                     <li>Taxi</li>
-                    <li>Flughafen</li>
+                    <li>Business-Profil</li>
                     <li>Vorbestellung</li>
-                    <li>Sicherheit</li>
                 </ul>
             </div>
-
-            <div>
-                <h4>FAHRER</h4>
+            <div class="footer-col">
+                <h4>Fahrer*innen</h4>
                 <ul>
-                    <li>Registrieren</li>
+                    <li>Mietwagen</li>
                     <li>Fahrten annehmen</li>
-                    <li>Dashboard</li>
                     <li>Sicherheit</li>
                 </ul>
             </div>
-
-            <div>
-                <h4>BUSINESS</h4>
-                <ul>
-                    <li>Geschäftsfahrten</li>
-                    <li>Partner werden</li>
-                </ul>
+            <div class="footer-col">
+                <div class="help-box">
+                    <h3>Brauchst du Hilfe?</h3>
+                    <p><strong>Kontakt:</strong><br>
+                    Vedat Öztürk<br>
+                    Oberdorfstr. 53<br>
+                    70771 Leinfelden-Echterdingen<br><br>
+                    info@onroda.de</p>
+                </div>
             </div>
-
-            <div>
-                <h4>ÜBER UNS</h4>
-                <ul>
-                    <li>Karriere</li>
-                    <li>Presse</li>
-                </ul>
-            </div>
-
         </div>
-    </div>
-
-    <!-- HELP BOX -->
-    <div class="help-box">
-        <h3>Brauchst du Hilfe?</h3>
-
-        <p><strong>Kontakt:</strong></p>
-        <p>support@onroda.de</p>
-        <p>+49 123 456789</p>
-
-        <br>
-
-        <p><strong>Adresse:</strong></p>
-        <p>Onroda GmbH</p>
-        <p>Deine Straße 12</p>
-        <p>70173 Stuttgart</p>
-
-        <br>
-
-        <p style="font-size:12px; color:#666;">© 2026 Onroda</p>
-    </div>
-
-</footer>
+        <div class="copyright">
+            © 2026 ONRODA. Alle Rechte vorbehalten. | Impressum | Datenschutz
+        </div>
+    </footer>
 
 </body>
 </html>
