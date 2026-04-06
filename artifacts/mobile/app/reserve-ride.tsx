@@ -223,9 +223,16 @@ export default function ReserveRideScreen() {
   const rideRef = useRef({ origin, destination });
   rideRef.current = { origin, destination };
 
-  /* Beim Öffnen des Screens: Auto-Fill aus Context; keine Vorschlagslisten. Kein automatischer Sprung zu Schritt 2. */
+  /** Nach Tap auf einen Vorschlag: nächster pickupQuery-Effekt-Lauf soll keine neue Suche starten (sonst öffnet die Liste sofort wieder). */
+  const skipNextPickupSearchRef = useRef(false);
+  const skipNextDestSearchRef = useRef(false);
+
+  /* Nur beim ersten Betreten: aus „Fahrt reservieren“ übernehmen — nicht bei jedem Focus erneut (sonst wirkt es wie „Reset“). */
+  const didSeedWhereStepRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
+      if (didSeedWhereStepRef.current) return;
+      didSeedWhereStepRef.current = true;
       const { origin: o, destination: d } = rideRef.current;
       setPickupQuery(shortPlace(o.displayName));
       setPickupResolved(o);
@@ -236,25 +243,43 @@ export default function ReserveRideScreen() {
       }
       setPickupResults([]);
       setDestResults([]);
+      skipNextPickupSearchRef.current = true;
+      skipNextDestSearchRef.current = true;
     }, []),
   );
+
+  useEffect(() => {
+    return () => {
+      didSeedWhereStepRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (pickupResolved) setOrigin(pickupResolved);
   }, [pickupResolved, setOrigin]);
 
   useEffect(() => {
+    if (skipNextPickupSearchRef.current) {
+      skipNextPickupSearchRef.current = false;
+      if (pickupDebounceRef.current) {
+        clearTimeout(pickupDebounceRef.current);
+        pickupDebounceRef.current = null;
+      }
+      setPickupLoading(false);
+      return;
+    }
     if (pickupQuery.length < 2) {
       setPickupResults([]);
       return;
     }
     if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
+    const biasLoc = rideRef.current.destination;
+    const bias = biasLoc ? { lat: biasLoc.lat, lon: biasLoc.lon } : undefined;
+    const q = pickupQuery;
     pickupDebounceRef.current = setTimeout(async () => {
       setPickupLoading(true);
       try {
-        const biasLoc = destination;
-        const bias = biasLoc ? { lat: biasLoc.lat, lon: biasLoc.lon } : undefined;
-        const locs = await searchLocation(pickupQuery, bias);
+        const locs = await searchLocation(q, bias);
         setPickupResults(locs);
       } catch {
         setPickupResults([]);
@@ -265,19 +290,30 @@ export default function ReserveRideScreen() {
     return () => {
       if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
     };
-  }, [pickupQuery, destination]);
+  }, [pickupQuery]);
 
   useEffect(() => {
+    if (skipNextDestSearchRef.current) {
+      skipNextDestSearchRef.current = false;
+      if (destDebounceRef.current) {
+        clearTimeout(destDebounceRef.current);
+        destDebounceRef.current = null;
+      }
+      setDestLoading(false);
+      return;
+    }
     if (destQuery.length < 2) {
       setDestResults([]);
       return;
     }
     if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+    const q = destQuery;
+    const biasSource = pickupResolved ?? rideRef.current.origin;
+    const bias = biasSource ? { lat: biasSource.lat, lon: biasSource.lon } : { lat: origin.lat, lon: origin.lon };
     destDebounceRef.current = setTimeout(async () => {
       setDestLoading(true);
       try {
-        const bias = pickupResolved ? { lat: pickupResolved.lat, lon: pickupResolved.lon } : { lat: origin.lat, lon: origin.lon };
-        const locs = await searchLocation(destQuery, bias);
+        const locs = await searchLocation(q, bias);
         setDestResults(locs);
       } catch {
         setDestResults([]);
@@ -343,6 +379,11 @@ export default function ReserveRideScreen() {
 
   const pickPickup = useCallback(
     (loc: GeoLocation) => {
+      if (pickupDebounceRef.current) {
+        clearTimeout(pickupDebounceRef.current);
+        pickupDebounceRef.current = null;
+      }
+      skipNextPickupSearchRef.current = true;
       setPickupResolved(loc);
       setPickupQuery(shortPlace(loc.displayName));
       setPickupResults([]);
@@ -355,6 +396,11 @@ export default function ReserveRideScreen() {
 
   const pickDestination = useCallback(
     (loc: GeoLocation) => {
+      if (destDebounceRef.current) {
+        clearTimeout(destDebounceRef.current);
+        destDebounceRef.current = null;
+      }
+      skipNextDestSearchRef.current = true;
       setDestination(loc);
       setDestQuery(shortPlace(loc.displayName));
       setDestResults([]);
