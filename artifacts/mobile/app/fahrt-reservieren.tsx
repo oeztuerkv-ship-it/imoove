@@ -50,6 +50,9 @@ export default function FahrtReservierenScreen() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
 
+  const skipNextPickupSearchRef = useRef(false);
+  const skipNextDestSearchRef = useRef(false);
+
   const seedFromContext = useCallback(() => {
     setPickupQuery(shortPlace(origin.displayName));
     setPickupResolved(origin);
@@ -62,6 +65,8 @@ export default function FahrtReservierenScreen() {
     }
     setPickupResults([]);
     setDestResults([]);
+    skipNextPickupSearchRef.current = true;
+    skipNextDestSearchRef.current = true;
   }, [origin, destination]);
 
   useFocusEffect(
@@ -69,6 +74,9 @@ export default function FahrtReservierenScreen() {
       seedFromContext();
     }, [seedFromContext]),
   );
+
+  const destBiasRef = useRef({ destResolved, destination });
+  destBiasRef.current = { destResolved, destination };
 
   useEffect(() => {
     const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -85,19 +93,29 @@ export default function FahrtReservierenScreen() {
     };
   }, []);
 
-  /* Abholung: Bias Richtung gewähltem Ziel (falls vorhanden). */
+  /* Abholung: Bias Richtung gewähltem Ziel (ohne dest in deps → Liste bleibt zu nach Auswahl). */
   useEffect(() => {
+    if (skipNextPickupSearchRef.current) {
+      skipNextPickupSearchRef.current = false;
+      if (pickupDebounceRef.current) {
+        clearTimeout(pickupDebounceRef.current);
+        pickupDebounceRef.current = null;
+      }
+      setPickupLoading(false);
+      return;
+    }
     if (pickupQuery.length < 2) {
       setPickupResults([]);
       return;
     }
     if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
+    const q = pickupQuery;
+    const biasLoc = destBiasRef.current.destResolved ?? destBiasRef.current.destination;
+    const bias = biasLoc ? { lat: biasLoc.lat, lon: biasLoc.lon } : undefined;
     pickupDebounceRef.current = setTimeout(async () => {
       setPickupLoading(true);
       try {
-        const biasLoc = destResolved ?? destination;
-        const bias = biasLoc ? { lat: biasLoc.lat, lon: biasLoc.lon } : undefined;
-        const locs = await searchLocation(pickupQuery, bias);
+        const locs = await searchLocation(q, bias);
         setPickupResults(locs);
       } catch {
         setPickupResults([]);
@@ -108,20 +126,30 @@ export default function FahrtReservierenScreen() {
     return () => {
       if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
     };
-  }, [pickupQuery, destResolved, destination]);
+  }, [pickupQuery]);
 
   /* Ziel: regionaler Bias nach Abholung. */
   useEffect(() => {
+    if (skipNextDestSearchRef.current) {
+      skipNextDestSearchRef.current = false;
+      if (destDebounceRef.current) {
+        clearTimeout(destDebounceRef.current);
+        destDebounceRef.current = null;
+      }
+      setDestLoading(false);
+      return;
+    }
     if (destQuery.length < 2) {
       setDestResults([]);
       return;
     }
     if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+    const q = destQuery;
+    const bias = pickupResolved ? { lat: pickupResolved.lat, lon: pickupResolved.lon } : { lat: origin.lat, lon: origin.lon };
     destDebounceRef.current = setTimeout(async () => {
       setDestLoading(true);
       try {
-        const bias = pickupResolved ? { lat: pickupResolved.lat, lon: pickupResolved.lon } : { lat: origin.lat, lon: origin.lon };
-        const locs = await searchLocation(destQuery, bias);
+        const locs = await searchLocation(q, bias);
         setDestResults(locs);
       } catch {
         setDestResults([]);
@@ -135,13 +163,26 @@ export default function FahrtReservierenScreen() {
   }, [destQuery, pickupResolved, origin.lat, origin.lon]);
 
   const pickPickup = useCallback((loc: GeoLocation) => {
+    if (pickupDebounceRef.current) {
+      clearTimeout(pickupDebounceRef.current);
+      pickupDebounceRef.current = null;
+    }
+    skipNextPickupSearchRef.current = true;
+    Keyboard.dismiss();
     setPickupResolved(loc);
     setPickupQuery(shortPlace(loc.displayName));
     setPickupResults([]);
+    setOrigin(loc);
     Haptics.selectionAsync();
-  }, []);
+  }, [setOrigin]);
 
   const pickDest = useCallback((loc: GeoLocation) => {
+    if (destDebounceRef.current) {
+      clearTimeout(destDebounceRef.current);
+      destDebounceRef.current = null;
+    }
+    skipNextDestSearchRef.current = true;
+    Keyboard.dismiss();
     setDestResolved(loc);
     setDestQuery(shortPlace(loc.displayName));
     setDestResults([]);
@@ -149,6 +190,7 @@ export default function FahrtReservierenScreen() {
   }, []);
 
   const clearPickup = useCallback(() => {
+    Keyboard.dismiss();
     setPickupQuery("");
     setPickupResolved(null);
     setPickupResults([]);
@@ -157,6 +199,7 @@ export default function FahrtReservierenScreen() {
   }, [setOrigin]);
 
   const clearDest = useCallback(() => {
+    Keyboard.dismiss();
     setDestQuery("");
     setDestResolved(null);
     setDestResults([]);
@@ -164,7 +207,9 @@ export default function FahrtReservierenScreen() {
     Haptics.selectionAsync();
   }, [setDestination]);
 
-  const canProceed = pickupResolved != null && destResolved != null;
+  const pickupLocked = pickupResolved != null;
+  const destLocked = destResolved != null;
+  const canProceed = pickupLocked && destLocked;
 
   const handleUseCurrentLocation = useCallback(async () => {
     setGpsLoading(true);
@@ -187,6 +232,12 @@ export default function FahrtReservierenScreen() {
         const line = data.display_name?.split(",").slice(0, 2).join(",").trim();
         const label = line || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         const loc: GeoLocation = { lat, lon, displayName: label };
+        if (pickupDebounceRef.current) {
+          clearTimeout(pickupDebounceRef.current);
+          pickupDebounceRef.current = null;
+        }
+        skipNextPickupSearchRef.current = true;
+        Keyboard.dismiss();
         setPickupQuery(shortPlace(label));
         setPickupResolved(loc);
         setOrigin(loc);
@@ -195,6 +246,12 @@ export default function FahrtReservierenScreen() {
       } catch {
         const label = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         const loc: GeoLocation = { lat, lon, displayName: label };
+        if (pickupDebounceRef.current) {
+          clearTimeout(pickupDebounceRef.current);
+          pickupDebounceRef.current = null;
+        }
+        skipNextPickupSearchRef.current = true;
+        Keyboard.dismiss();
         setPickupQuery(label);
         setPickupResolved(loc);
         setOrigin(loc);
@@ -249,11 +306,9 @@ export default function FahrtReservierenScreen() {
           <Text style={[styles.headerAbbrechen, { color: primary }]}>Abbrechen</Text>
         </Pressable>
         <View style={styles.headerCenter}>
-          <View style={styles.titleFrame}>
-            <Text style={[styles.headerTitle, { color: primary }]} numberOfLines={2}>
-              Abholung planen
-            </Text>
-          </View>
+          <Text style={[styles.headerTitle, { color: primary }]} numberOfLines={2}>
+            Abholung planen
+          </Text>
           <Text style={[styles.headerStep, { color: colors.mutedForeground }]}>Schritt 1 von 4</Text>
         </View>
         <Pressable
@@ -285,170 +340,169 @@ export default function FahrtReservierenScreen() {
       >
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Abholadresse</Text>
         <Text style={[styles.hint, { color: colors.mutedForeground }]}>Adresse eingeben oder auswählen</Text>
-        <View style={[styles.inputWrap, { borderColor: borderActive, backgroundColor: "#FFFFFF" }]}>
-          <Feather name="map-pin" size={18} color={primary} style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, { color: colors.foreground }]}
-            value={pickupQuery}
-            onChangeText={(t) => {
-              setPickupQuery(t);
-              if (pickupResolved) {
-                const prev = shortPlace(pickupResolved.displayName);
-                if (t !== prev) {
-                  setPickupResolved(null);
-                  setOrigin(DEFAULT_ORIGIN);
-                }
-              }
-            }}
-            placeholder="Abholort eingeben"
-            placeholderTextColor={colors.mutedForeground}
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {(pickupQuery.length > 0 || pickupResolved != null) ? (
-            <Pressable
-              hitSlop={10}
-              onPress={clearPickup}
-              style={styles.clearBtn}
-              accessibilityLabel="Abholadresse löschen"
-            >
+        {pickupLocked && pickupResolved ? (
+          <View style={styles.lockedRow}>
+            <Feather name="map-pin" size={18} color={primary} style={styles.inputIcon} />
+            <Text style={[styles.lockedText, { color: colors.foreground }]} numberOfLines={6}>
+              {pickupResolved.displayName}
+            </Text>
+            <Pressable hitSlop={10} onPress={clearPickup} style={styles.clearBtn} accessibilityLabel="Abholadresse ändern">
               <Feather name="x" size={17} color={colors.mutedForeground} />
             </Pressable>
-          ) : null}
-          {pickupLoading ? <ActivityIndicator size="small" color={primary} /> : null}
-        </View>
-
-        {pickupResults.length > 0 ? (
-          <View style={[styles.resultsBox, { borderColor: colors.border }]}>
-            {pickupResults.map((loc, i) => (
-              <Pressable
-                key={`pu-${loc.lat}-${loc.lon}-${i}`}
-                style={[
-                  styles.resultRow,
-                  { backgroundColor: "#FFFFFF" },
-                  i < pickupResults.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-                onPress={() => pickPickup(loc)}
-              >
-                <Feather name="map-pin" size={16} color={primary} />
-                <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
-                  {loc.displayName}
-                </Text>
-              </Pressable>
-            ))}
           </View>
-        ) : null}
+        ) : (
+          <>
+            <View style={[styles.inputWrap, { borderColor: borderActive, backgroundColor: "#FFFFFF" }]}>
+              <Feather name="map-pin" size={18} color={primary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                value={pickupQuery}
+                onChangeText={(t) => {
+                  setPickupQuery(t);
+                  if (pickupResolved) {
+                    const prev = shortPlace(pickupResolved.displayName);
+                    if (t !== prev) {
+                      setPickupResolved(null);
+                      setOrigin(DEFAULT_ORIGIN);
+                    }
+                  }
+                }}
+                placeholder="Abholort eingeben"
+                placeholderTextColor={colors.mutedForeground}
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+              {(pickupQuery.length > 0 || pickupResolved != null) ? (
+                <Pressable hitSlop={10} onPress={clearPickup} style={styles.clearBtn} accessibilityLabel="Abholadresse löschen">
+                  <Feather name="x" size={17} color={colors.mutedForeground} />
+                </Pressable>
+              ) : null}
+              {pickupLoading ? <ActivityIndicator size="small" color={primary} /> : null}
+            </View>
+            {!pickupLocked && pickupResults.length > 0 ? (
+              <View style={styles.resultsBoxPlain}>
+                {pickupResults.map((loc, i) => (
+                  <Pressable
+                    key={`pu-${loc.lat}-${loc.lon}-${i}`}
+                    style={styles.resultRow}
+                    onPress={() => pickPickup(loc)}
+                  >
+                    <Feather name="map-pin" size={16} color={primary} />
+                    <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
+                      {loc.displayName}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </>
+        )}
 
-        <Pressable
-          onPress={handleUseCurrentLocation}
-          disabled={gpsLoading}
-          style={styles.locationLinkRow}
-          hitSlop={4}
-        >
-          {gpsLoading ? (
-            <ActivityIndicator size="small" color={primary} />
-          ) : (
-            <Feather name="navigation" size={16} color={primary} />
-          )}
-          <Text style={[styles.locationLink, { color: primary }]}>Aktuellen Standort verwenden</Text>
-        </Pressable>
+        {!pickupLocked ? (
+          <Pressable
+            onPress={handleUseCurrentLocation}
+            disabled={gpsLoading}
+            style={styles.locationLinkRow}
+            hitSlop={4}
+          >
+            {gpsLoading ? (
+              <ActivityIndicator size="small" color={primary} />
+            ) : (
+              <Feather name="navigation" size={16} color={primary} />
+            )}
+            <Text style={[styles.locationLink, { color: primary }]}>Aktuellen Standort verwenden</Text>
+          </Pressable>
+        ) : null}
 
         <Text style={[styles.sectionTitle, styles.sectionTitleSpaced, { color: colors.foreground }]}>
           Zieladresse
         </Text>
-        <View style={[styles.inputWrap, { borderColor: borderActive, backgroundColor: "#FFFFFF" }]}>
-          <Feather name="map-pin" size={18} color={primary} style={styles.inputIcon} />
-          <TextInput
-            style={[styles.input, { color: colors.foreground }]}
-            value={destQuery}
-            onChangeText={(t) => {
-              setDestQuery(t);
-              if (destResolved) {
-                const prev = shortPlace(destResolved.displayName);
-                if (t !== prev) setDestResolved(null);
-              }
-            }}
-            placeholder="Ziel eingeben"
-            placeholderTextColor={colors.mutedForeground}
-            autoCorrect={false}
-            returnKeyType="search"
-            onSubmitEditing={() => {
-              if (canProceed) void goNext();
-            }}
-          />
-          {(destQuery.length > 0 || destResolved != null) ? (
-            <Pressable
-              hitSlop={10}
-              onPress={clearDest}
-              style={styles.clearBtn}
-              accessibilityLabel="Zieladresse löschen"
-            >
+        {destLocked && destResolved ? (
+          <View style={styles.lockedRow}>
+            <Feather name="map-pin" size={18} color={primary} style={styles.inputIcon} />
+            <Text style={[styles.lockedText, { color: colors.foreground }]} numberOfLines={6}>
+              {destResolved.displayName}
+            </Text>
+            <Pressable hitSlop={10} onPress={clearDest} style={styles.clearBtn} accessibilityLabel="Zieladresse ändern">
               <Feather name="x" size={17} color={colors.mutedForeground} />
             </Pressable>
-          ) : null}
-          {destLoading ? <ActivityIndicator size="small" color={primary} /> : null}
-        </View>
-
-        {destResults.length > 0 ? (
-          <View style={[styles.resultsBox, { borderColor: colors.border }]}>
-            {destResults.map((loc, i) => (
-              <Pressable
-                key={`de-${loc.lat}-${loc.lon}-${i}`}
-                style={[
-                  styles.resultRow,
-                  { backgroundColor: "#FFFFFF" },
-                  i < destResults.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-                onPress={() => pickDest(loc)}
-              >
-                <Feather name="map-pin" size={16} color={primary} />
-                <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
-                  {loc.displayName}
-                </Text>
-              </Pressable>
-            ))}
           </View>
-        ) : null}
+        ) : (
+          <>
+            <View style={[styles.inputWrap, { borderColor: borderActive, backgroundColor: "#FFFFFF" }]}>
+              <Feather name="map-pin" size={18} color={primary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                value={destQuery}
+                onChangeText={(t) => {
+                  setDestQuery(t);
+                  if (destResolved) {
+                    const prev = shortPlace(destResolved.displayName);
+                    if (t !== prev) setDestResolved(null);
+                  }
+                }}
+                placeholder="Ziel eingeben"
+                placeholderTextColor={colors.mutedForeground}
+                autoCorrect={false}
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  if (canProceed) void goNext();
+                }}
+              />
+              {(destQuery.length > 0 || destResolved != null) ? (
+                <Pressable hitSlop={10} onPress={clearDest} style={styles.clearBtn} accessibilityLabel="Zieladresse löschen">
+                  <Feather name="x" size={17} color={colors.mutedForeground} />
+                </Pressable>
+              ) : null}
+              {destLoading ? <ActivityIndicator size="small" color={primary} /> : null}
+            </View>
+            {!destLocked && destResults.length > 0 ? (
+              <View style={styles.resultsBoxPlain}>
+                {destResults.map((loc, i) => (
+                  <Pressable
+                    key={`de-${loc.lat}-${loc.lon}-${i}`}
+                    style={styles.resultRow}
+                    onPress={() => pickDest(loc)}
+                  >
+                    <Feather name="map-pin" size={16} color={primary} />
+                    <Text style={[styles.resultText, { color: colors.foreground }]} numberOfLines={2}>
+                      {loc.displayName}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </>
+        )}
       </ScrollView>
 
-      <View
-        style={[
-          styles.footer,
-          {
-            paddingBottom: bottomPad + 12 + footerKeyboardGap,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={() => void goNext()}
-          disabled={!canProceed || submitLoading}
+      {canProceed ? (
+        <View
           style={[
-            styles.weiterBtn,
+            styles.footer,
             {
-              backgroundColor: canProceed && !submitLoading ? primary : disabledBg,
+              paddingBottom: bottomPad + 12 + footerKeyboardGap,
             },
           ]}
         >
-          {submitLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text
-              style={[
-                styles.weiterBtnText,
-                { color: canProceed ? "#FFFFFF" : disabledText },
-              ]}
-            >
-              Weiter
-            </Text>
-          )}
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={() => void goNext()}
+            disabled={submitLoading}
+            style={[
+              styles.weiterBtn,
+              {
+                backgroundColor: !submitLoading ? primary : disabledBg,
+              },
+            ]}
+          >
+            {submitLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={[styles.weiterBtnText, { color: "#FFFFFF" }]}>Weiter</Text>
+            )}
+          </Pressable>
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -466,15 +520,6 @@ const styles = StyleSheet.create({
   headerSide: { width: 88, justifyContent: "center" },
   headerSideRight: { width: 88, alignItems: "flex-end", justifyContent: "center" },
   headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
-  titleFrame: {
-    borderWidth: 2,
-    borderColor: "#000000",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignSelf: "center",
-    maxWidth: "92%",
-  },
   headerAbbrechen: { fontSize: 17, fontFamily: "Inter_400Regular" },
   headerTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
   headerStep: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
@@ -503,10 +548,23 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   clearBtn: { padding: 6 },
-  resultsBox: {
+  lockedRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 4,
+    paddingVertical: 8,
+    borderWidth: 0,
+  },
+  lockedText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 22,
+  },
+  resultsBoxPlain: {
     marginTop: 10,
-    borderRadius: RADIUS,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     overflow: "hidden",
   },
   resultRow: {
@@ -514,7 +572,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 4,
   },
   resultText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   locationLinkRow: {

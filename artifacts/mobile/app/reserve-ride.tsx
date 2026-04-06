@@ -576,11 +576,9 @@ export default function ReserveRideScreen() {
           <Text style={[styles.headerAbbrechen, { color: colors.primary }]}>Abbrechen</Text>
         </Pressable>
         <View style={styles.headerCenter}>
-          <View style={styles.titleFrame}>
-            <Text style={[styles.headerTitle, { color: colors.primary }]} numberOfLines={2}>
-              Abholung planen
-            </Text>
-          </View>
+          <Text style={[styles.headerTitle, { color: colors.primary }]} numberOfLines={2}>
+            Abholung planen
+          </Text>
           <Text style={[styles.headerStep, { color: colors.mutedForeground }]}>
             Schritt {stepIndex} von 4
           </Text>
@@ -1162,15 +1160,6 @@ const styles = StyleSheet.create({
   headerSide: { minWidth: 80, justifyContent: "center" },
   headerSideRight: { minWidth: 80, alignItems: "flex-end", justifyContent: "center" },
   headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 4 },
-  titleFrame: {
-    borderWidth: 2,
-    borderColor: "#000000",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignSelf: "center",
-    maxWidth: "92%",
-  },
   addressRoutePanel: {
     marginHorizontal: 20,
     marginTop: 16,
