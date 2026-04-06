@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
+
+function shortPlace(displayName: string) {
+  const p = displayName.split(",");
+  return (p[0] ?? displayName).trim() || "—";
+}
+
+/** Prüft, ob die Eingabe zur bereits im Kontext gesetzten GeoLocation passt (kein erneutes Geocoding nötig). */
+function geoMatchesInput(q: string, loc: GeoLocation | null | undefined): boolean {
+  if (!loc || !q.trim()) return false;
+  const n = q.trim().toLowerCase().replace(/\s+/g, " ");
+  const short = shortPlace(loc.displayName).toLowerCase().replace(/\s+/g, " ");
+  const full = loc.displayName.toLowerCase().replace(/\s+/g, " ");
+  if (n === short || n === full) return true;
+  if (full.length >= 8 && full.includes(n.slice(0, Math.min(n.length, 12)))) return true;
+  if (n.length >= 8 && short.includes(n.slice(0, 10))) return true;
+  return false;
+}
 
 async function reverseGeocodeLabel(lat: number, lon: number): Promise<string> {
   try {
@@ -39,7 +56,7 @@ async function reverseGeocodeLabel(lat: number, lon: number): Promise<string> {
 export default function FahrtReservierenScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { setOrigin, setDestination } = useRide();
+  const { origin, destination, setOrigin, setDestination } = useRide();
 
   const [pickup, setPickup] = useState("");
   const [dest, setDest] = useState("");
@@ -47,6 +64,19 @@ export default function FahrtReservierenScreen() {
   const [submitLoading, setSubmitLoading] = useState(false);
 
   const canProceed = pickup.trim().length > 0 && dest.trim().length > 0;
+
+  /* Felder aus globalem Ride-State (Abholung/Ziel von der Karte) spiegeln. */
+  useEffect(() => {
+    setPickup(shortPlace(origin.displayName));
+  }, [origin.displayName, origin.lat, origin.lon]);
+
+  useEffect(() => {
+    if (destination) {
+      setDest(shortPlace(destination.displayName));
+    } else {
+      setDest("");
+    }
+  }, [destination?.displayName, destination?.lat, destination?.lon]);
 
   const handleUseCurrentLocation = useCallback(async () => {
     setGpsLoading(true);
@@ -76,12 +106,23 @@ export default function FahrtReservierenScreen() {
     if (!canProceed) return;
     setSubmitLoading(true);
     try {
-      const [pickResults, destResults] = await Promise.all([
-        searchLocation(pickup.trim()),
-        searchLocation(dest.trim()),
-      ]);
-      const pu = pickResults[0];
-      const de = destResults[0];
+      let pu: GeoLocation | undefined;
+      let de: GeoLocation | undefined;
+
+      if (geoMatchesInput(pickup, origin)) {
+        pu = origin;
+      } else {
+        const pickResults = await searchLocation(pickup.trim());
+        pu = pickResults[0];
+      }
+
+      if (destination && geoMatchesInput(dest, destination)) {
+        de = destination;
+      } else {
+        const destResults = await searchLocation(dest.trim());
+        de = destResults[0];
+      }
+
       if (!pu || !de) {
         Alert.alert("Adresse", "Bitte gültige Abhol- und Zieladresse eingeben.");
         return;
@@ -90,14 +131,14 @@ export default function FahrtReservierenScreen() {
       setDestination(de);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       queueMicrotask(() => {
-        router.push({ pathname: "/reserve-ride", params: { fromStep1: "1" } });
+        router.push("/reserve-ride");
       });
     } catch {
       Alert.alert("Fehler", "Adressen konnten nicht geprüft werden. Bitte erneut versuchen.");
     } finally {
       setSubmitLoading(false);
     }
-  }, [canProceed, pickup, dest, setOrigin, setDestination]);
+  }, [canProceed, pickup, dest, origin, destination, setOrigin, setDestination]);
 
   const handleAbbrechen = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
