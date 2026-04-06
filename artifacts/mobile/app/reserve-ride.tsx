@@ -1,11 +1,12 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -27,6 +28,7 @@ import {
 } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
+import { type GeoLocation, searchLocation } from "@/utils/routing";
 
 const GROUP_RADIUS = 10;
 const WHEEL_ITEM = 44;
@@ -48,6 +50,11 @@ function buildScheduledDate(dayOffset: number, hour: number, minuteIndex: number
   d.setDate(d.getDate() + dayOffset);
   d.setHours(hour, minuteIndex * 5, 0, 0);
   return d;
+}
+
+function shortPlace(displayName: string) {
+  const p = displayName.split(",");
+  return (p[0] ?? displayName).trim() || "—";
 }
 
 function AddressRoutePanel({
@@ -187,7 +194,18 @@ export default function ReserveRideScreen() {
     resetRide,
   } = useRide();
 
-  const [step, setStep] = useState<Step>(() => (destination ? "extras" : "where"));
+  const [step, setStep] = useState<Step>("where");
+
+  const [pickupResolved, setPickupResolved] = useState<GeoLocation | null>(null);
+  const [pickupQuery, setPickupQuery] = useState("");
+  const [pickupResults, setPickupResults] = useState<GeoLocation[]>([]);
+  const [pickupLoading, setPickupLoading] = useState(false);
+  const pickupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [destQuery, setDestQuery] = useState("");
+  const [destResults, setDestResults] = useState<GeoLocation[]>([]);
+  const [destLoading, setDestLoading] = useState(false);
+  const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [dayOffset, setDayOffset] = useState(0);
   const [hour, setHour] = useState(0);
@@ -201,6 +219,76 @@ export default function ReserveRideScreen() {
   const [noteModal, setNoteModal] = useState(false);
   const [luggageModal, setLuggageModal] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+
+  const rideRef = useRef({ origin, destination });
+  rideRef.current = { origin, destination };
+
+  /* Beim Öffnen des Screens: Auto-Fill aus Context; keine Vorschlagslisten. Kein automatischer Sprung zu Schritt 2. */
+  useFocusEffect(
+    useCallback(() => {
+      const { origin: o, destination: d } = rideRef.current;
+      setPickupQuery(shortPlace(o.displayName));
+      setPickupResolved(o);
+      if (d) {
+        setDestQuery(shortPlace(d.displayName));
+      } else {
+        setDestQuery("");
+      }
+      setPickupResults([]);
+      setDestResults([]);
+    }, []),
+  );
+
+  useEffect(() => {
+    if (pickupResolved) setOrigin(pickupResolved);
+  }, [pickupResolved, setOrigin]);
+
+  useEffect(() => {
+    if (pickupQuery.length < 2) {
+      setPickupResults([]);
+      return;
+    }
+    if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
+    pickupDebounceRef.current = setTimeout(async () => {
+      setPickupLoading(true);
+      try {
+        const biasLoc = destination;
+        const bias = biasLoc ? { lat: biasLoc.lat, lon: biasLoc.lon } : undefined;
+        const locs = await searchLocation(pickupQuery, bias);
+        setPickupResults(locs);
+      } catch {
+        setPickupResults([]);
+      } finally {
+        setPickupLoading(false);
+      }
+    }, 320);
+    return () => {
+      if (pickupDebounceRef.current) clearTimeout(pickupDebounceRef.current);
+    };
+  }, [pickupQuery, destination]);
+
+  useEffect(() => {
+    if (destQuery.length < 2) {
+      setDestResults([]);
+      return;
+    }
+    if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+    destDebounceRef.current = setTimeout(async () => {
+      setDestLoading(true);
+      try {
+        const bias = pickupResolved ? { lat: pickupResolved.lat, lon: pickupResolved.lon } : { lat: origin.lat, lon: origin.lon };
+        const locs = await searchLocation(destQuery, bias);
+        setDestResults(locs);
+      } catch {
+        setDestResults([]);
+      } finally {
+        setDestLoading(false);
+      }
+    }, 320);
+    return () => {
+      if (destDebounceRef.current) clearTimeout(destDebounceRef.current);
+    };
+  }, [destQuery, pickupResolved, origin.lat, origin.lon]);
 
   useEffect(() => {
     if (step === "review" && destination && selectedVehicle) {
@@ -251,11 +339,52 @@ export default function ReserveRideScreen() {
     setWheelKey((k) => k + 1);
   }, [setScheduledTime]);
 
-  const canProceedWhere = destination != null;
+  const canProceedWhere = pickupResolved != null && destination != null;
+
+  const pickPickup = useCallback(
+    (loc: GeoLocation) => {
+      setPickupResolved(loc);
+      setPickupQuery(shortPlace(loc.displayName));
+      setPickupResults([]);
+      setOrigin(loc);
+      Keyboard.dismiss();
+      Haptics.selectionAsync();
+    },
+    [setOrigin],
+  );
+
+  const pickDestination = useCallback(
+    (loc: GeoLocation) => {
+      setDestination(loc);
+      setDestQuery(shortPlace(loc.displayName));
+      setDestResults([]);
+      Keyboard.dismiss();
+      Haptics.selectionAsync();
+    },
+    [setDestination],
+  );
+
+  const clearPickup = useCallback(() => {
+    setPickupResolved(null);
+    setPickupQuery("");
+    setPickupResults([]);
+    setOrigin(DEFAULT_ORIGIN);
+    Haptics.selectionAsync();
+  }, [setOrigin]);
+
+  const clearDestination = useCallback(() => {
+    setDestination(null);
+    setDestQuery("");
+    setDestResults([]);
+    Haptics.selectionAsync();
+  }, [setDestination]);
   const wheelchairNeedsTransportschein =
     selectedVehicle === "wheelchair" && transportschein === null;
   const canProceedExtras =
-    selectedVehicle != null && destination != null && !wheelchairNeedsTransportschein;
+    pickupResolved != null &&
+    selectedVehicle != null &&
+    destination != null &&
+    !wheelchairNeedsTransportschein;
   const canProceedWhen = true;
 
   const goNext = useCallback(async () => {
@@ -287,7 +416,7 @@ export default function ReserveRideScreen() {
   ]);
 
   const handleBook = useCallback(() => {
-    if (!destination || !selectedVehicle) {
+    if (!pickupResolved || !destination || !selectedVehicle) {
       Alert.alert("Unvollständig", "Bitte Abholung, Ziel und Fahrzeug prüfen.");
       return;
     }
@@ -298,7 +427,7 @@ export default function ReserveRideScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     commitSchedule();
     router.push("/ride");
-  }, [destination, selectedVehicle, isLoadingRoute, fareBreakdown, commitSchedule]);
+  }, [pickupResolved, destination, selectedVehicle, isLoadingRoute, fareBreakdown, commitSchedule]);
 
   const arrowDisabled =
     step === "where"
@@ -335,6 +464,11 @@ export default function ReserveRideScreen() {
     setOrigin(DEFAULT_ORIGIN);
     setIsExempted(false);
     setStep("where");
+    setPickupResolved(null);
+    setPickupQuery("");
+    setPickupResults([]);
+    setDestQuery("");
+    setDestResults([]);
     setDriverNote("");
     setTransportschein(null);
     setLuggage("none");
@@ -380,17 +514,131 @@ export default function ReserveRideScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <AddressRoutePanel
-          originDisplay={origin.displayName}
-          destinationDisplay={destination?.displayName ?? "—"}
-          colors={colors}
-        />
-
         {step === "where" ? (
-          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-            Abholung und Ziel sind fest gesetzt. Zum Ändern „Abbrechen“ und Route vorher neu wählen.
-          </Text>
-        ) : null}
+          <>
+            <View style={[styles.addressRoutePanel, { backgroundColor: colors.background }]}>
+              <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground }]}>Abholung</Text>
+              <View style={styles.whereEditRow}>
+                <Feather name="navigation" size={18} color={colors.primary} style={styles.whereEditIcon} />
+                <TextInput
+                  style={[styles.whereInput, { color: colors.foreground }]}
+                  value={pickupQuery}
+                  onChangeText={(t) => {
+                    setPickupQuery(t);
+                    if (pickupResolved) {
+                      const prev = shortPlace(pickupResolved.displayName);
+                      if (t !== prev) {
+                        setPickupResolved(null);
+                        setOrigin(DEFAULT_ORIGIN);
+                      }
+                    }
+                  }}
+                  placeholder="Abholort suchen …"
+                  placeholderTextColor={colors.mutedForeground}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                />
+                {(pickupQuery.length > 0 || pickupResolved != null) && (
+                  <Pressable
+                    hitSlop={10}
+                    onPress={clearPickup}
+                    style={styles.whereClearBtn}
+                    accessibilityLabel="Abholadresse löschen"
+                  >
+                    <Feather name="x" size={17} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+                {pickupLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+              </View>
+              {pickupResults.length > 0 ? (
+                <View style={[styles.whereSuggestions, { borderColor: colors.border }]}>
+                  {pickupResults.map((loc, i) => (
+                    <Pressable
+                      key={`pu-${loc.lat}-${loc.lon}-${i}`}
+                      style={[
+                        styles.whereSuggestionRow,
+                        { backgroundColor: colors.background },
+                        i < pickupResults.length - 1 && {
+                          borderBottomWidth: StyleSheet.hairlineWidth,
+                          borderBottomColor: colors.border,
+                        },
+                      ]}
+                      onPress={() => pickPickup(loc)}
+                    >
+                      <Feather name="map-pin" size={16} color={colors.primary} />
+                      <Text style={[styles.whereSuggestionText, { color: colors.foreground }]} numberOfLines={2}>
+                        {loc.displayName}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Ziel</Text>
+              <View style={styles.whereEditRow}>
+                <Feather name="map-pin" size={18} color={colors.primary} style={styles.whereEditIcon} />
+                <TextInput
+                  style={[styles.whereInput, { color: colors.foreground }]}
+                  value={destQuery}
+                  onChangeText={(t) => {
+                    setDestQuery(t);
+                    if (destination) {
+                      const prev = shortPlace(destination.displayName);
+                      if (t !== prev) setDestination(null);
+                    }
+                  }}
+                  placeholder="Ziel suchen …"
+                  placeholderTextColor={colors.mutedForeground}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                />
+                {(destQuery.length > 0 || destination != null) && (
+                  <Pressable
+                    hitSlop={10}
+                    onPress={clearDestination}
+                    style={styles.whereClearBtn}
+                    accessibilityLabel="Zieladresse löschen"
+                  >
+                    <Feather name="x" size={17} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+                {destLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+              </View>
+              {destResults.length > 0 ? (
+                <View style={[styles.whereSuggestions, { borderColor: colors.border }]}>
+                  {destResults.map((loc, i) => (
+                    <Pressable
+                      key={`de-${loc.lat}-${loc.lon}-${i}`}
+                      style={[
+                        styles.whereSuggestionRow,
+                        { backgroundColor: colors.background },
+                        i < destResults.length - 1 && {
+                          borderBottomWidth: StyleSheet.hairlineWidth,
+                          borderBottomColor: colors.border,
+                        },
+                      ]}
+                      onPress={() => pickDestination(loc)}
+                    >
+                      <Feather name="map-pin" size={16} color={colors.primary} />
+                      <Text style={[styles.whereSuggestionText, { color: colors.foreground }]} numberOfLines={2}>
+                        {loc.displayName}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+            <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+              Wählen Sie Abholort und Ziel aus den Vorschlägen. Weiter geht es erst nach Tipp auf „Weiter“.
+            </Text>
+          </>
+        ) : (
+          <AddressRoutePanel
+            originDisplay={origin.displayName}
+            destinationDisplay={destination?.displayName ?? "—"}
+            colors={colors}
+          />
+        )}
 
         {step === "extras" && (
           <>
@@ -825,6 +1073,35 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   addressRouteValue: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  whereEditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  whereEditIcon: { marginRight: 2 },
+  whereInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    paddingVertical: 10,
+    minHeight: 44,
+  },
+  whereClearBtn: { padding: 6 },
+  whereSuggestions: {
+    marginTop: 10,
+    borderRadius: GROUP_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  whereSuggestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  whereSuggestionText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   headerAbbrechen: { fontSize: 17, fontFamily: "Inter_400Regular" },
   headerTitle: {
     fontSize: 16,
