@@ -448,6 +448,7 @@ export default function ReserveRideScreen() {
   );
 
   const clearPickup = useCallback(() => {
+    Keyboard.dismiss();
     setPickupResolved(null);
     setPickupQuery("");
     setPickupResults([]);
@@ -456,6 +457,7 @@ export default function ReserveRideScreen() {
   }, [setOrigin]);
 
   const clearDestination = useCallback(() => {
+    Keyboard.dismiss();
     setDestination(null);
     setDestQuery("");
     setDestResults([]);
@@ -541,6 +543,11 @@ export default function ReserveRideScreen() {
 
   const stepIndex = step === "where" ? 1 : step === "extras" ? 2 : step === "when" ? 3 : 4;
 
+  /** Schritt 1: Nach Listenauswahl nur noch festen Text, kein TextInput. */
+  const pickupLocked = pickupResolved != null;
+  const destLocked = destination != null;
+  const whereBothLockedReady = pickupLocked && destLocked;
+
   const handleCancelReservation = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     resetRide();
@@ -599,120 +606,146 @@ export default function ReserveRideScreen() {
       >
         {step === "where" ? (
           <>
-            <View style={[styles.addressRoutePanel, { backgroundColor: colors.background }]}>
+            <View style={[styles.whereStepPanel, { backgroundColor: colors.background }]}>
               <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground }]}>Abholung</Text>
-              <View style={styles.whereEditRow}>
-                <Feather name="navigation" size={18} color={colors.primary} style={styles.whereEditIcon} />
-                <TextInput
-                  style={[styles.whereInput, { color: colors.foreground }]}
-                  value={pickupQuery}
-                  onChangeText={(t) => {
-                    setPickupQuery(t);
-                    if (pickupResolved) {
-                      const prev = shortPlace(pickupResolved.displayName);
-                      if (t !== prev) {
-                        setPickupResolved(null);
-                        setOrigin(DEFAULT_ORIGIN);
-                      }
-                    }
-                  }}
-                  placeholder="Abholort suchen …"
-                  placeholderTextColor={colors.mutedForeground}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                />
-                {(pickupQuery.length > 0 || pickupResolved != null) && (
+              {pickupLocked && pickupResolved ? (
+                <View style={styles.whereLockedRow}>
+                  <Feather name="navigation" size={18} color={colors.primary} style={styles.whereEditIcon} />
+                  <Text style={[styles.whereLockedText, { color: colors.foreground }]} numberOfLines={6}>
+                    {pickupResolved.displayName}
+                  </Text>
                   <Pressable
                     hitSlop={10}
                     onPress={clearPickup}
                     style={styles.whereClearBtn}
-                    accessibilityLabel="Abholadresse löschen"
+                    accessibilityLabel="Abholadresse ändern"
                   >
                     <Feather name="x" size={17} color={colors.mutedForeground} />
                   </Pressable>
-                )}
-                {pickupLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-              </View>
-              {pickupResults.length > 0 ? (
-                <View style={[styles.whereSuggestions, { borderColor: colors.border }]}>
-                  {pickupResults.map((loc, i) => (
-                    <Pressable
-                      key={`pu-${loc.lat}-${loc.lon}-${i}`}
-                      style={[
-                        styles.whereSuggestionRow,
-                        { backgroundColor: colors.background },
-                        i < pickupResults.length - 1 && {
-                          borderBottomWidth: StyleSheet.hairlineWidth,
-                          borderBottomColor: colors.border,
-                        },
-                      ]}
-                      onPress={() => pickPickup(loc)}
-                    >
-                      <Feather name="map-pin" size={16} color={colors.primary} />
-                      <Text style={[styles.whereSuggestionText, { color: colors.foreground }]} numberOfLines={2}>
-                        {loc.displayName}
-                      </Text>
-                    </Pressable>
-                  ))}
                 </View>
-              ) : null}
+              ) : (
+                <>
+                  <View style={styles.whereEditRow}>
+                    <Feather name="navigation" size={18} color={colors.primary} style={styles.whereEditIcon} />
+                    <TextInput
+                      style={[styles.whereInput, { color: colors.foreground }]}
+                      value={pickupQuery}
+                      onChangeText={(t) => {
+                        setPickupQuery(t);
+                        if (pickupResolved) {
+                          const prev = shortPlace(pickupResolved.displayName);
+                          if (t !== prev) {
+                            setPickupResolved(null);
+                            setOrigin(DEFAULT_ORIGIN);
+                          }
+                        }
+                      }}
+                      placeholder="Abholort suchen …"
+                      placeholderTextColor={colors.mutedForeground}
+                      returnKeyType="search"
+                      autoCorrect={false}
+                    />
+                    {(pickupQuery.length > 0 || pickupResolved != null) && (
+                      <Pressable
+                        hitSlop={10}
+                        onPress={clearPickup}
+                        style={styles.whereClearBtn}
+                        accessibilityLabel="Abholadresse löschen"
+                      >
+                        <Feather name="x" size={17} color={colors.mutedForeground} />
+                      </Pressable>
+                    )}
+                    {pickupLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+                  </View>
+                  {!pickupLocked && pickupResults.length > 0 ? (
+                    <View style={styles.whereSuggestions}>
+                      {pickupResults.map((loc, i) => (
+                        <Pressable
+                          key={`pu-${loc.lat}-${loc.lon}-${i}`}
+                          style={[styles.whereSuggestionRow, { backgroundColor: colors.background }]}
+                          onPress={() => pickPickup(loc)}
+                        >
+                          <Feather name="map-pin" size={16} color={colors.primary} />
+                          <Text style={[styles.whereSuggestionText, { color: colors.foreground }]} numberOfLines={2}>
+                            {loc.displayName}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
+                </>
+              )}
 
               <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Ziel</Text>
-              <View style={styles.whereEditRow}>
-                <Feather name="map-pin" size={18} color={colors.primary} style={styles.whereEditIcon} />
-                <TextInput
-                  style={[styles.whereInput, { color: colors.foreground }]}
-                  value={destQuery}
-                  onChangeText={(t) => {
-                    setDestQuery(t);
-                    if (destination) {
-                      const prev = shortPlace(destination.displayName);
-                      if (t !== prev) setDestination(null);
-                    }
-                  }}
-                  placeholder="Ziel suchen …"
-                  placeholderTextColor={colors.mutedForeground}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                />
-                {(destQuery.length > 0 || destination != null) && (
+              {destLocked && destination ? (
+                <View style={styles.whereLockedRow}>
+                  <Feather name="map-pin" size={18} color={colors.primary} style={styles.whereEditIcon} />
+                  <Text style={[styles.whereLockedText, { color: colors.foreground }]} numberOfLines={6}>
+                    {destination.displayName}
+                  </Text>
                   <Pressable
                     hitSlop={10}
                     onPress={clearDestination}
                     style={styles.whereClearBtn}
-                    accessibilityLabel="Zieladresse löschen"
+                    accessibilityLabel="Zieladresse ändern"
                   >
                     <Feather name="x" size={17} color={colors.mutedForeground} />
                   </Pressable>
-                )}
-                {destLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-              </View>
-              {destResults.length > 0 ? (
-                <View style={[styles.whereSuggestions, { borderColor: colors.border }]}>
-                  {destResults.map((loc, i) => (
-                    <Pressable
-                      key={`de-${loc.lat}-${loc.lon}-${i}`}
-                      style={[
-                        styles.whereSuggestionRow,
-                        { backgroundColor: colors.background },
-                        i < destResults.length - 1 && {
-                          borderBottomWidth: StyleSheet.hairlineWidth,
-                          borderBottomColor: colors.border,
-                        },
-                      ]}
-                      onPress={() => pickDestination(loc)}
-                    >
-                      <Feather name="map-pin" size={16} color={colors.primary} />
-                      <Text style={[styles.whereSuggestionText, { color: colors.foreground }]} numberOfLines={2}>
-                        {loc.displayName}
-                      </Text>
-                    </Pressable>
-                  ))}
                 </View>
-              ) : null}
+              ) : (
+                <>
+                  <View style={styles.whereEditRow}>
+                    <Feather name="map-pin" size={18} color={colors.primary} style={styles.whereEditIcon} />
+                    <TextInput
+                      style={[styles.whereInput, { color: colors.foreground }]}
+                      value={destQuery}
+                      onChangeText={(t) => {
+                        setDestQuery(t);
+                        if (destination) {
+                          const prev = shortPlace(destination.displayName);
+                          if (t !== prev) setDestination(null);
+                        }
+                      }}
+                      placeholder="Ziel suchen …"
+                      placeholderTextColor={colors.mutedForeground}
+                      returnKeyType="search"
+                      autoCorrect={false}
+                    />
+                    {(destQuery.length > 0 || destination != null) && (
+                      <Pressable
+                        hitSlop={10}
+                        onPress={clearDestination}
+                        style={styles.whereClearBtn}
+                        accessibilityLabel="Zieladresse löschen"
+                      >
+                        <Feather name="x" size={17} color={colors.mutedForeground} />
+                      </Pressable>
+                    )}
+                    {destLoading ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+                  </View>
+                  {!destLocked && destResults.length > 0 ? (
+                    <View style={styles.whereSuggestions}>
+                      {destResults.map((loc, i) => (
+                        <Pressable
+                          key={`de-${loc.lat}-${loc.lon}-${i}`}
+                          style={[styles.whereSuggestionRow, { backgroundColor: colors.background }]}
+                          onPress={() => pickDestination(loc)}
+                        >
+                          <Feather name="map-pin" size={16} color={colors.primary} />
+                          <Text style={[styles.whereSuggestionText, { color: colors.foreground }]} numberOfLines={2}>
+                            {loc.displayName}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
+                </>
+              )}
             </View>
             <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-              Wählen Sie Abholort und Ziel aus den Vorschlägen. Weiter geht es erst nach Tipp auf „Weiter“.
+              {whereBothLockedReady
+                ? "Beide Orte sind festgelegt. Tippen Sie auf „Weiter“, um fortzufahren."
+                : "Wählen Sie Abholort und Ziel aus der Liste. Nach der Auswahl wird das Feld gesperrt (nur noch Text)."}
             </Text>
           </>
         ) : (
@@ -1017,33 +1050,35 @@ export default function ReserveRideScreen() {
             <Text style={[styles.clearTimeText, { color: colors.primary }]}>Abholzeit löschen</Text>
           </Pressable>
         )}
-        <Pressable
-          style={[
-            styles.btnPrimary,
-            {
-              backgroundColor: reviewCtaGreen ? "#16a34a" : colors.primary,
-            },
-            footerPrimaryDisabled && styles.btnDisabled,
-          ]}
-          disabled={footerPrimaryDisabled}
-          onPress={() => {
-            if (step === "review") handleBook();
-            else void goNext();
-          }}
-        >
-          {step === "review" && isLoadingRoute ? (
-            <ActivityIndicator color={colors.primaryForeground} size="small" />
-          ) : (
-            <Text
-              style={[
-                styles.btnPrimaryText,
-                { color: reviewCtaGreen ? "#FFFFFF" : colors.primaryForeground },
-              ]}
-            >
-              {footerPrimaryLabel}
-            </Text>
-          )}
-        </Pressable>
+        {(step !== "where" || whereBothLockedReady) && (
+          <Pressable
+            style={[
+              styles.btnPrimary,
+              {
+                backgroundColor: reviewCtaGreen ? "#16a34a" : colors.primary,
+              },
+              footerPrimaryDisabled && styles.btnDisabled,
+            ]}
+            disabled={footerPrimaryDisabled}
+            onPress={() => {
+              if (step === "review") handleBook();
+              else void goNext();
+            }}
+          >
+            {step === "review" && isLoadingRoute ? (
+              <ActivityIndicator color={colors.primaryForeground} size="small" />
+            ) : (
+              <Text
+                style={[
+                  styles.btnPrimaryText,
+                  { color: reviewCtaGreen ? "#FFFFFF" : colors.primaryForeground },
+                ]}
+              >
+                {footerPrimaryLabel}
+              </Text>
+            )}
+          </Pressable>
+        )}
       </View>
 
       <Modal visible={noteModal} transparent animationType="fade" onRequestClose={() => setNoteModal(false)}>
@@ -1144,6 +1179,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#000000",
   },
+  /** Schritt 1: kein Rahmen um die Adress-Box (nach Vorgabe „locked“). */
+  whereStepPanel: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 0,
+  },
+  whereLockedRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 6,
+    borderWidth: 0,
+  },
+  whereLockedText: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 22,
+    paddingVertical: 8,
+  },
   addressRouteLabel: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
@@ -1187,7 +1244,7 @@ const styles = StyleSheet.create({
   whereSuggestions: {
     marginTop: 10,
     borderRadius: GROUP_RADIUS,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
     overflow: "hidden",
   },
   whereSuggestionRow: {
@@ -1195,7 +1252,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
   },
   whereSuggestionText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   headerAbbrechen: { fontSize: 17, fontFamily: "Inter_400Regular" },
