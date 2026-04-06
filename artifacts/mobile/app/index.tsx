@@ -1163,8 +1163,19 @@ export default function HomeScreen() {
               </View>
             </>
           ) : (
-            /* Buchungs-Panel */
-            <View style={styles.fareSection}>
+            /* Buchungs-Panel + gleiche kompakte Banner wie auf der Start-Ansicht */
+            <>
+              <View style={[styles.vehicleSection, styles.vehicleSectionInBooking]}>
+                <HorizontalVehicleSlider
+                  colors={homeBannerSliderColors}
+                  viewportWidth={vehicleSliderViewportHome}
+                  selectedVehicle={selectedVehicle}
+                  expandedBannerId={expandedBannerId}
+                  onSlideSnap={handleVehicleSlideSnap}
+                  onMehrErfahren={handleVehicleMehrErfahren}
+                />
+              </View>
+              <View style={styles.fareSection}>
 
               {/* ── 1. ZEITWAHL ── */}
               <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>WANN?</Text>
@@ -1349,6 +1360,7 @@ export default function HomeScreen() {
               ) : null}
 
             </View>
+            </>
           )}
         </ScrollView>
 
@@ -2106,8 +2118,9 @@ const styles = StyleSheet.create({
   quickSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
   quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 
-  /* Fahrzeug-Slider (Beige-Karten, Snap, Punkte – Referenz-Layout) */
+  /* Fahrzeug-Slider (kompakte Karten; auch im Buchungs-Panel unter der Route) */
   vehicleSection: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
+  vehicleSectionInBooking: { paddingTop: 8, paddingBottom: 6 },
   vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
   vehicleSliderSnapContent: {
     flexDirection: "row",
