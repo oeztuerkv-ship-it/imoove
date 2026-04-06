@@ -1,0 +1,12 @@
+Stand: 2026-04-06
+Kopien der zuletzt geänderten Dateien für Fahrer-Login / Navigation.
+
+- app_root_layout.tsx  → app/_layout.tsx
+- driver_layout.tsx    → app/driver/_layout.tsx
+- dashboard.tsx        → app/driver/dashboard.tsx
+- DriverContext.tsx    → context/DriverContext.tsx
+- fahrer-login.tsx     → app/fahrer-login.tsx
+- index.tsx            → app/index.tsx
+- profile.tsx          → app/profile.tsx
+
+Die Datei _layout.tsx in diesem Ordner (falls vorhanden) ignorieren — war ein Kopier-Artefakt.
