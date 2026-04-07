@@ -34,6 +34,7 @@ function RootLayoutNav() {
       <Stack.Screen name="ride" options={{ headerShown: false }} />
       <Stack.Screen name="status" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false, animation: "none" }} />
+      <Stack.Screen name="google-auth" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="my-rides" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="help" options={{ headerShown: false }} />
       <Stack.Screen name="impressum" options={{ headerShown: false }} />
@@ -41,6 +42,7 @@ function RootLayoutNav() {
       <Stack.Screen name="wallet" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="reserve-ride" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="fahrt-reservieren" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
       <Stack.Screen name="driver/login" options={{ headerShown: false }} />
       <Stack.Screen name="driver/dashboard" options={{ headerShown: false }} />
     </Stack>
@@ -59,7 +61,9 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+    if (fontsLoaded || fontError) {
+      void SplashScreen.hideAsync();
+    }
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;

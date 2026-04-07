@@ -113,7 +113,7 @@ export function calculateCopayment(fullFare: number, isExempted: boolean): numbe
 interface RideContextValue extends RideState {
   setOrigin: (loc: GeoLocation) => void;
   setDestination: (loc: GeoLocation | null) => void;
-  setSelectedVehicle: (v: VehicleType) => void;
+  setSelectedVehicle: (v: VehicleType | null) => void;
   setPaymentMethod: (m: PaymentMethod | null) => void;
   setIsExempted: (v: boolean) => void;
   setScheduledTime: (t: Date | null) => void;

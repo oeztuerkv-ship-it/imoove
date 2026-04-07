@@ -18,7 +18,10 @@ function isApiHost(h: string): boolean {
     h === "api.onroda.de" ||
     h === "localhost" ||
     h === "127.0.0.1" ||
-    h === "::1"
+    h === "::1" ||
+    h.endsWith(".ngrok-free.dev") ||
+    h.endsWith(".ngrok-free.app") ||
+    h.endsWith(".ngrok.io")
   );
 }
 

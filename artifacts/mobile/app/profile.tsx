@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { BottomTabBar } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
@@ -23,8 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
-import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
-import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
+import { NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -68,6 +67,31 @@ function GoogleGLogo({ size = 22 }: { size?: number }) {
 
 const API_URL = getApiBaseUrl();
 const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
+
+function readOAuthReturnParams(url: string): { error: string | null; result: string | null } {
+  const fromSearchString = (q: string) => {
+    const s = q.startsWith("?") || q.startsWith("#") ? q.slice(1) : q;
+    const params = new URLSearchParams(s);
+    return { error: params.get("error"), result: params.get("result") };
+  };
+  try {
+    const raw =
+      url.includes("://") && !/^https?:\/\//i.test(url)
+        ? url.replace(/^[a-z][a-z0-9+\-.]*:\/\//i, "https://")
+        : url;
+    const parsed = new URL(raw);
+    return {
+      error: parsed.searchParams.get("error"),
+      result: parsed.searchParams.get("result"),
+    };
+  } catch {
+    const q = url.indexOf("?");
+    const h = url.indexOf("#");
+    const cut = q >= 0 ? q : h >= 0 ? h : -1;
+    if (cut < 0) return { error: null, result: null };
+    return fromSearchString(url.slice(cut));
+  }
+}
 
 function isPlausibleEmail(s: string): boolean {
   const t = s.trim();
@@ -512,36 +536,65 @@ export default function ProfileScreen() {
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
 
+  /**
+   * Google über Backend (PKCE): einzig präzise Redirect-URI in der Cloud Console ist
+   * {BACKEND_URL}/api/auth/google/callback — vermeidet 404/redirect_uri_mismatch vom Client-Flow.
+   */
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      const returnUrl = Linking.createURL("google-auth");
-      const startRes = await fetch(
-        `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`,
-      );
-      if (!startRes.ok) throw new Error("OAuth-Start fehlgeschlagen");
+      if (!API_URL) {
+        throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
+      }
+      const startUrl = `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(Linking.createURL("google-auth"))}`;
+      const startRes = await fetch(startUrl);
+      if (startRes.status === 404) {
+        throw new Error(
+          `Server antwortet 404 auf „${startUrl}“. Läuft die API unter dieser Adresse (inkl. /api)?`,
+        );
+      }
+      if (!startRes.ok) {
+        const errBody = await startRes.text();
+        let msg = `OAuth-Start fehlgeschlagen (${startRes.status}).`;
+        try {
+          const j = JSON.parse(errBody) as { error?: string };
+          if (j.error) {
+            msg =
+              j.error === "Google Client ID not configured"
+                ? "Google ist auf dem Server nicht konfiguriert (GOOGLE_CLIENT_ID / Secret)."
+                : j.error;
+          }
+        } catch {
+          if (errBody.trim()) msg = errBody.slice(0, 200);
+        }
+        throw new Error(msg);
+      }
       const { authUrl } = (await startRes.json()) as { authUrl: string; state: string };
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+      const returnUrlGuess = Linking.createURL("google-auth");
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrlGuess);
       if (result.type !== "success") return;
-      const rawUrl = result.url.includes("://")
-        ? result.url.replace(/^[a-z][a-z0-9+\-.]*:\/\//, "https://")
-        : result.url;
-      const returnedUrl = new URL(rawUrl);
-      const errorParam = returnedUrl.searchParams.get("error");
+      if (!result.url) throw new Error("Keine Rückkehr-URL vom Browser erhalten.");
+      const { error: errorParam, result: resultState } = readOAuthReturnParams(result.url);
       if (errorParam) throw new Error(`Google-Fehler: ${errorParam}`);
-      const resultState = returnedUrl.searchParams.get("result");
       if (!resultState) throw new Error("Kein Ergebnis-Token empfangen.");
-      const profileRes = await fetch(`${API_URL}/auth/google/profile?result=${resultState}`);
+      const profileRes = await fetch(`${API_URL}/auth/google/profile?result=${encodeURIComponent(resultState)}`);
+      if (profileRes.status === 404) {
+        throw new Error("Profil-Token ungültig oder abgelaufen. Bitte Anmeldung erneut starten.");
+      }
       if (!profileRes.ok) {
         const err = await profileRes.json().catch(() => ({}));
-        throw new Error((err as any).error ?? "Profil konnte nicht geladen werden.");
+        throw new Error((err as { error?: string }).error ?? "Profil konnte nicht geladen werden.");
       }
       const data = (await profileRes.json()) as {
-        googleId: string; name: string; email: string; photoUri: string | null;
+        googleId: string;
+        name: string;
+        email: string;
+        photoUri: string | null;
       };
       loginWithGoogle({ name: data.name, email: data.email, photoUri: data.photoUri, googleId: data.googleId });
-    } catch (e: any) {
-      Alert.alert("Fehler", e.message ?? "Google-Anmeldung fehlgeschlagen.");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
+      Alert.alert("Fehler", message);
     } finally {
       setGoogleLoading(false);
     }
@@ -584,20 +637,26 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, {
-        paddingTop: topPad + 12,
-        backgroundColor: colors.background,
-        borderBottomColor: colors.border,
-      }]}>
-        <View style={{ width: 40 }} />
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      {profile.isLoggedIn ? (
+        <View style={[styles.header, {
+          paddingTop: topPad + 12,
+          backgroundColor: colors.background,
+          borderBottomColor: colors.border,
+        }]}>
+          <View style={{ width: 40 }} />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      ) : null}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 40 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          !profile.isLoggedIn ? styles.scrollGrow : null,
+          { paddingBottom: bottomPad + 24 },
+          !profile.isLoggedIn ? { paddingTop: topPad + 12 } : null,
+        ]}
       >
         {profile.isLoggedIn ? (
           /* ══ LOGGED IN ══ */
@@ -742,102 +801,112 @@ export default function ProfileScreen() {
             <View style={styles.loginSection}>
               {/* App branding */}
               <View style={styles.brandBlock}>
-                <OnrodaOrMark size={rs(72)} />
-                <Text style={[styles.brandTitle, { color: colors.foreground }]}>Onroda</Text>
-                <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
-                  Mobilität ohne Grenzen
-                </Text>
+                <OnrodaOrMark size={rs(86)} />
+                <Text style={[styles.brandTitle, { color: "#111111" }]}>onroda</Text>
               </View>
 
               {profileStep === "social" ? (
                 <>
-                  <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                    <NeuBeiOnrodaRegisterRow
-                      mutedColor={colors.mutedForeground}
-                      marginBottom={rs(10)}
-                      fontSize={rf(14)}
-                      onRegisterPress={goRegister}
-                    />
-                    <View style={{ gap: 10 }}>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.socialBtn,
-                          {
-                            backgroundColor: "#FFFFFF",
-                            borderColor: colors.border,
-                            opacity: (pressed || googleLoading) ? 0.9 : 1,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.05,
-                            shadowRadius: 4,
-                            elevation: 1,
-                          },
-                        ]}
-                        onPress={handleGoogleLogin}
-                        disabled={googleLoading}
-                      >
-                        {googleLoading
-                          ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
-                          : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                        <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
-                          {googleLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.socialBtn,
-                          {
-                            backgroundColor: "#FFFFFF",
-                            borderColor: colors.border,
-                            opacity: pressed ? 0.9 : 1,
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.05,
-                            shadowRadius: 4,
-                            elevation: 1,
-                          },
-                        ]}
-                        onPress={() => Alert.alert("Apple Login", "Apple-Anmeldung ist in Kürze verfügbar.")}
-                      >
-                        <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                        <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  <View style={styles.loginOrDividerRow}>
-                    <View style={[styles.loginOrLine, { backgroundColor: colors.border }]} />
-                    <Text style={[styles.loginOrLabel, { color: colors.mutedForeground }]}>oder</Text>
-                    <View style={[styles.loginOrLine, { backgroundColor: colors.border }]} />
-                  </View>
-
-                  <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <NeuBeiOnrodaRegisterRow
+                    mutedColor={colors.mutedForeground}
+                    marginBottom={rs(10)}
+                    fontSize={rf(14)}
+                    onRegisterPress={goRegister}
+                  />
+                  <View style={{ gap: 10 }}>
                     <Pressable
                       style={({ pressed }) => [
                         styles.socialBtn,
                         {
-                          backgroundColor: "#111111",
-                          borderColor: "#111111",
-                          opacity: pressed ? 0.92 : 1,
+                          backgroundColor: "#FFFFFF",
+                          borderColor: colors.border,
+                          opacity: (pressed || googleLoading) ? 0.9 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.08,
+                          shadowOpacity: 0.05,
                           shadowRadius: 4,
-                          elevation: 2,
+                          elevation: 1,
                         },
                       ]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.push("/driver/login");
-                      }}
+                      onPress={handleGoogleLogin}
+                      disabled={googleLoading}
                     >
-                      <MaterialCommunityIcons name="steering" size={22} color="#FFFFFF" />
-                      <Text style={[styles.socialBtnText, { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" }]}>
-                        Fahrer-Login
+                      {googleLoading
+                        ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
+                        : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
+                        {googleLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
                       </Text>
                     </Pressable>
+
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.socialBtn,
+                        {
+                          backgroundColor: "#FFFFFF",
+                          borderColor: colors.border,
+                          opacity: pressed ? 0.9 : 1,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 1,
+                        },
+                      ]}
+                      onPress={() => Alert.alert("Apple Login", "Apple-Anmeldung ist in Kürze verfügbar.")}
+                    >
+                      <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>
+                    </Pressable>
                   </View>
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginVertical: rs(4),
+                    paddingHorizontal: rs(8),
+                  }}
+                >
+                  <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
+                  <Text
+                    style={{
+                      marginHorizontal: rs(14),
+                      fontSize: rf(13),
+                      fontFamily: "Inter_500Medium",
+                      color: colors.mutedForeground,
+                    }}
+                  >
+                    oder
+                  </Text>
+                  <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
+                </View>
+
+                <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Pressable
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: rs(12),
+                      paddingVertical: rs(16),
+                      borderRadius: rs(14),
+                      backgroundColor: "#111111",
+                      opacity: pressed ? 0.88 : 1,
+                    })}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push("/driver/login");
+                    }}
+                  >
+                    <Feather name="log-in" size={22} color="#FFFFFF" />
+                    <Text style={{ fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#FFFFFF" }}>
+                      Fahrer-Login
+                    </Text>
+                  </Pressable>
+                </View>
                 </>
               ) : regSubStep === "form" ? (
                 <View style={styles.signInBlock}>
@@ -951,31 +1020,16 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
               )}
-
-              {profileStep === "register" && (
-                <FahrerRegistrierenFooter
-                  colors={{
-                    foreground: colors.foreground,
-                    mutedForeground: colors.mutedForeground,
-                    muted: colors.muted,
-                    border: colors.border,
-                  }}
-                  padding={rs(14)}
-                  gap={rs(10)}
-                  onAnmeldenPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push("/driver/login");
-                  }}
-                />
-              )}
             </View>
           </KeyboardAvoidingView>
         )}
 
+        {!profile.isLoggedIn ? <View style={styles.footerScrollSpacer} /> : null}
+
         {/* ── Horizontal footer links ── */}
-        <View style={styles.footerLinks}>
+        <View style={[styles.footerLinks, { marginBottom: bottomPad + 8 }, profile.isLoggedIn ? { marginTop: rs(28) } : null]}>
           <Pressable onPress={() => router.push("/help")} style={styles.footerLinkBtn}>
-            <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Hilfe & FAQ</Text>
+            <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Hilfe</Text>
           </Pressable>
           <Text style={[styles.footerSep, { color: colors.border }]}>|</Text>
           <Pressable onPress={() => router.push("/impressum")} style={styles.footerLinkBtn}>
@@ -1009,12 +1063,12 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },
 
   scroll: { paddingTop: rs(20), gap: 0 },
+  scrollGrow: { flexGrow: 1 },
 
   /* Login section */
   loginSection: { paddingHorizontal: rs(24), marginBottom: rs(8), gap: rs(28) },
   brandBlock: { alignItems: "center", gap: rs(10), paddingTop: rs(16) },
-  brandTitle: { fontSize: rf(28), fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  brandSub: { fontSize: rf(14), fontFamily: "Inter_400Regular", textAlign: "center" },
+  brandTitle: { fontSize: rf(32), fontFamily: "Inter_700Bold", letterSpacing: -0.6 },
 
   signInBlock: { gap: rs(10) },
 
@@ -1023,20 +1077,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: rs(16),
     gap: rs(14),
-  },
-  loginOrDividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: rs(4),
-  },
-  loginOrLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-  loginOrLabel: {
-    paddingHorizontal: rs(14),
-    fontSize: rf(13),
-    fontFamily: "Inter_400Regular",
   },
   socialBtn: {
     flexDirection: "row",
@@ -1199,14 +1239,18 @@ const styles = StyleSheet.create({
     color: "#DC2626",
   },
 
+  footerScrollSpacer: {
+    flexGrow: 1,
+    minHeight: rs(32),
+  },
+
   /* Horizontal footer links */
   footerLinks: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: rs(6),
-    marginTop: rs(28),
-    marginBottom: rs(4),
+    marginTop: rs(12),
     paddingHorizontal: rs(16),
   },
   footerLinkBtn: { paddingVertical: rs(6), paddingHorizontal: rs(4) },
