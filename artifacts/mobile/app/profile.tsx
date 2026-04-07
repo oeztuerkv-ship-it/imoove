@@ -744,77 +744,101 @@ export default function ProfileScreen() {
               <View style={styles.brandBlock}>
                 <OnrodaOrMark size={rs(72)} />
                 <Text style={[styles.brandTitle, { color: colors.foreground }]}>Onroda</Text>
-                <View
-                  style={{
-                    height: 3,
-                    width: rs(40),
-                    borderRadius: 2,
-                    backgroundColor: ONRODA_MARK_RED,
-                    marginTop: rs(2),
-                    marginBottom: rs(2),
-                  }}
-                />
                 <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
-                  Move Your Way.
+                  Mobilität ohne Grenzen
                 </Text>
               </View>
 
               {profileStep === "social" ? (
-                /* ── Social buttons ── */
-                <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                  <NeuBeiOnrodaRegisterRow
-                    mutedColor={colors.mutedForeground}
-                    marginBottom={rs(10)}
-                    fontSize={rf(14)}
-                    onRegisterPress={goRegister}
-                  />
-                  <View style={{ gap: 10 }}>
+                <>
+                  <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                    <NeuBeiOnrodaRegisterRow
+                      mutedColor={colors.mutedForeground}
+                      marginBottom={rs(10)}
+                      fontSize={rf(14)}
+                      onRegisterPress={goRegister}
+                    />
+                    <View style={{ gap: 10 }}>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.socialBtn,
+                          {
+                            backgroundColor: "#FFFFFF",
+                            borderColor: colors.border,
+                            opacity: (pressed || googleLoading) ? 0.9 : 1,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 4,
+                            elevation: 1,
+                          },
+                        ]}
+                        onPress={handleGoogleLogin}
+                        disabled={googleLoading}
+                      >
+                        {googleLoading
+                          ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
+                          : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
+                        <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
+                          {googleLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.socialBtn,
+                          {
+                            backgroundColor: "#FFFFFF",
+                            borderColor: colors.border,
+                            opacity: pressed ? 0.9 : 1,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 4,
+                            elevation: 1,
+                          },
+                        ]}
+                        onPress={() => Alert.alert("Apple Login", "Apple-Anmeldung ist in Kürze verfügbar.")}
+                      >
+                        <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
+                        <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <View style={styles.loginOrDividerRow}>
+                    <View style={[styles.loginOrLine, { backgroundColor: colors.border }]} />
+                    <Text style={[styles.loginOrLabel, { color: colors.mutedForeground }]}>oder</Text>
+                    <View style={[styles.loginOrLine, { backgroundColor: colors.border }]} />
+                  </View>
+
+                  <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                     <Pressable
                       style={({ pressed }) => [
                         styles.socialBtn,
                         {
-                          backgroundColor: "#FFFFFF",
-                          borderColor: colors.border,
-                          opacity: (pressed || googleLoading) ? 0.9 : 1,
+                          backgroundColor: "#111111",
+                          borderColor: "#111111",
+                          opacity: pressed ? 0.92 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.05,
+                          shadowOpacity: 0.08,
                           shadowRadius: 4,
-                          elevation: 1,
+                          elevation: 2,
                         },
                       ]}
-                      onPress={handleGoogleLogin}
-                      disabled={googleLoading}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push("/driver/login");
+                      }}
                     >
-                      {googleLoading
-                        ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
-                        : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
-                        {googleLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
+                      <MaterialCommunityIcons name="steering" size={22} color="#FFFFFF" />
+                      <Text style={[styles.socialBtnText, { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" }]}>
+                        Fahrer-Login
                       </Text>
                     </Pressable>
-
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.socialBtn,
-                        {
-                          backgroundColor: "#FFFFFF",
-                          borderColor: colors.border,
-                          opacity: pressed ? 0.9 : 1,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.05,
-                          shadowRadius: 4,
-                          elevation: 1,
-                        },
-                      ]}
-                      onPress={() => Alert.alert("Apple Login", "Apple-Anmeldung ist in Kürze verfügbar.")}
-                    >
-                      <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>
-                    </Pressable>
                   </View>
-                </View>
+                </>
               ) : regSubStep === "form" ? (
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("social")}>
@@ -964,7 +988,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
-      <BottomTabBar active="account" />
+      {profile.isLoggedIn ? <BottomTabBar active="account" /> : null}
     </View>
   );
 }
@@ -999,6 +1023,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: rs(16),
     gap: rs(14),
+  },
+  loginOrDividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: rs(4),
+  },
+  loginOrLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  loginOrLabel: {
+    paddingHorizontal: rs(14),
+    fontSize: rf(13),
+    fontFamily: "Inter_400Regular",
   },
   socialBtn: {
     flexDirection: "row",
