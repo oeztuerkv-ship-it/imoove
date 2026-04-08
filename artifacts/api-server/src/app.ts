@@ -9,6 +9,9 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+/* Hinter Nginx/Ingress: korrektes req.protocol / Host für OAuth-Redirects */
+app.set("trust proxy", 1);
+
 function hostname(req: express.Request): string {
   return (req.get("host") ?? "").split(":")[0]?.toLowerCase() ?? "";
 }

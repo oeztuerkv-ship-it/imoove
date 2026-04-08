@@ -1,37 +1,82 @@
-import { Router } from "express";
+import { ClientAuthentication, OAuth2Client } from "google-auth-library";
+import { Router, type Request } from "express";
 import { createHash, randomBytes } from "crypto";
+import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
+import {
+  isSessionJwtConfigured,
+  signSessionJwt,
+  verifySessionJwt,
+} from "../lib/sessionJwt";
 
 const router = Router();
 
-const GOOGLE_CLIENT_ID =
-  process.env.GOOGLE_CLIENT_ID ??
-  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ??
-  "";
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
+/** Zur Laufzeit lesen (nach dotenv / PM2-Env), nicht nur beim ersten Modul-Import. */
+function googleClientId(): string {
+  return (
+    process.env.GOOGLE_CLIENT_ID ??
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ??
+    ""
+  ).trim();
+}
 
-const API_BASE = process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api` : "http://localhost:3000/api";
+function googleClientSecret(): string {
+  return (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
+}
 
-const CALLBACK_URI = () => `${API_BASE}/auth/google/callback`;
+function normalizePublicBaseUrl(raw: string): string {
+  let u = raw.trim().replace(/\/+$/, "");
+  if (/\/api$/i.test(u)) u = u.replace(/\/api$/i, "");
+  return u;
+}
 
-const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
+/**
+ * Öffentliche Basis-URL der API (ohne /api-Suffix).
+ * Priorität: OAUTH_PUBLIC_ORIGIN → BACKEND_URL → X-Forwarded-* / Host.
+ * Muss zu den autorisierten Redirect-URIs in der Google Console passen.
+ */
+function publicApiOrigin(req: Request): string {
+  const explicit = normalizePublicBaseUrl(
+    (process.env.OAUTH_PUBLIC_ORIGIN ?? process.env.BACKEND_URL ?? "").trim(),
+  );
+  if (explicit) {
+    if (/^https?:\/\//i.test(explicit)) return explicit;
+    return `https://${explicit}`;
+  }
+  const xfProto = req.get("x-forwarded-proto");
+  const proto =
+    (typeof xfProto === "string" ? xfProto.split(",")[0] : "")?.trim() || req.protocol || "https";
+  const xfHost = req.get("x-forwarded-host");
+  const hostRaw =
+    (typeof xfHost === "string" ? xfHost.split(",")[0] : "")?.trim() || req.get("host") || "";
+  if (!hostRaw) return "http://localhost:3000";
+  return `${proto}://${hostRaw}`;
+}
+
+function apiBaseFromReq(req: Request): string {
+  return `${publicApiOrigin(req)}/api`;
+}
+
+function callbackUriFromReq(req: Request): string {
+  return `${apiBaseFromReq(req)}/auth/google/callback`;
+}
+
 const USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v3/userinfo";
 const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 
 interface PendingAuth {
-  codeVerifier: string;
+  /**
+   * Nur bei OAuth ohne Client-Secret (öffentlicher Client) — sonst null.
+   * Mit Web-Client + Secret: klassischer Server-Flow ohne PKCE (stabiler bei Google).
+   */
+  codeVerifier: string | null;
   returnUrl: string;
+  /** Gleiche client_id wie in der authorize-URL — nicht erneut aus Env lesen. */
+  clientId: string;
+  /** Muss beim Token-Tausch 1:1 wie bei /auth/google/start sein (Google prüft strikt). */
+  redirectUri: string;
   expiresAt: number;
 }
-interface ProfileCache {
-  googleId: string;
-  name: string;
-  email: string;
-  photoUri: string | null;
-  expiresAt: number;
-}
-
 const pending = new Map<string, PendingAuth>();
-const profiles = new Map<string, ProfileCache>();
 
 function base64url(buf: Buffer): string {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
@@ -45,94 +90,176 @@ function codeChallenge(verifier: string): string {
   return base64url(createHash("sha256").update(verifier).digest());
 }
 
+function firstQueryString(q: unknown): string {
+  if (typeof q === "string") return q;
+  if (Array.isArray(q) && q.length > 0 && typeof q[0] === "string") return q[0];
+  return "";
+}
+
+function appendQueryParams(base: string, params: Record<string, string>): string {
+  const sep = base.includes("?") ? "&" : "?";
+  return base + sep + new URLSearchParams(params).toString();
+}
+
 router.get("/auth/google/start", (req, res) => {
-  if (!GOOGLE_CLIENT_ID) {
-    res.status(500).json({ error: "Google Client ID not configured" });
+  const cid = googleClientId();
+  if (!cid) {
+    res.status(500).json({
+      error: "Google Client ID not configured",
+      hint:
+        "Set GOOGLE_CLIENT_ID (and GOOGLE_CLIENT_SECRET) in the process environment. " +
+        "If you use a .env file: PM2 cwd must be the api-server folder, or use pm2 ecosystem env / dotenv. " +
+        "After deploy: rebuild api-server (pnpm run build) so loadEnv is included.",
+    });
     return;
   }
 
-  const returnUrl = (req.query.returnUrl as string | undefined) ?? `${API_BASE}/auth/google/done`;
-  const state = base64url(randomBytes(16));
-  const verifier = generateCodeVerifier();
-  const challenge = codeChallenge(verifier);
+  if (!isSessionJwtConfigured()) {
+    res.status(500).json({
+      error: "AUTH_JWT_SECRET not configured",
+      hint: "Set AUTH_JWT_SECRET (long random string, e.g. openssl rand -base64 48) in the API environment.",
+    });
+    return;
+  }
 
-  console.log(`[auth/start] state=${state} returnUrl=${returnUrl}`);
-  pending.set(state, { codeVerifier: verifier, returnUrl, expiresAt: Date.now() + 10 * 60 * 1000 });
+  const returnUrl =
+    (req.query.returnUrl as string | undefined) ?? `${apiBaseFromReq(req)}/auth/google/done`;
+  const state = base64url(randomBytes(16));
+  const secret = googleClientSecret();
+
+  const redirectUri = callbackUriFromReq(req);
+  console.log("GOOGLE REDIRECT URI:", redirectUri);
+  console.log(
+    `[auth/start] state=${state} returnUrl=${returnUrl} pkce=${!secret}`,
+  );
+
+  let codeVerifier: string | null = null;
+  if (!secret) {
+    codeVerifier = generateCodeVerifier();
+  }
+
+  pending.set(state, {
+    codeVerifier,
+    returnUrl,
+    clientId: cid,
+    redirectUri,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+  });
 
   const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: CALLBACK_URI(),
+    client_id: cid,
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid profile email",
     state,
-    code_challenge: challenge,
-    code_challenge_method: "S256",
     access_type: "offline",
     prompt: "select_account",
   });
+  if (codeVerifier) {
+    params.set("code_challenge", codeChallenge(codeVerifier));
+    params.set("code_challenge_method", "S256");
+  }
 
   res.json({ authUrl: `${GOOGLE_AUTH_ENDPOINT}?${params.toString()}`, state });
 });
 
 router.get("/auth/google/callback", async (req, res) => {
-  const { code, state, error } = req.query as Record<string, string>;
+  const authCode = firstQueryString(req.query.code).trim();
+  const authState = firstQueryString(req.query.state);
+  const oauthError = firstQueryString(req.query.error);
 
-  console.log(`[auth/callback] state=${state} code=${code ? "present" : "missing"} error=${error ?? "none"} pendingStates=${[...pending.keys()].join(",")}`);
+  console.log(
+    `[auth/callback] state=${authState} code=${authCode ? "present" : "missing"} error=${oauthError || "none"} pendingStates=${[...pending.keys()].join(",")}`,
+  );
 
-  if (error) {
-    res.redirect(`${API_BASE}/auth/google/done?error=${encodeURIComponent(error)}`);
+  if (oauthError) {
+    res.redirect(
+      `${apiBaseFromReq(req)}/auth/google/done?error=${encodeURIComponent(oauthError)}`,
+    );
     return;
   }
 
-  if (!code || !state) {
-    res.redirect(`${API_BASE}/auth/google/done?error=missing_params`);
+  if (!authCode || !authState) {
+    res.redirect(`${apiBaseFromReq(req)}/auth/google/done?error=missing_params`);
     return;
   }
 
-  const auth = pending.get(state);
+  const auth = pending.get(authState);
   if (!auth || auth.expiresAt < Date.now()) {
-    pending.delete(state);
+    pending.delete(authState);
     console.log(`[auth/callback] INVALID STATE — no match found in pending map`);
-    res.redirect(`${API_BASE}/auth/google/done?error=invalid_state`);
+    res.redirect(`${apiBaseFromReq(req)}/auth/google/done?error=invalid_state`);
     return;
   }
-  const { codeVerifier, returnUrl } = auth;
-  console.log(`[auth/callback] state matched, returnUrl=${returnUrl}`);
-  pending.delete(state);
+  const { codeVerifier, returnUrl, redirectUri, clientId } = auth;
+  console.log(
+    `[auth/callback] state matched, returnUrl=${returnUrl} redirectUri=${redirectUri} pkce=${!!codeVerifier}`,
+  );
+  pending.delete(authState);
 
-  const addParams = (base: string, params: Record<string, string>) => {
-    const sep = base.includes("?") ? "&" : "?";
-    return base + sep + new URLSearchParams(params).toString();
+  const googleTokenErrorDetail = (raw: string): string => {
+    try {
+      const j = JSON.parse(raw) as { error?: string; error_description?: string };
+      if (j.error_description) return j.error_description.slice(0, 400);
+      if (j.error) return j.error.slice(0, 200);
+    } catch {
+      /* ignore */
+    }
+    return raw.trim().slice(0, 200);
   };
 
   try {
-    const tokenResp = await fetch(TOKEN_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        code,
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: CALLBACK_URI(),
-        grant_type: "authorization_code",
-        code_verifier: codeVerifier,
-      }).toString(),
-    });
+    const secret = googleClientSecret();
+    const oauth2Client = secret
+      ? new OAuth2Client(clientId, secret, redirectUri)
+      : new OAuth2Client({
+          clientId,
+          redirectUri,
+          clientAuthentication: ClientAuthentication.None,
+        });
 
-    if (!tokenResp.ok) {
-      const t = await tokenResp.text();
-      console.error("[auth] token exchange failed:", t);
-      res.redirect(addParams(returnUrl, { error: "token_exchange_failed" }));
+    let accessToken: string;
+    let idToken: string | null = null;
+    let accessTokenExpiresAt: number | null = null;
+    try {
+      const { tokens } = await oauth2Client.getToken({
+        code: authCode,
+        codeVerifier: codeVerifier ?? undefined,
+        redirect_uri: redirectUri,
+      });
+      if (!tokens.access_token) throw new Error("Google lieferte kein access_token.");
+      accessToken = tokens.access_token;
+      idToken = tokens.id_token ?? null;
+      accessTokenExpiresAt =
+        typeof tokens.expiry_date === "number" && Number.isFinite(tokens.expiry_date)
+          ? tokens.expiry_date
+          : null;
+    } catch (err: unknown) {
+      let raw = "";
+      if (err && typeof err === "object" && "response" in err) {
+        const data = (err as { response?: { data?: unknown } }).response?.data;
+        raw = typeof data === "string" ? data : JSON.stringify(data ?? {});
+      } else if (err instanceof Error) {
+        raw = err.message;
+      } else {
+        raw = String(err);
+      }
+      console.error("[auth] google-auth-library getToken:", raw);
+      res.redirect(
+        appendQueryParams(returnUrl, {
+          error: "token_exchange_failed",
+          detail: googleTokenErrorDetail(raw) || raw.slice(0, 400),
+        }),
+      );
       return;
     }
 
-    const tokenData = (await tokenResp.json()) as { access_token: string };
     const profileResp = await fetch(USERINFO_ENDPOINT, {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (!profileResp.ok) {
-      res.redirect(addParams(returnUrl, { error: "profile_fetch_failed" }));
+      res.redirect(appendQueryParams(returnUrl, { error: "profile_fetch_failed" }));
       return;
     }
 
@@ -143,48 +270,165 @@ router.get("/auth/google/callback", async (req, res) => {
       picture?: string;
     };
 
-    const resultState = base64url(randomBytes(16));
-    profiles.set(resultState, {
-      googleId: profile.sub,
-      name: profile.name ?? "",
-      email: profile.email ?? "",
-      photoUri: profile.picture ?? null,
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    });
+    void idToken;
+    void accessToken;
+    void accessTokenExpiresAt;
 
-    res.redirect(addParams(returnUrl, { result: resultState }));
+    let sessionToken: string;
+    try {
+      sessionToken = await signSessionJwt({
+        googleId: profile.sub,
+        name: profile.name ?? "",
+        email: profile.email ?? "",
+        photoUri: profile.picture ?? null,
+      });
+    } catch (jwtErr) {
+      console.error("[auth] session JWT:", jwtErr);
+      res.redirect(appendQueryParams(returnUrl, { error: "session_token_failed" }));
+      return;
+    }
+
+    res.redirect(appendQueryParams(returnUrl, { token: sessionToken }));
   } catch (e) {
     console.error("[auth] exception:", e);
-    res.redirect(addParams(returnUrl, { error: "server_error" }));
+    res.redirect(appendQueryParams(returnUrl, { error: "server_error" }));
   }
 });
 
-router.get("/auth/google/done", (_req, res) => {
+function oauthSuccessWebBase(): string {
+  const raw = (process.env.OAUTH_SUCCESS_WEB_URL ?? "https://onroda.de/app").trim();
+  if (!raw) return "https://onroda.de/app";
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Browser-Default nach OAuth: ?token=… → Redirect zur Web-App; Fehler → Hinweis. */
+router.get("/auth/google/done", (req, res) => {
+  const token = firstQueryString(req.query.token).trim();
+  const err = firstQueryString(req.query.error);
+  const detail = firstQueryString(req.query.detail);
+
+  if (token && !err) {
+    const base = oauthSuccessWebBase();
+    res.redirect(302, appendQueryParams(base, { token }));
+    return;
+  }
+
+  if (err) {
+    const msg = detail ? `${err} — ${detail}` : err;
+    res.status(400).send(
+      `<!DOCTYPE html><html><body><p style="font-family:sans-serif;text-align:center;margin-top:40px;max-width:520px;margin-inline:auto">
+      <strong>Anmeldung fehlgeschlagen</strong><br/><br/>${escapeHtml(msg)}</p></body></html>`,
+    );
+    return;
+  }
+
   res.send(
     `<!DOCTYPE html><html><body><p style="font-family:sans-serif;text-align:center;margin-top:40px">
     Anmeldung abgeschlossen. Diese Seite kann geschlossen werden.</p></body></html>`,
   );
 });
 
-router.get("/auth/google/profile", (req, res) => {
-  const { result } = req.query as { result?: string };
-  if (!result) {
-    res.status(400).json({ error: "result param required" });
+/* ── Telefon / SMS (Stub: In-Memory; Produktion z. B. Twilio) ── */
+const phoneOtps = new Map<string, { code: string; expiresAt: number }>();
+
+router.post("/auth/phone/send", (req, res) => {
+  const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  if (!phone || !phone.startsWith("+")) {
+    res.status(400).json({ error: "invalid_phone" });
     return;
   }
-  const profile = profiles.get(result);
-  if (!profile || profile.expiresAt < Date.now()) {
-    profiles.delete(result ?? "");
-    res.status(404).json({ error: "Profile not found or expired" });
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  phoneOtps.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
+  const devCode =
+    process.env.NODE_ENV !== "production" ? code : undefined;
+  if (devCode) {
+    console.info(`[auth/phone/send] ${phone} devCode=${devCode}`);
+  }
+  res.json({ ok: true, devCode });
+});
+
+router.post("/auth/phone/verify", (req, res) => {
+  const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  const code = typeof req.body?.code === "string" ? req.body.code.replace(/\D/g, "").trim() : "";
+  if (!phone || code.length !== 6) {
+    res.status(400).json({ error: "invalid_params" });
     return;
   }
-  profiles.delete(result);
-  res.json({
-    googleId: profile.googleId,
-    name: profile.name,
-    email: profile.email,
-    photoUri: profile.photoUri,
-  });
+  const entry = phoneOtps.get(phone);
+  if (!entry || entry.expiresAt < Date.now() || entry.code !== code) {
+    res.status(400).json({ error: "invalid_code" });
+    return;
+  }
+  phoneOtps.delete(phone);
+  res.json({ ok: true });
+});
+
+/**
+ * Verifiziert ein Firebase Auth ID-Token (z. B. nach Phone Sign-In in der App).
+ * Client sendet { idToken }; Antwort enthält uid, phone_number etc. aus dem Token.
+ */
+router.post("/auth/firebase/verify-id-token", async (req, res) => {
+  if (!isFirebaseAdminConfigured()) {
+    res.status(503).json({
+      error: "firebase_admin_not_configured",
+      hint: "GOOGLE_APPLICATION_CREDENTIALS oder FIREBASE_SERVICE_ACCOUNT setzen (siehe api-server/.env.example).",
+    });
+    return;
+  }
+
+  const idToken = typeof req.body?.idToken === "string" ? req.body.idToken.trim() : "";
+  if (!idToken) {
+    res.status(400).json({ error: "idToken_required" });
+    return;
+  }
+
+  try {
+    const decoded = await getFirebaseAuth().verifyIdToken(idToken);
+    res.json({
+      ok: true,
+      uid: decoded.uid,
+      phone: decoded.phone_number ?? null,
+      email: decoded.email ?? null,
+      name: decoded.name ?? null,
+      picture: decoded.picture ?? null,
+      emailVerified: decoded.email_verified ?? false,
+      signInProvider: decoded.firebase?.sign_in_provider ?? null,
+    });
+  } catch (err) {
+    console.warn("[auth/firebase/verify-id-token] invalid token", err);
+    res.status(401).json({ error: "invalid_id_token" });
+  }
+});
+
+/** Profil aus Session-JWT (z. B. Web-App nach Redirect mit ?token=). */
+router.get("/auth/google/profile", async (req, res) => {
+  const token = firstQueryString(req.query.token).trim();
+  if (!token) {
+    res.status(400).json({ error: "token query required", hint: "Pass the session JWT from ?token= after OAuth." });
+    return;
+  }
+  try {
+    const c = await verifySessionJwt(token);
+    res.json({
+      googleId: c.googleId,
+      name: c.name,
+      email: c.email,
+      photoUri: c.photoUri,
+      idToken: null,
+      accessToken: null,
+      accessTokenExpiresAt: null,
+    });
+  } catch {
+    res.status(401).json({ error: "invalid_token" });
+  }
 });
 
 export default router;

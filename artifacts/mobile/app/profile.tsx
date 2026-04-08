@@ -1,6 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -27,6 +26,9 @@ import { NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
+import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
 import { rs, rf } from "@/utils/scale";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -67,31 +69,6 @@ function GoogleGLogo({ size = 22 }: { size?: number }) {
 
 const API_URL = getApiBaseUrl();
 const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
-
-function readOAuthReturnParams(url: string): { error: string | null; result: string | null } {
-  const fromSearchString = (q: string) => {
-    const s = q.startsWith("?") || q.startsWith("#") ? q.slice(1) : q;
-    const params = new URLSearchParams(s);
-    return { error: params.get("error"), result: params.get("result") };
-  };
-  try {
-    const raw =
-      url.includes("://") && !/^https?:\/\//i.test(url)
-        ? url.replace(/^[a-z][a-z0-9+\-.]*:\/\//i, "https://")
-        : url;
-    const parsed = new URL(raw);
-    return {
-      error: parsed.searchParams.get("error"),
-      result: parsed.searchParams.get("result"),
-    };
-  } catch {
-    const q = url.indexOf("?");
-    const h = url.indexOf("#");
-    const cut = q >= 0 ? q : h >= 0 ? h : -1;
-    if (cut < 0) return { error: null, result: null };
-    return fromSearchString(url.slice(cut));
-  }
-}
 
 function isPlausibleEmail(s: string): boolean {
   const t = s.trim();
@@ -536,17 +513,16 @@ export default function ProfileScreen() {
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
 
-  /**
-   * Google über Backend (PKCE): einzig präzise Redirect-URI in der Cloud Console ist
-   * {BACKEND_URL}/api/auth/google/callback — vermeidet 404/redirect_uri_mismatch vom Client-Flow.
-   */
+  /** Google über Backend; returnUrl = exakt makeRedirectUri (siehe Metro-Log beim Klick). */
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
       if (!API_URL) {
         throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
       }
-      const startUrl = `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(Linking.createURL("google-auth"))}`;
+      const redirectUri = getGoogleOAuthRedirectUri();
+      console.log("REDIRECT:", redirectUri);
+      const startUrl = `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(redirectUri)}`;
       const startRes = await fetch(startUrl);
       if (startRes.status === 404) {
         throw new Error(
@@ -570,28 +546,21 @@ export default function ProfileScreen() {
         throw new Error(msg);
       }
       const { authUrl } = (await startRes.json()) as { authUrl: string; state: string };
-      const returnUrlGuess = Linking.createURL("google-auth");
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrlGuess);
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
       if (result.type !== "success") return;
       if (!result.url) throw new Error("Keine Rückkehr-URL vom Browser erhalten.");
-      const { error: errorParam, result: resultState } = readOAuthReturnParams(result.url);
+      const { error: errorParam, token: sessionToken } = readOAuthReturnParams(result.url);
       if (errorParam) throw new Error(`Google-Fehler: ${errorParam}`);
-      if (!resultState) throw new Error("Kein Ergebnis-Token empfangen.");
-      const profileRes = await fetch(`${API_URL}/auth/google/profile?result=${encodeURIComponent(resultState)}`);
-      if (profileRes.status === 404) {
-        throw new Error("Profil-Token ungültig oder abgelaufen. Bitte Anmeldung erneut starten.");
-      }
-      if (!profileRes.ok) {
-        const err = await profileRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Profil konnte nicht geladen werden.");
-      }
-      const data = (await profileRes.json()) as {
-        googleId: string;
-        name: string;
-        email: string;
-        photoUri: string | null;
-      };
-      loginWithGoogle({ name: data.name, email: data.email, photoUri: data.photoUri, googleId: data.googleId });
+      if (!sessionToken?.trim()) throw new Error("Kein Session-Token empfangen.");
+      const p = parseJwtPayloadUnsafe(sessionToken);
+      if (!p?.sub) throw new Error("Ungültiges Session-Token.");
+      loginWithGoogle({
+        name: String(p.name ?? ""),
+        email: String(p.email ?? ""),
+        photoUri: typeof p.picture === "string" ? p.picture : null,
+        googleId: String(p.sub),
+        sessionToken,
+      });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
@@ -637,26 +606,20 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {profile.isLoggedIn ? (
-        <View style={[styles.header, {
-          paddingTop: topPad + 12,
-          backgroundColor: colors.background,
-          borderBottomColor: colors.border,
-        }]}>
-          <View style={{ width: 40 }} />
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
-          <View style={{ width: 40 }} />
-        </View>
-      ) : null}
+      {/* Header */}
+      <View style={[styles.header, {
+        paddingTop: topPad + 12,
+        backgroundColor: colors.background,
+        borderBottomColor: colors.border,
+      }]}>
+        <View style={{ width: 40 }} />
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scroll,
-          !profile.isLoggedIn ? styles.scrollGrow : null,
-          { paddingBottom: bottomPad + 24 },
-          !profile.isLoggedIn ? { paddingTop: topPad + 12 } : null,
-        ]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 40 }]}
       >
         {profile.isLoggedIn ? (
           /* ══ LOGGED IN ══ */
@@ -801,8 +764,11 @@ export default function ProfileScreen() {
             <View style={styles.loginSection}>
               {/* App branding */}
               <View style={styles.brandBlock}>
-                <OnrodaOrMark size={rs(86)} />
-                <Text style={[styles.brandTitle, { color: "#111111" }]}>onroda</Text>
+                <OnrodaOrMark size={rs(72)} />
+                <Text style={[styles.brandTitle, { color: colors.foreground }]}>Onroda</Text>
+                <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
+                  Mobilität ohne Grenzen
+                </Text>
               </View>
 
               {profileStep === "social" ? (
@@ -1024,10 +990,8 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         )}
 
-        {!profile.isLoggedIn ? <View style={styles.footerScrollSpacer} /> : null}
-
         {/* ── Horizontal footer links ── */}
-        <View style={[styles.footerLinks, { marginBottom: bottomPad + 8 }, profile.isLoggedIn ? { marginTop: rs(28) } : null]}>
+        <View style={styles.footerLinks}>
           <Pressable onPress={() => router.push("/help")} style={styles.footerLinkBtn}>
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Hilfe</Text>
           </Pressable>
@@ -1063,12 +1027,12 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },
 
   scroll: { paddingTop: rs(20), gap: 0 },
-  scrollGrow: { flexGrow: 1 },
 
   /* Login section */
   loginSection: { paddingHorizontal: rs(24), marginBottom: rs(8), gap: rs(28) },
   brandBlock: { alignItems: "center", gap: rs(10), paddingTop: rs(16) },
-  brandTitle: { fontSize: rf(32), fontFamily: "Inter_700Bold", letterSpacing: -0.6 },
+  brandTitle: { fontSize: rf(28), fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  brandSub: { fontSize: rf(14), fontFamily: "Inter_400Regular", textAlign: "center" },
 
   signInBlock: { gap: rs(10) },
 
@@ -1239,18 +1203,14 @@ const styles = StyleSheet.create({
     color: "#DC2626",
   },
 
-  footerScrollSpacer: {
-    flexGrow: 1,
-    minHeight: rs(32),
-  },
-
   /* Horizontal footer links */
   footerLinks: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: rs(6),
-    marginTop: rs(12),
+    marginTop: rs(28),
+    marginBottom: rs(4),
     paddingHorizontal: rs(16),
   },
   footerLinkBtn: { paddingVertical: rs(6), paddingHorizontal: rs(4) },

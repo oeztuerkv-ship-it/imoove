@@ -1,3 +1,4 @@
+import "./loadEnv";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import app from "./app";

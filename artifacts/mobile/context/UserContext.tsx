@@ -10,6 +10,13 @@ export interface UserProfile {
   city: string;
   photoUri: string | null;
   googleId?: string;
+  /** OpenID JWT von Google (einmal nach Login von `/auth/google/profile`). */
+  googleIdToken?: string;
+  /** OAuth2 Access Token; kurzlebig, für direkte Google-API-Aufrufe von der App. */
+  googleAccessToken?: string;
+  googleAccessTokenExpiresAt?: number;
+  /** Session-JWT von der API nach Google-OAuth (`?token=`). */
+  sessionToken?: string;
   /* Patienten-Profil */
   krankenkasse: string;
   versichertennummer: string;
@@ -57,9 +64,16 @@ interface UserContextValue {
   profile: UserProfile;
   updateProfile: (updates: Partial<UserProfile>) => void;
   logout: () => void;
-  loginWithGoogle: (data: Partial<UserProfile>) => void;
+  loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => void;
   /** Registrierung ohne Google (lokal); echte SMS-Verifizierung folgt über Backend/Firebase. */
   registerLocalCustomer: (data: { name: string; email: string; phone: string }) => void;
+  /** Telefonnummer-Flow: Profil anlegen/aktualisieren, angemeldet. */
+  loginWithPhone: (data: {
+    phone: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  }) => void;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -70,7 +84,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(PROFILE_KEY)
-      .then((raw) => { if (raw) setProfile(JSON.parse(raw)); })
+      .then((raw) => {
+        if (!raw?.trim()) return;
+        try {
+          setProfile(JSON.parse(raw) as UserProfile);
+        } catch {
+          void AsyncStorage.removeItem(PROFILE_KEY);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -87,11 +108,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const loginWithGoogle = useCallback((data: Partial<UserProfile>) => {
+  const loginWithGoogle = useCallback((data: Partial<UserProfile> | Record<string, unknown>) => {
     const merged: UserProfile = {
       ...DEFAULT_PROFILE,
       isLoggedIn: true,
-      ...data,
+      ...(data as Partial<UserProfile>),
     };
     save(merged);
   }, [save]);
@@ -108,12 +129,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     save(updated);
   }, [save]);
 
+  const loginWithPhone = useCallback(
+    (data: { phone: string; firstName: string; lastName: string; email?: string }) => {
+      const name = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+      setProfile((prev) => {
+        const {
+          googleId: _rmGid,
+          googleIdToken: _rmGi,
+          googleAccessToken: _rmGa,
+          googleAccessTokenExpiresAt: _rmGe,
+          ...rest
+        } = prev;
+        const updated: UserProfile = {
+          ...rest,
+          name,
+          email: (data.email ?? "").trim(),
+          phone: data.phone.trim(),
+          isLoggedIn: true,
+        };
+        AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+    },
+    [],
+  );
+
   const logout = useCallback(() => {
     save(DEFAULT_PROFILE);
   }, [save]);
 
   return (
-    <UserContext.Provider value={{ profile, updateProfile, logout, loginWithGoogle, registerLocalCustomer }}>
+    <UserContext.Provider
+      value={{ profile, updateProfile, logout, loginWithGoogle, registerLocalCustomer, loginWithPhone }}
+    >
       {children}
     </UserContext.Provider>
   );

@@ -7,3 +7,17 @@ export function getApiBaseUrl(): string {
   if (!raw) return "";
   return raw.endsWith("/api") ? raw : `${raw}/api`;
 }
+
+/** Body von fehlgeschlagenen API-Responses lesen (z. B. error + hint vom Auth-Start). */
+export async function fetchErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const t = await res.text();
+    const j = JSON.parse(t) as { error?: string; hint?: string };
+    if (j.error && j.hint) return `${j.error}\n\n${j.hint}`;
+    if (j.error) return j.error;
+    if (t.trim()) return t.trim().slice(0, 400);
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}

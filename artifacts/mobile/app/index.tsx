@@ -1,13 +1,10 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
-import * as Linking from "expo-linking";
 import * as Location from "expo-location";
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-WebBrowser.maybeCompleteAuthSession();
 import {
   ActivityIndicator,
   Alert,
@@ -27,7 +24,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { OnrodaWordmarkReveal } from "@/components/OnrodaWordmarkReveal";
+import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
@@ -39,34 +36,14 @@ import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
+import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
 import { rs, rf } from "@/utils/scale";
 
-const API_URL = getApiBaseUrl();
+WebBrowser.maybeCompleteAuthSession();
 
-function readOAuthReturnParams(url: string): { error: string | null; result: string | null } {
-  const fromSearchString = (q: string) => {
-    const s = q.startsWith("?") || q.startsWith("#") ? q.slice(1) : q;
-    const params = new URLSearchParams(s);
-    return { error: params.get("error"), result: params.get("result") };
-  };
-  try {
-    const raw =
-      url.includes("://") && !/^https?:\/\//i.test(url)
-        ? url.replace(/^[a-z][a-z0-9+\-.]*:\/\//i, "https://")
-        : url;
-    const parsed = new URL(raw);
-    return {
-      error: parsed.searchParams.get("error"),
-      result: parsed.searchParams.get("result"),
-    };
-  } catch {
-    const q = url.indexOf("?");
-    const h = url.indexOf("#");
-    const cut = q >= 0 ? q : h >= 0 ? h : -1;
-    if (cut < 0) return { error: null, result: null };
-    return fromSearchString(url.slice(cut));
-  }
-}
+const API_URL = getApiBaseUrl();
 
 /** Platzhalter bis SMS über Backend (z. B. Twilio) oder Firebase Phone Auth angebunden ist. */
 const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
@@ -651,8 +628,9 @@ export default function HomeScreen() {
       if (!API_URL) {
         throw new Error("API-Adresse fehlt. Bitte EXPO_PUBLIC_API_URL in .env setzen und neu starten.");
       }
-      const returnUrl = Linking.createURL("google-auth");
-      const startUrl = `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(returnUrl)}`;
+      const redirectUri = getGoogleOAuthRedirectUri();
+      console.log("REDIRECT:", redirectUri);
+      const startUrl = `${API_URL}/auth/google/start?returnUrl=${encodeURIComponent(redirectUri)}`;
       const startRes = await fetch(startUrl);
       if (startRes.status === 404) {
         throw new Error(`Server antwortet 404 auf „${startUrl}“. Läuft die API unter dieser Adresse (inkl. /api)?`);
@@ -674,27 +652,24 @@ export default function HomeScreen() {
         throw new Error(msg);
       }
       const { authUrl } = (await startRes.json()) as { authUrl: string; state: string };
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
       if (result.type !== "success") return;
       if (!result.url) throw new Error("Keine Rückkehr-URL vom Browser erhalten.");
-      const { error: errorParam, result: resultState } = readOAuthReturnParams(result.url);
+      const { error: errorParam, token: sessionToken } = readOAuthReturnParams(result.url);
       if (errorParam) throw new Error(`Google-Fehler: ${errorParam}`);
-      if (!resultState) throw new Error("Kein Ergebnis-Token empfangen.");
-      const profileRes = await fetch(`${API_URL}/auth/google/profile?result=${encodeURIComponent(resultState)}`);
-      if (profileRes.status === 404) {
-        throw new Error("Profil-Token ungültig oder abgelaufen. Bitte Anmeldung erneut starten.");
+      if (sessionToken?.trim()) {
+        const p = parseJwtPayloadUnsafe(sessionToken);
+        if (!p?.sub) throw new Error("Ungültiges Session-Token.");
+        loginWithGoogle({
+          name: String(p.name ?? ""),
+          email: String(p.email ?? ""),
+          photoUri: typeof p.picture === "string" ? p.picture : null,
+          googleId: String(p.sub),
+          sessionToken,
+        });
+        return;
       }
-      if (!profileRes.ok) {
-        const err = await profileRes.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Profil konnte nicht geladen werden.");
-      }
-      const data = (await profileRes.json()) as {
-        googleId: string;
-        name: string;
-        email: string;
-        photoUri: string | null;
-      };
-      loginWithGoogle({ name: data.name, email: data.email, photoUri: data.photoUri, googleId: data.googleId });
+      throw new Error("Kein Session-Token empfangen.");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Google-Anmeldung fehlgeschlagen.";
       Alert.alert("Fehler", message);
@@ -1651,11 +1626,14 @@ export default function HomeScreen() {
 
           {/* Branding */}
           <View style={{
-            position: "absolute", bottom: 248 + bottomPad, left: 0, right: 0,
+            position: "absolute", bottom: 160 + bottomPad, left: 0, right: 0,
             alignItems: "center", gap: 10,
           }}>
-            <OnrodaWordmarkReveal textColor="#FFFFFF" fontSize={38} letterSpacing={-1.2} minHeight={52} />
-            <Text style={styles.welcomeTagline}>Mehr als nur Mobilität.</Text>
+            <OnrodaOrMark size={76} style={{ marginBottom: 4 }} />
+            <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -1.5 }}>Onroda</Text>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.70)", textAlign: "center", paddingHorizontal: 40 }}>
+              Mobilität ohne Grenzen
+            </Text>
           </View>
         </View>
       )}
@@ -1675,24 +1653,28 @@ export default function HomeScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Branding */}
-            <View style={[styles.onboardingBranding, { marginBottom: isSmallScreen ? 4 : 8 }]}>
-              <OnrodaWordmarkReveal
-                textColor="#111111"
-                fontSize={obTitleSize}
-                letterSpacing={-1.5}
-                minHeight={obTitleSize + 14}
+            {/* Logo + Branding */}
+            <View style={[styles.onboardingBranding, { gap: isSmallScreen ? 4 : 6, marginBottom: isSmallScreen ? 4 : 8 }]}>
+              <OnrodaOrMark
+                size={isSmallScreen ? 64 : 80}
+                style={{ marginBottom: isSmallScreen ? 4 : 8 }}
               />
-              <Text
-                style={[
-                  styles.onboardingTagline,
-                  {
-                    color: colors.mutedForeground,
-                    fontSize: isSmallScreen ? rf(15) : rf(16),
-                  },
-                ]}
-              >
-                Mehr als nur Mobilität.
+              <Text style={[styles.onboardingTitle, { color: colors.foreground, fontSize: obTitleSize }]}>
+                Onroda
+              </Text>
+              <View
+                style={{
+                  height: 3,
+                  width: 44,
+                  borderRadius: 2,
+                  backgroundColor: ONRODA_MARK_RED,
+                  alignSelf: "center",
+                  marginTop: 2,
+                  marginBottom: 2,
+                }}
+              />
+              <Text style={[styles.onboardingTagline, { color: colors.mutedForeground, fontSize: isSmallScreen ? 13 : 15 }]}>
+                Mobilität ohne Grenzen
               </Text>
             </View>
 
@@ -2413,24 +2395,13 @@ const styles = StyleSheet.create({
     flexGrow: 1, paddingHorizontal: 24, gap: 20,
   },
   onboardingBranding: {
-    alignItems: "center", gap: 10, marginBottom: 8,
-  },
-  welcomeTagline: {
-    fontSize: rf(16),
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.88)",
-    textAlign: "center",
-    paddingHorizontal: 32,
-    letterSpacing: -0.2,
-  },
-  onboardingTagline: {
-    fontFamily: "Inter_500Medium",
-    textAlign: "center",
-    paddingHorizontal: 12,
-    letterSpacing: -0.2,
+    alignItems: "center", gap: 6, marginBottom: 8,
   },
   onboardingTitle: {
     fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: -1.5,
+  },
+  onboardingTagline: {
+    fontSize: 16, fontFamily: "Inter_400Regular",
   },
   onboardingBlock: {
     borderRadius: 20, borderWidth: 1, padding: 20, gap: 14,

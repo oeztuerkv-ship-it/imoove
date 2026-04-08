@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -23,6 +24,7 @@ import { RideProvider } from "@/context/RideContext";
 import { RideRequestProvider } from "@/context/RideRequestContext";
 import { UserProvider } from "@/context/UserContext";
 
+WebBrowser.maybeCompleteAuthSession();
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
@@ -35,6 +37,7 @@ function RootLayoutNav() {
       <Stack.Screen name="status" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="google-auth" options={{ headerShown: false, animation: "none" }} />
+      <Stack.Screen name="login-success" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="my-rides" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="help" options={{ headerShown: false }} />
       <Stack.Screen name="impressum" options={{ headerShown: false }} />
@@ -61,13 +64,10 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      void SplashScreen.hideAsync();
-    }
+    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
-
+  /** Kein frühes `return null`: sonst fehlt `UserProvider` kurz → useUser in Screens wirft. */
   return (
     <SafeAreaProvider>
       <ErrorBoundary>

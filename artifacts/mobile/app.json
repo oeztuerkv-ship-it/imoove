@@ -1,11 +1,12 @@
 {
   "expo": {
     "name": "Onroda",
+    "owner": "oeztuerkv-ship-it",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "onroda",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -23,7 +24,7 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.584139886361-scvjrt3atv70t5r8n6m7isom08u5p2ia"
+              "com.googleusercontent.apps.683656628383-na3tqhk058a4ttal0fdr9064occ4a61h"
             ]
           }
         ]
