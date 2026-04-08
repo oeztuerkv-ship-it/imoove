@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Onroda</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      color: #111827;
+    }
+
+    .hero {
+      background: #ffffff;
+      padding: 80px 20px 60px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      margin: 0 0 16px;
+      font-size: 52px;
+    }
+
+    .hero p {
+      margin: 0 auto;
+      max-width: 760px;
+      font-size: 22px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+
+    .section {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 60px 20px;
+    }
+
+    .section h2 {
+      text-align: center;
+      font-size: 58px;
+      margin: 0 0 40px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    .card-image {
+      height: 220px;
+      background: linear-gradient(135deg, #d1d5db, #9ca3af);
+    }
+
+    .card-content {
+      padding: 24px;
+    }
+
+    .card h3 {
+      margin: 0 0 16px;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .card p {
+      margin: 0 0 22px;
+      font-size: 18px;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+
+    .card a {
+      color: #111827;
+      font-size: 18px;
+      text-underline-offset: 4px;
+    }
+
+    .app-box {
+      max-width: 1300px;
+      margin: 0 auto 60px;
+      background: #ececec;
+      border-radius: 36px;
+      padding: 50px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+    }
+
+    .app-text {
+      max-width: 620px;
+    }
+
+    .app-text h3 {
+      margin: 0 0 18px;
+      font-size: 46px;
+      line-height: 1.15;
+    }
+
+    .app-text p {
+      margin: 0;
+      font-size: 20px;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+
+    .phone-mockup {
+      width: 260px;
+      height: 520px;
+      background: #111827;
+      border-radius: 36px;
+      position: relative;
+      flex-shrink: 0;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+    }
+
+    .phone-mockup::before {
+      content: "";
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 22px;
+      background: #000;
+      border-radius: 14px;
+    }
+
+    .phone-screen {
+      position: absolute;
+      top: 50px;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      background: linear-gradient(180deg, #1f2937, #374151 45%, #f3f4f6 45%, #f3f4f6);
+      border-radius: 26px;
+      overflow: hidden;
+      padding: 22px;
+      color: white;
+    }
+
+    .searchbar {
+      margin-top: 90px;
+      background: white;
+      color: #6b7280;
+      padding: 16px 18px;
+      border-radius: 18px;
+      font-size: 18px;
+    }
+
+    .service-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .service-item {
+      background: white;
+      color: #111827;
+      border-radius: 16px;
+      padding: 14px 10px;
+      text-align: center;
+      font-size: 13px;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    footer {
+      background: #050505;
+      color: white;
+      padding: 60px 20px 30px;
+    }
+
+    .footer-inner {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 30px;
+      padding-bottom: 36px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .footer-col h4 {
+      margin: 0 0 18px;
+      font-size: 24px;
+    }
+
+    .footer-col a,
+    .footer-col p {
+      display: block;
+      color: #c7c7c7;
+      text-decoration: none;
+      font-size: 18px;
+      line-height: 1.8;
+      margin: 0 0 6px;
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      padding-top: 26px;
+      color: #c7c7c7;
+      font-size: 17px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 22px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: #c7c7c7;
+      text-decoration: none;
+    }
+
+    @media (max-width: 1100px) {
+      .cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .app-box {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .footer-top {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .section h2 {
+        font-size: 46px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .hero h1 {
+        font-size: 40px;
+      }
+
+      .hero p {
+        font-size: 18px;
+      }
+
+      .section h2 {
+        font-size: 38px;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-top {
+        grid-template-columns: 1fr;
+      }
+
+      .app-text h3 {
+        font-size: 34px;
+      }
+
+      .phone-mockup {
+        width: 100%;
+        max-width: 280px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <h1>Onroda</h1>
+    <p>
+      Mobilität modern gedacht. Onroda verbindet zuverlässige Fahrten,
+      Unternehmer und Fahrer auf einer Plattform – schnell, lokal und professionell.
+    </p>
+  </section>
+
+  <section class="section">
+    <h2>Unser Angebot</h2>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-image"></div>
+        <div class="card-content">
+          <h3>Stadtfahrten</h3>
+          <p>
+            Schnell und unkompliziert unterwegs in Stuttgart,
+            Leinfelden-Echterdingen und Umgebung.
+          </p>
+          <a href="#">Mehr erfahren</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-image"></div>
+        <div class="card-content">
+          <h3>Flughafen-Transfers</h3>
+          <p>
+            Pünktliche Transfers mit klarer Planung für Abholung,
+            Ankunft und Geschäftsreisen.
+          </p>
+          <a href="#">Mehr erfahren</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-image"></div>
+        <div class="card-content">
+          <h3>Stundenbuchung</h3>
+          <p>
+            Flexible Buchungen für mehrere Stopps,
+            Geschäftstermine oder individuelle Fahrten.
+          </p>
+          <a href="#">Mehr erfahren</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-image"></div>
+        <div class="card-content">
+          <h3>Unternehmer-Lösungen</h3>
+          <p>
+            Unternehmen und Partner können Fahrten zentral buchen
+            und später direkt über das Panel verwalten.
+          </p>
+          <a href="#">Mehr erfahren</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-box">
+    <div class="app-text">
+      <h3>Fahrten einfach digital verwalten</h3>
+      <p>
+        Mit Onroda sollen Kunden, Unternehmer und Fahrer in Zukunft Fahrten
+        schneller anlegen, annehmen und verwalten können – auf einer klaren,
+        modernen Plattform.
+      </p>
+    </div>
+
+    <div class="phone-mockup">
+      <div class="phone-screen">
+        <div>Good evening</div>
+        <div class="searchbar">Wohin geht es?</div>
+
+        <div class="service-grid">
+          <div class="service-item">Stadtfahrt</div>
+          <div class="service-item">Stundenbuchung</div>
+          <div class="service-item">Flughafen</div>
+          <div class="service-item">Geschäftskunde</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div class="footer-col">
+          <h4>Onroda</h4>
+          <a href="#">Startseite</a>
+          <a href="#">Unser Angebot</a>
+          <a href="#">Für Unternehmer</a>
+          <a href="#">Kontakt</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Leistungen</h4>
+          <a href="#">Stadtfahrten</a>
+          <a href="#">Flughafen-Transfers</a>
+          <a href="#">Stundenbuchung</a>
+          <a href="#">Geschäftskunden</a>
+        </div>
+
+        <div class="footer-col">
+          <h4>Standort</h4>
+          <p>Leinfelden-Echterdingen</p>
+          <p>Region Stuttgart</p>
+          <p>Baden-Württemberg</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Kontakt</h4>
+          <p>Vedat Öztürk</p>
+          <p>Onroda</p>
+          <p>Leinfelden-Echterdingen</p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 Onroda</div>
+        <div class="footer-links">
+          <a href="#">Impressum</a>
+          <a href="#">Datenschutz</a>
+          <a href="#">Kontakt</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
