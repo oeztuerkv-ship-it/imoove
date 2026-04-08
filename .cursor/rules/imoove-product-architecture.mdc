@@ -1,0 +1,25 @@
+---
+description: Produkt-Schichten — Homepage vs App vs zukünftiges Panel (Priorität Mobile)
+alwaysApply: true
+---
+
+# Onroda: Domains & Zuständigkeiten
+
+## Schichten (nicht vermischen)
+
+1. **`onroda.de` / `www.onroda.de`** — **öffentliche Homepage / Landingpage** nur. Keine Kunden-Login-Web-App hier vorsehen oder dorthin OAuth-Session-Redirects erzwingen. Static/Marketing über Host-Logik in `artifacts/api-server/src/app.ts` bzw. getrennt deployen.
+
+2. **`api.onroda.de` (oder gleichwertiger API-Host)** — **App-Backend** (REST, OAuth-Callback, JWT-Session, später Business-Logik). OAuth-Rückkehr für **Mobile**: `returnUrl` = Deep Link der App (`onroda://…`). Primärer Login-Flow ist die **native App** (Expo-Kunden & Fahrer).
+
+3. **Später: eigenes Panel** — z. B. `panel.onroda.de` oder `admin.onroda.de` für Unternehmen/Admin. Nicht auf der Marketing-Domain; nicht in `artifacts/mobile` verheiraten. Eigene SPA/Subdomain, eigene `OAUTH_SUCCESS_WEB_URL` wenn dort Web-Login mit Google gewünscht wird.
+
+## OAuth / JWT (kurz)
+
+- Session-JWT und `?token=`-Übergabe sind für **App** und optional ein **explizit konfiguriertes** Web-Ziel (`OAUTH_SUCCESS_WEB_URL`) gedacht — **nicht** für Default-Redirects auf die Landingpage oder erfundene Pfade wie `/app` auf `onroda.de`.
+- Neue Features: zuerst **Mobile** und API; Web-Panel erst mit klarer Subdomain und eigenem UX.
+
+## Für Agents
+
+- Keine Defaults, die `onroda.de` als eingeloggte Web-App vortäuschen.
+- Metro/App-Config nicht zugunsten einer späteren Homepage-SEO-URL opfern.
+- Admin-/Panel-Routen in der API (falls vorhanden) von öffentlicher Marketing-Static trennen (`/api`, `isApiHost`, Hostname-Checks beibehalten).

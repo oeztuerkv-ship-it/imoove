@@ -38294,11 +38294,6 @@ router3.get("/auth/google/callback", async (req, res) => {
     res.redirect(appendQueryParams(returnUrl, { error: "server_error" }));
   }
 });
-function oauthSuccessWebBase() {
-  const raw = (process.env.OAUTH_SUCCESS_WEB_URL ?? "https://onroda.de/app").trim();
-  if (!raw) return "https://onroda.de/app";
-  return /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
-}
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -38307,8 +38302,18 @@ router3.get("/auth/google/done", (req, res) => {
   const err = firstQueryString(req.query.error);
   const detail = firstQueryString(req.query.detail);
   if (token && !err) {
-    const base = oauthSuccessWebBase();
-    res.redirect(302, appendQueryParams(base, { token }));
+    const explicit = (process.env.OAUTH_SUCCESS_WEB_URL ?? "").trim();
+    if (explicit) {
+      const base = /^https?:\/\//i.test(explicit) ? explicit : `https://${explicit.replace(/^\/+/, "")}`;
+      res.redirect(302, appendQueryParams(base, { token }));
+      return;
+    }
+    res.send(
+      `<!DOCTYPE html><html><body><p style="font-family:sans-serif;text-align:center;margin-top:40px;max-width:520px;margin-inline:auto">
+      Anmeldung abgeschlossen. Bitte die <strong>Onroda-App</strong> nutzen \u2014 dort ist der Login aktiv.<br/><br/>
+      <span style="color:#6b7280;font-size:14px">Die Website onroda.de ist nur die \xF6ffentliche Startseite.</span>
+      </p></body></html>`
+    );
     return;
   }
   if (err) {

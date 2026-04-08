@@ -295,12 +295,6 @@ router.get("/auth/google/callback", async (req, res) => {
   }
 });
 
-function oauthSuccessWebBase(): string {
-  const raw = (process.env.OAUTH_SUCCESS_WEB_URL ?? "https://onroda.de/app").trim();
-  if (!raw) return "https://onroda.de/app";
-  return /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
-}
-
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -309,15 +303,31 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Browser-Default nach OAuth: ?token=… → Redirect zur Web-App; Fehler → Hinweis. */
+/**
+ * Fallback, wenn `/auth/google/start` ohne clientspezifisches `returnUrl` läuft (z. B. reiner Browser).
+ * Mobile nutzt immer ein App-Deep-Link als `returnUrl` — der landet nicht hier.
+ * Redirect zur Web-App **nur** bei gesetztem `OAUTH_SUCCESS_WEB_URL` (später z. B. Panel-Subdomain), nie auf die Marketing-Homepage.
+ */
 router.get("/auth/google/done", (req, res) => {
   const token = firstQueryString(req.query.token).trim();
   const err = firstQueryString(req.query.error);
   const detail = firstQueryString(req.query.detail);
 
   if (token && !err) {
-    const base = oauthSuccessWebBase();
-    res.redirect(302, appendQueryParams(base, { token }));
+    const explicit = (process.env.OAUTH_SUCCESS_WEB_URL ?? "").trim();
+    if (explicit) {
+      const base = /^https?:\/\//i.test(explicit)
+        ? explicit
+        : `https://${explicit.replace(/^\/+/, "")}`;
+      res.redirect(302, appendQueryParams(base, { token }));
+      return;
+    }
+    res.send(
+      `<!DOCTYPE html><html><body><p style="font-family:sans-serif;text-align:center;margin-top:40px;max-width:520px;margin-inline:auto">
+      Anmeldung abgeschlossen. Bitte die <strong>Onroda-App</strong> nutzen — dort ist der Login aktiv.<br/><br/>
+      <span style="color:#6b7280;font-size:14px">Die Website onroda.de ist nur die öffentliche Startseite.</span>
+      </p></body></html>`,
+    );
     return;
   }
 

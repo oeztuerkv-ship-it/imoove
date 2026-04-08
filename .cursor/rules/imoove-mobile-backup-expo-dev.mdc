@@ -1,0 +1,25 @@
+---
+description: Mobile backup baseline, Expo/Metro port — do not change app.json for dev tooling
+alwaysApply: true
+---
+
+# Mobile: Backup & Expo / Metro
+
+## Stabiler Zeitpunkt (Backup)
+
+- **Ordner:** `artifacts/mobile/_backup-2026-04-07-stable/`
+- **Beschreibung / Restore-Schritte:** `artifacts/mobile/_backup-2026-04-07-stable/BACKUP.txt`
+- Vor größeren Umbauten: Restore nur per Kopie aus diesem Backup (siehe BACKUP.txt), danach `pnpm install` und `.env` prüfen.
+
+## Expo Go, Port, Metro — **nicht** über App-Einstellungen lösen
+
+- **Nicht** `app.json` / `app.config.*` / iOS-Android-Blocks ändern, um Metro-Port oder „Expo Go verbindet nicht“ zu fixen — das erzeugt nur Nebenwirkungen (Scheme, Native-IDs, Keys).
+- **Stattdessen** nur die Skripte in `artifacts/mobile/package.json` nutzen:
+  - **`pnpm run dev`** — fester **Port 8081**, LAN-tauglich für **Expo Go** (kein `--localhost`).
+  - **`pnpm run dev:localhost`** — nur Metro auf Loopback (Simulator/fokussierter lokal).
+  - **`pnpm run dev:replit`** — Replit mit denselben Domain-/Proxy-Variablen wie bisher, Port **8081**.
+- Kein dynamisches `PORT=` / kein `sh -c`-Gerüst für den normalen lokalen Start.
+
+## Wenn der Agent etwas „repariert“
+
+- Bei Metro-/Verbindungsproblemen zuerst Port-Konflikte prüfen (8081 frei), dann Skripte — **nicht** am Expo-App-Manifest drehen, außer der User fordert explizit produktionsrelevante App-Config (Bundle ID, Icons, …).

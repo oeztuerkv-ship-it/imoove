@@ -58,7 +58,7 @@ app.use("/api", router);
 app.use(ridesRouter);
 app.use(adminRouter);
 
-/* Root: Marketing-Domain → statische Landingpage; API-Host → kurze JSON-Info */
+/* Root: Marketing-Domain = nur öffentliche Homepage; App = Mobile + API; Panel später eigene Subdomain. */
 app.get("/", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {
