@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Onroda Panel</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #fff;
+    }
+
+    .sidebar {
+      width: 220px;
+      height: 100vh;
+      background: #020617;
+      position: fixed;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 30px;
+    }
+
+    .sidebar a {
+      display: block;
+      color: #94a3b8;
+      text-decoration: none;
+      margin: 10px 0;
+    }
+
+    .sidebar a:hover {
+      color: #fff;
+    }
+
+    .main {
+      margin-left: 240px;
+      padding: 20px;
+    }
+
+    .cards {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: #020617;
+      padding: 20px;
+      border-radius: 12px;
+      width: 200px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #94a3b8;
+    }
+
+    .card p {
+      font-size: 28px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h2>Onroda</h2>
+    <a href="#">Dashboard</a>
+    <a href="#">Fahrten</a>
+    <a href="#">Unternehmer</a>
+    <a href="#">Fahrer</a>
+    <a href="#">Abrechnung</a>
+  </div>
+
+  <div class="main">
+    <h1>Dashboard</h1>
+
+    <div class="cards">
+      <div class="card">
+        <h3>Offene Fahrten</h3>
+        <p>12</p>
+      </div>
+
+      <div class="card">
+        <h3>Laufend</h3>
+        <p>5</p>
+      </div>
+
+      <div class="card">
+        <h3>Heute erledigt</h3>
+        <p>34</p>
+      </div>
+
+      <div class="card">
+        <h3>Unternehmer</h3>
+        <p>8</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
