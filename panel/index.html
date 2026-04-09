@@ -92,8 +92,8 @@ async function login() {
   const data = await res.json();
 
   if (data.ok) {
-    alert("Login erfolgreich");
-  } else {
+  window.location.href = "/dashboard.html";
+} else {
     alert("Login fehlgeschlagen");
   }
 }
