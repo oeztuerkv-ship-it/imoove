@@ -1,0 +1,16 @@
+Stand: 2026-04-09 (Current Snapshot)
+
+Inhalt:
+- app/ (kompletter Zustand)
+- context/RideContext.tsx
+- utils/fareCalculator.ts
+- components/VehicleSelector.tsx
+
+Restore (aus artifacts/mobile):
+- cp -R _backup-2026-04-09-current/app/. app/
+- cp _backup-2026-04-09-current/context/RideContext.tsx context/
+- cp _backup-2026-04-09-current/utils/fareCalculator.ts utils/
+- cp _backup-2026-04-09-current/components/VehicleSelector.tsx components/
+
+Hinweis:
+- Nach Restore: `pnpm install` prüfen und Metro neu starten.
