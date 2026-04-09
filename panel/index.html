@@ -71,10 +71,33 @@
     <div class="logo">ONRODA</div>
     <div class="subtitle">Admin Panel Login</div>
 
-    <input type="text" placeholder="Benutzername">
-    <input type="password" placeholder="Passwort">
+    <input id="username" type="text" placeholder="Benutzername">
+<input id="password" type="password" placeholder="Passwort">
 
-    <button>Einloggen</button>
+<button onclick="login()">Einloggen</button>
+
+<script>
+async function login() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("https://onroda.de/api/admin/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (data.ok) {
+    alert("Login erfolgreich");
+  } else {
+    alert("Login fehlgeschlagen");
+  }
+}
+</script>
   </div>
 
 </body>
