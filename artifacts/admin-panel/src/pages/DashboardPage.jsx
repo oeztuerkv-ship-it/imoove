@@ -176,8 +176,8 @@ const styles = {
 
   heroCard: {
     width: "100%",
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-elevated)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 24,
     padding: 24,
     display: "flex",
@@ -189,7 +189,7 @@ const styles = {
 
   heroLabel: {
     fontSize: 13,
-    color: "#8e918f",
+    color: "var(--onroda-text-muted)",
     marginBottom: 8,
     fontWeight: 500,
   },
@@ -197,21 +197,21 @@ const styles = {
   heroTitle: {
     margin: 0,
     fontSize: 28,
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     fontWeight: 600,
   },
 
   heroText: {
     margin: "10px 0 0 0",
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     lineHeight: 1.6,
     maxWidth: 680,
   },
 
   refreshBtn: {
-    background: "#282a2d",
-    color: "#e3e3e3",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-control)",
+    color: "var(--onroda-text-primary)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 28,
     padding: "10px 16px",
     cursor: "pointer",
@@ -225,14 +225,14 @@ const styles = {
   },
 
   card: {
-    background: "#1e1f20",
+    background: "var(--onroda-bg-elevated)",
     borderRadius: 20,
     padding: 22,
-    border: "1px solid rgba(255,255,255,0.05)",
+    border: "1px solid var(--onroda-border)",
   },
 
   cardLabel: {
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontSize: 14,
     marginBottom: 12,
   },
@@ -240,13 +240,13 @@ const styles = {
   cardValue: {
     fontSize: 38,
     fontWeight: 600,
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     lineHeight: 1.1,
   },
 
   cardSub: {
     marginTop: 10,
-    color: "#8e918f",
+    color: "var(--onroda-text-muted)",
     fontSize: 13,
   },
 
@@ -257,10 +257,10 @@ const styles = {
   },
 
   panel: {
-    background: "#1e1f20",
+    background: "var(--onroda-bg-elevated)",
     borderRadius: 20,
     padding: 22,
-    border: "1px solid rgba(255,255,255,0.05)",
+    border: "1px solid var(--onroda-border)",
   },
 
   panelHeader: {
@@ -273,7 +273,7 @@ const styles = {
 
   panelTitle: {
     margin: 0,
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     fontSize: 18,
     fontWeight: 600,
   },
@@ -288,7 +288,7 @@ const styles = {
     fontWeight: 500,
     background: "#17311f",
     color: "#9ed9af",
-    border: "1px solid rgba(255,255,255,0.05)",
+    border: "1px solid var(--onroda-border)",
   },
 
   panelBadgeMuted: {
@@ -299,9 +299,9 @@ const styles = {
     padding: "4px 10px",
     fontSize: 12,
     fontWeight: 500,
-    background: "#282a2d",
-    color: "#c4c7c5",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-control)",
+    color: "var(--onroda-text-secondary)",
+    border: "1px solid var(--onroda-border)",
   },
 
   metricList: {
@@ -317,17 +317,17 @@ const styles = {
     gap: 12,
     padding: "12px 14px",
     borderRadius: 14,
-    background: "#282a2d",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-control)",
+    border: "1px solid var(--onroda-border)",
   },
 
   metricLabel: {
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontSize: 14,
   },
 
   metricValue: {
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     fontSize: 15,
     fontWeight: 600,
   },
@@ -341,18 +341,18 @@ const styles = {
   todoItem: {
     padding: "12px 14px",
     borderRadius: 14,
-    background: "#282a2d",
-    border: "1px solid rgba(255,255,255,0.05)",
-    color: "#c4c7c5",
+    background: "var(--onroda-bg-control)",
+    border: "1px solid var(--onroda-border)",
+    color: "var(--onroda-text-secondary)",
     fontSize: 14,
     lineHeight: 1.5,
   },
 
   infoBox: {
     padding: 22,
-    color: "#c4c7c5",
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
+    color: "var(--onroda-text-secondary)",
+    background: "var(--onroda-bg-elevated)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 20,
   },
 
@@ -360,7 +360,7 @@ const styles = {
     padding: 22,
     color: "#f0a3a3",
     background: "#341919",
-    border: "1px solid rgba(255,255,255,0.05)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 20,
   },
 };

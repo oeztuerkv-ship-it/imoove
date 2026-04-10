@@ -8,9 +8,9 @@ import CompaniesPage from "./pages/CompaniesPage";
 
 function Placeholder({ title, text }) {
   return (
-    <div style={styles.placeholderCard}>
-      <h2 style={styles.placeholderTitle}>{title}</h2>
-      <p style={styles.placeholderText}>{text}</p>
+    <div className="admin-placeholder">
+      <h2 className="admin-placeholder__title">{title}</h2>
+      <p className="admin-placeholder__text">{text}</p>
     </div>
   );
 }
@@ -85,178 +85,44 @@ export default function App() {
   const current = PAGE_CONFIG[active] || PAGE_CONFIG.dashboard;
 
   return (
-    <div style={styles.app}>
-      <div style={styles.sidebarColumn}>
+    <div className="admin-app">
+      <div className="admin-app__sidebar-col">
         <Sidebar active={active} onChange={setActive} />
       </div>
 
-      <div style={styles.mainColumn}>
-        <header style={styles.topbar}>
-          <div style={styles.topbarLeft}>
-            <h1 style={styles.pageTitle}>{current.title}</h1>
-            <p style={styles.pageSubtitle}>{current.subtitle}</p>
+      <div className="admin-app__main">
+        <header className="admin-app__topbar">
+          <div className="admin-app__topbar-left">
+            <h1 className="admin-app__title">{current.title}</h1>
+            <p className="admin-app__subtitle">{current.subtitle}</p>
           </div>
 
-          <div style={styles.topbarRight}>
-            <div style={styles.searchWrap}>
-              <span style={styles.searchIcon}>⌕</span>
+          <div className="admin-app__topbar-right">
+            <label className="admin-search">
+              <span className="admin-search__icon" aria-hidden>
+                ⌕
+              </span>
               <input
+                className="admin-search__input"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Global suchen ..."
-                style={styles.searchInput}
+                placeholder="Global suchen …"
+                type="search"
+                autoComplete="off"
+                aria-label="Global suchen"
               />
-            </div>
+            </label>
 
-            <button style={styles.topButton}>+ Neu</button>
+            <button type="button" className="admin-btn-pill">
+              + Neu
+            </button>
           </div>
         </header>
 
-        <main style={styles.contentArea}>
-          <div style={styles.contentInner}>{current.component}</div>
+        <main className="admin-app__content">
+          <div className="admin-app__content-inner">{current.component}</div>
         </main>
       </div>
     </div>
   );
 }
-
-const styles = {
-  app: {
-    display: "flex",
-    minHeight: "100vh",
-    width: "100%",
-    background: "#131314",
-    color: "#e3e3e3",
-    fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    overflow: "hidden",
-  },
-
-  sidebarColumn: {
-    width: 270,
-    minWidth: 270,
-    maxWidth: 270,
-    flexShrink: 0,
-    background: "#1e1f20",
-    borderRight: "1px solid rgba(255,255,255,0.05)",
-  },
-
-  mainColumn: {
-    flex: 1,
-    minWidth: 0,
-    display: "flex",
-    flexDirection: "column",
-    background: "#131314",
-    overflow: "hidden",
-  },
-
-  topbar: {
-    flexShrink: 0,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    flexWrap: "wrap",
-    padding: "20px 28px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    background: "#131314",
-  },
-
-  topbarLeft: {
-    minWidth: 0,
-  },
-
-  pageTitle: {
-    margin: 0,
-    fontSize: 28,
-    fontWeight: 600,
-    color: "#e3e3e3",
-    lineHeight: 1.1,
-  },
-
-  pageSubtitle: {
-    margin: "6px 0 0 0",
-    fontSize: 14,
-    color: "#c4c7c5",
-  },
-
-  topbarRight: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-
-  searchWrap: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    minWidth: 280,
-    height: 44,
-    padding: "0 14px",
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: 28,
-  },
-
-  searchIcon: {
-    color: "#8e918f",
-    fontSize: 15,
-    lineHeight: 1,
-    flexShrink: 0,
-  },
-
-  searchInput: {
-    width: "100%",
-    border: "none",
-    outline: "none",
-    background: "transparent",
-    color: "#e3e3e3",
-    fontSize: 14,
-  },
-
-  topButton: {
-    height: 44,
-    padding: "0 16px",
-    border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: 28,
-    background: "#282a2d",
-    color: "#e3e3e3",
-    fontWeight: 500,
-    cursor: "pointer",
-  },
-
-  contentArea: {
-    flex: 1,
-    minHeight: 0,
-    overflowY: "auto",
-    overflowX: "hidden",
-    background: "#131314",
-  },
-
-  contentInner: {
-    padding: 28,
-    minWidth: 0,
-    maxWidth: "100%",
-  },
-
-  placeholderCard: {
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: 20,
-    padding: 24,
-  },
-
-  placeholderTitle: {
-    margin: 0,
-    fontSize: 24,
-    fontWeight: 600,
-    color: "#e3e3e3",
-  },
-
-  placeholderText: {
-    margin: "10px 0 0 0",
-    color: "#c4c7c5",
-    lineHeight: 1.6,
-  },
-};

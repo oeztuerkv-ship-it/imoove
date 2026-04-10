@@ -86,9 +86,9 @@ export default function CompaniesPage() {
       padding: "4px 10px",
       fontSize: 12,
       fontWeight: 500,
-      border: "1px solid rgba(255,255,255,0.05)",
-      background: "#282a2d",
-      color: "#e3e3e3",
+      border: "1px solid var(--onroda-border)",
+      background: "var(--onroda-bg-control)",
+      color: "var(--onroda-text-primary)",
       whiteSpace: "nowrap",
     };
 
@@ -103,7 +103,7 @@ export default function CompaniesPage() {
       if (value === "yes") {
         return { ...base, background: "#172334", color: "#a8c7fa" };
       }
-      return { ...base, background: "#282a2d", color: "#c4c7c5" };
+      return { ...base, background: "var(--onroda-bg-control)", color: "var(--onroda-text-secondary)" };
     }
 
     return base;
@@ -474,25 +474,25 @@ const styles = {
     gap: 12,
   },
   statCard: {
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-elevated)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 18,
     padding: 18,
   },
   statLabel: {
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontSize: 13,
     marginBottom: 8,
   },
   statValue: {
     fontSize: 28,
     fontWeight: 600,
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
   },
 
   filterCard: {
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-elevated)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 18,
     padding: 18,
   },
@@ -508,32 +508,32 @@ const styles = {
   },
   label: {
     fontSize: 13,
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontWeight: 500,
   },
   input: {
     height: 42,
     borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.05)",
-    background: "#282a2d",
-    color: "#e3e3e3",
+    border: "1px solid var(--onroda-border)",
+    background: "var(--onroda-bg-control)",
+    color: "var(--onroda-text-primary)",
     padding: "0 12px",
     outline: "none",
   },
   select: {
     height: 42,
     borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.05)",
-    background: "#282a2d",
-    color: "#e3e3e3",
+    border: "1px solid var(--onroda-border)",
+    background: "var(--onroda-bg-control)",
+    color: "var(--onroda-text-primary)",
     padding: "0 12px",
     outline: "none",
   },
   refreshBtn: {
     height: 42,
-    background: "#282a2d",
-    color: "#e3e3e3",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-control)",
+    color: "var(--onroda-text-primary)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 14,
     cursor: "pointer",
     fontWeight: 500,
@@ -554,7 +554,7 @@ const styles = {
     flexWrap: "wrap",
   },
   tableInfo: {
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontSize: 13,
   },
   pagination: {
@@ -567,9 +567,9 @@ const styles = {
     minWidth: 38,
     height: 38,
     borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.05)",
-    background: "#1e1f20",
-    color: "#e3e3e3",
+    border: "1px solid var(--onroda-border)",
+    background: "var(--onroda-bg-elevated)",
+    color: "var(--onroda-text-primary)",
     cursor: "pointer",
     padding: "0 12px",
     fontWeight: 500,
@@ -578,15 +578,15 @@ const styles = {
     minWidth: 38,
     height: 38,
     borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.05)",
-    background: "#282a2d",
-    color: "#e3e3e3",
+    border: "1px solid var(--onroda-border)",
+    background: "var(--onroda-bg-control)",
+    color: "var(--onroda-text-primary)",
     cursor: "pointer",
     padding: "0 12px",
     fontWeight: 600,
   },
   pageDots: {
-    color: "#8e918f",
+    color: "var(--onroda-text-muted)",
     padding: "0 4px",
   },
 
@@ -596,9 +596,9 @@ const styles = {
     gap: 18,
   },
   card: {
-    background: "#1e1f20",
+    background: "var(--onroda-bg-elevated)",
     borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.05)",
+    border: "1px solid var(--onroda-border)",
     padding: 20,
     display: "flex",
     flexDirection: "column",
@@ -619,11 +619,11 @@ const styles = {
   companyName: {
     fontSize: 22,
     fontWeight: 600,
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     marginBottom: 6,
   },
   companyMeta: {
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontSize: 14,
     lineHeight: 1.5,
   },
@@ -634,8 +634,8 @@ const styles = {
     gap: 14,
   },
   switchRow: {
-    background: "#282a2d",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-control)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 16,
     padding: "14px 16px",
     display: "flex",
@@ -644,7 +644,7 @@ const styles = {
     gap: 12,
   },
   labelText: {
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     fontWeight: 500,
   },
 
@@ -654,18 +654,18 @@ const styles = {
     gap: 14,
   },
   fieldBox: {
-    background: "#282a2d",
-    border: "1px solid rgba(255,255,255,0.05)",
+    background: "var(--onroda-bg-control)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 16,
     padding: 16,
   },
   fieldLabel: {
-    color: "#c4c7c5",
+    color: "var(--onroda-text-secondary)",
     fontSize: 13,
     marginBottom: 8,
   },
   fieldValue: {
-    color: "#e3e3e3",
+    color: "var(--onroda-text-primary)",
     fontSize: 20,
     fontWeight: 600,
   },
@@ -677,16 +677,16 @@ const styles = {
 
   infoBox: {
     padding: 22,
-    color: "#c4c7c5",
-    background: "#1e1f20",
-    border: "1px solid rgba(255,255,255,0.05)",
+    color: "var(--onroda-text-secondary)",
+    background: "var(--onroda-bg-elevated)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 18,
   },
   errorBox: {
     padding: 22,
     color: "#f0a3a3",
     background: "#341919",
-    border: "1px solid rgba(255,255,255,0.05)",
+    border: "1px solid var(--onroda-border)",
     borderRadius: 18,
   },
 };
