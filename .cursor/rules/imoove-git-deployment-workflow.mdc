@@ -1,0 +1,58 @@
+---
+description: Git-Workflow & Server nur Deployment — kein Chaos auf dem Server
+alwaysApply: true
+---
+
+# imoove: Git & Deployment
+
+## Grundsatz
+
+- **`imoove` ist bereits ein Git-Repository** — **kein** erneutes `git init` im Projektroot.
+- **Entwicklung lokal** (oder in klar benannten Branches/PRs). **Server nur für Deployment** (`git pull` + Build + Prozess-Neustart), keine ungeordneten direkten Code-Edits auf dem Server.
+
+## Lokaler Stand holen / aktualisieren
+
+**Noch kein Clone:**
+
+```bash
+git clone <repo-url>
+cd imoove
+```
+
+**Repo schon vorhanden:**
+
+```bash
+git pull origin main
+```
+
+## Änderungen einreichen
+
+```bash
+git add .
+git commit -m "kurze, sinnvolle Beschreibung"
+git push origin main
+```
+
+- Vor `git add .` kurz prüfen, dass **keine** `.env` / Secrets / `node_modules` mit dabei sind (siehe `.gitignore`).
+- Bei großen Änderungen lieber gezielt `git add <pfade>` statt blind alles.
+
+## Auf dem Server (nur Deployment)
+
+```bash
+cd /pfad/zum/imoove
+git pull origin main
+cd artifacts/admin-panel
+npm run build
+pm2 restart onroda-admin
+```
+
+(Pfade und PM2-Name an die echte Server-Umgebung anpassen.)
+
+## `.gitignore` (Pflichtgedanke)
+
+- Root und Pakete ignorieren u. a. **`node_modules/`**, **`.env` / `.env.*`** (Ausnahme: `!.env.example` wo vorgesehen), keine Service-Account-JSONs ins Repo.
+
+## Für Agents
+
+- Keine Anweisungen, auf dem Produktions-Server zu „schnell zu fixen“ ohne Pull aus `main`.
+- Größere Features (Admin live, Partner, Zuweisung) vorher mit dem Team abstimmen, damit sich Arbeit nicht überschneidet.

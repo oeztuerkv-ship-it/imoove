@@ -11,3 +11,17 @@ node_modules/
 
 # Lokaler Alt-Backup-Ordner (nicht versionieren)
 artifacts/mobile/_backup-2026-04-07-stable/
+
+# OS / Editor / Logs (kein Repo-Müll)
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Optional: lokale Tool-Caches (falls im Repo-Root entstehen)
+.turbo/
+.cache/
+coverage/
