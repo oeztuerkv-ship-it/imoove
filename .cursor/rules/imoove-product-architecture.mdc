@@ -23,3 +23,11 @@ alwaysApply: true
 - Keine Defaults, die `onroda.de` als eingeloggte Web-App vortäuschen.
 - Metro/App-Config nicht zugunsten einer späteren Homepage-SEO-URL opfern.
 - Admin-/Panel-Routen in der API (falls vorhanden) von öffentlicher Marketing-Static trennen (`/api`, `isApiHost`, Hostname-Checks beibehalten).
+
+## API-Feldnamen & Mapping (Mobile + Admin)
+
+- **Backend / DB:** `snake_case` (Quelle der Wahrheit).
+- **Frontend (Mobile, Admin-Panel):** `camelCase` in State, Props und UI.
+- **Mapping** `snake_case → camelCase` nur **zentral** (z. B. Context-`normalize*`, dedizierte `mapApiRide`-Hilfen) — **nicht** pro Screen oder Komponente verteilen.
+- Neue Endpoints/Felder: erst Mapping-Schicht erweitern, dann UI anbinden.
+- Vor **größeren** parallelen Umbauten (Dashboard live, Partner/Unternehmen/Fahrer, Zuweisungslogik) kurz mit dem Team abstimmen, damit sich Branches/Verantwortlichkeiten nicht überschneiden.
