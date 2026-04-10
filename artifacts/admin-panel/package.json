@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --base /partners/",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --base /partners/"
   },
   "dependencies": {
     "react": "^19.2.4",

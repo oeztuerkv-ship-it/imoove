@@ -11,7 +11,7 @@ import { logger } from "./lib/logger";
 const app: Express = express();
 
 /**
- * Pfad zum Ordner `static/` (onroda-brand.css, index.html, partners/…).
+ * Pfad zum Ordner `static/` (onroda-brand.css, Marketing-index.html).
  * Nicht `process.cwd()` — in Production ist das oft nicht das api-server-Verzeichnis.
  * Gebündelter Einstieg: `dist/index.mjs` → ein Verzeichnis darüber liegt `static/`.
  */
@@ -24,14 +24,17 @@ function resolveStaticRoot(): string {
   return path.join(distDir, "..", "static");
 }
 
-/** Optionales gebautes Admin-Panel: `dist/public` neben `index.mjs`. */
+/**
+ * Gebautes Admin-Panel (Vite, base `/partners/`).
+ * Standard: `artifacts/admin-panel/dist` (API-Build löscht `dist/`, daher nicht unter api-server/dist/public).
+ */
 function resolvePublicRoot(): string {
   const fromEnv = process.env["ADMIN_STATIC_ROOT"];
   if (fromEnv && fromEnv.length > 0) {
     return path.resolve(fromEnv);
   }
-  const distDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(distDir, "public");
+  const apiDistDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(apiDistDir, "..", "..", "admin-panel", "dist");
 }
 
 const staticRoot = resolveStaticRoot();
@@ -85,25 +88,26 @@ app.use("/api", router);
 app.use(ridesRouter);
 app.use(adminRouter);
 
-/* Partner-Bereich: Platzhalter-Seite. Express fasst /partners und /partners/ oft gleich — eine Route für beide. */
-app.get(["/partners", "/partners/"], (_req, res, next) => {
-  res.sendFile(path.join(staticRoot, "partners", "index.html"), (err) => {
+/* Admin-Panel (Vite-Build mit base `/partners/` → admin-panel/dist). */
+const adminPublicRoot = resolvePublicRoot();
+app.use("/partners", express.static(adminPublicRoot));
+app.use("/partners", (req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return next();
+  }
+  res.sendFile(path.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
-app.use(
-  "/partners",
-  express.static(path.join(staticRoot, "partners"), {
-    index: false,
-  }),
-);
 
-/* Gemeinsame Marken-Styles (Homepage + externe Einbindung); keine index.html am Root. */
-app.use(
-  express.static(staticRoot, {
-    index: false,
-  }),
-);
+/* Marketing-Static darf /partners nicht bedienen (kein altes static/partners mehr überschreiben). */
+app.use((req, res, next) => {
+  const p = req.path;
+  if (p === "/partners" || p.startsWith("/partners/")) {
+    return next();
+  }
+  express.static(staticRoot, { index: false })(req, res, next);
+});
 
 /* Root: Marketing-Domain = nur öffentliche Homepage; App = Mobile + API; Panel später eigene Subdomain. */
 app.get("/", (req, res, next) => {
@@ -119,18 +123,11 @@ app.get("/", (req, res, next) => {
       health: "/api/healthz",
       healthV1: "/api/v1/health",
       admin: "/admin",
+      adminPanel: "/partners/",
     });
   }
-  next();
-});
-
-/* Weitere Hosts: optionales Static-Frontend unter dist/public (falls vorhanden) */
-app.use((req, res, next) => {
-  const host = hostname(req);
-  if (isApiHost(host)) {
-    return next();
-  }
-  express.static(resolvePublicRoot())(req, res, next);
+  /* z. B. admin.onroda.de: Root auf gebaute App unter /partners/ */
+  return res.redirect(302, "/partners/");
 });
 
 export default app;

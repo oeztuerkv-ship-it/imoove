@@ -62,11 +62,12 @@ Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, 
 ```bash
 cd /root/imoove
 git pull origin main
-cd artifacts/admin-panel
-npm ci
-npm run build
-pm2 restart onroda-admin
+cd artifacts/api-server && pnpm install && pnpm run build
+cd ../admin-panel && npm ci && npm run build
+pm2 restart <api-prozess>
 ```
+
+Das Admin-Panel wird unter **`/partners/`** ausgeliefert (`vite` mit `base: /partners/`). Der API-Server liest den Build aus **`artifacts/admin-panel/dist`** (siehe `resolvePublicRoot` in `app.ts`). Root-URLs nicht-API-Hosts (z. B. Admin-Subdomain) leiten nach **`/partners/`** um.
 
 (`npm ci` setzt `package-lock.json` im Repo voraus. Paketmanager/PM2-Name bei Bedarf anpassen.)
 
