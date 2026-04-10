@@ -71,6 +71,31 @@ Das Admin-Panel wird unter **`/partners/`** ausgeliefert (`vite` mit `base: /par
 
 (`npm ci` setzt `package-lock.json` im Repo voraus. Paketmanager/PM2-Name bei Bedarf anpassen.)
 
+## Verifikation `/partners/` (Build + HTTP)
+
+Nach `npm run build` im Admin- und API-Server:
+
+```bash
+# Nur prüfen, ob dist/index.html und /partners/assets/* auf der Platte existieren:
+./scripts/verify-admin-partners-routes.sh
+
+# Zusätzlich gegen laufende API (PORT anpassen):
+./scripts/verify-admin-partners-routes.sh http://127.0.0.1:8080
+```
+
+Im Browser: gleiche Origin öffnen, z. B. `https://api.example.com/partners/` — DevTools → **Network**: `index.html`, JS und CSS müssen **200** haben; weiße Seite bei **404** auf `/partners/assets/…` deutet auf falschen Vite-`base` oder veralteten Build.
+
+## Optional: eigene Subdomain `admin.onroda.de`
+
+Separates DNS/Nginx-Thema; die App bleibt unter **`/partners/`** auf demselben Express-Prozess wie die API (oder hinter einem Reverse-Proxy).
+
+1. **DNS:** A-Record (oder AAAA) `admin.onroda.de` → Server-IP.
+2. **Nginx:** `server_name admin.onroda.de;` → `proxy_pass` auf den Node-Port (derselbe wie für die API, falls ein Host).
+3. **SSL:** z. B. `certbot --nginx -d admin.onroda.de`.
+4. **Verhalten:** Entweder nur `location / { proxy_pass http://127.0.0.1:PORT; }` (Express liefert wie heute `/`, JSON auf API-Host, Redirect auf `/partners/` für andere Hosts laut `app.ts`) oder explizit `return 302 https://admin.onroda.de/partners/;` nur für `location = /`.
+
+`resolvePublicRoot()` zeigt standardmäßig auf **`artifacts/admin-panel/dist`** relativ zu `api-server/dist/index.mjs`. Abweichende Pfade: **`ADMIN_STATIC_ROOT`** in `.env` setzen.
+
 ## Layout / UI
 
 Erst **nach** erfolgreichem Import und grünem Build wieder gezielt an Layout und UI arbeiten — damit Repo und Live nicht auseinanderlaufen.
