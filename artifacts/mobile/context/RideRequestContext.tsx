@@ -107,10 +107,60 @@ function toDate(val: string | Date | undefined | null): Date | undefined | null 
 }
 
 function normalizeRequest(r: any): RideRequest {
+  const customerName =
+    r.customerName ??
+    r.customer_name ??
+    r.customer ??
+    "Unbekannt";
+  const fromFull =
+    r.fromFull ??
+    r.from_full ??
+    r.from_location ??
+    r.from ??
+    "—";
+  const toFull =
+    r.toFull ??
+    r.to_full ??
+    r.to_location ??
+    r.to ??
+    "—";
+  const paymentMethod =
+    r.paymentMethod ??
+    r.payment_method ??
+    r.paymentType ??
+    r.payment_type ??
+    "Bar";
+  const vehicle =
+    r.vehicle ??
+    r.vehicle_type ??
+    "Standard";
+
   return {
     ...r,
-    createdAt: toDate(r.createdAt) ?? new Date(),
-    scheduledAt: r.scheduledAt ? toDate(r.scheduledAt) : null,
+    id: String(r.id ?? r.ride_id ?? `REQ-${Date.now()}`),
+    createdAt: toDate(r.createdAt ?? r.created_at) ?? new Date(),
+    scheduledAt: (r.scheduledAt ?? r.scheduled_at) ? toDate(r.scheduledAt ?? r.scheduled_at) : null,
+    from: r.from ?? r.from_location ?? fromFull,
+    fromFull,
+    fromLat: r.fromLat ?? r.from_lat ?? undefined,
+    fromLon: r.fromLon ?? r.from_lon ?? undefined,
+    to: r.to ?? r.to_location ?? toFull,
+    toFull,
+    toLat: r.toLat ?? r.to_lat ?? undefined,
+    toLon: r.toLon ?? r.to_lon ?? undefined,
+    distanceKm: Number(r.distanceKm ?? r.distance_km ?? 0),
+    durationMinutes: Number(r.durationMinutes ?? r.duration_minutes ?? 0),
+    estimatedFare: Number(r.estimatedFare ?? r.estimated_fare ?? r.totalFare ?? r.total_fare ?? 0),
+    finalFare:
+      r.finalFare != null || r.final_fare != null
+        ? Number(r.finalFare ?? r.final_fare)
+        : null,
+    paymentMethod,
+    vehicle,
+    customerName: String(customerName),
+    passengerId: r.passengerId ?? r.passenger_id,
+    driverId: r.driverId ?? r.driver_id ?? null,
+    status: (r.status ?? "pending") as RequestStatus,
     rejectedBy: r.rejectedBy ?? [],
   } as RideRequest;
 }
