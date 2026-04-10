@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import ridesRouter from "./routes/rides";
@@ -8,6 +9,32 @@ import adminRouter from "./routes/admin";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+/**
+ * Pfad zum Ordner `static/` (onroda-brand.css, index.html, partners/…).
+ * Nicht `process.cwd()` — in Production ist das oft nicht das api-server-Verzeichnis.
+ * Gebündelter Einstieg: `dist/index.mjs` → ein Verzeichnis darüber liegt `static/`.
+ */
+function resolveStaticRoot(): string {
+  const fromEnv = process.env["STATIC_ROOT"];
+  if (fromEnv && fromEnv.length > 0) {
+    return path.resolve(fromEnv);
+  }
+  const distDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(distDir, "..", "static");
+}
+
+/** Optionales gebautes Admin-Panel: `dist/public` neben `index.mjs`. */
+function resolvePublicRoot(): string {
+  const fromEnv = process.env["ADMIN_STATIC_ROOT"];
+  if (fromEnv && fromEnv.length > 0) {
+    return path.resolve(fromEnv);
+  }
+  const distDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(distDir, "public");
+}
+
+const staticRoot = resolveStaticRoot();
 
 /* Hinter Nginx/Ingress: korrektes req.protocol / Host für OAuth-Redirects */
 app.set("trust proxy", 1);
@@ -58,9 +85,22 @@ app.use("/api", router);
 app.use(ridesRouter);
 app.use(adminRouter);
 
-/* Gemeinsame Marken-Styles (Homepage + externe Einbindung); keine index.html-Autoverzeichnis-Auslieferung. */
+/* Partner-Bereich: Platzhalter-Seite. Express fasst /partners und /partners/ oft gleich — eine Route für beide. */
+app.get(["/partners", "/partners/"], (_req, res, next) => {
+  res.sendFile(path.join(staticRoot, "partners", "index.html"), (err) => {
+    if (err) next(err);
+  });
+});
 app.use(
-  express.static(path.join(process.cwd(), "static"), {
+  "/partners",
+  express.static(path.join(staticRoot, "partners"), {
+    index: false,
+  }),
+);
+
+/* Gemeinsame Marken-Styles (Homepage + externe Einbindung); keine index.html am Root. */
+app.use(
+  express.static(staticRoot, {
     index: false,
   }),
 );
@@ -69,7 +109,7 @@ app.use(
 app.get("/", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {
-    const filePath = path.join(process.cwd(), "static", "index.html");
+    const filePath = path.join(staticRoot, "index.html");
     return res.sendFile(filePath);
   }
   if (isApiHost(host)) {
@@ -90,8 +130,7 @@ app.use((req, res, next) => {
   if (isApiHost(host)) {
     return next();
   }
-  const publicPath = path.join(process.cwd(), "dist", "public");
-  express.static(publicPath)(req, res, next);
+  express.static(resolvePublicRoot())(req, res, next);
 });
 
 export default app;
