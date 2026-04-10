@@ -55,6 +55,8 @@ Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, 
 
 ## Deploy auf dem Server (nur noch)
 
+**Nach jedem Push auf `main`:** im Server-Clone nur noch pullen, bauen, PM2 neu starten — keinen Source mehr direkt auf dem VPS editieren.
+
 ```bash
 cd /root/imoove
 git pull origin main
@@ -64,7 +66,7 @@ npm run build
 pm2 restart onroda-admin
 ```
 
-(Paketmanager/Script-Namen anpassen, falls ihr `pnpm` o. Ä. nutzt.)
+(`npm ci` setzt `package-lock.json` im Repo voraus. Paketmanager/PM2-Name bei Bedarf anpassen.)
 
 ## Layout / UI
 

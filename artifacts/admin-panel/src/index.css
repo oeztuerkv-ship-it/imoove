@@ -1,8 +1,17 @@
+/* Globales Theme — muss mit dem Shell-Layout in App.jsx übereinstimmen (kein heller Vite-Default). */
 :root {
+  --onroda-bg-app: #131314;
+  --onroda-bg-elevated: #1e1f20;
+  --onroda-bg-control: #282a2d;
+  --onroda-text-primary: #e3e3e3;
+  --onroda-text-secondary: #c4c7c5;
+  --onroda-text-muted: #8e918f;
+  --onroda-border: rgba(255, 255, 255, 0.05);
+
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
-  color: #111827;
-  background: #f5f7fb;
+  color: var(--onroda-text-primary);
+  background: var(--onroda-bg-app);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -19,13 +28,14 @@ body,
   margin: 0;
   min-height: 100%;
   width: 100%;
-  background: #f5f7fb;
+  background: var(--onroda-bg-app);
+  color: var(--onroda-text-primary);
 }
 
 body {
   min-height: 100vh;
-  background: #f5f7fb;
-  color: #111827;
+  background: var(--onroda-bg-app);
+  color: var(--onroda-text-primary);
 }
 
 button,
@@ -35,6 +45,7 @@ textarea {
   font: inherit;
 }
 
-input::placeholder {
-  color: #9ca3af;
+input::placeholder,
+textarea::placeholder {
+  color: var(--onroda-text-muted);
 }
