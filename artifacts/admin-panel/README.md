@@ -12,42 +12,46 @@ Web-Admin für Betrieb/Backoffice. **Offizieller Ort im Monorepo:** `artifacts/a
    **Ja (Option A):** Eine Quelle der Wahrheit — API und Admin im selben Repo, Deploy nur noch `git pull` + Build.
 
 3. **Wie kommt der Server-Stand hierher?**  
-   Einmalig vom Server nach untenstehendem Befehl synchronisieren (von einem Rechner mit SSH-Zugang), dann `git add` / `commit` / `push`. Siehe auch `scripts/import-admin-panel-from-server.sh` im Repo-Root.
+   Einmalig synchronisieren (siehe unten), danach `./scripts/verify-admin-panel-source.sh`, `npm install` / `npm run build`, dann `git add` / `commit` / `push`.
 
 4. **Einzige Quelle künftig:**  
    **`artifacts/admin-panel/` im Git-Repo** (lokal + `main`). Der Server-Pfad ist nur **Deployment-Ziel**, keine zweite Entwicklungsquelle.
 
-## Einmaliger Import vom Server
+## Einmaliger Import (vom Server oder lokalen Spiegel)
 
-Auf deinem Mac (oder CI mit SSH), im **Repo-Root** von `imoove`:
+**Hinweis für Cursor/CI:** Der Pfad `/root/imoove/...` existiert nur auf **deinem VPS**. Ohne SSH von dieser Umgebung zum Server kann der Agent die Dateien **nicht** selbst ziehen — der Import läuft auf einem Rechner mit Zugriff (dein Mac, Bastion, …).
 
-```bash
-export ADMIN_SERVER="root@DEIN_HOST"
-rsync -avz \
-  --exclude node_modules \
-  --exclude .next \
-  --exclude dist \
-  --exclude build \
-  --exclude out \
-  --exclude .env \
-  --exclude '.env.*' \
-  "${ADMIN_SERVER}:/root/imoove/artifacts/admin-panel/" \
-  "./artifacts/admin-panel/"
-```
+### Variante A — SSH (empfohlen)
 
-Danach:
+Im **Repo-Root** `imoove`:
 
 ```bash
+cp .env.deploy.example .env.deploy   # optional: ADMIN_SERVER=root@… eintragen
+ADMIN_SERVER=root@DEIN_HOST ./scripts/import-admin-panel-from-server.sh
+./scripts/verify-admin-panel-source.sh
 cd artifacts/admin-panel
-# Abhängigkeiten wie auf dem Server üblich:
-npm ci   # oder npm install / pnpm install — dem vorhandenen package-lock folgen
-git status
-git add .
-git commit -m "chore(admin-panel): import live source from server into repo"
+npm install
+npm run build
+cd ../..
+git add artifacts/admin-panel
+git status   # .env / node_modules dürfen nicht dabei sein
+git commit -m "chore(admin-panel): import live source from server"
 git push origin main
 ```
 
-**Hinweis:** Liegen auf dem Server nur gebaute Artefakte ohne sinnvollen Source, vor dem Import klären (z. B. nur `dist/` → dann Source aus Backup/anderem Ort holen).
+### Variante B — Ordner liegt schon lokal
+
+(z. B. nach `scp -r root@host:/root/imoove/artifacts/admin-panel ~/admin-panel-src`)
+
+```bash
+ADMIN_LOCAL_PATH=~/admin-panel-src ./scripts/import-admin-panel-from-server.sh
+./scripts/verify-admin-panel-source.sh
+# … wie oben npm install, build, commit
+```
+
+Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, `node_modules`), damit nur **Source + Configs** ins Repo kommen; der Build entsteht lokal/auf dem Server neu.
+
+**Hinweis:** Liegt auf dem Server praktisch nur `dist/` ohne `src/`, ist das **kein** importierbarer Source — dann Backup oder anderes Verzeichnis klären.
 
 ## Deploy auf dem Server (nur noch)
 

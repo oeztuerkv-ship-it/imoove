@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
+!.env.deploy.example
+
+# Lokaler Deploy/Import (SSH-Host o. Ä., nicht committen)
+.env.deploy
 
 # Firebase Admin / GCP Service Accounts (niemals committen)
 **/*firebase-adminsdk*.json
