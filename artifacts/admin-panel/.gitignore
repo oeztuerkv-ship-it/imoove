@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Env & secrets (nie committen)
+.env
+.env.*
+!.env.example
+
+# Build outputs (je nach Stack)
+dist/
+build/
+.next/
+out/
+.nuxt/
+.vite/
+
+# Logs & caches
+*.log
+npm-debug.log*
+.DS_Store
+.turbo/
+.cache/
+coverage/
+
+# IDE
+.idea/
+*.swp

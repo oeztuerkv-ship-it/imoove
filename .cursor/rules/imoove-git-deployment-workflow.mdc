@@ -36,17 +36,23 @@ git push origin main
 - Vor `git add .` kurz prüfen, dass **keine** `.env` / Secrets / `node_modules` mit dabei sind (siehe `.gitignore`).
 - Bei großen Änderungen lieber gezielt `git add <pfade>` statt blind alles.
 
+## Admin-Panel (`artifacts/admin-panel`)
+
+- **Kanonicaler Source:** im Repo unter `artifacts/admin-panel/` (nach einmaligem Import vom Server; siehe `artifacts/admin-panel/README.md` und `scripts/import-admin-panel-from-server.sh`).
+- **Nicht** den Server-Ordner als zweite Wahrheit pflegen — nur `git pull` + Build dort.
+
 ## Auf dem Server (nur Deployment)
 
 ```bash
-cd /pfad/zum/imoove
+cd /root/imoove
 git pull origin main
 cd artifacts/admin-panel
+npm ci
 npm run build
 pm2 restart onroda-admin
 ```
 
-(Pfade und PM2-Name an die echte Server-Umgebung anpassen.)
+(Paketmanager/PM2-Name bei Bedarf anpassen.)
 
 ## `.gitignore` (Pflichtgedanke)
 
