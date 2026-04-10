@@ -179,7 +179,8 @@ export default function CompaniesPage() {
       buttons.push(
         <button
           key="prev"
-          style={styles.pageButton}
+          type="button"
+          className="admin-page-btn"
           onClick={() => setPage(page - 1)}
         >
           Zurück
@@ -189,13 +190,13 @@ export default function CompaniesPage() {
 
     if (start > 1) {
       buttons.push(
-        <button key={1} style={styles.pageButton} onClick={() => setPage(1)}>
+        <button key={1} type="button" className="admin-page-btn" onClick={() => setPage(1)}>
           1
         </button>
       );
       if (start > 2) {
         buttons.push(
-          <span key="startDots" style={styles.pageDots}>
+          <span key="startDots" className="admin-page-dots">
             ...
           </span>
         );
@@ -206,7 +207,10 @@ export default function CompaniesPage() {
       buttons.push(
         <button
           key={i}
-          style={i === page ? styles.pageButtonActive : styles.pageButton}
+          type="button"
+          className={
+            i === page ? "admin-page-btn admin-page-btn--active" : "admin-page-btn"
+          }
           onClick={() => setPage(i)}
         >
           {i}
@@ -217,7 +221,7 @@ export default function CompaniesPage() {
     if (end < totalPages) {
       if (end < totalPages - 1) {
         buttons.push(
-          <span key="endDots" style={styles.pageDots}>
+          <span key="endDots" className="admin-page-dots">
             ...
           </span>
         );
@@ -225,7 +229,8 @@ export default function CompaniesPage() {
       buttons.push(
         <button
           key={totalPages}
-          style={styles.pageButton}
+          type="button"
+          className="admin-page-btn"
           onClick={() => setPage(totalPages)}
         >
           {totalPages}
@@ -237,7 +242,8 @@ export default function CompaniesPage() {
       buttons.push(
         <button
           key="next"
-          style={styles.pageButton}
+          type="button"
+          className="admin-page-btn"
           onClick={() => setPage(page + 1)}
         >
           Weiter
@@ -249,49 +255,49 @@ export default function CompaniesPage() {
   }
 
   if (loading) {
-    return <div style={styles.infoBox}>Unternehmer werden geladen ...</div>;
+    return <div className="admin-info-banner">Unternehmer werden geladen ...</div>;
   }
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.statsGrid}>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Gesamt</div>
-          <div style={styles.statValue}>{stats.total}</div>
+    <div className="admin-page">
+      <div className="admin-stat-grid">
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Gesamt</div>
+          <div className="admin-stat-value">{stats.total}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Aktiv</div>
-          <div style={styles.statValue}>{stats.active}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Aktiv</div>
+          <div className="admin-stat-value">{stats.active}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Inaktiv</div>
-          <div style={styles.statValue}>{stats.inactive}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Inaktiv</div>
+          <div className="admin-stat-value">{stats.inactive}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>PRIO aktiv</div>
-          <div style={styles.statValue}>{stats.priority}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">PRIO aktiv</div>
+          <div className="admin-stat-value">{stats.priority}</div>
         </div>
       </div>
 
-      <div style={styles.filterCard}>
-        <div style={styles.filterGrid}>
-          <div style={styles.filterItem}>
-            <label style={styles.label}>Suche</label>
+      <div className="admin-filter-card">
+        <div className="admin-filter-grid">
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Suche</label>
             <input
               type="text"
+              className="admin-input"
               placeholder="Name, E-Mail, Telefon, ID ..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={styles.input}
             />
           </div>
 
-          <div style={styles.filterItem}>
-            <label style={styles.label}>Status</label>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Status</label>
             <select
+              className="admin-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={styles.select}
             >
               <option value="all">Alle</option>
               <option value="active">Aktiv</option>
@@ -299,12 +305,12 @@ export default function CompaniesPage() {
             </select>
           </div>
 
-          <div style={styles.filterItem}>
-            <label style={styles.label}>PRIO</label>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">PRIO</label>
             <select
+              className="admin-select"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              style={styles.select}
             >
               <option value="all">Alle</option>
               <option value="yes">PRIO aktiv</option>
@@ -312,19 +318,19 @@ export default function CompaniesPage() {
             </select>
           </div>
 
-          <div style={styles.filterItem}>
-            <label style={styles.label}>&nbsp;</label>
-            <button onClick={loadCompanies} style={styles.refreshBtn}>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">&nbsp;</label>
+            <button type="button" className="admin-btn-refresh" onClick={loadCompanies}>
               Neu laden
             </button>
           </div>
         </div>
       </div>
 
-      {error ? <div style={styles.errorBox}>{error}</div> : null}
+      {error ? <div className="admin-error-banner">{error}</div> : null}
 
-      <div style={styles.tableTopBar}>
-        <div style={styles.tableInfo}>
+      <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar__info">
           Zeige {(page - 1) * ITEMS_PER_PAGE + 1}
           {" - "}
           {Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}
@@ -332,28 +338,28 @@ export default function CompaniesPage() {
           {filteredItems.length}
         </div>
 
-        <div style={styles.pagination}>{renderPagination()}</div>
+        <div className="admin-pagination">{renderPagination()}</div>
       </div>
 
-      <div style={styles.list}>
+      <div className="admin-entity-list">
         {paginatedItems.length === 0 ? (
-          <div style={styles.infoBox}>Keine Unternehmer gefunden.</div>
+          <div className="admin-info-banner">Keine Unternehmer gefunden.</div>
         ) : (
           paginatedItems.map((item) => {
             const isSaving = savingId === item.id;
 
             return (
-              <div key={item.id} style={styles.card}>
-                <div style={styles.cardTop}>
+              <div key={item.id} className="admin-entity-card">
+                <div className="admin-entity-card__top">
                   <div>
-                    <div style={styles.companyName}>{item.name}</div>
-                    <div style={styles.companyMeta}>
+                    <div className="admin-entity-card__title">{item.name}</div>
+                    <div className="admin-entity-card__meta">
                       ID: {item.id} · {item.email || "keine E-Mail"} ·{" "}
                       {item.phone || "kein Telefon"}
                     </div>
                   </div>
 
-                  <div style={styles.badgeRow}>
+                  <div className="admin-badge-row">
                     <span
                       style={badgeStyle(
                         "status",
@@ -374,9 +380,9 @@ export default function CompaniesPage() {
                   </div>
                 </div>
 
-                <div style={styles.controlsGrid}>
-                  <label style={styles.switchRow}>
-                    <span style={styles.labelText}>PRIO aktiv</span>
+                <div className="admin-controls-grid">
+                  <label className="admin-switch-row">
+                    <span className="admin-switch-row__label">PRIO aktiv</span>
                     <input
                       type="checkbox"
                       checked={!!item.is_priority_company}
@@ -389,8 +395,8 @@ export default function CompaniesPage() {
                     />
                   </label>
 
-                  <label style={styles.switchRow}>
-                    <span style={styles.labelText}>Live-Fahrten PRIO</span>
+                  <label className="admin-switch-row">
+                    <span className="admin-switch-row__label">Live-Fahrten PRIO</span>
                     <input
                       type="checkbox"
                       checked={!!item.priority_for_live_rides}
@@ -403,8 +409,8 @@ export default function CompaniesPage() {
                     />
                   </label>
 
-                  <label style={styles.switchRow}>
-                    <span style={styles.labelText}>Reservierungen PRIO</span>
+                  <label className="admin-switch-row">
+                    <span className="admin-switch-row__label">Reservierungen PRIO</span>
                     <input
                       type="checkbox"
                       checked={!!item.priority_for_reservations}
@@ -418,275 +424,43 @@ export default function CompaniesPage() {
                   </label>
                 </div>
 
-                <div style={styles.fieldsGrid}>
-                  <div style={styles.fieldBox}>
-                    <div style={styles.fieldLabel}>Ab Preis</div>
-                    <div style={styles.fieldValue}>
+                <div className="admin-fields-grid">
+                  <div className="admin-field-tile">
+                    <div className="admin-field-tile__label">Ab Preis</div>
+                    <div className="admin-field-tile__value">
                       {item.priority_price_threshold} €
                     </div>
                   </div>
 
-                  <div style={styles.fieldBox}>
-                    <div style={styles.fieldLabel}>Timeout</div>
-                    <div style={styles.fieldValue}>
+                  <div className="admin-field-tile">
+                    <div className="admin-field-tile__label">Timeout</div>
+                    <div className="admin-field-tile__value">
                       {item.priority_timeout_seconds} Sek.
                     </div>
                   </div>
 
-                  <div style={styles.fieldBox}>
-                    <div style={styles.fieldLabel}>Radius</div>
-                    <div style={styles.fieldValue}>
+                  <div className="admin-field-tile">
+                    <div className="admin-field-tile__label">Radius</div>
+                    <div className="admin-field-tile__value">
                       {item.release_radius_km} km
                     </div>
                   </div>
                 </div>
 
-                {isSaving ? (
-                  <div style={styles.savingText}>Speichert ...</div>
-                ) : null}
+                {isSaving ? <div className="admin-saving-hint">Speichert ...</div> : null}
               </div>
             );
           })
         )}
       </div>
 
-      <div style={styles.tableBottomBar}>
-        <div style={styles.tableInfo}>
+      <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar__info">
           Seite {page} von {totalPages}
         </div>
 
-        <div style={styles.pagination}>{renderPagination()}</div>
+        <div className="admin-pagination">{renderPagination()}</div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 20,
-  },
-
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 12,
-  },
-  statCard: {
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-    padding: 18,
-  },
-  statLabel: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 600,
-    color: "var(--onroda-text-primary)",
-  },
-
-  filterCard: {
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-    padding: 18,
-  },
-  filterGrid: {
-    display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr 180px",
-    gap: 12,
-  },
-  filterItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  label: {
-    fontSize: 13,
-    color: "var(--onroda-text-secondary)",
-    fontWeight: 500,
-  },
-  input: {
-    height: 42,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    padding: "0 12px",
-    outline: "none",
-  },
-  select: {
-    height: 42,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    padding: "0 12px",
-    outline: "none",
-  },
-  refreshBtn: {
-    height: 42,
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 14,
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-
-  tableTopBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  tableBottomBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  tableInfo: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 13,
-  },
-  pagination: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  pageButton: {
-    minWidth: 38,
-    height: 38,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-elevated)",
-    color: "var(--onroda-text-primary)",
-    cursor: "pointer",
-    padding: "0 12px",
-    fontWeight: 500,
-  },
-  pageButtonActive: {
-    minWidth: 38,
-    height: 38,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    cursor: "pointer",
-    padding: "0 12px",
-    fontWeight: 600,
-  },
-  pageDots: {
-    color: "var(--onroda-text-muted)",
-    padding: "0 4px",
-  },
-
-  list: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 18,
-  },
-  card: {
-    background: "var(--onroda-bg-elevated)",
-    borderRadius: 18,
-    border: "1px solid var(--onroda-border)",
-    padding: 20,
-    display: "flex",
-    flexDirection: "column",
-    gap: 18,
-  },
-  cardTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 16,
-    alignItems: "flex-start",
-    flexWrap: "wrap",
-  },
-  badgeRow: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  companyName: {
-    fontSize: 22,
-    fontWeight: 600,
-    color: "var(--onroda-text-primary)",
-    marginBottom: 6,
-  },
-  companyMeta: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 14,
-    lineHeight: 1.5,
-  },
-
-  controlsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 14,
-  },
-  switchRow: {
-    background: "var(--onroda-bg-control)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 16,
-    padding: "14px 16px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  labelText: {
-    color: "var(--onroda-text-primary)",
-    fontWeight: 500,
-  },
-
-  fieldsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 14,
-  },
-  fieldBox: {
-    background: "var(--onroda-bg-control)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 16,
-    padding: 16,
-  },
-  fieldLabel: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  fieldValue: {
-    color: "var(--onroda-text-primary)",
-    fontSize: 20,
-    fontWeight: 600,
-  },
-
-  savingText: {
-    color: "#a8c7fa",
-    fontSize: 13,
-  },
-
-  infoBox: {
-    padding: 22,
-    color: "var(--onroda-text-secondary)",
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-  },
-  errorBox: {
-    padding: 22,
-    color: "#f0a3a3",
-    background: "#341919",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-  },
-};

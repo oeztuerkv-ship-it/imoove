@@ -1,0 +1,433 @@
+/* Gemeinsame Listen-/Filter-UI (Rides, Companies, Fares, …) */
+
+.admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-page--loose {
+  gap: 24px;
+}
+
+/* Stat-Kacheln */
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.admin-stat-grid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.admin-stat-card {
+  background: var(--onroda-bg-elevated);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-lg);
+  padding: 18px 20px;
+}
+
+.admin-stat-label {
+  color: var(--onroda-text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.admin-stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--onroda-text-primary);
+}
+
+/* Filter-Zeile */
+.admin-filter-card {
+  background: var(--onroda-bg-elevated);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-lg);
+  padding: 18px;
+}
+
+.admin-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr minmax(140px, 180px);
+  gap: 12px;
+}
+
+@media (max-width: 960px) {
+  .admin-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-field-label {
+  font-size: 13px;
+  color: var(--onroda-text-secondary);
+  font-weight: 500;
+}
+
+.admin-input,
+.admin-select {
+  height: 42px;
+  border-radius: var(--onroda-radius-md);
+  border: 1px solid var(--onroda-border);
+  background: var(--onroda-bg-control);
+  color: var(--onroda-text-primary);
+  padding: 0 12px;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-input:focus-visible,
+.admin-select:focus-visible {
+  outline: 2px solid var(--onroda-text-muted);
+  outline-offset: 1px;
+}
+
+.admin-select {
+  cursor: pointer;
+}
+
+.admin-btn-refresh {
+  height: 42px;
+  background: var(--onroda-bg-control);
+  color: var(--onroda-text-primary);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-md);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.admin-btn-refresh:hover {
+  background: color-mix(in srgb, var(--onroda-bg-control) 85%, white);
+}
+
+.admin-btn-refresh:focus-visible {
+  outline: 2px solid var(--onroda-text-muted);
+  outline-offset: 2px;
+}
+
+/* Primär-Aktion (z. B. Formular absenden) */
+.admin-btn-primary {
+  height: 42px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--onroda-radius-md);
+  background: var(--onroda-text-primary);
+  color: var(--onroda-text-on-brand);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.admin-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-btn-primary:focus-visible {
+  outline: 2px solid var(--onroda-text-muted);
+  outline-offset: 2px;
+}
+
+/* Toolbar über Tabellen / Listen */
+.admin-table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-table-toolbar__info {
+  color: var(--onroda-text-secondary);
+  font-size: 13px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-page-btn {
+  min-width: 38px;
+  height: 38px;
+  border-radius: var(--onroda-radius-md);
+  border: 1px solid var(--onroda-border);
+  background: var(--onroda-bg-elevated);
+  color: var(--onroda-text-primary);
+  cursor: pointer;
+  padding: 0 12px;
+  font-weight: 500;
+}
+
+.admin-page-btn:hover {
+  background: color-mix(in srgb, var(--onroda-bg-elevated) 90%, white);
+}
+
+.admin-page-btn--active {
+  background: var(--onroda-bg-control);
+  font-weight: 600;
+}
+
+.admin-page-btn:focus-visible {
+  outline: 2px solid var(--onroda-text-muted);
+  outline-offset: 2px;
+}
+
+.admin-page-dots {
+  color: var(--onroda-text-muted);
+  padding: 0 4px;
+}
+
+/* Meldungen */
+.admin-info-banner {
+  padding: 22px;
+  color: var(--onroda-text-secondary);
+  background: var(--onroda-bg-elevated);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-lg);
+}
+
+.admin-error-banner {
+  padding: 22px;
+  color: var(--onroda-error-text);
+  background: var(--onroda-error-bg);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-lg);
+}
+
+/* Flächen / Formulare (Tarife & Co.) */
+.admin-panel-card {
+  background: var(--onroda-bg-elevated);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-lg);
+  padding: 20px;
+}
+
+.admin-panel-card__title {
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--onroda-text-primary);
+  font-size: 18px;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.admin-page-section-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--onroda-text-primary);
+  margin: 0;
+}
+
+.admin-page-section-sub {
+  color: var(--onroda-text-secondary);
+  margin: 8px 0 0;
+}
+
+/* Einfache Tabelle (Spaltenlayout per inline style auf Zeile) */
+.admin-data-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-data-table__head,
+.admin-data-table__row {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-data-table__head {
+  font-weight: 700;
+  color: var(--onroda-text-primary);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--onroda-border);
+}
+
+.admin-data-table__row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--onroda-border);
+  color: var(--onroda-text-secondary);
+  font-size: 14px;
+}
+
+.admin-muted {
+  color: var(--onroda-text-muted);
+}
+
+.admin-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.admin-table-card {
+  background: var(--onroda-bg-elevated);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-lg);
+  overflow: hidden;
+}
+
+.admin-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admin-table-row {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--onroda-border);
+  font-size: 14px;
+  color: var(--onroda-text-primary);
+}
+
+.admin-table-row--head {
+  background: var(--onroda-bg-table-header);
+  font-weight: 600;
+  color: var(--onroda-text-secondary);
+}
+
+.admin-btn-action {
+  background: var(--onroda-bg-control);
+  color: var(--onroda-text-primary);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-md);
+  padding: 8px 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.admin-btn-action:focus-visible {
+  outline: 2px solid var(--onroda-text-muted);
+  outline-offset: 2px;
+}
+
+.admin-btn-action--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Karten-Listen (Unternehmer, später Partner/Fahrer) */
+.admin-entity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-entity-card {
+  background: var(--onroda-bg-elevated);
+  border-radius: var(--onroda-radius-lg);
+  border: 1px solid var(--onroda-border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-entity-card__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.admin-entity-card__title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--onroda-text-primary);
+  margin-bottom: 6px;
+}
+
+.admin-entity-card__meta {
+  color: var(--onroda-text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.admin-badge-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.admin-switch-row {
+  background: var(--onroda-bg-control);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-nav);
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.admin-switch-row__label {
+  color: var(--onroda-text-primary);
+  font-weight: 500;
+}
+
+.admin-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.admin-field-tile {
+  background: var(--onroda-bg-control);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-nav);
+  padding: 16px;
+}
+
+.admin-field-tile__label {
+  color: var(--onroda-text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.admin-field-tile__value {
+  color: var(--onroda-text-primary);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.admin-saving-hint {
+  color: var(--onroda-hint-info);
+  font-size: 13px;
+}

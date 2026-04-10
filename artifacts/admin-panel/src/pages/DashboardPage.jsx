@@ -51,11 +51,11 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <div style={styles.infoBox}>Lade Dashboard ...</div>;
+    return <div className="admin-info-banner">Lade Dashboard ...</div>;
   }
 
   if (error) {
-    return <div style={styles.errorBox}>{error}</div>;
+    return <div className="admin-error-banner">{error}</div>;
   }
 
   return (
@@ -71,7 +71,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <button onClick={loadStats} style={styles.refreshBtn}>
+          <button type="button" className="admin-btn-pill" onClick={loadStats}>
             Neu laden
           </button>
         </div>
@@ -208,16 +208,6 @@ const styles = {
     maxWidth: 680,
   },
 
-  refreshBtn: {
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 28,
-    padding: "10px 16px",
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -348,19 +338,4 @@ const styles = {
     lineHeight: 1.5,
   },
 
-  infoBox: {
-    padding: 22,
-    color: "var(--onroda-text-secondary)",
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 20,
-  },
-
-  errorBox: {
-    padding: 22,
-    color: "#f0a3a3",
-    background: "#341919",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 20,
-  },
 };

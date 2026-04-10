@@ -108,54 +108,54 @@ export default function FaresPage() {
       a.ruleType === "tariff_corridor"
   ).length;
 
+  const tableColumns = "1fr 1.5fr 1fr 1fr 1fr";
+
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.headerRow}>
-        <div>
-          <h2 style={styles.title}>Tarifregeln & Gebiete</h2>
-          <p style={styles.subtitle}>
-            Verwaltung von Pflichtfahrgebieten, Preisregel-Typen und Vertragstarifen.
-          </p>
+    <div className="admin-page admin-page--loose">
+      <header>
+        <h2 className="admin-page-section-title">Tarifregeln & Gebiete</h2>
+        <p className="admin-page-section-sub">
+          Verwaltung von Pflichtfahrgebieten, Preisregel-Typen und Vertragstarifen.
+        </p>
+      </header>
+
+      {error ? <div className="admin-error-banner">Fehler: {error}</div> : null}
+
+      <div className="admin-stat-grid admin-stat-grid--wide">
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Aktive Gebiete</div>
+          <div className="admin-stat-value">{areas.length}</div>
+        </div>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Offizielle Tarife</div>
+          <div className="admin-stat-value">{officialCount}</div>
+        </div>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Vertragstarife</div>
+          <div className="admin-stat-value">{contractCount}</div>
+        </div>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Sonderregeln</div>
+          <div className="admin-stat-value">{specialCount}</div>
         </div>
       </div>
 
-      {error ? <div style={styles.errorBox}>Fehler: {error}</div> : null}
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Neues Gebiet hinzufügen</div>
 
-      <div style={styles.grid}>
-        <div style={styles.card}>
-          <div style={styles.label}>Aktive Gebiete</div>
-          <div style={styles.value}>{areas.length}</div>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.label}>Offizielle Tarife</div>
-          <div style={styles.value}>{officialCount}</div>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.label}>Vertragstarife</div>
-          <div style={styles.value}>{contractCount}</div>
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.label}>Sonderregeln</div>
-          <div style={styles.value}>{specialCount}</div>
-        </div>
-      </div>
-
-      <div style={styles.formPanel}>
-        <div style={styles.panelTitle}>Neues Gebiet hinzufügen</div>
-
-        <form onSubmit={handleAddArea} style={styles.formGrid}>
+        <form onSubmit={handleAddArea} className="admin-form-grid">
           <input
-            style={styles.input}
+            className="admin-input"
             placeholder="Gebiet (z. B. Stuttgart)"
             value={form.name}
             onChange={(e) => handleChange("name", e.target.value)}
           />
 
           <select
-            style={styles.input}
+            className="admin-select"
             value={form.ruleType}
             onChange={(e) => handleChange("ruleType", e.target.value)}
           >
@@ -169,7 +169,7 @@ export default function FaresPage() {
           </select>
 
           <select
-            style={styles.input}
+            className="admin-select"
             value={form.isRequiredArea}
             onChange={(e) => handleChange("isRequiredArea", e.target.value)}
           >
@@ -179,7 +179,7 @@ export default function FaresPage() {
           </select>
 
           <select
-            style={styles.input}
+            className="admin-select"
             value={form.fixedPriceAllowed}
             onChange={(e) => handleChange("fixedPriceAllowed", e.target.value)}
           >
@@ -189,7 +189,7 @@ export default function FaresPage() {
           </select>
 
           <select
-            style={styles.input}
+            className="admin-select"
             value={form.status}
             onChange={(e) => handleChange("status", e.target.value)}
           >
@@ -198,20 +198,23 @@ export default function FaresPage() {
             <option value="regelbasiert">regelbasiert</option>
           </select>
 
-          <button type="submit" style={styles.button} disabled={saving}>
+          <button type="submit" className="admin-btn-primary" disabled={saving}>
             {saving ? "Speichert..." : "+ Hinzufügen"}
           </button>
         </form>
       </div>
 
-      <div style={styles.tableWrap}>
-        <div style={styles.tableTitle}>Aktuelle Regeln</div>
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Aktuelle Regeln</div>
 
         {loading ? (
-          <div style={styles.infoText}>Lade Gebiete...</div>
+          <div className="admin-muted">Lade Gebiete...</div>
         ) : (
-          <div style={styles.table}>
-            <div style={styles.rowHeader}>
+          <div className="admin-data-table">
+            <div
+              className="admin-data-table__head"
+              style={{ gridTemplateColumns: tableColumns }}
+            >
               <div>Gebiet</div>
               <div>Regeltyp</div>
               <div>Pflicht</div>
@@ -220,7 +223,11 @@ export default function FaresPage() {
             </div>
 
             {areas.map((a) => (
-              <div key={a.id} style={styles.row}>
+              <div
+                key={a.id}
+                className="admin-data-table__row"
+                style={{ gridTemplateColumns: tableColumns }}
+              >
                 <div>{a.name}</div>
                 <div>{a.ruleType}</div>
                 <div>{a.isRequiredArea}</div>
@@ -234,124 +241,3 @@ export default function FaresPage() {
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 24,
-  },
-  headerRow: {
-    display: "flex",
-    justifyContent: "space-between",
-  },
-  title: {
-    fontSize: 28,
-    color: "#fff",
-    margin: 0,
-  },
-  subtitle: {
-    color: "#aaa",
-    marginTop: 8,
-    marginBottom: 0,
-  },
-  errorBox: {
-    background: "#2a1111",
-    border: "1px solid #5c2222",
-    color: "#ffb3b3",
-    borderRadius: 14,
-    padding: 16,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 20,
-  },
-  card: {
-    background: "#161616",
-    padding: 20,
-    borderRadius: 14,
-    border: "1px solid #262626",
-  },
-  label: {
-    color: "#aaa",
-    marginBottom: 10,
-  },
-  value: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: "#fff",
-  },
-  formPanel: {
-    background: "#161616",
-    padding: 20,
-    borderRadius: 14,
-    border: "1px solid #262626",
-  },
-  panelTitle: {
-    fontWeight: 700,
-    marginBottom: 14,
-    color: "#fff",
-    fontSize: 18,
-  },
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 12,
-  },
-  input: {
-    padding: 12,
-    borderRadius: 10,
-    border: "1px solid #333",
-    background: "#0b0b0b",
-    color: "#fff",
-    fontSize: 14,
-  },
-  button: {
-    padding: 12,
-    background: "#fff",
-    color: "#000",
-    borderRadius: 10,
-    border: "none",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  tableWrap: {
-    background: "#161616",
-    padding: 20,
-    borderRadius: 14,
-    border: "1px solid #262626",
-  },
-  tableTitle: {
-    fontWeight: 700,
-    marginBottom: 14,
-    color: "#fff",
-    fontSize: 18,
-  },
-  infoText: {
-    color: "#aaa",
-  },
-  table: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  rowHeader: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1.5fr 1fr 1fr 1fr",
-    gap: 12,
-    fontWeight: 700,
-    color: "#fff",
-    paddingBottom: 10,
-    borderBottom: "1px solid #2a2a2a",
-  },
-  row: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1.5fr 1fr 1fr 1fr",
-    gap: 12,
-    padding: "10px 0",
-    borderBottom: "1px solid #202020",
-    color: "#d4d4d4",
-    fontSize: 14,
-  },
-};

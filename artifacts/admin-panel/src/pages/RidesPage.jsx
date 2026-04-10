@@ -240,7 +240,12 @@ export default function RidesPage() {
 
     if (page > 1) {
       buttons.push(
-        <button key="prev" style={styles.pageButton} onClick={() => setPage(page - 1)}>
+        <button
+          key="prev"
+          type="button"
+          className="admin-page-btn"
+          onClick={() => setPage(page - 1)}
+        >
           Zurück
         </button>
       );
@@ -248,13 +253,13 @@ export default function RidesPage() {
 
     if (start > 1) {
       buttons.push(
-        <button key={1} style={styles.pageButton} onClick={() => setPage(1)}>
+        <button key={1} type="button" className="admin-page-btn" onClick={() => setPage(1)}>
           1
         </button>
       );
       if (start > 2) {
         buttons.push(
-          <span key="startDots" style={styles.pageDots}>
+          <span key="startDots" className="admin-page-dots">
             ...
           </span>
         );
@@ -265,7 +270,10 @@ export default function RidesPage() {
       buttons.push(
         <button
           key={i}
-          style={i === page ? styles.pageButtonActive : styles.pageButton}
+          type="button"
+          className={
+            i === page ? "admin-page-btn admin-page-btn--active" : "admin-page-btn"
+          }
           onClick={() => setPage(i)}
         >
           {i}
@@ -276,7 +284,7 @@ export default function RidesPage() {
     if (end < totalPages) {
       if (end < totalPages - 1) {
         buttons.push(
-          <span key="endDots" style={styles.pageDots}>
+          <span key="endDots" className="admin-page-dots">
             ...
           </span>
         );
@@ -284,7 +292,8 @@ export default function RidesPage() {
       buttons.push(
         <button
           key={totalPages}
-          style={styles.pageButton}
+          type="button"
+          className="admin-page-btn"
           onClick={() => setPage(totalPages)}
         >
           {totalPages}
@@ -294,7 +303,12 @@ export default function RidesPage() {
 
     if (page < totalPages) {
       buttons.push(
-        <button key="next" style={styles.pageButton} onClick={() => setPage(page + 1)}>
+        <button
+          key="next"
+          type="button"
+          className="admin-page-btn"
+          onClick={() => setPage(page + 1)}
+        >
           Weiter
         </button>
       );
@@ -304,53 +318,56 @@ export default function RidesPage() {
   }
 
   if (loading) {
-    return <div style={styles.infoBox}>Fahrten werden geladen ...</div>;
+    return <div className="admin-info-banner">Fahrten werden geladen ...</div>;
   }
 
+  const rideRowGrid =
+    "220px 160px 220px 220px 110px 130px 100px 90px 90px 100px 170px 170px 120px";
+
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.statsGrid}>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Gesamt</div>
-          <div style={styles.statValue}>{stats.total}</div>
+    <div className="admin-page">
+      <div className="admin-stat-grid">
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Gesamt</div>
+          <div className="admin-stat-value">{stats.total}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Pending</div>
-          <div style={styles.statValue}>{stats.pending}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Pending</div>
+          <div className="admin-stat-value">{stats.pending}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Cancelled</div>
-          <div style={styles.statValue}>{stats.cancelled}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Cancelled</div>
+          <div className="admin-stat-value">{stats.cancelled}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Completed</div>
-          <div style={styles.statValue}>{stats.completed}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Completed</div>
+          <div className="admin-stat-value">{stats.completed}</div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Open Market</div>
-          <div style={styles.statValue}>{stats.openMarket}</div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-label">Open Market</div>
+          <div className="admin-stat-value">{stats.openMarket}</div>
         </div>
       </div>
 
-      <div style={styles.filterCard}>
-        <div style={styles.filterGrid}>
-          <div style={styles.filterItem}>
-            <label style={styles.label}>Suche</label>
+      <div className="admin-filter-card">
+        <div className="admin-filter-grid">
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Suche</label>
             <input
               type="text"
+              className="admin-input"
               placeholder="ID, Kunde, Start, Ziel, Voucher ..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={styles.input}
             />
           </div>
 
-          <div style={styles.filterItem}>
-            <label style={styles.label}>Status</label>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Status</label>
             <select
+              className="admin-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={styles.select}
             >
               <option value="all">Alle</option>
               <option value="pending">Pending</option>
@@ -360,12 +377,12 @@ export default function RidesPage() {
             </select>
           </div>
 
-          <div style={styles.filterItem}>
-            <label style={styles.label}>Firma</label>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Firma</label>
             <select
+              className="admin-select"
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
-              style={styles.select}
             >
               <option value="all">Alle Firmen</option>
               {companyOptions.map((companyId) => (
@@ -376,19 +393,19 @@ export default function RidesPage() {
             </select>
           </div>
 
-          <div style={styles.filterItem}>
-            <label style={styles.label}>&nbsp;</label>
-            <button style={styles.refreshBtn} onClick={() => loadRides()}>
+          <div className="admin-filter-item">
+            <label className="admin-field-label">&nbsp;</label>
+            <button type="button" className="admin-btn-refresh" onClick={() => loadRides()}>
               Neu laden
             </button>
           </div>
         </div>
       </div>
 
-      {error ? <div style={styles.errorBox}>{error}</div> : null}
+      {error ? <div className="admin-error-banner">{error}</div> : null}
 
-      <div style={styles.tableTopBar}>
-        <div style={styles.tableInfo}>
+      <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar__info">
           Zeige {(page - 1) * ITEMS_PER_PAGE + 1}
           {" - "}
           {Math.min(page * ITEMS_PER_PAGE, filteredRides.length)}
@@ -396,15 +413,18 @@ export default function RidesPage() {
           {filteredRides.length}
         </div>
 
-        <div style={styles.pagination}>{renderPagination()}</div>
+        <div className="admin-pagination">{renderPagination()}</div>
       </div>
 
-      <div style={styles.tableCard}>
+      <div className="admin-table-card">
         {paginatedRides.length === 0 ? (
-          <div style={styles.infoBox}>Keine Fahrten gefunden.</div>
+          <div className="admin-info-banner">Keine Fahrten gefunden.</div>
         ) : (
-          <div style={styles.tableWrap}>
-            <div style={{ ...styles.row, ...styles.headRow }}>
+          <div className="admin-table-scroll">
+            <div
+              className="admin-table-row admin-table-row--head"
+              style={{ gridTemplateColumns: rideRowGrid, minWidth: 1950 }}
+            >
               <div>ID</div>
               <div>Kunde</div>
               <div>Von</div>
@@ -424,8 +444,12 @@ export default function RidesPage() {
               const releaseAllowed = canRelease(ride);
 
               return (
-                <div key={ride.id} style={styles.row}>
-                  <div style={styles.idCell}>{ride.id || "-"}</div>
+                <div
+                  key={ride.id}
+                  className="admin-table-row"
+                  style={{ gridTemplateColumns: rideRowGrid, minWidth: 1950 }}
+                >
+                  <div className="admin-mono">{ride.id || "-"}</div>
                   <div>{ride.customer_name || "-"}</div>
                   <div>{ride.from_location || "-"}</div>
                   <div>{ride.to_location || "-"}</div>
@@ -456,11 +480,13 @@ export default function RidesPage() {
 
                   <div>
                     <button
-                      style={{
-                        ...styles.actionButton,
-                        ...(releaseAllowed ? {} : styles.actionButtonDisabled),
-                        ...(busyId === ride.id ? styles.actionButtonDisabled : {}),
-                      }}
+                      type="button"
+                      className={
+                        "admin-btn-action" +
+                        (!releaseAllowed || busyId === ride.id
+                          ? " admin-btn-action--disabled"
+                          : "")
+                      }
                       onClick={() => releaseRide(ride.id)}
                       disabled={!releaseAllowed || busyId === ride.id}
                     >
@@ -474,224 +500,13 @@ export default function RidesPage() {
         )}
       </div>
 
-      <div style={styles.tableBottomBar}>
-        <div style={styles.tableInfo}>
+      <div className="admin-table-toolbar">
+        <div className="admin-table-toolbar__info">
           Seite {page} von {totalPages}
         </div>
 
-        <div style={styles.pagination}>{renderPagination()}</div>
+        <div className="admin-pagination">{renderPagination()}</div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 20,
-  },
-
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-    gap: 12,
-  },
-
-  statCard: {
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-    padding: 18,
-  },
-
-  statLabel: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 13,
-    marginBottom: 8,
-  },
-
-  statValue: {
-    fontSize: 28,
-    fontWeight: 600,
-    color: "var(--onroda-text-primary)",
-  },
-
-  filterCard: {
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-    padding: 18,
-  },
-
-  filterGrid: {
-    display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr 180px",
-    gap: 12,
-  },
-
-  filterItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-
-  label: {
-    fontSize: 13,
-    color: "var(--onroda-text-secondary)",
-    fontWeight: 500,
-  },
-
-  input: {
-    height: 42,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    padding: "0 12px",
-    outline: "none",
-  },
-
-  select: {
-    height: 42,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    padding: "0 12px",
-    outline: "none",
-  },
-
-  refreshBtn: {
-    height: 42,
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 14,
-    cursor: "pointer",
-    fontWeight: 500,
-  },
-
-  tableTopBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-
-  tableBottomBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-
-  tableInfo: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 13,
-  },
-
-  pagination: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-
-  pageButton: {
-    minWidth: 38,
-    height: 38,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-elevated)",
-    color: "var(--onroda-text-primary)",
-    cursor: "pointer",
-    padding: "0 12px",
-    fontWeight: 500,
-  },
-
-  pageButtonActive: {
-    minWidth: 38,
-    height: 38,
-    borderRadius: 14,
-    border: "1px solid var(--onroda-border)",
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    cursor: "pointer",
-    padding: "0 12px",
-    fontWeight: 600,
-  },
-
-  pageDots: {
-    color: "var(--onroda-text-muted)",
-    padding: "0 4px",
-  },
-
-  tableCard: {
-    background: "var(--onroda-bg-elevated)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-
-  tableWrap: {
-    width: "100%",
-    overflowX: "auto",
-  },
-
-  row: {
-    display: "grid",
-    gridTemplateColumns:
-      "220px 160px 220px 220px 110px 130px 100px 90px 90px 100px 170px 170px 120px",
-    gap: 12,
-    alignItems: "center",
-    padding: "14px 16px",
-    borderBottom: "1px solid var(--onroda-border)",
-    minWidth: 1950,
-    fontSize: 14,
-    color: "var(--onroda-text-primary)",
-  },
-
-  headRow: {
-    background: "#232425",
-    fontWeight: 600,
-    color: "var(--onroda-text-secondary)",
-  },
-
-  idCell: {
-    fontFamily: "monospace",
-    fontSize: 12,
-  },
-
-  actionButton: {
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-primary)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 14,
-    padding: "8px 12px",
-    fontWeight: 500,
-    cursor: "pointer",
-  },
-
-  actionButtonDisabled: {
-    opacity: 0.5,
-    cursor: "not-allowed",
-  },
-
-  infoBox: {
-    padding: 22,
-    color: "var(--onroda-text-secondary)",
-    background: "var(--onroda-bg-elevated)",
-    borderRadius: 18,
-  },
-
-  errorBox: {
-    padding: 22,
-    color: "#f0a3a3",
-    background: "#341919",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: 18,
-  },
-};
