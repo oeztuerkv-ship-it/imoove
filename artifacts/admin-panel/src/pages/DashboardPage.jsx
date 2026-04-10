@@ -71,7 +71,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <button type="button" className="admin-btn-pill" onClick={loadStats}>
+          <button type="button" className="admin-btn-refresh" onClick={loadStats}>
             Neu laden
           </button>
         </div>
@@ -176,10 +176,10 @@ const styles = {
 
   heroCard: {
     width: "100%",
-    background: "var(--onroda-bg-elevated)",
+    background: "var(--onroda-bg-card)",
     border: "1px solid var(--onroda-border)",
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: "var(--onroda-radius-card)",
+    padding: 30,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
@@ -191,65 +191,70 @@ const styles = {
     fontSize: 13,
     color: "var(--onroda-text-muted)",
     marginBottom: 8,
-    fontWeight: 500,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
   },
 
   heroTitle: {
     margin: 0,
-    fontSize: 28,
-    color: "var(--onroda-text-primary)",
-    fontWeight: 600,
+    fontSize: "clamp(1.5rem, 4vw, 2rem)",
+    color: "var(--onroda-red)",
+    fontWeight: 800,
+    lineHeight: 1.15,
   },
 
   heroText: {
     margin: "10px 0 0 0",
-    color: "var(--onroda-text-secondary)",
+    color: "var(--onroda-text-grey)",
     lineHeight: 1.6,
     maxWidth: 680,
+    fontSize: "0.95rem",
   },
 
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 16,
+    gap: 20,
   },
 
   card: {
-    background: "var(--onroda-bg-elevated)",
-    borderRadius: 20,
-    padding: 22,
+    background: "var(--onroda-bg-card)",
+    borderRadius: "var(--onroda-radius-card)",
+    padding: 30,
     border: "1px solid var(--onroda-border)",
   },
 
   cardLabel: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 14,
+    color: "var(--onroda-text-grey)",
+    fontSize: "0.95rem",
     marginBottom: 12,
+    fontWeight: 500,
   },
 
   cardValue: {
-    fontSize: 38,
-    fontWeight: 600,
-    color: "var(--onroda-text-primary)",
+    fontSize: "clamp(2rem, 5vw, 2.4rem)",
+    fontWeight: 800,
+    color: "var(--onroda-red)",
     lineHeight: 1.1,
   },
 
   cardSub: {
     marginTop: 10,
     color: "var(--onroda-text-muted)",
-    fontSize: 13,
+    fontSize: "0.85rem",
   },
 
   bottomGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: 16,
+    gap: 20,
   },
 
   panel: {
-    background: "var(--onroda-bg-elevated)",
-    borderRadius: 20,
-    padding: 22,
+    background: "var(--onroda-bg-card)",
+    borderRadius: "var(--onroda-radius-card)",
+    padding: 30,
     border: "1px solid var(--onroda-border)",
   },
 
@@ -263,9 +268,9 @@ const styles = {
 
   panelTitle: {
     margin: 0,
-    color: "var(--onroda-text-primary)",
-    fontSize: 18,
-    fontWeight: 600,
+    color: "var(--onroda-red)",
+    fontSize: "1.5rem",
+    fontWeight: 800,
   },
 
   panelBadge: {
@@ -275,9 +280,9 @@ const styles = {
     borderRadius: 999,
     padding: "4px 10px",
     fontSize: 12,
-    fontWeight: 500,
-    background: "#17311f",
-    color: "#9ed9af",
+    fontWeight: 700,
+    background: "var(--onroda-badge-accent-bg)",
+    color: "var(--onroda-badge-accent-fg)",
     border: "1px solid var(--onroda-border)",
   },
 
@@ -288,10 +293,10 @@ const styles = {
     borderRadius: 999,
     padding: "4px 10px",
     fontSize: 12,
-    fontWeight: 500,
-    background: "var(--onroda-bg-control)",
-    color: "var(--onroda-text-secondary)",
-    border: "1px solid var(--onroda-border)",
+    fontWeight: 600,
+    background: "var(--onroda-bg-light)",
+    color: "var(--onroda-text-grey)",
+    border: "1px solid var(--onroda-border-outline)",
   },
 
   metricList: {
@@ -306,20 +311,20 @@ const styles = {
     alignItems: "center",
     gap: 12,
     padding: "12px 14px",
-    borderRadius: 14,
-    background: "var(--onroda-bg-control)",
-    border: "1px solid var(--onroda-border)",
+    borderRadius: "var(--onroda-radius-md)",
+    background: "var(--onroda-bg-light)",
+    border: "1px solid var(--onroda-border-outline)",
   },
 
   metricLabel: {
-    color: "var(--onroda-text-secondary)",
-    fontSize: 14,
+    color: "var(--onroda-text-grey)",
+    fontSize: "0.95rem",
   },
 
   metricValue: {
-    color: "var(--onroda-text-primary)",
-    fontSize: 15,
-    fontWeight: 600,
+    color: "var(--onroda-red)",
+    fontSize: "1rem",
+    fontWeight: 800,
   },
 
   todoList: {
@@ -330,11 +335,11 @@ const styles = {
 
   todoItem: {
     padding: "12px 14px",
-    borderRadius: 14,
-    background: "var(--onroda-bg-control)",
-    border: "1px solid var(--onroda-border)",
-    color: "var(--onroda-text-secondary)",
-    fontSize: 14,
+    borderRadius: "var(--onroda-radius-md)",
+    background: "var(--onroda-bg-light)",
+    border: "1px solid var(--onroda-border-outline)",
+    color: "var(--onroda-text-grey)",
+    fontSize: "0.95rem",
     lineHeight: 1.5,
   },
 

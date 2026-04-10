@@ -1,4 +1,4 @@
-/* Gemeinsame Listen-/Filter-UI (Rides, Companies, Fares, …) */
+/* Listen, Filter, Tabellen — ONRODA-Homepage (Karten #f8f8f8, Radien 15px, Rot als Akzent) */
 
 .admin-page {
   display: flex;
@@ -10,11 +10,10 @@
   gap: 24px;
 }
 
-/* Stat-Kacheln */
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  gap: 20px;
 }
 
 .admin-stat-grid--wide {
@@ -23,30 +22,31 @@
 }
 
 .admin-stat-card {
-  background: var(--onroda-bg-elevated);
+  background: var(--onroda-bg-card);
+  padding: 22px 24px;
+  border-radius: var(--onroda-radius-card);
   border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-lg);
-  padding: 18px 20px;
 }
 
 .admin-stat-label {
-  color: var(--onroda-text-secondary);
-  font-size: 13px;
-  margin-bottom: 8px;
+  color: var(--onroda-text-grey);
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+  font-weight: 500;
 }
 
 .admin-stat-value {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--onroda-text-primary);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--onroda-red);
+  line-height: 1.1;
 }
 
-/* Filter-Zeile */
 .admin-filter-card {
-  background: var(--onroda-bg-elevated);
+  background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-lg);
-  padding: 18px;
+  border-radius: var(--onroda-radius-card);
+  padding: 20px;
 }
 
 .admin-filter-grid {
@@ -75,17 +75,17 @@
 }
 
 .admin-field-label {
-  font-size: 13px;
-  color: var(--onroda-text-secondary);
-  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--onroda-text-grey);
+  font-weight: 600;
 }
 
 .admin-input,
 .admin-select {
   height: 42px;
   border-radius: var(--onroda-radius-md);
-  border: 1px solid var(--onroda-border);
-  background: var(--onroda-bg-control);
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-light);
   color: var(--onroda-text-primary);
   padding: 0 12px;
   outline: none;
@@ -95,8 +95,9 @@
 
 .admin-input:focus-visible,
 .admin-select:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
   outline-offset: 1px;
+  border-color: var(--onroda-red);
 }
 
 .admin-select {
@@ -105,31 +106,32 @@
 
 .admin-btn-refresh {
   height: 42px;
-  background: var(--onroda-bg-control);
-  color: var(--onroda-text-primary);
-  border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-md);
+  background: var(--onroda-bg-light);
+  color: var(--onroda-text-dark);
+  border: 1px solid var(--onroda-border-outline);
+  border-radius: var(--onroda-radius-pill);
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 700;
+  padding: 0 20px;
 }
 
 .admin-btn-refresh:hover {
-  background: color-mix(in srgb, var(--onroda-bg-control) 85%, white);
+  background: var(--onroda-bg-card);
 }
 
 .admin-btn-refresh:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
   outline-offset: 2px;
 }
 
-/* Primär-Aktion (z. B. Formular absenden) */
+/* Formular primär = Homepage .btn-red */
 .admin-btn-primary {
   height: 42px;
-  padding: 0 16px;
+  padding: 0 25px;
   border: none;
-  border-radius: var(--onroda-radius-md);
-  background: var(--onroda-text-primary);
-  color: var(--onroda-text-on-brand);
+  border-radius: var(--onroda-radius-pill);
+  background: var(--onroda-red);
+  color: #ffffff;
   font-weight: 700;
   cursor: pointer;
 }
@@ -144,11 +146,10 @@
 }
 
 .admin-btn-primary:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
   outline-offset: 2px;
 }
 
-/* Toolbar über Tabellen / Listen */
 .admin-table-toolbar {
   display: flex;
   justify-content: space-between;
@@ -158,8 +159,9 @@
 }
 
 .admin-table-toolbar__info {
-  color: var(--onroda-text-secondary);
-  font-size: 13px;
+  color: var(--onroda-text-grey);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .admin-pagination {
@@ -173,25 +175,27 @@
   min-width: 38px;
   height: 38px;
   border-radius: var(--onroda-radius-md);
-  border: 1px solid var(--onroda-border);
-  background: var(--onroda-bg-elevated);
-  color: var(--onroda-text-primary);
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-light);
+  color: var(--onroda-text-dark);
   cursor: pointer;
   padding: 0 12px;
-  font-weight: 500;
-}
-
-.admin-page-btn:hover {
-  background: color-mix(in srgb, var(--onroda-bg-elevated) 90%, white);
-}
-
-.admin-page-btn--active {
-  background: var(--onroda-bg-control);
   font-weight: 600;
 }
 
+.admin-page-btn:hover {
+  background: var(--onroda-bg-card);
+}
+
+.admin-page-btn--active {
+  background: var(--onroda-badge-accent-bg);
+  border-color: var(--onroda-red);
+  color: var(--onroda-red);
+  font-weight: 800;
+}
+
 .admin-page-btn:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
   outline-offset: 2px;
 }
 
@@ -200,36 +204,34 @@
   padding: 0 4px;
 }
 
-/* Meldungen */
 .admin-info-banner {
   padding: 22px;
-  color: var(--onroda-text-secondary);
-  background: var(--onroda-bg-elevated);
+  color: var(--onroda-text-grey);
+  background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-lg);
+  border-radius: var(--onroda-radius-card);
 }
 
 .admin-error-banner {
   padding: 22px;
   color: var(--onroda-error-text);
   background: var(--onroda-error-bg);
-  border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-lg);
+  border: 1px solid var(--onroda-error-border);
+  border-radius: var(--onroda-radius-card);
 }
 
-/* Flächen / Formulare (Tarife & Co.) */
 .admin-panel-card {
-  background: var(--onroda-bg-elevated);
+  background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-lg);
-  padding: 20px;
+  border-radius: var(--onroda-radius-card);
+  padding: 24px;
 }
 
 .admin-panel-card__title {
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 14px;
-  color: var(--onroda-text-primary);
-  font-size: 18px;
+  color: var(--onroda-red);
+  font-size: 1.5rem;
 }
 
 .admin-form-grid {
@@ -239,18 +241,20 @@
 }
 
 .admin-page-section-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--onroda-text-primary);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--onroda-red);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .admin-page-section-sub {
-  color: var(--onroda-text-secondary);
+  color: var(--onroda-text-grey);
   margin: 8px 0 0;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
-/* Einfache Tabelle (Spaltenlayout per inline style auf Zeile) */
 .admin-data-table {
   display: flex;
   flex-direction: column;
@@ -265,17 +269,17 @@
 }
 
 .admin-data-table__head {
-  font-weight: 700;
-  color: var(--onroda-text-primary);
+  font-weight: 800;
+  color: var(--onroda-text-dark);
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--onroda-border);
+  border-bottom: 1px solid var(--onroda-border-subtle);
 }
 
 .admin-data-table__row {
   padding: 10px 0;
-  border-bottom: 1px solid var(--onroda-border);
-  color: var(--onroda-text-secondary);
-  font-size: 14px;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  color: var(--onroda-text-grey);
+  font-size: 0.95rem;
 }
 
 .admin-muted {
@@ -288,9 +292,9 @@
 }
 
 .admin-table-card {
-  background: var(--onroda-bg-elevated);
+  background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
-  border-radius: var(--onroda-radius-lg);
+  border-radius: var(--onroda-radius-card);
   overflow: hidden;
 }
 
@@ -304,29 +308,35 @@
   gap: 12px;
   align-items: center;
   padding: 14px 16px;
-  border-bottom: 1px solid var(--onroda-border);
-  font-size: 14px;
-  color: var(--onroda-text-primary);
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  font-size: 0.95rem;
+  color: var(--onroda-text-dark);
+  background: var(--onroda-bg-light);
 }
 
 .admin-table-row--head {
   background: var(--onroda-bg-table-header);
-  font-weight: 600;
-  color: var(--onroda-text-secondary);
+  font-weight: 700;
+  color: var(--onroda-text-grey);
+  border-bottom: 1px solid var(--onroda-border);
 }
 
 .admin-btn-action {
-  background: var(--onroda-bg-control);
-  color: var(--onroda-text-primary);
-  border: 1px solid var(--onroda-border);
+  background: var(--onroda-bg-light);
+  color: var(--onroda-text-dark);
+  border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-md);
-  padding: 8px 12px;
-  font-weight: 500;
+  padding: 8px 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 
+.admin-btn-action:hover:not(:disabled) {
+  background: var(--onroda-bg-card);
+}
+
 .admin-btn-action:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
   outline-offset: 2px;
 }
 
@@ -335,18 +345,17 @@
   cursor: not-allowed;
 }
 
-/* Karten-Listen (Unternehmer, später Partner/Fahrer) */
 .admin-entity-list {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .admin-entity-card {
-  background: var(--onroda-bg-elevated);
-  border-radius: var(--onroda-radius-lg);
+  background: var(--onroda-bg-card);
+  border-radius: var(--onroda-radius-card);
   border: 1px solid var(--onroda-border);
-  padding: 20px;
+  padding: 24px 30px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -361,15 +370,15 @@
 }
 
 .admin-entity-card__title {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--onroda-text-primary);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--onroda-red);
   margin-bottom: 6px;
 }
 
 .admin-entity-card__meta {
-  color: var(--onroda-text-secondary);
-  font-size: 14px;
+  color: var(--onroda-text-grey);
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 
@@ -386,8 +395,8 @@
 }
 
 .admin-switch-row {
-  background: var(--onroda-bg-control);
-  border: 1px solid var(--onroda-border);
+  background: var(--onroda-bg-light);
+  border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-nav);
   padding: 14px 16px;
   display: flex;
@@ -397,9 +406,13 @@
   cursor: pointer;
 }
 
+.admin-switch-row:hover {
+  background: var(--onroda-bg-card);
+}
+
 .admin-switch-row__label {
-  color: var(--onroda-text-primary);
-  font-weight: 500;
+  color: var(--onroda-text-dark);
+  font-weight: 600;
 }
 
 .admin-fields-grid {
@@ -409,25 +422,27 @@
 }
 
 .admin-field-tile {
-  background: var(--onroda-bg-control);
+  background: var(--onroda-bg-light);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-nav);
   padding: 16px;
 }
 
 .admin-field-tile__label {
-  color: var(--onroda-text-secondary);
-  font-size: 13px;
+  color: var(--onroda-text-grey);
+  font-size: 0.85rem;
   margin-bottom: 8px;
+  font-weight: 600;
 }
 
 .admin-field-tile__value {
-  color: var(--onroda-text-primary);
-  font-size: 20px;
-  font-weight: 600;
+  color: var(--onroda-text-dark);
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .admin-saving-hint {
   color: var(--onroda-hint-info);
-  font-size: 13px;
+  font-size: 0.85rem;
+  font-weight: 600;
 }

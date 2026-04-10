@@ -1,4 +1,4 @@
-/* App-Shell & Sidebar — eine Layout-Schicht, Farben nur über index.css :root */
+/* App-Shell — hell, an ONRODA-Homepage (Navigation, Karten, Buttons) angelehnt */
 
 .admin-app {
   display: flex;
@@ -14,8 +14,8 @@
   min-width: var(--onroda-sidebar-width);
   max-width: var(--onroda-sidebar-width);
   flex-shrink: 0;
-  background: var(--onroda-bg-elevated);
-  border-right: 1px solid var(--onroda-border);
+  background: var(--onroda-bg-light);
+  border-right: 1px solid var(--onroda-border-subtle);
 }
 
 .admin-app__main {
@@ -34,9 +34,9 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 20px 28px;
-  border-bottom: 1px solid var(--onroda-border);
-  background: var(--onroda-bg-app);
+  padding: 15px 5%;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  background: var(--onroda-bg-light);
 }
 
 .admin-app__topbar-left {
@@ -45,16 +45,18 @@
 
 .admin-app__title {
   margin: 0;
-  font-size: 28px;
-  font-weight: 600;
-  color: var(--onroda-text-primary);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--onroda-red);
   line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .admin-app__subtitle {
   margin: 6px 0 0;
-  font-size: 14px;
-  color: var(--onroda-text-secondary);
+  font-size: 0.95rem;
+  color: var(--onroda-text-grey);
+  font-weight: 500;
 }
 
 .admin-app__topbar-right {
@@ -64,7 +66,7 @@
   flex-wrap: wrap;
 }
 
-/* Globale Suche (Topbar) — gleiche Optik wie spätere Seiten-Filter möglich */
+/* Suche — wie Outline-Button der Homepage */
 .admin-search {
   display: flex;
   align-items: center;
@@ -72,9 +74,15 @@
   min-width: 280px;
   height: 44px;
   padding: 0 14px;
-  background: var(--onroda-bg-elevated);
-  border: 1px solid var(--onroda-border);
+  background: var(--onroda-bg-light);
+  border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-pill);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-search:focus-within {
+  border-color: var(--onroda-red);
+  box-shadow: 0 0 0 2px rgba(213, 0, 28, 0.12);
 }
 
 .admin-search__icon {
@@ -90,27 +98,50 @@
   outline: none;
   background: transparent;
   color: var(--onroda-text-primary);
-  font-size: 14px;
+  font-size: 0.9rem;
 }
 
+/* Sekundär-Aktion (Outline) */
 .admin-btn-pill {
   height: 44px;
-  padding: 0 16px;
-  border: 1px solid var(--onroda-border);
+  padding: 0 25px;
+  border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-pill);
-  background: var(--onroda-bg-control);
-  color: var(--onroda-text-primary);
-  font-weight: 500;
+  background: var(--onroda-bg-light);
+  color: var(--onroda-text-dark);
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .admin-btn-pill:hover {
-  background: color-mix(in srgb, var(--onroda-bg-control) 85%, white);
+  background: var(--onroda-bg-card);
 }
 
 .admin-btn-pill:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
+}
+
+/* Primär-Aktion wie .btn-red auf der Homepage */
+.admin-btn-cta {
+  height: 44px;
+  padding: 0 25px;
+  border: none;
+  border-radius: var(--onroda-radius-pill);
+  background: var(--onroda-red);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.admin-btn-cta:hover {
+  filter: brightness(1.05);
+}
+
+.admin-btn-cta:focus-visible {
+  outline: 2px solid var(--onroda-red);
   outline-offset: 2px;
 }
 
@@ -122,43 +153,45 @@
   background: var(--onroda-bg-app);
 }
 
+/* Inhalt wie Homepage-Sections: seitlicher Abstand 5 % */
 .admin-app__content-inner {
-  padding: 28px;
+  padding: 28px 5%;
   min-width: 0;
   max-width: 100%;
 }
 
 .admin-placeholder {
-  background: var(--onroda-bg-elevated);
+  background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-card);
-  padding: 24px;
+  padding: 30px;
 }
 
 .admin-placeholder__title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--onroda-text-primary);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--onroda-red);
 }
 
 .admin-placeholder__text {
   margin: 10px 0 0;
-  color: var(--onroda-text-secondary);
+  color: var(--onroda-text-grey);
   line-height: 1.6;
+  font-size: 0.95rem;
 }
 
-/* Sidebar */
+/* Sidebar — wie sticky Nav der Homepage */
 .admin-sidebar {
   width: 100%;
   min-height: 100vh;
-  background: var(--onroda-bg-elevated);
-  padding: 22px;
+  background: var(--onroda-bg-light);
+  padding: 22px 18px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  color: var(--onroda-text-secondary);
+  color: var(--onroda-text-grey);
 }
 
 .admin-sidebar__brand {
@@ -169,39 +202,40 @@
 }
 
 .admin-sidebar__brand-icon {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--onroda-radius-icon);
-  background: var(--onroda-text-primary);
-  color: var(--onroda-text-on-brand);
+  background: var(--onroda-red);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 18px;
 }
 
 .admin-sidebar__logo {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--onroda-text-primary);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--onroda-red);
   line-height: 1.1;
 }
 
 .admin-sidebar__logo-sub {
-  color: var(--onroda-text-secondary);
-  font-size: 13px;
+  color: var(--onroda-text-grey);
+  font-size: 0.85rem;
   margin-top: 3px;
+  font-weight: 500;
 }
 
 .admin-sidebar__section-title {
-  font-size: 11px;
+  font-size: 0.7rem;
   color: var(--onroda-text-muted);
   text-transform: uppercase;
   letter-spacing: 1.1px;
   margin-bottom: 10px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .admin-sidebar__nav {
@@ -213,32 +247,33 @@
 .admin-sidebar__link {
   border: 1px solid transparent;
   background: transparent;
-  color: var(--onroda-text-secondary);
+  color: var(--onroda-text-dark);
   border-radius: var(--onroda-radius-nav);
   padding: 12px 14px;
   text-align: left;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.9rem;
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .admin-sidebar__link:hover {
-  background: color-mix(in srgb, var(--onroda-bg-control) 40%, transparent);
+  background: var(--onroda-bg-card);
 }
 
 .admin-sidebar__link:focus-visible {
-  outline: 2px solid var(--onroda-text-muted);
+  outline: 2px solid var(--onroda-red);
   outline-offset: 2px;
 }
 
 .admin-sidebar__link--active {
-  background: var(--onroda-bg-control);
-  color: var(--onroda-text-primary);
-  border-color: var(--onroda-border);
+  background: var(--onroda-badge-accent-bg);
+  color: var(--onroda-red);
+  border-color: transparent;
+  font-weight: 700;
 }
 
 .admin-sidebar__icon {
@@ -248,30 +283,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--onroda-bg-control);
+  background: var(--onroda-bg-card);
   color: var(--onroda-text-muted);
   font-size: 14px;
   flex-shrink: 0;
 }
 
 .admin-sidebar__icon--active {
-  background: var(--onroda-text-primary);
-  color: var(--onroda-text-on-brand);
+  background: var(--onroda-red);
+  color: #ffffff;
 }
 
 .admin-sidebar__footer {
-  border-top: 1px solid var(--onroda-border);
+  border-top: 1px solid var(--onroda-border-subtle);
   padding-top: 16px;
 }
 
 .admin-sidebar__footer-title {
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 6px;
-  color: var(--onroda-text-primary);
+  color: var(--onroda-text-dark);
 }
 
 .admin-sidebar__footer-text {
-  color: var(--onroda-text-secondary);
-  font-size: 13px;
+  color: var(--onroda-text-grey);
+  font-size: 0.85rem;
   line-height: 1.5;
 }

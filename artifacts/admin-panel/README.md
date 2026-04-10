@@ -2,6 +2,8 @@
 
 Web-Admin für Betrieb/Backoffice. **Offizieller Ort im Monorepo:** `artifacts/admin-panel/`.
 
+**Visuelle Marke:** Farben, Typografie und Komponenten-Abstände folgen der ONRODA-Homepage. Die gemeinsame Datei ist **`artifacts/api-server/static/onroda-brand.css`** (wird vom Admin-Panel per `@import` eingebunden und von der Marketing-`index.html` per `<link>` geladen).
+
 ## Antworten auf die Repo-/Server-Fragen
 
 1. **Wo liegt der echte Source des live laufenden Panels?**  

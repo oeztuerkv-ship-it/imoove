@@ -114,40 +114,72 @@ export default function RidesPage() {
       padding: "4px 10px",
       fontSize: 12,
       fontWeight: 500,
-      border: "1px solid var(--onroda-border)",
-      background: "var(--onroda-bg-control)",
-      color: "var(--onroda-text-primary)",
+      border: "1px solid var(--onroda-border-outline)",
+      background: "var(--onroda-bg-light)",
+      color: "var(--onroda-text-dark)",
       whiteSpace: "nowrap",
     };
 
     if (kind === "status") {
       if (value === "pending") {
-        return { ...base, background: "#2d2618", color: "#f3d08b" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-warn-bg)",
+          color: "var(--onroda-badge-warn-fg)",
+        };
       }
       if (value === "cancelled") {
-        return { ...base, background: "#341919", color: "#f0a3a3" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-danger-bg)",
+          color: "var(--onroda-badge-danger-fg)",
+        };
       }
       if (value === "completed") {
-        return { ...base, background: "#17311f", color: "#9ed9af" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-success-bg)",
+          color: "var(--onroda-badge-success-fg)",
+        };
       }
       if (value === "accepted" || value === "assigned") {
-        return { ...base, background: "#172334", color: "#a8c7fa" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-info-bg)",
+          color: "var(--onroda-badge-info-fg)",
+        };
       }
     }
 
     if (kind === "dispatch") {
       if (value === "open_market") {
-        return { ...base, background: "#17311f", color: "#9ed9af" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-success-bg)",
+          color: "var(--onroda-badge-success-fg)",
+        };
       }
-      return { ...base, background: "var(--onroda-bg-control)", color: "var(--onroda-text-secondary)" };
+      return {
+        ...base,
+        background: "var(--onroda-badge-neutral-bg)",
+        color: "var(--onroda-badge-neutral-fg)",
+      };
     }
 
     if (kind === "mode") {
       if (value === "reservation") {
-        return { ...base, background: "#261c31", color: "#d8b5ff" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-info-bg)",
+          color: "var(--onroda-badge-info-fg)",
+        };
       }
       if (value === "live") {
-        return { ...base, background: "#172334", color: "#a8c7fa" };
+        return {
+          ...base,
+          background: "var(--onroda-badge-accent-bg)",
+          color: "var(--onroda-badge-accent-fg)",
+        };
       }
     }
 

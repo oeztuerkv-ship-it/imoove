@@ -1,0 +1,88 @@
+/**
+ * ONRODA Marken-Design — gemeinsame Basis für:
+ * - Marketing-Homepage (static/index.html)
+ * - Admin-Panel (import aus artifacts/admin-panel)
+ * Partner / weitere interne Oberflächen können dieselbe Datei einbinden.
+ *
+ * Farben und Typografie entsprechen der Live-Homepage (onroda.de).
+ */
+
+:root {
+  /* —— Marketing (Homepage) —— */
+  --onroda-red: #d5001c;
+  --onroda-text-dark: #1a1a1a;
+  --onroda-text-grey: #4a4a4a;
+  --onroda-bg-light: #ffffff;
+  --onroda-bg-card: #f8f8f8;
+  --onroda-border-subtle: #f0f0f0;
+  --onroda-border-outline: #cccccc;
+  --onroda-bg-footer: #000000;
+
+  /* —— Semantische UI-Tokens (hell, an Homepage angeglichen) —— */
+  --onroda-bg-app: #ffffff;
+  --onroda-bg-elevated: #f8f8f8;
+  --onroda-bg-control: #ffffff;
+  --onroda-text-primary: #1a1a1a;
+  --onroda-text-secondary: #4a4a4a;
+  --onroda-text-muted: #6b6b6b;
+  --onroda-text-on-brand: #ffffff;
+  --onroda-border: #e8e8e8;
+  --onroda-sidebar-width: 260px;
+  --onroda-radius-pill: 25px;
+  --onroda-radius-card: 15px;
+  --onroda-radius-md: 10px;
+  --onroda-radius-lg: 15px;
+  --onroda-radius-nav: 12px;
+  --onroda-radius-icon: 10px;
+  --onroda-radius-icon-sm: 8px;
+  --onroda-bg-table-header: #f0f0f0;
+  --onroda-error-bg: #fef2f2;
+  --onroda-error-text: #b91c1c;
+  --onroda-error-border: #fecaca;
+  --onroda-hint-info: #1d4ed8;
+
+  /* Badges / Status (hell, lesbar auf weiß) */
+  --onroda-badge-warn-bg: #fffbeb;
+  --onroda-badge-warn-fg: #b45309;
+  --onroda-badge-danger-bg: #fef2f2;
+  --onroda-badge-danger-fg: #b91c1c;
+  --onroda-badge-success-bg: #f0fdf4;
+  --onroda-badge-success-fg: #15803d;
+  --onroda-badge-info-bg: #eff6ff;
+  --onroda-badge-info-fg: #1d4ed8;
+  --onroda-badge-neutral-bg: #f8f8f8;
+  --onroda-badge-neutral-fg: #4a4a4a;
+  --onroda-badge-accent-bg: #fef2f2;
+  --onroda-badge-accent-fg: #d5001c;
+}
+
+html {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: var(--onroda-text-primary);
+  background: var(--onroda-bg-light);
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  font-family: inherit;
+  background-color: var(--onroda-bg-light);
+  color: var(--onroda-text-dark);
+  line-height: 1.5;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--onroda-text-muted);
+}

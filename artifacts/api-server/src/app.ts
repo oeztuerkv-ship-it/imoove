@@ -58,6 +58,13 @@ app.use("/api", router);
 app.use(ridesRouter);
 app.use(adminRouter);
 
+/* Gemeinsame Marken-Styles (Homepage + externe Einbindung); keine index.html-Autoverzeichnis-Auslieferung. */
+app.use(
+  express.static(path.join(process.cwd(), "static"), {
+    index: false,
+  }),
+);
+
 /* Root: Marketing-Domain = nur öffentliche Homepage; App = Mobile + API; Panel später eigene Subdomain. */
 app.get("/", (req, res, next) => {
   const host = hostname(req);

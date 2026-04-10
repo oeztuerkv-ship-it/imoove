@@ -113,7 +113,7 @@ export default function App() {
               />
             </label>
 
-            <button type="button" className="admin-btn-pill">
+            <button type="button" className="admin-btn-cta">
               + Neu
             </button>
           </div>

@@ -4,41 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ONRODA | Die schnelle, sichere und zuverlässige Taxi-App</title>
+    <link rel="stylesheet" href="/onroda-brand.css">
     <style>
-        :root {
-            --onroda-red: #d5001c; /* Das kräftige Rot von Freenow inspiriert */
-            --text-dark: #1a1a1a;
-            --text-grey: #4a4a4a;
-            --bg-light: #ffffff;
-            --bg-footer: #000000;
-        }
-        
-        body { margin: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: var(--bg-light); color: var(--text-dark); line-height: 1.5; }
-        
-        /* Navigation */
-        nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: white; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #f0f0f0; }
+        /* Layout-spezifisch — Farben/Typo über onroda-brand.css */
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: white; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--onroda-border-subtle); }
         .logo { font-size: 1.5rem; font-weight: 800; color: var(--onroda-red); letter-spacing: 1px; }
-        .nav-links a { color: var(--text-dark); text-decoration: none; margin-left: 20px; font-weight: 500; font-size: 0.9rem; }
+        .nav-links a { color: var(--onroda-text-dark); text-decoration: none; margin-left: 20px; font-weight: 500; font-size: 0.9rem; }
         
-        /* Hero Section */
         .hero { padding: 80px 5% 40px; display: flex; flex-wrap: wrap; align-items: center; }
         .hero-text { flex: 1; min-width: 300px; padding-right: 20px; }
         .hero-text h1 { font-size: 3.5rem; line-height: 1.1; margin-bottom: 20px; color: var(--onroda-red); font-weight: 800; }
-        .hero-text p { font-size: 1.2rem; color: var(--text-grey); margin-bottom: 30px; max-width: 500px; }
+        .hero-text p { font-size: 1.2rem; color: var(--onroda-text-grey); margin-bottom: 30px; max-width: 500px; }
         
         .cta-group { display: flex; gap: 15px; }
         .btn-red { background: var(--onroda-red); color: white; padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
-        .btn-outline { border: 1px solid #ccc; color: var(--text-dark); padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
+        .btn-outline { border: 1px solid var(--onroda-border-outline); color: var(--onroda-text-dark); padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
 
-        /* Feature Cards */
         .section { padding: 40px 5%; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: #f8f8f8; padding: 30px; border-radius: 15px; }
+        .card { background: var(--onroda-bg-card); padding: 30px; border-radius: 15px; }
         .card h3 { font-size: 1.5rem; margin-top: 0; color: var(--onroda-red); }
-        .card p { color: var(--text-grey); font-size: 0.95rem; }
+        .card p { color: var(--onroda-text-grey); font-size: 0.95rem; }
 
-        /* Footer */
-        footer { background: var(--bg-footer); color: white; padding: 60px 5% 20px; margin-top: 60px; }
+        footer { background: var(--onroda-bg-footer); color: white; padding: 60px 5% 20px; margin-top: 60px; }
         .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; }
         .footer-col h4 { color: var(--onroda-red); margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
         .footer-col ul { list-style: none; padding: 0; margin: 0; }
