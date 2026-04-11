@@ -4,7 +4,6 @@ import path from "path";
 import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
 import router from "./routes";
-import ridesRouter from "./routes/rides";
 import adminRouter from "./routes/admin";
 import { logger } from "./lib/logger";
 
@@ -58,6 +57,35 @@ function isApiHost(h: string): boolean {
   );
 }
 
+/** Browser-Origins, die die API per CORS ansprechen dürfen (Admin-/Panel-Subdomains, Marketing, Dev). */
+function buildCorsAllowedOrigins(): Set<string> {
+  const set = new Set<string>([
+    "https://onroda.de",
+    "https://www.onroda.de",
+    "https://api.onroda.de",
+    "https://admin.onroda.de",
+    "https://panel.onroda.de",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+  ]);
+  const extra = (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const o of extra) {
+    set.add(o);
+  }
+  return set;
+}
+
+const corsAllowedOrigins = buildCorsAllowedOrigins();
+
 app.use(
   pinoHttp({
     logger,
@@ -76,16 +104,41 @@ app.use(
   }),
 );
 
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (corsAllowedOrigins.has(origin)) {
+        callback(null, origin);
+        return;
+      }
+      if (process.env.NODE_ENV !== "production") {
+        callback(null, origin);
+        return;
+      }
+      callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    maxAge: 86400,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /*
  * WICHTIG: API- und Admin-Routen zuerst – vor Static/Marketing,
  * sonst kann express.static oder Host-Logik Anfragen verschlucken.
+ *
+ * Doppel-Mount: Viele Nginx-Setups proxy_pass mit URI `/api/…` auf den Node-Upstream;
+ * andere entfernen das Präfix und liefern `/admin/…` direkt. Beides soll dieselbe App treffen.
  */
 app.use("/api", router);
-app.use(ridesRouter);
+app.use(router);
 app.use(adminRouter);
 
 /* Admin-Panel (Vite-Build mit base `/partners/` → admin-panel/dist). */
@@ -124,6 +177,7 @@ app.get("/", (req, res, next) => {
       healthV1: "/api/v1/health",
       admin: "/admin",
       adminPanel: "/partners/",
+      partnerAuth: "/api/auth/panel-login",
     });
   }
   /* z. B. admin.onroda.de: Root auf gebaute App unter /partners/ */

@@ -1,5 +1,5 @@
 import { ClientAuthentication, OAuth2Client } from "google-auth-library";
-import { Router, type Request } from "express";
+import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes } from "crypto";
 import { getFirebaseAuth, isFirebaseAdminConfigured } from "../lib/firebaseAdmin";
 import {
@@ -60,6 +60,104 @@ function callbackUriFromReq(req: Request): string {
   return `${apiBaseFromReq(req)}/auth/google/callback`;
 }
 
+function panelOAuthDefaultReturnUrl(): string {
+  const raw = (process.env.PANEL_OAUTH_RETURN_URL ?? "https://panel.onroda.de/").trim();
+  return raw.length > 0 ? raw : "https://panel.onroda.de/";
+}
+
+/**
+ * Verhindert offene Redirects: nur Panel-/Admin-Host oder explizite Zusatz-Origins.
+ */
+function isAllowedPanelReturnUrl(urlStr: string): boolean {
+  try {
+    const u = new URL(urlStr);
+    const host = u.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") {
+      return u.protocol === "http:" || u.protocol === "https:";
+    }
+    if (host === "panel.onroda.de" || host === "admin.onroda.de") {
+      return u.protocol === "https:";
+    }
+    const extra = (process.env.PANEL_ALLOWED_RETURN_ORIGINS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const e of extra) {
+      try {
+        const parsed = new URL(e.includes("://") ? e : `https://${e}`);
+        if (parsed.hostname.toLowerCase() === host) {
+          return u.protocol === "https:" || (host === "localhost" && u.protocol === "http:");
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function sendGoogleOAuthStart(req: Request, res: Response, returnUrl: string): void {
+  const cid = googleClientId();
+  if (!cid) {
+    res.status(500).json({
+      error: "Google Client ID not configured",
+      hint:
+        "Set GOOGLE_CLIENT_ID (and GOOGLE_CLIENT_SECRET) in the process environment. " +
+        "If you use a .env file: PM2 cwd must be the api-server folder, or use pm2 ecosystem env / dotenv. " +
+        "After deploy: rebuild api-server (pnpm run build) so loadEnv is included.",
+    });
+    return;
+  }
+
+  if (!isSessionJwtConfigured()) {
+    res.status(500).json({
+      error: "AUTH_JWT_SECRET not configured",
+      hint: "Set AUTH_JWT_SECRET (long random string, e.g. openssl rand -base64 48) in the API environment.",
+    });
+    return;
+  }
+
+  const state = base64url(randomBytes(16));
+  const secret = googleClientSecret();
+
+  const redirectUri = callbackUriFromReq(req);
+  console.log("GOOGLE REDIRECT URI:", redirectUri);
+  console.log(
+    `[auth/start] state=${state} returnUrl=${returnUrl} pkce=${!secret}`,
+  );
+
+  let codeVerifier: string | null = null;
+  if (!secret) {
+    codeVerifier = generateCodeVerifier();
+  }
+
+  pending.set(state, {
+    codeVerifier,
+    returnUrl,
+    clientId: cid,
+    redirectUri,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+  });
+
+  const params = new URLSearchParams({
+    client_id: cid,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid profile email",
+    state,
+    access_type: "offline",
+    prompt: "select_account",
+  });
+  if (codeVerifier) {
+    params.set("code_challenge", codeChallenge(codeVerifier));
+    params.set("code_challenge_method", "S256");
+  }
+
+  res.json({ authUrl: `${GOOGLE_AUTH_ENDPOINT}?${params.toString()}`, state });
+}
+
 const USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v3/userinfo";
 const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 
@@ -102,65 +200,29 @@ function appendQueryParams(base: string, params: Record<string, string>): string
 }
 
 router.get("/auth/google/start", (req, res) => {
-  const cid = googleClientId();
-  if (!cid) {
-    res.status(500).json({
-      error: "Google Client ID not configured",
-      hint:
-        "Set GOOGLE_CLIENT_ID (and GOOGLE_CLIENT_SECRET) in the process environment. " +
-        "If you use a .env file: PM2 cwd must be the api-server folder, or use pm2 ecosystem env / dotenv. " +
-        "After deploy: rebuild api-server (pnpm run build) so loadEnv is included.",
-    });
-    return;
-  }
-
-  if (!isSessionJwtConfigured()) {
-    res.status(500).json({
-      error: "AUTH_JWT_SECRET not configured",
-      hint: "Set AUTH_JWT_SECRET (long random string, e.g. openssl rand -base64 48) in the API environment.",
-    });
-    return;
-  }
-
   const returnUrl =
     (req.query.returnUrl as string | undefined) ?? `${apiBaseFromReq(req)}/auth/google/done`;
-  const state = base64url(randomBytes(16));
-  const secret = googleClientSecret();
+  sendGoogleOAuthStart(req, res, returnUrl);
+});
 
-  const redirectUri = callbackUriFromReq(req);
-  console.log("GOOGLE REDIRECT URI:", redirectUri);
-  console.log(
-    `[auth/start] state=${state} returnUrl=${returnUrl} pkce=${!secret}`,
-  );
-
-  let codeVerifier: string | null = null;
-  if (!secret) {
-    codeVerifier = generateCodeVerifier();
+/**
+ * Gleiche Antwort wie GET /auth/google/start (JSON mit authUrl + state), aber mit Default-returnUrl
+ * fürs Partner-Panel. Optional: ?returnUrl= muss zu PANEL_ALLOWED_RETURN_ORIGINS / panel.onroda.de passen.
+ * Pfade: /api/auth/panel-login oder — bei Nginx ohne /api-Präfix — /auth/panel-login
+ */
+router.get("/auth/panel-login", (req, res) => {
+  const incoming =
+    typeof req.query.returnUrl === "string" ? req.query.returnUrl.trim() : "";
+  const returnUrl = incoming || panelOAuthDefaultReturnUrl();
+  if (!isAllowedPanelReturnUrl(returnUrl)) {
+    res.status(400).json({
+      error: "invalid_return_url",
+      hint:
+        "returnUrl must use https://panel.onroda.de, https://admin.onroda.de, localhost, or a host listed in PANEL_ALLOWED_RETURN_ORIGINS.",
+    });
+    return;
   }
-
-  pending.set(state, {
-    codeVerifier,
-    returnUrl,
-    clientId: cid,
-    redirectUri,
-    expiresAt: Date.now() + 10 * 60 * 1000,
-  });
-
-  const params = new URLSearchParams({
-    client_id: cid,
-    redirect_uri: redirectUri,
-    response_type: "code",
-    scope: "openid profile email",
-    state,
-    access_type: "offline",
-    prompt: "select_account",
-  });
-  if (codeVerifier) {
-    params.set("code_challenge", codeChallenge(codeVerifier));
-    params.set("code_challenge_method", "S256");
-  }
-
-  res.json({ authUrl: `${GOOGLE_AUTH_ENDPOINT}?${params.toString()}`, state });
+  sendGoogleOAuthStart(req, res, returnUrl);
 });
 
 router.get("/auth/google/callback", async (req, res) => {

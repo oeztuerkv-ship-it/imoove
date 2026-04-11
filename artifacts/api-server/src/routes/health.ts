@@ -11,6 +11,11 @@ router.get("/healthz", (_req, res) => {
   res.json(ok());
 });
 
+/** Alias für Nginx/Ingress, die oft `GET /health` oder `GET /api/health` prüfen */
+router.get("/health", (_req, res) => {
+  res.json(ok());
+});
+
 /** Alias für Clients, die /api/v1/health erwarten */
 router.get("/v1/health", (_req, res) => {
   res.json(ok());

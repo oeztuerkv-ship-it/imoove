@@ -1,3 +1,6 @@
+/**
+ * HTTP- und WebSocket-Server. Routing, CORS und API-Pfad-Spiegelung (`/api` + Root) liegen in `./app`.
+ */
 import "./loadEnv";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
