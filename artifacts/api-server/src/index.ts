@@ -5,6 +5,7 @@ import "./loadEnv";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import app from "./app";
+import { seedAdminDefaultsIfEmpty } from "./db/adminData";
 import { logger } from "./lib/logger";
 import { driverLocations, customerLocations } from "./routes/rides";
 
@@ -80,4 +81,7 @@ wss.on("connection", (socket) => {
 
 httpServer.listen(port, () => {
   logger.info({ port }, "Server listening");
+  void seedAdminDefaultsIfEmpty().catch((err) => {
+    logger.error({ err }, "seedAdminDefaultsIfEmpty failed");
+  });
 });

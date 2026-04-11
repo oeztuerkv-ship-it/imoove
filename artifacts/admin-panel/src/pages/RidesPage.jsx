@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE } from "../lib/apiBase.js";
 
-const RIDES_URL = "https://onroda.de/api/rides";
+const RIDES_URL = `${API_BASE}/rides`;
 const ITEMS_PER_PAGE = 10;
 
 export default function RidesPage() {
@@ -57,7 +58,7 @@ export default function RidesPage() {
       setBusyId(id);
       setError("");
 
-      const res = await fetch(`https://onroda.de/api/rides/${id}/release`, {
+      const res = await fetch(`${API_BASE}/rides/${id}/release`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -105,85 +106,28 @@ export default function RidesPage() {
     );
   }
 
-  function badgeStyle(kind, value) {
-    const base = {
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 999,
-      padding: "4px 10px",
-      fontSize: 12,
-      fontWeight: 500,
-      border: "1px solid var(--onroda-border-outline)",
-      background: "var(--onroda-bg-light)",
-      color: "var(--onroda-text-dark)",
-      whiteSpace: "nowrap",
-    };
+  function rideStatusBadgeClass(status) {
+    const s = String(status || "-");
+    if (s === "pending") return "admin-badge admin-badge--ride-status-pending";
+    if (s === "cancelled") return "admin-badge admin-badge--ride-status-cancelled";
+    if (s === "completed") return "admin-badge admin-badge--ride-status-completed";
+    if (s === "accepted") return "admin-badge admin-badge--ride-status-accepted";
+    if (s === "assigned") return "admin-badge admin-badge--ride-status-assigned";
+    return "admin-badge";
+  }
 
-    if (kind === "status") {
-      if (value === "pending") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-warn-bg)",
-          color: "var(--onroda-badge-warn-fg)",
-        };
-      }
-      if (value === "cancelled") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-danger-bg)",
-          color: "var(--onroda-badge-danger-fg)",
-        };
-      }
-      if (value === "completed") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-success-bg)",
-          color: "var(--onroda-badge-success-fg)",
-        };
-      }
-      if (value === "accepted" || value === "assigned") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-info-bg)",
-          color: "var(--onroda-badge-info-fg)",
-        };
-      }
+  function rideDispatchBadgeClass(dispatch) {
+    if (String(dispatch || "-") === "open_market") {
+      return "admin-badge admin-badge--ride-dispatch-open-market";
     }
+    return "admin-badge admin-badge--ride-dispatch-neutral";
+  }
 
-    if (kind === "dispatch") {
-      if (value === "open_market") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-success-bg)",
-          color: "var(--onroda-badge-success-fg)",
-        };
-      }
-      return {
-        ...base,
-        background: "var(--onroda-badge-neutral-bg)",
-        color: "var(--onroda-badge-neutral-fg)",
-      };
-    }
-
-    if (kind === "mode") {
-      if (value === "reservation") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-info-bg)",
-          color: "var(--onroda-badge-info-fg)",
-        };
-      }
-      if (value === "live") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-accent-bg)",
-          color: "var(--onroda-badge-accent-fg)",
-        };
-      }
-    }
-
-    return base;
+  function rideModeBadgeClass(mode) {
+    const m = String(mode || "-");
+    if (m === "reservation") return "admin-badge admin-badge--ride-mode-reservation";
+    if (m === "live") return "admin-badge admin-badge--ride-mode-live";
+    return "admin-badge";
   }
 
   const companyOptions = useMemo(() => {
@@ -353,9 +297,6 @@ export default function RidesPage() {
     return <div className="admin-info-banner">Fahrten werden geladen ...</div>;
   }
 
-  const rideRowGrid =
-    "220px 160px 220px 220px 110px 130px 100px 90px 90px 100px 170px 170px 120px";
-
   return (
     <div className="admin-page">
       <div className="admin-stat-grid">
@@ -453,10 +394,7 @@ export default function RidesPage() {
           <div className="admin-info-banner">Keine Fahrten gefunden.</div>
         ) : (
           <div className="admin-table-scroll">
-            <div
-              className="admin-table-row admin-table-row--head"
-              style={{ gridTemplateColumns: rideRowGrid, minWidth: 1950 }}
-            >
+            <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min">
               <div>ID</div>
               <div>Kunde</div>
               <div>Von</div>
@@ -478,8 +416,7 @@ export default function RidesPage() {
               return (
                 <div
                   key={ride.id}
-                  className="admin-table-row"
-                  style={{ gridTemplateColumns: rideRowGrid, minWidth: 1950 }}
+                  className="admin-table-row admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min"
                 >
                   <div className="admin-mono">{ride.id || "-"}</div>
                   <div>{ride.customer_name || "-"}</div>
@@ -487,19 +424,19 @@ export default function RidesPage() {
                   <div>{ride.to_location || "-"}</div>
 
                   <div>
-                    <span style={badgeStyle("status", ride.status || "-")}>
+                    <span className={rideStatusBadgeClass(ride.status)}>
                       {ride.status || "-"}
                     </span>
                   </div>
 
                   <div>
-                    <span style={badgeStyle("dispatch", ride.dispatch_status || "-")}>
+                    <span className={rideDispatchBadgeClass(ride.dispatch_status)}>
                       {ride.dispatch_status || "-"}
                     </span>
                   </div>
 
                   <div>
-                    <span style={badgeStyle("mode", ride.ride_mode || "-")}>
+                    <span className={rideModeBadgeClass(ride.ride_mode)}>
                       {ride.ride_mode || "-"}
                     </span>
                   </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE } from "../lib/apiBase.js";
 
-const COMPANIES_URL = "https://onroda.de/api/admin/companies";
+const COMPANIES_URL = `${API_BASE}/admin/companies`;
 const ITEMS_PER_PAGE = 10;
 
 export default function CompaniesPage() {
@@ -77,52 +78,16 @@ export default function CompaniesPage() {
     }
   }
 
-  function badgeStyle(kind, value) {
-    const base = {
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 999,
-      padding: "4px 10px",
-      fontSize: 12,
-      fontWeight: 500,
-      border: "1px solid var(--onroda-border-outline)",
-      background: "var(--onroda-bg-light)",
-      color: "var(--onroda-text-dark)",
-      whiteSpace: "nowrap",
-    };
+  function companyStatusBadgeClass(isActive) {
+    return isActive
+      ? "admin-badge admin-badge--company-status-active"
+      : "admin-badge admin-badge--company-status-inactive";
+  }
 
-    if (kind === "status") {
-      if (value === "active") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-success-bg)",
-          color: "var(--onroda-badge-success-fg)",
-        };
-      }
-      return {
-        ...base,
-        background: "var(--onroda-badge-danger-bg)",
-        color: "var(--onroda-badge-danger-fg)",
-      };
-    }
-
-    if (kind === "priority") {
-      if (value === "yes") {
-        return {
-          ...base,
-          background: "var(--onroda-badge-info-bg)",
-          color: "var(--onroda-badge-info-fg)",
-        };
-      }
-      return {
-        ...base,
-        background: "var(--onroda-badge-neutral-bg)",
-        color: "var(--onroda-badge-neutral-fg)",
-      };
-    }
-
-    return base;
+  function companyPrioBadgeClass(isPrio) {
+    return isPrio
+      ? "admin-badge admin-badge--company-prio-yes"
+      : "admin-badge admin-badge--company-prio-no";
   }
 
   const filteredItems = useMemo(() => {
@@ -376,20 +341,12 @@ export default function CompaniesPage() {
                   </div>
 
                   <div className="admin-badge-row">
-                    <span
-                      style={badgeStyle(
-                        "status",
-                        item.is_active ? "active" : "inactive"
-                      )}
-                    >
+                    <span className={companyStatusBadgeClass(item.is_active)}>
                       {item.is_active ? "Aktiv" : "Inaktiv"}
                     </span>
 
                     <span
-                      style={badgeStyle(
-                        "priority",
-                        item.is_priority_company ? "yes" : "no"
-                      )}
+                      className={companyPrioBadgeClass(item.is_priority_company)}
                     >
                       {item.is_priority_company ? "PRIO aktiv" : "Keine PRIO"}
                     </span>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../lib/apiBase.js";
 
-const STATS_URL = "https://onroda.de/api/admin/stats";
+const STATS_URL = `${API_BASE}/admin/stats`;
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -59,13 +60,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.topRow}>
-        <div style={styles.heroCard}>
+    <div className="admin-dashboard">
+      <div className="admin-dashboard__top">
+        <div className="admin-dashboard__hero">
           <div>
-            <div style={styles.heroLabel}>Systemstatus</div>
-            <h2 style={styles.heroTitle}>Onroda Live-Übersicht</h2>
-            <p style={styles.heroText}>
+            <div className="admin-dashboard__hero-label">Systemstatus</div>
+            <h2 className="admin-dashboard__hero-title">Onroda Live-Übersicht</h2>
+            <p className="admin-dashboard__hero-text">
               Hier siehst du den aktuellen Stand von Fahrten, Unternehmern,
               Fahrern und Partnern auf einen Blick.
             </p>
@@ -77,270 +78,90 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={styles.grid}>
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>Offene Fahrten</div>
-          <div style={styles.cardValue}>{stats.offene}</div>
-          <div style={styles.cardSub}>Aktuell offen im System</div>
+      <div className="admin-dashboard__grid">
+        <div className="admin-dashboard__card">
+          <div className="admin-dashboard__card-label">Offene Fahrten</div>
+          <div className="admin-dashboard__card-value">{stats.offene}</div>
+          <div className="admin-dashboard__card-sub">Aktuell offen im System</div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>Laufende Fahrten</div>
-          <div style={styles.cardValue}>{stats.laufend}</div>
-          <div style={styles.cardSub}>Gerade aktiv unterwegs</div>
+        <div className="admin-dashboard__card">
+          <div className="admin-dashboard__card-label">Laufende Fahrten</div>
+          <div className="admin-dashboard__card-value">{stats.laufend}</div>
+          <div className="admin-dashboard__card-sub">Gerade aktiv unterwegs</div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>Erledigte Fahrten</div>
-          <div style={styles.cardValue}>{stats.erledigt}</div>
-          <div style={styles.cardSub}>Bereits abgeschlossen</div>
+        <div className="admin-dashboard__card">
+          <div className="admin-dashboard__card-label">Erledigte Fahrten</div>
+          <div className="admin-dashboard__card-value">{stats.erledigt}</div>
+          <div className="admin-dashboard__card-sub">Bereits abgeschlossen</div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>Unternehmer</div>
-          <div style={styles.cardValue}>{stats.unternehmer}</div>
-          <div style={styles.cardSub}>Aktive Firmen im Panel</div>
+        <div className="admin-dashboard__card">
+          <div className="admin-dashboard__card-label">Unternehmer</div>
+          <div className="admin-dashboard__card-value">{stats.unternehmer}</div>
+          <div className="admin-dashboard__card-sub">Aktive Firmen im Panel</div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>Fahrer</div>
-          <div style={styles.cardValue}>{stats.fahrer}</div>
-          <div style={styles.cardSub}>Registrierte Fahrer</div>
+        <div className="admin-dashboard__card">
+          <div className="admin-dashboard__card-label">Fahrer</div>
+          <div className="admin-dashboard__card-value">{stats.fahrer}</div>
+          <div className="admin-dashboard__card-sub">Registrierte Fahrer</div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardLabel}>Partner</div>
-          <div style={styles.cardValue}>{stats.partner}</div>
-          <div style={styles.cardSub}>Verknüpfte Partnerkonten</div>
+        <div className="admin-dashboard__card">
+          <div className="admin-dashboard__card-label">Partner</div>
+          <div className="admin-dashboard__card-value">{stats.partner}</div>
+          <div className="admin-dashboard__card-sub">Verknüpfte Partnerkonten</div>
         </div>
       </div>
 
-      <div style={styles.bottomGrid}>
-        <div style={styles.panel}>
-          <div style={styles.panelHeader}>
-            <h3 style={styles.panelTitle}>Betriebsübersicht</h3>
-            <span style={styles.panelBadge}>Live</span>
+      <div className="admin-dashboard__bottom">
+        <div className="admin-dashboard__panel">
+          <div className="admin-dashboard__panel-header">
+            <h3 className="admin-dashboard__panel-title">Betriebsübersicht</h3>
+            <span className="admin-dashboard__badge">Live</span>
           </div>
 
-          <div style={styles.metricList}>
-            <div style={styles.metricRow}>
-              <span style={styles.metricLabel}>Offene Buchungen</span>
-              <strong style={styles.metricValue}>{stats.offene}</strong>
+          <div className="admin-dashboard__metric-list">
+            <div className="admin-dashboard__metric-row">
+              <span className="admin-dashboard__metric-label">Offene Buchungen</span>
+              <strong className="admin-dashboard__metric-value">{stats.offene}</strong>
             </div>
 
-            <div style={styles.metricRow}>
-              <span style={styles.metricLabel}>Laufende Fahrten</span>
-              <strong style={styles.metricValue}>{stats.laufend}</strong>
+            <div className="admin-dashboard__metric-row">
+              <span className="admin-dashboard__metric-label">Laufende Fahrten</span>
+              <strong className="admin-dashboard__metric-value">{stats.laufend}</strong>
             </div>
 
-            <div style={styles.metricRow}>
-              <span style={styles.metricLabel}>Abgeschlossene Fahrten</span>
-              <strong style={styles.metricValue}>{stats.erledigt}</strong>
+            <div className="admin-dashboard__metric-row">
+              <span className="admin-dashboard__metric-label">Abgeschlossene Fahrten</span>
+              <strong className="admin-dashboard__metric-value">{stats.erledigt}</strong>
             </div>
 
-            <div style={styles.metricRow}>
-              <span style={styles.metricLabel}>Aktive Unternehmer</span>
-              <strong style={styles.metricValue}>{stats.unternehmer}</strong>
+            <div className="admin-dashboard__metric-row">
+              <span className="admin-dashboard__metric-label">Aktive Unternehmer</span>
+              <strong className="admin-dashboard__metric-value">{stats.unternehmer}</strong>
             </div>
           </div>
         </div>
 
-        <div style={styles.panel}>
-          <div style={styles.panelHeader}>
-            <h3 style={styles.panelTitle}>Nächste Module</h3>
-            <span style={styles.panelBadgeMuted}>Plan</span>
+        <div className="admin-dashboard__panel">
+          <div className="admin-dashboard__panel-header">
+            <h3 className="admin-dashboard__panel-title">Nächste Module</h3>
+            <span className="admin-dashboard__badge admin-dashboard__badge--muted">
+              Plan
+            </span>
           </div>
 
-          <div style={styles.todoList}>
-            <div style={styles.todoItem}>Live-Karte mit Fahrerstatus</div>
-            <div style={styles.todoItem}>Event-Feed für kritische Meldungen</div>
-            <div style={styles.todoItem}>Heutiger Umsatz & Provisionen</div>
-            <div style={styles.todoItem}>Partner- und Dokumentenmodul</div>
+          <div className="admin-dashboard__todo-list">
+            <div className="admin-dashboard__todo-item">Live-Karte mit Fahrerstatus</div>
+            <div className="admin-dashboard__todo-item">Event-Feed für kritische Meldungen</div>
+            <div className="admin-dashboard__todo-item">Heutiger Umsatz & Provisionen</div>
+            <div className="admin-dashboard__todo-item">Partner- und Dokumentenmodul</div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 20,
-  },
-
-  topRow: {
-    display: "flex",
-  },
-
-  heroCard: {
-    width: "100%",
-    background: "var(--onroda-bg-card)",
-    border: "1px solid var(--onroda-border)",
-    borderRadius: "var(--onroda-radius-card)",
-    padding: 30,
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-
-  heroLabel: {
-    fontSize: 13,
-    color: "var(--onroda-text-muted)",
-    marginBottom: 8,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-  },
-
-  heroTitle: {
-    margin: 0,
-    fontSize: "clamp(1.5rem, 4vw, 2rem)",
-    color: "var(--onroda-red)",
-    fontWeight: 800,
-    lineHeight: 1.15,
-  },
-
-  heroText: {
-    margin: "10px 0 0 0",
-    color: "var(--onroda-text-grey)",
-    lineHeight: 1.6,
-    maxWidth: 680,
-    fontSize: "0.95rem",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 20,
-  },
-
-  card: {
-    background: "var(--onroda-bg-card)",
-    borderRadius: "var(--onroda-radius-card)",
-    padding: 30,
-    border: "1px solid var(--onroda-border)",
-  },
-
-  cardLabel: {
-    color: "var(--onroda-text-grey)",
-    fontSize: "0.95rem",
-    marginBottom: 12,
-    fontWeight: 500,
-  },
-
-  cardValue: {
-    fontSize: "clamp(2rem, 5vw, 2.4rem)",
-    fontWeight: 800,
-    color: "var(--onroda-red)",
-    lineHeight: 1.1,
-  },
-
-  cardSub: {
-    marginTop: 10,
-    color: "var(--onroda-text-muted)",
-    fontSize: "0.85rem",
-  },
-
-  bottomGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-    gap: 20,
-  },
-
-  panel: {
-    background: "var(--onroda-bg-card)",
-    borderRadius: "var(--onroda-radius-card)",
-    padding: 30,
-    border: "1px solid var(--onroda-border)",
-  },
-
-  panelHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 18,
-  },
-
-  panelTitle: {
-    margin: 0,
-    color: "var(--onroda-red)",
-    fontSize: "1.5rem",
-    fontWeight: 800,
-  },
-
-  panelBadge: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    padding: "4px 10px",
-    fontSize: 12,
-    fontWeight: 700,
-    background: "var(--onroda-badge-accent-bg)",
-    color: "var(--onroda-badge-accent-fg)",
-    border: "1px solid var(--onroda-border)",
-  },
-
-  panelBadgeMuted: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    padding: "4px 10px",
-    fontSize: 12,
-    fontWeight: 600,
-    background: "var(--onroda-bg-light)",
-    color: "var(--onroda-text-grey)",
-    border: "1px solid var(--onroda-border-outline)",
-  },
-
-  metricList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-
-  metricRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    padding: "12px 14px",
-    borderRadius: "var(--onroda-radius-md)",
-    background: "var(--onroda-bg-light)",
-    border: "1px solid var(--onroda-border-outline)",
-  },
-
-  metricLabel: {
-    color: "var(--onroda-text-grey)",
-    fontSize: "0.95rem",
-  },
-
-  metricValue: {
-    color: "var(--onroda-red)",
-    fontSize: "1rem",
-    fontWeight: 800,
-  },
-
-  todoList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
-
-  todoItem: {
-    padding: "12px 14px",
-    borderRadius: "var(--onroda-radius-md)",
-    background: "var(--onroda-bg-light)",
-    border: "1px solid var(--onroda-border-outline)",
-    color: "var(--onroda-text-grey)",
-    fontSize: "0.95rem",
-    lineHeight: 1.5,
-  },
-
-};

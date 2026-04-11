@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../lib/apiBase.js";
 
-const API_URL = "https://onroda.de/api/admin/fare-areas";
+const API_URL = `${API_BASE}/admin/fare-areas`;
 
 export default function FaresPage() {
   const [form, setForm] = useState({
@@ -108,8 +109,6 @@ export default function FaresPage() {
       a.ruleType === "tariff_corridor"
   ).length;
 
-  const tableColumns = "1fr 1.5fr 1fr 1fr 1fr";
-
   return (
     <div className="admin-page admin-page--loose">
       <header>
@@ -211,10 +210,7 @@ export default function FaresPage() {
           <div className="admin-muted">Lade Gebiete...</div>
         ) : (
           <div className="admin-data-table">
-            <div
-              className="admin-data-table__head"
-              style={{ gridTemplateColumns: tableColumns }}
-            >
+            <div className="admin-data-table__head admin-cs-grid admin-cs-grid--fare-areas">
               <div>Gebiet</div>
               <div>Regeltyp</div>
               <div>Pflicht</div>
@@ -225,8 +221,7 @@ export default function FaresPage() {
             {areas.map((a) => (
               <div
                 key={a.id}
-                className="admin-data-table__row"
-                style={{ gridTemplateColumns: tableColumns }}
+                className="admin-data-table__row admin-cs-grid admin-cs-grid--fare-areas"
               >
                 <div>{a.name}</div>
                 <div>{a.ruleType}</div>
