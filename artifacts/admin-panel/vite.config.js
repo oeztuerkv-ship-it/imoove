@@ -6,11 +6,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === 'build' ? '/partners/' : '/',
-  /* Dev / vite preview: sonst „Blocked request … host is not allowed“ bei Zugriff über echte Domain. */
+  /**
+   * Dev (`vite`) + `vite preview`: Host-Check (DNS-Rebinding-Schutz).
+   * - Nginx muss `Host: admin.onroda.de` durchreichen (`proxy_set_header Host $host;`).
+   * - Ohne korrekten Host sieht Vite z. B. `127.0.0.1:5174` → Eintrag in allowedHosts nützt nichts.
+   * - `.onroda.de` = Subdomains laut Vite-Doku.
+   * - Nur `preview.*` reicht nicht, wenn der Prozess `vite` (dev) ist — beide setzen.
+   */
   server: {
-    allowedHosts: ["admin.onroda.de"],
+    allowedHosts: ["admin.onroda.de", ".onroda.de", "localhost", "127.0.0.1"],
   },
   preview: {
-    allowedHosts: ["admin.onroda.de"],
+    allowedHosts: ["admin.onroda.de", ".onroda.de", "localhost", "127.0.0.1"],
   },
 }))

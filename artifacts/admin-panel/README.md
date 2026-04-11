@@ -85,6 +85,29 @@ Nach `npm run build` im Admin- und API-Server:
 
 Im Browser: gleiche Origin öffnen, z. B. `https://api.example.com/partners/` — DevTools → **Network**: `index.html`, JS und CSS müssen **200** haben; weiße Seite bei **404** auf `/partners/assets/…` deutet auf falschen Vite-`base` oder veralteten Build.
 
+## Nginx → Vite (nur Entwicklung / Diagnose)
+
+Wenn `admin.onroda.de` per DNS auf den Server zeigt und Nginx auf **`vite` oder `vite preview`** (z. B. Port **5174**) proxied, **muss** der ursprüngliche Host ankommen — sonst blockiert Vite trotz `allowedHosts`:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:5174;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+```
+
+Prüfen: `curl -sI https://admin.onroda.de | grep -i ^host` ist irrelevant; besser im **Vite-Terminal** loggen oder mit `curl -H 'Host: admin.onroda.de' http://127.0.0.1:5174/` vom Server aus.
+
+**Häufige Ursache:** `proxy_set_header Host` fehlt oder ist auf den Upstream-Namen gesetzt → Vite sieht `127.0.0.1:5174`, nicht `admin.onroda.de`.
+
+**Hinweis:** Öffentlich sollte später **Express + gebautes Admin** (`/partners/`) laufen, nicht der Vite-Dev-Server (Sicherheit, Performance).
+
 ## Optional: eigene Subdomain `admin.onroda.de`
 
 Separates DNS/Nginx-Thema; die App bleibt unter **`/partners/`** auf demselben Express-Prozess wie die API (oder hinter einem Reverse-Proxy).
