@@ -1,10 +1,11 @@
 /**
  * ONRODA Marken-Design — gemeinsame Basis für:
  * - Marketing-Homepage (static/index.html)
- * - Admin-Panel (import aus artifacts/admin-panel)
+ * - Admin-Panel (zuerst in main.jsx importieren)
  * Partner / weitere interne Oberflächen können dieselbe Datei einbinden.
  *
- * Farben und Typografie entsprechen der Live-Homepage (onroda.de).
+ * Alle sichtbaren Farben und Abstände des Admin-Panels sollten über diese
+ * Variablen laufen (keine festen Hex-Werte in Komponenten-CSS).
  */
 
 :root {
@@ -18,7 +19,7 @@
   --onroda-border-outline: #cccccc;
   --onroda-bg-footer: #000000;
 
-  /* —— Semantische UI-Tokens (hell, an Homepage angeglichen) —— */
+  /* —— Semantische UI-Tokens —— */
   --onroda-bg-app: #ffffff;
   --onroda-bg-elevated: #f8f8f8;
   --onroda-bg-control: #ffffff;
@@ -35,13 +36,59 @@
   --onroda-radius-nav: 12px;
   --onroda-radius-icon: 10px;
   --onroda-radius-icon-sm: 8px;
+  --onroda-radius-pill-badge: 999px;
   --onroda-bg-table-header: #f0f0f0;
   --onroda-error-bg: #fef2f2;
   --onroda-error-text: #b91c1c;
   --onroda-error-border: #fecaca;
   --onroda-hint-info: #1d4ed8;
 
-  /* Badges / Status (hell, lesbar auf weiß) */
+  /* Abstände & Layout (Admin + angleichbar an Homepage-Sections) */
+  --onroda-space-1: 6px;
+  --onroda-space-2: 8px;
+  --onroda-space-3: 10px;
+  --onroda-space-4: 12px;
+  --onroda-space-5: 14px;
+  --onroda-space-6: 16px;
+  --onroda-space-7: 18px;
+  --onroda-space-8: 20px;
+  --onroda-space-9: 22px;
+  --onroda-space-10: 24px;
+  --onroda-space-11: 28px;
+  --onroda-space-12: 30px;
+  --onroda-padding-content-x: 5%;
+  --onroda-padding-content-y: var(--onroda-space-11);
+  --onroda-padding-card: var(--onroda-space-12);
+  --onroda-padding-card-sm: var(--onroda-space-9);
+  /* Homepage .btn-red / .btn-outline horizontal padding */
+  --onroda-padding-btn-x: 25px;
+  --onroda-gap-page: var(--onroda-space-8);
+  --onroda-gap-grid: var(--onroda-space-8);
+  --onroda-gap-stack: var(--onroda-space-4);
+  --onroda-gap-stack-lg: var(--onroda-space-7);
+  --onroda-grid-min-stat: 220px;
+  --onroda-grid-min-stat-compact: 180px;
+  --onroda-grid-min-panel: 320px;
+  --onroda-hero-text-max-width: 680px;
+
+  /* Fokus / Schatten (nur aus Markenrot gemischt) */
+  --onroda-shadow-focus-ring: 0 0 0 2px color-mix(in srgb, var(--onroda-red) 12%, transparent);
+
+  /* Tabellen: gebundene Mindestbreite (horizontales Scrollen) */
+  --onroda-admin-rides-table-min-width: 1950px;
+  /* Admin: Fahrten-Tabelle (Spalten zentral anpassbar) */
+  --onroda-admin-rides-grid-template: 220px 160px 220px 220px 110px 130px 100px 90px 90px 100px 170px 170px 120px;
+  /* Admin: Tarifgebiete-Liste */
+  --onroda-admin-fare-areas-grid-template: 1fr 1.5fr 1fr 1fr 1fr;
+
+  /* Typo — kleine UI-Labels (Dashboard, Mono-Hinweise) */
+  --onroda-font-size-eyebrow: 0.8125rem;
+  --onroda-font-size-mono: 0.75rem;
+  --onroda-badge-font-size: 0.75rem;
+  --onroda-badge-font-weight: 500;
+  --onroda-badge-padding: var(--onroda-space-1) var(--onroda-space-3);
+
+  /* Badges / Status */
   --onroda-badge-warn-bg: #fffbeb;
   --onroda-badge-warn-fg: #b45309;
   --onroda-badge-danger-bg: #fef2f2;
@@ -50,10 +97,10 @@
   --onroda-badge-success-fg: #15803d;
   --onroda-badge-info-bg: #eff6ff;
   --onroda-badge-info-fg: #1d4ed8;
-  --onroda-badge-neutral-bg: #f8f8f8;
-  --onroda-badge-neutral-fg: #4a4a4a;
+  --onroda-badge-neutral-bg: var(--onroda-bg-card);
+  --onroda-badge-neutral-fg: var(--onroda-text-grey);
   --onroda-badge-accent-bg: #fef2f2;
-  --onroda-badge-accent-fg: #d5001c;
+  --onroda-badge-accent-fg: var(--onroda-red);
 }
 
 html {

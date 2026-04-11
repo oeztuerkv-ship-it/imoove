@@ -1,29 +1,52 @@
-/* Listen, Filter, Tabellen — ONRODA-Homepage (Karten #f8f8f8, Radien 15px, Rot als Akzent) */
+/* Listen, Filter, Tabellen — nur var(--onroda-*) aus onroda-brand.css */
+
+/* Tabellenzeilen: Modifier setzen Spalten (Tokens in onroda-brand.css). */
+.admin-cs-grid {
+  grid-template-columns: var(--admin-grid-cols);
+}
+
+.admin-cs-grid--rides {
+  grid-template-columns: var(--onroda-admin-rides-grid-template);
+}
+
+.admin-cs-grid--fare-areas {
+  grid-template-columns: var(--onroda-admin-fare-areas-grid-template);
+}
+
+.admin-cs-grid--rides-min {
+  min-width: var(--onroda-admin-rides-table-min-width);
+}
 
 .admin-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--onroda-gap-page);
 }
 
 .admin-page--loose {
-  gap: 24px;
+  gap: var(--onroda-space-10);
 }
 
 .admin-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--onroda-grid-min-stat-compact), 1fr)
+  );
+  gap: var(--onroda-gap-grid);
 }
 
 .admin-stat-grid--wide {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--onroda-grid-min-stat), 1fr)
+  );
+  gap: var(--onroda-gap-grid);
 }
 
 .admin-stat-card {
   background: var(--onroda-bg-card);
-  padding: 22px 24px;
+  padding: var(--onroda-padding-card-sm) var(--onroda-space-10);
   border-radius: var(--onroda-radius-card);
   border: 1px solid var(--onroda-border);
 }
@@ -31,7 +54,7 @@
 .admin-stat-label {
   color: var(--onroda-text-grey);
   font-size: 0.95rem;
-  margin-bottom: 10px;
+  margin-bottom: var(--onroda-space-3);
   font-weight: 500;
 }
 
@@ -46,13 +69,13 @@
   background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-card);
-  padding: 20px;
+  padding: var(--onroda-space-8);
 }
 
 .admin-filter-grid {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr minmax(140px, 180px);
-  gap: 12px;
+  gap: var(--onroda-space-4);
 }
 
 @media (max-width: 960px) {
@@ -70,7 +93,7 @@
 .admin-filter-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--onroda-space-2);
   min-width: 0;
 }
 
@@ -87,7 +110,7 @@
   border: 1px solid var(--onroda-border-outline);
   background: var(--onroda-bg-light);
   color: var(--onroda-text-primary);
-  padding: 0 12px;
+  padding: 0 var(--onroda-space-4);
   outline: none;
   width: 100%;
   min-width: 0;
@@ -112,7 +135,7 @@
   border-radius: var(--onroda-radius-pill);
   cursor: pointer;
   font-weight: 700;
-  padding: 0 20px;
+  padding: 0 var(--onroda-space-8);
 }
 
 .admin-btn-refresh:hover {
@@ -127,11 +150,11 @@
 /* Formular primär = Homepage .btn-red */
 .admin-btn-primary {
   height: 42px;
-  padding: 0 25px;
+  padding: 0 var(--onroda-padding-btn-x);
   border: none;
   border-radius: var(--onroda-radius-pill);
   background: var(--onroda-red);
-  color: #ffffff;
+  color: var(--onroda-text-on-brand);
   font-weight: 700;
   cursor: pointer;
 }
@@ -154,7 +177,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--onroda-space-4);
   flex-wrap: wrap;
 }
 
@@ -167,7 +190,7 @@
 .admin-pagination {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--onroda-space-2);
   flex-wrap: wrap;
 }
 
@@ -179,7 +202,7 @@
   background: var(--onroda-bg-light);
   color: var(--onroda-text-dark);
   cursor: pointer;
-  padding: 0 12px;
+  padding: 0 var(--onroda-space-4);
   font-weight: 600;
 }
 
@@ -201,11 +224,11 @@
 
 .admin-page-dots {
   color: var(--onroda-text-muted);
-  padding: 0 4px;
+  padding: 0 var(--onroda-space-1);
 }
 
 .admin-info-banner {
-  padding: 22px;
+  padding: var(--onroda-space-9);
   color: var(--onroda-text-grey);
   background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
@@ -213,7 +236,7 @@
 }
 
 .admin-error-banner {
-  padding: 22px;
+  padding: var(--onroda-space-9);
   color: var(--onroda-error-text);
   background: var(--onroda-error-bg);
   border: 1px solid var(--onroda-error-border);
@@ -224,20 +247,23 @@
   background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-card);
-  padding: 24px;
+  padding: var(--onroda-space-10);
 }
 
 .admin-panel-card__title {
   font-weight: 800;
-  margin-bottom: 14px;
+  margin-bottom: var(--onroda-space-5);
   color: var(--onroda-red);
   font-size: 1.5rem;
 }
 
 .admin-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--onroda-grid-min-stat-compact), 1fr)
+  );
+  gap: var(--onroda-space-4);
 }
 
 .admin-page-section-title {
@@ -250,7 +276,7 @@
 
 .admin-page-section-sub {
   color: var(--onroda-text-grey);
-  margin: 8px 0 0;
+  margin: var(--onroda-space-2) 0 0;
   font-size: 0.95rem;
   font-weight: 500;
 }
@@ -258,25 +284,25 @@
 .admin-data-table {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--onroda-space-2);
 }
 
 .admin-data-table__head,
 .admin-data-table__row {
   display: grid;
-  gap: 12px;
+  gap: var(--onroda-space-4);
   align-items: center;
 }
 
 .admin-data-table__head {
   font-weight: 800;
   color: var(--onroda-text-dark);
-  padding-bottom: 10px;
+  padding-bottom: var(--onroda-space-3);
   border-bottom: 1px solid var(--onroda-border-subtle);
 }
 
 .admin-data-table__row {
-  padding: 10px 0;
+  padding: var(--onroda-space-3) 0;
   border-bottom: 1px solid var(--onroda-border-subtle);
   color: var(--onroda-text-grey);
   font-size: 0.95rem;
@@ -288,7 +314,7 @@
 
 .admin-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--onroda-font-size-mono);
 }
 
 .admin-table-card {
@@ -305,9 +331,9 @@
 
 .admin-table-row {
   display: grid;
-  gap: 12px;
+  gap: var(--onroda-space-4);
   align-items: center;
-  padding: 14px 16px;
+  padding: var(--onroda-space-5) var(--onroda-space-6);
   border-bottom: 1px solid var(--onroda-border-subtle);
   font-size: 0.95rem;
   color: var(--onroda-text-dark);
@@ -326,7 +352,7 @@
   color: var(--onroda-text-dark);
   border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-md);
-  padding: 8px 14px;
+  padding: var(--onroda-space-2) var(--onroda-space-5);
   font-weight: 700;
   cursor: pointer;
 }
@@ -348,23 +374,23 @@
 .admin-entity-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--onroda-gap-grid);
 }
 
 .admin-entity-card {
   background: var(--onroda-bg-card);
   border-radius: var(--onroda-radius-card);
   border: 1px solid var(--onroda-border);
-  padding: 24px 30px;
+  padding: var(--onroda-space-10) var(--onroda-padding-card);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--onroda-space-7);
 }
 
 .admin-entity-card__top {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--onroda-space-6);
   align-items: flex-start;
   flex-wrap: wrap;
 }
@@ -373,7 +399,7 @@
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--onroda-red);
-  margin-bottom: 6px;
+  margin-bottom: var(--onroda-space-1);
 }
 
 .admin-entity-card__meta {
@@ -384,25 +410,104 @@
 
 .admin-badge-row {
   display: flex;
-  gap: 8px;
+  gap: var(--onroda-space-2);
   flex-wrap: wrap;
+}
+
+/* Status-Badges (Fahrten, Unternehmer) — Farben nur über onroda-brand */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--onroda-radius-pill-badge);
+  padding: var(--onroda-badge-padding);
+  font-size: var(--onroda-badge-font-size);
+  font-weight: var(--onroda-badge-font-weight);
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-light);
+  color: var(--onroda-text-dark);
+  white-space: nowrap;
+}
+
+.admin-badge--ride-status-pending {
+  background: var(--onroda-badge-warn-bg);
+  color: var(--onroda-badge-warn-fg);
+}
+
+.admin-badge--ride-status-cancelled {
+  background: var(--onroda-badge-danger-bg);
+  color: var(--onroda-badge-danger-fg);
+}
+
+.admin-badge--ride-status-completed {
+  background: var(--onroda-badge-success-bg);
+  color: var(--onroda-badge-success-fg);
+}
+
+.admin-badge--ride-status-accepted,
+.admin-badge--ride-status-assigned {
+  background: var(--onroda-badge-info-bg);
+  color: var(--onroda-badge-info-fg);
+}
+
+.admin-badge--ride-dispatch-open-market {
+  background: var(--onroda-badge-success-bg);
+  color: var(--onroda-badge-success-fg);
+}
+
+.admin-badge--ride-dispatch-neutral {
+  background: var(--onroda-badge-neutral-bg);
+  color: var(--onroda-badge-neutral-fg);
+}
+
+.admin-badge--ride-mode-reservation {
+  background: var(--onroda-badge-info-bg);
+  color: var(--onroda-badge-info-fg);
+}
+
+.admin-badge--ride-mode-live {
+  background: var(--onroda-badge-accent-bg);
+  color: var(--onroda-badge-accent-fg);
+}
+
+.admin-badge--company-status-active {
+  background: var(--onroda-badge-success-bg);
+  color: var(--onroda-badge-success-fg);
+}
+
+.admin-badge--company-status-inactive {
+  background: var(--onroda-badge-danger-bg);
+  color: var(--onroda-badge-danger-fg);
+}
+
+.admin-badge--company-prio-yes {
+  background: var(--onroda-badge-info-bg);
+  color: var(--onroda-badge-info-fg);
+}
+
+.admin-badge--company-prio-no {
+  background: var(--onroda-badge-neutral-bg);
+  color: var(--onroda-badge-neutral-fg);
 }
 
 .admin-controls-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--onroda-grid-min-stat), 1fr)
+  );
+  gap: var(--onroda-space-5);
 }
 
 .admin-switch-row {
   background: var(--onroda-bg-light);
   border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-nav);
-  padding: 14px 16px;
+  padding: var(--onroda-space-5) var(--onroda-space-6);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--onroda-space-4);
   cursor: pointer;
 }
 
@@ -417,21 +522,24 @@
 
 .admin-fields-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--onroda-grid-min-stat-compact), 1fr)
+  );
+  gap: var(--onroda-space-5);
 }
 
 .admin-field-tile {
   background: var(--onroda-bg-light);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-nav);
-  padding: 16px;
+  padding: var(--onroda-space-6);
 }
 
 .admin-field-tile__label {
   color: var(--onroda-text-grey);
   font-size: 0.85rem;
-  margin-bottom: 8px;
+  margin-bottom: var(--onroda-space-2);
   font-weight: 600;
 }
 

@@ -56,3 +56,18 @@ export const fareAreasTable = pgTable("fare_areas", {
   fixed_price_allowed: text("fixed_price_allowed").notNull(),
   status: text("status").notNull(),
 });
+
+/** Partner-Panel (panel.onroda.de): Login pro Unternehmen, nur mit PostgreSQL. */
+export const panelUsersTable = pgTable("panel_users", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "restrict" }),
+  username: text("username").notNull(),
+  email: text("email").notNull().default(""),
+  password_hash: text("password_hash").notNull(),
+  role: text("role").notNull(),
+  is_active: boolean("is_active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

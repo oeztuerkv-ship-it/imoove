@@ -32,9 +32,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: var(--onroda-space-6);
   flex-wrap: wrap;
-  padding: 15px 5%;
+  padding: 15px var(--onroda-padding-content-x);
   border-bottom: 1px solid var(--onroda-border-subtle);
   background: var(--onroda-bg-light);
 }
@@ -62,7 +62,7 @@
 .admin-app__topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--onroda-space-4);
   flex-wrap: wrap;
 }
 
@@ -70,7 +70,7 @@
 .admin-search {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--onroda-space-2);
   min-width: 280px;
   height: 44px;
   padding: 0 14px;
@@ -82,7 +82,7 @@
 
 .admin-search:focus-within {
   border-color: var(--onroda-red);
-  box-shadow: 0 0 0 2px rgba(213, 0, 28, 0.12);
+  box-shadow: var(--onroda-shadow-focus-ring);
 }
 
 .admin-search__icon {
@@ -104,7 +104,7 @@
 /* Sekundär-Aktion (Outline) */
 .admin-btn-pill {
   height: 44px;
-  padding: 0 25px;
+  padding: 0 var(--onroda-padding-btn-x);
   border: 1px solid var(--onroda-border-outline);
   border-radius: var(--onroda-radius-pill);
   background: var(--onroda-bg-light);
@@ -126,11 +126,11 @@
 /* Primär-Aktion wie .btn-red auf der Homepage */
 .admin-btn-cta {
   height: 44px;
-  padding: 0 25px;
+  padding: 0 var(--onroda-padding-btn-x);
   border: none;
   border-radius: var(--onroda-radius-pill);
   background: var(--onroda-red);
-  color: #ffffff;
+  color: var(--onroda-text-on-brand);
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s ease, filter 0.15s ease;
@@ -155,7 +155,7 @@
 
 /* Inhalt wie Homepage-Sections: seitlicher Abstand 5 % */
 .admin-app__content-inner {
-  padding: 28px 5%;
+  padding: var(--onroda-padding-content-y) var(--onroda-padding-content-x);
   min-width: 0;
   max-width: 100%;
 }
@@ -164,7 +164,7 @@
   background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);
   border-radius: var(--onroda-radius-card);
-  padding: 30px;
+  padding: var(--onroda-padding-card);
 }
 
 .admin-placeholder__title {
@@ -186,7 +186,7 @@
   width: 100%;
   min-height: 100vh;
   background: var(--onroda-bg-light);
-  padding: 22px 18px;
+  padding: var(--onroda-padding-card-sm) var(--onroda-space-7);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -197,8 +197,8 @@
 .admin-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
+  gap: var(--onroda-space-4);
+  margin-bottom: var(--onroda-space-11);
 }
 
 .admin-sidebar__brand-icon {
@@ -206,7 +206,7 @@
   height: 40px;
   border-radius: var(--onroda-radius-icon);
   background: var(--onroda-red);
-  color: #ffffff;
+  color: var(--onroda-text-on-brand);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -241,7 +241,7 @@
 .admin-sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--onroda-space-1);
 }
 
 .admin-sidebar__link {
@@ -249,14 +249,14 @@
   background: transparent;
   color: var(--onroda-text-dark);
   border-radius: var(--onroda-radius-nav);
-  padding: 12px 14px;
+  padding: var(--onroda-space-4) var(--onroda-space-5);
   text-align: left;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--onroda-space-4);
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -291,17 +291,17 @@
 
 .admin-sidebar__icon--active {
   background: var(--onroda-red);
-  color: #ffffff;
+  color: var(--onroda-text-on-brand);
 }
 
 .admin-sidebar__footer {
   border-top: 1px solid var(--onroda-border-subtle);
-  padding-top: 16px;
+  padding-top: var(--onroda-space-6);
 }
 
 .admin-sidebar__footer-title {
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: var(--onroda-space-1);
   color: var(--onroda-text-dark);
 }
 

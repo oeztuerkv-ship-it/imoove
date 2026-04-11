@@ -175,7 +175,12 @@ app.get("/", (req, res, next) => {
       healthV1: "/api/v1/health",
       admin: "/admin",
       adminPanel: "/partners/",
-      partnerAuth: "/api/auth/panel-login",
+      partnerAuth: {
+        googlePanelStart: "/api/auth/panel-login",
+        panelPasswordLogin: "/api/panel-auth/login",
+        panelMe: "/api/panel-auth/me",
+        panelLogout: "/api/panel-auth/logout",
+      },
     });
   }
   /* z. B. admin.onroda.de: Root auf gebaute App unter /partners/ */

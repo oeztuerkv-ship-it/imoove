@@ -48,3 +48,21 @@ CREATE TABLE IF NOT EXISTS fare_areas (
   fixed_price_allowed TEXT NOT NULL,
   status TEXT NOT NULL
 );
+
+-- Partner-Panel (panel.onroda.de): Benutzer pro Unternehmen, Passwort-Login nur über diese Tabelle.
+CREATE TABLE IF NOT EXISTS panel_users (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE RESTRICT,
+  username TEXT NOT NULL,
+  email TEXT NOT NULL DEFAULT '',
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT panel_users_role_chk CHECK (role IN ('owner', 'manager', 'staff'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS panel_users_username_lower ON panel_users (lower(username));
+
+CREATE INDEX IF NOT EXISTS panel_users_company_id_idx ON panel_users (company_id);

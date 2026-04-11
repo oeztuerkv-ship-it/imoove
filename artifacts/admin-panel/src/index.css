@@ -1,5 +1,8 @@
-/* Marken-Basis (gemeinsam mit Homepage: artifacts/api-server/static/onroda-brand.css) */
-@import "../../api-server/static/onroda-brand.css";
+/**
+ * Admin: Layout-Helfer für #root.
+ * onroda-brand.css wird in main.jsx als ERSTES geladen — nicht hier importieren,
+ * damit keine spätere Datei die Reihenfolge verwischt.
+ */
 
 * {
   box-sizing: border-box;
