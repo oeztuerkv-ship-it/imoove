@@ -6,4 +6,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === 'build' ? '/partners/' : '/',
+  /* Dev / vite preview: sonst „Blocked request … host is not allowed“ bei Zugriff über echte Domain. */
+  server: {
+    allowedHosts: ["admin.onroda.de"],
+  },
+  preview: {
+    allowedHosts: ["admin.onroda.de"],
+  },
 }))
