@@ -5,7 +5,7 @@ alwaysApply: true
 
 # imoove: Git & Deployment
 
-**Einstieg für Menschen & Agents:** Repo-Root **`AGENTS.md`** (Invarianten, Deploy, DB) und **`./scripts/verify-onroda-repo-invariants.sh`** (CI + lokal).
+**Einstieg für Menschen & Agents:** Repo-Root **`AGENTS.md`** (Invarianten, Deploy, DB), **`./scripts/verify-onroda-repo-invariants.sh`** (lokal) und **GitHub Actions** `repo-invariants.yml` (Invarianten + Panel-Lint + API-Build auf `main`).
 
 ## Grundsatz
 

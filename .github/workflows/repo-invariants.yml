@@ -1,4 +1,4 @@
-# Verhindert Regressionen bei zentralen Onroda-Invarianten (siehe AGENTS.md).
+# Grundregeln aus AGENTS.md: Invarianten-Skript, Panel-Lint, API-Bundle (kein stiller Drift).
 name: repo-invariants
 
 on:
@@ -7,10 +7,49 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   invariants:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify repo invariants
+      - name: Repo-Invarianten (scrypt, TEXT company_id, Migrationen, Build-Pfade)
         run: bash scripts/verify-onroda-repo-invariants.sh
+
+  panel-lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        panel: [partner-panel, admin-panel]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: artifacts/${{ matrix.panel }}/package-lock.json
+      - name: ESLint (${{ matrix.panel }})
+        working-directory: artifacts/${{ matrix.panel }}
+        run: |
+          npm ci
+          npm run lint
+
+  api-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: Install workspace (Lockfile)
+        run: CI=true pnpm install --frozen-lockfile
+      - name: Build API bundle (esbuild)
+        run: pnpm --filter @workspace/api-server run build

@@ -34,12 +34,18 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 ## Automatische Repo-Prüfung
 
-Vor größeren Änderungen oder im CI:
+Lokal oder in **GitHub Actions** (Workflow `repo-invariants.yml` auf **push/PR → `main`**):
+
+| Prüfung | Was passiert bei Verstoß |
+|--------|---------------------------|
+| **`scripts/verify-onroda-repo-invariants.sh`** | `maxmem`, kein `integer("company_id")`, `init`+`schema`, **lückenlose** Migrationen `001_…sql`–`00N_…sql`, exakte **Build-Skripte** (API `node ./build.mjs`, Partner `vite build`, Admin mit `--base /partners/`), `panelApi` enthält `/panel/v1/rides` |
+| **ESLint** | `artifacts/partner-panel` und `artifacts/admin-panel` jeweils `npm ci && npm run lint` |
+| **API-Build** | `pnpm install --frozen-lockfile` + `pnpm --filter @workspace/api-server run build` — fängt kaputte Bundles/Imports früh |
+
+Lokal nur das Skript:
 
 ```bash
 ./scripts/verify-onroda-repo-invariants.sh
 ```
 
-Scheitert das Skript, erst beheben, dann deployen oder mergen.
-
-**Neue DB-Migration `007_…`:** dieselbe Nummerierung im Skript `scripts/verify-onroda-repo-invariants.sh` ergänzen (Schleife `for n in …`), damit die Reihenfolge nicht vergessen wird.
+**Neue Migration:** Datei **`007_beschreibung.sql`** (drei Ziffern, Unterstrich, keine Lücken, keine doppelte Nummer). Das Skript prüft die Kette automatisch — keine manuelle Liste mehr pflegen.
