@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Onroda Produktions-Deploy: Pull → DB-Migrationen (nachverfolgt) → API-Build → Panel-Builds → PM2 (+ optional rsync / Nginx).
-# Voraussetzung: Repo-Root (imoove), pnpm (Workspace), npm (Panels), psql, pm2;
+# Voraussetzung: Repo-Root (imoove), pnpm (Workspace; Root-preinstall verbietet npm install), psql, pm2;
 # DATABASE_URL in der Umgebung oder in artifacts/api-server/.env
 set -euo pipefail
 
@@ -238,12 +238,13 @@ do_api_build() {
 
 do_panel_builds() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] (cd \"$ADMIN_DIR\" && npm ci && npm run build)"
-    echo "[dry-run] (cd \"$PARTNER_DIR\" && npm ci && npm run build)"
+    echo "[dry-run] (cd \"$ROOT\" && pnpm --filter admin-panel run build)"
+    echo "[dry-run] (cd \"$ROOT\" && pnpm --filter partner-panel run build)"
     return 0
   fi
-  (cd "$ADMIN_DIR" && npm ci && npm run build)
-  (cd "$PARTNER_DIR" && npm ci && npm run build)
+  # Workspace-Lockfile am Root; kein npm ci in den Panel-Ordnern (Root: preinstall → „Use pnpm instead“).
+  (cd "$ROOT" && pnpm --filter admin-panel run build)
+  (cd "$ROOT" && pnpm --filter partner-panel run build)
 }
 
 do_pm2() {

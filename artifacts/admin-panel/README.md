@@ -14,7 +14,7 @@ Web-Admin für Betrieb/Backoffice. **Offizieller Ort im Monorepo:** `artifacts/a
    **Ja (Option A):** Eine Quelle der Wahrheit — API und Admin im selben Repo, Deploy nur noch `git pull` + Build.
 
 3. **Wie kommt der Server-Stand hierher?**  
-   Einmalig synchronisieren (siehe unten), danach `./scripts/verify-admin-panel-source.sh`, `npm install` / `npm run build`, dann `git add` / `commit` / `push`.
+   Einmalig synchronisieren (siehe unten), danach `./scripts/verify-admin-panel-source.sh`, **vom Repo-Root** `pnpm install --frozen-lockfile` und `pnpm --filter admin-panel run build` (im **Root** verbietet `package.json` → `preinstall` bewusst `npm install` mit „Use pnpm instead“), dann `git add` / `commit` / `push`.
 
 4. **Einzige Quelle künftig:**  
    **`artifacts/admin-panel/` im Git-Repo** (lokal + `main`). Der Server-Pfad ist nur **Deployment-Ziel**, keine zweite Entwicklungsquelle.
@@ -31,10 +31,8 @@ Im **Repo-Root** `imoove`:
 cp .env.deploy.example .env.deploy   # optional: ADMIN_SERVER=root@… eintragen
 ADMIN_SERVER=root@DEIN_HOST ./scripts/import-admin-panel-from-server.sh
 ./scripts/verify-admin-panel-source.sh
-cd artifacts/admin-panel
-npm install
-npm run build
-cd ../..
+pnpm install --frozen-lockfile
+pnpm --filter admin-panel run build
 git add artifacts/admin-panel
 git status   # .env / node_modules dürfen nicht dabei sein
 git commit -m "chore(admin-panel): import live source from server"
@@ -48,7 +46,7 @@ git push origin main
 ```bash
 ADMIN_LOCAL_PATH=~/admin-panel-src ./scripts/import-admin-panel-from-server.sh
 ./scripts/verify-admin-panel-source.sh
-# … wie oben npm install, build, commit
+# … wie oben pnpm install --frozen-lockfile, pnpm --filter admin-panel run build, commit
 ```
 
 Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, `node_modules`), damit nur **Source + Configs** ins Repo kommen; der Build entsteht lokal/auf dem Server neu.
@@ -62,18 +60,25 @@ Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, 
 ```bash
 cd /root/imoove
 git pull origin main
-cd artifacts/api-server && pnpm install && pnpm run build
-cd ../admin-panel && npm ci && npm run build
+pnpm install --frozen-lockfile
+pnpm --filter @workspace/api-server run build
+pnpm --filter admin-panel run build
 pm2 restart <api-prozess>
 ```
 
+**Verbindlich für volle Deploy-Kette (Migrationen, Schema-Check, Partner-Panel):** `./scripts/deploy-onroda-production.sh` im Repo-Root — nutzt ebenfalls **pnpm** für API- und Panel-Builds (kein `npm ci` in den Panel-Ordnern).
+
 Das Admin-Panel wird unter **`/partners/`** ausgeliefert (`vite` mit `base: /partners/`). Der API-Server liest den Build aus **`artifacts/admin-panel/dist`** (siehe `resolvePublicRoot` in `app.ts`). Root-URLs nicht-API-Hosts (z. B. Admin-Subdomain) leiten nach **`/partners/`** um.
 
-(`npm ci` setzt `package-lock.json` im Repo voraus. Paketmanager/PM2-Name bei Bedarf anpassen.)
+(Abhängigkeiten und Lockfile: **Repo-Root** `pnpm-lock.yaml` — keine `package-lock.json` in den Panel-Ordnern.)
+
+### Optional: eigenes PM2-App (Vite Preview auf Port 3001)
+
+Wenn Nginx `admin.*` direkt auf einen Node-Prozess legen soll (statt statisch über die API): nach `pnpm --filter admin-panel run build` **`ecosystem.config.cjs`** nutzen — App **`onroda-admin-panel`** führt **`pnpm run preview:prod`** aus (**127.0.0.1:3001**, `base` `/partners/`). Start: `pm2 start ecosystem.config.cjs --only onroda-admin-panel` (siehe Kommentare in der Datei).
 
 ## Verifikation `/partners/` (Build + HTTP)
 
-Nach `npm run build` im Admin- und API-Server:
+Nach `pnpm --filter admin-panel run build` (und API-Build):
 
 ```bash
 # Nur prüfen, ob dist/index.html und /partners/assets/* auf der Platte existieren:

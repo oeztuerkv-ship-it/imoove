@@ -27,16 +27,17 @@ jobs:
         panel: [partner-panel, admin-panel]
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: artifacts/${{ matrix.panel }}/package-lock.json
+          cache: pnpm
+      - name: Install workspace (Lockfile)
+        run: CI=true pnpm install --frozen-lockfile
       - name: ESLint (${{ matrix.panel }})
-        working-directory: artifacts/${{ matrix.panel }}
-        run: |
-          npm ci
-          npm run lint
+        run: pnpm --filter ${{ matrix.panel }} run lint
 
   api-build:
     runs-on: ubuntu-latest

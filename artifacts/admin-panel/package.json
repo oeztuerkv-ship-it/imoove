@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "preinstall": "sh -c 'case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "dev": "vite",
     "dev:public": "vite --host 0.0.0.0 --port 5174",
     "build": "vite build --base /partners/",
     "lint": "eslint .",
-    "preview": "vite preview --base /partners/"
+    "preview": "vite preview --base /partners/",
+    "preview:prod": "vite preview --base /partners/ --host 127.0.0.1 --port 3001"
   },
   "dependencies": {
     "react": "^19.2.4",

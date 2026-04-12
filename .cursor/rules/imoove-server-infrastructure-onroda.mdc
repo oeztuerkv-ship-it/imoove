@@ -90,7 +90,7 @@ Symptom „alles 500“ kann z. B. nur **fehlendes DB-Schema** sein, obwohl Ng
 - **`rides.company_id`** muss **TEXT** sein wie `admin_companies.id` — kein Mix **INTEGER** (Legacy) und TEXT; sonst scheitert `GET /api/panel/v1/rides` mit 500 bei Vergleich mit `co-demo-1`. Reparatur: Migration **`006_rides_legacy_schema_repair.sql`** (und Daten-Backfill).
 - **Code vor DB deployen** ohne Migration → 500 (fehlende Spalten). Jede Änderung an `schema.ts` / neuen Queries braucht **Migration** und Reihenfolge 001–006 auf der DB.
 - **API-`dist`:** Build **auf dem Server** ausführen (`pnpm run build` / `node build.mjs` in `artifacts/api-server`), nicht auf fremden Rechner-`dist` vertrauen — sonst 502 durch Pfade wie `/Users/.../thread-stream-worker.mjs` im Bundle.
-- **Partner-Panel:** zusätzlich `artifacts/partner-panel`: `npm ci && npm run build`, sonst ist nur die API neu, die Panel-UI alt.
+- **Partner-Panel:** zusätzlich `artifacts/partner-panel`: vom Repo-Root `pnpm --filter partner-panel run build`, sonst ist nur die API neu, die Panel-UI alt.
 - **Panel-Passwort (`password.ts`):** `scrypt`-**`maxmem`** im Repo **64 MiB** (`64 * 1024 * 1024`) — zu klein → `verifyPassword` schlägt fehl → Login immer `invalid_credentials`. Wert nicht wieder verkleinern.
 
 ## Für Agents

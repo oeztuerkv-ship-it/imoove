@@ -1,0 +1,34 @@
+Reihenfolge für PostgreSQL (Produktion / frische DB)
+====================================================
+Alle Dateien sind idempotent (IF NOT EXISTS / ADD COLUMN IF NOT EXISTS), wo möglich.
+Am zuverlässigsten: Deploy-Skript aus dem Repo-Root:
+
+  DATABASE_URL="postgresql://…" bash scripts/deploy-onroda-production.sh --only-migrations
+
+Manuell (gleiche Sortierung wie das Skript — nach Dateinamen 001_, 002_, …):
+
+  cd /pfad/zu/imoove/artifacts/api-server
+  export DATABASE_URL="postgresql://…"
+
+  for f in src/db/migrations/[0-9][0-9][0-9]_*.sql; do
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+  done
+
+  # Tracker (optional, wenn ihr das Deploy-Skript nutzt — sonst fehlt onroda_deploy_migrations):
+  # Das Skript deploy-onroda-production.sh trägt nach jedem -f automatisch in onroda_deploy_migrations ein.
+
+Wichtige rides-Spalten (Panel / API) und Migrationen:
+  scheduled_at, from_*/to_* …     → 006_rides_legacy_schema_repair.sql (u. a.)
+  ride_kind, payer_kind,
+    voucher_code, billing_reference → 008_rides_ride_kind_payer_kind.sql
+  authorization_source,
+    access_code_id                 → 009_access_codes_and_ride_authorization.sql (inkl. Tabelle access_codes)
+  access_code_normalized_snapshot → 012_rides_access_code_normalized_snapshot.sql
+  partner_booking_meta           → 013_rides_partner_booking_meta.sql
+  partner_ride_series (Tabelle)  → 014_partner_ride_series.sql
+
+Nach Migrationen Schema prüfen:
+
+  bash scripts/verify-onroda-db-schema.sh
+
+PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 14+ wie bei den meisten Hetzner/Ubuntu-Stacks.

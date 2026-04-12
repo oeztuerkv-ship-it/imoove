@@ -10,7 +10,7 @@ DIST="$ROOT/artifacts/admin-panel/dist"
 INDEX="$DIST/index.html"
 
 if [[ ! -f "$INDEX" ]]; then
-  echo "Fehlt: $INDEX — bitte zuerst: cd artifacts/admin-panel && npm run build" >&2
+  echo "Fehlt: $INDEX — bitte zuerst: pnpm --filter admin-panel run build (Repo-Root)" >&2
   exit 1
 fi
 
