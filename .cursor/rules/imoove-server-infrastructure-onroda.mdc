@@ -7,6 +7,8 @@ alwaysApply: true
 
 **Invarianten & Deploy-Überblick:** siehe **`AGENTS.md`** im Repo-Root; automatische Checks: **`scripts/verify-onroda-repo-invariants.sh`**.
 
+**Reproduzierbarer Live-Stand:** `./scripts/deploy-onroda-production.sh` (Pull, Migrationen mit Tracker `onroda_deploy_migrations`, API- + Panel-Builds, PM2, optional rsync/Nginx) — Details in **`AGENTS.md`** und **`imoove-git-deployment-workflow.mdc`**.
+
 ## Typischer Fehler (Postmortem)
 
 Probleme wirken oft wie „Code kaputt“, sind aber oft **Mischzustände**:

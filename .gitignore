@@ -7,6 +7,9 @@
 # Lokaler Deploy/Import (SSH-Host o. Ä., nicht committen)
 .env.deploy
 
+# Server-/lokale Deploy-Overrides für scripts/deploy-onroda-production.sh
+scripts/onroda-deploy.env
+
 # Firebase Admin / GCP Service Accounts (niemals committen)
 **/*firebase-adminsdk*.json
 **/*-adminsdk-*.json

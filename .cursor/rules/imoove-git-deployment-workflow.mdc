@@ -45,41 +45,34 @@ git push origin main
 
 ## Auf dem Server (nur Deployment)
 
-**Admin-Panel**
+**Empfohlen: ein fester Ablauf**
+
+```bash
+cd /root/imoove
+./scripts/deploy-onroda-production.sh
+```
+
+Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabelle `onroda_deploy_migrations` in derselben DB) → Workspace-`pnpm install --frozen-lockfile` + API-Build (`pnpm --filter @workspace/api-server run build`) → **admin-panel** und **partner-panel** jeweils `npm ci && npm run build` → optional `rsync` (siehe `scripts/onroda-deploy.example.env`) → `pm2 restart` (Default: `onroda-api --update-env`).
+
+- **DB war schon voll migriert, Tracker ist neu:** einmalig `./scripts/deploy-onroda-production.sh --seed-migration-tracker` ausführen, bevor das normale Deploy die `001_…`-Dateien erneut anwendet.
+- **Nur Migrationen:** `./scripts/deploy-onroda-production.sh --only-migrations`
+- **Trockenlauf:** `./scripts/deploy-onroda-production.sh --dry-run`
+
+**Panel-Static vs PM2:** Unter der Standard-Architektur liefert die **API-Node-Instanz** die gebauten SPAs aus `artifacts/admin-panel/dist` (`/partners/`) und `artifacts/partner-panel/dist` (Panel-Host) — siehe `artifacts/api-server/src/app.ts`. PM2 startet typisch **nur** die API; getrennte PM2-Apps für „nur Static“ sind dann redundant, sofern Nginx auf `127.0.0.1:3000` proxyt. Wenn Nginx stattdessen auf `/var/www/…` ausliefert, nach jedem Build synchronisieren (`ONRODA_RSYNC_*`) oder Nginx-Pfade auf die Repo-`dist`-Ordner legen.
+
+**Manuell (Fallback)**
 
 ```bash
 cd /root/imoove
 git pull origin main
-cd artifacts/admin-panel
-npm ci
-npm run build
-pm2 restart onroda-admin
-```
-
-**API + Partner-Panel (typischer Gesamtstand nach Panel-/Ride-Änderungen)**
-
-1. `git pull origin main`
-2. **PostgreSQL:** neue Migrationen in `artifacts/api-server/src/db/migrations/` nacheinander einspielen (001 … 006 je nach Stand), **bevor** die neue API läuft — sonst 500 durch fehlende Spalten oder falschen `company_id`-Typ.
-3. API bauen und Prozess neu starten, z. B.:
-
-```bash
-cd /root/imoove/artifacts/api-server
-pnpm install   # oder npm ci, je nach Setup
-pnpm run build # bzw. node ./build.mjs
+# Migrationen: siehe artifacts/api-server/src/db/migrations/ — vor API-Start einspielen
+cd /root/imoove && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
+cd artifacts/admin-panel && npm ci && npm run build
+cd ../partner-panel && npm ci && npm run build
 pm2 restart onroda-api --update-env
 ```
 
-4. Partner-Panel bauen (sonst alte UI trotz neuer API):
-
-```bash
-cd /root/imoove/artifacts/partner-panel
-npm ci
-npm run build
-```
-
-5. Kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Fahrten-Seite, CSV-Export.
-
-(Paketmanager/PM2-Namen bei Bedarf anpassen.)
+Kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Admin `/partners/`, CSV-Export.
 
 ## `.gitignore` (Pflichtgedanke)
 

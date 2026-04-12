@@ -26,11 +26,29 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 ## Deploy-Checkliste (Kurz)
 
-1. `git pull` auf dem Server (sauberer Stand).
-2. **Migrationen** nacheinander einspielen, soweit noch nicht geschehen.
-3. API **lokal auf dem Server** bauen und API-Prozess neu starten.
-4. **partner-panel** (und bei Bedarf admin-panel) bauen.
-5. Stichprobe: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Fahrten-UI, CSV.
+**Standard (ein Skript):** Auf dem Zielserver im Repo-Root:
+
+```bash
+./scripts/deploy-onroda-production.sh
+```
+
+Voraussetzungen: `pnpm`, `npm`, `psql`, `pm2`; `DATABASE_URL` in `artifacts/api-server/.env` (oder in der Shell). Optional: `scripts/onroda-deploy.env` aus `scripts/onroda-deploy.example.env` anlegen (PM2-Namen, rsync-Ziele, Nginx-Reload).
+
+- **Erste Nutzung auf einer DB, die schon manuell alle Migrationen hatte:** einmalig Tracker füllen, sonst würde das Skript `001_…` erneut ausführen:
+
+  ```bash
+  ./scripts/deploy-onroda-production.sh --seed-migration-tracker
+  ```
+
+- **Trockenlauf (ohne DB, ohne echte Builds):** `./scripts/deploy-onroda-production.sh --dry-run --skip-git-pull`
+- **Nur ausstehende Migrationen:** `./scripts/deploy-onroda-production.sh --only-migrations`
+- **Status:** `./scripts/deploy-onroda-production.sh --list-migrations`
+
+Ablauf im Skript: `git pull` → fehlende SQL-Migrationen (Tabelle `onroda_deploy_migrations` im gleichen PostgreSQL) → `pnpm install --frozen-lockfile` + API-Build → `npm ci` + Build für **admin-panel** und **partner-panel** → optional rsync → `pm2 restart` (Default: `onroda-api`).
+
+**Live-Pfad der Panel-Assets:** Die API liest standardmäßig die gebauten Ordner `artifacts/admin-panel/dist` und `artifacts/partner-panel/dist` relativ zum API-`dist` (siehe `artifacts/api-server/src/app.ts`). Es ist **kein** separates PM2-Frontend nötig, solange Nginx auf **eine** Node-Instanz (Port **3000**) proxyt und keine veralteten Kopien unter `/var/www/…` ausliefert. Wenn eure Nginx-Konfiguration doch auf statische Verzeichnisse zeigt, nach dem Build `ONRODA_RSYNC_*` setzen oder die Pfade anpassen.
+
+Manuell (falls ohne Skript): 1) `git pull` 2) Migrationen 3) API-Build + PM2 4) beide Panel-Builds 5) Stichprobe.
 
 ## Automatische Repo-Prüfung
 
