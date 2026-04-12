@@ -50,12 +50,12 @@ import { resolveEffectivePanelModules } from "../domain/panelModules";
 import type { PanelUserProfileRow } from "../db/panelAuthData";
 import type { PanelRole } from "../lib/panelJwt";
 import {
+  canPartnerAssignPanelRole,
   isPanelRoleString,
-  panelCan,
   permissionsForRole,
-  type PanelPermission,
 } from "../lib/panelPermissions";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
 const router: IRouter = Router();
@@ -80,30 +80,6 @@ async function assertActivePanelProfile(req: PanelAuthRequest, res: Response) {
     return null;
   }
   return { claims, profile };
-}
-
-function denyUnless(
-  res: Response,
-  profileRole: string,
-  permission: PanelPermission,
-): profileRole is PanelRole {
-  if (!isPanelRoleString(profileRole)) {
-    res.status(403).json({ error: "forbidden" });
-    return false;
-  }
-  if (!panelCan(profileRole, permission)) {
-    res.status(403).json({ error: "forbidden", hint: permission });
-    return false;
-  }
-  return true;
-}
-
-function canAssignPanelRole(actor: PanelRole, target: PanelRole): boolean {
-  if (actor === "owner") return true;
-  if (actor === "manager") {
-    return target === "manager" || target === "staff" || target === "readonly";
-  }
-  return false;
 }
 
 function enabledPanelModules(profile: PanelUserProfileRow): PanelModuleId[] {
@@ -380,7 +356,7 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "company_profile")) return;
-    if (!denyUnless(res, ctx.profile.role, "company.update")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
 
     const body = req.body as Record<string, unknown>;
     const str = (k: string) => (typeof body[k] === "string" ? body[k] : undefined);
@@ -447,7 +423,7 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
     const rides = await listRidesForCompany(ctx.claims.companyId);
     const ids = rides.map((r) => r.createdByPanelUserId).filter((x): x is string => Boolean(x));
     const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
@@ -467,7 +443,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
 
       const body = req.body as Record<string, unknown>;
       const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
@@ -623,7 +599,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "hotel_mode")) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
 
     const body = req.body as Record<string, unknown>;
     const guestName =
@@ -752,7 +728,7 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
 
     const body = req.body as Record<string, unknown>;
     const patientReference =
@@ -924,7 +900,7 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "recurring_rides")) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
 
     const body = req.body as Record<string, unknown>;
     const patientReference =
@@ -1110,7 +1086,7 @@ router.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) =
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
     const parsed = billingFiltersFromQuery(normalizeQueryRecord(req.query as Record<string, unknown>));
     if (!parsed.ok) {
@@ -1141,7 +1117,7 @@ router.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, nex
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
 
     const parsed = billingFiltersFromQuery(normalizeQueryRecord(req.query as Record<string, unknown>));
     if (!parsed.ok) {
@@ -1165,7 +1141,7 @@ router.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, n
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "recurring_rides")) return;
-    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
     const items = await listPartnerRideSeriesForCompany(ctx.claims.companyId);
     res.json({ ok: true, items });
   } catch (e) {
@@ -1178,7 +1154,7 @@ router.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =>
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
-    if (!denyUnless(res, ctx.profile.role, "access_codes.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "access_codes.read")) return;
     const items = await listAccessCodesForCompany(ctx.claims.companyId);
     res.json({ ok: true, items });
   } catch (e) {
@@ -1191,7 +1167,7 @@ router.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
-    if (!denyUnless(res, ctx.profile.role, "access_codes.manage")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "access_codes.manage")) return;
     const body = req.body as Record<string, unknown>;
     const generateCode = body.generateCode === true;
     const result = await insertAccessCodeAdmin({
@@ -1245,7 +1221,7 @@ router.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, ne
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
-    if (!denyUnless(res, ctx.profile.role, "access_codes.manage")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "access_codes.manage")) return;
     const id = typeof req.params.id === "string" ? req.params.id : "";
     if (!id) {
       res.status(400).json({ error: "id_required" });
@@ -1285,7 +1261,7 @@ router.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, n
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
-    if (!denyUnless(res, ctx.profile.role, "self.change_password")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "self.change_password")) return;
       const body = req.body as { currentPassword?: string; newPassword?: string };
       const cur = typeof body.currentPassword === "string" ? body.currentPassword : "";
       const neu = typeof body.newPassword === "string" ? body.newPassword : "";
@@ -1329,7 +1305,7 @@ router.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
-    if (!denyUnless(res, ctx.profile.role, "users.read")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "users.read")) return;
     const users = await listPanelUsersInCompany(ctx.claims.companyId);
     res.json({ ok: true, users });
   } catch (e) {
@@ -1342,7 +1318,7 @@ router.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
-    if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "users.manage")) return;
     const body = req.body as { username?: string; email?: string; role?: string; password?: string };
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
@@ -1357,7 +1333,7 @@ router.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     const targetRole = roleRaw as PanelRole;
-    if (!canAssignPanelRole(ctx.profile.role as PanelRole, targetRole)) {
+    if (!canPartnerAssignPanelRole(ctx.profile.role as PanelRole, targetRole)) {
       res.status(403).json({ error: "forbidden_role_assignment" });
       return;
     }
@@ -1397,7 +1373,7 @@ router.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => 
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
-    if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "users.manage")) return;
       const { id } = req.params;
       if (!id) {
         res.status(400).json({ error: "id_required" });
@@ -1435,7 +1411,7 @@ router.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => 
           return;
         }
         const tr = body.role.trim() as PanelRole;
-        if (!canAssignPanelRole(ctx.profile.role as PanelRole, tr)) {
+        if (!canPartnerAssignPanelRole(ctx.profile.role as PanelRole, tr)) {
           res.status(403).json({ error: "forbidden_role_assignment" });
           return;
         }
@@ -1497,7 +1473,7 @@ router.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
-    if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "users.manage")) return;
     const id = typeof req.params.id === "string" ? req.params.id : "";
     if (!id) {
       res.status(400).json({ error: "id_required" });
@@ -1548,7 +1524,7 @@ router.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, 
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
-    if (!denyUnless(res, ctx.profile.role, "users.reset_password")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "users.reset_password")) return;
       const { id } = req.params;
       if (!id) {
         res.status(400).json({ error: "id_required" });

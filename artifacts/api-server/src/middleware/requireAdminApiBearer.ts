@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 /**
  * Schützt `/admin/*`-JSON-Endpunkte: `Authorization: Bearer <ADMIN_API_BEARER_TOKEN>`.
  * Ohne gesetztes Secret: in Produktion 503, in Entwicklung weiter (lokales Arbeiten).
+ * Modellübersicht: `docs/access-control.md` (Plattform-Admin vs Partner-Panel).
  */
 export const requireAdminApiBearer: RequestHandler = (req, res, next) => {
   const token = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();

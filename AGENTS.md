@@ -26,6 +26,7 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 ## API & Builds
 
+- **Zugriffskontrolle (Admin-Bearer vs Partner-JWT vs Mobile):** `artifacts/api-server/docs/access-control.md` — Matrix in `src/lib/panelPermissions.ts`, 403-Helfer `src/middleware/panelAccess.ts`.
 - **`artifacts/api-server`:** nach relevanten Änderungen **auf dem Zielsystem** bauen (`pnpm run build` / `node ./build.mjs`), PM2/Prozess neu starten. Kein blindes Vertrauen in mitgeliefertes `dist` von fremden Maschinen (Pfade in Bundles).
 - **Panel-Passwörter:** `artifacts/api-server/src/lib/password.ts` — `scrypt`-Option **`maxmem: 64 * 1024 * 1024`**. Nicht verkleinern; sonst schlägt `verifyPassword` fehl und der Panel-Login wirkt kaputt.
 
