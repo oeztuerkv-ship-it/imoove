@@ -41267,6 +41267,30 @@ async function listAccessCodesAdmin() {
   const rows = await db2.select().from(accessCodesTable);
   return rows.map(rowToAdmin);
 }
+async function listAccessCodesForCompany(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    return [...memByNormalized.values()].filter((m) => m.company_id === companyId).map(memToAdmin);
+  }
+  const rows = await db2.select().from(accessCodesTable).where(eq(accessCodesTable.company_id, companyId));
+  return rows.map(rowToAdmin);
+}
+async function patchAccessCodeForCompany(companyId, id, patch) {
+  if (patch.isActive === void 0) return { ok: false, error: "no_changes" };
+  const db2 = getDb();
+  if (!db2) {
+    for (const m of memByNormalized.values()) {
+      if (m.id === id && m.company_id === companyId) {
+        m.is_active = patch.isActive;
+        return { ok: true, item: memToAdmin(m) };
+      }
+    }
+    return { ok: false, error: "not_found" };
+  }
+  const updated = await db2.update(accessCodesTable).set({ is_active: patch.isActive }).where(and(eq(accessCodesTable.id, id), eq(accessCodesTable.company_id, companyId))).returning();
+  if (updated.length === 0) return { ok: false, error: "not_found" };
+  return { ok: true, item: rowToAdmin(updated[0]) };
+}
 async function insertAccessCodeAdmin(body) {
   const normalized = normalizeAccessCodeInput(body.code);
   if (!normalized) return { ok: false, error: "code_required" };
@@ -48398,7 +48422,9 @@ var ROLE_MATRIX = {
     "users.manage",
     "users.reset_password",
     "self.change_password",
-    "company.update"
+    "company.update",
+    "access_codes.read",
+    "access_codes.manage"
   ],
   manager: [
     "rides.read",
@@ -48407,10 +48433,12 @@ var ROLE_MATRIX = {
     "users.manage",
     "users.reset_password",
     "self.change_password",
-    "company.update"
+    "company.update",
+    "access_codes.read",
+    "access_codes.manage"
   ],
-  staff: ["rides.read", "rides.create", "users.read", "self.change_password"],
-  readonly: ["rides.read", "users.read", "self.change_password"]
+  staff: ["rides.read", "rides.create", "users.read", "self.change_password", "access_codes.read"],
+  readonly: ["rides.read", "users.read", "self.change_password", "access_codes.read"]
 };
 function isPanelRoleString(v) {
   return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
@@ -49214,6 +49242,96 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       }
     });
     res.status(201).json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
+    if (!denyUnless(res, ctx.profile.role, "access_codes.read")) return;
+    const items = await listAccessCodesForCompany(ctx.claims.companyId);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
+    if (!denyUnless(res, ctx.profile.role, "access_codes.manage")) return;
+    const body = req.body;
+    const result = await insertAccessCodeAdmin({
+      code: typeof body.code === "string" ? body.code : "",
+      codeType: typeof body.codeType === "string" ? body.codeType : "",
+      companyId: ctx.claims.companyId,
+      label: typeof body.label === "string" ? body.label : void 0,
+      maxUses: typeof body.maxUses === "number" ? body.maxUses : void 0,
+      validFrom: typeof body.validFrom === "string" ? body.validFrom : void 0,
+      validUntil: typeof body.validUntil === "string" ? body.validUntil : void 0
+    });
+    if (!result.ok) {
+      const err = result.error;
+      if (err === "code_duplicate") {
+        res.status(409).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID3(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "access_code.created",
+      subjectType: "access_code",
+      subjectId: result.item.id,
+      meta: { codeType: result.item.codeType, label: result.item.label }
+    });
+    res.status(201).json({ ok: true, item: result.item });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
+    if (!denyUnless(res, ctx.profile.role, "access_codes.manage")) return;
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const body = req.body;
+    if (typeof body.isActive !== "boolean") {
+      res.status(400).json({ error: "isActive_boolean_required" });
+      return;
+    }
+    const result = await patchAccessCodeForCompany(ctx.claims.companyId, id, { isActive: body.isActive });
+    if (!result.ok) {
+      if (result.error === "not_found") {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID3(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "access_code.updated",
+      subjectType: "access_code",
+      subjectId: id,
+      meta: { isActive: result.item.isActive }
+    });
+    res.json({ ok: true, item: result.item });
   } catch (e) {
     next(e);
   }

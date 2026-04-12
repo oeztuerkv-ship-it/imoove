@@ -102,5 +102,6 @@ if (!p.scripts.lint) process.exit(1);
 PANEL_API="${ROOT}/artifacts/api-server/src/routes/panelApi.ts"
 [[ -f "$PANEL_API" ]] || err "Fehlt: $PANEL_API"
 grep -q '/panel/v1/rides' "$PANEL_API" || err "panelApi.ts: /panel/v1/rides muss existieren"
+grep -q '/panel/v1/access-codes' "$PANEL_API" || err "panelApi.ts: /panel/v1/access-codes muss existieren"
 
 echo "verify-onroda-repo-invariants: OK"

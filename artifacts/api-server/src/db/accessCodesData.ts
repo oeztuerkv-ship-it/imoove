@@ -297,6 +297,43 @@ export async function listAccessCodesAdmin(): Promise<AdminAccessCodeRow[]> {
   return rows.map(rowToAdmin);
 }
 
+/** Nur Codes dieses Mandanten (Partner-Panel). */
+export async function listAccessCodesForCompany(companyId: string): Promise<AdminAccessCodeRow[]> {
+  const db = getDb();
+  if (!db) {
+    return [...memByNormalized.values()]
+      .filter((m) => m.company_id === companyId)
+      .map(memToAdmin);
+  }
+  const rows = await db.select().from(accessCodesTable).where(eq(accessCodesTable.company_id, companyId));
+  return rows.map(rowToAdmin);
+}
+
+export async function patchAccessCodeForCompany(
+  companyId: string,
+  id: string,
+  patch: { isActive?: boolean },
+): Promise<{ ok: true; item: AdminAccessCodeRow } | { ok: false; error: "not_found" | "no_changes" }> {
+  if (patch.isActive === undefined) return { ok: false, error: "no_changes" };
+  const db = getDb();
+  if (!db) {
+    for (const m of memByNormalized.values()) {
+      if (m.id === id && m.company_id === companyId) {
+        m.is_active = patch.isActive;
+        return { ok: true, item: memToAdmin(m) };
+      }
+    }
+    return { ok: false, error: "not_found" };
+  }
+  const updated = await db
+    .update(accessCodesTable)
+    .set({ is_active: patch.isActive })
+    .where(and(eq(accessCodesTable.id, id), eq(accessCodesTable.company_id, companyId)))
+    .returning();
+  if (updated.length === 0) return { ok: false, error: "not_found" };
+  return { ok: true, item: rowToAdmin(updated[0]!) };
+}
+
 /**
  * Neuen Freigabe-Code anlegen (Admin). `label` erscheint bei Fahrern ohne Klartext-Code.
  * `meta` (später erweiterbar via API): z. B. `{ "internalRef": "…", "intendedPassenger": "…" }` nur zur internen Zuordnung.

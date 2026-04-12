@@ -5,6 +5,7 @@ import RideCreatePage from "../pages/RideCreatePage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
 import ModulePlaceholderPage from "../pages/ModulePlaceholderPage.jsx";
+import AccessCodesPage from "../pages/AccessCodesPage.jsx";
 
 function ph(title, lead) {
   return <ModulePlaceholderPage title={title} lead={lead} />;
@@ -36,10 +37,7 @@ const PAGES = {
   "access-codes": {
     title: "Meine Freigabe-Codes",
     subtitle: "Digitale Kostenübernahme für Gäste und Kunden",
-    component: ph(
-      "Meine Freigabe-Codes",
-      "Hier verwalten Sie die Zugangscodes nur für Ihr Unternehmen — getrennt von der zentralen Plattform.",
-    ),
+    component: <AccessCodesPage />,
   },
   "hotel-mode": {
     title: "Hotelmodus",
