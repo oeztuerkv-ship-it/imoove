@@ -5,6 +5,8 @@ alwaysApply: true
 
 # imoove: Git & Deployment
 
+**Einstieg für Menschen & Agents:** Repo-Root **`AGENTS.md`** (Invarianten, Deploy, DB) und **`./scripts/verify-onroda-repo-invariants.sh`** (CI + lokal).
+
 ## Grundsatz
 
 - **`imoove` ist bereits ein Git-Repository** — **kein** erneutes `git init` im Projektroot.

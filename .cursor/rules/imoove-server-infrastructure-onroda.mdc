@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Onroda: Server-Infrastruktur (Stabilität, keine Drift)
 
+**Invarianten & Deploy-Überblick:** siehe **`AGENTS.md`** im Repo-Root; automatische Checks: **`scripts/verify-onroda-repo-invariants.sh`**.
+
 ## Typischer Fehler (Postmortem)
 
 Probleme wirken oft wie „Code kaputt“, sind aber oft **Mischzustände**:

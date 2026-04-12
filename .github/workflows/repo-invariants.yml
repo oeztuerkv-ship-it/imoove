@@ -1,0 +1,16 @@
+# Verhindert Regressionen bei zentralen Onroda-Invarianten (siehe AGENTS.md).
+name: repo-invariants
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repo invariants
+        run: bash scripts/verify-onroda-repo-invariants.sh
