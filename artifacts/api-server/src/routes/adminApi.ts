@@ -1,5 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
+import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
 import {
   addFareArea,
   getAdminStats,
@@ -8,7 +9,14 @@ import {
   patchCompanyPanelModules,
   patchCompanyPriority,
 } from "../db/adminData";
-import { insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
+import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
+import {
+  adminReleaseRide,
+  countRidesAdmin,
+  findRideAdminById,
+  listRidesAdminPage,
+  type AdminRideListQuery,
+} from "../db/ridesData";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
 export type { AdminAccessCodeRow, AdminDashboardStats, CompanyRow, FareAreaRow } from "./adminApi.types";
@@ -19,6 +27,42 @@ function parseStatsRevenueBound(v: unknown): Date | undefined {
   if (!s) return undefined;
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function parseIsoDateParam(v: unknown, endOfDay: boolean): Date | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s) return undefined;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return undefined;
+  if (endOfDay) {
+    d.setHours(23, 59, 59, 999);
+  }
+  return d;
+}
+
+function parseAdminRideListQuery(req: Request): { ok: true; query: AdminRideListQuery } | { ok: false; error: string } {
+  const q = req.query as Record<string, string | undefined>;
+  const query: AdminRideListQuery = {};
+  if (typeof q.companyId === "string" && q.companyId.trim()) query.companyId = q.companyId.trim();
+  if (typeof q.status === "string" && q.status.trim()) query.status = q.status.trim();
+  const cf = parseIsoDateParam(q.createdFrom, false);
+  const ct = parseIsoDateParam(q.createdTo, true);
+  if (cf) query.createdFrom = cf;
+  if (ct) query.createdTo = ct;
+  if (typeof q.rideKind === "string" && q.rideKind.trim()) {
+    const rk = parseRideKind(q.rideKind.trim());
+    if (!rk) return { ok: false, error: "ride_kind_invalid" };
+    query.rideKind = rk;
+  }
+  if (typeof q.payerKind === "string" && q.payerKind.trim()) {
+    const pk = parsePayerKind(q.payerKind.trim());
+    if (!pk) return { ok: false, error: "payer_kind_invalid" };
+    query.payerKind = pk;
+  }
+  if (typeof q.driverId === "string" && q.driverId.trim()) query.driverId = q.driverId.trim();
+  if (typeof q.q === "string" && q.q.trim()) query.q = q.q.trim();
+  return { ok: true, query };
 }
 
 const router: IRouter = Router();
@@ -48,6 +92,57 @@ adminJson.get("/companies", async (_req, res, next) => {
   try {
     const items = await listCompanies();
     res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/rides", async (req, res, next) => {
+  try {
+    const parsed = parseAdminRideListQuery(req);
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
+    const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
+    const offset = (page - 1) * pageSize;
+    const [total, rows] = await Promise.all([
+      countRidesAdmin(parsed.query),
+      listRidesAdminPage(parsed.query, pageSize, offset),
+    ]);
+    const items = await attachAccessCodeSummariesToRides(rows);
+    res.json({ ok: true, items, total, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/rides/:id", async (req, res, next) => {
+  try {
+    const row = await findRideAdminById(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const [ride] = await attachAccessCodeSummariesToRides([row]);
+    res.json({ ok: true, ride });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/rides/:id/release", async (req, res, next) => {
+  try {
+    const updated = await adminReleaseRide(req.params.id);
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const full = await findRideAdminById(updated.id);
+    const base = full ?? { ...updated, companyName: null };
+    const [ride] = await attachAccessCodeSummariesToRides([base]);
+    res.json({ ok: true, ride });
   } catch (e) {
     next(e);
   }

@@ -26,6 +26,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   access_code_normalized_snapshot → 012_rides_access_code_normalized_snapshot.sql
   partner_booking_meta           → 013_rides_partner_booking_meta.sql
   partner_ride_series (Tabelle)  → 014_partner_ride_series.sql
+  Index rides.created_at (Admin-Liste) → 015_rides_created_at_admin_idx.sql
 
 Nach Migrationen Schema prüfen:
 

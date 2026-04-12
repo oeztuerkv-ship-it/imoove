@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
@@ -17,7 +17,7 @@ import {
 } from "../domain/rideAuthorization";
 import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
 import { getDb } from "./client";
-import { ridesTable } from "./schema";
+import { adminCompaniesTable, ridesTable } from "./schema";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
@@ -361,6 +361,157 @@ export async function findRide(id: string): Promise<RideRequest | null> {
   }
   const rows = await db.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
   return rows[0] ? rowToRide(rows[0]) : null;
+}
+
+/** Plattform-Admin: Listenfilter + Pagination (kein `stripPartnerOnlyRideFields`). */
+export type AdminRideListQuery = {
+  companyId?: string;
+  status?: string;
+  createdFrom?: Date;
+  createdTo?: Date;
+  rideKind?: RideKind;
+  payerKind?: PayerKind;
+  driverId?: string;
+  /** Freitext über ID, Kunde, Route, Fahrer, passengerId */
+  q?: string;
+};
+
+export type AdminRideRow = RideRequest & { companyName: string | null };
+
+function escapeIlikePattern(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function buildAdminRideConditions(query: AdminRideListQuery): SQL[] {
+  const cond: SQL[] = [];
+  if (query.companyId?.trim()) {
+    cond.push(eq(ridesTable.company_id, query.companyId.trim()));
+  }
+  if (query.status?.trim() && query.status !== "all") {
+    cond.push(eq(ridesTable.status, query.status.trim()));
+  }
+  if (query.createdFrom) {
+    cond.push(gte(ridesTable.created_at, query.createdFrom));
+  }
+  if (query.createdTo) {
+    cond.push(lte(ridesTable.created_at, query.createdTo));
+  }
+  if (query.rideKind) {
+    cond.push(eq(ridesTable.ride_kind, query.rideKind));
+  }
+  if (query.payerKind) {
+    cond.push(eq(ridesTable.payer_kind, query.payerKind));
+  }
+  if (query.driverId?.trim()) {
+    cond.push(eq(ridesTable.driver_id, query.driverId.trim()));
+  }
+  if (query.q?.trim()) {
+    const raw = escapeIlikePattern(query.q.trim());
+    const p = `%${raw}%`;
+    cond.push(
+      or(
+        ilike(ridesTable.id, p),
+        ilike(ridesTable.customer_name, p),
+        ilike(ridesTable.from_label, p),
+        ilike(ridesTable.to_label, p),
+        ilike(ridesTable.from_full, p),
+        ilike(ridesTable.to_full, p),
+        ilike(ridesTable.driver_id, p),
+        ilike(ridesTable.passenger_id, p),
+      )!,
+    );
+  }
+  return cond;
+}
+
+function matchesAdminMemoryQuery(r: RideRequest, query: AdminRideListQuery): boolean {
+  if (query.companyId?.trim() && String(r.companyId ?? "") !== query.companyId.trim()) return false;
+  if (query.status?.trim() && query.status !== "all" && r.status !== query.status.trim()) return false;
+  if (query.createdFrom && new Date(r.createdAt) < query.createdFrom) return false;
+  if (query.createdTo && new Date(r.createdAt) > query.createdTo) return false;
+  if (query.rideKind && r.rideKind !== query.rideKind) return false;
+  if (query.payerKind && r.payerKind !== query.payerKind) return false;
+  if (query.driverId?.trim() && String(r.driverId ?? "") !== query.driverId.trim()) return false;
+  if (query.q?.trim()) {
+    const q = query.q.trim().toLowerCase();
+    const hay = [
+      r.id,
+      r.customerName,
+      r.from,
+      r.fromFull,
+      r.to,
+      r.toFull,
+      r.driverId,
+      r.passengerId,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+export async function countRidesAdmin(query: AdminRideListQuery): Promise<number> {
+  const db = getDb();
+  const cond = buildAdminRideConditions(query);
+  const whereSql = cond.length ? and(...cond) : undefined;
+  if (!db) {
+    return memoryRides.filter((r) => matchesAdminMemoryQuery(r, query)).length;
+  }
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(whereSql);
+  return Number(row?.n ?? 0);
+}
+
+export async function listRidesAdminPage(
+  query: AdminRideListQuery,
+  limit: number,
+  offset: number,
+): Promise<AdminRideRow[]> {
+  const db = getDb();
+  const cond = buildAdminRideConditions(query);
+  const whereSql = cond.length ? and(...cond) : undefined;
+  if (!db) {
+    const filtered = memoryRides.filter((r) => matchesAdminMemoryQuery(r, query));
+    filtered.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    return filtered.slice(offset, offset + limit).map((ride) => ({ ...ride, companyName: null }));
+  }
+  const rows = await db
+    .select({
+      ride: ridesTable,
+      companyName: adminCompaniesTable.name,
+    })
+    .from(ridesTable)
+    .leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id))
+    .where(whereSql)
+    .orderBy(desc(ridesTable.created_at))
+    .limit(limit)
+    .offset(offset);
+  return rows.map((x) => ({
+    ...rowToRide(x.ride),
+    companyName: x.companyName ?? null,
+  }));
+}
+
+export async function findRideAdminById(id: string): Promise<AdminRideRow | null> {
+  const ride = await findRide(id);
+  if (!ride) return null;
+  const db = getDb();
+  if (!db) {
+    return { ...ride, companyName: null };
+  }
+  if (!ride.companyId) {
+    return { ...ride, companyName: null };
+  }
+  const [r] = await db
+    .select({ name: adminCompaniesTable.name })
+    .from(adminCompaniesTable)
+    .where(eq(adminCompaniesTable.id, ride.companyId))
+    .limit(1);
+  return { ...ride, companyName: r?.name ?? null };
 }
 
 export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
+import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
-const RIDES_URL = `${API_BASE}/rides`;
-const ITEMS_PER_PAGE = 10;
+const RIDES_URL = `${API_BASE}/admin/rides`;
+const STATS_URL = `${API_BASE}/admin/stats`;
+const COMPANIES_URL = `${API_BASE}/admin/companies`;
+const PAGE_SIZE = 20;
 
 function rideKindLabel(k) {
   const m = {
@@ -38,52 +41,184 @@ function authorizationSummary(ride) {
   return "Direkt";
 }
 
-/** GET /rides liefert RideRequest (camelCase), keine snake_case-/Legacy-Felder. */
+function emptyStats() {
+  return {
+    rides: {
+      total: 0,
+      pending: 0,
+      active: 0,
+      completed: 0,
+      cancelled: 0,
+      rejected: 0,
+    },
+  };
+}
+
 export default function RidesPage() {
   const [rides, setRides] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(emptyStats);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
 
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+  const [driverFilter, setDriverFilter] = useState("");
+
+  const [companies, setCompanies] = useState([]);
+
+  const [detailId, setDetailId] = useState(null);
+  const [detailRide, setDetailRide] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
 
   useEffect(() => {
-    loadRides();
-    const interval = setInterval(() => {
-      loadRides(false);
-    }, 5000);
-    return () => clearInterval(interval);
+    const t = setTimeout(() => setDebouncedQ(searchInput.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(COMPANIES_URL, { headers: adminApiHeaders() });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (data?.ok && Array.isArray(data.items)) {
+          setCompanies(data.items);
+        }
+      } catch {
+        /* Firmen-Dropdown optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function loadRides(showLoader = true) {
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
     try {
-      if (showLoader) setLoading(true);
-      setError("");
-
-      const res = await fetch(RIDES_URL);
-
-      if (!res.ok) {
-        throw new Error(`Fehler beim Laden (${res.status})`);
-      }
-
+      const res = await fetch(STATS_URL, { headers: adminApiHeaders() });
+      if (!res.ok) return;
       const data = await res.json();
-
-      if (Array.isArray(data)) {
-        setRides(data);
-      } else if (Array.isArray(data?.rides)) {
-        setRides(data.rides);
-      } else {
-        setRides([]);
-      }
-    } catch (err) {
-      console.error("loadRides error:", err);
-      setError(err.message || "Fahrten konnten nicht geladen werden.");
+      if (!data?.ok || !data?.stats?.rides) return;
+      const s = data.stats.rides;
+      setStats({
+        rides: {
+          total: s.total ?? 0,
+          pending: s.pending ?? 0,
+          active: s.active ?? 0,
+          completed: s.completed ?? 0,
+          cancelled: s.cancelled ?? 0,
+          rejected: s.rejected ?? 0,
+        },
+      });
     } finally {
-      if (showLoader) setLoading(false);
+      setStatsLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    void loadStats();
+    const iv = setInterval(() => void loadStats(), 15000);
+    return () => clearInterval(iv);
+  }, [loadStats]);
+
+  const loadRides = useCallback(
+    async (showLoader = true) => {
+      try {
+        if (showLoader) setLoading(true);
+        setError("");
+
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("pageSize", String(PAGE_SIZE));
+        if (debouncedQ) params.set("q", debouncedQ);
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        if (companyFilter !== "all") params.set("companyId", companyFilter);
+        if (createdFrom.trim()) params.set("createdFrom", createdFrom.trim());
+        if (createdTo.trim()) params.set("createdTo", createdTo.trim());
+        if (driverFilter.trim()) params.set("driverId", driverFilter.trim());
+
+        const res = await fetch(`${RIDES_URL}?${params.toString()}`, {
+          headers: adminApiHeaders(),
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 503) {
+            throw new Error("Admin-API nicht berechtigt oder nicht konfiguriert (Bearer / ADMIN_API_BEARER_TOKEN).");
+          }
+          throw new Error(`Fehler beim Laden (${res.status})`);
+        }
+
+        const data = await res.json();
+
+        if (!data?.ok || !Array.isArray(data.items)) {
+          throw new Error("Ungültige Antwort");
+        }
+
+        setRides(data.items);
+        setTotal(typeof data.total === "number" ? data.total : data.items.length);
+      } catch (err) {
+        console.error("loadRides error:", err);
+        setError(err.message || "Fahrten konnten nicht geladen werden.");
+        setRides([]);
+        setTotal(0);
+      } finally {
+        if (showLoader) setLoading(false);
+      }
+    },
+    [page, debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter],
+  );
+
+  useEffect(() => {
+    void loadRides(true);
+  }, [loadRides]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadRides(false);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [loadRides]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter]);
+
+  async function loadDetail(id) {
+    setDetailId(id);
+    setDetailRide(null);
+    setDetailError("");
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`${RIDES_URL}/${encodeURIComponent(id)}`, {
+        headers: adminApiHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok || !data.ride) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setDetailRide(data.ride);
+    } catch (e) {
+      setDetailError(e.message || "Detail konnte nicht geladen werden.");
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  function closeDetail() {
+    setDetailId(null);
+    setDetailRide(null);
+    setDetailError("");
   }
 
   async function releaseRide(id) {
@@ -91,11 +226,9 @@ export default function RidesPage() {
       setBusyId(id);
       setError("");
 
-      const res = await fetch(`${API_BASE}/rides/${id}/release`, {
+      const res = await fetch(`${RIDES_URL}/${encodeURIComponent(id)}/release`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
       });
 
       const data = await res.json().catch(() => null);
@@ -105,6 +238,9 @@ export default function RidesPage() {
       }
 
       await loadRides(false);
+      if (detailId === id && data?.ride) {
+        setDetailRide(data.ride);
+      }
     } catch (err) {
       console.error("releaseRide error:", err);
       setError(err.message || "Fahrt konnte nicht freigegeben werden.");
@@ -129,7 +265,6 @@ export default function RidesPage() {
     return `${num.toFixed(2)} €`;
   }
 
-  /** Freigabe sinnvoll, wenn Fahrt einem Fahrer zugeordnet ist oder in aktiver Fahr-Phase. */
   function canRelease(ride) {
     if (ride?.driverId) return true;
     const s = ride?.status;
@@ -148,85 +283,13 @@ export default function RidesPage() {
     return "admin-badge";
   }
 
-  const companyOptions = useMemo(() => {
-    const values = Array.from(
-      new Set(
-        rides
-          .map((ride) => ride.companyId)
-          .filter((value) => value !== null && value !== undefined && value !== "")
-          .map(String),
-      ),
-    );
-    values.sort((a, b) => a.localeCompare(b, "de"));
-    return values;
-  }, [rides]);
-
-  const filteredRides = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
-    return rides.filter((ride) => {
-      const matchesStatus = statusFilter === "all" ? true : ride.status === statusFilter;
-
-      const matchesCompany =
-        companyFilter === "all" ? true : String(ride.companyId ?? "") === companyFilter;
-
-      const haystack = [
-        ride.id,
-        ride.customerName,
-        ride.from,
-        ride.fromFull,
-        ride.to,
-        ride.toFull,
-        ride.paymentMethod,
-        ride.vehicle,
-        ride.status,
-        ride.companyId,
-        ride.driverId,
-        ride.passengerId,
-        ride.createdByPanelUserId,
-        ride.rideKind,
-        ride.payerKind,
-        ride.voucherCode,
-        ride.billingReference,
-      ]
-        .filter((v) => v !== null && v !== undefined && v !== "")
-        .join(" ")
-        .toLowerCase();
-
-      const matchesSearch = q ? haystack.includes(q) : true;
-
-      return matchesStatus && matchesCompany && matchesSearch;
-    });
-  }, [rides, search, statusFilter, companyFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredRides.length / ITEMS_PER_PAGE));
-
-  const paginatedRides = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return filteredRides.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredRides, page]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, companyFilter]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   useEffect(() => {
     if (page > totalPages) {
       setPage(totalPages);
     }
   }, [page, totalPages]);
-
-  const stats = useMemo(() => {
-    return {
-      total: rides.length,
-      pending: rides.filter((r) => r.status === "pending").length,
-      active: rides.filter((r) =>
-        ["accepted", "arrived", "in_progress"].includes(r.status),
-      ).length,
-      completed: rides.filter((r) => r.status === "completed").length,
-      cancelled: rides.filter((r) => r.status === "cancelled").length,
-    };
-  }, [rides]);
 
   function renderPagination() {
     const buttons = [];
@@ -300,7 +363,18 @@ export default function RidesPage() {
     return buttons;
   }
 
-  if (loading) {
+  const s = stats.rides;
+
+  const detailJson = useMemo(() => {
+    if (!detailRide) return "";
+    try {
+      return JSON.stringify(detailRide, null, 2);
+    } catch {
+      return "";
+    }
+  }, [detailRide]);
+
+  if (loading && rides.length === 0) {
     return <div className="admin-info-banner">Fahrten werden geladen …</div>;
   }
 
@@ -308,24 +382,24 @@ export default function RidesPage() {
     <div className="admin-page">
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
-          <div className="admin-stat-label">Gesamt</div>
-          <div className="admin-stat-value">{stats.total}</div>
+          <div className="admin-stat-label">Gesamt (Plattform)</div>
+          <div className="admin-stat-value">{statsLoading ? "…" : s.total}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Offen</div>
-          <div className="admin-stat-value">{stats.pending}</div>
+          <div className="admin-stat-value">{statsLoading ? "…" : s.pending}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Aktiv</div>
-          <div className="admin-stat-value">{stats.active}</div>
+          <div className="admin-stat-value">{statsLoading ? "…" : s.active}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Abgeschlossen</div>
-          <div className="admin-stat-value">{stats.completed}</div>
+          <div className="admin-stat-value">{statsLoading ? "…" : s.completed}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Storniert</div>
-          <div className="admin-stat-value">{stats.cancelled}</div>
+          <div className="admin-stat-value">{statsLoading ? "…" : s.cancelled}</div>
         </div>
       </div>
 
@@ -336,9 +410,9 @@ export default function RidesPage() {
             <input
               type="text"
               className="admin-input"
-              placeholder="ID, Kunde, Route, Firma, Fahrer …"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ID, Kunde, Route, Fahrer …"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 
@@ -357,20 +431,51 @@ export default function RidesPage() {
           </div>
 
           <div className="admin-filter-item">
-            <label className="admin-field-label">Unternehmen (companyId)</label>
+            <label className="admin-field-label">Unternehmen</label>
             <select className="admin-select" value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}>
               <option value="all">Alle</option>
-              {companyOptions.map((companyId) => (
-                <option key={companyId} value={companyId}>
-                  {companyId}
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.id})
                 </option>
               ))}
             </select>
           </div>
 
           <div className="admin-filter-item">
+            <label className="admin-field-label">Fahrer-ID</label>
+            <input
+              type="text"
+              className="admin-input"
+              placeholder="exakter driverId"
+              value={driverFilter}
+              onChange={(e) => setDriverFilter(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Erstellt von</label>
+            <input
+              type="date"
+              className="admin-input"
+              value={createdFrom}
+              onChange={(e) => setCreatedFrom(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Erstellt bis</label>
+            <input
+              type="date"
+              className="admin-input"
+              value={createdTo}
+              onChange={(e) => setCreatedTo(e.target.value)}
+            />
+          </div>
+
+          <div className="admin-filter-item">
             <label className="admin-field-label">&nbsp;</label>
-            <button type="button" className="admin-btn-refresh" onClick={() => loadRides()}>
+            <button type="button" className="admin-btn-refresh" onClick={() => void loadRides(true)}>
               Neu laden
             </button>
           </div>
@@ -381,18 +486,14 @@ export default function RidesPage() {
 
       <div className="admin-table-toolbar">
         <div className="admin-table-toolbar__info">
-          Zeige {(page - 1) * ITEMS_PER_PAGE + 1}
-          {" – "}
-          {Math.min(page * ITEMS_PER_PAGE, filteredRides.length)}
-          {" von "}
-          {filteredRides.length}
+          Treffer: {total} — Zeige Seite {page} von {totalPages} ({PAGE_SIZE} pro Seite)
         </div>
 
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
 
       <div className="admin-table-card">
-        {paginatedRides.length === 0 ? (
+        {rides.length === 0 ? (
           <div className="admin-info-banner">Keine Fahrten gefunden.</div>
         ) : (
           <div className="admin-table-scroll">
@@ -414,11 +515,12 @@ export default function RidesPage() {
               <div>Aktion</div>
             </div>
 
-            {paginatedRides.map((ride) => {
+            {rides.map((ride) => {
               const releaseAllowed = canRelease(ride);
               const panelHint = ride.createdByPanelUserId
                 ? String(ride.createdByPanelUserId).slice(0, 8) + "…"
                 : "—";
+              const firmenLabel = ride.companyName || ride.companyId || "—";
 
               return (
                 <div key={ride.id} className="admin-table-row admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min">
@@ -438,7 +540,7 @@ export default function RidesPage() {
                     <span className={rideStatusBadgeClass(ride.status)}>{ride.status || "—"}</span>
                   </div>
 
-                  <div>{ride.companyId || "—"}</div>
+                  <div title={ride.companyId || ""}>{firmenLabel}</div>
                   <div>{ride.driverId || "—"}</div>
                   <div>
                     {formatMoney(ride.estimatedFare)}
@@ -452,7 +554,10 @@ export default function RidesPage() {
                     {panelHint}
                   </div>
 
-                  <div>
+                  <div className="admin-actions-cell">
+                    <button type="button" className="admin-btn-action admin-btn-action--secondary" onClick={() => void loadDetail(ride.id)}>
+                      Details
+                    </button>
                     <button
                       type="button"
                       className={
@@ -473,12 +578,42 @@ export default function RidesPage() {
       </div>
 
       <div className="admin-table-toolbar">
-        <div className="admin-table-toolbar__info">
-          Seite {page} von {totalPages}
-        </div>
-
+        <div className="admin-table-toolbar__info">API: GET {RIDES_URL} (Bearer)</div>
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
+
+      {detailId ? (
+        <div className="admin-modal-backdrop" role="presentation" onClick={closeDetail}>
+          <div
+            className="admin-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-ride-detail-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal__header">
+              <h2 id="admin-ride-detail-title" className="admin-modal__title">
+                Fahrt {detailId}
+              </h2>
+              <button type="button" className="admin-modal__close" onClick={closeDetail} aria-label="Schließen">
+                ×
+              </button>
+            </div>
+            <div className="admin-modal__body">
+              {detailLoading ? <p>Lade Detail …</p> : null}
+              {detailError ? <div className="admin-error-banner">{detailError}</div> : null}
+              {!detailLoading && detailRide ? (
+                <>
+                  <p className="admin-modal__meta">
+                    <strong>Firma:</strong> {detailRide.companyName || detailRide.companyId || "—"}
+                  </p>
+                  <pre className="admin-modal__json">{detailJson}</pre>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

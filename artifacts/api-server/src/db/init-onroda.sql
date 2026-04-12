@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS rides (
 );
 
 CREATE INDEX IF NOT EXISTS rides_company_id_idx ON rides (company_id);
+CREATE INDEX IF NOT EXISTS rides_created_at_desc_idx ON rides (created_at DESC);
 
 -- Partner-Panel (panel.onroda.de): Benutzer pro Unternehmen, Passwort-Login nur über diese Tabelle.
 CREATE TABLE IF NOT EXISTS panel_users (
