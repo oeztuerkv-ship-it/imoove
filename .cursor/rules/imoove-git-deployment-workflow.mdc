@@ -65,7 +65,7 @@ git push origin main
 cd /root/imoove && ./scripts/deploy-onroda-production.sh
 ```
 
-Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabelle `onroda_deploy_migrations` in derselben DB) → **echte Schema-Verifikation** (`scripts/verify-onroda-db-schema.sql` / `verify-onroda-db-schema.sh` — erwartete Spalten/Tabellen wie in den SQL-Migrationen, nicht nur Tracker-Stand) → bei Erfolg: Workspace-`pnpm install --frozen-lockfile` + API-Build (`pnpm --filter @workspace/api-server run build`) → **admin-panel** und **partner-panel** jeweils `pnpm --filter … run build` (vom Root; Root-`preinstall` verbietet `npm install`) → optional `rsync` (siehe `scripts/onroda-deploy.example.env`) → `pm2 restart` (Default: `onroda-api --update-env`). **Verifikation fehlgeschlagen** → Abbruch **vor** Build und PM2, damit kein Live-Code ohne passende DB durchrutscht.
+Das Skript macht nacheinander (bei Fehler `exit ≠ 0`): `git pull` (ff-only) → Workspace-`CI=true pnpm install --frozen-lockfile` → Builds API + **admin-panel** + **partner-panel** (`pnpm --filter …`) → fehlende SQL-Migrationen (Tracker `onroda_deploy_migrations`) → **Schema-Verifikation** (`scripts/verify-onroda-db-schema.sh`) → optional `rsync` → `pm2 restart` (`ONRODA_PM2_APPS`, Default `onroda-api`) → optional Nginx-Reload → **HTTP-Health-Checks** (`curl`, Default `GET /api/healthz` auf `127.0.0.1` und API-`PORT` aus `.env` oder 3000; überschreibbar mit `ONRODA_HEALTHCHECK_URLS`). **Schema-Verifikation oder Health-Check fehlgeschlagen** → Abbruch vor „grünem“ Ende.
 
 - **Tracker ≠ Schema:** Der Tracker sagt nur, welche Migrations-**Dateien** eingetragen sind. Die Verifikation prüft, ob die **Objekte** in PostgreSQL existieren (verhindert 500er durch fehlende Spalten nach Restore/Drift). Neue API-Pflicht-Objekte: Migration + Eintrag in `verify-onroda-db-schema.sql` pflegen.
 - **DB war schon voll migriert, Tracker ist neu:** `--seed-migration-tracker` **nur bewusst** — schreibt **kein** SQL, kann „applied“ ohne Spalten erzeugen. Nur mit `ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1` (siehe `scripts/onroda-deploy.example.env`). Anschließend `./scripts/verify-onroda-db-schema.sh` oder normales Deploy.
@@ -76,7 +76,7 @@ Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabe
 
 **Panel-Static vs PM2:** Unter der Standard-Architektur liefert die **API-Node-Instanz** die gebauten SPAs aus `artifacts/admin-panel/dist` (`/partners/`) und `artifacts/partner-panel/dist` (Panel-Host) — siehe `artifacts/api-server/src/app.ts`. PM2 startet typisch **nur** die API; getrennte PM2-Apps für „nur Static“ sind dann redundant, sofern Nginx auf `127.0.0.1:3000` proxyt. Wenn Nginx stattdessen auf `/var/www/…` ausliefert, nach jedem Build synchronisieren (`ONRODA_RSYNC_*`) oder Nginx-Pfade auf die Repo-`dist`-Ordner legen.
 
-Nach dem Deploy kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Admin `/partners/`, CSV-Export.
+Manuell sinnvoll zusätzlich: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Admin `/partners/` — das Skript prüft automatisch mindestens `GET /api/healthz` (siehe `ONRODA_HEALTHCHECK_URLS`).
 
 **Hinweis:** Ein „manueller“ Deploy ohne dieses Skript widerspricht dem verbindlichen Ablauf und soll **nicht** mehr genutzt werden — er reproduziert die früheren Mischstände.
 

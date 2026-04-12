@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-# Onroda Produktions-Deploy: Pull → DB-Migrationen (nachverfolgt) → API-Build → Panel-Builds → PM2 (+ optional rsync / Nginx).
-# Voraussetzung: Repo-Root (imoove), pnpm (Workspace; Root-preinstall verbietet npm install), psql, pm2;
-# DATABASE_URL in der Umgebung oder in artifacts/api-server/.env
+# Onroda Produktions-Deploy — verbindlicher Ablauf (bricht bei Fehler ab):
+#   1) git pull (ff-only)
+#   2) pnpm install --frozen-lockfile (Workspace-Root, CI=true)
+#   3) Builds: API + admin-panel + partner-panel
+#   4) SQL-Migrationen (Tracker onroda_deploy_migrations) + Schema-Verifikation
+#   5) optional rsync static → Zielpfade
+#   6) pm2 restart (ONRODA_PM2_APPS)
+#   7) optional nginx reload
+#   8) HTTP-Health-Checks (curl)
+#
+# Voraussetzung: Repo-Root (imoove), pnpm, psql, pm2, curl;
+# DATABASE_URL: Umgebung oder artifacts/api-server/.env
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -48,6 +57,10 @@ Umgebung (Auswahl):
   ONRODA_RSYNC_ADMIN_DIST_TO    Optional: rsync admin-panel/dist/ dorthin (--delete)
   ONRODA_RSYNC_PARTNER_DIST_TO  Optional: rsync partner-panel/dist/
   ONRODA_RELOAD_NGINX       Wenn 1: nginx -t && systemctl reload nginx
+  ONRODA_HEALTHCHECK_URLS   Leerzeichen-getrennte GET-URLs (Default: http://127.0.0.1:<PORT>/api/healthz, PORT aus api-server/.env oder 3000)
+  ONRODA_HEALTHCHECK_TIMEOUT Sekunden für curl (Default: 20)
+  ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Schritt 8 überspringen (nur Notfall)
+
 EOF
 }
 
@@ -107,6 +120,31 @@ ensure_database_url() {
   fi
   echo "[deploy-onroda] DATABASE_URL fehlt (Umgebung oder ${API_DIR}/.env)." >&2
   exit 1
+}
+
+# API-Listenport für Health-Default (Infrastruktur-Default 3000).
+load_api_port() {
+  local env_file="${API_DIR}/.env"
+  local line
+  if [[ -f "$env_file" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      [[ -z "${line// }" ]] && continue
+      if [[ "$line" =~ ^PORT=(.*)$ ]]; then
+        local p="${BASH_REMATCH[1]}"
+        p="${p#\"}"
+        p="${p%\"}"
+        p="${p#\'}"
+        p="${p%\'}"
+        p="${p// /}"
+        if [[ -n "$p" ]]; then
+          echo "$p"
+          return 0
+        fi
+      fi
+    done <"$env_file"
+  fi
+  echo "3000"
 }
 
 psql_exec() {
@@ -226,13 +264,21 @@ do_git_pull() {
   git -C "$ROOT" pull --ff-only "$remote" "$branch"
 }
 
+do_pnpm_install() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] (cd \"$ROOT\" && CI=true pnpm install --frozen-lockfile)"
+    return 0
+  fi
+  log "pnpm install --frozen-lockfile (Workspace-Root)…"
+  (cd "$ROOT" && CI=true pnpm install --frozen-lockfile)
+}
+
 do_api_build() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] (cd \"$ROOT\" && pnpm install --frozen-lockfile)"
     echo "[dry-run] (cd \"$ROOT\" && pnpm --filter @workspace/api-server run build)"
     return 0
   fi
-  (cd "$ROOT" && pnpm install --frozen-lockfile)
+  log "Build API (@workspace/api-server)…"
   (cd "$ROOT" && pnpm --filter @workspace/api-server run build)
 }
 
@@ -242,9 +288,44 @@ do_panel_builds() {
     echo "[dry-run] (cd \"$ROOT\" && pnpm --filter partner-panel run build)"
     return 0
   fi
-  # Workspace-Lockfile am Root; kein npm ci in den Panel-Ordnern (Root: preinstall → „Use pnpm instead“).
+  log "Build admin-panel…"
   (cd "$ROOT" && pnpm --filter admin-panel run build)
+  log "Build partner-panel…"
   (cd "$ROOT" && pnpm --filter partner-panel run build)
+}
+
+do_health_checks() {
+  if [[ "${ONRODA_SKIP_HEALTHCHECKS:-0}" == "1" ]]; then
+    log "Health-Checks übersprungen (ONRODA_SKIP_HEALTHCHECKS=1)."
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] curl Health-Check(s) (siehe ONRODA_HEALTHCHECK_URLS / Default-Port)"
+    return 0
+  fi
+  command -v curl >/dev/null 2>&1 || {
+    echo "[deploy-onroda] curl nicht im PATH — für Health-Checks erforderlich oder ONRODA_SKIP_HEALTHCHECKS=1 setzen." >&2
+    exit 1
+  }
+  local timeout="${ONRODA_HEALTHCHECK_TIMEOUT:-20}"
+  local urls=()
+  if [[ -n "${ONRODA_HEALTHCHECK_URLS:-}" ]]; then
+    read -r -a urls <<<"${ONRODA_HEALTHCHECK_URLS}"
+  else
+    local port
+    port="$(load_api_port)"
+    urls=("http://127.0.0.1:${port}/api/healthz")
+  fi
+  local url
+  for url in "${urls[@]}"; do
+    [[ -z "$url" ]] && continue
+    log "Health-Check: GET $url"
+    if ! curl -sfS --max-time "$timeout" "$url" >/dev/null; then
+      echo "[deploy-onroda] Health-Check fehlgeschlagen (kein HTTP 2xx oder Timeout): $url" >&2
+      exit 1
+    fi
+  done
+  log "Health-Checks: OK (${#urls[@]} URL(s))."
 }
 
 do_pm2() {
@@ -317,15 +398,21 @@ if [[ "$VERIFY_SCHEMA_ONLY" -eq 1 ]]; then
   exit 0
 fi
 
-migrations_will_execute=0
-if [[ "$ONLY_MIGRATIONS" -eq 1 && "$DRY_RUN" -eq 0 ]]; then
-  migrations_will_execute=1
-fi
-if [[ "$ONLY_MIGRATIONS" -eq 0 && "$SKIP_MIGRATIONS" -eq 0 && "$DRY_RUN" -eq 0 ]]; then
-  migrations_will_execute=1
-fi
-if [[ "$migrations_will_execute" -eq 1 ]]; then
-  command -v psql >/dev/null 2>&1 || { echo "[deploy-onroda] psql nicht im PATH" >&2; exit 1; }
+if [[ "$DRY_RUN" -eq 0 ]]; then
+  need_psql=0
+  if [[ "$ONLY_MIGRATIONS" -eq 1 ]]; then
+    need_psql=1
+  else
+    [[ "$SKIP_MIGRATIONS" -ne 1 ]] && need_psql=1
+    [[ "${ONRODA_SKIP_SCHEMA_VERIFY:-0}" != "1" ]] && need_psql=1
+  fi
+  if [[ "$need_psql" -eq 1 ]]; then
+    command -v psql >/dev/null 2>&1 || { echo "[deploy-onroda] psql nicht im PATH" >&2; exit 1; }
+  fi
+  if [[ "$ONLY_MIGRATIONS" -eq 0 ]]; then
+    command -v pnpm >/dev/null 2>&1 || { echo "[deploy-onroda] pnpm nicht im PATH" >&2; exit 1; }
+    command -v pm2 >/dev/null 2>&1 || { echo "[deploy-onroda] pm2 nicht im PATH" >&2; exit 1; }
+  fi
 fi
 
 if [[ "$ONLY_MIGRATIONS" -eq 1 ]]; then
@@ -341,6 +428,10 @@ fi
 
 do_git_pull
 
+do_pnpm_install
+do_api_build
+do_panel_builds
+
 if [[ "$SKIP_MIGRATIONS" -ne 1 ]]; then
   apply_migrations
 else
@@ -349,10 +440,9 @@ fi
 
 verify_schema_against_repo
 
-do_api_build
-do_panel_builds
 do_optional_rsync
 do_pm2
 do_optional_nginx
+do_health_checks
 
-log "Deploy fertig. Kurz prüfen: Panel-Login, GET /api/panel/v1/me, Admin /partners/."
+log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema → PM2 → Health)."

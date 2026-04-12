@@ -60,7 +60,7 @@ Voraussetzungen: `pnpm`, `npm`, `psql`, `pm2`; `DATABASE_URL` in `artifacts/api-
 - **Nur ausstehende Migrationen:** `./scripts/deploy-onroda-production.sh --only-migrations`
 - **Status:** `./scripts/deploy-onroda-production.sh --list-migrations`
 
-Ablauf im Skript: `git pull` → fehlende SQL-Migrationen (Tabelle `onroda_deploy_migrations` im gleichen PostgreSQL) → **Schema-Verifikation** (`verify-onroda-db-schema.sql` gegen `DATABASE_URL`) → bei Erfolg: `pnpm install --frozen-lockfile` + API-Build → `pnpm --filter admin-panel` / `partner-panel` **run build** → optional rsync → `pm2 restart` (Default: `onroda-api`). Schlägt die Verifikation fehl, endet der Deploy **vor** Build/PM2 — kein „grünes“ Deploy mit kaputtem Schema.
+Ablauf im Skript: `git pull` → `CI=true pnpm install --frozen-lockfile` → API- + Panel-Builds → fehlende SQL-Migrationen (`onroda_deploy_migrations`) → **Schema-Verifikation** → optional rsync → `pm2 restart` → **HTTP-Health-Checks** (`curl`, Default `/api/healthz`). Schlägt Schema-Check oder Health-Check fehl, bricht das Skript mit Exit ≠0 ab (kein „stilles“ Live-Update).
 
 **Live-Pfad der Panel-Assets:** Die API liest standardmäßig die gebauten Ordner `artifacts/admin-panel/dist` und `artifacts/partner-panel/dist` relativ zum API-`dist` (siehe `artifacts/api-server/src/app.ts`). Es ist **kein** separates PM2-Frontend nötig, solange Nginx auf **eine** Node-Instanz (Port **3000**) proxyt und keine veralteten Kopien unter `/var/www/…` ausliefert. Wenn eure Nginx-Konfiguration doch auf statische Verzeichnisse zeigt, nach dem Build `ONRODA_RSYNC_*` setzen oder die Pfade anpassen.
 
