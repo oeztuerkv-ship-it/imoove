@@ -5,6 +5,8 @@ import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
 import {
   addFareArea,
   type AdminCompanyUpdateBody,
+  deleteFareArea,
+  type FareAreaPatchBody,
   getAdminStats,
   findCompanyById,
   insertAdminCompany,
@@ -13,6 +15,7 @@ import {
   patchCompanyPanelModules,
   patchCompanyPriority,
   updateAdminCompany,
+  updateFareArea,
 } from "../db/adminData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog } from "../db/panelAuditData";
@@ -25,10 +28,14 @@ import {
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
 import {
+  adminPreviousDayBounds,
   adminReleaseRide,
   countRidesAdmin,
   findRideAdminById,
+  listAdminPartnerDayStats,
+  listAdminRidesAgendaForDay,
   listRidesAdminPage,
+  parseAdminDashboardDayBounds,
   type AdminRideListQuery,
 } from "../db/ridesData";
 import { hashPassword } from "../lib/password";
@@ -100,6 +107,47 @@ adminJson.get("/stats", async (req, res, next) => {
       revenueFrom && revenueTo ? { revenueFrom, revenueTo } : {},
     );
     res.json({ ok: true, stats });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Operatives Tages-Dashboard: Agenda, Partner-Top, letzte Abschlüsse (camelCase wie /admin/rides). */
+adminJson.get("/dashboard/overview", async (req, res, next) => {
+  try {
+    const q = req.query as Record<string, string | undefined>;
+    const bounds = parseAdminDashboardDayBounds(q.date);
+    const prev = adminPreviousDayBounds(bounds);
+    const dayRaw = typeof q.date === "string" ? q.date.trim() : "";
+    const dayStr =
+      /^\d{4}-\d{2}-\d{2}$/.test(dayRaw) ? dayRaw : bounds.start.toISOString().slice(0, 10);
+
+    const [agendaRaw, partnerRaw, recentRaw, companies] = await Promise.all([
+      listAdminRidesAgendaForDay(bounds),
+      listAdminPartnerDayStats(bounds, prev),
+      listRidesAdminPage({ status: "completed" }, 20, 0),
+      listCompanies(),
+    ]);
+
+    const nameById = new Map(companies.map((c) => [c.id, c.name]));
+    const agenda = await attachAccessCodeSummariesToRides(agendaRaw);
+    const recentCompleted = await attachAccessCodeSummariesToRides(recentRaw);
+    const partnerDay = partnerRaw.map((p) => ({
+      companyId: p.companyId,
+      companyName: nameById.get(p.companyId) ?? p.companyName,
+      ridesToday: p.ridesCount,
+      revenueToday: p.completedRevenue,
+      ridesPrevDay: p.ridesPrev,
+      trend: p.ridesCount > p.ridesPrev ? "up" : p.ridesCount < p.ridesPrev ? "down" : "flat",
+    }));
+
+    res.json({
+      ok: true,
+      day: dayStr,
+      agenda,
+      partnerDay,
+      recentCompleted,
+    });
   } catch (e) {
     next(e);
   }
@@ -470,6 +518,7 @@ adminJson.post("/access-codes", async (req, res, next) => {
       maxUses: typeof body.maxUses === "number" ? body.maxUses : undefined,
       validFrom: typeof body.validFrom === "string" ? body.validFrom : undefined,
       validUntil: typeof body.validUntil === "string" ? body.validUntil : undefined,
+      internalNote: typeof body.internalNote === "string" ? body.internalNote : undefined,
     });
     if (!result.ok) {
       const err = result.error;
@@ -515,6 +564,60 @@ adminJson.post("/fare-areas", async (req, res, next) => {
       fixedPriceAllowed: typeof body.fixedPriceAllowed === "string" ? body.fixedPriceAllowed : "Prüfen",
       status: typeof body.status === "string" ? body.status : "aktiv",
     });
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/fare-areas/:id", async (req, res, next) => {
+  try {
+    const body = req.body as Partial<{
+      name: string;
+      ruleType: string;
+      isRequiredArea: string;
+      fixedPriceAllowed: string;
+      status: string;
+    }>;
+    const patch: FareAreaPatchBody = {};
+    if (typeof body.name === "string") patch.name = body.name;
+    if (typeof body.ruleType === "string") patch.ruleType = body.ruleType;
+    if (typeof body.isRequiredArea === "string") patch.isRequiredArea = body.isRequiredArea;
+    if (typeof body.fixedPriceAllowed === "string") patch.fixedPriceAllowed = body.fixedPriceAllowed;
+    if (typeof body.status === "string") patch.status = body.status;
+    if (Object.keys(patch).length === 0) {
+      res.status(400).json({ error: "no_changes" });
+      return;
+    }
+    const item = await updateFareArea(req.params.id, patch);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const items = await listFareAreas();
+    res.json({ ok: true, item, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.delete("/fare-areas/:id", async (req, res, next) => {
+  try {
+    const result = await deleteFareArea(req.params.id);
+    if (!result.ok) {
+      if (result.error === "not_found") {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      res.status(409).json({
+        error: "fare_area_in_use",
+        message:
+          "Dieses Gebiet kann nicht gelöscht werden, weil es noch Fahrten in Buchungsdaten zugeordnet ist (Meta-Verknüpfung fareAreaId). Bitte zuerst Zuordnungen entfernen.",
+        rideCount: result.rideCount,
+      });
+      return;
+    }
+    const items = await listFareAreas();
     res.json({ ok: true, items });
   } catch (e) {
     next(e);

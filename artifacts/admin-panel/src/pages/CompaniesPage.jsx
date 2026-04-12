@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -49,7 +49,8 @@ function formFromItem(item) {
   };
 }
 
-export default function CompaniesPage() {
+export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompanyConsumed }) {
+  const companyIntentHandled = useRef(null);
   const [items, setItems] = useState([]);
   const [moduleCatalog, setModuleCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +75,23 @@ export default function CompaniesPage() {
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (!initialOpenCompanyId) {
+      companyIntentHandled.current = null;
+      return;
+    }
+    if (loading) return;
+    if (companyIntentHandled.current === initialOpenCompanyId) return;
+    const item = items.find((i) => i.id === initialOpenCompanyId);
+    if (!item) {
+      onInitialOpenCompanyConsumed?.();
+      return;
+    }
+    companyIntentHandled.current = initialOpenCompanyId;
+    openEditCompany(item);
+    onInitialOpenCompanyConsumed?.();
+  }, [initialOpenCompanyId, loading, items]);
 
   async function loadCompanies() {
     setLoading(true);

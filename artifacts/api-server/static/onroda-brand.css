@@ -80,6 +80,8 @@
   --onroda-admin-rides-grid-template: 200px 140px 88px 88px 130px 180px 180px 105px 100px 85px 95px 125px 125px 110px 100px;
   /* Admin: Tarifgebiete-Liste */
   --onroda-admin-fare-areas-grid-template: 1fr 1.5fr 1fr 1fr 1fr;
+  /* Tarifgebiete mit Status-Schalter und Aktionen */
+  --onroda-admin-fare-areas-managed-grid-template: minmax(120px, 1.15fr) minmax(140px, 1.45fr) 0.62fr 0.72fr 100px 128px;
 
   /* Typo — kleine UI-Labels (Dashboard, Mono-Hinweise) */
   --onroda-font-size-eyebrow: 0.8125rem;

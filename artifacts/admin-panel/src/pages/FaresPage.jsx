@@ -14,18 +14,21 @@ const RULE_TYPE_LABELS = {
   special_manual_rule: "Sonderregel (manuell)",
 };
 
+const emptyForm = () => ({
+  name: "",
+  ruleType: "official_metered_tariff",
+  isRequiredArea: "Ja",
+  fixedPriceAllowed: "Prüfen",
+  status: "aktiv",
+});
+
 function ruleTypeLabel(value) {
   return RULE_TYPE_LABELS[value] ?? value ?? "—";
 }
 
 export default function FaresPage() {
-  const [form, setForm] = useState({
-    name: "",
-    ruleType: "official_metered_tariff",
-    isRequiredArea: "Ja",
-    fixedPriceAllowed: "Prüfen",
-    status: "aktiv",
-  });
+  const [form, setForm] = useState(emptyForm());
+  const [editingId, setEditingId] = useState(null);
 
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +62,42 @@ export default function FaresPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleAddArea(e) {
+  function startEdit(area) {
+    setEditingId(area.id);
+    setForm({
+      name: area.name ?? "",
+      ruleType: area.ruleType ?? "official_metered_tariff",
+      isRequiredArea: area.isRequiredArea ?? "Ja",
+      fixedPriceAllowed: area.fixedPriceAllowed ?? "Prüfen",
+      status: area.status ?? "aktiv",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(emptyForm());
+  }
+
+  async function patchArea(id, partial) {
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(partial),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || `Aktualisierung fehlgeschlagen (${res.status}).`);
+      }
+      if (Array.isArray(data.items)) setAreas(data.items);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+    }
+  }
+
+  async function handleSaveArea(e) {
     e.preventDefault();
 
     if (!form.name.trim()) {
@@ -70,6 +108,27 @@ export default function FaresPage() {
     try {
       setSaving(true);
       setError("");
+
+      if (editingId) {
+        const res = await fetch(`${API_URL}/${encodeURIComponent(editingId)}`, {
+          method: "PATCH",
+          headers: adminApiHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            name: form.name.trim(),
+            ruleType: form.ruleType,
+            isRequiredArea: form.isRequiredArea,
+            fixedPriceAllowed: form.fixedPriceAllowed,
+            status: form.status,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data?.error || "Das Gebiet konnte nicht gespeichert werden.");
+        }
+        if (Array.isArray(data.items)) setAreas(data.items);
+        cancelEdit();
+        return;
+      }
 
       const res = await fetch(API_URL, {
         method: "POST",
@@ -89,19 +148,45 @@ export default function FaresPage() {
 
       const data = await res.json();
       setAreas(Array.isArray(data.items) ? data.items : []);
-
-      setForm({
-        name: "",
-        ruleType: "official_metered_tariff",
-        isRequiredArea: "Ja",
-        fixedPriceAllowed: "Prüfen",
-        status: "aktiv",
-      });
+      setForm(emptyForm());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleDeleteArea(area) {
+    const ok = window.confirm(
+      `Gebiet „${area.name}“ wirklich löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.`,
+    );
+    if (!ok) return;
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/${encodeURIComponent(area.id)}`, {
+        method: "DELETE",
+        headers: adminApiHeaders(),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.status === 409) {
+        setError(
+          data?.message ||
+            "Löschen nicht möglich: Das Gebiet ist noch Fahrten zugeordnet (internes Feld fareAreaId).",
+        );
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(data?.error || `Löschen fehlgeschlagen (${res.status}).`);
+      }
+      if (Array.isArray(data.items)) setAreas(data.items);
+      if (editingId === area.id) cancelEdit();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen.");
+    }
+  }
+
+  async function toggleStatus(area, nextChecked) {
+    await patchArea(area.id, { status: nextChecked ? "aktiv" : "inaktiv" });
   }
 
   const officialCount = areas.filter((a) => a.ruleType === "official_metered_tariff").length;
@@ -145,9 +230,9 @@ export default function FaresPage() {
       </div>
 
       <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Gebiet hinzufügen</div>
+        <div className="admin-panel-card__title">{editingId ? "Gebiet bearbeiten" : "Gebiet hinzufügen"}</div>
 
-        <form onSubmit={handleAddArea} className="admin-form-grid">
+        <form onSubmit={handleSaveArea} className="admin-form-grid">
           <input
             className="admin-input"
             placeholder="z. B. Stadt oder Region"
@@ -193,9 +278,16 @@ export default function FaresPage() {
             <option value="regelbasiert">Regelbasiert</option>
           </select>
 
-          <button type="submit" className="admin-btn-primary" disabled={saving}>
-            {saving ? "Wird gespeichert …" : "Hinzufügen"}
-          </button>
+          <div className="admin-toolbar-row admin-toolbar-row--form-span">
+            <button type="submit" className="admin-btn-primary" disabled={saving}>
+              {saving ? "Wird gespeichert …" : editingId ? "Änderungen speichern" : "Hinzufügen"}
+            </button>
+            {editingId ? (
+              <button type="button" className="admin-btn-refresh" onClick={cancelEdit}>
+                Bearbeiten abbrechen
+              </button>
+            ) : null}
+          </div>
         </form>
       </div>
 
@@ -205,24 +297,54 @@ export default function FaresPage() {
         {loading ? (
           <div className="admin-muted">Gebiete werden geladen …</div>
         ) : (
-          <div className="admin-data-table">
-            <div className="admin-data-table__head admin-cs-grid admin-cs-grid--fare-areas">
-              <div>Gebiet</div>
-              <div>Regeltyp</div>
-              <div>Pflichtfahrt</div>
-              <div>Festpreis</div>
-              <div>Status</div>
-            </div>
-
-            {areas.map((a) => (
-              <div key={a.id} className="admin-data-table__row admin-cs-grid admin-cs-grid--fare-areas">
-                <div>{a.name}</div>
-                <div>{ruleTypeLabel(a.ruleType)}</div>
-                <div>{a.isRequiredArea}</div>
-                <div>{a.fixedPriceAllowed}</div>
-                <div>{a.status}</div>
+          <div className="admin-table-scroll">
+            <div className="admin-data-table">
+              <div className="admin-data-table__head admin-cs-grid admin-cs-grid--fare-areas-managed">
+                <div>Gebiet</div>
+                <div>Regeltyp</div>
+                <div>Pflichtfahrt</div>
+                <div>Festpreis</div>
+                <div>Status</div>
+                <div>Aktionen</div>
               </div>
-            ))}
+
+              {areas.map((a) => (
+                <div key={a.id} className="admin-data-table__row admin-cs-grid admin-cs-grid--fare-areas-managed">
+                  <div className="admin-ellipsis" title={a.name}>
+                    {a.name}
+                  </div>
+                  <div className="admin-ellipsis" title={ruleTypeLabel(a.ruleType)}>
+                    {ruleTypeLabel(a.ruleType)}
+                  </div>
+                  <div>{a.isRequiredArea}</div>
+                  <div>{a.fixedPriceAllowed}</div>
+                  <div>
+                    {a.status === "regelbasiert" ? (
+                      <span className="admin-muted" title="Status nur über Bearbeiten ändern">
+                        regelbasiert
+                      </span>
+                    ) : (
+                      <label className="admin-switch" title={a.status === "aktiv" ? "Aktiv" : "Inaktiv"}>
+                        <input
+                          type="checkbox"
+                          checked={a.status === "aktiv"}
+                          onChange={(e) => void toggleStatus(a, e.target.checked)}
+                        />
+                        <span className="admin-switch__slider" aria-hidden />
+                      </label>
+                    )}
+                  </div>
+                  <div className="admin-toolbar-row">
+                    <button type="button" className="admin-btn-refresh" onClick={() => startEdit(a)}>
+                      Bearbeiten
+                    </button>
+                    <button type="button" className="admin-btn-danger" onClick={() => void handleDeleteArea(a)}>
+                      Löschen
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

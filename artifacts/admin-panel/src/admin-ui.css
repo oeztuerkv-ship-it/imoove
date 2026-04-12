@@ -177,6 +177,26 @@
   outline-offset: 2px;
 }
 
+.admin-btn-danger {
+  height: 42px;
+  background: var(--onroda-badge-danger-bg);
+  color: var(--onroda-badge-danger-fg);
+  border: 1px solid color-mix(in srgb, var(--onroda-badge-danger-fg) 35%, transparent);
+  border-radius: var(--onroda-radius-pill);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 var(--onroda-space-6);
+}
+
+.admin-btn-danger:hover {
+  filter: brightness(0.97);
+}
+
+.admin-btn-danger:focus-visible {
+  outline: 2px solid var(--onroda-badge-danger-fg);
+  outline-offset: 2px;
+}
+
 .admin-table-toolbar {
   display: flex;
   justify-content: space-between;
@@ -672,4 +692,121 @@
   font-weight: 600;
   color: var(--onroda-text-dark);
   word-break: break-word;
+}
+
+.admin-form-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--onroda-space-5);
+}
+
+.admin-form-pair {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: var(--onroda-space-4);
+  align-items: center;
+}
+
+.admin-inline-check {
+  display: flex;
+  align-items: center;
+  gap: var(--onroda-space-3);
+  font-size: 0.95rem;
+  color: var(--onroda-text-dark);
+}
+
+.admin-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--onroda-space-4);
+  align-items: center;
+}
+
+.admin-toolbar-row--form-span {
+  grid-column: 1 / -1;
+}
+
+.admin-textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border-radius: var(--onroda-radius-md, 8px);
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-app);
+  color: var(--onroda-text-dark);
+  font-size: 0.95rem;
+  font-weight: 500;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.admin-textarea:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
+}
+
+.admin-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-cs-grid--access-codes {
+  grid-template-columns: 1fr 0.72fr 1.05fr 1fr 1.35fr 0.78fr 0.62fr;
+}
+
+.admin-data-table--access-codes {
+  min-width: 960px;
+}
+
+.admin-cs-grid--fare-areas-managed {
+  grid-template-columns: var(--onroda-admin-fare-areas-managed-grid-template);
+}
+
+.admin-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.admin-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-switch__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--onroda-border-outline);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.admin-switch__slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.admin-switch input:checked + .admin-switch__slider {
+  background: color-mix(in srgb, var(--onroda-red) 85%, #000);
+}
+
+.admin-switch input:checked + .admin-switch__slider::before {
+  transform: translateX(20px);
+}
+
+.admin-switch input:focus-visible + .admin-switch__slider {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
 }

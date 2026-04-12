@@ -28,6 +28,7 @@ import {
 } from "../db/panelUsersData";
 import {
   attachAccessCodeSummariesToRides,
+  accessCodeRowForPanel,
   insertAccessCodeAdmin,
   listAccessCodesForCompany,
   loadAccessCodesForTraceByIds,
@@ -1290,7 +1291,7 @@ router.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =>
     if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "access_codes.read")) return;
     const items = await listAccessCodesForCompany(ctx.claims.companyId);
-    res.json({ ok: true, items });
+    res.json({ ok: true, items: items.map(accessCodeRowForPanel) });
   } catch (e) {
     next(e);
   }
@@ -1342,7 +1343,7 @@ router.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =
     });
     res.status(201).json({
       ok: true,
-      item: result.item,
+      item: accessCodeRowForPanel(result.item),
       ...(result.revealedCode ? { revealedCode: result.revealedCode } : {}),
     });
   } catch (e) {
@@ -1384,7 +1385,7 @@ router.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, ne
       subjectId: id,
       meta: { isActive: result.item.isActive },
     });
-    res.json({ ok: true, item: result.item });
+    res.json({ ok: true, item: accessCodeRowForPanel(result.item) });
   } catch (e) {
     next(e);
   }

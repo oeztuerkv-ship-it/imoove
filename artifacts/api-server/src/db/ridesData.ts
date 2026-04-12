@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
@@ -535,6 +535,166 @@ export async function findRideAdminById(id: string): Promise<AdminRideRow | null
     .where(eq(adminCompaniesTable.id, ride.companyId))
     .limit(1);
   return { ...ride, companyName: r?.name ?? null };
+}
+
+/** UTC-Kalendertag für Admin-Dashboard (optional `YYYY-MM-DD`). */
+export type AdminDayBounds = { start: Date; end: Date };
+
+export function parseAdminDashboardDayBounds(dateRaw: string | undefined): AdminDayBounds {
+  const t = (dateRaw ?? "").trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  const d = new Date();
+  const y0 = d.getUTCFullYear();
+  const mo0 = d.getUTCMonth() + 1;
+  const da0 = d.getUTCDate();
+  const y = m ? Number(m[1]) : y0;
+  const mo = m ? Number(m[2]) : mo0;
+  const da = m ? Number(m[3]) : da0;
+  const start = new Date(Date.UTC(y, mo - 1, da, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(y, mo - 1, da, 23, 59, 59, 999));
+  return { start, end };
+}
+
+function rideAgendaTime(r: RideRequest): Date {
+  return r.scheduledAt ? new Date(r.scheduledAt) : new Date(r.createdAt);
+}
+
+/** Fahrten, deren Fahrtzeit (geplant oder angelegt) im Kalendertag liegt — chronologisch. */
+export async function listAdminRidesAgendaForDay(bounds: AdminDayBounds): Promise<AdminRideRow[]> {
+  const { start, end } = bounds;
+  const db = getDb();
+  if (!db) {
+    return memoryRides
+      .filter((r) => {
+        const t = rideAgendaTime(r);
+        return t >= start && t <= end;
+      })
+      .sort((a, b) => rideAgendaTime(a).getTime() - rideAgendaTime(b).getTime())
+      .slice(0, 200)
+      .map((ride) => ({ ...ride, companyName: null }));
+  }
+  const coalesceTime = sql<Date>`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+  const rows = await db
+    .select({
+      ride: ridesTable,
+      companyName: adminCompaniesTable.name,
+    })
+    .from(ridesTable)
+    .leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id))
+    .where(and(gte(coalesceTime, start), lte(coalesceTime, end)))
+    .orderBy(asc(coalesceTime))
+    .limit(200);
+  return rows.map((x) => ({
+    ...rowToRide(x.ride),
+    companyName: x.companyName ?? null,
+  }));
+}
+
+export type AdminPartnerDayStatRow = {
+  companyId: string;
+  companyName: string;
+  ridesCount: number;
+  completedRevenue: number;
+  ridesPrev: number;
+};
+
+function addDaysUtc(d: Date, delta: number): Date {
+  const x = new Date(d);
+  x.setUTCDate(x.getUTCDate() + delta);
+  return x;
+}
+
+/** Partner nach Fahrtenanzahl am Tag; `prevBounds` = Vortag für Trend. */
+export async function listAdminPartnerDayStats(
+  bounds: AdminDayBounds,
+  prevBounds: AdminDayBounds,
+): Promise<AdminPartnerDayStatRow[]> {
+  const db = getDb();
+  if (!db) {
+    const countRange = (from: Date, to: Date) => {
+      const m = new Map<string, { n: number; rev: number }>();
+      for (const r of memoryRides) {
+        if (!r.companyId) continue;
+        const t = rideAgendaTime(r);
+        if (t < from || t > to) continue;
+        const cur = m.get(r.companyId) ?? { n: 0, rev: 0 };
+        cur.n += 1;
+        if (r.status === "completed") {
+          const amt = Number(r.finalFare ?? r.estimatedFare ?? 0);
+          if (Number.isFinite(amt)) cur.rev += amt;
+        }
+        m.set(r.companyId, cur);
+      }
+      return m;
+    };
+    const curM = countRange(bounds.start, bounds.end);
+    const prevM = countRange(prevBounds.start, prevBounds.end);
+    const rows: AdminPartnerDayStatRow[] = [];
+    for (const [companyId, v] of curM.entries()) {
+      rows.push({
+        companyId,
+        companyName: companyId,
+        ridesCount: v.n,
+        completedRevenue: v.rev,
+        ridesPrev: prevM.get(companyId)?.n ?? 0,
+      });
+    }
+    return rows.sort((a, b) => b.ridesCount - a.ridesCount).slice(0, 12);
+  }
+
+  const rideDay = sql<Date>`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+
+  const cur = await db
+    .select({
+      companyId: ridesTable.company_id,
+      companyName: adminCompaniesTable.name,
+      ridesCount: sql<number>`count(*)::int`,
+      completedRevenue: sql<string>`coalesce(sum(case when ${ridesTable.status} = 'completed' then coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare}) else 0 end), 0)`,
+    })
+    .from(ridesTable)
+    .innerJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id))
+    .where(
+      and(
+        isNotNull(ridesTable.company_id),
+        gte(rideDay, bounds.start),
+        lte(rideDay, bounds.end),
+      ),
+    )
+    .groupBy(ridesTable.company_id, adminCompaniesTable.name)
+    .orderBy(desc(sql`count(*)`))
+    .limit(12);
+
+  const prev = await db
+    .select({
+      companyId: ridesTable.company_id,
+      ridesCount: sql<number>`count(*)::int`,
+    })
+    .from(ridesTable)
+    .where(
+      and(
+        isNotNull(ridesTable.company_id),
+        gte(rideDay, prevBounds.start),
+        lte(rideDay, prevBounds.end),
+      ),
+    )
+    .groupBy(ridesTable.company_id);
+
+  const prevMap = new Map(prev.map((p) => [String(p.companyId), Number(p.ridesCount ?? 0)]));
+
+  return cur.map((row) => ({
+    companyId: String(row.companyId),
+    companyName: row.companyName ?? String(row.companyId),
+    ridesCount: Number(row.ridesCount ?? 0),
+    completedRevenue: Number(row.completedRevenue ?? 0),
+    ridesPrev: prevMap.get(String(row.companyId)) ?? 0,
+  }));
+}
+
+/** Vortag (UTC) zu `bounds`. */
+export function adminPreviousDayBounds(bounds: AdminDayBounds): AdminDayBounds {
+  const start = addDaysUtc(bounds.start, -1);
+  const end = addDaysUtc(bounds.end, -1);
+  return { start, end };
 }
 
 export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {

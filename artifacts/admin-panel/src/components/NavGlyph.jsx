@@ -42,6 +42,13 @@ export default function NavGlyph({ name, active }) {
           <path {...common} d="M9 4v13M15 7v13" />
         </svg>
       );
+    case "key":
+      return (
+        <svg className={c} viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+          <circle {...common} cx="7.5" cy="15.5" r="3.5" />
+          <path {...common} d="M10.5 12.5L20 3M20 3h-3.5M20 3v3.5" />
+        </svg>
+      );
     default:
       return (
         <svg className={c} viewBox="0 0 24 24" width={20} height={20} aria-hidden>

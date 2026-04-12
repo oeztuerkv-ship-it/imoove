@@ -506,6 +506,91 @@ export async function addFareArea(body: {
   return listFareAreas();
 }
 
+export type FareAreaPatchBody = Partial<{
+  name: string;
+  ruleType: string;
+  isRequiredArea: string;
+  fixedPriceAllowed: string;
+  status: string;
+}>;
+
+export async function updateFareArea(id: string, patch: FareAreaPatchBody): Promise<FareAreaRow | null> {
+  const db = getDb();
+  if (!db) {
+    const idx = memFareAreas.findIndex((a) => a.id === id);
+    if (idx < 0) return null;
+    const cur = memFareAreas[idx]!;
+    const next: FareAreaRow = {
+      ...cur,
+      ...(typeof patch.name === "string" ? { name: patch.name.trim() || cur.name } : {}),
+      ...(typeof patch.ruleType === "string" ? { ruleType: patch.ruleType } : {}),
+      ...(typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {}),
+      ...(typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {}),
+      ...(typeof patch.status === "string" ? { status: patch.status } : {}),
+    };
+    memFareAreas = memFareAreas.map((a, i) => (i === idx ? next : a));
+    return next;
+  }
+  const rows = await db.select().from(fareAreasTable).where(eq(fareAreasTable.id, id)).limit(1);
+  const r0 = rows[0];
+  if (!r0) return null;
+  const cur = rowToFareArea(r0);
+  const next: FareAreaRow = {
+    ...cur,
+    ...(typeof patch.name === "string" ? { name: patch.name.trim() || cur.name } : {}),
+    ...(typeof patch.ruleType === "string" ? { ruleType: patch.ruleType } : {}),
+    ...(typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {}),
+    ...(typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {}),
+    ...(typeof patch.status === "string" ? { status: patch.status } : {}),
+  };
+  await db
+    .update(fareAreasTable)
+    .set({
+      name: next.name,
+      rule_type: next.ruleType,
+      is_required_area: next.isRequiredArea,
+      fixed_price_allowed: next.fixedPriceAllowed,
+      status: next.status,
+    })
+    .where(eq(fareAreasTable.id, id));
+  return next;
+}
+
+/**
+ * Fahrten, die dieses Gebiet in `partner_booking_meta.fareAreaId` tragen (optional, für spätere Zuordnung).
+ * Ohne gesetztes Feld ist die Zahl typischerweise 0 — Löschen ist dann möglich.
+ */
+export async function countRidesReferencingFareAreaId(fareAreaId: string): Promise<number> {
+  const db = getDb();
+  if (!db) {
+    void fareAreaId;
+    return 0;
+  }
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(sql`${ridesTable.partner_booking_meta}->>'fareAreaId' = ${fareAreaId}`);
+  return Number(row?.n ?? 0);
+}
+
+export async function deleteFareArea(id: string): Promise<{ ok: true } | { ok: false; error: "not_found" | "fare_area_in_use"; rideCount: number }> {
+  const db = getDb();
+  const idx = memFareAreas.findIndex((a) => a.id === id);
+  if (!db) {
+    if (idx < 0) return { ok: false, error: "not_found", rideCount: 0 };
+    const blocked = await countRidesReferencingFareAreaId(id);
+    if (blocked > 0) return { ok: false, error: "fare_area_in_use", rideCount: blocked };
+    memFareAreas = memFareAreas.filter((a) => a.id !== id);
+    return { ok: true };
+  }
+  const rows = await db.select().from(fareAreasTable).where(eq(fareAreasTable.id, id)).limit(1);
+  if (!rows[0]) return { ok: false, error: "not_found", rideCount: 0 };
+  const blocked = await countRidesReferencingFareAreaId(id);
+  if (blocked > 0) return { ok: false, error: "fare_area_in_use", rideCount: blocked };
+  await db.delete(fareAreasTable).where(eq(fareAreasTable.id, id));
+  return { ok: true };
+}
+
 /** Postgres: leere Tabellen mit Demo-Zeilen füllen (einmalig nach Migration). */
 export async function seedAdminDefaultsIfEmpty(): Promise<void> {
   const db = getDb();

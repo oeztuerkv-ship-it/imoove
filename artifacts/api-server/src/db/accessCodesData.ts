@@ -23,6 +23,7 @@ type MemRow = {
   valid_from: Date | null;
   valid_until: Date | null;
   is_active: boolean;
+  meta: Record<string, unknown>;
   created_at: Date;
 };
 
@@ -203,9 +204,20 @@ export interface AdminAccessCodeRow {
   validUntil: string | null;
   isActive: boolean;
   createdAt: string;
+  /** Interne Admin-Notiz (Meta.internalNote), nicht an Partner-API ausliefern. */
+  internalNote: string | null;
+}
+
+function internalNoteFromMeta(meta: Record<string, unknown> | null | undefined): string | null {
+  if (!meta || typeof meta !== "object") return null;
+  const v = meta.internalNote;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length ? t : null;
 }
 
 function rowToAdmin(r: typeof accessCodesTable.$inferSelect): AdminAccessCodeRow {
+  const meta = (r.meta && typeof r.meta === "object" ? r.meta : {}) as Record<string, unknown>;
   return {
     id: r.id,
     codeNormalized: r.code_normalized,
@@ -218,6 +230,7 @@ function rowToAdmin(r: typeof accessCodesTable.$inferSelect): AdminAccessCodeRow
     validUntil: r.valid_until ? new Date(r.valid_until).toISOString() : null,
     isActive: r.is_active,
     createdAt: new Date(r.created_at).toISOString(),
+    internalNote: internalNoteFromMeta(meta),
   };
 }
 
@@ -234,7 +247,15 @@ function memToAdmin(m: MemRow): AdminAccessCodeRow {
     validUntil: m.valid_until ? m.valid_until.toISOString() : null,
     isActive: m.is_active,
     createdAt: m.created_at.toISOString(),
+    internalNote: internalNoteFromMeta(m.meta),
   };
+}
+
+/** Partner-Panel: gleiche Struktur ohne interne Notiz. */
+export function accessCodeRowForPanel(row: AdminAccessCodeRow): Omit<AdminAccessCodeRow, "internalNote"> {
+  const { internalNote, ...rest } = row;
+  void internalNote;
+  return rest;
 }
 
 export type AccessCodeTraceDbRow = {
@@ -352,10 +373,16 @@ export async function insertAccessCodeAdmin(body: {
   maxUses?: number | null;
   validFrom?: string | null;
   validUntil?: string | null;
+  /** Nur Plattform-Admin: interner Zweck / Kontext (Meta.internalNote). */
+  internalNote?: string | null;
 }): Promise<InsertAccessCodeAdminResult> {
   if (!isAccessCodeType(body.codeType)) return { ok: false, error: "code_type_invalid" };
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
+  const rawNote = typeof body.internalNote === "string" ? body.internalNote.trim() : "";
+  const internalNoteMeta =
+    rawNote.length > 2000 ? rawNote.slice(0, 2000) : rawNote.length > 0 ? rawNote : null;
+  const meta: Record<string, unknown> = internalNoteMeta ? { internalNote: internalNoteMeta } : {};
   const companyId =
     typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
   const maxUses =
@@ -390,6 +417,7 @@ export async function insertAccessCodeAdmin(body: {
         maxUses,
         validFrom,
         validUntil,
+        meta,
       });
       if (ins.ok === true) {
         return { ok: true, item: ins.item, revealedCode: plain };
@@ -409,6 +437,7 @@ export async function insertAccessCodeAdmin(body: {
     maxUses,
     validFrom,
     validUntil,
+    meta,
   });
   if (!single.ok) return single;
   return { ok: true, item: single.item };
@@ -422,10 +451,11 @@ type InsertRowArgs = {
   maxUses: number | null;
   validFrom: Date | null;
   validUntil: Date | null;
+  meta: Record<string, unknown>;
 };
 
 async function insertAccessCodeRow(args: InsertRowArgs): Promise<InsertAccessCodeAdminResult> {
-  const { normalized, codeType, companyId, label, maxUses, validFrom, validUntil } = args;
+  const { normalized, codeType, companyId, label, maxUses, validFrom, validUntil, meta } = args;
   const id = `ac-${randomUUID()}`;
   const vf = validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null;
   const vu = validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null;
@@ -444,6 +474,7 @@ async function insertAccessCodeRow(args: InsertRowArgs): Promise<InsertAccessCod
       valid_from: vf,
       valid_until: vu,
       is_active: true,
+      meta: { ...meta },
       created_at: new Date(),
     };
     memByNormalized.set(normalized, m);
@@ -462,7 +493,7 @@ async function insertAccessCodeRow(args: InsertRowArgs): Promise<InsertAccessCod
       valid_from: vf,
       valid_until: vu,
       is_active: true,
-      meta: {},
+      meta: Object.keys(meta).length ? meta : {},
     });
   } catch (e: unknown) {
     const msg = e && typeof e === "object" && "code" in e ? String((e as { code?: string }).code) : "";

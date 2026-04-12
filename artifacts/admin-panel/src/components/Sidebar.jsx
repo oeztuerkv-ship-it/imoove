@@ -6,6 +6,7 @@ const items = [
   { key: "rides", label: "Fahrten", icon: "rides" },
   { key: "companies", label: "Unternehmen", icon: "building" },
   { key: "panel-users", label: "Partner-Zugänge", icon: "people" },
+  { key: "access-codes", label: "Zugangscodes", icon: "key" },
   { key: "fares", label: "Tarife & Gebiete", icon: "map" },
 ];
 

@@ -73,7 +73,7 @@ function emptyStats() {
   };
 }
 
-export default function RidesPage() {
+export default function RidesPage({ initialDetailRideId, onInitialDetailRideConsumed }) {
   const [rides, setRides] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -232,6 +232,14 @@ export default function RidesPage() {
       setDetailLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!initialDetailRideId) return;
+    void loadDetail(initialDetailRideId);
+    onInitialDetailRideConsumed?.();
+    // Nur Intent aus dem Dashboard; loadDetail absichtlich nicht in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialDetailRideId]);
 
   function closeDetail() {
     setDetailId(null);
