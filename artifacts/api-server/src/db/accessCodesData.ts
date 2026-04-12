@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull, lt, lte, gte, or, sql } from "drizzle-orm";
 import type { AccessCodeType } from "../domain/rideAuthorization";
-import { isAccessCodeType, normalizeAccessCodeInput } from "../domain/rideAuthorization";
+import { generateAccessCodePlain, isAccessCodeType, normalizeAccessCodeInput } from "../domain/rideAuthorization";
 import { getDb } from "./client";
 import { accessCodesTable } from "./schema";
 
@@ -334,24 +334,27 @@ export async function patchAccessCodeForCompany(
   return { ok: true, item: rowToAdmin(updated[0]!) };
 }
 
+export type InsertAccessCodeAdminResult =
+  | { ok: true; item: AdminAccessCodeRow; revealedCode?: string }
+  | { ok: false; error: string };
+
 /**
- * Neuen Freigabe-Code anlegen (Admin). `label` erscheint bei Fahrern ohne Klartext-Code.
- * `meta` (später erweiterbar via API): z. B. `{ "internalRef": "…", "intendedPassenger": "…" }` nur zur internen Zuordnung.
+ * Neuen Freigabe-Code anlegen (Admin/Panel). `label` erscheint bei Fahrern ohne Klartext-Code.
+ * Mit `generate: true` erzeugt der Server einen zufälligen Code; `revealedCode` nur in der Antwort (Klartext), in der DB nur normalisiert.
  */
 export async function insertAccessCodeAdmin(body: {
-  code: string;
+  code?: string;
+  /** Wenn true: `code` ignorieren, sicheren Code erzeugen. */
+  generate?: boolean;
   codeType: string;
   companyId?: string | null;
   label?: string;
   maxUses?: number | null;
   validFrom?: string | null;
   validUntil?: string | null;
-}): Promise<{ ok: true; item: AdminAccessCodeRow } | { ok: false; error: string }> {
-  const normalized = normalizeAccessCodeInput(body.code);
-  if (!normalized) return { ok: false, error: "code_required" };
+}): Promise<InsertAccessCodeAdminResult> {
   if (!isAccessCodeType(body.codeType)) return { ok: false, error: "code_type_invalid" };
 
-  const id = `ac-${randomUUID()}`;
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const companyId =
     typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
@@ -370,19 +373,76 @@ export async function insertAccessCodeAdmin(body: {
   if (validFrom && Number.isNaN(validFrom.getTime())) return { ok: false, error: "valid_from_invalid" };
   if (validUntil && Number.isNaN(validUntil.getTime())) return { ok: false, error: "valid_until_invalid" };
 
+  const wantGenerate = body.generate === true;
+  let normalized: string;
+  let revealedCode: string | undefined;
+
+  if (wantGenerate) {
+    const maxAttempts = 12;
+    for (let a = 0; a < maxAttempts; a += 1) {
+      const plain = generateAccessCodePlain(12);
+      const n = normalizeAccessCodeInput(plain);
+      const ins = await insertAccessCodeRow({
+        normalized: n,
+        codeType: body.codeType,
+        companyId,
+        label,
+        maxUses,
+        validFrom,
+        validUntil,
+      });
+      if (ins.ok === true) {
+        return { ok: true, item: ins.item, revealedCode: plain };
+      }
+      if (ins.error !== "code_duplicate") return ins;
+    }
+    return { ok: false, error: "code_generate_failed" };
+  }
+
+  normalized = normalizeAccessCodeInput(typeof body.code === "string" ? body.code : "");
+  if (!normalized) return { ok: false, error: "code_required" };
+  const single = await insertAccessCodeRow({
+    normalized,
+    codeType: body.codeType,
+    companyId,
+    label,
+    maxUses,
+    validFrom,
+    validUntil,
+  });
+  if (!single.ok) return single;
+  return { ok: true, item: single.item };
+}
+
+type InsertRowArgs = {
+  normalized: string;
+  codeType: string;
+  companyId: string | null;
+  label: string;
+  maxUses: number | null;
+  validFrom: Date | null;
+  validUntil: Date | null;
+};
+
+async function insertAccessCodeRow(args: InsertRowArgs): Promise<InsertAccessCodeAdminResult> {
+  const { normalized, codeType, companyId, label, maxUses, validFrom, validUntil } = args;
+  const id = `ac-${randomUUID()}`;
+  const vf = validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null;
+  const vu = validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null;
+
   const db = getDb();
   if (!db) {
     if (memByNormalized.has(normalized)) return { ok: false, error: "code_duplicate" };
     const m: MemRow = {
       id,
       code_normalized: normalized,
-      code_type: body.codeType,
+      code_type: codeType as AccessCodeType,
       company_id: companyId,
       label,
       max_uses: maxUses,
       uses_count: 0,
-      valid_from: validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null,
-      valid_until: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      valid_from: vf,
+      valid_until: vu,
       is_active: true,
       created_at: new Date(),
     };
@@ -394,13 +454,13 @@ export async function insertAccessCodeAdmin(body: {
     await db.insert(accessCodesTable).values({
       id,
       code_normalized: normalized,
-      code_type: body.codeType,
+      code_type: codeType,
       company_id: companyId,
       label,
       max_uses: maxUses,
       uses_count: 0,
-      valid_from: validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null,
-      valid_until: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      valid_from: vf,
+      valid_until: vu,
       is_active: true,
       meta: {},
     });

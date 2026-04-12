@@ -6,6 +6,7 @@ export function stripPartnerOnlyRideFields(r: RideRequest): RideRequest {
     accessCodeNormalizedSnapshot: _snap,
     accessCodeTripOutcome: _to,
     accessCodeDefinitionState: _ds,
+    partnerBookingMeta: _pb,
     ...rest
   } = r;
   return rest;

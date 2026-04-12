@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 /**
  * Freigabe der Fahrt: direkt durch den Fahrgast (z. B. App-Zahlung) oder über einen **digitalen Zugangscode**.
  *
@@ -41,4 +43,18 @@ export function parseAccessCodeType(v: unknown): AccessCodeType | null {
 /** Eingabe normalisieren (digitaler Abgleich, einheitlich). */
 export function normalizeAccessCodeInput(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+/** Lesbarer Code ohne 0/O/1/I; Länge 8–32 (Default 12). Nur für serverseitige Erzeugung. */
+const ACCESS_CODE_GENERATION_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generateAccessCodePlain(length = 12): string {
+  let len = length;
+  if (len < 8 || len > 32) len = 12;
+  const bytes = randomBytes(len);
+  let out = "";
+  for (let i = 0; i < len; i += 1) {
+    out += ACCESS_CODE_GENERATION_CHARSET[bytes[i]! % ACCESS_CODE_GENERATION_CHARSET.length]!;
+  }
+  return normalizeAccessCodeInput(out);
 }

@@ -1,5 +1,8 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNotNull, isNull, lte, sql, type SQL } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
+import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
+import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
+import { metaToJson, parsePartnerBookingMeta } from "../domain/partnerBookingMeta";
 import {
   DEFAULT_PAYER_KIND,
   DEFAULT_RIDE_KIND,
@@ -61,6 +64,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
+    partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null,
   };
 }
 
@@ -95,6 +99,10 @@ function rideToUpdate(r: RideRequest) {
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
     rejected_by: r.rejectedBy,
+    partner_booking_meta: (r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}) as Record<
+      string,
+      unknown
+    >,
   };
 }
 
@@ -131,7 +139,77 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
     rejected_by: r.rejectedBy,
+    partner_booking_meta: (r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}) as Record<
+      string,
+      unknown
+    >,
   };
+}
+
+export type CompanyRideListFilters = {
+  createdFrom?: Date;
+  createdTo?: Date;
+  rideKind?: RideKind;
+  payerKind?: PayerKind;
+  billingReferenceContains?: string;
+  accessCodeId?: string;
+  hasAccessCode?: boolean;
+  partnerFlow?: PartnerBookingFlow;
+};
+
+function applyMemoryRideFilters(list: RideRequest[], filters: CompanyRideListFilters): RideRequest[] {
+  return list.filter((r) => {
+    const created = new Date(r.createdAt);
+    if (filters.createdFrom && created < filters.createdFrom) return false;
+    if (filters.createdTo && created > filters.createdTo) return false;
+    if (filters.rideKind && r.rideKind !== filters.rideKind) return false;
+    if (filters.payerKind && r.payerKind !== filters.payerKind) return false;
+    if (filters.billingReferenceContains?.trim()) {
+      const q = filters.billingReferenceContains.trim().toLowerCase();
+      const br = (r.billingReference ?? "").toLowerCase();
+      if (!br.includes(q)) return false;
+    }
+    if (filters.accessCodeId && r.accessCodeId !== filters.accessCodeId) return false;
+    if (filters.hasAccessCode === true && !r.accessCodeId) return false;
+    if (filters.hasAccessCode === false && r.accessCodeId) return false;
+    if (filters.partnerFlow && r.partnerBookingMeta?.flow !== filters.partnerFlow) return false;
+    return true;
+  });
+}
+
+/** Gefilterte Mandantenfahrten (Abrechnung, Export). */
+export async function listRidesForCompanyFiltered(
+  companyId: string,
+  filters: CompanyRideListFilters,
+): Promise<RideRequest[]> {
+  const db = getDb();
+  if (!db) {
+    const list = memoryRides.filter((r) => r.companyId === companyId);
+    const filtered = applyMemoryRideFilters(list, filters);
+    return filtered.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+  const cond: SQL[] = [eq(ridesTable.company_id, companyId)];
+  if (filters.createdFrom) cond.push(gte(ridesTable.created_at, filters.createdFrom));
+  if (filters.createdTo) cond.push(lte(ridesTable.created_at, filters.createdTo));
+  if (filters.rideKind) cond.push(eq(ridesTable.ride_kind, filters.rideKind));
+  if (filters.payerKind) cond.push(eq(ridesTable.payer_kind, filters.payerKind));
+  if (filters.billingReferenceContains?.trim()) {
+    const raw = filters.billingReferenceContains.trim().replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+    cond.push(ilike(ridesTable.billing_reference, `%${raw}%`));
+  }
+  if (filters.accessCodeId) cond.push(eq(ridesTable.access_code_id, filters.accessCodeId));
+  if (filters.hasAccessCode === true) cond.push(isNotNull(ridesTable.access_code_id));
+  if (filters.hasAccessCode === false) cond.push(isNull(ridesTable.access_code_id));
+  if (filters.partnerFlow) {
+    cond.push(sql`${ridesTable.partner_booking_meta}->>'flow' = ${filters.partnerFlow}`);
+  }
+
+  const rows = await db
+    .select()
+    .from(ridesTable)
+    .where(and(...cond))
+    .orderBy(desc(ridesTable.created_at));
+  return rows.map(rowToRide);
 }
 
 export async function listRides(): Promise<RideRequest[]> {
@@ -235,6 +313,45 @@ export async function insertRideWithOptionalAccessCode(
   } catch {
     return { ok: false, error: "access_code_invalid" };
   }
+}
+
+/**
+ * Weitere Fahrt mit derselben Code-Einlösung wie `template` anlegen (eine Einlösung, mehrere Beine).
+ * Ohne Code auf `template`: übernimmt nur Zahler/Firma aus Buchungskontext (`ride` bleibt maßgeblich).
+ */
+export async function insertRideCloningAccessFromTemplate(
+  ride: RideRequest,
+  template: RideRequest,
+): Promise<void> {
+  const withAuth: RideRequest = {
+    ...stripEphemeral(ride),
+    authorizationSource: template.authorizationSource,
+    accessCodeId: template.accessCodeId ?? null,
+    accessCodeNormalizedSnapshot: template.accessCodeNormalizedSnapshot ?? null,
+    companyId: template.companyId ?? ride.companyId ?? null,
+    payerKind: template.accessCodeId
+      ? payerKindForAccessCodeRide(template.companyId)
+      : ride.payerKind,
+  };
+  await insertRide(withAuth);
+}
+
+/** Erste Fahrt optional mit Code; Folgefahrten teilen dieselbe Freigabe (eine Einlösung). */
+export async function insertRidesWithSharedAccessCode(
+  rides: RideRequest[],
+  accessCodePlain: string | undefined | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (rides.length === 0) return { ok: true };
+  const [first, ...rest] = rides;
+  if (!first) return { ok: true };
+  const ins = await insertRideWithOptionalAccessCode(first, accessCodePlain);
+  if (!ins.ok) return ins;
+  const saved = await findRide(first.id);
+  if (!saved) return { ok: false, error: "persist_failed" };
+  for (const leg of rest) {
+    await insertRideCloningAccessFromTemplate(leg, saved);
+  }
+  return { ok: true };
 }
 
 export async function findRide(id: string): Promise<RideRequest | null> {

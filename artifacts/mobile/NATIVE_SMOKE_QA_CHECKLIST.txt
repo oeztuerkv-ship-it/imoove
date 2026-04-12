@@ -1,0 +1,38 @@
+Onroda Mobile — Native Smoke-QA (Freigabe-Kriterien)
+====================================================
+Voraussetzung: App auf Gerät oder iOS/Android-Simulator (Expo Go oder Dev-Build),
+API erreichbar (EXPO_PUBLIC_API_URL), Testkunde eingeloggt.
+
+Pro Zeile abhaken: OK / FAIL + Kurznotiz.
+
+1) Jetztfahrt komplett
+   - Start: Karte, Ziel wählen, „Weiter zur Buchung“ mit „Sofort“.
+   - Erwartung: reserve-ride (Fahrzeug/Extras → Übersicht → ride: Zahlung wählen → buchen → Status).
+   - Ergebnis: ___________
+
+2) Terminfahrt komplett
+   - Ziel wählen, „Termin“, „Weiter zur Buchung“.
+   - Erwartung: Abholzeit-Rad → Übersicht → ride → Status mit Vorbestellung sichtbar.
+   - Ergebnis: ___________
+
+3) Zahlungswahl / Wer zahlt?
+   - Auf ride: „WER ZAHLT?“ + Raster; Bar / App / PayPal / Transportschein durchklicken.
+   - Erwartung: Texte konsistent, CTA nur bei gültiger Wahl; Transportschein + Befreiung testen.
+   - Ergebnis: ___________
+
+4) Kostenübernahme / Freigabe (API)
+   - Buchung mit gültigem Freigabe-Code (sofern Flow in App angebunden) ODER Auftrag,
+     den die API mit authorizationSource=access_code + accessCodeSummary liefert.
+   - Erwartung: Status / Meine Fahrten zeigen „Kostenübernahme“ + sinnvoller Untertitel.
+   - Ergebnis: ___________
+
+5) Meine Fahrten
+   - Tab Fahrten: aktive Karte, Verlauf, Live-Link zu Status, „Neue Fahrt“ → reserve-ride.
+   - Ergebnis: ___________
+
+6) Redirects / Navigation
+   - URL/Pfad „fahrt-reservieren“ öffnen (Deep Link oder manuell in Router-Debug).
+   - Erwartung: landet auf reserve-ride; kein hängender Stack; Abbrechen zurück erwartbar.
+   - Ergebnis: ___________
+
+Freigabe: Alle Punkte OK auf mindestens einer nativen Plattform (iOS oder Android).

@@ -1,9 +1,11 @@
 import type { PayerKind, RideKind } from "./rideBillingProfile";
 import type { AccessCodeType, AuthorizationSource } from "./rideAuthorization";
 import type { AccessCodeDefinitionState, AccessCodeTripOutcome } from "./accessCodeTrace";
+import type { PartnerBookingMeta } from "./partnerBookingMeta";
 
 export type { AccessCodeType, AuthorizationSource, PayerKind, RideKind };
 export type { AccessCodeDefinitionState, AccessCodeTripOutcome };
+export type { PartnerBookingMeta };
 
 export interface RideRequest {
   id: string;
@@ -41,6 +43,8 @@ export interface RideRequest {
    * Nicht in `GET /rides` (öffentlicher Pool) ausliefern.
    */
   accessCodeNormalizedSnapshot?: string | null;
+  /** Hotel / Medizin / Serien — nur Panel-Mandantensicht; nicht öffentlich. */
+  partnerBookingMeta?: PartnerBookingMeta | null;
   /**
    * Nur API-Antworten (Fahrer/Kunde): Typ + Anzeigename — **ohne** Klartext-Code.
    * Nicht in der DB speichern.

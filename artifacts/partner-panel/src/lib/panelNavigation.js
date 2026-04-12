@@ -6,6 +6,7 @@ export const PANEL_NAV_ITEMS = [
   { key: "overview", moduleId: "overview", label: "Start", icon: "◫" },
   { key: "rides-mine", moduleId: "rides_list", label: "Meine Fahrten", icon: "☰" },
   { key: "rides-new", moduleId: "rides_create", label: "Neue Fahrt", icon: "+" },
+  { key: "medical-round", moduleId: "rides_create", label: "Patient H/R", icon: "⇄" },
   { key: "rides-history", moduleId: "rides_list", label: "Mein Verlauf", icon: "↺" },
   { key: "profile", moduleId: "company_profile", label: "Meine Firma", icon: "◇" },
   { key: "team", moduleId: "team", label: "Mitarbeiter", icon: "◎" },

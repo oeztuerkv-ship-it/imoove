@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -24,6 +24,7 @@ import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
 import { rs, rf } from "@/utils/scale";
 import { connectToRide, disconnectSocket, sendCustomerLocation } from "@/utils/socket";
@@ -91,7 +92,8 @@ export default function StatusScreen() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { destination, origin, fareBreakdown, route, paymentMethod, completeRide, cancelRide } = useRide();
-  const { completedRequest, acceptedRequest, lastAddedRequestId, cancelRequest, refreshRequests } = useRideRequests();
+  const { completedRequest, acceptedRequest, lastAddedRequestId, cancelRequest, refreshRequests, myActiveRequests } =
+    useRideRequests();
   const { driver: driverProfile } = useDriver();
 
   const driverName = driverProfile?.name ?? FALLBACK_DRIVER.name;
@@ -326,6 +328,11 @@ export default function StatusScreen() {
     : 0;
   const grandTotal = totalFare + tipAmount;
 
+  const pendingBillingRequest = useMemo(
+    () => myActiveRequests.find((r) => r.id === lastAddedRequestId) ?? null,
+    [myActiveRequests, lastAddedRequestId],
+  );
+
   const searchSpinDegrees = searchSpinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
@@ -376,8 +383,18 @@ export default function StatusScreen() {
               <View style={styles.receiptDivider} />
               <View style={styles.paymentSection}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.receiptLabel}>Zahlungsmethode:</Text>
-                  <Text style={styles.paymentMethod}>{paymentMethod ? PAYMENT_LABELS[paymentMethod] : "—"}</Text>
+                  <Text style={styles.receiptLabel}>
+                    {completedRequest
+                      ? customerPayerBlockFromRideRequest(completedRequest).title
+                      : "Zahlung"}
+                  </Text>
+                  <Text style={styles.paymentMethod}>
+                    {completedRequest
+                      ? customerPayerBlockFromRideRequest(completedRequest).subtitle
+                      : paymentMethod
+                        ? PAYMENT_LABELS[paymentMethod]
+                        : "—"}
+                  </Text>
                 </View>
                 {paymentMethod === "card" ? (
                   <Feather name="credit-card" size={24} color="#374151" />
@@ -556,6 +573,17 @@ export default function StatusScreen() {
                 </View>
               </View>
             )}
+
+            {pendingBillingRequest ? (
+              <View style={styles.searchPayerBox}>
+                <Text style={styles.searchPayerTitle}>
+                  {customerPayerBlockFromRideRequest(pendingBillingRequest).title}
+                </Text>
+                <Text style={styles.searchPayerSub}>
+                  {customerPayerBlockFromRideRequest(pendingBillingRequest).subtitle}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -661,6 +689,12 @@ export default function StatusScreen() {
               ? `${driverFirstName} bereitet sich vor`
               : `Fahrer gefunden · ${driverPlate}`}
           </Text>
+          {acceptedRequest ? (
+            <Text style={styles.uberBarPayer} numberOfLines={2}>
+              {customerPayerBlockFromRideRequest(acceptedRequest).title}:{" "}
+              {customerPayerBlockFromRideRequest(acceptedRequest).subtitle}
+            </Text>
+          ) : null}
         </View>
         <Pressable style={styles.uberMsgBtn} onPress={handleMessage}>
           <Feather name="message-circle" size={20} color="#fff" />
@@ -717,6 +751,7 @@ const styles = StyleSheet.create({
   uberBarInfo: { flex: 1 },
   uberBarAddr: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#fff", marginBottom: rs(2) },
   uberBarStatus: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
+  uberBarPayer: { fontSize: rf(11), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: rs(4), lineHeight: rf(15) },
   uberMsgBtn: {
     width: rs(40), height: rs(40), borderRadius: rs(20),
     backgroundColor: "#374151",
@@ -870,6 +905,16 @@ const styles = StyleSheet.create({
     color: "#111111",
     letterSpacing: -0.3,
   },
+  searchPayerBox: {
+    marginTop: rs(12),
+    padding: rs(12),
+    backgroundColor: "#EFF6FF",
+    borderRadius: rs(12),
+    borderWidth: 1,
+    borderColor: "#93C5FD",
+  },
+  searchPayerTitle: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#1D4ED8" },
+  searchPayerSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#1E40AF", marginTop: rs(4), lineHeight: rf(17) },
 
   noDriverOverlay: {
     flex: 1,

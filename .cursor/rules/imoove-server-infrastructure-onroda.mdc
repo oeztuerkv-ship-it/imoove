@@ -78,6 +78,13 @@ Wenn das Repo nicht sauber ist: nicht „weiter improviseieren“, sondern **sic
 
 Symptom „alles 500“ kann z. B. nur **fehlendes DB-Schema** sein, obwohl Nginx/SSL ok sind. Schema-Referenz im Repo u. a.: `artifacts/api-server/src/db/init-onroda.sql` — nach Einspielen API neu starten und betroffene Endpoints erneut prüfen.
 
+## PostgreSQL: Tracker und echtes Schema (verbindliche Linie)
+
+- **`onroda_deploy_migrations`** allein ist **kein** Beweis, dass Spalten/Tabellen existieren (falscher Seed, Restore, manuelle Drops).
+- **`deploy-onroda-production.sh`** führt nach den SQL-Migrationen **`scripts/verify-onroda-db-schema.sql`** aus (bzw. `--verify-schema` / `verify-onroda-db-schema.sh` manuell). Deploy bricht **vor** Build und PM2 ab, wenn die Prüfung fehlschlägt — so laufen API-Code und DB nicht auseinander.
+- **`--seed-migration-tracker`** nur mit **`ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1`**; bewusst und selten. Kein Ersatz für fehlende `ALTER`/`CREATE`.
+- Schema-Änderungen: **nummerierte `.sql`-Migration** im Repo; bei neuen von Drizzle/API genutzten Objekten die Erwartung in **`verify-onroda-db-schema.sql`** ergänzen. **Kein** `drizzle-kit push` gegen Produktion als Standardweg.
+
 ## Panel-Deploy / Postmortem (nicht wiederholen)
 
 - **`rides.company_id`** muss **TEXT** sein wie `admin_companies.id` — kein Mix **INTEGER** (Legacy) und TEXT; sonst scheitert `GET /api/panel/v1/rides` mit 500 bei Vergleich mit `co-demo-1`. Reparatur: Migration **`006_rides_legacy_schema_repair.sql`** (und Daten-Backfill).
@@ -89,4 +96,5 @@ Symptom „alles 500“ kann z. B. nur **fehlendes DB-Schema** sein, obwohl Ng
 ## Für Agents
 
 - Keine Empfehlung zu „schnellen“ direkten Produktions-Edits auf dem Server statt **Commit → Push → kontrolliertes Deploy**.
+- Deploy-/DB-Linie: **SQL-Migrationen + Schema-Verifikation** wie im Repo; Tracker-Seed nur mit expliziter Bestätigung; Produktion nicht mit `drizzle-kit push` „flicken“ statt Migrationen.
 - Bei Connection refused / 502: **zuerst** Port/Upstream-Konsistenz (3000, `127.0.0.1:3000`) und Git-Drift prüfen, bevor im Anwendungscode wild gesucht wird.

@@ -86,9 +86,7 @@ export default function OverviewPage() {
           ) : null}
         </h2>
         <p className="panel-overview-hero__lead">
-          Hier arbeiten Sie <strong>nur mit den Daten Ihres Unternehmens</strong>. Das ist bewusst getrennt von der
-          zentralen Onroda-Systemkonsole für Betreiber — andere Oberfläche, andere Aufgaben, kein Zugriff auf andere
-          Mandanten.
+          Fahrten, Codes und Stammdaten für {user?.companyName ? "Ihr Unternehmen" : "Ihr Team"}.
         </p>
       </div>
       {companyErr ? <p className="panel-page__warn">{companyErr}</p> : null}
@@ -109,7 +107,7 @@ export default function OverviewPage() {
           ) : null}
           {hasPanelModule(user?.panelModules, "company_profile") ? (
             <li>
-              <strong>Meine Firma</strong> — Stammdaten und Kontaktdaten Ihres Mandanten an einem Ort.
+              <strong>Meine Firma</strong> — Stammdaten und Kontakt.
             </li>
           ) : null}
           {hasPanelModule(user?.panelModules, "team") ? (

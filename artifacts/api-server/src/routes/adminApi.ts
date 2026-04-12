@@ -127,9 +127,11 @@ adminJson.get("/access-codes", async (_req, res, next) => {
 adminJson.post("/access-codes", async (req, res, next) => {
   try {
     const body = req.body as Record<string, unknown>;
+    const generateCode = body.generateCode === true;
     const code = typeof body.code === "string" ? body.code : "";
     const codeType = typeof body.codeType === "string" ? body.codeType : "";
     const result = await insertAccessCodeAdmin({
+      generate: generateCode,
       code,
       codeType,
       companyId: typeof body.companyId === "string" ? body.companyId : undefined,
@@ -144,10 +146,18 @@ adminJson.post("/access-codes", async (req, res, next) => {
         res.status(409).json({ error: err });
         return;
       }
+      if (err === "code_generate_failed") {
+        res.status(503).json({ error: err });
+        return;
+      }
       res.status(400).json({ error: err });
       return;
     }
-    res.status(201).json({ ok: true, item: result.item });
+    res.status(201).json({
+      ok: true,
+      item: result.item,
+      ...(result.revealedCode ? { revealedCode: result.revealedCode } : {}),
+    });
   } catch (e) {
     next(e);
   }

@@ -2582,7 +2582,7 @@ var require_websocket = __commonJS({
     var http = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes3, createHash: createHash2 } = __require("crypto");
+    var { randomBytes: randomBytes4, createHash: createHash2 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -3112,7 +3112,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes3(16).toString("base64");
+      const key = randomBytes4(16).toString("base64");
       const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -36375,6 +36375,7 @@ var init_drizzle_orm = __esm({
 });
 
 // src/domain/rideAuthorization.ts
+import { randomBytes } from "node:crypto";
 function isAuthorizationSource(v) {
   return AUTHORIZATION_SOURCES.includes(v);
 }
@@ -36384,12 +36385,23 @@ function isAccessCodeType(v) {
 function normalizeAccessCodeInput(raw) {
   return raw.trim().toUpperCase().replace(/\s+/g, "");
 }
-var AUTHORIZATION_SOURCES, ACCESS_CODE_TYPES, DEFAULT_AUTHORIZATION_SOURCE;
+function generateAccessCodePlain(length = 12) {
+  let len = length;
+  if (len < 8 || len > 32) len = 12;
+  const bytes = randomBytes(len);
+  let out = "";
+  for (let i = 0; i < len; i += 1) {
+    out += ACCESS_CODE_GENERATION_CHARSET[bytes[i] % ACCESS_CODE_GENERATION_CHARSET.length];
+  }
+  return normalizeAccessCodeInput(out);
+}
+var AUTHORIZATION_SOURCES, ACCESS_CODE_TYPES, DEFAULT_AUTHORIZATION_SOURCE, ACCESS_CODE_GENERATION_CHARSET;
 var init_rideAuthorization = __esm({
   "src/domain/rideAuthorization.ts"() {
     AUTHORIZATION_SOURCES = ["passenger_direct", "access_code"];
     ACCESS_CODE_TYPES = ["voucher", "hotel", "company", "general"];
     DEFAULT_AUTHORIZATION_SOURCE = "passenger_direct";
+    ACCESS_CODE_GENERATION_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   }
 });
 
@@ -40925,9 +40937,10 @@ __export(schema_exports, {
   fareAreasTable: () => fareAreasTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
+  partnerRideSeriesTable: () => partnerRideSeriesTable,
   ridesTable: () => ridesTable
 });
-var adminCompaniesTable, accessCodesTable, fareAreasTable, panelUsersTable, panelAuditLogTable, ridesTable;
+var adminCompaniesTable, accessCodesTable, fareAreasTable, panelUsersTable, panelAuditLogTable, ridesTable, partnerRideSeriesTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41043,7 +41056,24 @@ var init_schema2 = __esm({
         onDelete: "set null"
       }),
       /** Kopie des normalisierten Codes bei Einlösung (Audit / Verlauf). */
-      access_code_normalized_snapshot: text("access_code_normalized_snapshot")
+      access_code_normalized_snapshot: text("access_code_normalized_snapshot"),
+      /** Hotel/Medizin/Serien — nur Panel; nicht in öffentlichem Ride-Pool ausliefern. */
+      partner_booking_meta: jsonb("partner_booking_meta").$type().notNull().default({})
+    });
+    partnerRideSeriesTable = pgTable("partner_ride_series", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+        onDelete: "set null"
+      }),
+      patient_reference: text("patient_reference").notNull().default(""),
+      billing_reference: text("billing_reference"),
+      valid_from: timestamp("valid_from", { withTimezone: true }),
+      valid_until: timestamp("valid_until", { withTimezone: true }),
+      total_rides: integer("total_rides").notNull(),
+      status: text("status").notNull().default("active"),
+      meta: jsonb("meta").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
   }
 });
@@ -41292,10 +41322,7 @@ async function patchAccessCodeForCompany(companyId, id, patch) {
   return { ok: true, item: rowToAdmin(updated[0]) };
 }
 async function insertAccessCodeAdmin(body) {
-  const normalized = normalizeAccessCodeInput(body.code);
-  if (!normalized) return { ok: false, error: "code_required" };
   if (!isAccessCodeType(body.codeType)) return { ok: false, error: "code_type_invalid" };
-  const id = `ac-${randomUUID()}`;
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const companyId = typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
   const maxUses = typeof body.maxUses === "number" && Number.isFinite(body.maxUses) && body.maxUses > 0 ? Math.floor(body.maxUses) : null;
@@ -41303,19 +41330,62 @@ async function insertAccessCodeAdmin(body) {
   const validUntil = typeof body.validUntil === "string" && body.validUntil.trim() ? new Date(body.validUntil.trim()) : null;
   if (validFrom && Number.isNaN(validFrom.getTime())) return { ok: false, error: "valid_from_invalid" };
   if (validUntil && Number.isNaN(validUntil.getTime())) return { ok: false, error: "valid_until_invalid" };
+  const wantGenerate = body.generate === true;
+  let normalized;
+  let revealedCode;
+  if (wantGenerate) {
+    const maxAttempts = 12;
+    for (let a = 0; a < maxAttempts; a += 1) {
+      const plain = generateAccessCodePlain(12);
+      const n = normalizeAccessCodeInput(plain);
+      const ins = await insertAccessCodeRow({
+        normalized: n,
+        codeType: body.codeType,
+        companyId,
+        label,
+        maxUses,
+        validFrom,
+        validUntil
+      });
+      if (ins.ok === true) {
+        return { ok: true, item: ins.item, revealedCode: plain };
+      }
+      if (ins.error !== "code_duplicate") return ins;
+    }
+    return { ok: false, error: "code_generate_failed" };
+  }
+  normalized = normalizeAccessCodeInput(typeof body.code === "string" ? body.code : "");
+  if (!normalized) return { ok: false, error: "code_required" };
+  const single = await insertAccessCodeRow({
+    normalized,
+    codeType: body.codeType,
+    companyId,
+    label,
+    maxUses,
+    validFrom,
+    validUntil
+  });
+  if (!single.ok) return single;
+  return { ok: true, item: single.item };
+}
+async function insertAccessCodeRow(args) {
+  const { normalized, codeType, companyId, label, maxUses, validFrom, validUntil } = args;
+  const id = `ac-${randomUUID()}`;
+  const vf = validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null;
+  const vu = validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null;
   const db2 = getDb();
   if (!db2) {
     if (memByNormalized.has(normalized)) return { ok: false, error: "code_duplicate" };
     const m = {
       id,
       code_normalized: normalized,
-      code_type: body.codeType,
+      code_type: codeType,
       company_id: companyId,
       label,
       max_uses: maxUses,
       uses_count: 0,
-      valid_from: validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null,
-      valid_until: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      valid_from: vf,
+      valid_until: vu,
       is_active: true,
       created_at: /* @__PURE__ */ new Date()
     };
@@ -41326,13 +41396,13 @@ async function insertAccessCodeAdmin(body) {
     await db2.insert(accessCodesTable).values({
       id,
       code_normalized: normalized,
-      code_type: body.codeType,
+      code_type: codeType,
       company_id: companyId,
       label,
       max_uses: maxUses,
       uses_count: 0,
-      valid_from: validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null,
-      valid_until: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      valid_from: vf,
+      valid_until: vu,
       is_active: true,
       meta: {}
     });
@@ -41356,15 +41426,62 @@ var init_accessCodesData = __esm({
   }
 });
 
+// src/domain/partnerBookingMeta.ts
+function isRecord(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function parsePartnerBookingMeta(raw) {
+  if (!isRecord(raw)) return null;
+  const flow = raw.flow;
+  if (flow !== "hotel_guest" && flow !== "medical_patient" && flow !== "medical_series_leg") {
+    return null;
+  }
+  const out = { flow };
+  if (isRecord(raw.hotel)) {
+    const bt = raw.hotel.billedTo;
+    out.hotel = {
+      roomNumber: typeof raw.hotel.roomNumber === "string" ? raw.hotel.roomNumber : null,
+      reservationRef: typeof raw.hotel.reservationRef === "string" ? raw.hotel.reservationRef : null,
+      billedTo: bt === "guest" || bt === "room_ledger" || bt === "company" ? bt : null
+    };
+  }
+  if (isRecord(raw.medical)) {
+    const m = raw.medical;
+    const tripLeg = m.tripLeg;
+    out.medical = {
+      patientReference: typeof m.patientReference === "string" ? m.patientReference : null,
+      tripLeg: tripLeg === "outbound" || tripLeg === "return" ? tripLeg : null,
+      linkedRideId: typeof m.linkedRideId === "string" ? m.linkedRideId : null,
+      seriesId: typeof m.seriesId === "string" ? m.seriesId : null,
+      seriesSequence: typeof m.seriesSequence === "number" && Number.isFinite(m.seriesSequence) ? m.seriesSequence : null,
+      seriesTotal: typeof m.seriesTotal === "number" && Number.isFinite(m.seriesTotal) ? m.seriesTotal : null,
+      seriesValidFrom: typeof m.seriesValidFrom === "string" ? m.seriesValidFrom : null,
+      seriesValidUntil: typeof m.seriesValidUntil === "string" ? m.seriesValidUntil : null
+    };
+  }
+  return out;
+}
+function metaToJson(meta) {
+  if (!meta) return {};
+  return JSON.parse(JSON.stringify(meta));
+}
+var init_partnerBookingMeta = __esm({
+  "src/domain/partnerBookingMeta.ts"() {
+  }
+});
+
 // src/db/ridesData.ts
 var ridesData_exports = {};
 __export(ridesData_exports, {
   adminReleaseRide: () => adminReleaseRide,
   findRide: () => findRide,
   insertRide: () => insertRide,
+  insertRideCloningAccessFromTemplate: () => insertRideCloningAccessFromTemplate,
   insertRideWithOptionalAccessCode: () => insertRideWithOptionalAccessCode,
+  insertRidesWithSharedAccessCode: () => insertRidesWithSharedAccessCode,
   listRides: () => listRides,
   listRidesForCompany: () => listRidesForCompany,
+  listRidesForCompanyFiltered: () => listRidesForCompanyFiltered,
   resetRidesDemo: () => resetRidesDemo,
   updateRide: () => updateRide
 });
@@ -41407,7 +41524,8 @@ function rowToRide(r) {
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
-    rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : []
+    rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
+    partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null
   };
 }
 function rideToUpdate(r) {
@@ -41440,7 +41558,8 @@ function rideToUpdate(r) {
     final_fare: r.finalFare ?? null,
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
-    rejected_by: r.rejectedBy
+    rejected_by: r.rejectedBy,
+    partner_booking_meta: r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}
   };
 }
 function rideToInsert(r) {
@@ -41475,8 +41594,53 @@ function rideToInsert(r) {
     final_fare: r.finalFare ?? null,
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
-    rejected_by: r.rejectedBy
+    rejected_by: r.rejectedBy,
+    partner_booking_meta: r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}
   };
+}
+function applyMemoryRideFilters(list, filters) {
+  return list.filter((r) => {
+    const created = new Date(r.createdAt);
+    if (filters.createdFrom && created < filters.createdFrom) return false;
+    if (filters.createdTo && created > filters.createdTo) return false;
+    if (filters.rideKind && r.rideKind !== filters.rideKind) return false;
+    if (filters.payerKind && r.payerKind !== filters.payerKind) return false;
+    if (filters.billingReferenceContains?.trim()) {
+      const q = filters.billingReferenceContains.trim().toLowerCase();
+      const br = (r.billingReference ?? "").toLowerCase();
+      if (!br.includes(q)) return false;
+    }
+    if (filters.accessCodeId && r.accessCodeId !== filters.accessCodeId) return false;
+    if (filters.hasAccessCode === true && !r.accessCodeId) return false;
+    if (filters.hasAccessCode === false && r.accessCodeId) return false;
+    if (filters.partnerFlow && r.partnerBookingMeta?.flow !== filters.partnerFlow) return false;
+    return true;
+  });
+}
+async function listRidesForCompanyFiltered(companyId, filters) {
+  const db2 = getDb();
+  if (!db2) {
+    const list = memoryRides.filter((r) => r.companyId === companyId);
+    const filtered = applyMemoryRideFilters(list, filters);
+    return filtered.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+  }
+  const cond = [eq(ridesTable.company_id, companyId)];
+  if (filters.createdFrom) cond.push(gte(ridesTable.created_at, filters.createdFrom));
+  if (filters.createdTo) cond.push(lte(ridesTable.created_at, filters.createdTo));
+  if (filters.rideKind) cond.push(eq(ridesTable.ride_kind, filters.rideKind));
+  if (filters.payerKind) cond.push(eq(ridesTable.payer_kind, filters.payerKind));
+  if (filters.billingReferenceContains?.trim()) {
+    const raw = filters.billingReferenceContains.trim().replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+    cond.push(ilike(ridesTable.billing_reference, `%${raw}%`));
+  }
+  if (filters.accessCodeId) cond.push(eq(ridesTable.access_code_id, filters.accessCodeId));
+  if (filters.hasAccessCode === true) cond.push(isNotNull(ridesTable.access_code_id));
+  if (filters.hasAccessCode === false) cond.push(isNull(ridesTable.access_code_id));
+  if (filters.partnerFlow) {
+    cond.push(sql`${ridesTable.partner_booking_meta}->>'flow' = ${filters.partnerFlow}`);
+  }
+  const rows = await db2.select().from(ridesTable).where(and(...cond)).orderBy(desc(ridesTable.created_at));
+  return rows.map(rowToRide);
 }
 async function listRides() {
   const db2 = getDb();
@@ -41557,6 +41721,30 @@ async function insertRideWithOptionalAccessCode(ride, accessCodePlain) {
     return { ok: false, error: "access_code_invalid" };
   }
 }
+async function insertRideCloningAccessFromTemplate(ride, template) {
+  const withAuth = {
+    ...stripEphemeral(ride),
+    authorizationSource: template.authorizationSource,
+    accessCodeId: template.accessCodeId ?? null,
+    accessCodeNormalizedSnapshot: template.accessCodeNormalizedSnapshot ?? null,
+    companyId: template.companyId ?? ride.companyId ?? null,
+    payerKind: template.accessCodeId ? payerKindForAccessCodeRide(template.companyId) : ride.payerKind
+  };
+  await insertRide(withAuth);
+}
+async function insertRidesWithSharedAccessCode(rides, accessCodePlain) {
+  if (rides.length === 0) return { ok: true };
+  const [first, ...rest] = rides;
+  if (!first) return { ok: true };
+  const ins = await insertRideWithOptionalAccessCode(first, accessCodePlain);
+  if (!ins.ok) return ins;
+  const saved = await findRide(first.id);
+  if (!saved) return { ok: false, error: "persist_failed" };
+  for (const leg of rest) {
+    await insertRideCloningAccessFromTemplate(leg, saved);
+  }
+  return { ok: true };
+}
 async function findRide(id) {
   const db2 = getDb();
   if (!db2) {
@@ -41597,6 +41785,7 @@ var memoryRides;
 var init_ridesData = __esm({
   "src/db/ridesData.ts"() {
     init_drizzle_orm();
+    init_partnerBookingMeta();
     init_rideBillingProfile();
     init_rideAuthorization();
     init_accessCodesData();
@@ -45717,6 +45906,7 @@ function stripPartnerOnlyRideFields(r) {
     accessCodeNormalizedSnapshot: _snap,
     accessCodeTripOutcome: _to,
     accessCodeDefinitionState: _ds,
+    partnerBookingMeta: _pb,
     ...rest
   } = r;
   return rest;
@@ -45921,7 +46111,7 @@ var rides_default = router2;
 // src/routes/auth.ts
 var import_express3 = __toESM(require_express2(), 1);
 import { ClientAuthentication, OAuth2Client } from "google-auth-library";
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes as randomBytes2 } from "crypto";
 
 // src/lib/firebaseAdmin.ts
 import admin from "firebase-admin";
@@ -47392,7 +47582,7 @@ function sendGoogleOAuthStart(req, res, returnUrl) {
     });
     return;
   }
-  const state = base64url(randomBytes(16));
+  const state = base64url(randomBytes2(16));
   const secret = googleClientSecret();
   const redirectUri = callbackUriFromReq(req);
   console.log("GOOGLE REDIRECT URI:", redirectUri);
@@ -47432,7 +47622,7 @@ function base64url(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 function generateCodeVerifier() {
-  return base64url(randomBytes(32));
+  return base64url(randomBytes2(32));
 }
 function codeChallenge(verifier) {
   return base64url(createHash("sha256").update(verifier).digest());
@@ -48224,9 +48414,11 @@ adminJson.get("/access-codes", async (_req, res, next) => {
 adminJson.post("/access-codes", async (req, res, next) => {
   try {
     const body = req.body;
+    const generateCode = body.generateCode === true;
     const code = typeof body.code === "string" ? body.code : "";
     const codeType = typeof body.codeType === "string" ? body.codeType : "";
     const result = await insertAccessCodeAdmin({
+      generate: generateCode,
       code,
       codeType,
       companyId: typeof body.companyId === "string" ? body.companyId : void 0,
@@ -48241,10 +48433,18 @@ adminJson.post("/access-codes", async (req, res, next) => {
         res.status(409).json({ error: err });
         return;
       }
+      if (err === "code_generate_failed") {
+        res.status(503).json({ error: err });
+        return;
+      }
       res.status(400).json({ error: err });
       return;
     }
-    res.status(201).json({ ok: true, item: result.item });
+    res.status(201).json({
+      ok: true,
+      item: result.item,
+      ...result.revealedCode ? { revealedCode: result.revealedCode } : {}
+    });
   } catch (e) {
     next(e);
   }
@@ -48451,7 +48651,7 @@ function permissionsForRole(role) {
 }
 
 // src/lib/password.ts
-import { randomBytes as randomBytes2, scrypt, timingSafeEqual } from "node:crypto";
+import { randomBytes as randomBytes3, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 var scryptAsync = promisify(scrypt);
 var PREFIX = "v1";
@@ -48464,7 +48664,7 @@ var SCRYPT_OPTS = {
   maxmem: 64 * 1024 * 1024
 };
 async function hashPassword(plain) {
-  const salt = randomBytes2(16);
+  const salt = randomBytes3(16);
   const key = await scryptAsync(plain, salt, KEYLEN, SCRYPT_OPTS);
   return `${PREFIX}.${salt.toString("base64url")}.${key.toString("base64url")}`;
 }
@@ -48629,7 +48829,7 @@ var panelAuth_default = router5;
 var import_express6 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 
 // src/db/panelAuditData.ts
 init_client();
@@ -48851,6 +49051,12 @@ async function patchPanelUserInCompany(id, companyId, patch) {
   if (typeof patch.role === "string" && patch.role.length > 0) {
     sets.role = patch.role;
   }
+  if (typeof patch.email === "string") {
+    sets.email = patch.email.trim();
+  }
+  if (typeof patch.username === "string") {
+    sets.username = patch.username.trim();
+  }
   const rows = await db2.update(panelUsersTable).set(sets).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({
     id: panelUsersTable.id,
     username: panelUsersTable.username,
@@ -48862,6 +49068,19 @@ async function patchPanelUserInCompany(id, companyId, patch) {
   });
   const r = rows[0];
   return r ? toPublic(r) : null;
+}
+async function deleteInactivePanelUserInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const rows = await db2.delete(panelUsersTable).where(
+    and(
+      eq(panelUsersTable.id, id),
+      eq(panelUsersTable.company_id, companyId),
+      eq(panelUsersTable.is_active, false)
+    )
+  ).returning({ id: panelUsersTable.id });
+  return rows.length > 0;
 }
 async function updatePanelUserPasswordInCompany(id, companyId, passwordHash) {
   if (!isPostgresConfigured()) return false;
@@ -48885,6 +49104,74 @@ async function panelUsernameTaken(normalized, excludeUserId) {
 // src/routes/panelApi.ts
 init_accessCodesData();
 init_ridesData();
+
+// src/db/partnerRideSeriesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID3 } from "node:crypto";
+var memSeries = [];
+function rowToSeries(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    createdByPanelUserId: r.created_by_panel_user_id ?? null,
+    patientReference: r.patient_reference ?? "",
+    billingReference: r.billing_reference ?? null,
+    validFrom: r.valid_from ? new Date(r.valid_from).toISOString() : null,
+    validUntil: r.valid_until ? new Date(r.valid_until).toISOString() : null,
+    totalRides: r.total_rides,
+    status: r.status,
+    meta: r.meta && typeof r.meta === "object" ? r.meta : {},
+    createdAt: new Date(r.created_at).toISOString()
+  };
+}
+async function insertPartnerRideSeries(input) {
+  const id = `SRS-${randomUUID3()}`;
+  const db2 = getDb();
+  if (!db2) {
+    const row = {
+      id,
+      companyId: input.companyId,
+      createdByPanelUserId: input.createdByPanelUserId,
+      patientReference: input.patientReference.trim(),
+      billingReference: input.billingReference?.trim() || null,
+      validFrom: input.validFrom ? input.validFrom.toISOString() : null,
+      validUntil: input.validUntil ? input.validUntil.toISOString() : null,
+      totalRides: input.totalRides,
+      status: "active",
+      meta: input.meta ?? {},
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    memSeries.unshift(row);
+    return row;
+  }
+  await db2.insert(partnerRideSeriesTable).values({
+    id,
+    company_id: input.companyId,
+    created_by_panel_user_id: input.createdByPanelUserId,
+    patient_reference: input.patientReference.trim(),
+    billing_reference: input.billingReference?.trim() || null,
+    valid_from: input.validFrom ?? null,
+    valid_until: input.validUntil ?? null,
+    total_rides: input.totalRides,
+    status: "active",
+    meta: input.meta ?? {}
+  });
+  const [r] = await db2.select().from(partnerRideSeriesTable).where(eq(partnerRideSeriesTable.id, id)).limit(1);
+  if (!r) throw new Error("partner_ride_series insert failed");
+  return rowToSeries(r);
+}
+async function listPartnerRideSeriesForCompany(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    return memSeries.filter((s) => s.companyId === companyId).sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+  }
+  const rows = await db2.select().from(partnerRideSeriesTable).where(eq(partnerRideSeriesTable.company_id, companyId)).orderBy(desc(partnerRideSeriesTable.created_at));
+  return rows.map(rowToSeries);
+}
+
+// src/routes/panelApi.ts
 init_rideAuthorization();
 
 // src/domain/accessCodeTrace.ts
@@ -49003,6 +49290,147 @@ async function enrichPanelRidesForResponse(rides) {
     accessCodeDefinitionState: r.accessCodeId && traceById.has(r.accessCodeId) ? computeAccessCodeDefinitionState(traceById.get(r.accessCodeId), now) : null
   }));
 }
+function reqRideId() {
+  return `REQ-${randomUUID4()}`;
+}
+function parsePartnerFlowParam(v) {
+  if (typeof v !== "string" || !v.trim()) return null;
+  const s = v.trim();
+  if (s === "hotel_guest" || s === "medical_patient" || s === "medical_series_leg") return s;
+  return null;
+}
+function monthBoundsUtc(ym) {
+  const t = ym.trim();
+  const m = /^(\d{4})-(\d{2})$/.exec(t);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (!Number.isFinite(y) || mo < 1 || mo > 12) return null;
+  const from = new Date(Date.UTC(y, mo - 1, 1, 0, 0, 0, 0));
+  const to = new Date(Date.UTC(y, mo, 0, 23, 59, 59, 999));
+  return { from, to };
+}
+function currentMonthYmUtc() {
+  const d = /* @__PURE__ */ new Date();
+  const y = d.getUTCFullYear();
+  const mo = d.getUTCMonth() + 1;
+  return `${y}-${String(mo).padStart(2, "0")}`;
+}
+function parseHasAccessCodeQuery(v) {
+  if (v === "true" || v === true) return true;
+  if (v === "false" || v === false) return false;
+  return void 0;
+}
+function csvEscapeCell(s) {
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+function rideToBillingCsvRow(r) {
+  const m = r.partnerBookingMeta;
+  const h = m?.hotel;
+  const med = m?.medical;
+  const cols = [
+    r.id,
+    r.createdAt,
+    r.scheduledAt ?? "",
+    r.status,
+    r.rideKind,
+    r.payerKind,
+    r.billingReference ?? "",
+    r.accessCodeId ?? "",
+    r.accessCodeNormalizedSnapshot ?? "",
+    r.customerName,
+    m?.flow ?? "",
+    h?.roomNumber ?? "",
+    h?.reservationRef ?? "",
+    h?.billedTo ?? "",
+    med?.patientReference ?? "",
+    med?.tripLeg ?? "",
+    med?.seriesId ?? "",
+    med?.seriesSequence != null ? String(med.seriesSequence) : "",
+    med?.seriesTotal != null ? String(med.seriesTotal) : "",
+    med?.linkedRideId ?? "",
+    r.from,
+    r.to,
+    String(r.estimatedFare),
+    r.finalFare != null ? String(r.finalFare) : ""
+  ];
+  return cols.map((c) => csvEscapeCell(c)).join(",");
+}
+var BILLING_CSV_HEADER = "id,createdAt,scheduledAt,status,rideKind,payerKind,billingReference,accessCodeId,accessCodeNormalized,customerName,partnerFlow,roomNumber,reservationRef,hotelBilledTo,patientReference,tripLeg,seriesId,seriesSequence,seriesTotal,linkedRideId,fromLabel,toLabel,estimatedFare,finalFare";
+function optBodyNum(body, k) {
+  const v = body[k];
+  if (typeof v !== "number" || !Number.isFinite(v)) return void 0;
+  return v;
+}
+function readBodyStr(body, k) {
+  return typeof body[k] === "string" ? body[k] : "";
+}
+function isBodyRecord(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function parseRouteLeg(body, label) {
+  const from = readBodyStr(body, "from").trim();
+  const fromFull = readBodyStr(body, "fromFull").trim();
+  const to = readBodyStr(body, "to").trim();
+  const toFull = readBodyStr(body, "toFull").trim();
+  const distanceKm = optBodyNum(body, "distanceKm");
+  const durationMinutes = optBodyNum(body, "durationMinutes");
+  const estimatedFare = optBodyNum(body, "estimatedFare");
+  const paymentMethod = readBodyStr(body, "paymentMethod").trim();
+  const vehicle = readBodyStr(body, "vehicle").trim();
+  if (!from || !fromFull || !to || !toFull) {
+    return { error: `${label}_route_fields_required` };
+  }
+  if (distanceKm === void 0 || durationMinutes === void 0 || estimatedFare === void 0 || !paymentMethod || !vehicle) {
+    return { error: `${label}_pricing_or_vehicle_invalid` };
+  }
+  const schedRaw = readBodyStr(body, "scheduledAt").trim();
+  return {
+    from,
+    fromFull,
+    to,
+    toFull,
+    distanceKm,
+    durationMinutes,
+    estimatedFare,
+    paymentMethod,
+    vehicle,
+    fromLat: optBodyNum(body, "fromLat"),
+    fromLon: optBodyNum(body, "fromLon"),
+    toLat: optBodyNum(body, "toLat"),
+    toLon: optBodyNum(body, "toLon"),
+    scheduledAt: schedRaw.length > 0 ? schedRaw : null
+  };
+}
+function billingFiltersFromQuery(query) {
+  const ymRaw = typeof query.month === "string" && query.month.trim() ? query.month.trim() : currentMonthYmUtc();
+  const bounds = monthBoundsUtc(ymRaw);
+  if (!bounds) return { ok: false, error: "month_invalid" };
+  const rideKind = typeof query.rideKind === "string" && query.rideKind.trim() ? parseRideKind(query.rideKind.trim()) : null;
+  if (typeof query.rideKind === "string" && query.rideKind.trim() && rideKind === null) {
+    return { ok: false, error: "ride_kind_invalid" };
+  }
+  const payerKind = typeof query.payerKind === "string" && query.payerKind.trim() ? parsePayerKind(query.payerKind.trim()) : null;
+  if (typeof query.payerKind === "string" && query.payerKind.trim() && payerKind === null) {
+    return { ok: false, error: "payer_kind_invalid" };
+  }
+  const billingReferenceContains = typeof query.billingReference === "string" && query.billingReference.trim() ? query.billingReference.trim() : void 0;
+  const accessCodeId = typeof query.accessCodeId === "string" && query.accessCodeId.trim() ? query.accessCodeId.trim() : void 0;
+  const hasAccessCode = parseHasAccessCodeQuery(query.hasAccessCode);
+  const partnerFlow = parsePartnerFlowParam(query.partnerFlow);
+  const filters = {
+    createdFrom: bounds.from,
+    createdTo: bounds.to,
+    ...rideKind ? { rideKind } : {},
+    ...payerKind ? { payerKind } : {},
+    ...billingReferenceContains ? { billingReferenceContains } : {},
+    ...accessCodeId ? { accessCodeId } : {},
+    ...hasAccessCode !== void 0 ? { hasAccessCode } : {},
+    ...partnerFlow ? { partnerFlow } : {}
+  };
+  return { ok: true, ym: ymRaw, filters };
+}
 router6.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
@@ -49087,7 +49515,7 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -49177,7 +49605,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const newReq = {
-      id: `REQ-${Date.now()}`,
+      id: reqRideId(),
       companyId: ctx.claims.companyId,
       createdByPanelUserId: ctx.claims.panelUserId,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -49227,7 +49655,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -49242,6 +49670,497 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       }
     });
     res.status(201).json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "hotel_mode")) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    const body = req.body;
+    const guestName = typeof body.guestName === "string" ? body.guestName.trim() : typeof body.customerName === "string" ? body.customerName.trim() : "";
+    if (!guestName) {
+      res.status(400).json({ error: "guest_name_required" });
+      return;
+    }
+    const leg = parseRouteLeg(body, "hotel");
+    if ("error" in leg) {
+      res.status(400).json({ error: leg.error });
+      return;
+    }
+    const roomNumber = parseOptionalBillingTag(body.roomNumber, 64);
+    const reservationRef = parseOptionalBillingTag(body.reservationRef, 128);
+    const billedToRaw = body.billedTo;
+    const billedTo = billedToRaw === "guest" || billedToRaw === "room_ledger" || billedToRaw === "company" ? billedToRaw : null;
+    const rawRk = body.rideKind;
+    const rawPk = body.payerKind;
+    if (rawRk != null && rawRk !== "" && (typeof rawRk !== "string" || parseRideKind(rawRk) === null)) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (rawPk != null && rawPk !== "" && (typeof rawPk !== "string" || parsePayerKind(rawPk) === null)) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    const rideKind = parseRideKind(rawRk) ?? "standard";
+    const payerKind = parsePayerKind(rawPk) ?? "company";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const partnerBookingMeta = {
+      flow: "hotel_guest",
+      hotel: {
+        roomNumber: roomNumber ?? null,
+        reservationRef: reservationRef ?? null,
+        billedTo
+      }
+    };
+    const passengerId = readBodyStr(body, "passengerId").trim();
+    const newReq = {
+      id: reqRideId(),
+      companyId: ctx.claims.companyId,
+      createdByPanelUserId: ctx.claims.panelUserId,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      scheduledAt: leg.scheduledAt,
+      status: "pending",
+      rejectedBy: [],
+      driverId: null,
+      customerName: guestName,
+      ...passengerId ? { passengerId } : {},
+      from: leg.from,
+      fromFull: leg.fromFull,
+      fromLat: leg.fromLat,
+      fromLon: leg.fromLon,
+      to: leg.to,
+      toFull: leg.toFull,
+      toLat: leg.toLat,
+      toLon: leg.toLon,
+      distanceKm: leg.distanceKm,
+      durationMinutes: leg.durationMinutes,
+      estimatedFare: leg.estimatedFare,
+      finalFare: null,
+      paymentMethod: leg.paymentMethod,
+      vehicle: leg.vehicle,
+      rideKind,
+      payerKind,
+      voucherCode,
+      billingReference,
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null,
+      partnerBookingMeta
+    };
+    const accessCodeRaw = body.accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    if (accessCodePlain && accessCodePlain.trim() && !enabledPanelModules(ctx.profile).includes("access_codes")) {
+      res.status(403).json({ error: "module_disabled", hint: "access_codes" });
+      return;
+    }
+    const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
+    if (!ins.ok) {
+      const err = ins.error;
+      if (err === "access_code_wrong_company") {
+        res.status(403).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    const saved = await findRide(newReq.id);
+    const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
+    await insertPanelAuditLog({
+      id: randomUUID4(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "booking.hotel_guest_created",
+      subjectType: "ride",
+      subjectId: newReq.id,
+      meta: { flow: "hotel_guest" }
+    });
+    res.status(201).json({ ok: true, ride: rideOut });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    const body = req.body;
+    const patientReference = typeof body.patientReference === "string" ? body.patientReference.trim() : "";
+    if (!patientReference) {
+      res.status(400).json({ error: "patient_reference_required" });
+      return;
+    }
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
+    if (!customerName) {
+      res.status(400).json({ error: "customer_name_required" });
+      return;
+    }
+    const outboundRaw = body.outbound;
+    const returnRaw = body.return;
+    if (!isBodyRecord(outboundRaw) || !isBodyRecord(returnRaw)) {
+      res.status(400).json({ error: "outbound_return_required" });
+      return;
+    }
+    const outLeg = parseRouteLeg(outboundRaw, "outbound");
+    const retLeg = parseRouteLeg(returnRaw, "return");
+    if ("error" in outLeg) {
+      res.status(400).json({ error: outLeg.error });
+      return;
+    }
+    if ("error" in retLeg) {
+      res.status(400).json({ error: retLeg.error });
+      return;
+    }
+    const rawRk = body.rideKind;
+    const rawPk = body.payerKind;
+    if (rawRk != null && rawRk !== "" && (typeof rawRk !== "string" || parseRideKind(rawRk) === null)) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (rawPk != null && rawPk !== "" && (typeof rawPk !== "string" || parsePayerKind(rawPk) === null)) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    const rideKind = parseRideKind(rawRk) ?? "medical";
+    const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const idOut = reqRideId();
+    const idRet = reqRideId();
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const base = {
+      companyId: ctx.claims.companyId,
+      createdByPanelUserId: ctx.claims.panelUserId,
+      createdAt: nowIso,
+      status: "pending",
+      rejectedBy: [],
+      driverId: null,
+      customerName,
+      rideKind,
+      payerKind,
+      voucherCode,
+      billingReference,
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null,
+      accessCodeNormalizedSnapshot: null
+    };
+    const rideOut = {
+      ...base,
+      id: idOut,
+      scheduledAt: outLeg.scheduledAt,
+      from: outLeg.from,
+      fromFull: outLeg.fromFull,
+      fromLat: outLeg.fromLat,
+      fromLon: outLeg.fromLon,
+      to: outLeg.to,
+      toFull: outLeg.toFull,
+      toLat: outLeg.toLat,
+      toLon: outLeg.toLon,
+      distanceKm: outLeg.distanceKm,
+      durationMinutes: outLeg.durationMinutes,
+      estimatedFare: outLeg.estimatedFare,
+      finalFare: null,
+      paymentMethod: outLeg.paymentMethod,
+      vehicle: outLeg.vehicle,
+      partnerBookingMeta: {
+        flow: "medical_patient",
+        medical: {
+          patientReference,
+          tripLeg: "outbound",
+          linkedRideId: idRet
+        }
+      }
+    };
+    const rideRet = {
+      ...base,
+      id: idRet,
+      scheduledAt: retLeg.scheduledAt,
+      from: retLeg.from,
+      fromFull: retLeg.fromFull,
+      fromLat: retLeg.fromLat,
+      fromLon: retLeg.fromLon,
+      to: retLeg.to,
+      toFull: retLeg.toFull,
+      toLat: retLeg.toLat,
+      toLon: retLeg.toLon,
+      distanceKm: retLeg.distanceKm,
+      durationMinutes: retLeg.durationMinutes,
+      estimatedFare: retLeg.estimatedFare,
+      finalFare: null,
+      paymentMethod: retLeg.paymentMethod,
+      vehicle: retLeg.vehicle,
+      partnerBookingMeta: {
+        flow: "medical_patient",
+        medical: {
+          patientReference,
+          tripLeg: "return",
+          linkedRideId: idOut
+        }
+      }
+    };
+    const accessCodeRaw = body.accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    if (accessCodePlain && accessCodePlain.trim() && !enabledPanelModules(ctx.profile).includes("access_codes")) {
+      res.status(403).json({ error: "module_disabled", hint: "access_codes" });
+      return;
+    }
+    const ins = await insertRidesWithSharedAccessCode([rideOut, rideRet], accessCodePlain);
+    if (!ins.ok) {
+      const err = ins.error;
+      if (err === "access_code_wrong_company") {
+        res.status(403).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    const [savedOut, savedRet] = await Promise.all([findRide(idOut), findRide(idRet)]);
+    const enriched = await enrichPanelRidesForResponse(
+      [savedOut, savedRet].filter((x) => Boolean(x))
+    );
+    await insertPanelAuditLog({
+      id: randomUUID4(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "booking.medical_round_trip_created",
+      subjectType: "ride",
+      subjectId: idOut,
+      meta: { returnRideId: idRet, patientReference }
+    });
+    res.status(201).json({ ok: true, rides: enriched });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "recurring_rides")) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
+    const body = req.body;
+    const patientReference = typeof body.patientReference === "string" ? body.patientReference.trim() : "";
+    if (!patientReference) {
+      res.status(400).json({ error: "patient_reference_required" });
+      return;
+    }
+    const totalRides = typeof body.totalRides === "number" && Number.isFinite(body.totalRides) ? Math.floor(body.totalRides) : NaN;
+    if (!Number.isFinite(totalRides) || totalRides < 1 || totalRides > 100) {
+      res.status(400).json({ error: "total_rides_invalid" });
+      return;
+    }
+    const tplRaw = body.template;
+    if (!isBodyRecord(tplRaw)) {
+      res.status(400).json({ error: "template_required" });
+      return;
+    }
+    const leg = parseRouteLeg(tplRaw, "series");
+    if ("error" in leg) {
+      res.status(400).json({ error: leg.error });
+      return;
+    }
+    const customerName = typeof tplRaw.customerName === "string" ? tplRaw.customerName.trim() : typeof body.customerName === "string" ? body.customerName.trim() : "";
+    if (!customerName) {
+      res.status(400).json({ error: "customer_name_required" });
+      return;
+    }
+    let validFrom = null;
+    let validUntil = null;
+    if (typeof body.validFrom === "string" && body.validFrom.trim()) {
+      validFrom = new Date(body.validFrom.trim());
+      if (!Number.isFinite(validFrom.getTime())) {
+        res.status(400).json({ error: "valid_from_invalid" });
+        return;
+      }
+    }
+    if (typeof body.validUntil === "string" && body.validUntil.trim()) {
+      validUntil = new Date(body.validUntil.trim());
+      if (!Number.isFinite(validUntil.getTime())) {
+        res.status(400).json({ error: "valid_until_invalid" });
+        return;
+      }
+    }
+    const rawRk = body.rideKind;
+    const rawPk = body.payerKind;
+    if (rawRk != null && rawRk !== "" && (typeof rawRk !== "string" || parseRideKind(rawRk) === null)) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (rawPk != null && rawPk !== "" && (typeof rawPk !== "string" || parsePayerKind(rawPk) === null)) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    const rideKind = parseRideKind(rawRk) ?? "medical";
+    const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const seriesRow = await insertPartnerRideSeries({
+      companyId: ctx.claims.companyId,
+      createdByPanelUserId: ctx.claims.panelUserId,
+      patientReference,
+      billingReference,
+      validFrom,
+      validUntil,
+      totalRides,
+      meta: {}
+    });
+    const vf = seriesRow.validFrom;
+    const vu = seriesRow.validUntil;
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const rides = [];
+    for (let i = 1; i <= totalRides; i += 1) {
+      const id = reqRideId();
+      rides.push({
+        id,
+        companyId: ctx.claims.companyId,
+        createdByPanelUserId: ctx.claims.panelUserId,
+        createdAt: nowIso,
+        scheduledAt: leg.scheduledAt,
+        status: "pending",
+        rejectedBy: [],
+        driverId: null,
+        customerName,
+        from: leg.from,
+        fromFull: leg.fromFull,
+        fromLat: leg.fromLat,
+        fromLon: leg.fromLon,
+        to: leg.to,
+        toFull: leg.toFull,
+        toLat: leg.toLat,
+        toLon: leg.toLon,
+        distanceKm: leg.distanceKm,
+        durationMinutes: leg.durationMinutes,
+        estimatedFare: leg.estimatedFare,
+        finalFare: null,
+        paymentMethod: leg.paymentMethod,
+        vehicle: leg.vehicle,
+        rideKind,
+        payerKind,
+        voucherCode,
+        billingReference,
+        authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+        accessCodeId: null,
+        accessCodeNormalizedSnapshot: null,
+        partnerBookingMeta: {
+          flow: "medical_series_leg",
+          medical: {
+            patientReference,
+            tripLeg: null,
+            seriesId: seriesRow.id,
+            seriesSequence: i,
+            seriesTotal: totalRides,
+            seriesValidFrom: vf,
+            seriesValidUntil: vu
+          }
+        }
+      });
+    }
+    const accessCodeRaw = body.accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    if (accessCodePlain && accessCodePlain.trim() && !enabledPanelModules(ctx.profile).includes("access_codes")) {
+      res.status(403).json({ error: "module_disabled", hint: "access_codes" });
+      return;
+    }
+    const ins = await insertRidesWithSharedAccessCode(rides, accessCodePlain);
+    if (!ins.ok) {
+      const err = ins.error;
+      if (err === "access_code_wrong_company") {
+        res.status(403).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
+    const enriched = await enrichPanelRidesForResponse(loaded.filter((x) => Boolean(x)));
+    await insertPanelAuditLog({
+      id: randomUUID4(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "booking.medical_series_created",
+      subjectType: "partner_ride_series",
+      subjectId: seriesRow.id,
+      meta: { totalRides, patientReference }
+    });
+    res.status(201).json({ ok: true, series: seriesRow, rides: enriched });
+  } catch (e) {
+    next(e);
+  }
+});
+function normalizeQueryRecord(raw) {
+  const q = {};
+  for (const [k, v] of Object.entries(raw)) {
+    q[k] = Array.isArray(v) ? v[0] : v;
+  }
+  return q;
+}
+router6.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    const parsed = billingFiltersFromQuery(normalizeQueryRecord(req.query));
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const list = await listRidesForCompanyFiltered(ctx.claims.companyId, parsed.filters);
+    const ids = list.map((r) => r.createdByPanelUserId).filter((x) => Boolean(x));
+    const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
+    const ridesOut = list.map((r) => ({
+      ...r,
+      createdByUsername: r.createdByPanelUserId ? names[r.createdByPanelUserId] ?? null : null
+    }));
+    const withTrace = await enrichPanelRidesForResponse(ridesOut);
+    res.json({
+      ok: true,
+      month: parsed.ym,
+      filters: parsed.filters,
+      rides: withTrace
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "billing")) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    const parsed = billingFiltersFromQuery(normalizeQueryRecord(req.query));
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const list = await listRidesForCompanyFiltered(ctx.claims.companyId, parsed.filters);
+    const lines = [BILLING_CSV_HEADER, ...list.map((r) => rideToBillingCsvRow(r))];
+    const csv = `\uFEFF${lines.join("\n")}
+`;
+    const safeYm = parsed.ym.replace(/[^0-9-]/g, "");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="onroda-billing-${safeYm || "export"}.csv"`);
+    res.status(200).send(csv);
+  } catch (e) {
+    next(e);
+  }
+});
+router6.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "recurring_rides")) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
+    const items = await listPartnerRideSeriesForCompany(ctx.claims.companyId);
+    res.json({ ok: true, items });
   } catch (e) {
     next(e);
   }
@@ -49265,7 +50184,9 @@ router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
     if (!denyUnlessPanelModule(res, ctx.profile, "access_codes")) return;
     if (!denyUnless(res, ctx.profile.role, "access_codes.manage")) return;
     const body = req.body;
+    const generateCode = body.generateCode === true;
     const result = await insertAccessCodeAdmin({
+      generate: generateCode,
       code: typeof body.code === "string" ? body.code : "",
       codeType: typeof body.codeType === "string" ? body.codeType : "",
       companyId: ctx.claims.companyId,
@@ -49280,19 +50201,31 @@ router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
         res.status(409).json({ error: err });
         return;
       }
+      if (err === "code_generate_failed") {
+        res.status(503).json({ error: err });
+        return;
+      }
       res.status(400).json({ error: err });
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
       subjectType: "access_code",
       subjectId: result.item.id,
-      meta: { codeType: result.item.codeType, label: result.item.label }
+      meta: {
+        codeType: result.item.codeType,
+        label: result.item.label,
+        generated: Boolean(generateCode)
+      }
     });
-    res.status(201).json({ ok: true, item: result.item });
+    res.status(201).json({
+      ok: true,
+      item: result.item,
+      ...result.revealedCode ? { revealedCode: result.revealedCode } : {}
+    });
   } catch (e) {
     next(e);
   }
@@ -49323,7 +50256,7 @@ router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -49366,7 +50299,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -49432,7 +50365,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -49484,7 +50417,24 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       }
       patch.role = tr;
     }
-    if (patch.isActive === void 0 && patch.role === void 0) {
+    if (typeof body.email === "string") {
+      patch.email = body.email.trim();
+    }
+    if (typeof body.username === "string") {
+      const u = body.username.trim();
+      if (u.length < 2) {
+        res.status(400).json({ error: "username_invalid" });
+        return;
+      }
+      if (u.toLowerCase() !== target.username.toLowerCase()) {
+        if (await panelUsernameTaken(u.toLowerCase(), id)) {
+          res.status(409).json({ error: "username_taken" });
+          return;
+        }
+      }
+      patch.username = u;
+    }
+    if (patch.isActive === void 0 && patch.role === void 0 && patch.email === void 0 && patch.username === void 0) {
       res.status(400).json({ error: "no_changes" });
       return;
     }
@@ -49494,15 +50444,70 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
       subjectType: "panel_user",
       subjectId: id,
-      meta: patch
+      meta: {
+        ...patch.isActive !== void 0 ? { isActive: patch.isActive } : {},
+        ...patch.role ? { role: patch.role } : {},
+        ...patch.email !== void 0 ? { email: true } : {},
+        ...patch.username !== void 0 ? { username: true } : {}
+      }
     });
     res.json({ ok: true, user: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
+    if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
+    const id = typeof req.params.id === "string" ? req.params.id : "";
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const target = await findPanelUserInCompany(id, ctx.claims.companyId);
+    if (!target) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (target.id === ctx.claims.panelUserId) {
+      res.status(400).json({ error: "cannot_modify_self_here" });
+      return;
+    }
+    if (ctx.profile.role === "manager" && target.role === "owner") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (target.is_active) {
+      res.status(400).json({
+        error: "user_must_be_inactive",
+        hint: "Zuerst deaktivieren, dann endg\xFCltig entfernen."
+      });
+      return;
+    }
+    const removed = await deleteInactivePanelUserInCompany(id, ctx.claims.companyId);
+    if (!removed) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID4(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "user.deleted",
+      subjectType: "panel_user",
+      subjectId: id,
+      meta: { username: target.username }
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }
@@ -49544,7 +50549,7 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID3(),
+      id: randomUUID4(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",

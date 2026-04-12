@@ -28,7 +28,7 @@ import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
-import { calculateCopayment, type PaymentMethod, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
+import { type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
@@ -55,13 +55,6 @@ function isPlausibleEmail(s: string): boolean {
 
 const FIXPREIS_VOUCHER_HINT = "Fixpreis ist bei Transportschein nicht verfügbar";
 const SEARCH_OVERLAY_BG = "#FFFFFF";
-
-const PAYMENT_OPTIONS: { id: PaymentMethod; label: string; featherIcon?: string; isPaypal?: boolean; isEuro?: boolean; isVoucher?: boolean; isApp?: boolean }[] = [
-  { id: "app", label: "App bezahlen", isApp: true },
-  { id: "cash", label: "Bar", isEuro: true },
-  { id: "paypal", label: "PayPal", isPaypal: true },
-  { id: "voucher", label: "Transportschein", isVoucher: true },
-];
 
 const VEHICLE_CAR_ICON = "#171717";
 
@@ -329,72 +322,6 @@ function HorizontalVehicleSlider({
   );
 }
 
-/** Kompakte Fahrzeugwahl nur im Buchungsmodus (gleiche Namen/Untertitel wie überall). */
-function CompactBookingVehicleRow({
-  colors,
-  selectedVehicle,
-  paymentMethod,
-  onSelect,
-}: {
-  colors: { card: string; border: string; foreground: string; mutedForeground: string; primary: string };
-  selectedVehicle: VehicleType | null;
-  paymentMethod: PaymentMethod | null;
-  onSelect: (id: VehicleType) => void;
-}) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookingVehicleScroll}>
-      {VEHICLES.map((v) => {
-        const cfg = VEHICLE_ICON_CONFIG[v.id];
-        const sel = selectedVehicle != null && selectedVehicle === v.id;
-        const onrodaBlockedByVoucher = v.id === "onroda" && paymentMethod === "voucher";
-        return (
-          <Pressable
-            key={v.id}
-            onPress={() => onSelect(v.id)}
-            style={[
-              styles.bookingVehicleChip,
-              {
-                backgroundColor: colors.card,
-                borderColor: sel ? colors.primary : colors.border,
-                borderWidth: sel ? 2 : 1.5,
-                opacity: onrodaBlockedByVoucher ? 0.48 : 1,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.bookingVehicleIconCircle,
-                { backgroundColor: v.id === "wheelchair" ? "#E0F2FE" : "#F3F4F6" },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={cfg.icon as any}
-                size={26}
-                color={v.id === "wheelchair" ? "#0369A1" : VEHICLE_CAR_ICON}
-              />
-            </View>
-            <Text
-              style={[styles.bookingVehicleName, { color: sel ? colors.primary : colors.foreground }]}
-              numberOfLines={1}
-            >
-              {v.name}
-            </Text>
-            <Text style={[styles.bookingVehicleSub, { color: colors.mutedForeground }]} numberOfLines={2}>
-              {cfg.seats}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-function bookingCtaLabel(vehicle: VehicleType | null, hasScheduledTime: boolean): string {
-  if (!vehicle) return hasScheduledTime ? "Reservieren" : "Jetzt buchen";
-  if (hasScheduledTime) return vehicle === "onroda" ? "Fixpreis reservieren" : "Reservieren";
-  return vehicle === "onroda" ? "Fixpreis buchen" : "Jetzt buchen";
-}
-
 function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FEF3C7", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#FDE68A" }}>
@@ -491,9 +418,9 @@ export default function HomeScreen() {
   const { profile, updateProfile, loginWithGoogle, registerLocalCustomer } = useUser();
 
   const {
-    origin, destination, selectedVehicle, paymentMethod, isExempted,
+    origin, destination, selectedVehicle, paymentMethod,
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
-    setOrigin, setDestination, setSelectedVehicle, setPaymentMethod, setIsExempted,
+    setOrigin, setDestination, setSelectedVehicle, setPaymentMethod,
     setScheduledTime, fetchRoute, resetRide, history,
   } = useRide();
 
@@ -562,6 +489,8 @@ export default function HomeScreen() {
   const [expandedBannerId, setExpandedBannerId] = useState<HomeBannerSlideId | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Auf der Karte mit Ziel: Sofort vs. Termin — gleicher Einstieg wie `reserve-ride`. */
+  const [bookingMode, setBookingMode] = useState<"immediate" | "scheduled">("immediate");
   const showComboHint = useCallback((msg: string) => {
     if (comboHintTimerRef.current) clearTimeout(comboHintTimerRef.current);
     setComboHint(msg);
@@ -704,10 +633,14 @@ export default function HomeScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [obRegSms, obRegName, obRegEmail, obRegPhone, registerLocalCustomer]);
 
-  /* ── Route fetch ── */
+  /* ── Route fetch (Entfernung auch ohne gewähltes Fahrzeug; Preis erst nach Fahrzeugwahl in der Buchung) ── */
   useEffect(() => {
-    if (destination) fetchRoute();
-  }, [destination, selectedVehicle, fetchRoute]);
+    if (destination) void fetchRoute();
+  }, [destination, fetchRoute]);
+
+  useEffect(() => {
+    if (!destination) setBookingMode("immediate");
+  }, [destination]);
 
   useEffect(() => {
     if (destination) setExpandedBannerId(null);
@@ -809,52 +742,6 @@ export default function HomeScreen() {
     setIsEditingOrigin(false);
   };
 
-  /* ── Booking ── */
-  const canConfirmBook =
-    selectedVehicle != null &&
-    paymentMethod != null &&
-    fareBreakdown != null &&
-    !(selectedVehicle === "onroda" && paymentMethod === "voucher");
-
-  const bookHintText =
-    selectedVehicle == null && paymentMethod == null
-      ? "Fahrzeug und Zahlungsart wählen – dann wird der Button grün."
-      : selectedVehicle == null
-        ? "Fahrzeug wählen – dann wird der Button grün."
-        : "Zahlungsart wählen – dann wird der Button grün.";
-
-  const handleBook = () => {
-    if (!fareBreakdown || !paymentMethod || selectedVehicle == null) return;
-    if (selectedVehicle === "onroda" && paymentMethod === "voucher") return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.push("/ride");
-  };
-
-  const handleBookingVehicleSelect = useCallback(
-    (id: VehicleType) => {
-      if (id === "onroda" && paymentMethod === "voucher") {
-        setPaymentMethod(null);
-        showComboHint(FIXPREIS_VOUCHER_HINT);
-      }
-      setSelectedVehicle(id);
-      Haptics.selectionAsync();
-    },
-    [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
-  );
-
-  const handlePaymentSelect = useCallback(
-    (opt: (typeof PAYMENT_OPTIONS)[number]) => {
-      if (opt.id === "voucher" && selectedVehicle === "onroda") {
-        setSelectedVehicle(null);
-        showComboHint(FIXPREIS_VOUCHER_HINT);
-      }
-      if (opt.id !== "voucher") setIsExempted(false);
-      setPaymentMethod(opt.id);
-      Haptics.selectionAsync();
-    },
-    [selectedVehicle, setSelectedVehicle, setPaymentMethod, setIsExempted, showComboHint],
-  );
-
   const handleVehicleSlideSnap = useCallback(
     (id: HomeBannerSlideId) => {
       Haptics.selectionAsync();
@@ -885,10 +772,19 @@ export default function HomeScreen() {
   );
 
 
-  const openScheduleModal = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/fahrt-reservieren");
-  }, []);
+  const goToCanonicalBooking = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (bookingMode === "immediate") {
+      setScheduledTime(null);
+    }
+    router.push({
+      pathname: "/reserve-ride",
+      params: {
+        skipWhere: "1",
+        scheduleMode: bookingMode === "immediate" ? "immediate" : "scheduled",
+      },
+    });
+  }, [bookingMode, setScheduledTime]);
 
   /* ── GPS ── */
   const handleGpsLocate = async (silent = false) => {
@@ -1045,18 +941,15 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.spaeterBtn, {
-                backgroundColor: scheduledTime ? "#FEF3C7" : colors.card,
-                borderColor: scheduledTime ? "#F59E0B" : colors.border,
-              }]}
-              onPress={openScheduleModal}
+              style={[styles.spaeterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setScheduledTime(null);
+                router.push("/reserve-ride");
+              }}
             >
-              <Feather name="calendar" size={14} color={scheduledTime ? "#D97706" : colors.foreground} />
-              <Text style={[styles.spaeterText, { color: scheduledTime ? "#D97706" : colors.foreground }]}>
-                {scheduledTime
-                  ? `${scheduledTime.getHours().toString().padStart(2,"0")}:${scheduledTime.getMinutes().toString().padStart(2,"0")}`
-                  : "Reservieren"}
-              </Text>
+              <Feather name="calendar" size={14} color={colors.foreground} />
+              <Text style={[styles.spaeterText, { color: colors.foreground }]}>Fahrt buchen</Text>
             </Pressable>
           </View>
         )}
@@ -1145,46 +1038,64 @@ export default function HomeScreen() {
               </View>
             </>
           ) : (
-            /* Buchungs-Panel */
             <View style={styles.fareSection}>
+              <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>BUCHUNG</Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontFamily: "Inter_400Regular",
+                  color: colors.foreground,
+                  lineHeight: 20,
+                  marginBottom: 12,
+                }}
+              >
+                Gleicher Ablauf für Sofort- und Terminfahrten: Fahrzeug und Zahlung wählen Sie in den nächsten Schritten, die Bestätigung erfolgt immer auf einer Seite.
+              </Text>
 
-              {/* ── 1. ZEITWAHL ── */}
-              <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>WANN?</Text>
+              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 4 }]}>WANN?</Text>
               <View style={styles.timingRow}>
                 <Pressable
-                  style={[styles.timingBtn, !scheduledTime && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                  onPress={() => { setScheduledTime(null); Haptics.selectionAsync(); }}
+                  style={[
+                    styles.timingBtn,
+                    bookingMode === "immediate" && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                  onPress={() => {
+                    setBookingMode("immediate");
+                    setScheduledTime(null);
+                    Haptics.selectionAsync();
+                  }}
                 >
-                  <Feather name="zap" size={16} color={!scheduledTime ? "#fff" : colors.foreground} />
-                  <Text style={[styles.timingBtnText, { color: !scheduledTime ? "#fff" : colors.foreground }]}>Sofort</Text>
+                  <Feather name="zap" size={16} color={bookingMode === "immediate" ? "#fff" : colors.foreground} />
+                  <Text
+                    style={[
+                      styles.timingBtnText,
+                      { color: bookingMode === "immediate" ? "#fff" : colors.foreground },
+                    ]}
+                  >
+                    Sofort
+                  </Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.timingBtn, !!scheduledTime && { backgroundColor: "#F59E0B", borderColor: "#F59E0B" }]}
-                  onPress={openScheduleModal}
+                  style={[
+                    styles.timingBtn,
+                    bookingMode === "scheduled" && { backgroundColor: "#F59E0B", borderColor: "#F59E0B" },
+                  ]}
+                  onPress={() => {
+                    setBookingMode("scheduled");
+                    Haptics.selectionAsync();
+                  }}
                 >
-                  <Feather name="calendar" size={16} color={scheduledTime ? "#fff" : colors.foreground} />
-                  <Text style={[styles.timingBtnText, { color: scheduledTime ? "#fff" : colors.foreground }]}>
-                    {scheduledTime
-                      ? `${scheduledTime.getHours().toString().padStart(2,"0")}:${scheduledTime.getMinutes().toString().padStart(2,"0")} Uhr`
-                      : "Reservieren"}
+                  <Feather name="calendar" size={16} color={bookingMode === "scheduled" ? "#fff" : colors.foreground} />
+                  <Text
+                    style={[
+                      styles.timingBtnText,
+                      { color: bookingMode === "scheduled" ? "#fff" : colors.foreground },
+                    ]}
+                  >
+                    Termin
                   </Text>
                 </Pressable>
               </View>
-
-              {/* ── 2. FAHRZEUG (kompakt – Beige-Slider nur auf der Hauptseite) ── */}
-              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 14 }]}>FAHRZEUG</Text>
-              <CompactBookingVehicleRow
-                colors={{
-                  card: colors.card,
-                  border: colors.border,
-                  foreground: colors.foreground,
-                  mutedForeground: colors.mutedForeground,
-                  primary: colors.primary,
-                }}
-                selectedVehicle={selectedVehicle}
-                paymentMethod={paymentMethod}
-                onSelect={handleBookingVehicleSelect}
-              />
 
               {/* ── Service-Badges aus Patienten-Profil ── */}
               {(profile.rollator || profile.blindenhund || profile.sauerstoff || profile.begleitperson ||
@@ -1215,71 +1126,6 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* ── 3. ZAHLUNG ── */}
-              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 14 }]}>ZAHLUNG</Text>
-              <View style={styles.paymentGrid}>
-                {PAYMENT_OPTIONS.map((opt) => {
-                  const isSelected = paymentMethod === opt.id;
-                  const voucherBlockedByOnroda = opt.isVoucher && selectedVehicle === "onroda";
-                  return (
-                    <Pressable
-                      key={opt.id}
-                      style={[styles.paymentBtn, {
-                        backgroundColor: colors.card,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                        borderWidth: isSelected ? 2 : 1.5,
-                        opacity: voucherBlockedByOnroda ? 0.48 : 1,
-                      }]}
-                      onPress={() => handlePaymentSelect(opt)}
-                    >
-                      {opt.isEuro ? (
-                        <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
-                      ) : opt.isApp ? (
-                        <Feather name="smartphone" size={14} color={colors.foreground} />
-                      ) : opt.isPaypal ? (
-                        <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
-                      ) : opt.isVoucher ? (
-                        <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
-                      ) : (
-                        <Feather name={opt.featherIcon as any} size={14} color={colors.foreground} />
-                      )}
-                      <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {comboHint ? (
-                <Text style={[styles.comboHintText, { color: ONRODA_MARK_RED }]}>{comboHint}</Text>
-              ) : null}
-
-              {paymentMethod === "voucher" && (
-                <View style={[styles.voucherPanel, { backgroundColor: "#EFF6FF", borderColor: "#93C5FD" }]}>
-                  <View style={styles.voucherPriceRow}>
-                    <View>
-                      <Text style={styles.voucherLabel}>Voraussichtlicher Eigenanteil</Text>
-                      {fareBreakdown && (
-                        <Text style={styles.voucherAmount}>
-                          {formatEuro(calculateCopayment(fareBreakdown.total, isExempted))}{isExempted ? "  (befreit)" : ""}
-                        </Text>
-                      )}
-                      <Text style={styles.voucherSub}>Restbetrag wird direkt mit der Krankenkasse abgerechnet.</Text>
-                    </View>
-                  </View>
-                  <Pressable style={styles.exemptRow} onPress={() => { setIsExempted(!isExempted); Haptics.selectionAsync(); }}>
-                    <View style={[styles.exemptCheckbox, { borderColor: isExempted ? "#2563EB" : "#93C5FD", backgroundColor: isExempted ? "#2563EB" : "transparent" }]}>
-                      {isExempted && <Feather name="check" size={12} color="#fff" />}
-                    </View>
-                    <Text style={[styles.exemptText, { color: "#1D4ED8" }]}>Ich bin von der Zuzahlung befreit</Text>
-                  </Pressable>
-                  <View style={styles.voucherHint}>
-                    <MaterialCommunityIcons name="ticket-percent-outline" size={14} color="#2563EB" />
-                    <Text style={styles.voucherHintText}>Gültigen Transportschein beim Fahrer bereithalten.</Text>
-                  </View>
-                </View>
-              )}
-
-              {/* ── 4. PREIS (nach Routenberechnung) ── */}
               {isLoadingRoute ? (
                 <View style={[styles.loadingRow, { marginTop: 14 }]}>
                   <ActivityIndicator color={colors.primary} />
@@ -1298,35 +1144,12 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                   <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: colors.border }]} />
-                  {!fareBreakdown ? (
-                    <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                      <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Preis</Text>
-                      <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: colors.mutedForeground, textAlign: "center" }} numberOfLines={2}>
-                        Bitte Fahrzeug wählen
-                      </Text>
-                    </View>
-                  ) : paymentMethod === "voucher" ? (
-                    <View style={[styles.routeStripItem, styles.fareHighlight]}>
-                      <Text style={[styles.routeStripVal, { color: "#2563EB" }]}>
-                        {formatEuro(calculateCopayment(fareBreakdown.total, isExempted))}
-                      </Text>
-                      <Text style={[styles.routeStripLabel, { color: "#2563EB" }]}>Eigenanteil</Text>
-                    </View>
-                  ) : fareBreakdown.fareKind === "onroda_fix" ? (
-                    <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: ONRODA_MARK_RED + "55", backgroundColor: ONRODA_MARK_RED + "12" }]}>
-                      <Text style={[styles.routeStripLabel, { color: ONRODA_MARK_RED, marginBottom: 2 }]}>Garantierter Festpreis</Text>
-                      <Text style={{ fontSize: 30, fontFamily: "Inter_700Bold", color: ONRODA_MARK_RED }} numberOfLines={1}>
-                        {formatEuro(fareBreakdown.total)}
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: ONRODA_MARK_RED + "55", backgroundColor: ONRODA_MARK_RED + "12" }]}>
-                      <Text style={[styles.routeStripLabel, { color: ONRODA_MARK_RED, marginBottom: 2 }]}>Schätzpreis</Text>
-                      <Text style={{ fontSize: 30, fontFamily: "Inter_700Bold", color: ONRODA_MARK_RED }} numberOfLines={1}>
-                        {Math.round(fareBreakdown.total / 1.08)}–{Math.round(fareBreakdown.total)} €
-                      </Text>
-                    </View>
-                  )}
+                  <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Preis</Text>
+                    <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: colors.mutedForeground, textAlign: "center" }} numberOfLines={2}>
+                      Im Buchungsflow nach Fahrzeugwahl
+                    </Text>
+                  </View>
                 </View>
               ) : null}
 
@@ -1338,42 +1161,28 @@ export default function HomeScreen() {
           <View style={[styles.stickyBookRow, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: 18 + bottomPad + 12 }]}>
             <View style={styles.stickyBookCol}>
               <Pressable
-                disabled={!canConfirmBook}
                 style={[
                   styles.bookBtn,
-                  canConfirmBook
-                    ? {
-                        backgroundColor: "#16A34A",
-                        borderWidth: 2,
-                        borderColor: "#BBF7D0",
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 5,
-                        elevation: 3,
-                      }
-                    : {
-                        backgroundColor: colors.muted,
-                        borderWidth: 1.5,
-                        borderColor: colors.border,
-                      },
+                  {
+                    backgroundColor: "#16A34A",
+                    borderWidth: 2,
+                    borderColor: "#BBF7D0",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 5,
+                    elevation: 3,
+                  },
                 ]}
-                onPress={handleBook}
+                onPress={goToCanonicalBooking}
               >
-                <Text
-                  style={[
-                    styles.bookBtnText,
-                    { color: canConfirmBook ? "#fff" : colors.mutedForeground },
-                  ]}
-                >
-                  {bookingCtaLabel(selectedVehicle, scheduledTime !== null)}
-                </Text>
+                <Text style={[styles.bookBtnText, { color: "#fff" }]}>Weiter zur Buchung</Text>
               </Pressable>
-              {!canConfirmBook && (
-                <Text style={[styles.bookBtnHint, { color: colors.mutedForeground }]}>
-                  {bookHintText}
-                </Text>
-              )}
+              <Text style={[styles.bookBtnHint, { color: colors.mutedForeground }]}>
+                {bookingMode === "immediate"
+                  ? "Fahrzeug, Zahlung und Auftragsbestätigung im nächsten Schritt."
+                  : "Abholzeit wählen, dann Fahrzeug, Zahlung und Auftragsbestätigung."}
+              </Text>
             </View>
           </View>
         )}

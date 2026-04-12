@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -215,8 +215,14 @@ export default function ReserveRideScreen() {
   const bottomPad = isWeb ? 34 : insets.bottom;
   const colors = useColors();
 
+  const params = useLocalSearchParams<{ skipWhere?: string; scheduleMode?: string }>();
+  const skipWhere = params.skipWhere === "1";
+  const scheduleMode: "immediate" | "scheduled" =
+    params.scheduleMode === "scheduled" ? "scheduled" : "immediate";
+
   const {
     setScheduledTime,
+    scheduledTime,
     destination,
     setDestination,
     setOrigin,
@@ -225,6 +231,7 @@ export default function ReserveRideScreen() {
     selectedVehicle,
     setSelectedVehicle,
     setIsExempted,
+    setPaymentMethod,
     fetchRoute,
     isLoadingRoute,
     routeError,
@@ -264,13 +271,34 @@ export default function ReserveRideScreen() {
   const skipNextPickupSearchRef = useRef(false);
   const skipNextDestSearchRef = useRef(false);
 
-  /* Nur beim ersten Betreten: Adressen aus dem vorherigen Screen übernehmen — nicht bei jedem Focus erneut (sonst wirkt es wie „Reset“). */
+  /* Einmalig pro Screen-Mount: Start entweder bei Route (Home) oder bei Adresswahl. */
   const didSeedWhereStepRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
       if (didSeedWhereStepRef.current) return;
       didSeedWhereStepRef.current = true;
       const { origin: o, destination: d } = rideRef.current;
+      if (skipWhere) {
+        setPickupQuery(shortPlace(o.displayName));
+        setPickupResolved(o);
+        if (d) {
+          setDestQuery(shortPlace(d.displayName));
+        } else {
+          setDestQuery("");
+        }
+        setPickupResults([]);
+        setDestResults([]);
+        skipNextPickupSearchRef.current = true;
+        skipNextDestSearchRef.current = true;
+        setSelectedVehicle(null);
+        setPaymentMethod(null);
+        setIsExempted(false);
+        setStep("extras");
+        if (scheduleMode === "immediate") {
+          setScheduledTime(null);
+        }
+        return;
+      }
       setPickupQuery(shortPlace(o.displayName));
       setPickupResolved(o);
       if (d) {
@@ -282,7 +310,7 @@ export default function ReserveRideScreen() {
       setDestResults([]);
       skipNextPickupSearchRef.current = true;
       skipNextDestSearchRef.current = true;
-    }, []),
+    }, [skipWhere, scheduleMode, setIsExempted, setPaymentMethod, setScheduledTime, setSelectedVehicle]),
   );
 
   useEffect(() => {
@@ -481,6 +509,12 @@ export default function ReserveRideScreen() {
     }
     if (step === "extras") {
       if (!canProceedExtras) return;
+      if (skipWhere && scheduleMode === "immediate") {
+        setScheduledTime(null);
+        await fetchRoute();
+        setStep("review");
+        return;
+      }
       await fetchRoute();
       setStep("when");
       return;
@@ -498,6 +532,9 @@ export default function ReserveRideScreen() {
     canProceedWhen,
     commitSchedule,
     fetchRoute,
+    skipWhere,
+    scheduleMode,
+    setScheduledTime,
   ]);
 
   const handleBook = useCallback(() => {
@@ -510,9 +547,23 @@ export default function ReserveRideScreen() {
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    commitSchedule();
+    if (skipWhere && scheduleMode === "immediate") {
+      setScheduledTime(null);
+    } else {
+      commitSchedule();
+    }
     router.push("/ride");
-  }, [pickupResolved, destination, selectedVehicle, isLoadingRoute, fareBreakdown, commitSchedule]);
+  }, [
+    pickupResolved,
+    destination,
+    selectedVehicle,
+    isLoadingRoute,
+    fareBreakdown,
+    commitSchedule,
+    skipWhere,
+    scheduleMode,
+    setScheduledTime,
+  ]);
 
   const arrowDisabled =
     step === "where"
@@ -541,7 +592,23 @@ export default function ReserveRideScreen() {
 
   const reviewCtaGreen = step === "review" && !footerPrimaryDisabled && !isLoadingRoute;
 
-  const stepIndex = step === "where" ? 1 : step === "extras" ? 2 : step === "when" ? 3 : 4;
+  const stepProgress = useMemo(() => {
+    if (skipWhere) {
+      if (scheduleMode === "immediate") {
+        if (step === "extras") return { current: 1, total: 2 };
+        if (step === "review") return { current: 2, total: 2 };
+        return { current: 1, total: 2 };
+      }
+      if (step === "extras") return { current: 1, total: 3 };
+      if (step === "when") return { current: 2, total: 3 };
+      if (step === "review") return { current: 3, total: 3 };
+      return { current: 1, total: 3 };
+    }
+    if (step === "where") return { current: 1, total: 4 };
+    if (step === "extras") return { current: 2, total: 4 };
+    if (step === "when") return { current: 3, total: 4 };
+    return { current: 4, total: 4 };
+  }, [step, skipWhere, scheduleMode]);
 
   /** Schritt 1: Nach Listenauswahl nur noch festen Text, kein TextInput. */
   const pickupLocked = pickupResolved != null;
@@ -552,6 +619,7 @@ export default function ReserveRideScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     resetRide();
     setOrigin(DEFAULT_ORIGIN);
+    setPaymentMethod(null);
     setIsExempted(false);
     setStep("where");
     setPickupResolved(null);
@@ -567,7 +635,7 @@ export default function ReserveRideScreen() {
     setMinuteIndex(0);
     setWheelKey((k) => k + 1);
     router.back();
-  }, [resetRide, setOrigin, setIsExempted]);
+  }, [resetRide, setOrigin, setIsExempted, setPaymentMethod]);
 
   return (
     <View style={[styles.root, { paddingTop: topPad, backgroundColor: colors.background }]}>
@@ -577,10 +645,10 @@ export default function ReserveRideScreen() {
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.primary }]} numberOfLines={2}>
-            Abholung planen
+            Fahrt buchen
           </Text>
           <Text style={[styles.headerStep, { color: colors.foreground }]}>
-            Schritt {stepIndex} von 4
+            Schritt {stepProgress.current} von {stepProgress.total}
           </Text>
         </View>
         <Pressable
@@ -630,13 +698,6 @@ export default function ReserveRideScreen() {
                       value={pickupQuery}
                       onChangeText={(t) => {
                         setPickupQuery(t);
-                        if (pickupResolved) {
-                          const prev = shortPlace(pickupResolved.displayName);
-                          if (t !== prev) {
-                            setPickupResolved(null);
-                            setOrigin(DEFAULT_ORIGIN);
-                          }
-                        }
                       }}
                       placeholder="Abholort suchen …"
                       placeholderTextColor={colors.mutedForeground}
@@ -699,10 +760,6 @@ export default function ReserveRideScreen() {
                       value={destQuery}
                       onChangeText={(t) => {
                         setDestQuery(t);
-                        if (destination) {
-                          const prev = shortPlace(destination.displayName);
-                          if (t !== prev) setDestination(null);
-                        }
                       }}
                       placeholder="Ziel suchen …"
                       placeholderTextColor={colors.mutedForeground}
@@ -989,7 +1046,9 @@ export default function ReserveRideScreen() {
               <View style={styles.infoRow}>
                 <Text style={[styles.infoRowLabel, { color: colors.mutedForeground }]}>Abholzeit</Text>
                 <Text style={[styles.infoRowValue, { color: colors.foreground }]}>
-                  {pickedDate.getDate()}. {MONTHS[pickedDate.getMonth()]} · {pad2(pickedDate.getHours())}:{pad2(pickedDate.getMinutes())} Uhr
+                  {scheduledTime
+                    ? `${scheduledTime.getDate()}. ${MONTHS[scheduledTime.getMonth()]} · ${pad2(scheduledTime.getHours())}:${pad2(scheduledTime.getMinutes())} Uhr`
+                    : "Sofort (nächstmögliche Abholung)"}
                 </Text>
               </View>
               <View style={[styles.infoSeparator, { backgroundColor: colors.border }]} />

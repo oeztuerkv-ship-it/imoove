@@ -40,7 +40,7 @@ export default function PanelSidebar({ active, onChange, items }) {
       </div>
 
       <div className="panel-sidebar__footer">
-        <div className="panel-sidebar__footer-title">Nur Ihr Mandant</div>
+        <div className="panel-sidebar__footer-title">Unternehmenszugang</div>
         <div className="panel-sidebar__footer-text">
           Sie sehen ausschließlich Daten Ihres Unternehmens — nicht die zentrale Plattformkonsole.
         </div>

@@ -65,10 +65,13 @@ git push origin main
 cd /root/imoove && ./scripts/deploy-onroda-production.sh
 ```
 
-Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabelle `onroda_deploy_migrations` in derselben DB) → Workspace-`pnpm install --frozen-lockfile` + API-Build (`pnpm --filter @workspace/api-server run build`) → **admin-panel** und **partner-panel** jeweils `npm ci && npm run build` → optional `rsync` (siehe `scripts/onroda-deploy.example.env`) → `pm2 restart` (Default: `onroda-api --update-env`).
+Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabelle `onroda_deploy_migrations` in derselben DB) → **echte Schema-Verifikation** (`scripts/verify-onroda-db-schema.sql` / `verify-onroda-db-schema.sh` — erwartete Spalten/Tabellen wie in den SQL-Migrationen, nicht nur Tracker-Stand) → bei Erfolg: Workspace-`pnpm install --frozen-lockfile` + API-Build (`pnpm --filter @workspace/api-server run build`) → **admin-panel** und **partner-panel** jeweils `npm ci && npm run build` → optional `rsync` (siehe `scripts/onroda-deploy.example.env`) → `pm2 restart` (Default: `onroda-api --update-env`). **Verifikation fehlgeschlagen** → Abbruch **vor** Build und PM2, damit kein Live-Code ohne passende DB durchrutscht.
 
-- **DB war schon voll migriert, Tracker ist neu:** einmalig `./scripts/deploy-onroda-production.sh --seed-migration-tracker` ausführen, bevor das normale Deploy die `001_…`-Dateien erneut anwendet.
-- **Nur Migrationen:** `./scripts/deploy-onroda-production.sh --only-migrations`
+- **Tracker ≠ Schema:** Der Tracker sagt nur, welche Migrations-**Dateien** eingetragen sind. Die Verifikation prüft, ob die **Objekte** in PostgreSQL existieren (verhindert 500er durch fehlende Spalten nach Restore/Drift). Neue API-Pflicht-Objekte: Migration + Eintrag in `verify-onroda-db-schema.sql` pflegen.
+- **DB war schon voll migriert, Tracker ist neu:** `--seed-migration-tracker` **nur bewusst** — schreibt **kein** SQL, kann „applied“ ohne Spalten erzeugen. Nur mit `ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1` (siehe `scripts/onroda-deploy.example.env`). Anschließend `./scripts/verify-onroda-db-schema.sh` oder normales Deploy.
+- **Nur Schema prüfen:** `./scripts/deploy-onroda-production.sh --verify-schema`
+- **Notfall Schema-Check überspringen:** `ONRODA_SKIP_SCHEMA_VERIFY=1` (nur in Ausnahmefällen)
+- **Nur Migrationen:** `./scripts/deploy-onroda-production.sh --only-migrations` (inkl. Schema-Verifikation am Ende dieses Modus)
 - **Trockenlauf:** `./scripts/deploy-onroda-production.sh --dry-run`
 
 **Panel-Static vs PM2:** Unter der Standard-Architektur liefert die **API-Node-Instanz** die gebauten SPAs aus `artifacts/admin-panel/dist` (`/partners/`) und `artifacts/partner-panel/dist` (Panel-Host) — siehe `artifacts/api-server/src/app.ts`. PM2 startet typisch **nur** die API; getrennte PM2-Apps für „nur Static“ sind dann redundant, sofern Nginx auf `127.0.0.1:3000` proxyt. Wenn Nginx stattdessen auf `/var/www/…` ausliefert, nach jedem Build synchronisieren (`ONRODA_RSYNC_*`) oder Nginx-Pfade auf die Repo-`dist`-Ordner legen.
@@ -85,6 +88,7 @@ Nach dem Deploy kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/pan
 
 - **Deploybarkeit:** Produktion = **Commit auf `main` + Push nach `origin/main`**; nie behaupten, etwas sei live, wenn es untracked oder ungepusht ist.
 - **Server:** keine Entwicklung, keine Commits dort; Aktualisierung **nur** `cd /root/imoove && ./scripts/deploy-onroda-production.sh` (Pfad wie beim Team vereinbart).
+- **DB:** Migrationen per Deploy-Skript; **Schema-Verifikation** ist Teil des unterstützten Deploys — kein `drizzle-kit push` auf Produktion statt der SQL-Migrationen; kein `--seed-migration-tracker` ohne `ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1`.
 - Keine Anweisungen zu manuellen Deploy-Schritten statt des Skripts; keine „schnellen Fixes“ nur auf dem Server.
 - Größere Features (Admin live, Partner, Zuweisung) vorher mit dem Team abstimmen, damit sich Arbeit nicht überschneidet.
 - Produktion: Port/Nginx/SSL/Domain-Drift und Wiederherstellung siehe **`imoove-server-infrastructure-onroda.mdc`** (immer aktiv).

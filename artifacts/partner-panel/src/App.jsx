@@ -16,7 +16,7 @@ export default function App() {
     if (allowed.size === 0) return;
     if (!allowed.has(active)) {
       const next = firstNavKey(user.panelModules);
-      if (next) setActive(next);
+      if (next) queueMicrotask(() => setActive(next));
     }
   }, [user, navItems, active]);
 

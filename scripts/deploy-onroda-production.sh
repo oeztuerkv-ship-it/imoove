@@ -23,6 +23,7 @@ SKIP_MIGRATIONS=0
 ONLY_MIGRATIONS=0
 SEED_TRACKER=0
 LIST_MIGRATIONS=0
+VERIFY_SCHEMA_ONLY=0
 
 usage() {
   cat <<'EOF'
@@ -35,8 +36,10 @@ Optionen:
   --skip-migrations      Keine SQL-Migrationen
   --only-migrations      Nur Migrationen (kein Build, kein PM2)
   --seed-migration-tracker  Nur Tracker-Einträge für alle Repo-Migrationen (kein SQL).
-                            Einmalig, wenn die DB schon migriert war und der Tracker neu ist.
+                            GEFÄHRLICH: kann „applied“ ohne echtes Schema erzeugen.
+                            Nur mit ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1 (siehe onroda-deploy.example.env).
   --list-migrations      Pending / angewendete Migrationen anzeigen
+  --verify-schema        Nur DB-Schema gegen scripts/verify-onroda-db-schema.sql prüfen (Exit ≠0 bei Mismatch)
 
 Umgebung (Auswahl):
   DATABASE_URL              PostgreSQL (sonst aus artifacts/api-server/.env)
@@ -57,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --only-migrations) ONLY_MIGRATIONS=1; shift ;;
     --seed-migration-tracker) SEED_TRACKER=1; shift ;;
     --list-migrations) LIST_MIGRATIONS=1; shift ;;
+    --verify-schema) VERIFY_SCHEMA_ONLY=1; shift ;;
     *) echo "Unbekannte Option: $1" >&2; usage >&2; exit 1 ;;
   esac
 done
@@ -147,6 +151,19 @@ list_migrations() {
       echo "  PENDING   $base"
     fi
   done < <(migration_files_sorted)
+}
+
+verify_schema_against_repo() {
+  if [[ "${ONRODA_SKIP_SCHEMA_VERIFY:-0}" == "1" ]]; then
+    log "Schema-Verifikation übersprungen (ONRODA_SKIP_SCHEMA_VERIFY=1) — nur in Notfällen nutzen."
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] bash \"${ROOT}/scripts/verify-onroda-db-schema.sh\""
+    return 0
+  fi
+  log "Prüfe DB-Schema gegen Migrations-Erwartung (verify-onroda-db-schema.sql)…"
+  bash "${ROOT}/scripts/verify-onroda-db-schema.sh"
 }
 
 apply_migrations() {
@@ -280,9 +297,22 @@ if [[ "$LIST_MIGRATIONS" -eq 1 ]]; then
 fi
 
 if [[ "$SEED_TRACKER" -eq 1 ]]; then
+  if [[ "${ONRODA_CONFIRM_SEED_MIGRATION_TRACKER:-}" != "1" ]]; then
+    echo "[deploy-onroda] ABORT: --seed-migration-tracker markiert Migrationen als angewendet, ohne SQL auszuführen." >&2
+    echo "           Das führt bei fehlenden ALTERs zu 500ern (wie fehlende access_code_normalized_snapshot)." >&2
+    echo "           Wenn du das wirklich willst: ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1 $0 --seed-migration-tracker" >&2
+    exit 1
+  fi
   command -v psql >/dev/null 2>&1 || { echo "[deploy-onroda] psql nicht im PATH" >&2; exit 1; }
   seed_migration_tracker
   log "Tracker-Seed fertig."
+  exit 0
+fi
+
+if [[ "$VERIFY_SCHEMA_ONLY" -eq 1 ]]; then
+  command -v psql >/dev/null 2>&1 || { echo "[deploy-onroda] psql nicht im PATH" >&2; exit 1; }
+  verify_schema_against_repo
+  log "Schema-Verifikation: OK."
   exit 0
 fi
 
@@ -303,6 +333,7 @@ if [[ "$ONLY_MIGRATIONS" -eq 1 ]]; then
     exit 1
   fi
   apply_migrations
+  verify_schema_against_repo
   log "Nur Migrationen: fertig."
   exit 0
 fi
@@ -314,6 +345,8 @@ if [[ "$SKIP_MIGRATIONS" -ne 1 ]]; then
 else
   log "Migrationen übersprungen (--skip-migrations)"
 fi
+
+verify_schema_against_repo
 
 do_api_build
 do_panel_builds

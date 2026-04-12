@@ -138,4 +138,28 @@ export const ridesTable = pgTable("rides", {
   }),
   /** Kopie des normalisierten Codes bei Einlösung (Audit / Verlauf). */
   access_code_normalized_snapshot: text("access_code_normalized_snapshot"),
+  /** Hotel/Medizin/Serien — nur Panel; nicht in öffentlichem Ride-Pool ausliefern. */
+  partner_booking_meta: jsonb("partner_booking_meta")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+});
+
+/** Medizinische Serienfahrten: Kopfdatensatz; Fahrten tragen seriesId in partner_booking_meta. */
+export const partnerRideSeriesTable = pgTable("partner_ride_series", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  patient_reference: text("patient_reference").notNull().default(""),
+  billing_reference: text("billing_reference"),
+  valid_from: timestamp("valid_from", { withTimezone: true }),
+  valid_until: timestamp("valid_until", { withTimezone: true }),
+  total_rides: integer("total_rides").notNull(),
+  status: text("status").notNull().default("active"),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

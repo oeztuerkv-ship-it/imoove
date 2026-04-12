@@ -128,7 +128,7 @@ export async function insertPanelUser(input: {
 export async function patchPanelUserInCompany(
   id: string,
   companyId: string,
-  patch: { isActive?: boolean; role?: string },
+  patch: { isActive?: boolean; role?: string; email?: string; username?: string },
 ): Promise<PanelUserPublicRow | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
@@ -141,6 +141,12 @@ export async function patchPanelUserInCompany(
   }
   if (typeof patch.role === "string" && patch.role.length > 0) {
     sets.role = patch.role;
+  }
+  if (typeof patch.email === "string") {
+    sets.email = patch.email.trim();
+  }
+  if (typeof patch.username === "string") {
+    sets.username = patch.username.trim();
   }
   const rows = await db
     .update(panelUsersTable)
@@ -157,6 +163,24 @@ export async function patchPanelUserInCompany(
     });
   const r = rows[0];
   return r ? toPublic(r) : null;
+}
+
+/** Nur entfernen, wenn bereits deaktiviert — verhindert versehentliches Löschen aktiver Zugänge. */
+export async function deleteInactivePanelUserInCompany(id: string, companyId: string): Promise<boolean> {
+  if (!isPostgresConfigured()) return false;
+  const db = getDb();
+  if (!db) return false;
+  const rows = await db
+    .delete(panelUsersTable)
+    .where(
+      and(
+        eq(panelUsersTable.id, id),
+        eq(panelUsersTable.company_id, companyId),
+        eq(panelUsersTable.is_active, false),
+      ),
+    )
+    .returning({ id: panelUsersTable.id });
+  return rows.length > 0;
 }
 
 export async function updatePanelUserPasswordInCompany(

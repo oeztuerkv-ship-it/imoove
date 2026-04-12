@@ -6,6 +6,10 @@ import ProfilePage from "../pages/ProfilePage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
 import ModulePlaceholderPage from "../pages/ModulePlaceholderPage.jsx";
 import AccessCodesPage from "../pages/AccessCodesPage.jsx";
+import HotelBookingPage from "../pages/HotelBookingPage.jsx";
+import MedicalRoundTripPage from "../pages/MedicalRoundTripPage.jsx";
+import MedicalSeriesPage from "../pages/MedicalSeriesPage.jsx";
+import BillingPage from "../pages/BillingPage.jsx";
 
 function ph(title, lead) {
   return <ModulePlaceholderPage title={title} lead={lead} />;
@@ -14,7 +18,7 @@ function ph(title, lead) {
 const PAGES = {
   overview: {
     title: "Ihr Überblick",
-    subtitle: "Willkommen im Unternehmensbereich — nur Ihre Daten, kein Plattform-Zugriff",
+    subtitle: "Übersicht und Schnellzugriff",
     component: <OverviewPage />,
   },
   "rides-mine": {
@@ -41,8 +45,8 @@ const PAGES = {
   },
   "hotel-mode": {
     title: "Hotelmodus",
-    subtitle: "Buchungen für Ihren Betrieb",
-    component: ph("Hotelmodus", "Spezielle Optionen für Beherbergungsbetriebe — nur Ihre Buchungen."),
+    subtitle: "Gastfahrten, Reservierung, Zimmer & Zahler",
+    component: <HotelBookingPage />,
   },
   "company-rides": {
     title: "Meine Firmenfahrten",
@@ -51,13 +55,18 @@ const PAGES = {
   },
   recurring: {
     title: "Meine Serienfahrten",
-    subtitle: "Wiederkehrende Aufträge",
-    component: ph("Meine Serienfahrten", "Planung wiederkehrender Fahrten nur in Ihrem Mandanten."),
+    subtitle: "KV / Praxis: Serien mit Gültigkeit und Anzahl",
+    component: <MedicalSeriesPage />,
+  },
+  "medical-round": {
+    title: "Patientenfahrt Hin- & Rück",
+    subtitle: "Zwei verbundene Fahrten, Referenz & Kostenträger",
+    component: <MedicalRoundTripPage />,
   },
   billing: {
     title: "Meine Abrechnung",
-    subtitle: "Umsätze und Auswertung Ihres Unternehmens",
-    component: ph("Meine Abrechnung", "Abrechnungsübersicht und Exporte — ausschließlich Ihre Daten."),
+    subtitle: "Monatsübersicht, Filter und CSV-Export",
+    component: <BillingPage />,
   },
 };
 

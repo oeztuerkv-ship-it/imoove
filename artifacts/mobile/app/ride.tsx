@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Alert,
@@ -22,6 +22,7 @@ import { rs, rf } from "@/utils/scale";
 import { useUser } from "@/context/UserContext";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
+import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -42,6 +43,21 @@ function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: bool
 /* Zahlungsmethoden, die einen hinterlegten Token benötigen */
 const TOKEN_REQUIRED: PaymentMethod[] = ["paypal", "card", "app"];
 
+const RIDE_PAYMENT_OPTIONS: {
+  id: PaymentMethod;
+  label: string;
+  featherIcon?: string;
+  isPaypal?: boolean;
+  isEuro?: boolean;
+  isVoucher?: boolean;
+  isApp?: boolean;
+}[] = [
+  { id: "app", label: "App bezahlen", isApp: true },
+  { id: "cash", label: "Bar", isEuro: true },
+  { id: "paypal", label: "PayPal", isPaypal: true },
+  { id: "voucher", label: "Transportschein", isVoucher: true },
+];
+
 export default function RideScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -49,7 +65,18 @@ export default function RideScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
 
-  const { origin, destination, route, fareBreakdown, selectedVehicle, paymentMethod, isExempted, scheduledTime } = useRide();
+  const {
+    origin,
+    destination,
+    route,
+    fareBreakdown,
+    selectedVehicle,
+    paymentMethod,
+    isExempted,
+    scheduledTime,
+    setPaymentMethod,
+    setIsExempted,
+  } = useRide();
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const btnScale = useRef(new Animated.Value(1)).current;
@@ -57,6 +84,10 @@ export default function RideScreen() {
   const [noTokenVisible, setNoTokenVisible] = useState(false);
   const [preAuthLoading, setPreAuthLoading] = useState(false);
   const [tokenErrorMethod, setTokenErrorMethod] = useState<PaymentMethod | null>(null);
+
+  useEffect(() => {
+    if (paymentMethod == null) setPaymentMethod("cash");
+  }, [paymentMethod, setPaymentMethod]);
 
   /* Prüft Token nur für explizit gewählte Online-Zahlung (Bar als Fallback ohne Token). */
   const checkPaymentTokenFor = async (m: PaymentMethod): Promise<boolean> => {
@@ -167,7 +198,7 @@ export default function RideScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, justifyContent: "center", paddingHorizontal: 24 }]}>
         <Text style={{ fontSize: 16, fontFamily: "Inter_500Medium", color: colors.foreground, textAlign: "center", marginBottom: 16 }}>
-          Buchung unvollständig. Bitte Fahrzeug und Preis auf der Startseite wählen.
+          Buchung unvollständig. Bitte den Buchungsflow über „Weiter zur Buchung“ erneut starten.
         </Text>
         <Pressable
           onPress={handleBack}
@@ -180,6 +211,7 @@ export default function RideScreen() {
   }
 
   const vehicle = VEHICLES.find((v) => v.id === selectedVehicle)!;
+  const payerBlock = customerPayerBlockFromBooking(paymentMethod, isExempted);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -255,41 +287,96 @@ export default function RideScreen() {
           </View>
         </View>
 
+        <View style={[styles.card, { backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }]}>
+          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>WER ZAHLT?</Text>
+          <Text style={{ fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{payerBlock.title}</Text>
+          <Text style={{ fontSize: rf(13), fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: rf(19) }}>
+            {payerBlock.subtitle}
+          </Text>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNGSART WÄHLEN</Text>
+          <View style={styles.paymentGrid}>
+            {RIDE_PAYMENT_OPTIONS.map((opt) => {
+              const isSelected = paymentMethod === opt.id;
+              const voucherBlockedByOnroda = opt.isVoucher && selectedVehicle === "onroda";
+              return (
+                <Pressable
+                  key={opt.id}
+                  style={[
+                    styles.paymentBtn,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      borderWidth: isSelected ? 2 : 1.5,
+                      opacity: voucherBlockedByOnroda ? 0.45 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (voucherBlockedByOnroda) {
+                      Alert.alert("Nicht möglich", "Fixpreis ist bei Transportschein nicht verfügbar.");
+                      return;
+                    }
+                    if (opt.id !== "voucher") setIsExempted(false);
+                    setPaymentMethod(opt.id);
+                    Haptics.selectionAsync();
+                  }}
+                >
+                  {opt.isEuro ? (
+                    <Text style={[styles.euroSymbol, { color: colors.foreground }]}>€</Text>
+                  ) : opt.isApp ? (
+                    <Feather name="smartphone" size={14} color={colors.foreground} />
+                  ) : opt.isPaypal ? (
+                    <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
+                  ) : opt.isVoucher ? (
+                    <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
+                  ) : (
+                    <Feather name="credit-card" size={14} color={colors.foreground} />
+                  )}
+                  <Text style={[styles.paymentBtnText, { color: colors.foreground }]}>{opt.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {paymentMethod === "voucher" ? (
           <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#93C5FD", backgroundColor: "#EFF6FF", padding: 16, gap: 10 }}>
-            <Text style={[styles.cardLabel, { color: "#1D4ED8" }]}>ZAHLUNG – KRANKENKASSE</Text>
+            <Text style={[styles.cardLabel, { color: "#1D4ED8" }]}>TRANSPORTSCHEIN</Text>
             <View style={styles.paymentChip}>
               <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#2563EB" />
-              <Text style={[styles.paymentChipText, { color: "#1D4ED8" }]}>Transportschein</Text>
+              <Text style={[styles.paymentChipText, { color: "#1D4ED8" }]}>Eigenanteil (Schätzung)</Text>
             </View>
-            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: "#93C5FD" }} />
+            <Text style={{ fontSize: rf(22), fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>
+              {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
+              {isExempted ? "  (befreit)" : ""}
+            </Text>
+            <Pressable
+              style={styles.exemptRow}
+              onPress={() => {
+                setIsExempted(!isExempted);
+                Haptics.selectionAsync();
+              }}
+            >
+              <View
+                style={[
+                  styles.exemptCheckbox,
+                  {
+                    borderColor: isExempted ? "#2563EB" : "#93C5FD",
+                    backgroundColor: isExempted ? "#2563EB" : "transparent",
+                  },
+                ]}
+              >
+                {isExempted && <Feather name="check" size={12} color="#fff" />}
+              </View>
+              <Text style={[styles.exemptText, { color: "#1D4ED8" }]}>Ich bin von der Zuzahlung befreit</Text>
+            </Pressable>
             <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#2563EB", lineHeight: 17 }}>
-              {isExempted
-                ? "Sie sind von der Zuzahlung befreit (0,00 €). Bitte Befreiungsnachweis bereithalten."
-                : "Bitte halten Sie Ihren genehmigten Transportschein beim Fahrer bereit. Der Restbetrag wird direkt mit Ihrer Krankenkasse abgerechnet."}
+              Gültigen Transportschein beim Fahrer bereithalten. Der Restbetrag wird mit der Krankenkasse abgerechnet.
             </Text>
           </View>
-        ) : (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>ZAHLUNG</Text>
-            <View style={styles.paymentChip}>
-              {!paymentMethod ? (
-                <Feather name="alert-circle" size={18} color={colors.mutedForeground} />
-              ) : paymentMethod === "paypal" ? (
-                <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#1565C0" }}>P</Text>
-              ) : paymentMethod === "card" ? (
-                <Feather name="credit-card" size={18} color={colors.primary} />
-              ) : paymentMethod === "app" ? (
-                <Feather name="smartphone" size={18} color={colors.primary} />
-              ) : (
-                <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: colors.primary }}>€</Text>
-              )}
-              <Text style={[styles.paymentChipText, { color: colors.foreground }]}>
-                {paymentMethod ? PAYMENT_LABELS[paymentMethod] : "Keine Zahlungsart"}
-              </Text>
-            </View>
-          </View>
-        )}
+        ) : null}
 
         {schedDateStr && (
           <View style={[styles.card, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
@@ -414,6 +501,23 @@ const styles = StyleSheet.create({
   vehicleDesc: { fontSize: rf(13), fontFamily: "Inter_400Regular" },
   paymentChip: { flexDirection: "row", alignItems: "center", gap: rs(10) },
   paymentChipText: { fontSize: rf(15), fontFamily: "Inter_500Medium" },
+  paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: rs(8), marginTop: rs(4) },
+  paymentBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(6),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(12),
+    minWidth: "47%",
+    flexGrow: 1,
+  },
+  paymentBtnText: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
+  euroSymbol: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
+  paypalText: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
+  exemptRow: { flexDirection: "row", alignItems: "center", gap: rs(10), marginTop: rs(4) },
+  exemptCheckbox: { width: rs(22), height: rs(22), borderRadius: rs(6), borderWidth: 2, justifyContent: "center", alignItems: "center" },
+  exemptText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_500Medium" },
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(16), paddingHorizontal: rs(20),

@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { BottomTabBar } from "@/components/BottomTabBar";
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRide, type PaymentMethod, VEHICLES } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
+import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
 import { downloadReceipt } from "@/utils/receipt";
 import { rs, rf } from "@/utils/scale";
@@ -198,7 +199,7 @@ export default function MyRidesScreen() {
         <Pressable
           style={styles.backBtn}
           hitSlop={12}
-          onPress={() => router.push("/fahrt-reservieren")}
+          onPress={() => router.push("/reserve-ride")}
           accessibilityLabel="Neue Buchung – Reservieren"
         >
           <Feather name="plus-circle" size={24} color="#DC2626" />
@@ -282,6 +283,18 @@ export default function MyRidesScreen() {
                     <Text style={[styles.ridePrice, { color: "#2563EB" }]}>
                       ca. {Math.round(req.estimatedFare / 1.08)}–{Math.round(req.estimatedFare)} €
                     </Text>
+                  </View>
+
+                  <View style={[styles.payerLine, { backgroundColor: "#F8FAFC", borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="information-outline" size={14} color={colors.mutedForeground} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.payerLineTitle, { color: colors.foreground }]}>
+                        {customerPayerBlockFromRideRequest(req).title}
+                      </Text>
+                      <Text style={[styles.payerLineSub, { color: colors.mutedForeground }]}>
+                        {customerPayerBlockFromRideRequest(req).subtitle}
+                      </Text>
+                    </View>
                   </View>
 
                   {req.status === "accepted" && (
@@ -480,7 +493,7 @@ export default function MyRidesScreen() {
                 : "Plane deine nächste Fahrt direkt hier."}
             </Text>
             {(activeTab === "alle" || activeTab === "abgeschlossen") && (
-              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/fahrt-reservieren")}>
+              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/reserve-ride")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
               </Pressable>
@@ -536,6 +549,17 @@ const styles = StyleSheet.create({
   footerItem:      { flexDirection: "row", alignItems: "center", gap: rs(5) },
   footerText:      { fontSize: rf(12), fontFamily: "Inter_400Regular" },
   ridePrice:       { marginLeft: "auto", fontSize: rf(18), fontFamily: "Inter_700Bold" },
+
+  payerLine: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(8),
+    padding: rs(10),
+    borderRadius: rs(10),
+    borderWidth: 1,
+  },
+  payerLineTitle: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
+  payerLineSub: { fontSize: rf(11), fontFamily: "Inter_400Regular", marginTop: rs(2), lineHeight: rf(15) },
 
   driverHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1 },
   driverHintText:  { fontSize: rf(13), fontFamily: "Inter_500Medium" },

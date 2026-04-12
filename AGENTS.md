@@ -19,6 +19,9 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 - **Quelle der Wahrheit (Schema):** `artifacts/api-server/src/db/init-onroda.sql` und `artifacts/api-server/src/db/schema.ts` müssen zusammenpassen.
 - **Bestehende Instanzen:** jede Schemaänderung braucht eine **nummerierte Migration** unter `artifacts/api-server/src/db/migrations/` und **Einspielen auf der DB vor** oder **mit** dem API-Deploy, das die Spalten nutzt.
+- **Tracker allein reicht nicht:** `onroda_deploy_migrations` dokumentiert nur, welche Migrations-**Dateien** liefen — **nicht**, ob Spalten/Tabellen in PostgreSQL heute noch da sind. Deploy prüft daher **zusätzlich** das echte Schema (`scripts/verify-onroda-db-schema.sql`, vom Deploy-Skript und manuell über `verify-onroda-db-schema.sh` / `--verify-schema`). Sobald die API neue DB-Objekte braucht, gehören sie in diese Prüfung (parallel zur neuen `.sql`-Migration).
+- **Verifikation vor Build/PM2:** Der unterstützte Deploy endet mit Fehler, wenn die reale DB nicht zu den erwarteten Objekten passt — **bevor** API-Build und `pm2 restart` laufen (kein formal erfolgreicher Deploy mit späteren 500ern durch fehlende Spalten).
+- **Kein `drizzle-kit push` auf Produktion** als Ersatz für die nummerierten SQL-Migrationen — produktiver Weg bleibt: Migration im Repo → `deploy-onroda-production.sh` (inkl. Schema-Check).
 - **Mandanten-IDs:** `admin_companies.id`, `panel_users.company_id` und **`rides.company_id`** sind **TEXT** (z. B. `co-demo-1`). Kein Mix mit INTEGER auf `rides` — siehe Migration `006_rides_legacy_schema_repair.sql`.
 
 ## API & Builds
@@ -43,17 +46,21 @@ cd /root/imoove && ./scripts/deploy-onroda-production.sh
 
 Voraussetzungen: `pnpm`, `npm`, `psql`, `pm2`; `DATABASE_URL` in `artifacts/api-server/.env` (oder in der Shell). Optional: `scripts/onroda-deploy.env` aus `scripts/onroda-deploy.example.env` anlegen (PM2-Namen, rsync-Ziele, Nginx-Reload).
 
-- **Erste Nutzung auf einer DB, die schon manuell alle Migrationen hatte:** einmalig Tracker füllen, sonst würde das Skript `001_…` erneut ausführen:
+- **Erste Nutzung auf einer DB, die schon manuell alle Migrationen hatte:** Tracker füllen **nur bewusst** — der Seed führt **kein** SQL aus; ohne echte Objekte entstehen 500er. Nur mit Bestätigung:
 
   ```bash
-  ./scripts/deploy-onroda-production.sh --seed-migration-tracker
+  ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1 ./scripts/deploy-onroda-production.sh --seed-migration-tracker
   ```
 
+  Danach `./scripts/verify-onroda-db-schema.sh` ausführen; bei Abweichung fehlende Migrationen per `psql -f …/migrations/…` nachziehen.
+
+- **Schema nur prüfen (ohne Deploy):** `./scripts/deploy-onroda-production.sh --verify-schema` oder `./scripts/verify-onroda-db-schema.sh`
+- **Notfall — Deploy ohne Schema-Check (nicht empfohlen):** `ONRODA_SKIP_SCHEMA_VERIFY=1` (siehe `scripts/onroda-deploy.example.env`)
 - **Trockenlauf (ohne DB, ohne echte Builds):** `./scripts/deploy-onroda-production.sh --dry-run --skip-git-pull`
 - **Nur ausstehende Migrationen:** `./scripts/deploy-onroda-production.sh --only-migrations`
 - **Status:** `./scripts/deploy-onroda-production.sh --list-migrations`
 
-Ablauf im Skript: `git pull` → fehlende SQL-Migrationen (Tabelle `onroda_deploy_migrations` im gleichen PostgreSQL) → `pnpm install --frozen-lockfile` + API-Build → `npm ci` + Build für **admin-panel** und **partner-panel** → optional rsync → `pm2 restart` (Default: `onroda-api`).
+Ablauf im Skript: `git pull` → fehlende SQL-Migrationen (Tabelle `onroda_deploy_migrations` im gleichen PostgreSQL) → **Schema-Verifikation** (`verify-onroda-db-schema.sql` gegen `DATABASE_URL`) → bei Erfolg: `pnpm install --frozen-lockfile` + API-Build → `npm ci` + Build für **admin-panel** und **partner-panel** → optional rsync → `pm2 restart` (Default: `onroda-api`). Schlägt die Verifikation fehl, endet der Deploy **vor** Build/PM2 — kein „grünes“ Deploy mit kaputtem Schema.
 
 **Live-Pfad der Panel-Assets:** Die API liest standardmäßig die gebauten Ordner `artifacts/admin-panel/dist` und `artifacts/partner-panel/dist` relativ zum API-`dist` (siehe `artifacts/api-server/src/app.ts`). Es ist **kein** separates PM2-Frontend nötig, solange Nginx auf **eine** Node-Instanz (Port **3000**) proxyt und keine veralteten Kopien unter `/var/www/…` ausliefert. Wenn eure Nginx-Konfiguration doch auf statische Verzeichnisse zeigt, nach dem Build `ONRODA_RSYNC_*` setzen oder die Pfade anpassen.
 
@@ -66,6 +73,7 @@ Lokal oder in **GitHub Actions** (Workflow `repo-invariants.yml` auf **push/PR �
 | Prüfung | Was passiert bei Verstoß |
 |--------|---------------------------|
 | **`scripts/verify-onroda-repo-invariants.sh`** | `maxmem`, kein `integer("company_id")`, `init`+`schema`, **lückenlose** Migrationen `001_…sql`–`00N_…sql`, exakte **Build-Skripte** (API `node ./build.mjs`, Partner `vite build`, Admin mit `--base /partners/`), `panelApi` enthält `/panel/v1/rides` |
+| **Deploy (Server): `verify-onroda-db-schema.sql`** | Nicht in CI standardmäßig — läuft **auf dem Server** im Deploy **nach** Migrationen, **vor** Build/PM2; bricht ab, wenn PostgreSQL-Objekte fehlen, die die API erwartet (Ergänzung bei neuen Migrationen im Repo pflegen). |
 | **ESLint** | `artifacts/partner-panel` und `artifacts/admin-panel` jeweils `npm ci && npm run lint` |
 | **API-Build** | `pnpm install --frozen-lockfile` + `pnpm --filter @workspace/api-server run build` — fängt kaputte Bundles/Imports früh |
 

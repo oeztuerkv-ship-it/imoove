@@ -211,8 +211,8 @@ export default function PartnerRidesListPage({ variant }) {
 
   const lead =
     variant === "history"
-      ? "Abgeschlossene, stornierte und abgelehnte Fahrten Ihres Unternehmens — nur Ihr Mandant."
-      : "Alle Fahrten Ihres Unternehmens (Mandant aus Ihrer Anmeldung). Live-Daten von der API.";
+      ? "Abgeschlossene, stornierte und abgelehnte Fahrten."
+      : "Aktuelle und geplante Fahrten Ihres Unternehmens.";
 
   return (
     <div className="panel-page panel-page--rides">
