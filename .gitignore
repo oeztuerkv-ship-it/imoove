@@ -12,6 +12,7 @@
 **/*-adminsdk-*.json
 
 node_modules/
+.pnpm-store/
 
 # Lokaler Alt-Backup-Ordner (nicht versionieren)
 artifacts/mobile/_backup-2026-04-07-stable/
