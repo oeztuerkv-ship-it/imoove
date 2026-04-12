@@ -75,9 +75,9 @@
   --onroda-shadow-focus-ring: 0 0 0 2px color-mix(in srgb, var(--onroda-red) 12%, transparent);
 
   /* Tabellen: gebundene Mindestbreite (horizontales Scrollen) */
-  --onroda-admin-rides-table-min-width: 1950px;
-  /* Admin: Fahrten-Tabelle (Spalten zentral anpassbar) */
-  --onroda-admin-rides-grid-template: 220px 160px 220px 220px 110px 130px 100px 90px 90px 100px 170px 170px 120px;
+  --onroda-admin-rides-table-min-width: 1680px;
+  /* Admin: Fahrten-Tabelle — Spalten passend zu GET /rides (camelCase RideRequest) */
+  --onroda-admin-rides-grid-template: 200px 140px 180px 180px 105px 100px 85px 95px 125px 125px 110px 100px;
   /* Admin: Tarifgebiete-Liste */
   --onroda-admin-fare-areas-grid-template: 1fr 1.5fr 1fr 1fr 1fr;
 

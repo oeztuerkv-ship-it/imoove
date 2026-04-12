@@ -1,6 +1,9 @@
 const items = [
   { key: "overview", label: "Übersicht", icon: "◫" },
-  { key: "rides", label: "Fahrten", icon: "→" },
+  { key: "rides-mine", label: "Meine Fahrten", icon: "☰" },
+  { key: "rides-new", label: "Neue Fahrt", icon: "+" },
+  { key: "rides-history", label: "Verlauf", icon: "↺" },
+  { key: "profile", label: "Profil / Firma", icon: "◇" },
   { key: "team", label: "Mitarbeiter", icon: "◎" },
 ];
 

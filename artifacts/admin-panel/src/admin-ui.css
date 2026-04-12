@@ -317,6 +317,12 @@
   font-size: var(--onroda-font-size-mono);
 }
 
+.admin-table-sub {
+  color: var(--onroda-text-muted);
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
 .admin-table-card {
   background: var(--onroda-bg-card);
   border: 1px solid var(--onroda-border);

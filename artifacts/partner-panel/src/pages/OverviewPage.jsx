@@ -89,14 +89,19 @@ export default function OverviewPage() {
         <h3 className="panel-card__title">Einstieg</h3>
         <ul className="panel-hint-list">
           <li>
-            Unter <strong>Fahrten</strong> siehst du alle Aufträge deines Unternehmens inkl. <strong>Angelegt von</strong>{" "}
-            (Mitarbeiter im Panel).
+            <strong>Meine Fahrten</strong> und <strong>Verlauf</strong> laden live von der API; CSV-Export ohne
+            Dummy-Daten.
           </li>
           <li>
-            Unter <strong>Mitarbeiter</strong> verwaltest du Zugänge (je nach Rolle: anlegen, deaktivieren, Passwort
-            setzen).
+            <strong>Neue Fahrt</strong> sendet an <code className="panel-inline-code">POST /api/panel/v1/rides</code>{" "}
+            (nur mit Recht <code className="panel-inline-code">rides.create</code>).
           </li>
-          <li>Firmendaten sind derzeit <strong>nur lesend</strong>; Änderungen laufen über den Onroda-Support.</li>
+          <li>
+            <strong>Profil / Firma</strong> bündelt Zugangsdaten und Firmastammdaten; erweiterte Bearbeitung folgt.
+          </li>
+          <li>
+            <strong>Mitarbeiter</strong>: Zugänge je nach Rolle (anlegen, deaktivieren, Passwort setzen).
+          </li>
         </ul>
       </div>
 

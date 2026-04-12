@@ -1,11 +1,28 @@
 import PanelSidebar from "./PanelSidebar.jsx";
 import OverviewPage from "../pages/OverviewPage.jsx";
-import RidesPage from "../pages/RidesPage.jsx";
+import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
+import RideCreatePage from "../pages/RideCreatePage.jsx";
+import ProfilePage from "../pages/ProfilePage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
 
 const PAGES = {
   overview: { title: "Übersicht", subtitle: "Dein Unternehmen auf einen Blick", component: <OverviewPage /> },
-  rides: { title: "Fahrten", subtitle: "Erfassen und nachvollziehen", component: <RidesPage /> },
+  "rides-mine": {
+    title: "Meine Fahrten",
+    subtitle: "Alle Aufträge deines Mandanten (API)",
+    component: <PartnerRidesListPage variant="all" />,
+  },
+  "rides-new": {
+    title: "Neue Fahrt",
+    subtitle: "Auftrag erfassen",
+    component: <RideCreatePage />,
+  },
+  "rides-history": {
+    title: "Verlauf",
+    subtitle: "Abgeschlossen, storniert, abgelehnt",
+    component: <PartnerRidesListPage variant="history" />,
+  },
+  profile: { title: "Profil und Firma", subtitle: "Zugang und Firmendaten", component: <ProfilePage /> },
   team: { title: "Mitarbeiter", subtitle: "Zugänge und Rollen", component: <TeamPage /> },
 };
 
