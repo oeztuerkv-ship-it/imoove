@@ -227,19 +227,3 @@
   font-size: 0.95rem;
   line-height: 1.5;
 }
-
-/* Control-Center: KPI-Zahlen in Sky-Blau statt Markenrot (Partner behält Rot) */
-.admin-app--control .admin-dashboard__hero-title {
-  color: #0c4a6e;
-}
-
-.admin-app--control .admin-dashboard__card-value,
-.admin-app--control .admin-dashboard__panel-title,
-.admin-app--control .admin-dashboard__metric-value {
-  color: #0369a1;
-}
-
-.admin-app--control .admin-dashboard__card--accent {
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.2);
-}

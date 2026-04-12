@@ -95,9 +95,8 @@ export default function CompaniesPage() {
       if (Array.isArray(data.panelModuleCatalog)) {
         setModuleCatalog(data.panelModuleCatalog);
       }
-    } catch (err) {
-      console.error("Companies load error:", err);
-      setError("Unternehmer konnten nicht geladen werden.");
+    } catch {
+      setError("Unternehmen konnten nicht geladen werden.");
     } finally {
       setLoading(false);
     }
@@ -305,9 +304,8 @@ export default function CompaniesPage() {
       setItems((prev) =>
         prev.map((item) => (item.id === companyId ? data.item : item))
       );
-    } catch (err) {
-      console.error("Company priority update error:", err);
-      setError("PRIO konnte nicht gespeichert werden.");
+    } catch {
+      setError("Die Prioritätseinstellungen konnten nicht gespeichert werden.");
     } finally {
       setSavingId(null);
     }
@@ -475,7 +473,7 @@ export default function CompaniesPage() {
   }
 
   if (loading) {
-    return <div className="admin-info-banner">Unternehmer werden geladen ...</div>;
+    return <div className="admin-info-banner">Unternehmen werden geladen …</div>;
   }
 
   return (
@@ -494,7 +492,7 @@ export default function CompaniesPage() {
           <div className="admin-stat-value">{stats.inactive}</div>
         </div>
         <div className="admin-stat-card">
-          <div className="admin-stat-label">PRIO aktiv</div>
+          <div className="admin-stat-label">Mit Priorität</div>
           <div className="admin-stat-value">{stats.priority}</div>
         </div>
       </div>
@@ -506,7 +504,7 @@ export default function CompaniesPage() {
             <input
               type="text"
               className="admin-input"
-              placeholder="Name, E-Mail, Telefon, ID ..."
+              placeholder="Name, E-Mail, Telefon, Kennung …"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -526,15 +524,15 @@ export default function CompaniesPage() {
           </div>
 
           <div className="admin-filter-item">
-            <label className="admin-field-label">PRIO</label>
+            <label className="admin-field-label">Priorität</label>
             <select
               className="admin-select"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
             >
               <option value="all">Alle</option>
-              <option value="yes">PRIO aktiv</option>
-              <option value="no">Keine PRIO</option>
+              <option value="yes">Mit Priorität</option>
+              <option value="no">Ohne Priorität</option>
             </select>
           </div>
 
@@ -568,7 +566,7 @@ export default function CompaniesPage() {
 
       <div className="admin-entity-list">
         {paginatedItems.length === 0 ? (
-          <div className="admin-info-banner">Keine Unternehmer gefunden.</div>
+          <div className="admin-info-banner">Keine Unternehmen gefunden.</div>
         ) : (
           paginatedItems.map((item) => {
             const isSaving = savingId === item.id;
@@ -579,7 +577,7 @@ export default function CompaniesPage() {
                   <div>
                     <div className="admin-entity-card__title">{item.name}</div>
                     <div className="admin-entity-card__meta">
-                      ID: {item.id}
+                      Kennung {item.id}
                       {item.contact_name ? ` · ${item.contact_name}` : ""} · {item.email || "keine E-Mail"} ·{" "}
                       {item.phone || "kein Telefon"}
                       {item.city || item.postal_code
@@ -596,7 +594,7 @@ export default function CompaniesPage() {
                     <span
                       className={companyPrioBadgeClass(item.is_priority_company)}
                     >
-                      {item.is_priority_company ? "PRIO aktiv" : "Keine PRIO"}
+                      {item.is_priority_company ? "Priorität aktiv" : "Ohne Priorität"}
                     </span>
                   </div>
                 </div>
@@ -617,7 +615,7 @@ export default function CompaniesPage() {
 
                 <div className="admin-controls-grid">
                   <label className="admin-switch-row">
-                    <span className="admin-switch-row__label">PRIO aktiv</span>
+                    <span className="admin-switch-row__label">Priorität aktiv</span>
                     <input
                       type="checkbox"
                       checked={!!item.is_priority_company}
@@ -631,7 +629,7 @@ export default function CompaniesPage() {
                   </label>
 
                   <label className="admin-switch-row">
-                    <span className="admin-switch-row__label">Live-Fahrten PRIO</span>
+                    <span className="admin-switch-row__label">Sofortfahrten priorisieren</span>
                     <input
                       type="checkbox"
                       checked={!!item.priority_for_live_rides}
@@ -645,7 +643,7 @@ export default function CompaniesPage() {
                   </label>
 
                   <label className="admin-switch-row">
-                    <span className="admin-switch-row__label">Reservierungen PRIO</span>
+                    <span className="admin-switch-row__label">Reservierungen priorisieren</span>
                     <input
                       type="checkbox"
                       checked={!!item.priority_for_reservations}
@@ -682,15 +680,14 @@ export default function CompaniesPage() {
                   </div>
                 </div>
 
-                {isSaving ? <div className="admin-saving-hint">Speichert ...</div> : null}
+                {isSaving ? <div className="admin-saving-hint">Speichert …</div> : null}
 
                 {moduleCatalog.length > 0 ? (
                   <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--onroda-border-subtle, #e5e7eb)" }}>
-                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Partner-Panel-Module</div>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Partner-Portal</div>
                     <p className="admin-entity-card__meta" style={{ marginBottom: 10 }}>
-                      Steuert Menü und Kacheln im Unternehmerportal (
-                      <code className="admin-mono">panel.onroda.de</code>
-                      ). <code className="admin-mono">null</code> in der API = alle Module (Standard).
+                      Legt fest, welche Bereiche dieses Unternehmen im Partner-Portal unter panel.onroda.de sieht. Ohne
+                      Auswahl sind alle Bereiche aktiv.
                     </p>
                     {editingModulesFor === item.id ? (
                       <>
@@ -713,7 +710,6 @@ export default function CompaniesPage() {
                                       lineHeight: 1.35,
                                     }}
                                   >
-                                    <em style={{ fontStyle: "normal", fontWeight: 600 }}>Zielbild: </em>
                                     {mod.productIntent}
                                   </span>
                                 ) : null}
@@ -750,8 +746,8 @@ export default function CompaniesPage() {
                       <p className="admin-entity-card__meta">
                         Aktuell:{" "}
                         {item.panel_modules == null
-                          ? "alle Module (Standard)"
-                          : `${item.panel_modules.length} von ${moduleCatalog.length} ausgewählt`}
+                          ? "alle Bereiche aktiv"
+                          : `${item.panel_modules.length} von ${moduleCatalog.length} Bereichen`}
                         {" · "}
                         <button type="button" className="admin-btn-refresh" onClick={() => startEditModules(item)}>
                           Module bearbeiten
@@ -889,7 +885,7 @@ function CompanyFormBody({ form, setForm }) {
         <input className="admin-input" value={form.vat_id} onChange={ch("vat_id")} />
       </div>
       <div className="admin-filter-item">
-        <label className="admin-field-label">Ab Preis (PRIO) €</label>
+        <label className="admin-field-label">Preisgrenze Priorität (€)</label>
         <input className="admin-input" value={form.priority_price_threshold} onChange={ch("priority_price_threshold")} />
       </div>
       <div className="admin-filter-item">
@@ -909,11 +905,11 @@ function CompanyFormBody({ form, setForm }) {
         <input type="checkbox" checked={form.is_priority_company} onChange={chk("is_priority_company")} />
       </label>
       <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-        <span className="admin-switch-row__label">Live-Fahrten PRIO</span>
+        <span className="admin-switch-row__label">Sofortfahrten priorisieren</span>
         <input type="checkbox" checked={form.priority_for_live_rides} onChange={chk("priority_for_live_rides")} />
       </label>
       <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-        <span className="admin-switch-row__label">Reservierungen PRIO</span>
+        <span className="admin-switch-row__label">Reservierungen priorisieren</span>
         <input type="checkbox" checked={form.priority_for_reservations} onChange={chk("priority_for_reservations")} />
       </label>
     </div>

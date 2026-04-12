@@ -201,17 +201,22 @@
   margin-bottom: var(--onroda-space-11);
 }
 
-.admin-sidebar__brand-icon {
-  width: 40px;
-  height: 40px;
+.admin-sidebar__brand-mark {
+  width: 44px;
+  height: 44px;
   border-radius: var(--onroda-radius-icon);
-  background: var(--onroda-red);
-  color: var(--onroda-text-on-brand);
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.admin-sidebar__mark-img {
+  width: 28px;
+  height: auto;
+  display: block;
 }
 
 .admin-sidebar__logo {
@@ -277,16 +282,24 @@
 }
 
 .admin-sidebar__icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--onroda-radius-icon-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--onroda-bg-card);
   color: var(--onroda-text-muted);
-  font-size: 14px;
   flex-shrink: 0;
+}
+
+.admin-nav-glyph {
+  display: block;
+  color: inherit;
+}
+
+.admin-nav-glyph--active {
+  color: inherit;
 }
 
 .admin-sidebar__icon--active {
@@ -311,114 +324,21 @@
   line-height: 1.5;
 }
 
-/* ─── Control-Center-Theme: klar von Unternehmer-Panel unterscheidbar ─── */
-.admin-app--control .admin-app__sidebar-col {
-  background: #0b1220;
-  border-right-color: #1e293b;
+.onroda-mark {
+  display: block;
+  flex-shrink: 0;
 }
 
-.admin-app--control .admin-app__main {
-  background: #f1f5f9;
+/* Leichtes Seiten-Canvas — wie Marketing, ohne abweichendes „internes“ Theme */
+.admin-app__main {
+  background: var(--onroda-bg-elevated);
 }
 
-.admin-app--control .admin-app__topbar {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  border-bottom: 1px solid #cbd5e1;
-  box-shadow: inset 0 3px 0 0 #0ea5e9;
+.admin-app__content {
+  background: linear-gradient(180deg, var(--onroda-bg-elevated) 0%, var(--onroda-bg-app) 32%);
 }
 
-.admin-app--control .admin-app__title {
-  color: #0f172a;
-  letter-spacing: -0.03em;
-}
-
-.admin-app--control .admin-app__subtitle {
-  color: #475569;
-  font-weight: 600;
-}
-
-.admin-app--control .admin-sidebar {
-  background: transparent;
-  color: #94a3b8;
-}
-
-.admin-app--control .admin-sidebar__brand-icon {
-  background: transparent;
-  color: #38bdf8;
-  border: 2px solid #38bdf8;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
-}
-
-.admin-app--control .admin-sidebar__logo {
-  color: #f8fafc;
-  letter-spacing: 0.04em;
-}
-
-.admin-app--control .admin-sidebar__logo-sub {
-  color: #64748b;
-  font-weight: 600;
-}
-
-.admin-app--control .admin-sidebar__section-title {
-  color: #475569;
-}
-
-.admin-app--control .admin-sidebar__link {
-  color: #e2e8f0;
-}
-
-.admin-app--control .admin-sidebar__link:hover {
-  background: rgba(148, 163, 184, 0.12);
-}
-
-.admin-app--control .admin-sidebar__link--active {
-  background: rgba(14, 165, 233, 0.15);
-  color: #7dd3fc;
-  border-left: 3px solid #0ea5e9;
-  padding-left: calc(var(--onroda-space-5) - 3px);
-}
-
-.admin-app--control .admin-sidebar__icon {
-  background: rgba(148, 163, 184, 0.15);
-  color: #94a3b8;
-}
-
-.admin-app--control .admin-sidebar__icon--active {
-  background: #0ea5e9;
-  color: #0f172a;
-}
-
-.admin-app--control .admin-sidebar__footer {
-  border-top-color: #1e293b;
-}
-
-.admin-app--control .admin-sidebar__footer-title {
-  color: #e2e8f0;
-}
-
-.admin-app--control .admin-sidebar__footer-text {
-  color: #94a3b8;
-}
-
-.admin-app--control .admin-search {
-  background: #ffffff;
-  border-color: #cbd5e1;
-}
-
-.admin-app--control .admin-search:focus-within {
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
-}
-
-.admin-app--control .admin-btn-cta {
-  background: #0ea5e9;
-  color: #0f172a;
-}
-
-.admin-app--control .admin-btn-cta:hover {
-  filter: brightness(1.06);
-}
-
-.admin-app--control .admin-btn-cta:focus-visible {
-  outline-color: #0ea5e9;
+.admin-app__topbar {
+  background: var(--onroda-bg-light);
+  box-shadow: 0 1px 0 var(--onroda-border-subtle);
 }

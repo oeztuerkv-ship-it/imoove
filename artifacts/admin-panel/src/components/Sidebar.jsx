@@ -1,13 +1,12 @@
+import OnrodaMark from "./OnrodaMark";
+import NavGlyph from "./NavGlyph";
+
 const items = [
-  { key: "dashboard", label: "Plattform-Übersicht", icon: "◫" },
-  { key: "rides", label: "Alle Fahrten", icon: "↗" },
-  { key: "companies", label: "Alle Unternehmen", icon: "▣" },
-  { key: "panel-users", label: "Partner-Zugänge", icon: "◎" },
-  { key: "drivers", label: "Fahrer", icon: "◉" },
-  { key: "fares", label: "Tarife & Gebiete", icon: "◌" },
-  { key: "billing", label: "Abrechnung", icon: "◈" },
-  { key: "partners", label: "Unternehmer-Portal", icon: "◇" },
-  { key: "settings", label: "System", icon: "⚙" },
+  { key: "dashboard", label: "Systemstatus", icon: "pulse" },
+  { key: "rides", label: "Fahrten", icon: "rides" },
+  { key: "companies", label: "Unternehmen", icon: "building" },
+  { key: "panel-users", label: "Partner-Zugänge", icon: "people" },
+  { key: "fares", label: "Tarife & Gebiete", icon: "map" },
 ];
 
 export default function Sidebar({ active, onChange }) {
@@ -15,16 +14,16 @@ export default function Sidebar({ active, onChange }) {
     <aside className="admin-sidebar">
       <div>
         <div className="admin-sidebar__brand">
-          <div className="admin-sidebar__brand-icon" aria-hidden>
-            O
+          <div className="admin-sidebar__brand-mark" aria-hidden>
+            <OnrodaMark className="admin-sidebar__mark-img" />
           </div>
           <div>
-            <div className="admin-sidebar__logo">Onroda</div>
-            <div className="admin-sidebar__logo-sub">Zentrale Systemsteuerung</div>
+            <div className="admin-sidebar__logo">ONRODA</div>
+            <div className="admin-sidebar__logo-sub">Plattform</div>
           </div>
         </div>
 
-        <div className="admin-sidebar__section-title">Plattform</div>
+        <div className="admin-sidebar__section-title">Navigation</div>
 
         <nav className="admin-sidebar__nav" aria-label="Hauptnavigation">
           {items.map((item) => {
@@ -36,18 +35,16 @@ export default function Sidebar({ active, onChange }) {
                 type="button"
                 onClick={() => onChange(item.key)}
                 className={
-                  "admin-sidebar__link" +
-                  (isActive ? " admin-sidebar__link--active" : "")
+                  "admin-sidebar__link" + (isActive ? " admin-sidebar__link--active" : "")
                 }
               >
                 <span
                   className={
-                    "admin-sidebar__icon" +
-                    (isActive ? " admin-sidebar__icon--active" : "")
+                    "admin-sidebar__icon" + (isActive ? " admin-sidebar__icon--active" : "")
                   }
                   aria-hidden
                 >
-                  {item.icon}
+                  <NavGlyph name={item.icon} active={isActive} />
                 </span>
                 <span>{item.label}</span>
               </button>
@@ -57,9 +54,10 @@ export default function Sidebar({ active, onChange }) {
       </div>
 
       <div className="admin-sidebar__footer">
-        <div className="admin-sidebar__footer-title">Operator-Konsole</div>
+        <div className="admin-sidebar__footer-title">Hinweis</div>
         <div className="admin-sidebar__footer-text">
-          Vollständiger Zugriff auf alle Mandanten und Systemdaten — nicht dasselbe wie das Unternehmer-Portal.
+          Diese Oberfläche dient der zentralen Plattformsteuerung. Unternehmen arbeiten in ihrem eigenen Bereich unter
+          panel.onroda.de.
         </div>
       </div>
     </aside>

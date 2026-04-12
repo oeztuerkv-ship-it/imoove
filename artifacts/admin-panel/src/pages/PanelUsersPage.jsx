@@ -4,11 +4,16 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const COMPANIES_URL = `${API_BASE}/admin/companies`;
 const ROLES = [
-  { id: "owner", label: "Owner" },
-  { id: "manager", label: "Manager" },
-  { id: "staff", label: "Staff" },
+  { id: "owner", label: "Inhaber" },
+  { id: "manager", label: "Verwaltung" },
+  { id: "staff", label: "Mitarbeiter" },
   { id: "readonly", label: "Nur lesen" },
 ];
+
+function roleLabel(role) {
+  const r = ROLES.find((x) => x.id === role);
+  return r?.label ?? role ?? "—";
+}
 
 function usersUrl(companyId) {
   return `${COMPANIES_URL}/${encodeURIComponent(companyId)}/panel-users`;
@@ -50,7 +55,7 @@ export default function PanelUsersPage() {
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(`HTTP ${res.status}`);
       setCompanies(Array.isArray(data.items) ? data.items : []);
-    } catch (e) {
+    } catch {
       setError("Unternehmen konnten nicht geladen werden.");
       setCompanies([]);
     } finally {
@@ -73,8 +78,8 @@ export default function PanelUsersPage() {
         throw new Error(`HTTP ${res.status}`);
       }
       setUsers(Array.isArray(data.users) ? data.users : []);
-    } catch (e) {
-      setError(e.message || "Panel-Benutzer konnten nicht geladen werden.");
+    } catch (err) {
+      setError(err.message || "Zugänge konnten nicht geladen werden.");
       setUsers([]);
     } finally {
       setLoadingUsers(false);
@@ -196,8 +201,9 @@ export default function PanelUsersPage() {
             >
               <option value="">— Bitte wählen —</option>
               {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.id}){c.is_active ? "" : " · inaktiv"}
+                <option key={c.id} value={c.id} title={c.id}>
+                  {c.name}
+                  {c.is_active ? "" : " (inaktiv)"}
                 </option>
               ))}
             </select>
@@ -217,14 +223,14 @@ export default function PanelUsersPage() {
                   setShowCreate(true);
                 }}
               >
-                + Panel-Benutzer
+                Zugang anlegen
               </button>
             </div>
           </div>
         </div>
         {selectedCompany && !selectedCompany.is_active ? (
           <p className="admin-entity-card__meta" style={{ marginTop: 12 }}>
-            Dieses Unternehmen ist inaktiv — keine neuen Panel-Benutzer anlegbar.
+            Dieses Unternehmen ist inaktiv — neue Zugänge können nicht angelegt werden.
           </p>
         ) : null}
       </div>
@@ -234,13 +240,13 @@ export default function PanelUsersPage() {
       {!companyId ? (
         <div className="admin-info-banner">Bitte ein Unternehmen auswählen.</div>
       ) : loadingUsers ? (
-        <div className="admin-info-banner">Lade Panel-Benutzer …</div>
+        <div className="admin-info-banner">Zugänge werden geladen …</div>
       ) : users.length === 0 ? (
-        <div className="admin-info-banner">Keine Panel-Benutzer für dieses Unternehmen.</div>
+        <div className="admin-info-banner">Keine Zugänge für dieses Unternehmen.</div>
       ) : (
         <div className="admin-table-card">
           <div className="admin-table-scroll">
-            <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--fare-areas">
+            <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--panel-users">
               <div>Benutzername</div>
               <div>E-Mail</div>
               <div>Rolle</div>
@@ -248,10 +254,10 @@ export default function PanelUsersPage() {
               <div>Aktionen</div>
             </div>
             {users.map((u) => (
-              <div key={u.id} className="admin-table-row admin-cs-grid admin-cs-grid--fare-areas">
+              <div key={u.id} className="admin-table-row admin-cs-grid admin-cs-grid--panel-users">
                 <div className="admin-mono">{u.username}</div>
                 <div>{u.email || "—"}</div>
-                <div>{u.role}</div>
+                <div>{roleLabel(u.role)}</div>
                 <div>{u.isActive ? "Aktiv" : "Inaktiv"}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button type="button" className="admin-btn-action admin-btn-action--secondary" onClick={() => openEdit(u)}>
@@ -280,7 +286,7 @@ export default function PanelUsersPage() {
         <div className="admin-modal-backdrop" role="presentation" onClick={() => !createSaving && setShowCreate(false)}>
           <div className="admin-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="admin-modal__header">
-              <h2 className="admin-modal__title">Panel-Benutzer anlegen</h2>
+              <h2 className="admin-modal__title">Partner-Zugang anlegen</h2>
               <button type="button" className="admin-modal__close" onClick={() => setShowCreate(false)} aria-label="Schließen">
                 ×
               </button>
@@ -356,9 +362,6 @@ export default function PanelUsersPage() {
             </div>
             <form className="admin-modal__body" onSubmit={submitEdit}>
               {editErr ? <div className="admin-error-banner">{editErr}</div> : null}
-              <p className="admin-modal__meta">
-                <strong>ID:</strong> {editUser.id}
-              </p>
               <div className="admin-filter-item">
                 <label className="admin-field-label">Benutzername</label>
                 <input

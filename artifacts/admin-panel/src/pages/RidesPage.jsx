@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -37,8 +37,27 @@ function authorizationSummary(ride) {
   if (ride.authorizationSource === "access_code" && ride.accessCodeSummary?.label) {
     return `${ride.accessCodeSummary.label} (${accessCodeTypeDe(ride.accessCodeSummary.codeType)})`;
   }
-  if (ride.authorizationSource === "access_code") return "Zugangscode (gültig)";
-  return "Direkt";
+  if (ride.authorizationSource === "access_code") return "Zugangscode";
+  return "Direktbuchung";
+}
+
+function rideStatusDe(status) {
+  const s = String(status || "");
+  const m = {
+    pending: "Offen",
+    accepted: "Angenommen",
+    arrived: "Vor Ort",
+    in_progress: "Unterwegs",
+    completed: "Abgeschlossen",
+    cancelled: "Storniert",
+    rejected: "Abgelehnt",
+  };
+  return m[s] || (s || "—");
+}
+
+function rideSourceLabel(ride) {
+  if (ride?.createdByPanelUserId) return "Partner-Portal";
+  return "—";
 }
 
 function emptyStats() {
@@ -154,9 +173,9 @@ export default function RidesPage() {
 
         if (!res.ok) {
           if (res.status === 401 || res.status === 503) {
-            throw new Error("Admin-API nicht berechtigt oder nicht konfiguriert (Bearer / ADMIN_API_BEARER_TOKEN).");
+            throw new Error("Zugriff verweigert. Bitte prüfen Sie die Anmeldung an der Plattform.");
           }
-          throw new Error(`Fehler beim Laden (${res.status})`);
+          throw new Error(`Fahrten konnten nicht geladen werden (${res.status}).`);
         }
 
         const data = await res.json();
@@ -168,7 +187,6 @@ export default function RidesPage() {
         setRides(data.items);
         setTotal(typeof data.total === "number" ? data.total : data.items.length);
       } catch (err) {
-        console.error("loadRides error:", err);
         setError(err.message || "Fahrten konnten nicht geladen werden.");
         setRides([]);
         setTotal(0);
@@ -242,7 +260,6 @@ export default function RidesPage() {
         setDetailRide(data.ride);
       }
     } catch (err) {
-      console.error("releaseRide error:", err);
       setError(err.message || "Fahrt konnte nicht freigegeben werden.");
     } finally {
       setBusyId(null);
@@ -365,15 +382,6 @@ export default function RidesPage() {
 
   const s = stats.rides;
 
-  const detailJson = useMemo(() => {
-    if (!detailRide) return "";
-    try {
-      return JSON.stringify(detailRide, null, 2);
-    } catch {
-      return "";
-    }
-  }, [detailRide]);
-
   if (loading && rides.length === 0) {
     return <div className="admin-info-banner">Fahrten werden geladen …</div>;
   }
@@ -382,7 +390,7 @@ export default function RidesPage() {
     <div className="admin-page">
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
-          <div className="admin-stat-label">Gesamt (Plattform)</div>
+          <div className="admin-stat-label">Alle Fahrten</div>
           <div className="admin-stat-value">{statsLoading ? "…" : s.total}</div>
         </div>
         <div className="admin-stat-card">
@@ -435,19 +443,20 @@ export default function RidesPage() {
             <select className="admin-select" value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}>
               <option value="all">Alle</option>
               {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.id})
+                <option key={c.id} value={c.id} title={c.id}>
+                  {c.name}
+                  {!c.is_active ? " (inaktiv)" : ""}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="admin-filter-item">
-            <label className="admin-field-label">Fahrer-ID</label>
+            <label className="admin-field-label">Fahrer</label>
             <input
               type="text"
               className="admin-input"
-              placeholder="exakter driverId"
+              placeholder="Kennung des Fahrers"
               value={driverFilter}
               onChange={(e) => setDriverFilter(e.target.value)}
             />
@@ -486,7 +495,7 @@ export default function RidesPage() {
 
       <div className="admin-table-toolbar">
         <div className="admin-table-toolbar__info">
-          Treffer: {total} — Zeige Seite {page} von {totalPages} ({PAGE_SIZE} pro Seite)
+          {total} Treffer · Seite {page} von {totalPages} · {PAGE_SIZE} pro Seite
         </div>
 
         <div className="admin-pagination">{renderPagination()}</div>
@@ -511,15 +520,13 @@ export default function RidesPage() {
               <div>Preis</div>
               <div>Erstellt</div>
               <div>Geplant</div>
-              <div>Panel</div>
+              <div>Quelle</div>
               <div>Aktion</div>
             </div>
 
             {rides.map((ride) => {
               const releaseAllowed = canRelease(ride);
-              const panelHint = ride.createdByPanelUserId
-                ? String(ride.createdByPanelUserId).slice(0, 8) + "…"
-                : "—";
+              const sourceHint = rideSourceLabel(ride);
               const firmenLabel = ride.companyName || ride.companyId || "—";
 
               return (
@@ -537,7 +544,7 @@ export default function RidesPage() {
                   <div>{ride.to || "—"}</div>
 
                   <div>
-                    <span className={rideStatusBadgeClass(ride.status)}>{ride.status || "—"}</span>
+                    <span className={rideStatusBadgeClass(ride.status)}>{rideStatusDe(ride.status)}</span>
                   </div>
 
                   <div title={ride.companyId || ""}>{firmenLabel}</div>
@@ -550,9 +557,7 @@ export default function RidesPage() {
                   </div>
                   <div>{formatDate(ride.createdAt)}</div>
                   <div>{formatDate(ride.scheduledAt)}</div>
-                  <div className="admin-mono" title={ride.createdByPanelUserId || ""}>
-                    {panelHint}
-                  </div>
+                  <div title={ride.createdByPanelUserId ? "Über das Partner-Portal angelegt" : ""}>{sourceHint}</div>
 
                   <div className="admin-actions-cell">
                     <button type="button" className="admin-btn-action admin-btn-action--secondary" onClick={() => void loadDetail(ride.id)}>
@@ -578,7 +583,7 @@ export default function RidesPage() {
       </div>
 
       <div className="admin-table-toolbar">
-        <div className="admin-table-toolbar__info">API: GET {RIDES_URL} (Bearer)</div>
+        <div className="admin-table-toolbar__info" />
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
 
@@ -603,12 +608,69 @@ export default function RidesPage() {
               {detailLoading ? <p>Lade Detail …</p> : null}
               {detailError ? <div className="admin-error-banner">{detailError}</div> : null}
               {!detailLoading && detailRide ? (
-                <>
-                  <p className="admin-modal__meta">
-                    <strong>Firma:</strong> {detailRide.companyName || detailRide.companyId || "—"}
-                  </p>
-                  <pre className="admin-modal__json">{detailJson}</pre>
-                </>
+                <dl className="admin-detail-grid">
+                  <div>
+                    <dt>Auftrag</dt>
+                    <dd className="admin-mono">{detailRide.id}</dd>
+                  </div>
+                  <div>
+                    <dt>Kunde</dt>
+                    <dd>{detailRide.customerName || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{rideStatusDe(detailRide.status)}</dd>
+                  </div>
+                  <div>
+                    <dt>Unternehmen</dt>
+                    <dd>{detailRide.companyName || detailRide.companyId || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Abholung</dt>
+                    <dd>{detailRide.from || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Ziel</dt>
+                    <dd>{detailRide.to || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Fahrtart</dt>
+                    <dd>{rideKindLabel(detailRide.rideKind)}</dd>
+                  </div>
+                  <div>
+                    <dt>Zahlung</dt>
+                    <dd>{payerKindLabel(detailRide.payerKind)}</dd>
+                  </div>
+                  <div>
+                    <dt>Freigabe</dt>
+                    <dd>{authorizationSummary(detailRide)}</dd>
+                  </div>
+                  <div>
+                    <dt>Fahrer</dt>
+                    <dd className="admin-mono">{detailRide.driverId || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Preis (geschätzt / final)</dt>
+                    <dd>
+                      {formatMoney(detailRide.estimatedFare)}
+                      {detailRide.finalFare != null && detailRide.finalFare !== ""
+                        ? ` / ${formatMoney(detailRide.finalFare)}`
+                        : ""}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Erstellt</dt>
+                    <dd>{formatDate(detailRide.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Geplant</dt>
+                    <dd>{formatDate(detailRide.scheduledAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Quelle</dt>
+                    <dd>{rideSourceLabel(detailRide)}</dd>
+                  </div>
+                </dl>
               ) : null}
             </div>
           </div>

@@ -27,7 +27,7 @@ function emptyStats() {
   };
 }
 
-/** Lokaler Kalendertag / Fenster — Bounds als ISO für `revenueFrom` / `revenueTo` (inklusiv, API: lte auf `created_at`). */
+/** Kalendertag / Fenster — Bounds als ISO für `revenueFrom` / `revenueTo`. */
 function revenueRangeForPreset(preset) {
   if (preset === "all") return null;
   const now = new Date();
@@ -59,7 +59,7 @@ function formatMoneyEUR(value) {
 }
 
 function formatPeriodLabel(stats, preset) {
-  if (preset === "all") return "Gesamt (alle abgeschlossenen Fahrten)";
+  if (preset === "all") return "Alle abgeschlossenen Fahrten";
   if (stats?.revenue?.periodFrom && stats?.revenue?.periodTo) {
     try {
       const a = new Date(stats.revenue.periodFrom);
@@ -134,9 +134,8 @@ export default function DashboardPage() {
         },
       });
       setHasLoadedOnce(true);
-    } catch (err) {
-      console.error("Dashboard stats error:", err);
-      setError("Statistiken konnten nicht geladen werden.");
+    } catch {
+      setError("Die Kennzahlen konnten nicht geladen werden.");
     } finally {
       setLoading(false);
     }
@@ -147,7 +146,7 @@ export default function DashboardPage() {
   }, [loadStats]);
 
   if (!hasLoadedOnce && loading) {
-    return <div className="admin-info-banner">Lade Plattform-Kennzahlen …</div>;
+    return <div className="admin-info-banner">Kennzahlen werden geladen …</div>;
   }
 
   if (!hasLoadedOnce && error) {
@@ -168,18 +167,17 @@ export default function DashboardPage() {
       <div className="admin-dashboard__top">
         <div className="admin-dashboard__hero">
           <div>
-            <div className="admin-dashboard__hero-label">Plattform · Live</div>
-            <h2 className="admin-dashboard__hero-title">Gesamtsystem auf einen Blick</h2>
+            <div className="admin-dashboard__hero-label">Überblick</div>
+            <h2 className="admin-dashboard__hero-title">Aktuelle Lage der Plattform</h2>
             <p className="admin-dashboard__hero-text">
-              Operative Übersicht über <strong>alle</strong> Fahrten, <strong>alle</strong> Mandanten und
-              plattformweite Umsätze. Hier sehen Sie die Onroda-Plattform als Ganzes — nicht den Blickwinkel eines
-              einzelnen Unternehmens.
+              Hier sehen Sie Fahrten, angebundene Unternehmen und Umsätze über alle Mandanten hinweg — unabhängig vom
+              Blickwinkel eines einzelnen Partners.
             </p>
           </div>
 
           <div className="admin-dashboard__hero-actions">
             <label className="admin-dashboard__revenue-label">
-              <span>Umsatz-Zeitraum</span>
+              <span>Umsatzzeitraum</span>
               <select
                 className="admin-dashboard__revenue-select"
                 value={revenuePreset}
@@ -193,7 +191,7 @@ export default function DashboardPage() {
               </select>
             </label>
             <button type="button" className="admin-btn-refresh" onClick={() => void loadStats()} disabled={loading}>
-              {loading ? "Laden …" : "Neu laden"}
+              {loading ? "Aktualisiere …" : "Aktualisieren"}
             </button>
           </div>
         </div>
@@ -205,139 +203,63 @@ export default function DashboardPage() {
         <div className="admin-dashboard__card">
           <div className="admin-dashboard__card-label">Fahrten gesamt</div>
           <div className="admin-dashboard__card-value">{r.total}</div>
-          <div className="admin-dashboard__card-sub">Alle Fahrten im System</div>
+          <div className="admin-dashboard__card-sub">Alle erfassten Aufträge</div>
         </div>
 
         <div className="admin-dashboard__card">
           <div className="admin-dashboard__card-label">Offen</div>
           <div className="admin-dashboard__card-value">{r.pending}</div>
-          <div className="admin-dashboard__card-sub">Status: ausstehend</div>
+          <div className="admin-dashboard__card-sub">Warten auf Zuweisung</div>
         </div>
 
         <div className="admin-dashboard__card">
           <div className="admin-dashboard__card-label">Aktiv</div>
           <div className="admin-dashboard__card-value">{r.active}</div>
-          <div className="admin-dashboard__card-sub">Angenommen, vor Ort, unterwegs</div>
+          <div className="admin-dashboard__card-sub">In Bearbeitung</div>
         </div>
 
         <div className="admin-dashboard__card">
           <div className="admin-dashboard__card-label">Abgeschlossen</div>
           <div className="admin-dashboard__card-value">{r.completed}</div>
-          <div className="admin-dashboard__card-sub">Status: abgeschlossen</div>
+          <div className="admin-dashboard__card-sub">Erfolgreich beendet</div>
         </div>
 
         <div className="admin-dashboard__card">
           <div className="admin-dashboard__card-label">Storniert</div>
           <div className="admin-dashboard__card-value">{r.cancelled}</div>
-          <div className="admin-dashboard__card-sub">Status: storniert</div>
+          <div className="admin-dashboard__card-sub">Vom Kunden oder der Plattform</div>
         </div>
 
         <div className="admin-dashboard__card">
           <div className="admin-dashboard__card-label">Abgelehnt</div>
           <div className="admin-dashboard__card-value">{r.rejected}</div>
-          <div className="admin-dashboard__card-sub">Status: abgelehnt</div>
+          <div className="admin-dashboard__card-sub">Nicht angenommen</div>
         </div>
 
         <div className="admin-dashboard__card">
-          <div className="admin-dashboard__card-label">Firmen gesamt</div>
+          <div className="admin-dashboard__card-label">Unternehmen</div>
           <div className="admin-dashboard__card-value">{stats.companies.total}</div>
-          <div className="admin-dashboard__card-sub">Einträge in admin_companies</div>
+          <div className="admin-dashboard__card-sub">{stats.companies.active} aktiv</div>
         </div>
 
         <div className="admin-dashboard__card">
-          <div className="admin-dashboard__card-label">Firmen aktiv</div>
-          <div className="admin-dashboard__card-value">{stats.companies.active}</div>
-          <div className="admin-dashboard__card-sub">is_active = true</div>
-        </div>
-
-        <div className="admin-dashboard__card">
-          <div className="admin-dashboard__card-label">Fahrer (eindeutig)</div>
+          <div className="admin-dashboard__card-label">Fahrer mit Fahrt</div>
           <div className="admin-dashboard__card-value">{stats.drivers.distinctWithRide}</div>
-          <div className="admin-dashboard__card-sub">Verschiedene driver_id auf Fahrten</div>
+          <div className="admin-dashboard__card-sub">Eindeutige Fahrer auf Aufträgen</div>
         </div>
 
         <div className="admin-dashboard__card">
-          <div className="admin-dashboard__card-label">Panel-Nutzer aktiv</div>
+          <div className="admin-dashboard__card-label">Aktive Partner-Zugänge</div>
           <div className="admin-dashboard__card-value">{stats.panelUsers.active}</div>
-          <div className="admin-dashboard__card-sub">Partner-Panel-Logins (aktiv)</div>
+          <div className="admin-dashboard__card-sub">Zum Partner-Portal</div>
         </div>
 
         <div className="admin-dashboard__card admin-dashboard__card--accent">
           <div className="admin-dashboard__card-label">Umsatz (abgeschlossen)</div>
           <div className="admin-dashboard__card-value">{formatMoneyEUR(stats.revenue.completedSum)}</div>
           <div className="admin-dashboard__card-sub">
-            {formatPeriodLabel(stats, revenuePreset)} · {stats.revenue.completedRideCount} Fahrten · final sonst
-            geschätzt
-          </div>
-        </div>
-      </div>
-
-      <div className="admin-dashboard__bottom">
-        <div className="admin-dashboard__panel">
-          <div className="admin-dashboard__panel-header">
-            <h3 className="admin-dashboard__panel-title">Fahrten nach Status</h3>
-            <span className="admin-dashboard__badge">Live</span>
-          </div>
-
-          <div className="admin-dashboard__metric-list">
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Gesamt</span>
-              <strong className="admin-dashboard__metric-value">{r.total}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Offen (pending)</span>
-              <strong className="admin-dashboard__metric-value">{r.pending}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Aktiv</span>
-              <strong className="admin-dashboard__metric-value">{r.active}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Abgeschlossen</span>
-              <strong className="admin-dashboard__metric-value">{r.completed}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Storniert</span>
-              <strong className="admin-dashboard__metric-value">{r.cancelled}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Abgelehnt</span>
-              <strong className="admin-dashboard__metric-value">{r.rejected}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="admin-dashboard__panel">
-          <div className="admin-dashboard__panel-header">
-            <h3 className="admin-dashboard__panel-title">Mandanten & Umsatz</h3>
-            <span className="admin-dashboard__badge admin-dashboard__badge--muted">API</span>
-          </div>
-
-          <div className="admin-dashboard__metric-list">
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Firmen gesamt / aktiv</span>
-              <strong className="admin-dashboard__metric-value">
-                {stats.companies.total} / {stats.companies.active}
-              </strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Fahrer-IDs (distinct)</span>
-              <strong className="admin-dashboard__metric-value">{stats.drivers.distinctWithRide}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Panel-Nutzer aktiv</span>
-              <strong className="admin-dashboard__metric-value">{stats.panelUsers.active}</strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Umsatz gewählter Zeitraum</span>
-              <strong className="admin-dashboard__metric-value">
-                {formatMoneyEUR(stats.revenue.completedSum)}
-              </strong>
-            </div>
-            <div className="admin-dashboard__metric-row">
-              <span className="admin-dashboard__metric-label">Abgeschlossene Fahrten im Zeitraum</span>
-              <strong className="admin-dashboard__metric-value">{stats.revenue.completedRideCount}</strong>
-            </div>
+            {formatPeriodLabel(stats, revenuePreset)} · {stats.revenue.completedRideCount} Fahrten · Schätz- und
+            Abschlussbeträge wie in der Abrechnung
           </div>
         </div>
       </div>

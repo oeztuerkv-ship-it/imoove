@@ -13,6 +13,10 @@
   grid-template-columns: var(--onroda-admin-fare-areas-grid-template);
 }
 
+.admin-cs-grid--panel-users {
+  grid-template-columns: minmax(100px, 1.1fr) minmax(120px, 1.3fr) 0.85fr 0.65fr minmax(180px, 1.1fr);
+}
+
 .admin-cs-grid--rides-min {
   min-width: var(--onroda-admin-rides-table-min-width);
 }
@@ -643,5 +647,29 @@
   overflow: auto;
   max-height: 55vh;
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--onroda-space-5);
+  margin: 0;
+}
+
+.admin-detail-grid dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--onroda-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-detail-grid dd {
+  margin: var(--onroda-space-1) 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--onroda-text-dark);
   word-break: break-word;
 }

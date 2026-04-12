@@ -4,6 +4,20 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const API_URL = `${API_BASE}/admin/fare-areas`;
 
+const RULE_TYPE_LABELS = {
+  official_metered_tariff: "Amtliches Taxameter-Tarif",
+  official_fixed_price: "Amtlicher Festpreis",
+  tariff_corridor: "Preiskorridor",
+  free_price_outside_area: "Freie Preiswahl außerhalb",
+  health_contract_rate: "Vertragstarif (Gesundheit)",
+  partner_contract_rate: "Vertragstarif (Partner)",
+  special_manual_rule: "Sonderregel (manuell)",
+};
+
+function ruleTypeLabel(value) {
+  return RULE_TYPE_LABELS[value] ?? value ?? "—";
+}
+
 export default function FaresPage() {
   const [form, setForm] = useState({
     name: "",
@@ -49,7 +63,7 @@ export default function FaresPage() {
     e.preventDefault();
 
     if (!form.name.trim()) {
-      setError("Gebietsname fehlt");
+      setError("Bitte einen Gebietsnamen eingeben.");
       return;
     }
 
@@ -70,7 +84,7 @@ export default function FaresPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Gebiet konnte nicht gespeichert werden");
+        throw new Error("Das Gebiet konnte nicht gespeichert werden.");
       }
 
       const data = await res.json();
@@ -90,14 +104,10 @@ export default function FaresPage() {
     }
   }
 
-  const officialCount = areas.filter(
-    (a) => a.ruleType === "official_metered_tariff"
-  ).length;
+  const officialCount = areas.filter((a) => a.ruleType === "official_metered_tariff").length;
 
   const contractCount = areas.filter(
-    (a) =>
-      a.ruleType === "health_contract_rate" ||
-      a.ruleType === "partner_contract_rate"
+    (a) => a.ruleType === "health_contract_rate" || a.ruleType === "partner_contract_rate",
   ).length;
 
   const specialCount = areas.filter(
@@ -105,28 +115,21 @@ export default function FaresPage() {
       a.ruleType === "free_price_outside_area" ||
       a.ruleType === "special_manual_rule" ||
       a.ruleType === "official_fixed_price" ||
-      a.ruleType === "tariff_corridor"
+      a.ruleType === "tariff_corridor",
   ).length;
 
   return (
     <div className="admin-page admin-page--loose">
-      <header>
-        <h2 className="admin-page-section-title">Tarifregeln & Gebiete</h2>
-        <p className="admin-page-section-sub">
-          Verwaltung von Pflichtfahrgebieten, Preisregel-Typen und Vertragstarifen.
-        </p>
-      </header>
-
-      {error ? <div className="admin-error-banner">Fehler: {error}</div> : null}
+      {error ? <div className="admin-error-banner">{error}</div> : null}
 
       <div className="admin-stat-grid admin-stat-grid--wide">
         <div className="admin-stat-card">
-          <div className="admin-stat-label">Aktive Gebiete</div>
+          <div className="admin-stat-label">Gebiete gesamt</div>
           <div className="admin-stat-value">{areas.length}</div>
         </div>
 
         <div className="admin-stat-card">
-          <div className="admin-stat-label">Offizielle Tarife</div>
+          <div className="admin-stat-label">Amtliche Tarife</div>
           <div className="admin-stat-value">{officialCount}</div>
         </div>
 
@@ -142,12 +145,12 @@ export default function FaresPage() {
       </div>
 
       <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Neues Gebiet hinzufügen</div>
+        <div className="admin-panel-card__title">Gebiet hinzufügen</div>
 
         <form onSubmit={handleAddArea} className="admin-form-grid">
           <input
             className="admin-input"
-            placeholder="Gebiet (z. B. Stuttgart)"
+            placeholder="z. B. Stadt oder Region"
             value={form.name}
             onChange={(e) => handleChange("name", e.target.value)}
           />
@@ -157,13 +160,11 @@ export default function FaresPage() {
             value={form.ruleType}
             onChange={(e) => handleChange("ruleType", e.target.value)}
           >
-            <option value="official_metered_tariff">official_metered_tariff</option>
-            <option value="official_fixed_price">official_fixed_price</option>
-            <option value="tariff_corridor">tariff_corridor</option>
-            <option value="free_price_outside_area">free_price_outside_area</option>
-            <option value="health_contract_rate">health_contract_rate</option>
-            <option value="partner_contract_rate">partner_contract_rate</option>
-            <option value="special_manual_rule">special_manual_rule</option>
+            {Object.entries(RULE_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -171,9 +172,9 @@ export default function FaresPage() {
             value={form.isRequiredArea}
             onChange={(e) => handleChange("isRequiredArea", e.target.value)}
           >
-            <option value="Ja">Pflichtgebiet: Ja</option>
-            <option value="Nein">Pflichtgebiet: Nein</option>
-            <option value="Prüfen">Pflichtgebiet: Prüfen</option>
+            <option value="Ja">Pflichtfahrgebiet: Ja</option>
+            <option value="Nein">Pflichtfahrgebiet: Nein</option>
+            <option value="Prüfen">Pflichtfahrgebiet: Prüfen</option>
           </select>
 
           <select
@@ -181,49 +182,42 @@ export default function FaresPage() {
             value={form.fixedPriceAllowed}
             onChange={(e) => handleChange("fixedPriceAllowed", e.target.value)}
           >
-            <option value="Ja">Festpreis: Ja</option>
-            <option value="Nein">Festpreis: Nein</option>
-            <option value="Prüfen">Festpreis: Prüfen</option>
+            <option value="Ja">Festpreis erlaubt</option>
+            <option value="Nein">Kein Festpreis</option>
+            <option value="Prüfen">Festpreis: Fall prüfen</option>
           </select>
 
-          <select
-            className="admin-select"
-            value={form.status}
-            onChange={(e) => handleChange("status", e.target.value)}
-          >
-            <option value="aktiv">aktiv</option>
-            <option value="inaktiv">inaktiv</option>
-            <option value="regelbasiert">regelbasiert</option>
+          <select className="admin-select" value={form.status} onChange={(e) => handleChange("status", e.target.value)}>
+            <option value="aktiv">Aktiv</option>
+            <option value="inaktiv">Inaktiv</option>
+            <option value="regelbasiert">Regelbasiert</option>
           </select>
 
           <button type="submit" className="admin-btn-primary" disabled={saving}>
-            {saving ? "Speichert..." : "+ Hinzufügen"}
+            {saving ? "Wird gespeichert …" : "Hinzufügen"}
           </button>
         </form>
       </div>
 
       <div className="admin-panel-card">
-        <div className="admin-panel-card__title">Aktuelle Regeln</div>
+        <div className="admin-panel-card__title">Aktuelle Gebiete</div>
 
         {loading ? (
-          <div className="admin-muted">Lade Gebiete...</div>
+          <div className="admin-muted">Gebiete werden geladen …</div>
         ) : (
           <div className="admin-data-table">
             <div className="admin-data-table__head admin-cs-grid admin-cs-grid--fare-areas">
               <div>Gebiet</div>
               <div>Regeltyp</div>
-              <div>Pflicht</div>
+              <div>Pflichtfahrt</div>
               <div>Festpreis</div>
               <div>Status</div>
             </div>
 
             {areas.map((a) => (
-              <div
-                key={a.id}
-                className="admin-data-table__row admin-cs-grid admin-cs-grid--fare-areas"
-              >
+              <div key={a.id} className="admin-data-table__row admin-cs-grid admin-cs-grid--fare-areas">
                 <div>{a.name}</div>
-                <div>{a.ruleType}</div>
+                <div>{ruleTypeLabel(a.ruleType)}</div>
                 <div>{a.isRequiredArea}</div>
                 <div>{a.fixedPriceAllowed}</div>
                 <div>{a.status}</div>
