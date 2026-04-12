@@ -2,6 +2,7 @@ const items = [
   { key: "dashboard", label: "Plattform-Übersicht", icon: "◫" },
   { key: "rides", label: "Alle Fahrten", icon: "↗" },
   { key: "companies", label: "Alle Unternehmen", icon: "▣" },
+  { key: "panel-users", label: "Partner-Zugänge", icon: "◎" },
   { key: "drivers", label: "Fahrer", icon: "◉" },
   { key: "fares", label: "Tarife & Gebiete", icon: "◌" },
   { key: "billing", label: "Abrechnung", icon: "◈" },

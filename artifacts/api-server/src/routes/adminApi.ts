@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
 import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
@@ -5,6 +6,7 @@ import {
   addFareArea,
   type AdminCompanyUpdateBody,
   getAdminStats,
+  findCompanyById,
   insertAdminCompany,
   listCompanies,
   listFareAreas,
@@ -13,6 +15,15 @@ import {
   updateAdminCompany,
 } from "../db/adminData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
+import { insertPanelAuditLog } from "../db/panelAuditData";
+import {
+  findPanelUserInCompany,
+  insertPanelUser,
+  listPanelUsersInCompany,
+  patchPanelUserInCompany,
+  panelUsernameTaken,
+  updatePanelUserPasswordInCompany,
+} from "../db/panelUsersData";
 import {
   adminReleaseRide,
   countRidesAdmin,
@@ -20,6 +31,9 @@ import {
   listRidesAdminPage,
   type AdminRideListQuery,
 } from "../db/ridesData";
+import { hashPassword } from "../lib/password";
+import { isPanelRoleString } from "../lib/panelPermissions";
+import type { PanelRole } from "../lib/panelJwt";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
 export type { AdminAccessCodeRow, AdminDashboardStats, CompanyRow, FareAreaRow } from "./adminApi.types";
@@ -125,6 +139,195 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
+  try {
+    const company = await findCompanyById(req.params.companyId);
+    if (!company) {
+      res.status(404).json({ error: "company_not_found" });
+      return;
+    }
+    const users = await listPanelUsersInCompany(req.params.companyId);
+    res.json({ ok: true, users });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const company = await findCompanyById(companyId);
+    if (!company) {
+      res.status(404).json({ error: "company_not_found" });
+      return;
+    }
+    if (!company.is_active) {
+      res.status(400).json({ error: "company_inactive" });
+      return;
+    }
+    const body = req.body as { username?: string; email?: string; role?: string; password?: string };
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const roleRaw = typeof body.role === "string" ? body.role.trim() : "";
+    if (!username || !password || password.length < 10) {
+      res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
+      return;
+    }
+    if (!isPanelRoleString(roleRaw)) {
+      res.status(400).json({ error: "invalid_role" });
+      return;
+    }
+    const targetRole = roleRaw as PanelRole;
+    if (await panelUsernameTaken(username.toLowerCase())) {
+      res.status(409).json({ error: "username_taken" });
+      return;
+    }
+    const hash = await hashPassword(password);
+    const created = await insertPanelUser({
+      companyId,
+      username,
+      email,
+      role: targetRole,
+      passwordHash: hash,
+    });
+    if (!created) {
+      res.status(409).json({ error: "username_taken" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.panel_user.created",
+      subjectType: "panel_user",
+      subjectId: created.id,
+      meta: { username, role: targetRole, source: "platform_admin_api" },
+    });
+    res.status(201).json({ ok: true, user: { id: created.id, username, email, role: targetRole } });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, next) => {
+  try {
+    const { companyId, userId } = req.params;
+    const company = await findCompanyById(companyId);
+    if (!company) {
+      res.status(404).json({ error: "company_not_found" });
+      return;
+    }
+    const target = await findPanelUserInCompany(userId, companyId);
+    if (!target) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const body = req.body as {
+      isActive?: boolean;
+      role?: string;
+      email?: string;
+      username?: string;
+    };
+    const patch: {
+      isActive?: boolean;
+      role?: string;
+      email?: string;
+      username?: string;
+    } = {};
+    if (typeof body.isActive === "boolean") patch.isActive = body.isActive;
+    if (typeof body.role === "string" && body.role.trim()) {
+      const tr = body.role.trim();
+      if (!isPanelRoleString(tr)) {
+        res.status(400).json({ error: "invalid_role" });
+        return;
+      }
+      patch.role = tr;
+    }
+    if (typeof body.email === "string") patch.email = body.email.trim();
+    if (typeof body.username === "string") {
+      const u = body.username.trim();
+      if (u.length < 2) {
+        res.status(400).json({ error: "username_invalid" });
+        return;
+      }
+      if (u.toLowerCase() !== target.username.toLowerCase()) {
+        if (await panelUsernameTaken(u.toLowerCase(), userId)) {
+          res.status(409).json({ error: "username_taken" });
+          return;
+        }
+      }
+      patch.username = u;
+    }
+    if (
+      patch.isActive === undefined &&
+      patch.role === undefined &&
+      patch.email === undefined &&
+      patch.username === undefined
+    ) {
+      res.status(400).json({ error: "no_changes" });
+      return;
+    }
+    const updated = await patchPanelUserInCompany(userId, companyId, patch);
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
+      subjectType: "panel_user",
+      subjectId: userId,
+      meta: { source: "platform_admin_api" },
+    });
+    res.json({ ok: true, user: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async (req, res, next) => {
+  try {
+    const { companyId, userId } = req.params;
+    const company = await findCompanyById(companyId);
+    if (!company) {
+      res.status(404).json({ error: "company_not_found" });
+      return;
+    }
+    const target = await findPanelUserInCompany(userId, companyId);
+    if (!target || !target.is_active) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const body = req.body as { newPassword?: string };
+    const neu = typeof body.newPassword === "string" ? body.newPassword : "";
+    if (neu.length < 10) {
+      res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+      return;
+    }
+    const hash = await hashPassword(neu);
+    const ok = await updatePanelUserPasswordInCompany(userId, companyId, hash);
+    if (!ok) {
+      res.status(500).json({ error: "password_update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.panel_user.password_reset",
+      subjectType: "panel_user",
+      subjectId: userId,
+      meta: { source: "platform_admin_api" },
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

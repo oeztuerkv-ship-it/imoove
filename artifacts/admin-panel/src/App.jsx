@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import FaresPage from "./pages/FaresPage";
 import RidesPage from "./pages/RidesPage";
 import CompaniesPage from "./pages/CompaniesPage";
+import PanelUsersPage from "./pages/PanelUsersPage.jsx";
 
 function Placeholder({ title, text }) {
   return (
@@ -30,6 +31,11 @@ const PAGE_CONFIG = {
     title: "Alle Unternehmen",
     subtitle: "Mandanten, PRIO, Freigaben und Stammdaten der Plattform",
     component: <CompaniesPage />,
+  },
+  "panel-users": {
+    title: "Partner-Zugänge",
+    subtitle: "Panel-Benutzer je Unternehmen zentral anlegen, bearbeiten und Passwörter setzen",
+    component: <PanelUsersPage />,
   },
   fares: {
     title: "Tarife & Gebiete",
