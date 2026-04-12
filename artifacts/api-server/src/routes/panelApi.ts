@@ -309,6 +309,108 @@ function billingFiltersFromQuery(
   return { ok: true, ym: ymRaw, filters };
 }
 
+function parseDayStartUtc(isoDay: string): Date | null {
+  const t = isoDay.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
+}
+
+function parseDayEndUtc(isoDay: string): Date | null {
+  const t = isoDay.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return new Date(Date.UTC(y, mo - 1, d, 23, 59, 59, 999));
+}
+
+function normalizeCompanyRidesQueryRecord(raw: Record<string, unknown>): Record<string, unknown> {
+  const q: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    q[k] = Array.isArray(v) ? v[0] : v;
+  }
+  return q;
+}
+
+/** Query für GET /panel/v1/company-rides — Zeitraum default 90 Tage. */
+function companyRidesFiltersFromQuery(
+  query: Record<string, unknown>,
+): { ok: true; filters: CompanyRideListFilters } | { ok: false; error: string } {
+  const q = normalizeCompanyRidesQueryRecord(query);
+  const fromStr = typeof q.createdFrom === "string" ? q.createdFrom.trim() : "";
+  const toStr = typeof q.createdTo === "string" ? q.createdTo.trim() : "";
+
+  let createdFrom: Date | undefined;
+  let createdTo: Date | undefined;
+
+  if (fromStr) {
+    const d = parseDayStartUtc(fromStr);
+    if (!d) return { ok: false, error: "created_from_invalid" };
+    createdFrom = d;
+  }
+  if (toStr) {
+    const d = parseDayEndUtc(toStr);
+    if (!d) return { ok: false, error: "created_to_invalid" };
+    createdTo = d;
+  }
+
+  const now = new Date();
+  if (!createdFrom && !createdTo) {
+    createdTo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    createdFrom = new Date(createdTo);
+    createdFrom.setUTCDate(createdFrom.getUTCDate() - 89);
+    createdFrom.setUTCHours(0, 0, 0, 0);
+  } else if (createdFrom && !createdTo) {
+    createdTo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+  } else if (!createdFrom && createdTo) {
+    createdFrom = new Date(createdTo);
+    createdFrom.setUTCDate(createdFrom.getUTCDate() - 89);
+    createdFrom.setUTCHours(0, 0, 0, 0);
+  }
+
+  if (createdFrom && createdTo && createdFrom.getTime() > createdTo.getTime()) {
+    return { ok: false, error: "date_range_invalid" };
+  }
+
+  const rideKind =
+    typeof q.rideKind === "string" && q.rideKind.trim() ? parseRideKind(q.rideKind.trim()) : null;
+  if (typeof q.rideKind === "string" && q.rideKind.trim() && rideKind === null) {
+    return { ok: false, error: "ride_kind_invalid" };
+  }
+
+  const payerRaw = typeof q.payerKind === "string" ? q.payerKind.trim() : "";
+  let payerKind: ReturnType<typeof parsePayerKind> | null = null;
+  if (payerRaw !== "" && payerRaw !== "all") {
+    payerKind = parsePayerKind(payerRaw);
+    if (payerKind === null) return { ok: false, error: "payer_kind_invalid" };
+  }
+
+  const status = typeof q.status === "string" && q.status.trim() ? q.status.trim() : undefined;
+  const searchContains = typeof q.q === "string" && q.q.trim() ? q.q.trim() : undefined;
+  const billingReferenceContains =
+    typeof q.billingReference === "string" && q.billingReference.trim() ? q.billingReference.trim() : undefined;
+  const partnerFlow = parsePartnerFlowParam(q.partnerFlow);
+
+  const filters: CompanyRideListFilters = {
+    createdFrom,
+    createdTo,
+    ...(rideKind ? { rideKind } : {}),
+    ...(payerKind ? { payerKind } : {}),
+    ...(status ? { status } : {}),
+    ...(searchContains ? { searchContains } : {}),
+    ...(billingReferenceContains ? { billingReferenceContains } : {}),
+    ...(partnerFlow ? { partnerFlow } : {}),
+  };
+  return { ok: true, filters };
+}
+
 router.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
@@ -433,6 +535,38 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     }));
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({ ok: true, rides: withTrace });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+
+    const parsed = companyRidesFiltersFromQuery(
+      normalizeCompanyRidesQueryRecord(req.query as Record<string, unknown>),
+    );
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const list = await listRidesForCompanyFiltered(ctx.claims.companyId, parsed.filters);
+    const ids = list.map((r) => r.createdByPanelUserId).filter((x): x is string => Boolean(x));
+    const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
+    const ridesOut = list.map((r) => ({
+      ...r,
+      createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
+    }));
+    const withTrace = await enrichPanelRidesForResponse(ridesOut);
+    res.json({
+      ok: true,
+      filters: parsed.filters,
+      rides: withTrace,
+    });
   } catch (e) {
     next(e);
   }

@@ -4,16 +4,12 @@ import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
 import RideCreatePage from "../pages/RideCreatePage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
-import ModulePlaceholderPage from "../pages/ModulePlaceholderPage.jsx";
 import AccessCodesPage from "../pages/AccessCodesPage.jsx";
 import HotelBookingPage from "../pages/HotelBookingPage.jsx";
 import MedicalRoundTripPage from "../pages/MedicalRoundTripPage.jsx";
 import MedicalSeriesPage from "../pages/MedicalSeriesPage.jsx";
 import BillingPage from "../pages/BillingPage.jsx";
-
-function ph(title, lead) {
-  return <ModulePlaceholderPage title={title} lead={lead} />;
-}
+import CompanyRidesPage from "../pages/CompanyRidesPage.jsx";
 
 const PAGES = {
   overview: {
@@ -50,8 +46,8 @@ const PAGES = {
   },
   "company-rides": {
     title: "Meine Firmenfahrten",
-    subtitle: "Auswertung für Ihr Unternehmen",
-    component: ph("Meine Firmenfahrten", "Gefilterte Ansichten und Kennzahlen — Mandantenbezogen."),
+    subtitle: "Gefilterte Liste: Zahler, Zeitraum, Status — inkl. Serienhinweis",
+    component: <CompanyRidesPage />,
   },
   recurring: {
     title: "Meine Serienfahrten",

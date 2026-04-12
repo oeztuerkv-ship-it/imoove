@@ -151,6 +151,10 @@ export type CompanyRideListFilters = {
   createdTo?: Date;
   rideKind?: RideKind;
   payerKind?: PayerKind;
+  /** Fahrstatus (rides.status), z. B. pending, completed */
+  status?: string;
+  /** Freitext: Kunde, Auftrags-ID, Abholung, Ziel */
+  searchContains?: string;
   billingReferenceContains?: string;
   accessCodeId?: string;
   hasAccessCode?: boolean;
@@ -164,6 +168,12 @@ function applyMemoryRideFilters(list: RideRequest[], filters: CompanyRideListFil
     if (filters.createdTo && created > filters.createdTo) return false;
     if (filters.rideKind && r.rideKind !== filters.rideKind) return false;
     if (filters.payerKind && r.payerKind !== filters.payerKind) return false;
+    if (filters.status && r.status !== filters.status) return false;
+    if (filters.searchContains?.trim()) {
+      const q = filters.searchContains.trim().toLowerCase();
+      const blob = [r.id, r.customerName, r.from, r.to].join(" ").toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
     if (filters.billingReferenceContains?.trim()) {
       const q = filters.billingReferenceContains.trim().toLowerCase();
       const br = (r.billingReference ?? "").toLowerCase();
@@ -193,6 +203,19 @@ export async function listRidesForCompanyFiltered(
   if (filters.createdTo) cond.push(lte(ridesTable.created_at, filters.createdTo));
   if (filters.rideKind) cond.push(eq(ridesTable.ride_kind, filters.rideKind));
   if (filters.payerKind) cond.push(eq(ridesTable.payer_kind, filters.payerKind));
+  if (filters.status?.trim()) cond.push(eq(ridesTable.status, filters.status.trim()));
+  if (filters.searchContains?.trim()) {
+    const raw = filters.searchContains.trim().replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const pat = `%${raw}%`;
+    cond.push(
+      or(
+        ilike(ridesTable.customer_name, pat),
+        ilike(ridesTable.id, pat),
+        ilike(ridesTable.from_label, pat),
+        ilike(ridesTable.to_label, pat),
+      )!,
+    );
+  }
   if (filters.billingReferenceContains?.trim()) {
     const raw = filters.billingReferenceContains.trim().replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
     cond.push(ilike(ridesTable.billing_reference, `%${raw}%`));
