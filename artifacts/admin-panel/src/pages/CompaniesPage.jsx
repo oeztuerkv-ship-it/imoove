@@ -7,8 +7,12 @@ const ITEMS_PER_PAGE = 10;
 
 export default function CompaniesPage() {
   const [items, setItems] = useState([]);
+  const [moduleCatalog, setModuleCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
+  const [savingModulesId, setSavingModulesId] = useState(null);
+  const [editingModulesFor, setEditingModulesFor] = useState(null);
+  const [moduleDraft, setModuleDraft] = useState([]);
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
@@ -37,11 +41,62 @@ export default function CompaniesPage() {
       }
 
       setItems(data.items);
+      if (Array.isArray(data.panelModuleCatalog)) {
+        setModuleCatalog(data.panelModuleCatalog);
+      }
     } catch (err) {
       console.error("Companies load error:", err);
       setError("Unternehmer konnten nicht geladen werden.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function startEditModules(item) {
+    setEditingModulesFor(item.id);
+    setModuleDraft(
+      item.panel_modules == null
+        ? moduleCatalog.map((c) => c.id)
+        : [...item.panel_modules],
+    );
+  }
+
+  function toggleModuleDraft(modId, checked) {
+    setModuleDraft((prev) => {
+      const set = new Set(prev);
+      if (checked) set.add(modId);
+      else set.delete(modId);
+      return [...set];
+    });
+  }
+
+  async function saveCompanyModules(companyId) {
+    const allIds = moduleCatalog.map((c) => c.id);
+    if (moduleDraft.length === 0) {
+      setError("Mindestens ein Panel-Modul muss aktiv bleiben (oder „Alle“ über Standard).");
+      return;
+    }
+    setSavingModulesId(companyId);
+    setError("");
+    const body =
+      moduleDraft.length >= allIds.length ? { panel_modules: null } : { panel_modules: moduleDraft };
+    try {
+      const res = await fetch(`${COMPANIES_URL}/${companyId}/panel-modules`, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok || !data?.item) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      setItems((prev) => prev.map((row) => (row.id === companyId ? data.item : row)));
+      setEditingModulesFor(null);
+    } catch (err) {
+      console.error("panel-modules update:", err);
+      setError("Panel-Module konnten nicht gespeichert werden.");
+    } finally {
+      setSavingModulesId(null);
     }
   }
 
@@ -105,8 +160,12 @@ export default function CompaniesPage() {
       const haystack = [
         item.id,
         item.name,
+        item.contact_name,
         item.email,
         item.phone,
+        item.city,
+        item.postal_code,
+        item.country,
         item.priority_price_threshold,
         item.priority_timeout_seconds,
         item.release_radius_km,
@@ -334,8 +393,12 @@ export default function CompaniesPage() {
                   <div>
                     <div className="admin-entity-card__title">{item.name}</div>
                     <div className="admin-entity-card__meta">
-                      ID: {item.id} · {item.email || "keine E-Mail"} ·{" "}
+                      ID: {item.id}
+                      {item.contact_name ? ` · ${item.contact_name}` : ""} · {item.email || "keine E-Mail"} ·{" "}
                       {item.phone || "kein Telefon"}
+                      {item.city || item.postal_code
+                        ? ` · ${[item.postal_code, item.city].filter(Boolean).join(" ")}`
+                        : ""}
                     </div>
                   </div>
 
@@ -420,6 +483,83 @@ export default function CompaniesPage() {
                 </div>
 
                 {isSaving ? <div className="admin-saving-hint">Speichert ...</div> : null}
+
+                {moduleCatalog.length > 0 ? (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--onroda-border-subtle, #e5e7eb)" }}>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Partner-Panel-Module</div>
+                    <p className="admin-entity-card__meta" style={{ marginBottom: 10 }}>
+                      Steuert Menü und Kacheln im Unternehmerportal (
+                      <code className="admin-mono">panel.onroda.de</code>
+                      ). <code className="admin-mono">null</code> in der API = alle Module (Standard).
+                    </p>
+                    {editingModulesFor === item.id ? (
+                      <>
+                        <div className="admin-controls-grid" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {moduleCatalog.map((mod) => (
+                            <label key={mod.id} className="admin-switch-row" style={{ alignItems: "flex-start" }}>
+                              <span className="admin-switch-row__label" style={{ flex: 1 }}>
+                                <strong>{mod.label}</strong>
+                                <span style={{ display: "block", fontWeight: 400, fontSize: 12, opacity: 0.85 }}>
+                                  {mod.description}
+                                </span>
+                                {mod.productIntent ? (
+                                  <span
+                                    style={{
+                                      display: "block",
+                                      fontWeight: 400,
+                                      fontSize: 11,
+                                      opacity: 0.78,
+                                      marginTop: 6,
+                                      lineHeight: 1.35,
+                                    }}
+                                  >
+                                    <em style={{ fontStyle: "normal", fontWeight: 600 }}>Zielbild: </em>
+                                    {mod.productIntent}
+                                  </span>
+                                ) : null}
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={moduleDraft.includes(mod.id)}
+                                disabled={savingModulesId === item.id}
+                                onChange={(e) => toggleModuleDraft(mod.id, e.target.checked)}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="admin-btn-refresh"
+                            disabled={savingModulesId === item.id}
+                            onClick={() => void saveCompanyModules(item.id)}
+                          >
+                            {savingModulesId === item.id ? "Speichert …" : "Module speichern"}
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-page-btn"
+                            disabled={savingModulesId === item.id}
+                            onClick={() => setEditingModulesFor(null)}
+                          >
+                            Abbrechen
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="admin-entity-card__meta">
+                        Aktuell:{" "}
+                        {item.panel_modules == null
+                          ? "alle Module (Standard)"
+                          : `${item.panel_modules.length} von ${moduleCatalog.length} ausgewählt`}
+                        {" · "}
+                        <button type="button" className="admin-btn-refresh" onClick={() => startEditModules(item)}>
+                          Module bearbeiten
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             );
           })

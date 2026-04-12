@@ -35,6 +35,24 @@ function isKrankenkasseRide(paymentMethod: string) {
   return paymentMethod.startsWith("Krankenkasse");
 }
 
+function accessCodeTypeDe(t: string): string {
+  const m: Record<string, string> = {
+    voucher: "Gutschein",
+    hotel: "Hotel",
+    company: "Firma",
+    general: "Fahrcode",
+  };
+  return m[t] ?? "Code";
+}
+
+/** Kurzinfo für Fahrer: kein Klartext-Code, nur Label + Typ. */
+function accessCodeRideLine(req: RideRequest): string | null {
+  if (req.authorizationSource !== "access_code") return null;
+  const s = req.accessCodeSummary;
+  if (s?.label) return `Freigabe · ${s.label} (${accessCodeTypeDe(s.codeType)})`;
+  return "Freigabe · Zugangscode (gültig)";
+}
+
 function parseEuroDriverInput(text: string): number | null {
   const n = parseFloat(text.replace(/\s/g, "").replace(",", "."));
   return Number.isFinite(n) ? n : null;
@@ -121,6 +139,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const initials = req.customerName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   const title = getCardTitle(req);
   const isBlitz = !req.scheduledAt;
+  const codeLine = accessCodeRideLine(req);
 
   return (
     <View style={{
@@ -175,6 +194,11 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             <Text style={{ fontSize: 15, color: "#FACC15" }}>★★★★★</Text>
             <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#94A3B8" }}>4.9</Text>
           </View>
+          {codeLine ? (
+            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#4ADE80", marginTop: 8 }} numberOfLines={2}>
+              {codeLine}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -254,6 +278,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 
 /* ─── Scheduled Request Card ─── */
 function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
+  const codeLine = accessCodeRideLine(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const distToPickup = (driverPos && req.fromLat != null && req.fromLon != null)
     ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
@@ -335,6 +360,15 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
           <Text style={[styles.schedStatText, { color: "#22C55E", fontFamily: "Inter_700Bold" }]}>ca. {formatEuro(req.estimatedFare)}</Text>
         </View>
       </View>
+
+      {codeLine ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginBottom: 6 }}>
+          <Feather name="shield" size={14} color="#16A34A" />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#15803D" }} numberOfLines={2}>
+            {codeLine}
+          </Text>
+        </View>
+      ) : null}
 
       {/* Meta */}
       <View style={styles.reqMeta}>
@@ -758,6 +792,8 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [finalPriceInput, setFinalPriceInput] = useState(req.estimatedFare.toFixed(2).replace(".", ","));
   const isKK = isKrankenkasseRide(req.paymentMethod);
+  const codeLine = accessCodeRideLine(req);
+  const isCodeRide = req.authorizationSource === "access_code";
   const [kkEigenOpen, setKkEigenOpen] = useState(false);
   const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
     req.estimatedFare.toFixed(2).replace(".", ","),
@@ -1010,7 +1046,8 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[activeStyles.customerName, { color: colors.foreground }]}>{req.customerName}</Text>
-            <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+            <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={4}>
+              {codeLine ? `${codeLine}\n` : ""}
               {req.vehicle} · {isKK ? "Krankenkasse" : req.paymentMethod}
             </Text>
           </View>
@@ -1079,6 +1116,16 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
                 {kkEigenOpen ? "Zum Schließen antippen" : "Antippen · Eigenanteil"}
               </Text>
             </Pressable>
+          ) : isCodeRide ? (
+            <View style={activeStyles.statItem}>
+              <Feather name="shield" size={14} color="#16A34A" />
+              <Text style={[activeStyles.statValue, { color: "#15803D" }]} numberOfLines={2}>
+                {req.accessCodeSummary?.label ?? "Code-Fahrt"}
+              </Text>
+              <Text style={[activeStyles.statLabel, { color: colors.mutedForeground }]}>
+                {accessCodeTypeDe(req.accessCodeSummary?.codeType ?? "general")}
+              </Text>
+            </View>
           ) : (
             <View style={activeStyles.statItem}>
               <Feather name="credit-card" size={14} color={colors.mutedForeground} />

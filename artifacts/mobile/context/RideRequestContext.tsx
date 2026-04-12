@@ -19,10 +19,29 @@ export type RequestStatus =
   | "cancelled"
   | "completed";
 
+/** Entspricht API `rideKind` (camelCase). */
+export type RideKind = "standard" | "medical" | "voucher" | "company";
+
+/** Entspricht API `payerKind`. */
+export type PayerKind = "passenger" | "company" | "insurance" | "voucher" | "third_party";
+
+/** Entspricht API `authorizationSource` — Direktzahlung vs. digitaler Zugangscode. */
+export type AuthorizationSource = "passenger_direct" | "access_code";
+
+export type AccessCodeSummary = { codeType: string; label: string };
+
 export interface RideRequest {
   id: string;
   createdAt: Date;
   scheduledAt?: Date | null;
+  rideKind: RideKind;
+  payerKind: PayerKind;
+  authorizationSource: AuthorizationSource;
+  accessCodeId?: string | null;
+  /** Nur API — kein Klartext-Code, nur Anzeige für Fahrer/Disposition. */
+  accessCodeSummary?: AccessCodeSummary | null;
+  voucherCode?: string | null;
+  billingReference?: string | null;
   from: string;
   fromFull: string;
   fromLat?: number;
@@ -54,7 +73,26 @@ interface RideRequestContextValue {
   passengerId: string;
   myActiveRequests: RideRequest[];
   myCancelledRequests: RideRequest[];
-  addRequest: (req: Omit<RideRequest, "id" | "createdAt" | "status" | "rejectedBy">) => Promise<string>;
+  addRequest: (
+    req: Omit<
+      RideRequest,
+      | "id"
+      | "createdAt"
+      | "status"
+      | "rejectedBy"
+      | "rideKind"
+      | "payerKind"
+      | "authorizationSource"
+      | "accessCodeId"
+      | "accessCodeSummary"
+    > & {
+      rideKind?: RideKind;
+      payerKind?: PayerKind;
+      voucherCode?: string | null;
+      billingReference?: string | null;
+      accessCode?: string | null;
+    },
+  ) => Promise<string>;
   acceptRequest: (id: string, driverId?: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
@@ -135,11 +173,50 @@ function normalizeRequest(r: any): RideRequest {
     r.vehicle_type ??
     "Standard";
 
+  const rideKindRaw = r.rideKind ?? r.ride_kind;
+  const payerKindRaw = r.payerKind ?? r.payer_kind;
+  const rideKind: RideKind =
+    rideKindRaw === "medical" || rideKindRaw === "voucher" || rideKindRaw === "company"
+      ? rideKindRaw
+      : "standard";
+  const payerKind: PayerKind =
+    payerKindRaw === "company" ||
+    payerKindRaw === "insurance" ||
+    payerKindRaw === "voucher" ||
+    payerKindRaw === "third_party"
+      ? payerKindRaw
+      : "passenger";
+
+  const authRaw = r.authorizationSource ?? r.authorization_source;
+  const authorizationSource: AuthorizationSource =
+    authRaw === "access_code" ? "access_code" : "passenger_direct";
+
+  const summaryRaw = r.accessCodeSummary ?? r.access_code_summary;
+  let accessCodeSummary: AccessCodeSummary | null = null;
+  if (summaryRaw && typeof summaryRaw === "object") {
+    const ct = (summaryRaw as { codeType?: string; code_type?: string }).codeType
+      ?? (summaryRaw as { code_type?: string }).code_type;
+    const lb = (summaryRaw as { label?: string }).label;
+    if (typeof ct === "string" && typeof lb === "string") {
+      accessCodeSummary = { codeType: ct, label: lb };
+    }
+  }
+
   return {
     ...r,
     id: String(r.id ?? r.ride_id ?? `REQ-${Date.now()}`),
     createdAt: toDate(r.createdAt ?? r.created_at) ?? new Date(),
     scheduledAt: (r.scheduledAt ?? r.scheduled_at) ? toDate(r.scheduledAt ?? r.scheduled_at) : null,
+    rideKind,
+    payerKind,
+    authorizationSource,
+    accessCodeId: (r.accessCodeId ?? r.access_code_id) != null ? String(r.accessCodeId ?? r.access_code_id) : null,
+    accessCodeSummary,
+    voucherCode: (r.voucherCode ?? r.voucher_code) != null ? String(r.voucherCode ?? r.voucher_code) : null,
+    billingReference:
+      (r.billingReference ?? r.billing_reference) != null
+        ? String(r.billingReference ?? r.billing_reference)
+        : null,
     from: r.from ?? r.from_location ?? fromFull,
     fromFull,
     fromLat: r.fromLat ?? r.from_lat ?? undefined,
@@ -237,10 +314,57 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const addRequest = useCallback(
-    async (req: Omit<RideRequest, "id" | "createdAt" | "status" | "rejectedBy">): Promise<string> => {
+    async (
+      req: Omit<
+        RideRequest,
+        | "id"
+        | "createdAt"
+        | "status"
+        | "rejectedBy"
+        | "rideKind"
+        | "payerKind"
+        | "authorizationSource"
+        | "accessCodeId"
+        | "accessCodeSummary"
+      > & {
+        rideKind?: RideKind;
+        payerKind?: PayerKind;
+        voucherCode?: string | null;
+        billingReference?: string | null;
+        accessCode?: string | null;
+      },
+    ): Promise<string> => {
+      const rideKind = req.rideKind ?? "standard";
+      const payerKind = req.payerKind ?? "passenger";
+      const accessTrim = typeof req.accessCode === "string" ? req.accessCode.trim() : "";
+      const { accessCode: _unused, ...reqForBody } = req as typeof req & { accessCode?: string | null };
+      void _unused;
+      const payload = {
+        ...reqForBody,
+        rideKind,
+        payerKind,
+        voucherCode: req.voucherCode ?? undefined,
+        billingReference: req.billingReference ?? undefined,
+        ...(accessTrim ? { accessCode: accessTrim } : {}),
+      };
       if (!API_BASE) {
         const id = `REQ-${Date.now()}`;
-        const newReq: RideRequest = { ...req, id, createdAt: new Date(), status: "pending", rejectedBy: [] };
+        const { accessCode: _oc, ...reqSansCode } = req as typeof req & { accessCode?: string | null };
+        void _oc;
+        const newReq: RideRequest = {
+          ...reqSansCode,
+          rideKind,
+          payerKind,
+          voucherCode: req.voucherCode ?? null,
+          billingReference: req.billingReference ?? null,
+          authorizationSource: accessTrim ? "access_code" : "passenger_direct",
+          accessCodeId: accessTrim ? "local" : null,
+          accessCodeSummary: accessTrim ? { codeType: "general", label: "Offline (nicht geprüft)" } : null,
+          id,
+          createdAt: new Date(),
+          status: "pending",
+          rejectedBy: [],
+        };
         setRequests((prev) => [newReq, ...prev]);
         setLastAddedRequestId(id);
         return id;
@@ -248,10 +372,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const res = await fetch(`${API_BASE}/rides`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(req),
+        body: JSON.stringify(payload),
       });
-      const created = await res.json();
-      const id = created.id as string;
+      const created = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const code = typeof (created as { error?: string }).error === "string"
+          ? (created as { error: string }).error
+          : "request_failed";
+        throw new Error(code);
+      }
+      const id = (created as { id?: string }).id as string;
       setLastAddedRequestId(id);
       await fetchAll();
       return id;

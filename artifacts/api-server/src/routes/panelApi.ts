@@ -1,10 +1,21 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter, type Response } from "express";
 import type { RideRequest } from "../domain/rideRequest";
+import {
+  DEFAULT_PAYER_KIND,
+  DEFAULT_RIDE_KIND,
+  parseOptionalBillingTag,
+  parsePayerKind,
+  parseRideKind,
+} from "../domain/rideBillingProfile";
 import { isPostgresConfigured } from "../db/client";
 import { insertPanelAuditLog } from "../db/panelAuditData";
 import { findActivePanelUserById, findActivePanelUserProfileById } from "../db/panelAuthData";
-import { getPanelCompanyById } from "../db/panelCompanyData";
+import {
+  getPanelCompanyById,
+  patchPanelCompanyProfile,
+  type PanelCompanyProfilePatch,
+} from "../db/panelCompanyData";
 import {
   findPanelUserInCompany,
   insertPanelUser,
@@ -14,7 +25,17 @@ import {
   panelUsernameTaken,
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
-import { insertRide, listRidesForCompany } from "../db/ridesData";
+import { attachAccessCodeSummariesToRides, loadAccessCodesForTraceByIds } from "../db/accessCodesData";
+import {
+  findRide,
+  insertRideWithOptionalAccessCode,
+  listRidesForCompany,
+} from "../db/ridesData";
+import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
+import type { PanelModuleId } from "../domain/panelModules";
+import { accessCodeTripOutcomeFromRide, computeAccessCodeDefinitionState } from "../domain/accessCodeTrace";
+import { resolveEffectivePanelModules } from "../domain/panelModules";
+import type { PanelUserProfileRow } from "../db/panelAuthData";
 import type { PanelRole } from "../lib/panelJwt";
 import {
   isPanelRoleString,
@@ -73,6 +94,41 @@ function canAssignPanelRole(actor: PanelRole, target: PanelRole): boolean {
   return false;
 }
 
+function enabledPanelModules(profile: PanelUserProfileRow): PanelModuleId[] {
+  return resolveEffectivePanelModules(profile.panelModules);
+}
+
+function denyUnlessPanelModule(res: Response, profile: PanelUserProfileRow, mod: PanelModuleId): boolean {
+  if (!enabledPanelModules(profile).includes(mod)) {
+    res.status(403).json({ error: "module_disabled", hint: mod });
+    return false;
+  }
+  return true;
+}
+
+/** Firmenstammdaten: Modul Profil oder Übersicht (dort Kurzinfos). */
+function denyUnlessCompanyOrOverview(res: Response, profile: PanelUserProfileRow): boolean {
+  const e = enabledPanelModules(profile);
+  if (e.includes("overview") || e.includes("company_profile")) return true;
+  res.status(403).json({ error: "module_disabled", hint: "overview_or_company_profile" });
+  return false;
+}
+
+async function enrichPanelRidesForResponse(rides: RideRequest[]): Promise<RideRequest[]> {
+  const enriched = await attachAccessCodeSummariesToRides(rides);
+  const codeIds = [...new Set(enriched.map((r) => r.accessCodeId).filter((x): x is string => Boolean(x)))];
+  const traceById = await loadAccessCodesForTraceByIds(codeIds);
+  const now = new Date();
+  return enriched.map((r) => ({
+    ...r,
+    accessCodeTripOutcome: accessCodeTripOutcomeFromRide(r),
+    accessCodeDefinitionState:
+      r.accessCodeId && traceById.has(r.accessCodeId)
+        ? computeAccessCodeDefinitionState(traceById.get(r.accessCodeId)!, now)
+        : null,
+  }));
+}
+
 router.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
@@ -95,6 +151,7 @@ router.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString(),
       permissions: permissionsForRole(role),
+      panelModules: enabledPanelModules(profile),
     },
   });
 });
@@ -102,6 +159,7 @@ router.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
 router.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
   if (!ctx) return;
+  if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
   const { claims } = ctx;
 
   const company = await getPanelCompanyById(claims.companyId);
@@ -113,10 +171,78 @@ router.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   res.json({ ok: true, company });
 });
 
+router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_profile")) return;
+    if (!denyUnless(res, ctx.profile.role, "company.update")) return;
+
+    const body = req.body as Record<string, unknown>;
+    const str = (k: string) => (typeof body[k] === "string" ? body[k] : undefined);
+
+    const patch: PanelCompanyProfilePatch = {};
+    const n = str("name");
+    const cn = str("contactName");
+    const em = str("email");
+    const ph = str("phone");
+    const a1 = str("addressLine1");
+    const a2 = str("addressLine2");
+    const pc = str("postalCode");
+    const ci = str("city");
+    const co = str("country");
+    const vi = str("vatId");
+    if (n !== undefined) patch.name = n;
+    if (cn !== undefined) patch.contactName = cn;
+    if (em !== undefined) patch.email = em;
+    if (ph !== undefined) patch.phone = ph;
+    if (a1 !== undefined) patch.addressLine1 = a1;
+    if (a2 !== undefined) patch.addressLine2 = a2;
+    if (pc !== undefined) patch.postalCode = pc;
+    if (ci !== undefined) patch.city = ci;
+    if (co !== undefined) patch.country = co;
+    if (vi !== undefined) patch.vatId = vi;
+
+    const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
+    if (!result.ok) {
+      const code = result.error;
+      if (code === "company_not_found") {
+        res.status(404).json({ error: code });
+        return;
+      }
+      if (code === "no_changes") {
+        res.status(400).json({ error: code });
+        return;
+      }
+      if (code === "name_required" || code === "email_invalid") {
+        res.status(400).json({ error: code });
+        return;
+      }
+      res.status(503).json({ error: code });
+      return;
+    }
+
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "company.profile_updated",
+      subjectType: "admin_company",
+      subjectId: ctx.claims.companyId,
+      meta: { fields: Object.keys(patch) },
+    });
+
+    res.json({ ok: true, company: result.company });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
     if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
     const rides = await listRidesForCompany(ctx.claims.companyId);
     const ids = rides.map((r) => r.createdByPanelUserId).filter((x): x is string => Boolean(x));
@@ -125,7 +251,8 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       ...r,
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
     }));
-    res.json({ ok: true, rides: ridesOut });
+    const withTrace = await enrichPanelRidesForResponse(ridesOut);
+    res.json({ ok: true, rides: withTrace });
   } catch (e) {
     next(e);
   }
@@ -135,6 +262,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
     if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
 
       const body = req.body as Record<string, unknown>;
@@ -186,6 +314,29 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       const scheduledRaw = optStr("scheduledAt");
       const passengerId = optStr("passengerId");
 
+      const rawRk = body.rideKind;
+      const rawPk = body.payerKind;
+      if (
+        rawRk != null &&
+        rawRk !== "" &&
+        (typeof rawRk !== "string" || parseRideKind(rawRk) === null)
+      ) {
+        res.status(400).json({ error: "ride_kind_invalid" });
+        return;
+      }
+      if (
+        rawPk != null &&
+        rawPk !== "" &&
+        (typeof rawPk !== "string" || parsePayerKind(rawPk) === null)
+      ) {
+        res.status(400).json({ error: "payer_kind_invalid" });
+        return;
+      }
+      const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
+      const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
+      const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+      const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+
       const newReq: RideRequest = {
         id: `REQ-${Date.now()}`,
         companyId: ctx.claims.companyId,
@@ -211,9 +362,36 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         finalFare: null,
         paymentMethod,
         vehicle,
+        rideKind,
+        payerKind,
+        voucherCode,
+        billingReference,
+        authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+        accessCodeId: null,
       };
 
-      await insertRide(newReq);
+      const accessCodeRaw = body.accessCode;
+      const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;
+      if (
+        accessCodePlain &&
+        accessCodePlain.trim() &&
+        !enabledPanelModules(ctx.profile).includes("access_codes")
+      ) {
+        res.status(403).json({ error: "module_disabled", hint: "access_codes" });
+        return;
+      }
+      const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
+      if (!ins.ok) {
+        const err = ins.error;
+        if (err === "access_code_wrong_company") {
+          res.status(403).json({ error: err });
+          return;
+        }
+        res.status(400).json({ error: err });
+        return;
+      }
+      const saved = await findRide(newReq.id);
+      const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0]! : newReq;
       await insertPanelAuditLog({
         id: randomUUID(),
         companyId: ctx.claims.companyId,
@@ -221,9 +399,15 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         action: "ride.created",
         subjectType: "ride",
         subjectId: newReq.id,
-        meta: { customerName: newReq.customerName },
+        meta: {
+          customerName: rideOut.customerName,
+          rideKind: rideOut.rideKind,
+          payerKind: rideOut.payerKind,
+          authorizationSource: rideOut.authorizationSource,
+          accessCodeId: rideOut.accessCodeId ?? undefined,
+        },
       });
-    res.status(201).json({ ok: true, ride: newReq });
+      res.status(201).json({ ok: true, ride: rideOut });
   } catch (e) {
     next(e);
   }
@@ -233,6 +417,7 @@ router.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, n
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
     if (!denyUnless(res, ctx.profile.role, "self.change_password")) return;
       const body = req.body as { currentPassword?: string; newPassword?: string };
       const cur = typeof body.currentPassword === "string" ? body.currentPassword : "";
@@ -276,6 +461,7 @@ router.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.read")) return;
     const users = await listPanelUsersInCompany(ctx.claims.companyId);
     res.json({ ok: true, users });
@@ -288,6 +474,7 @@ router.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
     const body = req.body as { username?: string; email?: string; role?: string; password?: string };
     const username = typeof body.username === "string" ? body.username.trim() : "";
@@ -342,6 +529,7 @@ router.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => 
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
       const { id } = req.params;
       if (!id) {
@@ -404,6 +592,7 @@ router.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, 
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.reset_password")) return;
       const { id } = req.params;
       if (!id) {

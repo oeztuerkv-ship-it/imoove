@@ -720,26 +720,26 @@ var require_permessage_deflate = __commonJS({
             value = value[0];
             if (key === "client_max_window_bits") {
               if (value !== true) {
-                const num = +value;
-                if (!Number.isInteger(num) || num < 8 || num > 15) {
+                const num2 = +value;
+                if (!Number.isInteger(num2) || num2 < 8 || num2 > 15) {
                   throw new TypeError(
                     `Invalid value for parameter "${key}": ${value}`
                   );
                 }
-                value = num;
+                value = num2;
               } else if (!this._isServer) {
                 throw new TypeError(
                   `Invalid value for parameter "${key}": ${value}`
                 );
               }
             } else if (key === "server_max_window_bits") {
-              const num = +value;
-              if (!Number.isInteger(num) || num < 8 || num > 15) {
+              const num2 = +value;
+              if (!Number.isInteger(num2) || num2 < 8 || num2 > 15) {
                 throw new TypeError(
                   `Invalid value for parameter "${key}": ${value}`
                 );
               }
-              value = num;
+              value = num2;
             } else if (key === "client_no_context_takeover" || key === "server_no_context_takeover") {
               if (value !== true) {
                 throw new TypeError(
@@ -1434,8 +1434,8 @@ var require_receiver = __commonJS({
           return;
         }
         const buf = this.consume(8);
-        const num = buf.readUInt32BE(0);
-        if (num > Math.pow(2, 53 - 32) - 1) {
+        const num2 = buf.readUInt32BE(0);
+        if (num2 > Math.pow(2, 53 - 32) - 1) {
           const error = this.createError(
             RangeError,
             "Unsupported WebSocket frame: payload length > 2^53 - 1",
@@ -1446,7 +1446,7 @@ var require_receiver = __commonJS({
           cb(error);
           return;
         }
-        this._payloadLength = num * Math.pow(2, 32) + buf.readUInt32BE(4);
+        this._payloadLength = num2 * Math.pow(2, 32) + buf.readUInt32BE(4);
         this.haveLength(cb);
       }
       /**
@@ -19864,14 +19864,14 @@ var require_object_inspect = __commonJS({
     var gPO = (typeof Reflect === "function" ? Reflect.getPrototypeOf : Object.getPrototypeOf) || ([].__proto__ === Array.prototype ? function(O) {
       return O.__proto__;
     } : null);
-    function addNumericSeparator(num, str) {
-      if (num === Infinity || num === -Infinity || num !== num || num && num > -1e3 && num < 1e3 || $test.call(/e/, str)) {
+    function addNumericSeparator(num2, str) {
+      if (num2 === Infinity || num2 === -Infinity || num2 !== num2 || num2 && num2 > -1e3 && num2 < 1e3 || $test.call(/e/, str)) {
         return str;
       }
       var sepRegex = /[0-9](?=(?:[0-9]{3})+(?![0-9]))/g;
-      if (typeof num === "number") {
-        var int = num < 0 ? -$floor(-num) : $floor(num);
-        if (int !== num) {
+      if (typeof num2 === "number") {
+        var int = num2 < 0 ? -$floor(-num2) : $floor(num2);
+        if (int !== num2) {
           var intStr = String(int);
           var dec = $slice.call(str, intStr.length + 1);
           return $replace.call(intStr, sepRegex, "$&_") + "." + $replace.call($replace.call(dec, /([0-9]{3})/g, "$&_"), /_$/, "");
@@ -30551,14 +30551,14 @@ var require_tools = __commonJS({
       }
       return point2 < 32 ? JSON.stringify(str) : '"' + result + '"';
     }
-    function asJson(obj, msg, num, time2) {
+    function asJson(obj, msg, num2, time2) {
       if (asJsonChan.hasSubscribers === false) {
-        return _asJson.call(this, obj, msg, num, time2);
+        return _asJson.call(this, obj, msg, num2, time2);
       }
       const store = { instance: this, arguments };
-      return asJsonChan.traceSync(_asJson, store, this, obj, msg, num, time2);
+      return asJsonChan.traceSync(_asJson, store, this, obj, msg, num2, time2);
     }
-    function _asJson(obj, msg, num, time2) {
+    function _asJson(obj, msg, num2, time2) {
       const stringify2 = this[stringifySym];
       const stringifySafe = this[stringifySafeSym];
       const stringifiers = this[stringifiersSym];
@@ -30568,7 +30568,7 @@ var require_tools = __commonJS({
       const formatters = this[formattersSym];
       const messageKey = this[messageKeySym];
       const errorKey = this[errorKeySym];
-      let data = this[lsCacheSym][num] + time2;
+      let data = this[lsCacheSym][num2] + time2;
       data = data + chindings;
       let value;
       if (formatters.log) {
@@ -31194,7 +31194,7 @@ var require_proto = __commonJS({
     function defaultMixinMergeStrategy(mergeObject, mixinObject) {
       return Object.assign(mixinObject, mergeObject);
     }
-    function write(_obj, msg, num) {
+    function write(_obj, msg, num2) {
       const t = this[timeSym]();
       const mixin = this[mixinSym];
       const errorKey = this[errorKeySym];
@@ -31216,12 +31216,12 @@ var require_proto = __commonJS({
         }
       }
       if (mixin) {
-        obj = mixinMergeStrategy(obj, mixin(obj, num, this));
+        obj = mixinMergeStrategy(obj, mixin(obj, num2, this));
       }
-      const s = this[asJsonSym](obj, msg, num, t);
+      const s = this[asJsonSym](obj, msg, num2, t);
       const stream = this[streamSym];
       if (stream[needsMetadataGsym] === true) {
-        stream.lastLevel = num;
+        stream.lastLevel = num2;
         stream.lastObj = obj;
         stream.lastMsg = msg;
         stream.lastTime = t.slice(this[timeSliceIndexSym]);
@@ -32470,6 +32470,43 @@ var require_logger = __commonJS({
     module.exports.startTime = startTime;
     module.exports.default = pinoLogger;
     module.exports.pinoHttp = pinoLogger;
+  }
+});
+
+// src/domain/rideBillingProfile.ts
+function payerKindForAccessCodeRide(companyId) {
+  return companyId ? "company" : "third_party";
+}
+function isRideKind(v) {
+  return RIDE_KINDS.includes(v);
+}
+function isPayerKind(v) {
+  return PAYER_KINDS.includes(v);
+}
+function parseRideKind(v) {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return isRideKind(s) ? s : null;
+}
+function parsePayerKind(v) {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return isPayerKind(s) ? s : null;
+}
+function parseOptionalBillingTag(v, maxLen) {
+  if (v == null) return null;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  if (!t) return null;
+  return t.slice(0, maxLen);
+}
+var RIDE_KINDS, PAYER_KINDS, DEFAULT_RIDE_KIND, DEFAULT_PAYER_KIND;
+var init_rideBillingProfile = __esm({
+  "src/domain/rideBillingProfile.ts"() {
+    RIDE_KINDS = ["standard", "medical", "voucher", "company"];
+    PAYER_KINDS = ["passenger", "company", "insurance", "voucher", "third_party"];
+    DEFAULT_RIDE_KIND = "standard";
+    DEFAULT_PAYER_KIND = "passenger";
   }
 });
 
@@ -36337,6 +36374,25 @@ var init_drizzle_orm = __esm({
   }
 });
 
+// src/domain/rideAuthorization.ts
+function isAuthorizationSource(v) {
+  return AUTHORIZATION_SOURCES.includes(v);
+}
+function isAccessCodeType(v) {
+  return ACCESS_CODE_TYPES.includes(v);
+}
+function normalizeAccessCodeInput(raw) {
+  return raw.trim().toUpperCase().replace(/\s+/g, "");
+}
+var AUTHORIZATION_SOURCES, ACCESS_CODE_TYPES, DEFAULT_AUTHORIZATION_SOURCE;
+var init_rideAuthorization = __esm({
+  "src/domain/rideAuthorization.ts"() {
+    AUTHORIZATION_SOURCES = ["passenger_direct", "access_code"];
+    ACCESS_CODE_TYPES = ["voucher", "hotel", "company", "general"];
+    DEFAULT_AUTHORIZATION_SOURCE = "passenger_direct";
+  }
+});
+
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/selection-proxy.js
 var SelectionProxyHandler;
 var init_selection_proxy = __esm({
@@ -36770,8 +36826,8 @@ var init_dialect = __esm({
       escapeName(name) {
         return `"${name.replace(/"/g, '""')}"`;
       }
-      escapeParam(num) {
-        return `$${num + 1}`;
+      escapeParam(num2) {
+        return `$${num2 + 1}`;
       }
       escapeString(str) {
         return `'${str.replace(/'/g, "''")}'`;
@@ -40864,60 +40920,54 @@ var init_node_postgres = __esm({
 // src/db/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
+  accessCodesTable: () => accessCodesTable,
   adminCompaniesTable: () => adminCompaniesTable,
   fareAreasTable: () => fareAreasTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
   ridesTable: () => ridesTable
 });
-var ridesTable, adminCompaniesTable, fareAreasTable, panelUsersTable, panelAuditLogTable;
+var adminCompaniesTable, accessCodesTable, fareAreasTable, panelUsersTable, panelAuditLogTable, ridesTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
-    ridesTable = pgTable("rides", {
-      id: text("id").primaryKey(),
-      /** Mandant (Partner-Portal); NULL = noch nicht zugeordnet / Altbestand. */
-      company_id: text("company_id").references(() => adminCompaniesTable.id, {
-        onDelete: "set null"
-      }),
-      /** NULL = App/Kunde oder Altbestand; gesetzt bei Anlage über Partner-Panel. */
-      created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
-        onDelete: "set null"
-      }),
-      created_at: timestamp("created_at", { withTimezone: true }).notNull(),
-      scheduled_at: timestamp("scheduled_at", { withTimezone: true }),
-      status: text("status").notNull(),
-      customer_name: text("customer_name").notNull(),
-      passenger_id: text("passenger_id"),
-      driver_id: text("driver_id"),
-      from_label: text("from_label").notNull(),
-      from_full: text("from_full").notNull(),
-      from_lat: doublePrecision("from_lat"),
-      from_lon: doublePrecision("from_lon"),
-      to_label: text("to_label").notNull(),
-      to_full: text("to_full").notNull(),
-      to_lat: doublePrecision("to_lat"),
-      to_lon: doublePrecision("to_lon"),
-      distance_km: doublePrecision("distance_km").notNull(),
-      duration_minutes: integer("duration_minutes").notNull(),
-      estimated_fare: doublePrecision("estimated_fare").notNull(),
-      final_fare: doublePrecision("final_fare"),
-      payment_method: text("payment_method").notNull(),
-      vehicle: text("vehicle").notNull(),
-      rejected_by: jsonb("rejected_by").$type().notNull().default([])
-    });
     adminCompaniesTable = pgTable("admin_companies", {
       id: text("id").primaryKey(),
       name: text("name").notNull(),
+      contact_name: text("contact_name").notNull().default(""),
       email: text("email").notNull().default(""),
       phone: text("phone").notNull().default(""),
+      address_line1: text("address_line1").notNull().default(""),
+      address_line2: text("address_line2").notNull().default(""),
+      postal_code: text("postal_code").notNull().default(""),
+      city: text("city").notNull().default(""),
+      country: text("country").notNull().default(""),
+      vat_id: text("vat_id").notNull().default(""),
       is_active: boolean("is_active").notNull().default(true),
       is_priority_company: boolean("is_priority_company").notNull().default(false),
       priority_for_live_rides: boolean("priority_for_live_rides").notNull().default(false),
       priority_for_reservations: boolean("priority_for_reservations").notNull().default(false),
       priority_price_threshold: doublePrecision("priority_price_threshold").notNull().default(0),
       priority_timeout_seconds: integer("priority_timeout_seconds").notNull().default(90),
-      release_radius_km: doublePrecision("release_radius_km").notNull().default(10)
+      release_radius_km: doublePrecision("release_radius_km").notNull().default(10),
+      /** JSON-Array von Modul-IDs; NULL = alle Module aktiv (Legacy). */
+      panel_modules: jsonb("panel_modules").$type()
+    });
+    accessCodesTable = pgTable("access_codes", {
+      id: text("id").primaryKey(),
+      code_normalized: text("code_normalized").notNull().unique(),
+      code_type: text("code_type").notNull(),
+      company_id: text("company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      label: text("label").notNull().default(""),
+      max_uses: integer("max_uses"),
+      uses_count: integer("uses_count").notNull().default(0),
+      valid_from: timestamp("valid_from", { withTimezone: true }),
+      valid_until: timestamp("valid_until", { withTimezone: true }),
+      is_active: boolean("is_active").notNull().default(true),
+      meta: jsonb("meta").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
     fareAreasTable = pgTable("fare_areas", {
       id: text("id").primaryKey(),
@@ -40950,6 +41000,51 @@ var init_schema2 = __esm({
       meta: jsonb("meta").$type(),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
+    ridesTable = pgTable("rides", {
+      id: text("id").primaryKey(),
+      /** Mandant (Partner-Portal); NULL = noch nicht zugeordnet / Altbestand. */
+      company_id: text("company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      /** NULL = App/Kunde oder Altbestand; gesetzt bei Anlage über Partner-Panel. */
+      created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull(),
+      scheduled_at: timestamp("scheduled_at", { withTimezone: true }),
+      status: text("status").notNull(),
+      customer_name: text("customer_name").notNull(),
+      passenger_id: text("passenger_id"),
+      driver_id: text("driver_id"),
+      from_label: text("from_label").notNull(),
+      from_full: text("from_full").notNull(),
+      from_lat: doublePrecision("from_lat"),
+      from_lon: doublePrecision("from_lon"),
+      to_label: text("to_label").notNull(),
+      to_full: text("to_full").notNull(),
+      to_lat: doublePrecision("to_lat"),
+      to_lon: doublePrecision("to_lon"),
+      distance_km: doublePrecision("distance_km").notNull(),
+      duration_minutes: integer("duration_minutes").notNull(),
+      estimated_fare: doublePrecision("estimated_fare").notNull(),
+      final_fare: doublePrecision("final_fare"),
+      payment_method: text("payment_method").notNull(),
+      vehicle: text("vehicle").notNull(),
+      rejected_by: jsonb("rejected_by").$type().notNull().default([]),
+      /** standard | medical | voucher | company */
+      ride_kind: text("ride_kind").notNull().default("standard"),
+      /** passenger | company | insurance | voucher | third_party */
+      payer_kind: text("payer_kind").notNull().default("passenger"),
+      voucher_code: text("voucher_code"),
+      billing_reference: text("billing_reference"),
+      /** passenger_direct | access_code */
+      authorization_source: text("authorization_source").notNull().default("passenger_direct"),
+      access_code_id: text("access_code_id").references(() => accessCodesTable.id, {
+        onDelete: "set null"
+      }),
+      /** Kopie des normalisierten Codes bei Einlösung (Audit / Verlauf). */
+      access_code_normalized_snapshot: text("access_code_normalized_snapshot")
+    });
   }
 });
 
@@ -40980,22 +41075,294 @@ var init_client = __esm({
   }
 });
 
+// src/db/accessCodesData.ts
+import { randomUUID } from "node:crypto";
+function labelOrDefault(l) {
+  const t = l.trim();
+  return t.length > 0 ? t : "Code-Fahrt";
+}
+async function attachAccessCodeSummariesToRides(rides) {
+  const ids = [...new Set(rides.map((r) => r.accessCodeId).filter((x) => Boolean(x)))];
+  if (ids.length === 0) {
+    return rides.map((r) => ({ ...r, accessCodeSummary: void 0 }));
+  }
+  const m = await loadLabelsByIds(ids);
+  return rides.map((r) => {
+    if (!r.accessCodeId) return { ...r, accessCodeSummary: void 0 };
+    const s = m.get(r.accessCodeId);
+    return { ...r, accessCodeSummary: s ?? null };
+  });
+}
+async function loadLabelsByIds(ids) {
+  const out = /* @__PURE__ */ new Map();
+  const db2 = getDb();
+  if (!db2) {
+    for (const row of memByNormalized.values()) {
+      if (ids.includes(row.id)) {
+        out.set(row.id, { codeType: row.code_type, label: labelOrDefault(row.label) });
+      }
+    }
+    return out;
+  }
+  const rows = await db2.select({
+    id: accessCodesTable.id,
+    code_type: accessCodesTable.code_type,
+    label: accessCodesTable.label
+  }).from(accessCodesTable).where(inArray(accessCodesTable.id, ids));
+  for (const row of rows) {
+    out.set(row.id, { codeType: row.code_type, label: labelOrDefault(row.label ?? "") });
+  }
+  return out;
+}
+function validateMemRow(row, bookingCompanyId) {
+  if (!row.is_active) return "access_code_inactive";
+  const t = /* @__PURE__ */ new Date();
+  if (row.valid_from && row.valid_from > t) return "access_code_expired";
+  if (row.valid_until && row.valid_until < t) return "access_code_expired";
+  if (row.max_uses != null && row.uses_count >= row.max_uses) return "access_code_exhausted";
+  if (bookingCompanyId && row.company_id && row.company_id !== bookingCompanyId) {
+    return "access_code_wrong_company";
+  }
+  return null;
+}
+function redeemAccessCodeMemory(plain, bookingCompanyId) {
+  const normalized = normalizeAccessCodeInput(plain);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const row = memByNormalized.get(normalized);
+  if (!row) return { ok: false, error: "access_code_invalid" };
+  const err = validateMemRow(row, bookingCompanyId);
+  if (err) return { ok: false, error: err };
+  row.uses_count += 1;
+  return {
+    ok: true,
+    id: row.id,
+    codeType: row.code_type,
+    label: labelOrDefault(row.label),
+    companyIdOnCode: row.company_id
+  };
+}
+async function redeemAccessCodeInTransaction(tx, normalized, bookingCompanyId) {
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const tnow = /* @__PURE__ */ new Date();
+  const whereParts = [
+    eq(accessCodesTable.code_normalized, normalized),
+    eq(accessCodesTable.is_active, true),
+    or(isNull(accessCodesTable.valid_from), lte(accessCodesTable.valid_from, tnow)),
+    or(isNull(accessCodesTable.valid_until), gte(accessCodesTable.valid_until, tnow)),
+    or(isNull(accessCodesTable.max_uses), lt(accessCodesTable.uses_count, accessCodesTable.max_uses))
+  ];
+  if (bookingCompanyId != null && bookingCompanyId !== "") {
+    whereParts.push(
+      or(isNull(accessCodesTable.company_id), eq(accessCodesTable.company_id, bookingCompanyId))
+    );
+  }
+  const [row] = await tx.update(accessCodesTable).set({ uses_count: sql`${accessCodesTable.uses_count} + 1` }).where(and(...whereParts)).returning({
+    id: accessCodesTable.id,
+    code_type: accessCodesTable.code_type,
+    label: accessCodesTable.label,
+    company_id: accessCodesTable.company_id
+  });
+  if (row) {
+    if (!isAccessCodeType(row.code_type)) return { ok: false, error: "access_code_invalid" };
+    return {
+      ok: true,
+      id: row.id,
+      codeType: row.code_type,
+      label: labelOrDefault(row.label ?? ""),
+      companyIdOnCode: row.company_id ?? null
+    };
+  }
+  const [probe] = await tx.select({
+    id: accessCodesTable.id,
+    company_id: accessCodesTable.company_id,
+    is_active: accessCodesTable.is_active,
+    valid_from: accessCodesTable.valid_from,
+    valid_until: accessCodesTable.valid_until,
+    max_uses: accessCodesTable.max_uses,
+    uses_count: accessCodesTable.uses_count
+  }).from(accessCodesTable).where(eq(accessCodesTable.code_normalized, normalized)).limit(1);
+  if (!probe) return { ok: false, error: "access_code_invalid" };
+  if (!probe.is_active) return { ok: false, error: "access_code_inactive" };
+  if (bookingCompanyId && probe.company_id && probe.company_id !== bookingCompanyId) {
+    return { ok: false, error: "access_code_wrong_company" };
+  }
+  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_expired" };
+  if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
+  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  return { ok: false, error: "access_code_exhausted" };
+}
+function rowToAdmin(r) {
+  return {
+    id: r.id,
+    codeNormalized: r.code_normalized,
+    codeType: isAccessCodeType(r.code_type) ? r.code_type : "general",
+    companyId: r.company_id ?? null,
+    label: r.label ?? "",
+    maxUses: r.max_uses ?? null,
+    usesCount: r.uses_count,
+    validFrom: r.valid_from ? new Date(r.valid_from).toISOString() : null,
+    validUntil: r.valid_until ? new Date(r.valid_until).toISOString() : null,
+    isActive: r.is_active,
+    createdAt: new Date(r.created_at).toISOString()
+  };
+}
+function memToAdmin(m) {
+  return {
+    id: m.id,
+    codeNormalized: m.code_normalized,
+    codeType: m.code_type,
+    companyId: m.company_id,
+    label: m.label,
+    maxUses: m.max_uses,
+    usesCount: m.uses_count,
+    validFrom: m.valid_from ? m.valid_from.toISOString() : null,
+    validUntil: m.valid_until ? m.valid_until.toISOString() : null,
+    isActive: m.is_active,
+    createdAt: m.created_at.toISOString()
+  };
+}
+async function loadAccessCodesForTraceByIds(ids) {
+  const uniq = [...new Set(ids.filter((x) => Boolean(x)))];
+  const out = /* @__PURE__ */ new Map();
+  if (uniq.length === 0) return out;
+  const db2 = getDb();
+  if (!db2) {
+    for (const m of memByNormalized.values()) {
+      if (uniq.includes(m.id)) {
+        out.set(m.id, {
+          is_active: m.is_active,
+          valid_from: m.valid_from,
+          valid_until: m.valid_until,
+          max_uses: m.max_uses,
+          uses_count: m.uses_count
+        });
+      }
+    }
+    return out;
+  }
+  const rows = await db2.select({
+    id: accessCodesTable.id,
+    is_active: accessCodesTable.is_active,
+    valid_from: accessCodesTable.valid_from,
+    valid_until: accessCodesTable.valid_until,
+    max_uses: accessCodesTable.max_uses,
+    uses_count: accessCodesTable.uses_count
+  }).from(accessCodesTable).where(inArray(accessCodesTable.id, uniq));
+  for (const row of rows) {
+    out.set(row.id, {
+      is_active: row.is_active,
+      valid_from: row.valid_from,
+      valid_until: row.valid_until,
+      max_uses: row.max_uses,
+      uses_count: row.uses_count
+    });
+  }
+  return out;
+}
+async function listAccessCodesAdmin() {
+  const db2 = getDb();
+  if (!db2) {
+    return [...memByNormalized.values()].map(memToAdmin);
+  }
+  const rows = await db2.select().from(accessCodesTable);
+  return rows.map(rowToAdmin);
+}
+async function insertAccessCodeAdmin(body) {
+  const normalized = normalizeAccessCodeInput(body.code);
+  if (!normalized) return { ok: false, error: "code_required" };
+  if (!isAccessCodeType(body.codeType)) return { ok: false, error: "code_type_invalid" };
+  const id = `ac-${randomUUID()}`;
+  const label = typeof body.label === "string" ? body.label.trim() : "";
+  const companyId = typeof body.companyId === "string" && body.companyId.trim() ? body.companyId.trim() : null;
+  const maxUses = typeof body.maxUses === "number" && Number.isFinite(body.maxUses) && body.maxUses > 0 ? Math.floor(body.maxUses) : null;
+  const validFrom = typeof body.validFrom === "string" && body.validFrom.trim() ? new Date(body.validFrom.trim()) : null;
+  const validUntil = typeof body.validUntil === "string" && body.validUntil.trim() ? new Date(body.validUntil.trim()) : null;
+  if (validFrom && Number.isNaN(validFrom.getTime())) return { ok: false, error: "valid_from_invalid" };
+  if (validUntil && Number.isNaN(validUntil.getTime())) return { ok: false, error: "valid_until_invalid" };
+  const db2 = getDb();
+  if (!db2) {
+    if (memByNormalized.has(normalized)) return { ok: false, error: "code_duplicate" };
+    const m = {
+      id,
+      code_normalized: normalized,
+      code_type: body.codeType,
+      company_id: companyId,
+      label,
+      max_uses: maxUses,
+      uses_count: 0,
+      valid_from: validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null,
+      valid_until: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      is_active: true,
+      created_at: /* @__PURE__ */ new Date()
+    };
+    memByNormalized.set(normalized, m);
+    return { ok: true, item: memToAdmin(m) };
+  }
+  try {
+    await db2.insert(accessCodesTable).values({
+      id,
+      code_normalized: normalized,
+      code_type: body.codeType,
+      company_id: companyId,
+      label,
+      max_uses: maxUses,
+      uses_count: 0,
+      valid_from: validFrom && !Number.isNaN(validFrom.getTime()) ? validFrom : null,
+      valid_until: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      is_active: true,
+      meta: {}
+    });
+  } catch (e) {
+    const msg = e && typeof e === "object" && "code" in e ? String(e.code) : "";
+    if (msg === "23505" || String(e).includes("unique")) return { ok: false, error: "code_duplicate" };
+    throw e;
+  }
+  const [r] = await db2.select().from(accessCodesTable).where(eq(accessCodesTable.id, id)).limit(1);
+  if (!r) return { ok: false, error: "insert_failed" };
+  return { ok: true, item: rowToAdmin(r) };
+}
+var memByNormalized;
+var init_accessCodesData = __esm({
+  "src/db/accessCodesData.ts"() {
+    init_drizzle_orm();
+    init_rideAuthorization();
+    init_client();
+    init_schema2();
+    memByNormalized = /* @__PURE__ */ new Map();
+  }
+});
+
 // src/db/ridesData.ts
 var ridesData_exports = {};
 __export(ridesData_exports, {
   adminReleaseRide: () => adminReleaseRide,
   findRide: () => findRide,
   insertRide: () => insertRide,
+  insertRideWithOptionalAccessCode: () => insertRideWithOptionalAccessCode,
   listRides: () => listRides,
   listRidesForCompany: () => listRidesForCompany,
   resetRidesDemo: () => resetRidesDemo,
   updateRide: () => updateRide
 });
+function stripEphemeral(r) {
+  const { accessCodeSummary: _a, ...rest } = r;
+  return rest;
+}
 function rowToRide(r) {
+  const rk = r.ride_kind;
+  const pk = r.payer_kind;
+  const auth = r.authorization_source;
   return {
     id: r.id,
     companyId: r.company_id ?? null,
     createdByPanelUserId: r.created_by_panel_user_id ?? null,
+    rideKind: typeof rk === "string" && isRideKind(rk) ? rk : DEFAULT_RIDE_KIND,
+    payerKind: typeof pk === "string" && isPayerKind(pk) ? pk : DEFAULT_PAYER_KIND,
+    voucherCode: r.voucher_code ?? null,
+    billingReference: r.billing_reference ?? null,
+    authorizationSource: typeof auth === "string" && isAuthorizationSource(auth) ? auth : DEFAULT_AUTHORIZATION_SOURCE,
+    accessCodeId: r.access_code_id ?? null,
+    accessCodeNormalizedSnapshot: r.access_code_normalized_snapshot ?? null,
     createdAt: new Date(r.created_at).toISOString(),
     scheduledAt: r.scheduled_at ? new Date(r.scheduled_at).toISOString() : null,
     status: r.status,
@@ -41023,6 +41390,13 @@ function rideToUpdate(r) {
   return {
     company_id: r.companyId ?? null,
     created_by_panel_user_id: r.createdByPanelUserId ?? null,
+    ride_kind: r.rideKind,
+    payer_kind: r.payerKind,
+    voucher_code: r.voucherCode ?? null,
+    billing_reference: r.billingReference ?? null,
+    authorization_source: r.authorizationSource,
+    access_code_id: r.accessCodeId ?? null,
+    access_code_normalized_snapshot: r.accessCodeNormalizedSnapshot ?? null,
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
     customer_name: r.customerName,
@@ -41050,6 +41424,13 @@ function rideToInsert(r) {
     id: r.id,
     company_id: r.companyId ?? null,
     created_by_panel_user_id: r.createdByPanelUserId ?? null,
+    ride_kind: r.rideKind,
+    payer_kind: r.payerKind,
+    voucher_code: r.voucherCode ?? null,
+    billing_reference: r.billingReference ?? null,
+    authorization_source: r.authorizationSource,
+    access_code_id: r.accessCodeId ?? null,
+    access_code_normalized_snapshot: r.accessCodeNormalizedSnapshot ?? null,
     created_at: new Date(r.createdAt),
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
@@ -41089,13 +41470,68 @@ async function listRidesForCompany(companyId) {
   const rows = await db2.select().from(ridesTable).where(eq(ridesTable.company_id, companyId)).orderBy(desc(ridesTable.created_at));
   return rows.map(rowToRide);
 }
-async function insertRide(r) {
+async function insertRide(r, tx) {
+  const persisted = stripEphemeral(r);
   const db2 = getDb();
-  if (!db2) {
-    memoryRides = [r, ...memoryRides];
+  const run = tx ?? db2;
+  if (!run) {
+    memoryRides = [persisted, ...memoryRides];
     return;
   }
-  await db2.insert(ridesTable).values(rideToInsert(r));
+  await run.insert(ridesTable).values(rideToInsert(persisted));
+}
+async function insertRideWithOptionalAccessCode(ride, accessCodePlain) {
+  const trimmed = typeof accessCodePlain === "string" ? accessCodePlain.trim() : "";
+  if (!trimmed) {
+    const r = {
+      ...stripEphemeral(ride),
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null,
+      accessCodeNormalizedSnapshot: null
+    };
+    await insertRide(r);
+    return { ok: true };
+  }
+  const normalized = normalizeAccessCodeInput(trimmed);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const bookingCompanyId = ride.companyId ?? null;
+  const db2 = getDb();
+  if (!db2) {
+    const red = redeemAccessCodeMemory(trimmed, bookingCompanyId);
+    if (!red.ok) return { ok: false, error: red.error };
+    const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
+    const r = {
+      ...stripEphemeral(ride),
+      authorizationSource: "access_code",
+      accessCodeId: red.id,
+      accessCodeNormalizedSnapshot: normalized,
+      companyId: resolvedCompanyId,
+      payerKind: payerKindForAccessCodeRide(resolvedCompanyId)
+    };
+    await insertRide(r);
+    return { ok: true };
+  }
+  try {
+    const out = await db2.transaction(async (trx) => {
+      const red = await redeemAccessCodeInTransaction(trx, normalized, bookingCompanyId);
+      if (!red.ok) return { ok: false, error: red.error };
+      const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
+      const r = {
+        ...stripEphemeral(ride),
+        authorizationSource: "access_code",
+        accessCodeId: red.id,
+        accessCodeNormalizedSnapshot: normalized,
+        companyId: resolvedCompanyId,
+        payerKind: payerKindForAccessCodeRide(resolvedCompanyId)
+      };
+      await insertRide(r, trx);
+      return { ok: true };
+    });
+    if (!out.ok) return { ok: false, error: out.error };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "access_code_invalid" };
+  }
 }
 async function findRide(id) {
   const db2 = getDb();
@@ -41137,6 +41573,9 @@ var memoryRides;
 var init_ridesData = __esm({
   "src/db/ridesData.ts"() {
     init_drizzle_orm();
+    init_rideBillingProfile();
+    init_rideAuthorization();
+    init_accessCodesData();
     init_client();
     init_schema2();
     memoryRides = [];
@@ -45243,7 +45682,23 @@ var health_default = router;
 
 // src/routes/rides.ts
 var import_express2 = __toESM(require_express2(), 1);
+init_rideBillingProfile();
+init_accessCodesData();
 init_ridesData();
+init_rideAuthorization();
+
+// src/domain/ridePublic.ts
+function stripPartnerOnlyRideFields(r) {
+  const {
+    accessCodeNormalizedSnapshot: _snap,
+    accessCodeTripOutcome: _to,
+    accessCodeDefinitionState: _ds,
+    ...rest
+  } = r;
+  return rest;
+}
+
+// src/routes/rides.ts
 var DEMO = [];
 var driverLocations = /* @__PURE__ */ new Map();
 var customerLocations = /* @__PURE__ */ new Map();
@@ -45251,28 +45706,57 @@ var router2 = (0, import_express2.Router)();
 router2.get("/rides", async (_req, res, next) => {
   try {
     const rows = await listRides();
-    res.json(rows);
+    const publicRows = rows.map(stripPartnerOnlyRideFields);
+    res.json(await attachAccessCodeSummariesToRides(publicRows));
   } catch (e) {
     next(e);
   }
 });
 router2.post("/rides", async (req, res, next) => {
   try {
-    const body = req.body;
-    if (!body.customerName || body.customerName.trim() === "" || !body.passengerId) {
+    const raw = req.body;
+    if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
       res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
       return;
     }
+    if (raw.rideKind != null && raw.rideKind !== "" && (typeof raw.rideKind !== "string" || parseRideKind(raw.rideKind) === null)) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (raw.payerKind != null && raw.payerKind !== "" && (typeof raw.payerKind !== "string" || parsePayerKind(raw.payerKind) === null)) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
+    const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const newReq = {
-      ...body,
+      ...raw,
       id: `REQ-${Date.now()}`,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       status: "pending",
       rejectedBy: [],
-      driverId: null
+      driverId: null,
+      rideKind,
+      payerKind,
+      voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
+      billingReference: parseOptionalBillingTag(raw.billingReference, 256),
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null
     };
-    await insertRide(newReq);
-    res.status(201).json(newReq);
+    const accessCodeRaw = raw.accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
+    if (!ins.ok) {
+      res.status(400).json({ error: ins.error });
+      return;
+    }
+    const created = await findRide(newReq.id);
+    if (!created) {
+      res.status(500).json({ error: "ride_insert_inconsistent" });
+      return;
+    }
+    const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
+    res.status(201).json(withSummary);
   } catch (e) {
     next(e);
   }
@@ -45291,7 +45775,11 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
       ...finalFare != null ? { finalFare } : {},
       ...driverId != null ? { driverId } : {}
     });
-    res.json(updated);
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -45304,7 +45792,7 @@ router2.patch("/rides/:id/release", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    res.json(updated);
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -45361,7 +45849,11 @@ router2.post("/rides/:id/reject", async (req, res, next) => {
     const existing = cur.rejectedBy ?? [];
     const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
     const updated = await updateRide(id, { rejectedBy });
-    res.json(updated);
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -45382,7 +45874,11 @@ router2.post("/rides/:id/driver-cancel", async (req, res, next) => {
       driverId: null,
       rejectedBy
     });
-    res.json(updated);
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -47170,6 +47666,92 @@ var auth_default = router3;
 // src/routes/adminApi.ts
 var import_express4 = __toESM(require_express2(), 1);
 
+// src/domain/panelModules.ts
+var PANEL_MODULE_DEFINITIONS = [
+  {
+    id: "overview",
+    label: "\xDCbersicht",
+    description: "Startseite, Kennzahlen-Hinweise, eigenes Passwort",
+    productIntent: "Einstieg pro Login: Session, Kurz\xFCberblick, Hinweise auf freigeschaltete Module; eigenes Passwort \xE4ndern."
+  },
+  {
+    id: "rides_list",
+    label: "Fahrtenliste & Verlauf",
+    description: "\u201EMeine Fahrten\u201C und \u201EVerlauf\u201C (gemeinsame API)",
+    productIntent: "Alle Mandantenfahrten listen (live + Verlauf), filtern, CSV; inkl. Abrechnungs- und Code-Spuren wo vorhanden."
+  },
+  {
+    id: "rides_create",
+    label: "Neue Fahrt",
+    description: "Auftrag erfassen (POST /panel/v1/rides)",
+    productIntent: "Manuelle oder dispositionelle Erfassung einer Fahrt f\xFCr den Mandanten; optional Freigabe-Code / Referenzen gem\xE4\xDF weiterer Module."
+  },
+  {
+    id: "company_profile",
+    label: "Profil / Firma",
+    description: "Firmenstammdaten bearbeiten",
+    productIntent: "Pflege von Name, Kontakt, Adresse, USt-Id \u2014 alles, was auf Rechnungen und Zuordnung erscheinen soll."
+  },
+  {
+    id: "team",
+    label: "Mitarbeiter",
+    description: "Panel-Zug\xE4nge und Rollen",
+    productIntent: "Nutzerverwaltung f\xFCr das Partner-Portal (Rollen, Aktivierung, Passwort-Reset) innerhalb des Mandanten."
+  },
+  {
+    id: "access_codes",
+    label: "Freigabe-Codes",
+    description: "Digitale Kosten\xFCbernahme: Codes verwalten und nachverfolgen",
+    productIntent: "Lebenszyklus digitaler Freigaben: Codes anlegen, begrenzen (Zeit, Nutzungen, Mandant), in Buchungen einl\xF6sen. Verlauf: welcher Code, welche Fahrt, Zahler, Preis, Status; Nutzung/Storno/Zeitablauf nachvollziehbar (Snapshot auf der Fahrt + Code-Metadaten)."
+  },
+  {
+    id: "hotel_mode",
+    label: "Hotelmodus",
+    description: "Hotel-spezifische Oberfl\xE4che und Logik",
+    productIntent: "Voreinstellungen und Formulare f\xFCr Beherbergung (Zimmer/Gast-Referenz, Concierge-Workflow, Kennzeichnung Hotel-Kosten\xFCbernahme), ohne separates System."
+  },
+  {
+    id: "company_rides",
+    label: "Firmenfahrten",
+    description: "Sicht auf Firmen- und Sachkostenfahrten",
+    productIntent: "Gefilterte Ansichten, KPIs und Exporte f\xFCr typische B2B-/Firmenfahrten (z. B. nur payerKind company, Kostenstellen, Abgleich mit Buchhaltung)."
+  },
+  {
+    id: "recurring_rides",
+    label: "Serienfahrten",
+    description: "Wiederkehrende oder geb\xFCndelte Auftr\xE4ge",
+    productIntent: "Vorlagen und Serien (t\xE4glich/w\xF6chentlich, feste Strecke oder Kunde), Erzeugung offener Fahrten aus Serien, \xC4nderungen/Storno auf Serien-Ebene."
+  },
+  {
+    id: "billing",
+    label: "Abrechnung",
+    description: "Ums\xE4tze, Perioden, Exporte",
+    productIntent: "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostentr\xE4ger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik."
+  }
+];
+var ID_SET = new Set(PANEL_MODULE_DEFINITIONS.map((d) => d.id));
+var ALL_PANEL_MODULE_IDS = PANEL_MODULE_DEFINITIONS.map((d) => d.id);
+function normalizeStoredPanelModules(raw) {
+  if (raw == null) return null;
+  if (!Array.isArray(raw)) return null;
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const x of raw) {
+    if (typeof x !== "string") continue;
+    const id = x.trim();
+    if (!id || seen.has(id)) continue;
+    if (!ID_SET.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+function resolveEffectivePanelModules(stored) {
+  if (stored == null) return [...ALL_PANEL_MODULE_IDS];
+  const set = new Set(stored);
+  return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
+}
+
 // src/db/adminData.ts
 init_drizzle_orm();
 init_client();
@@ -47178,28 +47760,44 @@ var seedCompanies = [
   {
     id: "co-demo-1",
     name: "Demo Taxi GmbH",
+    contact_name: "",
     email: "demo@example.com",
     phone: "+49 711 000000",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+    vat_id: "",
     is_active: true,
     is_priority_company: true,
     priority_for_live_rides: true,
     priority_for_reservations: false,
     priority_price_threshold: 25,
     priority_timeout_seconds: 90,
-    release_radius_km: 12
+    release_radius_km: 12,
+    panel_modules: null
   },
   {
     id: "co-demo-2",
     name: "Musterfahrdienst",
+    contact_name: "",
     email: "kontakt@muster.de",
     phone: "+49 711 111111",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+    vat_id: "",
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,
     priority_for_reservations: false,
     priority_price_threshold: 18,
     priority_timeout_seconds: 120,
-    release_radius_km: 8
+    release_radius_km: 8,
+    panel_modules: null
   }
 ];
 var seedFareAreas = [
@@ -47218,15 +47816,23 @@ function rowToCompany(r) {
   return {
     id: r.id,
     name: r.name,
+    contact_name: r.contact_name,
     email: r.email,
     phone: r.phone,
+    address_line1: r.address_line1,
+    address_line2: r.address_line2,
+    postal_code: r.postal_code,
+    city: r.city,
+    country: r.country,
+    vat_id: r.vat_id,
     is_active: r.is_active,
     is_priority_company: r.is_priority_company,
     priority_for_live_rides: r.priority_for_live_rides,
     priority_for_reservations: r.priority_for_reservations,
     priority_price_threshold: r.priority_price_threshold,
     priority_timeout_seconds: r.priority_timeout_seconds,
-    release_radius_km: r.release_radius_km
+    release_radius_km: r.release_radius_km,
+    panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null
   };
 }
 function rowToFareArea(r) {
@@ -47239,33 +47845,105 @@ function rowToFareArea(r) {
     status: r.status
   };
 }
-async function getAdminStats() {
+var ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
+function num(v) {
+  const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n) ? n : 0;
+}
+function rideRevenueAmount(r) {
+  if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
+  return r.estimatedFare;
+}
+async function getAdminStats(opts) {
+  const revenueFrom = opts?.revenueFrom;
+  const revenueTo = opts?.revenueTo;
+  const revenueFiltered = Boolean(revenueFrom && revenueTo);
   const db2 = getDb();
   if (!db2) {
     const { listRides: listRides2 } = await Promise.resolve().then(() => (init_ridesData(), ridesData_exports));
     const rides = await listRides2();
+    const byStatus2 = (s) => rides.filter((r) => r.status === s).length;
+    const active2 = ACTIVE_RIDE_STATUSES.reduce((acc, s) => acc + byStatus2(s), 0);
+    const driverIds = new Set(
+      rides.map((r) => r.driverId).filter((id) => Boolean(id && String(id).trim()))
+    );
+    const completedInPeriod = rides.filter((r) => {
+      if (r.status !== "completed") return false;
+      if (!revenueFiltered || !revenueFrom || !revenueTo) return true;
+      const t = new Date(r.createdAt).getTime();
+      return t >= revenueFrom.getTime() && t <= revenueTo.getTime();
+    });
+    const completedSum = completedInPeriod.reduce((s, r) => s + rideRevenueAmount(r), 0);
     return {
-      offene: rides.filter((r) => r.status === "pending").length,
-      laufend: rides.filter(
-        (r) => ["accepted", "arrived", "in_progress"].includes(r.status)
-      ).length,
-      erledigt: rides.filter((r) => r.status === "completed").length,
-      unternehmer: memCompanies.filter((c) => c.is_active).length,
-      fahrer: 8,
-      partner: 2
+      rides: {
+        total: rides.length,
+        pending: byStatus2("pending"),
+        active: active2,
+        completed: byStatus2("completed"),
+        cancelled: byStatus2("cancelled"),
+        rejected: byStatus2("rejected")
+      },
+      companies: {
+        total: memCompanies.length,
+        active: memCompanies.filter((c) => c.is_active).length
+      },
+      drivers: { distinctWithRide: driverIds.size },
+      panelUsers: { active: 0 },
+      revenue: {
+        currency: "EUR",
+        periodFrom: revenueFiltered && revenueFrom ? revenueFrom.toISOString() : null,
+        periodTo: revenueFiltered && revenueTo ? revenueTo.toISOString() : null,
+        completedSum,
+        completedRideCount: completedInPeriod.length
+      }
     };
   }
-  const [offene] = await db2.select({ n: count() }).from(ridesTable).where(eq(ridesTable.status, "pending"));
-  const [laufendRow] = await db2.select({ n: count() }).from(ridesTable).where(inArray(ridesTable.status, ["accepted", "arrived", "in_progress"]));
-  const [erledigt] = await db2.select({ n: count() }).from(ridesTable).where(eq(ridesTable.status, "completed"));
-  const [unternehmer] = await db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_active, true));
+  const statusRows = await db2.select({ status: ridesTable.status, n: count() }).from(ridesTable).groupBy(ridesTable.status);
+  const byStatus = {};
+  let ridesTotal = 0;
+  for (const row of statusRows) {
+    const c = Number(row.n ?? 0);
+    byStatus[row.status] = c;
+    ridesTotal += c;
+  }
+  const active = ACTIVE_RIDE_STATUSES.reduce((acc, s) => acc + (byStatus[s] ?? 0), 0);
+  const [companiesTotalRow] = await db2.select({ n: count() }).from(adminCompaniesTable);
+  const [companiesActiveRow] = await db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_active, true));
+  const [driversRow] = await db2.select({
+    n: sql`count(distinct ${ridesTable.driver_id})::int`
+  }).from(ridesTable).where(and(isNotNull(ridesTable.driver_id), ne(ridesTable.driver_id, "")));
+  const [panelUsersRow] = await db2.select({ n: count() }).from(panelUsersTable).where(eq(panelUsersTable.is_active, true));
+  const revConds = [eq(ridesTable.status, "completed")];
+  if (revenueFiltered && revenueFrom && revenueTo) {
+    revConds.push(gte(ridesTable.created_at, revenueFrom));
+    revConds.push(lte(ridesTable.created_at, revenueTo));
+  }
+  const [revRow] = await db2.select({
+    completedSum: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    completedRideCount: count()
+  }).from(ridesTable).where(and(...revConds));
   return {
-    offene: Number(offene?.n ?? 0),
-    laufend: Number(laufendRow?.n ?? 0),
-    erledigt: Number(erledigt?.n ?? 0),
-    unternehmer: Number(unternehmer?.n ?? 0),
-    fahrer: 0,
-    partner: 0
+    rides: {
+      total: ridesTotal,
+      pending: byStatus.pending ?? 0,
+      active,
+      completed: byStatus.completed ?? 0,
+      cancelled: byStatus.cancelled ?? 0,
+      rejected: byStatus.rejected ?? 0
+    },
+    companies: {
+      total: Number(companiesTotalRow?.n ?? 0),
+      active: Number(companiesActiveRow?.n ?? 0)
+    },
+    drivers: { distinctWithRide: num(driversRow?.n) },
+    panelUsers: { active: Number(panelUsersRow?.n ?? 0) },
+    revenue: {
+      currency: "EUR",
+      periodFrom: revenueFiltered && revenueFrom ? revenueFrom.toISOString() : null,
+      periodTo: revenueFiltered && revenueTo ? revenueTo.toISOString() : null,
+      completedSum: num(revRow?.completedSum),
+      completedRideCount: Number(revRow?.completedRideCount ?? 0)
+    }
   };
 }
 async function listCompanies() {
@@ -47305,6 +47983,23 @@ async function patchCompanyPriority(companyId, body) {
     priority_for_reservations: next.priority_for_reservations
   }).where(eq(adminCompaniesTable.id, companyId));
   return next;
+}
+async function patchCompanyPanelModules(companyId, modules) {
+  const db2 = getDb();
+  const normalized = modules == null ? null : normalizeStoredPanelModules(modules);
+  if (!db2) {
+    const idx = memCompanies.findIndex((c) => c.id === companyId);
+    if (idx < 0) return null;
+    const cur = memCompanies[idx];
+    const next = { ...cur, panel_modules: normalized };
+    memCompanies[idx] = next;
+    return next;
+  }
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  if (!rows[0]) return null;
+  await db2.update(adminCompaniesTable).set({ panel_modules: normalized }).where(eq(adminCompaniesTable.id, companyId));
+  const again = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  return again[0] ? rowToCompany(again[0]) : null;
 }
 async function listFareAreas() {
   const db2 = getDb();
@@ -47346,15 +48041,23 @@ async function seedAdminDefaultsIfEmpty() {
       seedCompanies.map((co) => ({
         id: co.id,
         name: co.name,
+        contact_name: co.contact_name,
         email: co.email,
         phone: co.phone,
+        address_line1: co.address_line1,
+        address_line2: co.address_line2,
+        postal_code: co.postal_code,
+        city: co.city,
+        country: co.country,
+        vat_id: co.vat_id,
         is_active: co.is_active,
         is_priority_company: co.is_priority_company,
         priority_for_live_rides: co.priority_for_live_rides,
         priority_for_reservations: co.priority_for_reservations,
         priority_price_threshold: co.priority_price_threshold,
         priority_timeout_seconds: co.priority_timeout_seconds,
-        release_radius_km: co.release_radius_km
+        release_radius_km: co.release_radius_km,
+        panel_modules: co.panel_modules ?? null
       }))
     );
   }
@@ -47372,6 +48075,9 @@ async function seedAdminDefaultsIfEmpty() {
     );
   }
 }
+
+// src/routes/adminApi.ts
+init_accessCodesData();
 
 // src/middleware/requireAdminApiBearer.ts
 var requireAdminApiBearer = (req, res, next) => {
@@ -47397,25 +48103,71 @@ var requireAdminApiBearer = (req, res, next) => {
 };
 
 // src/routes/adminApi.ts
+function parseStatsRevenueBound(v) {
+  if (typeof v !== "string") return void 0;
+  const s = v.trim();
+  if (!s) return void 0;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? void 0 : d;
+}
 var router4 = (0, import_express4.Router)();
-router4.use(requireAdminApiBearer);
-router4.get("/admin/stats", async (_req, res, next) => {
+var adminJson = (0, import_express4.Router)();
+adminJson.use(requireAdminApiBearer);
+adminJson.get("/stats", async (req, res, next) => {
   try {
-    const stats = await getAdminStats();
+    const q = req.query;
+    const revenueFrom = parseStatsRevenueBound(q.revenueFrom);
+    const revenueTo = parseStatsRevenueBound(q.revenueTo);
+    const stats = await getAdminStats(
+      revenueFrom && revenueTo ? { revenueFrom, revenueTo } : {}
+    );
     res.json({ ok: true, stats });
   } catch (e) {
     next(e);
   }
 });
-router4.get("/admin/companies", async (_req, res, next) => {
+adminJson.get("/companies", async (_req, res, next) => {
   try {
     const items = await listCompanies();
-    res.json({ ok: true, items });
+    res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
   } catch (e) {
     next(e);
   }
 });
-router4.patch("/admin/companies/:companyId/priority", async (req, res, next) => {
+adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const body = req.body;
+    if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
+      res.status(400).json({ error: "panel_modules_required", hint: "null = alle Module, sonst string[]" });
+      return;
+    }
+    const raw = body.panel_modules;
+    let modules;
+    if (raw === null) {
+      modules = null;
+    } else if (Array.isArray(raw)) {
+      const n = normalizeStoredPanelModules(raw) ?? [];
+      if (n.length === 0) {
+        res.status(400).json({ error: "panel_modules_empty", hint: "Mindestens ein Modul, oder panel_modules: null f\xFCr alle." });
+        return;
+      }
+      modules = n;
+    } else {
+      res.status(400).json({ error: "panel_modules_invalid" });
+      return;
+    }
+    const item = await patchCompanyPanelModules(companyId, modules);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
   try {
     const { companyId } = req.params;
     const body = req.body;
@@ -47429,7 +48181,7 @@ router4.patch("/admin/companies/:companyId/priority", async (req, res, next) => 
     next(e);
   }
 });
-router4.get("/admin/fare-areas", async (_req, res, next) => {
+adminJson.get("/fare-areas", async (_req, res, next) => {
   try {
     const items = await listFareAreas();
     res.json({ ok: true, items });
@@ -47437,7 +48189,43 @@ router4.get("/admin/fare-areas", async (_req, res, next) => {
     next(e);
   }
 });
-router4.post("/admin/fare-areas", async (req, res, next) => {
+adminJson.get("/access-codes", async (_req, res, next) => {
+  try {
+    const items = await listAccessCodesAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/access-codes", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const code = typeof body.code === "string" ? body.code : "";
+    const codeType = typeof body.codeType === "string" ? body.codeType : "";
+    const result = await insertAccessCodeAdmin({
+      code,
+      codeType,
+      companyId: typeof body.companyId === "string" ? body.companyId : void 0,
+      label: typeof body.label === "string" ? body.label : void 0,
+      maxUses: typeof body.maxUses === "number" ? body.maxUses : void 0,
+      validFrom: typeof body.validFrom === "string" ? body.validFrom : void 0,
+      validUntil: typeof body.validUntil === "string" ? body.validUntil : void 0
+    });
+    if (!result.ok) {
+      const err = result.error;
+      if (err === "code_duplicate") {
+        res.status(409).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    res.status(201).json({ ok: true, item: result.item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/fare-areas", async (req, res, next) => {
   try {
     const body = req.body;
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -47457,6 +48245,7 @@ router4.post("/admin/fare-areas", async (req, res, next) => {
     next(e);
   }
 });
+router4.use("/admin", adminJson);
 var adminApi_default = router4;
 
 // src/routes/panelAuth.ts
@@ -47515,7 +48304,8 @@ async function findActivePanelUserProfileById(id) {
     email: panelUsersTable.email,
     role: panelUsersTable.role,
     createdAt: panelUsersTable.created_at,
-    updatedAt: panelUsersTable.updated_at
+    updatedAt: panelUsersTable.updated_at,
+    companyPanelModulesJson: adminCompaniesTable.panel_modules
   }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
     and(
       eq(panelUsersTable.id, id),
@@ -47533,7 +48323,8 @@ async function findActivePanelUserProfileById(id) {
     email: r.email,
     role: r.role,
     createdAt: r.createdAt,
-    updatedAt: r.updatedAt
+    updatedAt: r.updatedAt,
+    panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson)
   };
 }
 async function findActivePanelUserById(id) {
@@ -47606,7 +48397,8 @@ var ROLE_MATRIX = {
     "users.read",
     "users.manage",
     "users.reset_password",
-    "self.change_password"
+    "self.change_password",
+    "company.update"
   ],
   manager: [
     "rides.read",
@@ -47614,7 +48406,8 @@ var ROLE_MATRIX = {
     "users.read",
     "users.manage",
     "users.reset_password",
-    "self.change_password"
+    "self.change_password",
+    "company.update"
   ],
   staff: ["rides.read", "rides.create", "users.read", "self.change_password"],
   readonly: ["rides.read", "users.read", "self.change_password"]
@@ -47806,8 +48599,9 @@ var panelAuth_default = router5;
 
 // src/routes/panelApi.ts
 var import_express6 = __toESM(require_express2(), 1);
+init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 
 // src/db/panelAuditData.ts
 init_client();
@@ -47831,33 +48625,115 @@ async function insertPanelAuditLog(input) {
 init_drizzle_orm();
 init_client();
 init_schema2();
+var MAX = {
+  name: 200,
+  line: 500,
+  short: 120,
+  vat: 64
+};
+function clip(s, max) {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max);
+}
+function rowToPanelPublic(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    contactName: r.contact_name,
+    email: r.email,
+    phone: r.phone,
+    addressLine1: r.address_line1,
+    addressLine2: r.address_line2,
+    postalCode: r.postal_code,
+    city: r.city,
+    country: r.country,
+    vatId: r.vat_id,
+    isActive: r.is_active
+  };
+}
 async function getPanelCompanyById(companyId) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
   if (!db2) return null;
-  const rows = await db2.select({
-    id: adminCompaniesTable.id,
-    name: adminCompaniesTable.name,
-    email: adminCompaniesTable.email,
-    phone: adminCompaniesTable.phone,
-    is_active: adminCompaniesTable.is_active
-  }).from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
+  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
   const r = rows[0];
   if (!r) return null;
-  return {
-    id: r.id,
-    name: r.name,
-    email: r.email,
-    phone: r.phone,
-    isActive: r.is_active
-  };
+  return rowToPanelPublic(r);
+}
+async function patchPanelCompanyProfile(companyId, patch) {
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const db2 = getDb();
+  if (!db2) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r0 = rows[0];
+  if (!r0 || !r0.is_active) {
+    return { ok: false, error: "company_not_found" };
+  }
+  const keys = Object.keys(patch).filter((k) => patch[k] !== void 0);
+  if (keys.length === 0) {
+    return { ok: false, error: "no_changes" };
+  }
+  const set = {};
+  if (patch.name !== void 0) {
+    const name = clip(patch.name, MAX.name);
+    if (!name) {
+      return { ok: false, error: "name_required" };
+    }
+    set.name = name;
+  }
+  if (patch.contactName !== void 0) {
+    set.contact_name = clip(patch.contactName, MAX.short);
+  }
+  if (patch.email !== void 0) {
+    const e = clip(patch.email, MAX.short);
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      return { ok: false, error: "email_invalid" };
+    }
+    set.email = e;
+  }
+  if (patch.phone !== void 0) {
+    set.phone = clip(patch.phone, MAX.short);
+  }
+  if (patch.addressLine1 !== void 0) {
+    set.address_line1 = clip(patch.addressLine1, MAX.line);
+  }
+  if (patch.addressLine2 !== void 0) {
+    set.address_line2 = clip(patch.addressLine2, MAX.line);
+  }
+  if (patch.postalCode !== void 0) {
+    set.postal_code = clip(patch.postalCode, 32);
+  }
+  if (patch.city !== void 0) {
+    set.city = clip(patch.city, MAX.short);
+  }
+  if (patch.country !== void 0) {
+    set.country = clip(patch.country, MAX.short);
+  }
+  if (patch.vatId !== void 0) {
+    set.vat_id = clip(patch.vatId, MAX.vat);
+  }
+  if (Object.keys(set).length === 0) {
+    return { ok: false, error: "no_changes" };
+  }
+  await db2.update(adminCompaniesTable).set(set).where(eq(adminCompaniesTable.id, companyId));
+  const again = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r1 = again[0];
+  if (!r1) {
+    return { ok: false, error: "company_not_found" };
+  }
+  return { ok: true, company: rowToPanelPublic(r1) };
 }
 
 // src/db/panelUsersData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 function toPublic(r) {
   return {
     id: r.id,
@@ -47912,7 +48788,7 @@ async function insertPanelUser(input) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID();
+  const id = randomUUID2();
   const username = input.username.trim();
   const email = input.email.trim();
   try {
@@ -47979,7 +48855,31 @@ async function panelUsernameTaken(normalized, excludeUserId) {
 }
 
 // src/routes/panelApi.ts
+init_accessCodesData();
 init_ridesData();
+init_rideAuthorization();
+
+// src/domain/accessCodeTrace.ts
+function accessCodeTripOutcomeFromRide(r) {
+  if (r.authorizationSource !== "access_code") return "no_code";
+  switch (r.status) {
+    case "completed":
+      return "completed";
+    case "cancelled":
+      return "cancelled";
+    case "rejected":
+      return "rejected";
+    default:
+      return "open";
+  }
+}
+function computeAccessCodeDefinitionState(row, now) {
+  if (!row.is_active) return "inactive";
+  if (row.valid_from && row.valid_from > now) return "not_yet_valid";
+  if (row.valid_until && row.valid_until < now) return "expired_window";
+  if (row.max_uses != null && row.uses_count >= row.max_uses) return "exhausted";
+  return "valid";
+}
 
 // src/middleware/requirePanelAuth.ts
 function bearerToken(req) {
@@ -48048,6 +48948,33 @@ function canAssignPanelRole(actor, target) {
   }
   return false;
 }
+function enabledPanelModules(profile) {
+  return resolveEffectivePanelModules(profile.panelModules);
+}
+function denyUnlessPanelModule(res, profile, mod) {
+  if (!enabledPanelModules(profile).includes(mod)) {
+    res.status(403).json({ error: "module_disabled", hint: mod });
+    return false;
+  }
+  return true;
+}
+function denyUnlessCompanyOrOverview(res, profile) {
+  const e = enabledPanelModules(profile);
+  if (e.includes("overview") || e.includes("company_profile")) return true;
+  res.status(403).json({ error: "module_disabled", hint: "overview_or_company_profile" });
+  return false;
+}
+async function enrichPanelRidesForResponse(rides) {
+  const enriched = await attachAccessCodeSummariesToRides(rides);
+  const codeIds = [...new Set(enriched.map((r) => r.accessCodeId).filter((x) => Boolean(x)))];
+  const traceById = await loadAccessCodesForTraceByIds(codeIds);
+  const now = /* @__PURE__ */ new Date();
+  return enriched.map((r) => ({
+    ...r,
+    accessCodeTripOutcome: accessCodeTripOutcomeFromRide(r),
+    accessCodeDefinitionState: r.accessCodeId && traceById.has(r.accessCodeId) ? computeAccessCodeDefinitionState(traceById.get(r.accessCodeId), now) : null
+  }));
+}
 router6.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
@@ -48067,13 +48994,15 @@ router6.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       role: profile.role,
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString(),
-      permissions: permissionsForRole(role)
+      permissions: permissionsForRole(role),
+      panelModules: enabledPanelModules(profile)
     }
   });
 });
 router6.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
+  if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
   const { claims } = ctx;
   const company = await getPanelCompanyById(claims.companyId);
   if (!company) {
@@ -48082,10 +49011,72 @@ router6.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
+router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_profile")) return;
+    if (!denyUnless(res, ctx.profile.role, "company.update")) return;
+    const body = req.body;
+    const str = (k) => typeof body[k] === "string" ? body[k] : void 0;
+    const patch = {};
+    const n = str("name");
+    const cn = str("contactName");
+    const em = str("email");
+    const ph = str("phone");
+    const a1 = str("addressLine1");
+    const a2 = str("addressLine2");
+    const pc = str("postalCode");
+    const ci = str("city");
+    const co = str("country");
+    const vi = str("vatId");
+    if (n !== void 0) patch.name = n;
+    if (cn !== void 0) patch.contactName = cn;
+    if (em !== void 0) patch.email = em;
+    if (ph !== void 0) patch.phone = ph;
+    if (a1 !== void 0) patch.addressLine1 = a1;
+    if (a2 !== void 0) patch.addressLine2 = a2;
+    if (pc !== void 0) patch.postalCode = pc;
+    if (ci !== void 0) patch.city = ci;
+    if (co !== void 0) patch.country = co;
+    if (vi !== void 0) patch.vatId = vi;
+    const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
+    if (!result.ok) {
+      const code = result.error;
+      if (code === "company_not_found") {
+        res.status(404).json({ error: code });
+        return;
+      }
+      if (code === "no_changes") {
+        res.status(400).json({ error: code });
+        return;
+      }
+      if (code === "name_required" || code === "email_invalid") {
+        res.status(400).json({ error: code });
+        return;
+      }
+      res.status(503).json({ error: code });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID3(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "company.profile_updated",
+      subjectType: "admin_company",
+      subjectId: ctx.claims.companyId,
+      meta: { fields: Object.keys(patch) }
+    });
+    res.json({ ok: true, company: result.company });
+  } catch (e) {
+    next(e);
+  }
+});
 router6.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_list")) return;
     if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
     const rides = await listRidesForCompany(ctx.claims.companyId);
     const ids = rides.map((r) => r.createdByPanelUserId).filter((x) => Boolean(x));
@@ -48094,7 +49085,8 @@ router6.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       ...r,
       createdByUsername: r.createdByPanelUserId ? names[r.createdByPanelUserId] ?? null : null
     }));
-    res.json({ ok: true, rides: ridesOut });
+    const withTrace = await enrichPanelRidesForResponse(ridesOut);
+    res.json({ ok: true, rides: withTrace });
   } catch (e) {
     next(e);
   }
@@ -48103,6 +49095,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "rides_create")) return;
     if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
     const body = req.body;
     const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
@@ -48111,7 +49104,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       return;
     }
     const str = (k) => typeof body[k] === "string" ? body[k] : "";
-    const num = (k) => typeof body[k] === "number" && Number.isFinite(body[k]) ? body[k] : NaN;
+    const num2 = (k) => typeof body[k] === "number" && Number.isFinite(body[k]) ? body[k] : NaN;
     const optStr = (k) => {
       const v = body[k];
       if (v == null) return void 0;
@@ -48126,9 +49119,9 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const fromFull = str("fromFull").trim();
     const to = str("to").trim();
     const toFull = str("toFull").trim();
-    const distanceKm = num("distanceKm");
-    const durationMinutes = num("durationMinutes");
-    const estimatedFare = num("estimatedFare");
+    const distanceKm = num2("distanceKm");
+    const durationMinutes = num2("durationMinutes");
+    const estimatedFare = num2("estimatedFare");
     const paymentMethod = str("paymentMethod").trim();
     const vehicle = str("vehicle").trim();
     if (!from || !fromFull || !to || !toFull) {
@@ -48141,6 +49134,20 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     }
     const scheduledRaw = optStr("scheduledAt");
     const passengerId = optStr("passengerId");
+    const rawRk = body.rideKind;
+    const rawPk = body.payerKind;
+    if (rawRk != null && rawRk !== "" && (typeof rawRk !== "string" || parseRideKind(rawRk) === null)) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (rawPk != null && rawPk !== "" && (typeof rawPk !== "string" || parsePayerKind(rawPk) === null)) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
+    const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const newReq = {
       id: `REQ-${Date.now()}`,
       companyId: ctx.claims.companyId,
@@ -48165,19 +49172,48 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       estimatedFare,
       finalFare: null,
       paymentMethod,
-      vehicle
+      vehicle,
+      rideKind,
+      payerKind,
+      voucherCode,
+      billingReference,
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null
     };
-    await insertRide(newReq);
+    const accessCodeRaw = body.accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    if (accessCodePlain && accessCodePlain.trim() && !enabledPanelModules(ctx.profile).includes("access_codes")) {
+      res.status(403).json({ error: "module_disabled", hint: "access_codes" });
+      return;
+    }
+    const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
+    if (!ins.ok) {
+      const err = ins.error;
+      if (err === "access_code_wrong_company") {
+        res.status(403).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    const saved = await findRide(newReq.id);
+    const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID2(),
+      id: randomUUID3(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
       subjectType: "ride",
       subjectId: newReq.id,
-      meta: { customerName: newReq.customerName }
+      meta: {
+        customerName: rideOut.customerName,
+        rideKind: rideOut.rideKind,
+        payerKind: rideOut.payerKind,
+        authorizationSource: rideOut.authorizationSource,
+        accessCodeId: rideOut.accessCodeId ?? void 0
+      }
     });
-    res.status(201).json({ ok: true, ride: newReq });
+    res.status(201).json({ ok: true, ride: rideOut });
   } catch (e) {
     next(e);
   }
@@ -48186,6 +49222,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
     if (!denyUnless(res, ctx.profile.role, "self.change_password")) return;
     const body = req.body;
     const cur = typeof body.currentPassword === "string" ? body.currentPassword : "";
@@ -48211,7 +49248,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID2(),
+      id: randomUUID3(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -48228,6 +49265,7 @@ router6.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.read")) return;
     const users = await listPanelUsersInCompany(ctx.claims.companyId);
     res.json({ ok: true, users });
@@ -48239,6 +49277,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
     const body = req.body;
     const username = typeof body.username === "string" ? body.username.trim() : "";
@@ -48275,7 +49314,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID2(),
+      id: randomUUID3(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -48292,6 +49331,7 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
     const { id } = req.params;
     if (!id) {
@@ -48336,7 +49376,7 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID2(),
+      id: randomUUID3(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -48353,6 +49393,7 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "team")) return;
     if (!denyUnless(res, ctx.profile.role, "users.reset_password")) return;
     const { id } = req.params;
     if (!id) {
@@ -48385,7 +49426,7 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID2(),
+      id: randomUUID3(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -48618,6 +49659,7 @@ app.get("/", (req, res, next) => {
         panelPasswordLogin: "/api/panel-auth/login",
         panelMe: "/api/panel/v1/me",
         panelCompany: "/api/panel/v1/company",
+        panelCompanyPatch: "PATCH /api/panel/v1/company",
         panelRidesList: "/api/panel/v1/rides",
         panelRidesCreate: "POST /api/panel/v1/rides",
         panelHealth: "/api/panel/v1/health",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import { hasPanelModule } from "../lib/panelNavigation.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -8,6 +9,7 @@ function hasPerm(permissions, key) {
 
 export default function RideCreatePage() {
   const { token, user } = usePanelAuth();
+  const showAccessCode = hasPanelModule(user?.panelModules, "access_codes");
   const canCreate = hasPerm(user?.permissions, "rides.create");
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState("");
@@ -25,6 +27,11 @@ export default function RideCreatePage() {
     vehicle: "standard",
     scheduledAt: "",
     passengerId: "",
+    rideKind: "standard",
+    payerKind: "passenger",
+    voucherCode: "",
+    billingReference: "",
+    accessCode: "",
   });
 
   async function onCreate(e) {
@@ -59,8 +66,13 @@ export default function RideCreatePage() {
         estimatedFare,
         paymentMethod: form.paymentMethod.trim() || "rechnung",
         vehicle: form.vehicle.trim() || "standard",
+        rideKind: form.rideKind,
+        payerKind: form.payerKind,
         ...(form.scheduledAt.trim() ? { scheduledAt: form.scheduledAt.trim() } : {}),
         ...(form.passengerId.trim() ? { passengerId: form.passengerId.trim() } : {}),
+        ...(form.voucherCode.trim() ? { voucherCode: form.voucherCode.trim() } : {}),
+        ...(form.billingReference.trim() ? { billingReference: form.billingReference.trim() } : {}),
+        ...(form.accessCode.trim() ? { accessCode: form.accessCode.trim() } : {}),
       };
       const res = await fetch(`${API_BASE}/panel/v1/rides`, {
         method: "POST",
@@ -82,7 +94,19 @@ export default function RideCreatePage() {
                 ? "Route unvollständig."
                 : code === "pricing_or_vehicle_invalid"
                   ? "Preis oder Fahrzeugtyp ungültig."
-                  : "Fahrt konnte nicht angelegt werden.",
+                  : code === "ride_kind_invalid" || code === "payer_kind_invalid"
+                    ? "Fahrttyp oder Zahler ungültig."
+                    : code === "access_code_invalid"
+                      ? "Zugangscode ungültig oder unbekannt."
+                      : code === "access_code_inactive"
+                        ? "Zugangscode ist deaktiviert."
+                        : code === "access_code_expired"
+                          ? "Zugangscode noch nicht gültig oder abgelaufen."
+                          : code === "access_code_exhausted"
+                            ? "Zugangscode bereits vollständig eingelöst."
+                            : code === "access_code_wrong_company"
+                              ? "Zugangscode gehört nicht zu Ihrem Unternehmen."
+                              : "Fahrt konnte nicht angelegt werden.",
         );
         return;
       }
@@ -99,6 +123,11 @@ export default function RideCreatePage() {
         estimatedFare: "",
         scheduledAt: "",
         passengerId: "",
+        rideKind: "standard",
+        payerKind: "passenger",
+        voucherCode: "",
+        billingReference: "",
+        accessCode: "",
       }));
     } catch {
       setCreateMsg("Fahrt konnte nicht angelegt werden.");
@@ -131,6 +160,59 @@ export default function RideCreatePage() {
                   autoComplete="off"
                 />
               </label>
+              <label className="panel-rides-form__field">
+                <span>Fahrttyp</span>
+                <select
+                  value={form.rideKind}
+                  onChange={(ev) => setForm((f) => ({ ...f, rideKind: ev.target.value }))}
+                >
+                  <option value="standard">Normale Fahrt</option>
+                  <option value="medical">Krankenfahrt</option>
+                  <option value="voucher">Gutschein-Fahrt</option>
+                  <option value="company">Firmenfahrt</option>
+                </select>
+              </label>
+              <label className="panel-rides-form__field">
+                <span>Zahler / Abrechnung</span>
+                <select
+                  value={form.payerKind}
+                  onChange={(ev) => setForm((f) => ({ ...f, payerKind: ev.target.value }))}
+                >
+                  <option value="passenger">Fahrgast</option>
+                  <option value="company">Firma (Rechnung)</option>
+                  <option value="insurance">Kostenträger (z. B. KV)</option>
+                  <option value="voucher">Gutschein</option>
+                  <option value="third_party">Dritter</option>
+                </select>
+              </label>
+              <label className="panel-rides-form__field">
+                <span>Gutscheincode (optional)</span>
+                <input
+                  value={form.voucherCode}
+                  onChange={(ev) => setForm((f) => ({ ...f, voucherCode: ev.target.value }))}
+                  autoComplete="off"
+                />
+              </label>
+              <label className="panel-rides-form__field">
+                <span>Referenz / Aktenzeichen (optional)</span>
+                <input
+                  value={form.billingReference}
+                  onChange={(ev) => setForm((f) => ({ ...f, billingReference: ev.target.value }))}
+                  placeholder="Kostenstelle, Fallnummer, …"
+                  autoComplete="off"
+                />
+              </label>
+              {showAccessCode ? (
+                <label className="panel-rides-form__field panel-rides-form__field--2">
+                  <span>Freigabe-Code / Kostenübernahme (optional)</span>
+                  <input
+                    value={form.accessCode}
+                    onChange={(ev) => setForm((f) => ({ ...f, accessCode: ev.target.value }))}
+                    placeholder="Vom Auftraggeber mitgeteilter Code"
+                    autoComplete="off"
+                  />
+                </label>
+              ) : null}
               <label className="panel-rides-form__field">
                 <span>Abholort (Kurz)</span>
                 <input

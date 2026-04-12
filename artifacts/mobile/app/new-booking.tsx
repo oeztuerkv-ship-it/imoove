@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useState, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -343,14 +344,26 @@ export default function NewBookingScreen() {
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [showDtPicker, setShowDtPicker] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>("standard");
+  const [accessCode, setAccessCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const formComplete = from.name.length > 0 && to.name.length > 0 && scheduledAt !== null;
 
+  function accessCodeErrorMessage(code: string): string {
+    const m: Record<string, string> = {
+      access_code_invalid: "Der eingegebene Code ist ungültig oder unbekannt.",
+      access_code_inactive: "Dieser Code ist deaktiviert.",
+      access_code_expired: "Dieser Code ist noch nicht gültig oder bereits abgelaufen.",
+      access_code_exhausted: "Dieser Code wurde bereits vollständig eingelöst.",
+      access_code_wrong_company: "Dieser Code passt nicht zu dieser Buchung.",
+      request_failed: "Die Buchung konnte nicht gesendet werden.",
+    };
+    return m[code] ?? "Die Buchung ist fehlgeschlagen. Bitte erneut versuchen.";
+  }
+
   const handleSubmit = async () => {
     if (!formComplete || submitting) return;
     setSubmitting(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const vehicleLabel =
       selectedVehicle === "standard" ? "Standard" :
       selectedVehicle === "xl" ? "XL" :
@@ -359,26 +372,36 @@ export default function NewBookingScreen() {
     const customerName = profile?.name
       ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
       : "Gast";
-    await addRequest({
-      from: from.name,
-      fromFull: from.fullName || from.name,
-      fromLat: from.lat || undefined,
-      fromLon: from.lon || undefined,
-      to: to.name,
-      toFull: to.fullName || to.name,
-      toLat: to.lat || undefined,
-      toLon: to.lon || undefined,
-      distanceKm: 0,
-      durationMinutes: 0,
-      estimatedFare: 0,
-      paymentMethod: "Bar",
-      vehicle: vehicleLabel,
-      customerName,
-      passengerId: passengerId || undefined,
-      scheduledAt: scheduledAt,
-    });
-    setSubmitting(false);
-    router.replace("/my-rides");
+    const codeTrim = accessCode.trim();
+    try {
+      await addRequest({
+        from: from.name,
+        fromFull: from.fullName || from.name,
+        fromLat: from.lat || undefined,
+        fromLon: from.lon || undefined,
+        to: to.name,
+        toFull: to.fullName || to.name,
+        toLat: to.lat || undefined,
+        toLon: to.lon || undefined,
+        distanceKm: 0,
+        durationMinutes: 0,
+        estimatedFare: 0,
+        paymentMethod: "Bar",
+        vehicle: vehicleLabel,
+        customerName,
+        passengerId: passengerId || undefined,
+        scheduledAt: scheduledAt,
+        ...(codeTrim ? { accessCode: codeTrim } : {}),
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/my-rides");
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "request_failed";
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Buchung", accessCodeErrorMessage(code));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -477,6 +500,22 @@ export default function NewBookingScreen() {
                   </Pressable>
                 );
               })}
+            </View>
+            <Text style={[styles.cardLabel, { color: colors.foreground, marginTop: 4 }]}>Freigabe-Code (optional)</Text>
+            <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
+              Digitale Kostenübernahme durch Firma, Hotel oder anderen Auftraggeber — wird im System geprüft. Ohne Code: normale Direktbuchung.
+            </Text>
+            <View style={[styles.inputBox, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+              <Feather name="hash" size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.inputText, { color: colors.foreground }]}
+                value={accessCode}
+                onChangeText={setAccessCode}
+                placeholder="z. B. HOTEL-STUTTGART-2026"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
             </View>
           </View>
         )}

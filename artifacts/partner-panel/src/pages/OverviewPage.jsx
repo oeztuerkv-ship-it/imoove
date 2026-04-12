@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import { hasPanelModule } from "../lib/panelNavigation.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -88,20 +89,33 @@ export default function OverviewPage() {
       <div className="panel-card panel-card--hint">
         <h3 className="panel-card__title">Einstieg</h3>
         <ul className="panel-hint-list">
-          <li>
-            <strong>Meine Fahrten</strong> und <strong>Verlauf</strong> laden live von der API; CSV-Export ohne
-            Dummy-Daten.
-          </li>
-          <li>
-            <strong>Neue Fahrt</strong> sendet an <code className="panel-inline-code">POST /api/panel/v1/rides</code>{" "}
-            (nur mit Recht <code className="panel-inline-code">rides.create</code>).
-          </li>
-          <li>
-            <strong>Profil / Firma</strong> bündelt Zugangsdaten und Firmastammdaten; erweiterte Bearbeitung folgt.
-          </li>
-          <li>
-            <strong>Mitarbeiter</strong>: Zugänge je nach Rolle (anlegen, deaktivieren, Passwort setzen).
-          </li>
+          {hasPanelModule(user?.panelModules, "rides_list") ? (
+            <li>
+              <strong>Meine Fahrten</strong> und <strong>Verlauf</strong> laden live von der API; CSV-Export ohne
+              Dummy-Daten.
+            </li>
+          ) : null}
+          {hasPanelModule(user?.panelModules, "rides_create") ? (
+            <li>
+              <strong>Neue Fahrt</strong> sendet an <code className="panel-inline-code">POST /api/panel/v1/rides</code>{" "}
+              (nur mit Recht <code className="panel-inline-code">rides.create</code>).
+            </li>
+          ) : null}
+          {hasPanelModule(user?.panelModules, "company_profile") ? (
+            <li>
+              <strong>Profil / Firma</strong> bündelt Zugangsdaten und Firmastammdaten; erweiterte Bearbeitung folgt.
+            </li>
+          ) : null}
+          {hasPanelModule(user?.panelModules, "team") ? (
+            <li>
+              <strong>Mitarbeiter</strong>: Zugänge je nach Rolle (anlegen, deaktivieren, Passwort setzen).
+            </li>
+          ) : null}
+          {hasPanelModule(user?.panelModules, "access_codes") ? (
+            <li>
+              <strong>Freigabe-Codes</strong> für digitale Kostenübernahme (sofern für Ihr Konto freigeschaltet).
+            </li>
+          ) : null}
         </ul>
       </div>
 

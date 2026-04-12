@@ -71,6 +71,17 @@ export function PanelAuthProvider({ children }) {
     };
   }, [token, clearSession]);
 
+  const refreshUser = useCallback(async () => {
+    if (!token) return false;
+    const r = await fetchMe(token);
+    if (!r.ok) {
+      clearSession();
+      return false;
+    }
+    setUser(r.user);
+    return true;
+  }, [token, clearSession]);
+
   const login = useCallback(async (username, password) => {
     setError("");
     const res = await fetch(`${API_BASE}/panel-auth/login`, {
@@ -135,9 +146,10 @@ export function PanelAuthProvider({ children }) {
       setError,
       login,
       logout,
+      refreshUser,
       token,
     }),
-    [user, booting, error, login, logout, token],
+    [user, booting, error, login, logout, refreshUser, token],
   );
 
   return <PanelAuthContext.Provider value={value}>{children}</PanelAuthContext.Provider>;

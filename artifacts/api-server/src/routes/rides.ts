@@ -1,13 +1,23 @@
 import { Router } from "express";
 import type { RideRequest } from "../domain/rideRequest";
 import {
+  DEFAULT_PAYER_KIND,
+  DEFAULT_RIDE_KIND,
+  parseOptionalBillingTag,
+  parsePayerKind,
+  parseRideKind,
+} from "../domain/rideBillingProfile";
+import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
+import {
   adminReleaseRide,
   findRide,
-  insertRide,
+  insertRideWithOptionalAccessCode,
   listRides,
   resetRidesDemo,
   updateRide,
 } from "../db/ridesData";
+import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
+import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -27,7 +37,8 @@ const router = Router();
 router.get("/rides", async (_req, res, next) => {
   try {
     const rows = await listRides();
-    res.json(rows);
+    const publicRows = rows.map(stripPartnerOnlyRideFields);
+    res.json(await attachAccessCodeSummariesToRides(publicRows));
   } catch (e) {
     next(e);
   }
@@ -35,21 +46,57 @@ router.get("/rides", async (_req, res, next) => {
 
 router.post("/rides", async (req, res, next) => {
   try {
-    const body = req.body as Omit<RideRequest, "id" | "createdAt" | "status" | "rejectedBy">;
-    if (!body.customerName || body.customerName.trim() === "" || !body.passengerId) {
+    const raw = req.body as Partial<RideRequest>;
+    if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
       res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
       return;
     }
+    if (
+      raw.rideKind != null &&
+      raw.rideKind !== "" &&
+      (typeof raw.rideKind !== "string" || parseRideKind(raw.rideKind) === null)
+    ) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (
+      raw.payerKind != null &&
+      raw.payerKind !== "" &&
+      (typeof raw.payerKind !== "string" || parsePayerKind(raw.payerKind) === null)
+    ) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
+    const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const newReq: RideRequest = {
-      ...body,
+      ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
       createdAt: new Date().toISOString(),
       status: "pending",
       rejectedBy: [],
       driverId: null,
+      rideKind,
+      payerKind,
+      voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
+      billingReference: parseOptionalBillingTag(raw.billingReference, 256),
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null,
     };
-    await insertRide(newReq);
-    res.status(201).json(newReq);
+    const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;
+    const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
+    if (!ins.ok) {
+      res.status(400).json({ error: ins.error });
+      return;
+    }
+    const created = await findRide(newReq.id);
+    if (!created) {
+      res.status(500).json({ error: "ride_insert_inconsistent" });
+      return;
+    }
+    const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
+    res.status(201).json(withSummary);
   } catch (e) {
     next(e);
   }
@@ -73,7 +120,11 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       ...(finalFare != null ? { finalFare } : {}),
       ...(driverId != null ? { driverId } : {}),
     });
-    res.json(updated);
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -88,7 +139,7 @@ router.patch("/rides/:id/release", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    res.json(updated);
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -150,7 +201,11 @@ router.post("/rides/:id/reject", async (req, res, next) => {
     const existing = cur.rejectedBy ?? [];
     const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
     const updated = await updateRide(id, { rejectedBy });
-    res.json(updated);
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }
@@ -172,7 +227,11 @@ router.post("/rides/:id/driver-cancel", async (req, res, next) => {
       driverId: null,
       rejectedBy,
     });
-    res.json(updated);
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {
     next(e);
   }

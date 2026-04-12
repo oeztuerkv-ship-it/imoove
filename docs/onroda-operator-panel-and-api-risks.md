@@ -1,0 +1,78 @@
+# Operator-Panel, Partner-Portal und bewusste API-Risiken
+
+Stand: interne Notiz für Architektur und Tests (nicht Kunden-Doku).
+
+## 1. Admin-Panel = Operator-Panel (aktueller Stand)
+
+- **Kein klassisches Login**, **kein Admin-User-Profil**: Zugriff auf die Admin-JSON-API über **`Authorization: Bearer`** (`ADMIN_API_BEARER_TOKEN` auf der API, `VITE_ADMIN_API_BEARER_TOKEN` im Admin-Panel-Build).
+- **Einordnung:** bewusst als **Operator-Panel** (Deployment-/Betriebszugriff), nicht als mandantenfähiges Endnutzer-Login.
+- **Spätere Entscheidung:** ob ein **eigener Admin-User-Flow** (Accounts, Passwort-Reset, Audit pro Operator) nötig ist — **getrennt** vom Partner-Firmenprofil halten.
+
+## 2. Partner vs. Admin (Reifegrad)
+
+- **Partner-Portal** ist im Nutzerfluss **weiter:** Login, JWT, Rollen/Rechte, Firmenprofil (`/api/panel/v1/…`, `company_id` aus dem Token).
+- **Nicht vermischen:** Partner-Konzepte (Mandant, Panel-User) nicht in Admin-UI/API „nebenbei“ nutzen und umgekehrt keine globalen Admin-Stats in den Partner-Endpunkten anbieten.
+
+## 3. Bewusstes Risiko: `GET /rides` ohne Admin-Bearer
+
+| Thema | Inhalt |
+|--------|--------|
+| **Endpoint** | `GET /rides` (und spiegelbildlich unter `/api/rides` je nach Mount) |
+| **Auth** | **Keine** — öffentlich erreichbar, wenn die API-URL erreichbar ist |
+| **Fachlich** | Die **Admin-Fahrtenliste** im gebauten Admin-Panel nutzt genau diese globale Liste (alle Fahrten). |
+| **Technisch** | **Kein** Schutz durch `ADMIN_API_BEARER_TOKEN`; Trennung „Admin sieht alles“ ist **nur** über die Annahme „URL nur für Betrieb“ gewährleistet. |
+| **Risiko** | Datenleck / Missbrauch, sobald die API öffentlich oder breit im Netz erreichbar ist. |
+| **Spätere Option** | Dedizierter **`GET /api/admin/rides`** (oder äquivalent) **nur** mit `requireAdminApiBearer`; `GET /rides` für Kunden/Mobile strikt eingeschränken oder absichern. |
+
+Dieses Risiko ist **bekannt und akzeptiert für den jetzigen Stand**; vor Produktionsausbau oder Öffnung der API **erneut bewerten**.
+
+### Regression behoben (Admin-Bearer vs. `GET /rides`)
+
+Wenn `requireAdminApiBearer` als `router.use()` auf **die gesamte** `adminApi`-Router-Instanz gelegt wird, läuft die Middleware für **jede** Anfrage, die diesen Router durchläuft — inkl. Pfade, die gar nicht unter `/admin` liegen, sobald die Router-Reihenfolge im Index `adminApi` vor `rides` mountet. Dann lieferte **`GET /rides` fälschlich 401**, sobald `ADMIN_API_BEARER_TOKEN` gesetzt war.
+
+**Fix im Code:** Admin-JSON hängt unter einem **Unter-Router** `router.use("/admin", adminJson)` mit `adminJson.use(requireAdminApiBearer)` — Bearer gilt nur noch für **`/admin/*`**. **`GET /rides` bleibt ohne Bearer erreichbar** (weiterhin das dokumentierte öffentliche Risiko).
+
+---
+
+## Funktionstest-Checkliste (Admin / Partner / Trennung)
+
+Voraussetzung: API mit **`DATABASE_URL`**, Migrationen, **`ADMIN_API_BEARER_TOKEN`** gesetzt, Admin-Panel mit passendem **`VITE_ADMIN_API_BEARER_TOKEN`** gebaut; **`PANEL_JWT_SECRET`** für Panel-Login.
+
+### Admin (Operator)
+
+- [ ] **`GET /api/admin/stats`** mit korrektem Bearer → `200`, `ok: true`, verschachtelte `stats`.
+- [ ] **`GET /api/admin/stats`** ohne Bearer oder falscher Token → **`401`** (wenn Token auf der API gesetzt).
+- [ ] **Produktion:** ohne `ADMIN_API_BEARER_TOKEN` → **`503`** auf `/admin/*`.
+- [ ] Dashboard im Browser: Zahlen und Umsatz-Zeitraum wie erwartet.
+- [ ] **Fahrtenliste:** lädt (aktuell über **`GET /rides`**); Inhalt = globale Liste.
+- [ ] **Firmen:** `GET /api/admin/companies` mit Bearer; Suche/PRIO wie erwartet.
+
+### Partner
+
+- [ ] **`POST /api/panel-auth/login`** mit gültigem User → JWT.
+- [ ] **`GET /api/panel/v1/rides`** → nur Fahrten mit **`company_id`** der Session.
+- [ ] **Verlauf** (UI-Filter) mit mehreren Status sinnvoll prüfbar.
+- [ ] **`GET/PATCH /api/panel/v1/company`:** Owner/Manager speichern; Staff → **403** auf PATCH, Formular read-only.
+
+### Trennung
+
+- [ ] Zwei Firmen: Partner A sieht **nicht** B; Admin sieht **beides** (Firmen + globale Fahrtenliste).
+- [ ] **`GET /rides`** ohne Auth bewusst als Risiko notiert (siehe oben); ggf. nur aus vertrauenswürdigem Netz erreichbar.
+
+### Admin-Profil
+
+- [ ] Kein eigenes Admin-Operator-Profil in der App — **Einstellungen** sind Platzhalter; **Profil/Firma** existiert **nur** im Partner-Portal für **Mandanten-Stammdaten**.
+
+---
+
+## Automatisierter Smoke-Test (API, lokal)
+
+Ohne `DATABASE_URL` (In-Memory), mit gesetztem **`ADMIN_API_BEARER_TOKEN`** (Stand Repo nach Admin-Router-Fix):
+
+| Schritt | Erwartung |
+|---------|-----------|
+| `GET /api/admin/stats` ohne `Authorization` | **401** `unauthorized` |
+| `GET /api/admin/stats` mit korrektem Bearer | **200**, `ok: true`, `stats` |
+| `GET /rides` ohne Auth | **200**, JSON-Array (kann leer sein) |
+
+**Partner-Flows** (Login, `panel/v1/*`, Owner vs. Staff) erfordern **Postgres** + `PANEL_JWT_SECRET` und Testnutzer — bitte gegen Staging/DB manuell nach Checkliste oben.

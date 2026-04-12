@@ -1,0 +1,15 @@
+---
+description: PR-Pflicht — Rollen-Trennung (Admin/Partner/Kunde/Fahrer) bei API- und Auth-Änderungen prüfen
+alwaysApply: true
+---
+
+# PRs: Rollen-Trennung mitprüfen
+
+Die verbindliche Rollenlogik steht in **`imoove-product-architecture.mdc`** (Abschnitt „Rollen & Datenhoheit“).
+
+**Bei Änderungen an API-Routen, Auth/Middleware, DB-Zugriffen, Admin-Panel, Partner-Panel oder Mobile (Kunde/Fahrer):**
+
+1. Die Checkliste im **GitHub-PR-Template** (`.github/pull_request_template.md`) ausfüllen bzw. die gleichen Punkte in der PR-Beschreibung abarbeiten.
+2. Explizit bestätigen, dass **keine** Admin-, Partner-, Kunden- oder Fahrerlogik vermischt wurde (falsches Prefix, fehlender `company_id`-Filter, globale Stats im Panel, usw.).
+
+Reine Docs-, Copy- oder rein visuelle UI-Änderungen ohne Daten/API: in der PR kurz „nicht betroffen“ vermerken.

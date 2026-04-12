@@ -13,6 +13,26 @@ alwaysApply: true
 
 3. **Später: eigenes Panel** — z. B. `panel.onroda.de` oder `admin.onroda.de` für Unternehmen/Admin. Nicht auf der Marketing-Domain; nicht in `artifacts/mobile` verheiraten. Eigene SPA/Subdomain, eigene `OAUTH_SUCCESS_WEB_URL` wenn dort Web-Login mit Google gewünscht wird.
 
+## Rollen & Datenhoheit (nicht vermischen)
+
+Jede neue Funktion **explizit** einer oder mehreren Rollen zuordnen: **welche Oberfläche**, **welche API-Route**, **welches Auth-Token**, **welcher DB-Filter**. Keine „Querschnitts“-Endpunkte, die je nach Aufrufer mal global, mal mandantenweise antworten.
+
+| Rolle | Sicht | Typische Oberfläche | API / Auth (Richtlinie) |
+|--------|--------|----------------------|-------------------------|
+| **Admin** | **Gesamtes System** (alle Firmen, alle Fahrten, globale Stats) | `artifacts/admin-panel` unter z. B. `admin.onroda.de` | Admin-Bearer (`/api/admin/…`), keine Panel-JWTs für globale Auswertungen |
+| **Partner** | **Nur eigene Firma** (`company_id` aus Panel-Session) | `artifacts/partner-panel` | `GET/PATCH /api/panel/v1/…`, JWT mit Mandanten-Claims; Queries **immer** an `company_id` binden |
+| **Kunde** | **Nur eigene Fahrten / Buchungen** | Primär **Mobile** (Expo) | Kunden-Session (OAuth/JWT); Endpoints nur mit **Passenger-/User-Bezug**, keine fremden Rides |
+| **Fahrer** | **Nur eigene Aufträge** + erlaubte **Statusaktionen** | Primär **Mobile** | Fahrer-Identität an `driver_id` / Fahrer-Session koppeln; keine Liste fremder Aufträge |
+
+**Konsequenzen für Agents**
+
+- PRs mit API/Auth/DB/Panel/Mobile: Checkliste in **`.github/pull_request_template.md`** ausfüllen; siehe auch **`imoove-pr-role-separation.mdc`**.
+- **Dashboard / Navigation / Rechte / API** pro Rolle **getrennt** halten: Admin-Dashboard ≠ Partner-Übersicht ≠ Kunden-Historie ≠ Fahrer-Jobliste.
+- Admin-Stats (`/api/admin/stats`) **nicht** in Partner- oder Kunden-Apps spiegeln ohne eigene, gefilterte Endpunkte.
+- Partner-Daten **nie** über Admin-only-Shortcuts für den Partner exponieren (und umgekehrt).
+- Öffentliche oder marketing-taugliche Routen **keine** rolleninternen Listen liefern.
+- **Bewusstes Risiko (Stand jetzt):** Die Admin-Fahrtenliste nutzt **`GET /rides`**, dieser Endpunkt ist **ohne** Admin-Bearer **öffentlich** (globale Liste). Nicht mit mandantengebundenen Panel-Routen verwechseln; Hintergrund und Testcheckliste: **`docs/onroda-operator-panel-and-api-risks.md`**.
+
 ## OAuth / JWT (kurz)
 
 - Session-JWT und `?token=`-Übergabe sind für **App** und optional ein **explizit konfiguriertes** Web-Ziel (`OAUTH_SUCCESS_WEB_URL`) gedacht — **nicht** für Default-Redirects auf die Landingpage oder erfundene Pfade wie `/app` auf `onroda.de`.
@@ -20,6 +40,7 @@ alwaysApply: true
 
 ## Für Agents
 
+- Neue Features: zuerst **Rolle(n)** und **Datenfilter** benennen, dann Implementierung (siehe Tabelle oben).
 - Keine Defaults, die `onroda.de` als eingeloggte Web-App vortäuschen.
 - Metro/App-Config nicht zugunsten einer späteren Homepage-SEO-URL opfern.
 - Admin-/Panel-Routen in der API (falls vorhanden) von öffentlicher Marketing-Static trennen (`/api`, `isApiHost`, Hostname-Checks beibehalten).

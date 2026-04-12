@@ -4,6 +4,40 @@ import { API_BASE } from "../lib/apiBase.js";
 const RIDES_URL = `${API_BASE}/rides`;
 const ITEMS_PER_PAGE = 10;
 
+function rideKindLabel(k) {
+  const m = {
+    standard: "Normal",
+    medical: "Krankenfahrt",
+    voucher: "Gutschein",
+    company: "Firma",
+  };
+  return m[k] ?? k ?? "—";
+}
+
+function payerKindLabel(k) {
+  const m = {
+    passenger: "Fahrgast",
+    company: "Firma",
+    insurance: "KV",
+    voucher: "Gutschein",
+    third_party: "Dritt",
+  };
+  return m[k] ?? k ?? "—";
+}
+
+function accessCodeTypeDe(t) {
+  const m = { voucher: "Gutschein", hotel: "Hotel", company: "Firma", general: "Fahrcode" };
+  return m[t] ?? t ?? "—";
+}
+
+function authorizationSummary(ride) {
+  if (ride.authorizationSource === "access_code" && ride.accessCodeSummary?.label) {
+    return `${ride.accessCodeSummary.label} (${accessCodeTypeDe(ride.accessCodeSummary.codeType)})`;
+  }
+  if (ride.authorizationSource === "access_code") return "Zugangscode (gültig)";
+  return "Direkt";
+}
+
 /** GET /rides liefert RideRequest (camelCase), keine snake_case-/Legacy-Felder. */
 export default function RidesPage() {
   const [rides, setRides] = useState([]);
@@ -150,6 +184,10 @@ export default function RidesPage() {
         ride.driverId,
         ride.passengerId,
         ride.createdByPanelUserId,
+        ride.rideKind,
+        ride.payerKind,
+        ride.voucherCode,
+        ride.billingReference,
       ]
         .filter((v) => v !== null && v !== undefined && v !== "")
         .join(" ")
@@ -361,6 +399,9 @@ export default function RidesPage() {
             <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min">
               <div>ID</div>
               <div>Kunde</div>
+              <div>Typ</div>
+              <div>Zahler</div>
+              <div>Freigabe</div>
               <div>Von</div>
               <div>Nach</div>
               <div>Status</div>
@@ -383,6 +424,13 @@ export default function RidesPage() {
                 <div key={ride.id} className="admin-table-row admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min">
                   <div className="admin-mono">{ride.id || "—"}</div>
                   <div>{ride.customerName || "—"}</div>
+                  <div title={[ride.voucherCode, ride.billingReference].filter(Boolean).join(" · ") || ""}>
+                    {rideKindLabel(ride.rideKind)}
+                  </div>
+                  <div>{payerKindLabel(ride.payerKind)}</div>
+                  <div title={ride.authorizationSource === "access_code" ? "Digital über Zugangscode" : ""}>
+                    {authorizationSummary(ride)}
+                  </div>
                   <div>{ride.from || "—"}</div>
                   <div>{ride.to || "—"}</div>
 

@@ -7,7 +7,8 @@ export type PanelPermission =
   | "users.read"
   | "users.manage"
   | "users.reset_password"
-  | "self.change_password";
+  | "self.change_password"
+  | "company.update";
 
 const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
   owner: [
@@ -17,6 +18,7 @@ const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
     "users.manage",
     "users.reset_password",
     "self.change_password",
+    "company.update",
   ],
   manager: [
     "rides.read",
@@ -25,6 +27,7 @@ const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
     "users.manage",
     "users.reset_password",
     "self.change_password",
+    "company.update",
   ],
   staff: ["rides.read", "rides.create", "users.read", "self.change_password"],
   readonly: ["rides.read", "users.read", "self.change_password"],

@@ -1,8 +1,17 @@
+export type { AdminAccessCodeRow } from "../db/accessCodesData";
+
 export interface CompanyRow {
   id: string;
   name: string;
+  contact_name: string;
   email: string;
   phone: string;
+  address_line1: string;
+  address_line2: string;
+  postal_code: string;
+  city: string;
+  country: string;
+  vat_id: string;
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;
@@ -10,6 +19,11 @@ export interface CompanyRow {
   priority_price_threshold: number;
   priority_timeout_seconds: number;
   release_radius_km: number;
+  /**
+   * Aktive Panel-Modul-IDs; `null` = alle Module (Default / Legacy).
+   * Nur gültige IDs; Reihenfolge ohne Bedeutung.
+   */
+  panel_modules: string[] | null;
 }
 
 export interface FareAreaRow {
@@ -19,4 +33,36 @@ export interface FareAreaRow {
   isRequiredArea: string;
   fixedPriceAllowed: string;
   status: string;
+}
+
+/** Admin-Dashboard: Kennzahlen aus Postgres (camelCase JSON). */
+export interface AdminDashboardStats {
+  rides: {
+    total: number;
+    pending: number;
+    active: number;
+    completed: number;
+    cancelled: number;
+    rejected: number;
+  };
+  companies: {
+    total: number;
+    active: number;
+  };
+  /** Fahrer ohne eigene Tabelle: eindeutige `driver_id` auf Fahrten (jemals zugewiesen). */
+  drivers: {
+    distinctWithRide: number;
+  };
+  /** Aktive Partner-Panel-Zugänge (Login-Konten). */
+  panelUsers: {
+    active: number;
+  };
+  revenue: {
+    currency: "EUR";
+    periodFrom: string | null;
+    periodTo: string | null;
+    /** Abgeschlossene Fahrten: Summe `final_fare` falls gesetzt, sonst `estimated_fare`. */
+    completedSum: number;
+    completedRideCount: number;
+  };
 }

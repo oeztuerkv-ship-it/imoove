@@ -6,6 +6,11 @@
   gap: var(--onroda-gap-page);
 }
 
+.admin-dashboard--refreshing {
+  opacity: 0.72;
+  transition: opacity 0.15s ease;
+}
+
 .admin-dashboard__top {
   display: flex;
 }
@@ -48,6 +53,45 @@
   font-size: 0.95rem;
 }
 
+.admin-dashboard__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--onroda-space-4);
+}
+
+.admin-dashboard__revenue-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--onroda-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-dashboard__revenue-select {
+  min-width: 200px;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: var(--onroda-radius-pill);
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-app);
+  color: var(--onroda-text-dark);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.admin-dashboard__revenue-select:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
+}
+
+.admin-dashboard__retry {
+  margin-top: var(--onroda-space-4);
+}
+
 .admin-dashboard__grid {
   display: grid;
   grid-template-columns: repeat(
@@ -82,6 +126,11 @@
   margin-top: var(--onroda-space-3);
   color: var(--onroda-text-muted);
   font-size: 0.85rem;
+}
+
+.admin-dashboard__card--accent {
+  border-color: var(--onroda-red);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.12);
 }
 
 .admin-dashboard__bottom {

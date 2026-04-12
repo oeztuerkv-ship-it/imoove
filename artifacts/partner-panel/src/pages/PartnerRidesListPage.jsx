@@ -2,6 +2,65 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 
+function rideKindLabel(k) {
+  const m = {
+    standard: "Normal",
+    medical: "Krankenfahrt",
+    voucher: "Gutschein",
+    company: "Firma",
+  };
+  return m[k] ?? k ?? "—";
+}
+
+function payerKindLabel(k) {
+  const m = {
+    passenger: "Fahrgast",
+    company: "Firma",
+    insurance: "Kostenträger",
+    voucher: "Gutschein",
+    third_party: "Dritter",
+  };
+  return m[k] ?? k ?? "—";
+}
+
+function accessCodeTypeDe(t) {
+  const m = { voucher: "Gutschein", hotel: "Hotel", company: "Firma", general: "Fahrcode" };
+  return m[t] ?? t ?? "—";
+}
+
+function authorizationSummary(ride) {
+  if (ride.authorizationSource === "access_code" && ride.accessCodeSummary?.label) {
+    return `${ride.accessCodeSummary.label} (${accessCodeTypeDe(ride.accessCodeSummary.codeType)})`;
+  }
+  if (ride.authorizationSource === "access_code") return "Zugangscode (gültig)";
+  return "Direkt";
+}
+
+/** API: accessCodeTripOutcome */
+function tripOutcomeDe(o) {
+  const m = {
+    no_code: "—",
+    open: "Eingelöst / Fahrt offen",
+    completed: "Code genutzt · Fahrt abgeschlossen",
+    cancelled: "Storniert",
+    rejected: "Abgelehnt",
+  };
+  return m[o] ?? o ?? "—";
+}
+
+/** API: accessCodeDefinitionState (Stand des Code-Datensatzes jetzt) */
+function codeDefinitionDe(s) {
+  if (s == null || s === "") return "—";
+  const m = {
+    valid: "Regel aktiv",
+    inactive: "Code deaktiviert",
+    not_yet_valid: "Noch nicht gültig",
+    expired_window: "Zeitfenster abgelaufen",
+    exhausted: "Kontingent aufgebraucht",
+  };
+  return m[s] ?? s;
+}
+
 function statusLabel(de) {
   const m = {
     pending: "Offen",
@@ -87,6 +146,14 @@ export default function PartnerRidesListPage({ variant }) {
     const header = [
       "id",
       "status",
+      "rideKind",
+      "payerKind",
+      "authorizationSummary",
+      "accessCodeNormalizedSnapshot",
+      "accessCodeTripOutcome",
+      "accessCodeDefinitionState",
+      "voucherCode",
+      "billingReference",
       "customerName",
       "from",
       "to",
@@ -102,6 +169,14 @@ export default function PartnerRidesListPage({ variant }) {
         [
           csvEscape(r.id),
           csvEscape(r.status),
+          csvEscape(r.rideKind ?? "standard"),
+          csvEscape(r.payerKind ?? "passenger"),
+          csvEscape(authorizationSummary(r)),
+          csvEscape(r.accessCodeNormalizedSnapshot ?? ""),
+          csvEscape(r.accessCodeTripOutcome ?? ""),
+          csvEscape(r.accessCodeDefinitionState ?? ""),
+          csvEscape(r.voucherCode ?? ""),
+          csvEscape(r.billingReference ?? ""),
           csvEscape(r.customerName),
           csvEscape(r.from),
           csvEscape(r.to),
@@ -179,6 +254,12 @@ export default function PartnerRidesListPage({ variant }) {
               <thead>
                 <tr>
                   <th>Status</th>
+                  <th>Typ</th>
+                  <th>Zahler</th>
+                  <th>Freigabe</th>
+                  <th>Code (Buchung)</th>
+                  <th>Fahrt ↔ Code</th>
+                  <th>Code-Regel (aktuell)</th>
                   <th>Kunde</th>
                   <th>Route</th>
                   <th>Preis</th>
@@ -191,6 +272,20 @@ export default function PartnerRidesListPage({ variant }) {
                 {displayedRides.map((r) => (
                   <tr key={r.id}>
                     <td>{statusLabel(r.status)}</td>
+                    <td className="panel-table__muted">{rideKindLabel(r.rideKind)}</td>
+                    <td className="panel-table__muted">{payerKindLabel(r.payerKind)}</td>
+                    <td className="panel-table__muted" title="Anzeigename / Typ (ohne Fahrer-Code)">
+                      {authorizationSummary(r)}
+                    </td>
+                    <td className="panel-table__muted" title="Normalisierter Code zum Buchungszeitpunkt (Nachverfolgung)">
+                      {r.accessCodeNormalizedSnapshot || "—"}
+                    </td>
+                    <td className="panel-table__muted" title="Ergebnis dieser Fahrt bei Code-Einlösung">
+                      {tripOutcomeDe(r.accessCodeTripOutcome)}
+                    </td>
+                    <td className="panel-table__muted" title="Zustand des Code-Datensatzes in der Zentrale (jetzt)">
+                      {codeDefinitionDe(r.accessCodeDefinitionState)}
+                    </td>
                     <td>{r.customerName}</td>
                     <td className="panel-table__route">
                       {r.from} → {r.to}

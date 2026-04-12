@@ -206,8 +206,16 @@
   outline-offset: 1px;
 }
 
-.panel-rides-form .panel-btn-primary {
+.panel-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: var(--onroda-space-6);
+  align-items: center;
+}
+
+.panel-profile-actions .panel-btn-primary {
+  margin-top: 0;
 }
 
 .panel-table__actions {

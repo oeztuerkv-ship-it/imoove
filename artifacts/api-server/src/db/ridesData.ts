@@ -1,16 +1,45 @@
 import { desc, eq } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
-import { getDb, isPostgresConfigured } from "./client";
+import {
+  DEFAULT_PAYER_KIND,
+  DEFAULT_RIDE_KIND,
+  isPayerKind,
+  isRideKind,
+  payerKindForAccessCodeRide,
+} from "../domain/rideBillingProfile";
+import {
+  DEFAULT_AUTHORIZATION_SOURCE,
+  isAuthorizationSource,
+  normalizeAccessCodeInput,
+} from "../domain/rideAuthorization";
+import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
+import { getDb } from "./client";
 import { ridesTable } from "./schema";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
 
+function stripEphemeral(r: RideRequest): RideRequest {
+  const { accessCodeSummary: _a, ...rest } = r;
+  return rest;
+}
+
 function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
+  const rk = r.ride_kind;
+  const pk = r.payer_kind;
+  const auth = r.authorization_source;
   return {
     id: r.id,
     companyId: r.company_id ?? null,
     createdByPanelUserId: r.created_by_panel_user_id ?? null,
+    rideKind: typeof rk === "string" && isRideKind(rk) ? rk : DEFAULT_RIDE_KIND,
+    payerKind: typeof pk === "string" && isPayerKind(pk) ? pk : DEFAULT_PAYER_KIND,
+    voucherCode: r.voucher_code ?? null,
+    billingReference: r.billing_reference ?? null,
+    authorizationSource:
+      typeof auth === "string" && isAuthorizationSource(auth) ? auth : DEFAULT_AUTHORIZATION_SOURCE,
+    accessCodeId: r.access_code_id ?? null,
+    accessCodeNormalizedSnapshot: r.access_code_normalized_snapshot ?? null,
     createdAt: new Date(r.created_at).toISOString(),
     scheduledAt: r.scheduled_at ? new Date(r.scheduled_at).toISOString() : null,
     status: r.status as RideRequest["status"],
@@ -39,6 +68,13 @@ function rideToUpdate(r: RideRequest) {
   return {
     company_id: r.companyId ?? null,
     created_by_panel_user_id: r.createdByPanelUserId ?? null,
+    ride_kind: r.rideKind,
+    payer_kind: r.payerKind,
+    voucher_code: r.voucherCode ?? null,
+    billing_reference: r.billingReference ?? null,
+    authorization_source: r.authorizationSource,
+    access_code_id: r.accessCodeId ?? null,
+    access_code_normalized_snapshot: r.accessCodeNormalizedSnapshot ?? null,
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
     customer_name: r.customerName,
@@ -67,6 +103,13 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     id: r.id,
     company_id: r.companyId ?? null,
     created_by_panel_user_id: r.createdByPanelUserId ?? null,
+    ride_kind: r.rideKind,
+    payer_kind: r.payerKind,
+    voucher_code: r.voucherCode ?? null,
+    billing_reference: r.billingReference ?? null,
+    authorization_source: r.authorizationSource,
+    access_code_id: r.accessCodeId ?? null,
+    access_code_normalized_snapshot: r.accessCodeNormalizedSnapshot ?? null,
     created_at: new Date(r.createdAt),
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
@@ -117,13 +160,81 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
   return rows.map(rowToRide);
 }
 
-export async function insertRide(r: RideRequest): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertRide(r: RideRequest, tx?: any): Promise<void> {
+  const persisted = stripEphemeral(r);
   const db = getDb();
-  if (!db) {
-    memoryRides = [r, ...memoryRides];
+  const run = tx ?? db;
+  if (!run) {
+    memoryRides = [persisted, ...memoryRides];
     return;
   }
-  await db.insert(ridesTable).values(rideToInsert(r));
+  await run.insert(ridesTable).values(rideToInsert(persisted));
+}
+
+/**
+ * Buchung mit optionalem Zugangscode: atomare Einlösung (Postgres) bzw. In-Memory.
+ * Ohne Code: `passenger_direct`, kein `access_code_id`.
+ * Mit Code: digitale Kostenübernahme — `payerKind` wird auf `company` gesetzt, wenn ein `companyId` ermittelbar ist.
+ */
+export async function insertRideWithOptionalAccessCode(
+  ride: RideRequest,
+  accessCodePlain: string | undefined | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = typeof accessCodePlain === "string" ? accessCodePlain.trim() : "";
+  if (!trimmed) {
+    const r: RideRequest = {
+      ...stripEphemeral(ride),
+      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      accessCodeId: null,
+      accessCodeNormalizedSnapshot: null,
+    };
+    await insertRide(r);
+    return { ok: true };
+  }
+
+  const normalized = normalizeAccessCodeInput(trimmed);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+
+  const bookingCompanyId = ride.companyId ?? null;
+  const db = getDb();
+  if (!db) {
+    const red = redeemAccessCodeMemory(trimmed, bookingCompanyId);
+    if (!red.ok) return { ok: false, error: red.error };
+    const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
+    const r: RideRequest = {
+      ...stripEphemeral(ride),
+      authorizationSource: "access_code",
+      accessCodeId: red.id,
+      accessCodeNormalizedSnapshot: normalized,
+      companyId: resolvedCompanyId,
+      payerKind: payerKindForAccessCodeRide(resolvedCompanyId),
+    };
+    await insertRide(r);
+    return { ok: true };
+  }
+
+  try {
+    const out = await db.transaction(async (trx) => {
+      const red = await redeemAccessCodeInTransaction(trx, normalized, bookingCompanyId);
+      if (!red.ok) return { ok: false as const, error: red.error };
+      const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
+      const r: RideRequest = {
+        ...stripEphemeral(ride),
+        authorizationSource: "access_code",
+        accessCodeId: red.id,
+        accessCodeNormalizedSnapshot: normalized,
+        companyId: resolvedCompanyId,
+        payerKind: payerKindForAccessCodeRide(resolvedCompanyId),
+      };
+      await insertRide(r, trx);
+      return { ok: true as const };
+    });
+    if (!out.ok) return { ok: false, error: out.error };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "access_code_invalid" };
+  }
 }
 
 export async function findRide(id: string): Promise<RideRequest | null> {

@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { normalizeStoredPanelModules } from "../domain/panelModules";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, panelUsersTable } from "./schema";
 
@@ -73,6 +74,8 @@ export interface PanelUserProfileRow {
   role: string;
   createdAt: Date;
   updatedAt: Date;
+  /** Normalisierte Modul-Whitelist; `null` = alle Panel-Module aktiv (Legacy). */
+  panelModules: string[] | null;
 }
 
 /** Profil inkl. Firmenname für GET /api/panel/v1/me (nur PostgreSQL). */
@@ -91,6 +94,7 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
       role: panelUsersTable.role,
       createdAt: panelUsersTable.created_at,
       updatedAt: panelUsersTable.updated_at,
+      companyPanelModulesJson: adminCompaniesTable.panel_modules,
     })
     .from(panelUsersTable)
     .innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id))
@@ -114,6 +118,7 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
     role: r.role,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
+    panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson),
   };
 }
 

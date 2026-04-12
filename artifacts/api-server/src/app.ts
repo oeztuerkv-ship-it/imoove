@@ -222,6 +222,7 @@ app.get("/", (req, res, next) => {
         panelPasswordLogin: "/api/panel-auth/login",
         panelMe: "/api/panel/v1/me",
         panelCompany: "/api/panel/v1/company",
+        panelCompanyPatch: "PATCH /api/panel/v1/company",
         panelRidesList: "/api/panel/v1/rides",
         panelRidesCreate: "POST /api/panel/v1/rides",
         panelHealth: "/api/panel/v1/health",

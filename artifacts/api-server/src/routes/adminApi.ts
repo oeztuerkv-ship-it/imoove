@@ -1,38 +1,93 @@
 import { Router, type IRouter } from "express";
+import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
 import {
   addFareArea,
   getAdminStats,
   listCompanies,
   listFareAreas,
+  patchCompanyPanelModules,
   patchCompanyPriority,
 } from "../db/adminData";
+import { insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
-export type { CompanyRow, FareAreaRow } from "./adminApi.types";
+export type { AdminAccessCodeRow, AdminDashboardStats, CompanyRow, FareAreaRow } from "./adminApi.types";
+
+function parseStatsRevenueBound(v: unknown): Date | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s) return undefined;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
 
 const router: IRouter = Router();
 
-router.use(requireAdminApiBearer);
+/**
+ * Bearer nur für `/admin/*`-JSON — nicht `router.use()` auf die ganze Router-Instanz,
+ * sonst würde jede später im Index gemountete Route (z. B. `GET /rides`) fälschlich 401 bekommen.
+ */
+const adminJson: IRouter = Router();
+adminJson.use(requireAdminApiBearer);
 
-router.get("/admin/stats", async (_req, res, next) => {
+adminJson.get("/stats", async (req, res, next) => {
   try {
-    const stats = await getAdminStats();
+    const q = req.query as Record<string, unknown>;
+    const revenueFrom = parseStatsRevenueBound(q.revenueFrom);
+    const revenueTo = parseStatsRevenueBound(q.revenueTo);
+    const stats = await getAdminStats(
+      revenueFrom && revenueTo ? { revenueFrom, revenueTo } : {},
+    );
     res.json({ ok: true, stats });
   } catch (e) {
     next(e);
   }
 });
 
-router.get("/admin/companies", async (_req, res, next) => {
+adminJson.get("/companies", async (_req, res, next) => {
   try {
     const items = await listCompanies();
-    res.json({ ok: true, items });
+    res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
   } catch (e) {
     next(e);
   }
 });
 
-router.patch("/admin/companies/:companyId/priority", async (req, res, next) => {
+adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const body = req.body as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
+      res.status(400).json({ error: "panel_modules_required", hint: "null = alle Module, sonst string[]" });
+      return;
+    }
+    const raw = body.panel_modules;
+    let modules: string[] | null;
+    if (raw === null) {
+      modules = null;
+    } else if (Array.isArray(raw)) {
+      const n = normalizeStoredPanelModules(raw) ?? [];
+      if (n.length === 0) {
+        res.status(400).json({ error: "panel_modules_empty", hint: "Mindestens ein Modul, oder panel_modules: null für alle." });
+        return;
+      }
+      modules = n;
+    } else {
+      res.status(400).json({ error: "panel_modules_invalid" });
+      return;
+    }
+    const item = await patchCompanyPanelModules(companyId, modules);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
   try {
     const { companyId } = req.params;
     const body = req.body as Partial<{
@@ -51,7 +106,7 @@ router.patch("/admin/companies/:companyId/priority", async (req, res, next) => {
   }
 });
 
-router.get("/admin/fare-areas", async (_req, res, next) => {
+adminJson.get("/fare-areas", async (_req, res, next) => {
   try {
     const items = await listFareAreas();
     res.json({ ok: true, items });
@@ -60,7 +115,45 @@ router.get("/admin/fare-areas", async (_req, res, next) => {
   }
 });
 
-router.post("/admin/fare-areas", async (req, res, next) => {
+adminJson.get("/access-codes", async (_req, res, next) => {
+  try {
+    const items = await listAccessCodesAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/access-codes", async (req, res, next) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const code = typeof body.code === "string" ? body.code : "";
+    const codeType = typeof body.codeType === "string" ? body.codeType : "";
+    const result = await insertAccessCodeAdmin({
+      code,
+      codeType,
+      companyId: typeof body.companyId === "string" ? body.companyId : undefined,
+      label: typeof body.label === "string" ? body.label : undefined,
+      maxUses: typeof body.maxUses === "number" ? body.maxUses : undefined,
+      validFrom: typeof body.validFrom === "string" ? body.validFrom : undefined,
+      validUntil: typeof body.validUntil === "string" ? body.validUntil : undefined,
+    });
+    if (!result.ok) {
+      const err = result.error;
+      if (err === "code_duplicate") {
+        res.status(409).json({ error: err });
+        return;
+      }
+      res.status(400).json({ error: err });
+      return;
+    }
+    res.status(201).json({ ok: true, item: result.item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/fare-areas", async (req, res, next) => {
   try {
     const body = req.body as Partial<{
       name: string;
@@ -86,5 +179,7 @@ router.post("/admin/fare-areas", async (req, res, next) => {
     next(e);
   }
 });
+
+router.use("/admin", adminJson);
 
 export default router;
