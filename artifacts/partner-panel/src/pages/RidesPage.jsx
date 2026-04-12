@@ -59,8 +59,28 @@ export default function RidesPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        if (res.status === 403) setErr("Keine Berechtigung, Fahrten zu sehen.");
-        else setErr("Fahrten konnten nicht geladen werden.");
+        const code = typeof data?.error === "string" ? data.error : "";
+        const hint = typeof data?.hint === "string" ? data.hint : "";
+        const tail = [code && `Fehler: ${code}`, hint && `Hinweis: ${hint}`].filter(Boolean).join(" · ");
+        if (res.status === 403) {
+          setErr(
+            tail
+              ? `Keine Berechtigung, Fahrten zu sehen. ${tail}`
+              : "Keine Berechtigung, Fahrten zu sehen.",
+          );
+        } else if (res.status === 404) {
+          setErr(
+            "Die Fahrten-API wurde nicht gefunden (HTTP 404). Typisch: API-Server ist noch nicht auf dem Stand mit /api/panel/v1/rides — bitte Deploy prüfen.",
+          );
+        } else if (res.status === 503 && code === "database_not_configured") {
+          setErr("API: Datenbank nicht konfiguriert (503).");
+        } else {
+          setErr(
+            tail
+              ? `Fahrten konnten nicht geladen werden (HTTP ${res.status}). ${tail}`
+              : `Fahrten konnten nicht geladen werden (HTTP ${res.status}).`,
+          );
+        }
         setRides([]);
         return;
       }
@@ -193,7 +213,8 @@ export default function RidesPage() {
     }
   }
 
-  const empty = !loading && rides.length === 0;
+  /** Keine Daten und kein Ladefehler — sonst wäre „keine Fahrten“ irreführend. */
+  const empty = !loading && rides.length === 0 && !err;
 
   const creatorHint = useMemo(
     () => (id) => {
@@ -329,6 +350,9 @@ export default function RidesPage() {
       <div className="panel-card panel-card--wide panel-card--table">
         <h3 className="panel-card__title">Alle Fahrten</h3>
         {loading ? <p className="panel-page__lead">Lade …</p> : null}
+        {!loading && err ? (
+          <p className="panel-page__lead">Tabelle nicht geladen — siehe Hinweis oben. Nach dem Beheben auf „Aktualisieren“ klicken.</p>
+        ) : null}
         {empty ? (
           <p className="panel-page__lead">Noch keine Fahrten für Ihr Unternehmen erfasst.</p>
         ) : null}
