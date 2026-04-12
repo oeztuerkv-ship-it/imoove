@@ -21,6 +21,14 @@
 - [ ] Partner-Pfade sind nicht global; Admin-Pfade erzwingen Admin-Auth.
 - [ ] Kunden- und Fahrer-Daten sind nicht über Partner- oder Admin-Endpunkte „nebenbei“ sichtbar.
 
+## Panel-UX (nur bei Admin- oder Partner-UI/Copy)
+
+<!-- Sonst: „Nicht betroffen.“ -->
+
+- [ ] **Admin** bleibt **Plattform-/Operator-Konsole** (Sprache, `admin-app--control`, keine Partner-Optik).
+- [ ] **Partner** bleibt **Unternehmens-Arbeitsplatz** (Ihr/Mein, `panel-app--workspace`, keine Admin-Optik).
+- [ ] Keine geteilten React-Komponenten zwischen `artifacts/admin-panel` und `artifacts/partner-panel` eingeführt.
+
 ## Tests / Verifikation
 
 <!-- Wie wurde geprüft? (manuell, Build, …) -->

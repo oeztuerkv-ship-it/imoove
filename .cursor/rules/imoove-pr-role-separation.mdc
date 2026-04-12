@@ -5,11 +5,12 @@ alwaysApply: true
 
 # PRs: Rollen-Trennung mitprüfen
 
-Die verbindliche Rollenlogik steht in **`imoove-product-architecture.mdc`** (Abschnitt „Rollen & Datenhoheit“).
+Die verbindliche Rollenlogik steht in **`imoove-product-architecture.mdc`** (Abschnitt „Rollen & Datenhoheit“). **UX/Sprache/Farben** zwischen Admin- und Partner-Panel: **`imoove-panel-ux-separation.mdc`**.
 
 **Bei Änderungen an API-Routen, Auth/Middleware, DB-Zugriffen, Admin-Panel, Partner-Panel oder Mobile (Kunde/Fahrer):**
 
 1. Die Checkliste im **GitHub-PR-Template** (`.github/pull_request_template.md`) ausfüllen bzw. die gleichen Punkte in der PR-Beschreibung abarbeiten.
 2. Explizit bestätigen, dass **keine** Admin-, Partner-, Kunden- oder Fahrerlogik vermischt wurde (falsches Prefix, fehlender `company_id`-Filter, globale Stats im Panel, usw.).
+3. Bei **Panel-UI oder -Copy:** bestätigen, dass die **Operator-Konsole** (Admin) und der **Unternehmens-Arbeitsplatz** (Partner) **nicht** wieder visuell oder sprachlich vereinheitlicht wurden, sofern das nicht ausdrücklich gewünscht ist.
 
-Reine Docs-, Copy- oder rein visuelle UI-Änderungen ohne Daten/API: in der PR kurz „nicht betroffen“ vermerken.
+Reine Docs-Änderungen ohne Panel: in der PR kurz „nicht betroffen“ vermerken.

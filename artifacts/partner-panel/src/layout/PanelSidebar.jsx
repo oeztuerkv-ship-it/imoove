@@ -6,11 +6,11 @@ export default function PanelSidebar({ active, onChange, items }) {
           <div className="panel-sidebar__brand-icon">O</div>
           <div>
             <div className="panel-sidebar__logo">Onroda</div>
-            <div className="panel-sidebar__logo-sub">Unternehmerportal</div>
+            <div className="panel-sidebar__logo-sub">Ihr Unternehmensbereich</div>
           </div>
         </div>
 
-        <div className="panel-sidebar__section-title">Navigation</div>
+        <div className="panel-sidebar__section-title">Ihr Menü</div>
 
         <nav className="panel-sidebar__nav" aria-label="Hauptnavigation">
           {items.map((item) => {
@@ -40,8 +40,10 @@ export default function PanelSidebar({ active, onChange, items }) {
       </div>
 
       <div className="panel-sidebar__footer">
-        <div className="panel-sidebar__footer-title">Onroda</div>
-        <div className="panel-sidebar__footer-text">Nur Daten deines Unternehmens.</div>
+        <div className="panel-sidebar__footer-title">Nur Ihr Mandant</div>
+        <div className="panel-sidebar__footer-text">
+          Sie sehen ausschließlich Daten Ihres Unternehmens — nicht die zentrale Plattformkonsole.
+        </div>
         <a
           className="panel-sidebar__footer-link"
           href="https://onroda.de"

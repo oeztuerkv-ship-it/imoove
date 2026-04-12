@@ -13,6 +13,7 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
 - `.cursor/rules/imoove-server-infrastructure-onroda.mdc` — Domains, Port 3000, Nginx, **Panel-Postmortem** (scrypt `maxmem`, `rides.company_id` TEXT, serverseitiger API-Build)
 - `.cursor/rules/imoove-product-architecture.mdc` — Schichten Marketing / API / Mobile / Panel
+- `.cursor/rules/imoove-panel-ux-separation.mdc` — **Admin = Plattform-Konsole**, **Partner = Unternehmens-Panel** (Sprache, Farben, Navigation, kein UI-Mix)
 
 ## Datenbank
 
@@ -29,6 +30,8 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 - **`admin.onroda.de`:** `artifacts/admin-panel` (Base `/partners/`).
 - **`panel.onroda.de`:** `artifacts/partner-panel` — **eigenes** Build (`npm ci && npm run build`), unabhängig vom Admin-Panel. Nicht mit Admin-Shell vermischen.
+
+**Dauerhafte UX-Linie (verbindlich):** Admin wirkt immer wie **Operator- / Plattform-Konsole** (global, alle Mandanten, Control-Chrome). Partner wirkt immer wie **eigenes Unternehmens-Panel** (Ihr/Mein, nur eigener Mandant, Arbeitsplatz-Chrome). Neue Seiten und Features müssen diese Trennung in **Sprache, Navigation, Einstieg und Farbwelt** fortsetzen — **keine** gemeinsamen Panel-Komponenten und kein „Vereinheitlichen“ der beiden Oberflächen. Details: **`imoove-panel-ux-separation.mdc`**.
 
 ## Deploy-Checkliste (Kurz)
 

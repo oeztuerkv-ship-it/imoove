@@ -17,38 +17,38 @@ function Placeholder({ title, text }) {
 
 const PAGE_CONFIG = {
   dashboard: {
-    title: "Dashboard",
-    subtitle: "Live-Übersicht deines Onroda-Systems",
+    title: "Plattform-Übersicht",
+    subtitle: "Globale KPIs und Systemzahlen — alle Mandanten, gesamte Fahrtenlage",
     component: <DashboardPage />,
   },
   rides: {
-    title: "Fahrten",
-    subtitle: "Suche, Filter und Übersicht aller Fahrten",
+    title: "Alle Fahrten",
+    subtitle: "Plattformweite Suche und Steuerung — sämtliche Aufträge über alle Unternehmen",
     component: <RidesPage />,
   },
   companies: {
-    title: "Unternehmer",
-    subtitle: "Unternehmer, PRIO und Firmensteuerung",
+    title: "Alle Unternehmen",
+    subtitle: "Mandanten, PRIO, Freigaben und Stammdaten der Plattform",
     component: <CompaniesPage />,
   },
   fares: {
-    title: "Tarife",
-    subtitle: "Tarifgebiete und Preislogik",
+    title: "Tarife & Gebiete",
+    subtitle: "Zentrale Preislogik für die gesamte Plattform",
     component: <FaresPage />,
   },
   partners: {
-    title: "Partner",
-    subtitle: "Hinweis: Unternehmer-Login liegt unter panel.onroda.de (eigenes Portal).",
+    title: "Unternehmer-Portal",
+    subtitle: "Hinweis: Kunden arbeiten unter panel.onroda.de im eigenen Arbeitsbereich",
     component: (
       <Placeholder
-        title="Partnerportal"
-        text="Das Unternehmerportal ist unter https://panel.onroda.de/ erreichbar (eigene App, eigene API-Pfade /api/panel/v1/)."
+        title="Unternehmer-Portal (extern)"
+        text="Unternehmen nutzen das eigene Panel unter https://panel.onroda.de/ — getrennte App, nur eigene Daten, API unter /api/panel/v1/. Diese Konsole hier ist die zentrale Plattformsteuerung."
       />
     ),
   },
   drivers: {
-    title: "Fahrer",
-    subtitle: "Fahrerverwaltung und Dokumente",
+    title: "Fahrer (Plattform)",
+    subtitle: "Globale Fahrerverwaltung und Dokumente",
     component: (
       <Placeholder
         title="Fahrer"
@@ -57,8 +57,8 @@ const PAGE_CONFIG = {
     ),
   },
   billing: {
-    title: "Abrechnung",
-    subtitle: "Umsatz, Provisionen und Auszahlungen",
+    title: "Abrechnung (Plattform)",
+    subtitle: "Gesamtumsatz, Provisionen und Auszahlungen über alle Mandanten",
     component: (
       <Placeholder
         title="Abrechnung"
@@ -67,8 +67,8 @@ const PAGE_CONFIG = {
     ),
   },
   settings: {
-    title: "Einstellungen",
-    subtitle: "System, Rollen und globale Steuerung",
+    title: "Systemeinstellungen",
+    subtitle: "Rollen, Schalter und globale Plattform-Parameter",
     component: (
       <Placeholder
         title="Einstellungen"
@@ -85,7 +85,7 @@ export default function App() {
   const current = PAGE_CONFIG[active] || PAGE_CONFIG.dashboard;
 
   return (
-    <div className="admin-app">
+    <div className="admin-app admin-app--control">
       <div className="admin-app__sidebar-col">
         <Sidebar active={active} onChange={setActive} />
       </div>
@@ -106,15 +106,15 @@ export default function App() {
                 className="admin-search__input"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Global suchen …"
+                placeholder="Plattform durchsuchen (Fahrten, IDs, Firmen …)"
                 type="search"
                 autoComplete="off"
-                aria-label="Global suchen"
+                aria-label="Plattform durchsuchen"
               />
             </label>
 
             <button type="button" className="admin-btn-cta">
-              + Neu
+              + Plattform
             </button>
           </div>
         </header>

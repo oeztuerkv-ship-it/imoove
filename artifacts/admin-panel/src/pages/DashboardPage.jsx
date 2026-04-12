@@ -147,7 +147,7 @@ export default function DashboardPage() {
   }, [loadStats]);
 
   if (!hasLoadedOnce && loading) {
-    return <div className="admin-info-banner">Lade Dashboard …</div>;
+    return <div className="admin-info-banner">Lade Plattform-Kennzahlen …</div>;
   }
 
   if (!hasLoadedOnce && error) {
@@ -168,11 +168,12 @@ export default function DashboardPage() {
       <div className="admin-dashboard__top">
         <div className="admin-dashboard__hero">
           <div>
-            <div className="admin-dashboard__hero-label">Systemstatus</div>
-            <h2 className="admin-dashboard__hero-title">Onroda Admin-Übersicht</h2>
+            <div className="admin-dashboard__hero-label">Plattform · Live</div>
+            <h2 className="admin-dashboard__hero-title">Gesamtsystem auf einen Blick</h2>
             <p className="admin-dashboard__hero-text">
-              Zentrale Kennzahlen aus der Datenbank: Fahrten nach Status, Mandanten, Fahrer-IDs auf Fahrten, Panel-Zugänge
-              und Umsatz abgeschlossener Fahrten (geschätzt oder final, je nach Datenstand).
+              Operative Übersicht über <strong>alle</strong> Fahrten, <strong>alle</strong> Mandanten und
+              plattformweite Umsätze. Hier sehen Sie die Onroda-Plattform als Ganzes — nicht den Blickwinkel eines
+              einzelnen Unternehmens.
             </p>
           </div>
 

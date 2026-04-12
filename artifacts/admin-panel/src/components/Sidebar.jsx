@@ -1,12 +1,12 @@
 const items = [
-  { key: "dashboard", label: "Dashboard", icon: "◫" },
-  { key: "rides", label: "Fahrten", icon: "↗" },
-  { key: "partners", label: "Partner", icon: "◇" },
-  { key: "companies", label: "Unternehmer", icon: "▣" },
+  { key: "dashboard", label: "Plattform-Übersicht", icon: "◫" },
+  { key: "rides", label: "Alle Fahrten", icon: "↗" },
+  { key: "companies", label: "Alle Unternehmen", icon: "▣" },
   { key: "drivers", label: "Fahrer", icon: "◉" },
-  { key: "fares", label: "Tarife", icon: "◌" },
+  { key: "fares", label: "Tarife & Gebiete", icon: "◌" },
   { key: "billing", label: "Abrechnung", icon: "◈" },
-  { key: "settings", label: "Einstellungen", icon: "⚙" },
+  { key: "partners", label: "Unternehmer-Portal", icon: "◇" },
+  { key: "settings", label: "System", icon: "⚙" },
 ];
 
 export default function Sidebar({ active, onChange }) {
@@ -14,14 +14,16 @@ export default function Sidebar({ active, onChange }) {
     <aside className="admin-sidebar">
       <div>
         <div className="admin-sidebar__brand">
-          <div className="admin-sidebar__brand-icon">O</div>
+          <div className="admin-sidebar__brand-icon" aria-hidden>
+            O
+          </div>
           <div>
             <div className="admin-sidebar__logo">Onroda</div>
-            <div className="admin-sidebar__logo-sub">Superadmin</div>
+            <div className="admin-sidebar__logo-sub">Zentrale Systemsteuerung</div>
           </div>
         </div>
 
-        <div className="admin-sidebar__section-title">Navigation</div>
+        <div className="admin-sidebar__section-title">Plattform</div>
 
         <nav className="admin-sidebar__nav" aria-label="Hauptnavigation">
           {items.map((item) => {
@@ -54,9 +56,9 @@ export default function Sidebar({ active, onChange }) {
       </div>
 
       <div className="admin-sidebar__footer">
-        <div className="admin-sidebar__footer-title">Onroda Admin</div>
+        <div className="admin-sidebar__footer-title">Operator-Konsole</div>
         <div className="admin-sidebar__footer-text">
-          Fahrten, Unternehmer, Fahrer und Abrechnung zentral verwalten.
+          Vollständiger Zugriff auf alle Mandanten und Systemdaten — nicht dasselbe wie das Unternehmer-Portal.
         </div>
       </div>
     </aside>

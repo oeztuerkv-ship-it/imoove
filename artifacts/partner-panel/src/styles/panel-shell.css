@@ -262,3 +262,86 @@
 .panel-sidebar__footer-link:hover {
   text-decoration: underline;
 }
+
+/* ─── Arbeitsplatz-Theme: warm, einladend, klar „Ihr Unternehmen“ (nicht Operator-Konsole) ─── */
+.panel-app--workspace {
+  background: #f6f4ef;
+}
+
+.panel-app--workspace .panel-app__sidebar-col {
+  background: linear-gradient(180deg, #fffefb 0%, #f8f6f0 100%);
+  border-right-color: #e7e2d6;
+}
+
+.panel-app--workspace .panel-app__main {
+  background: #f6f4ef;
+}
+
+.panel-app--workspace .panel-app__topbar {
+  background: #fffefb;
+  border-bottom-color: #e7e2d6;
+}
+
+.panel-app--workspace .panel-app__title {
+  color: #115e59;
+  font-weight: 800;
+}
+
+.panel-app--workspace .panel-app__subtitle {
+  color: #5c5850;
+  font-weight: 600;
+}
+
+.panel-app--workspace .panel-sidebar {
+  background: transparent;
+  color: #57534e;
+}
+
+.panel-app--workspace .panel-sidebar__brand-icon {
+  background: linear-gradient(145deg, #0d9488 0%, #047857 100%);
+  color: #ecfdf5;
+  border: none;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+}
+
+.panel-app--workspace .panel-sidebar__logo {
+  color: #134e4a;
+}
+
+.panel-app--workspace .panel-sidebar__logo-sub {
+  color: #78716c;
+  font-weight: 600;
+}
+
+.panel-app--workspace .panel-sidebar__section-title {
+  color: #a8a29e;
+}
+
+.panel-app--workspace .panel-sidebar__link:hover {
+  background: rgba(13, 148, 136, 0.08);
+}
+
+.panel-app--workspace .panel-sidebar__link--active {
+  background: rgba(13, 148, 136, 0.14);
+  color: #0f766e;
+  border-left: 3px solid #0d9488;
+  padding-left: calc(var(--onroda-space-5) - 3px);
+}
+
+.panel-app--workspace .panel-sidebar__icon {
+  background: rgba(13, 148, 136, 0.1);
+  color: #0f766e;
+}
+
+.panel-app--workspace .panel-sidebar__icon--active {
+  background: #0d9488;
+  color: #ecfdf5;
+}
+
+.panel-app--workspace .panel-sidebar__footer {
+  border-top-color: #e7e2d6;
+}
+
+.panel-app--workspace .panel-app__session-out {
+  color: #0f766e;
+}

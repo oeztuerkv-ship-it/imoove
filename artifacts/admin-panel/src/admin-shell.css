@@ -310,3 +310,115 @@
   font-size: 0.85rem;
   line-height: 1.5;
 }
+
+/* ─── Control-Center-Theme: klar von Unternehmer-Panel unterscheidbar ─── */
+.admin-app--control .admin-app__sidebar-col {
+  background: #0b1220;
+  border-right-color: #1e293b;
+}
+
+.admin-app--control .admin-app__main {
+  background: #f1f5f9;
+}
+
+.admin-app--control .admin-app__topbar {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #cbd5e1;
+  box-shadow: inset 0 3px 0 0 #0ea5e9;
+}
+
+.admin-app--control .admin-app__title {
+  color: #0f172a;
+  letter-spacing: -0.03em;
+}
+
+.admin-app--control .admin-app__subtitle {
+  color: #475569;
+  font-weight: 600;
+}
+
+.admin-app--control .admin-sidebar {
+  background: transparent;
+  color: #94a3b8;
+}
+
+.admin-app--control .admin-sidebar__brand-icon {
+  background: transparent;
+  color: #38bdf8;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+}
+
+.admin-app--control .admin-sidebar__logo {
+  color: #f8fafc;
+  letter-spacing: 0.04em;
+}
+
+.admin-app--control .admin-sidebar__logo-sub {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.admin-app--control .admin-sidebar__section-title {
+  color: #475569;
+}
+
+.admin-app--control .admin-sidebar__link {
+  color: #e2e8f0;
+}
+
+.admin-app--control .admin-sidebar__link:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.admin-app--control .admin-sidebar__link--active {
+  background: rgba(14, 165, 233, 0.15);
+  color: #7dd3fc;
+  border-left: 3px solid #0ea5e9;
+  padding-left: calc(var(--onroda-space-5) - 3px);
+}
+
+.admin-app--control .admin-sidebar__icon {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+.admin-app--control .admin-sidebar__icon--active {
+  background: #0ea5e9;
+  color: #0f172a;
+}
+
+.admin-app--control .admin-sidebar__footer {
+  border-top-color: #1e293b;
+}
+
+.admin-app--control .admin-sidebar__footer-title {
+  color: #e2e8f0;
+}
+
+.admin-app--control .admin-sidebar__footer-text {
+  color: #94a3b8;
+}
+
+.admin-app--control .admin-search {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.admin-app--control .admin-search:focus-within {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+}
+
+.admin-app--control .admin-btn-cta {
+  background: #0ea5e9;
+  color: #0f172a;
+}
+
+.admin-app--control .admin-btn-cta:hover {
+  filter: brightness(1.06);
+}
+
+.admin-app--control .admin-btn-cta:focus-visible {
+  outline-color: #0ea5e9;
+}

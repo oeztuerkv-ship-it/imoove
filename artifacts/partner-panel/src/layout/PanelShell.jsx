@@ -11,48 +11,55 @@ function ph(title, lead) {
 }
 
 const PAGES = {
-  overview: { title: "Übersicht", subtitle: "Dein Unternehmen auf einen Blick", component: <OverviewPage /> },
+  overview: {
+    title: "Ihr Überblick",
+    subtitle: "Willkommen im Unternehmensbereich — nur Ihre Daten, kein Plattform-Zugriff",
+    component: <OverviewPage />,
+  },
   "rides-mine": {
     title: "Meine Fahrten",
-    subtitle: "Alle Aufträge deines Mandanten (API)",
+    subtitle: "Alle Aufträge Ihres Unternehmens",
     component: <PartnerRidesListPage variant="all" />,
   },
   "rides-new": {
-    title: "Neue Fahrt",
-    subtitle: "Auftrag erfassen",
+    title: "Neue Fahrt anlegen",
+    subtitle: "Auftrag für Ihr Unternehmen erfassen",
     component: <RideCreatePage />,
   },
   "rides-history": {
-    title: "Verlauf",
+    title: "Mein Verlauf",
     subtitle: "Abgeschlossen, storniert, abgelehnt",
     component: <PartnerRidesListPage variant="history" />,
   },
-  profile: { title: "Profil und Firma", subtitle: "Zugang und Firmendaten", component: <ProfilePage /> },
-  team: { title: "Mitarbeiter", subtitle: "Zugänge und Rollen", component: <TeamPage /> },
+  profile: { title: "Meine Firma & Zugang", subtitle: "Stammdaten und Anmeldedaten", component: <ProfilePage /> },
+  team: { title: "Meine Mitarbeiter", subtitle: "Zugänge und Rollen in Ihrem Unternehmen", component: <TeamPage /> },
   "access-codes": {
-    title: "Freigabe-Codes",
-    subtitle: "Digitale Kostenübernahme",
-    component: ph("Freigabe-Codes", "Verwaltung und Übersicht der Zugangscodes für Ihren Mandanten."),
+    title: "Meine Freigabe-Codes",
+    subtitle: "Digitale Kostenübernahme für Gäste und Kunden",
+    component: ph(
+      "Meine Freigabe-Codes",
+      "Hier verwalten Sie die Zugangscodes nur für Ihr Unternehmen — getrennt von der zentralen Plattform.",
+    ),
   },
   "hotel-mode": {
     title: "Hotelmodus",
-    subtitle: "Hotelbuchungen",
-    component: ph("Hotelmodus", "Spezielle Buchungs- und Anzeigeoptionen für Beherbergungsbetriebe."),
+    subtitle: "Buchungen für Ihren Betrieb",
+    component: ph("Hotelmodus", "Spezielle Optionen für Beherbergungsbetriebe — nur Ihre Buchungen."),
   },
   "company-rides": {
-    title: "Firmenfahrten",
-    subtitle: "Auswertung",
-    component: ph("Firmenfahrten", "Gefilterte Ansichten und Kennzahlen für Firmenfahrten."),
+    title: "Meine Firmenfahrten",
+    subtitle: "Auswertung für Ihr Unternehmen",
+    component: ph("Meine Firmenfahrten", "Gefilterte Ansichten und Kennzahlen — Mandantenbezogen."),
   },
   recurring: {
-    title: "Serienfahrten",
+    title: "Meine Serienfahrten",
     subtitle: "Wiederkehrende Aufträge",
-    component: ph("Serienfahrten", "Planung und Verwaltung wiederkehrender Fahrten."),
+    component: ph("Meine Serienfahrten", "Planung wiederkehrender Fahrten nur in Ihrem Mandanten."),
   },
   billing: {
-    title: "Abrechnung",
-    subtitle: "Umsätze und Auswertung",
-    component: ph("Abrechnung", "Abrechnungsübersicht und Exporte für Ihren Mandanten."),
+    title: "Meine Abrechnung",
+    subtitle: "Umsätze und Auswertung Ihres Unternehmens",
+    component: ph("Meine Abrechnung", "Abrechnungsübersicht und Exporte — ausschließlich Ihre Daten."),
   },
 };
 
@@ -63,7 +70,7 @@ export default function PanelShell({ active, onChange, user, onLogout, navItems 
   const current = PAGES[active] || PAGES.overview;
 
   return (
-    <div className="panel-app">
+    <div className="panel-app panel-app--workspace">
       <div className="panel-app__sidebar-col">
         <PanelSidebar active={active} onChange={onChange} items={navItems} />
       </div>

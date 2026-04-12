@@ -27,6 +27,7 @@ Jede neue Funktion **explizit** einer oder mehreren Rollen zuordnen: **welche Ob
 **Konsequenzen für Agents**
 
 - PRs mit API/Auth/DB/Panel/Mobile: Checkliste in **`.github/pull_request_template.md`** ausfüllen; siehe auch **`imoove-pr-role-separation.mdc`**.
+- **UX & Oberfläche:** Admin- und Partner-Panel dauerhaft unterscheidbar halten (Sprache, Farben, Einstieg, Navigation) — verbindlich **`imoove-panel-ux-separation.mdc`**.
 - **Dashboard / Navigation / Rechte / API** pro Rolle **getrennt** halten: Admin-Dashboard ≠ Partner-Übersicht ≠ Kunden-Historie ≠ Fahrer-Jobliste.
 - Admin-Stats (`/api/admin/stats`) **nicht** in Partner- oder Kunden-Apps spiegeln ohne eigene, gefilterte Endpunkte.
 - Partner-Daten **nie** über Admin-only-Shortcuts für den Partner exponieren (und umgekehrt).

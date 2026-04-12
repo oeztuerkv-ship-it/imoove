@@ -72,6 +72,77 @@
   color: var(--onroda-red);
 }
 
+.panel-app--workspace .panel-card__title,
+.panel-app--workspace .panel-page__title {
+  color: #115e59;
+}
+
+.panel-app--workspace .panel-card {
+  background: #fffefb;
+  border-color: #e7e2d6;
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
+}
+
+.panel-app--workspace .panel-card--hint {
+  border-color: #99f6e4;
+  background: linear-gradient(135deg, #f0fdfa 0%, #fffefb 100%);
+}
+
+.panel-app--workspace .panel-btn-primary {
+  background: #0d9488;
+  color: #ecfdf5;
+}
+
+.panel-app--workspace .panel-btn-primary:focus-visible {
+  outline-color: #0d9488;
+}
+
+/* Startseite Unternehmer-Panel */
+.panel-overview-hero {
+  margin-bottom: var(--onroda-space-8);
+  padding: var(--onroda-space-8) var(--onroda-space-7);
+  background: linear-gradient(135deg, #ecfdf5 0%, #fffefb 55%, #f0fdfa 100%);
+  border: 1px solid #99f6e4;
+  border-radius: var(--onroda-radius-card);
+  max-width: 920px;
+}
+
+.panel-overview-hero__eyebrow {
+  margin: 0 0 var(--onroda-space-3);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.panel-overview-hero__title {
+  margin: 0;
+  font-size: clamp(1.45rem, 3.5vw, 1.85rem);
+  font-weight: 800;
+  color: #134e4a;
+  line-height: 1.2;
+}
+
+.panel-overview-hero__break {
+  display: block;
+  height: 0.35rem;
+}
+
+.panel-overview-hero__company {
+  display: inline-block;
+  font-weight: 800;
+  color: #0d9488;
+}
+
+.panel-overview-hero__lead {
+  margin: var(--onroda-space-5) 0 0;
+  max-width: 52rem;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: #44403c;
+}
+
 .panel-card__row {
   margin: 6px 0 0;
   font-size: 0.92rem;

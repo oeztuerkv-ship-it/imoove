@@ -1,0 +1,40 @@
+---
+description: Admin- vs Partner-Panel — dauerhafte UX-/Sprach-/Farb-Trennung (Operator-Konsole vs Unternehmens-Arbeitsplatz)
+alwaysApply: true
+---
+
+# Onroda: Admin-Panel vs Partner-Panel (UX verbindlich trennen)
+
+Technische Rollen- und API-Trennung: **`imoove-product-architecture.mdc`**. Diese Regel ergänzt sie um **Oberfläche, Sprache und Wahrnehmung** — damit neue Features die Linie **nicht verwässern**.
+
+## Zwei Produkte, zwei Codebasen
+
+- **`artifacts/admin-panel`** und **`artifacts/partner-panel`** sind **getrennte SPAs**. Keine gemeinsamen React-Komponenten-Hooks oder `-pages` zwischen beiden Ordnern importieren oder auslagern, **außer** explizit abgesprochen und dann in einem **neutralen** Shared-Paket (aktuell: bewusst nicht vorgesehen).
+- **Kein** Kopieren ganzer Screens aus dem anderen Panel ohne **Anpassung** an die jeweilige Persona (Sprache, Layout, Farbwelt, Nav-Bezeichnung).
+- Marken-Basis **`onroda-brand.css`** (CSS-Variablen) darf beide nutzen; **Theming** pro App bleibt getrennt: Admin **`admin-app--control`**, Partner **`panel-app--workspace`** (siehe jeweilige `*.css`).
+
+## Admin = Operator- / Plattform-Konsole (immer)
+
+- **Gefühl:** zentrale Steuerung, Monitoring, alle Mandanten, Systemüberblick — **nicht** „mein Büro“.
+- **Sprache:** z. B. *Plattform*, *alle Fahrten*, *alle Unternehmen*, *global*, *System*, *Operator* — **nicht** primär *Ihr Unternehmen* / *Meine …* (außer in erklärenden Hinweistexten zum Partner-Portal).
+- **Navigation & Einstieg:** Begriffe und Seitentitel müssen **Plattform-Scope** ausdrücken (siehe bestehende Sidebar und Startseite).
+- **Farben / Chrome:** dunkle Seitenleiste, **Sky/Cyan** für Akzente und KPI-Zahlen im Admin-Theme — **nicht** das warme Teal-Arbeitsplatz-Layout des Partner-Panels übernehmen.
+
+## Partner = Unternehmens-Arbeitsplatz (immer)
+
+- **Gefühl:** nur **eigenes** Unternehmen, Alltag, Buchungen, Team — **kein** Zugriff auf andere Mandanten oder Gesamtplattform.
+- **Sprache:** konsequent **Ihr / Ihre / Mein / Meine** und mandantenbezogene Formulierungen — **keine** Formulierungen wie „alle Firmen“ oder „gesamtes System“.
+- **Navigation & Einstieg:** Begrüßung und Hinweise betonen **Abgrenzung zur Betreiber-Konsole**; **keine** technischen API-Pfade in der Primär-Copy.
+- **Farben / Chrome:** warme Flächen, **Teal**-Akzente im Partner-Theme — **nicht** die dunkle Operator-Seitenleiste oder cyan-lastige Admin-KPI-Optik.
+
+## Bei jedem neuen Feature mitdenken
+
+1. **Zuerst:** Welche Rolle / welches Panel? (Admin-only, Partner-only, oder bewusst beide mit **getrennten** UIs.)
+2. **Neue Seiten:** dieselbe **Persona** und **Theme-Klassen** wie im restlichen jeweiligen Panel verwenden.
+3. **Keine** Vermischung von **Logik** (z. B. Admin-Bearer in Partner-Code, Panel-JWT für globale Stats) — siehe Architektur-Regel.
+4. PR: bei Panel-UI/Copy-Änderungen kurz bestätigen, dass die **UX-Trennung** gewahrt bleibt (siehe **`imoove-pr-role-separation.mdc`**).
+
+## Für Agents
+
+- Admin- und Partner-Panel **nie** „angleichen“ zu einer einheitlichen Oberfläche — **Unterschied ist gewollt**.
+- Refactors: Theme- und Copy-Konventionen **pro Panel** beibehalten oder gezielt erweitern, nicht vereinheitlichen über beide hinweg.

@@ -3,11 +3,11 @@
  * @type {readonly { key: string; moduleId: string; label: string; icon: string }[]}
  */
 export const PANEL_NAV_ITEMS = [
-  { key: "overview", moduleId: "overview", label: "Übersicht", icon: "◫" },
+  { key: "overview", moduleId: "overview", label: "Start", icon: "◫" },
   { key: "rides-mine", moduleId: "rides_list", label: "Meine Fahrten", icon: "☰" },
   { key: "rides-new", moduleId: "rides_create", label: "Neue Fahrt", icon: "+" },
-  { key: "rides-history", moduleId: "rides_list", label: "Verlauf", icon: "↺" },
-  { key: "profile", moduleId: "company_profile", label: "Profil / Firma", icon: "◇" },
+  { key: "rides-history", moduleId: "rides_list", label: "Mein Verlauf", icon: "↺" },
+  { key: "profile", moduleId: "company_profile", label: "Meine Firma", icon: "◇" },
   { key: "team", moduleId: "team", label: "Mitarbeiter", icon: "◎" },
   { key: "access-codes", moduleId: "access_codes", label: "Freigabe-Codes", icon: "▣" },
   { key: "hotel-mode", moduleId: "hotel_mode", label: "Hotelmodus", icon: "⌂" },

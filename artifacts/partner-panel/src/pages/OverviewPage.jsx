@@ -74,46 +74,53 @@ export default function OverviewPage() {
 
   return (
     <div className="panel-page panel-page--overview">
-      <h2 className="panel-page__title">Übersicht</h2>
-      <p className="panel-page__lead">
-        Angemeldet als <strong>{user?.username}</strong>
-        {user?.companyName ? (
-          <>
-            {" "}
-            · <strong>{user.companyName}</strong>
-          </>
-        ) : null}
-        .
-      </p>
+      <div className="panel-overview-hero">
+        <p className="panel-overview-hero__eyebrow">Ihr Unternehmensbereich</p>
+        <h2 className="panel-overview-hero__title">
+          Guten Tag{user?.username ? `, ${user.username}` : ""}
+          {user?.companyName ? (
+            <>
+              <span className="panel-overview-hero__break" />
+              <span className="panel-overview-hero__company">{user.companyName}</span>
+            </>
+          ) : null}
+        </h2>
+        <p className="panel-overview-hero__lead">
+          Hier arbeiten Sie <strong>nur mit den Daten Ihres Unternehmens</strong>. Das ist bewusst getrennt von der
+          zentralen Onroda-Systemkonsole für Betreiber — andere Oberfläche, andere Aufgaben, kein Zugriff auf andere
+          Mandanten.
+        </p>
+      </div>
       {companyErr ? <p className="panel-page__warn">{companyErr}</p> : null}
-      <div className="panel-card panel-card--hint">
-        <h3 className="panel-card__title">Einstieg</h3>
+      <div className="panel-card panel-card--hint panel-card--wide">
+        <h3 className="panel-card__title">Was Sie hier tun können</h3>
         <ul className="panel-hint-list">
           {hasPanelModule(user?.panelModules, "rides_list") ? (
             <li>
-              <strong>Meine Fahrten</strong> und <strong>Verlauf</strong> laden live von der API; CSV-Export ohne
-              Dummy-Daten.
+              <strong>Meine Fahrten</strong> und <strong>Mein Verlauf</strong> — aktuelle und abgeschlossene Aufträge
+              Ihres Unternehmens, inklusive Export.
             </li>
           ) : null}
           {hasPanelModule(user?.panelModules, "rides_create") ? (
             <li>
-              <strong>Neue Fahrt</strong> sendet an <code className="panel-inline-code">POST /api/panel/v1/rides</code>{" "}
-              (nur mit Recht <code className="panel-inline-code">rides.create</code>).
+              <strong>Neue Fahrt anlegen</strong> — Aufträge für Ihr Unternehmen erfassen (sofern Ihre Rolle das
+              erlaubt).
             </li>
           ) : null}
           {hasPanelModule(user?.panelModules, "company_profile") ? (
             <li>
-              <strong>Profil / Firma</strong> bündelt Zugangsdaten und Firmastammdaten; erweiterte Bearbeitung folgt.
+              <strong>Meine Firma</strong> — Stammdaten und Kontaktdaten Ihres Mandanten an einem Ort.
             </li>
           ) : null}
           {hasPanelModule(user?.panelModules, "team") ? (
             <li>
-              <strong>Mitarbeiter</strong>: Zugänge je nach Rolle (anlegen, deaktivieren, Passwort setzen).
+              <strong>Mitarbeiter</strong> — Zugänge für Ihr Team verwalten (Rollen, Passwörter, Aktivierung).
             </li>
           ) : null}
           {hasPanelModule(user?.panelModules, "access_codes") ? (
             <li>
-              <strong>Freigabe-Codes</strong> für digitale Kostenübernahme (sofern für Ihr Konto freigeschaltet).
+              <strong>Freigabe-Codes</strong> — digitale Kostenübernahme für Gäste und Kunden, wenn für Sie
+              freigeschaltet.
             </li>
           ) : null}
         </ul>
@@ -121,7 +128,7 @@ export default function OverviewPage() {
 
       {hasPerm(user?.permissions, "self.change_password") ? (
         <div className="panel-card panel-card--wide">
-          <h3 className="panel-card__title">Eigenes Passwort ändern</h3>
+          <h3 className="panel-card__title">Mein Passwort ändern</h3>
           <form className="panel-rides-form" onSubmit={onChangePassword}>
             <div className="panel-rides-form__grid">
               <label className="panel-rides-form__field">
@@ -158,7 +165,7 @@ export default function OverviewPage() {
 
       {company ? (
         <div className="panel-card">
-          <h3 className="panel-card__title">Firma (API)</h3>
+          <h3 className="panel-card__title">Meine Firmendaten</h3>
           <p className="panel-card__row">
             <span className="panel-card__k">Name</span> {company.name}
           </p>
