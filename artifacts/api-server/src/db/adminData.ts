@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, count, eq, gte, isNotNull, lte, ne, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
@@ -242,6 +243,149 @@ export async function listCompanies(): Promise<CompanyRow[]> {
   if (!db) return [...memCompanies];
   const rows = await db.select().from(adminCompaniesTable);
   return rows.map(rowToCompany);
+}
+
+/** Admin-API: PATCH /admin/companies/:id (ohne panel_modules — weiter eigene Route). */
+export type AdminCompanyUpdateBody = Partial<{
+  name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  address_line1: string;
+  address_line2: string;
+  postal_code: string;
+  city: string;
+  country: string;
+  vat_id: string;
+  is_active: boolean;
+  is_priority_company: boolean;
+  priority_for_live_rides: boolean;
+  priority_for_reservations: boolean;
+  priority_price_threshold: number;
+  priority_timeout_seconds: number;
+  release_radius_km: number;
+}>;
+
+export async function findCompanyById(companyId: string): Promise<CompanyRow | null> {
+  const db = getDb();
+  if (!db) {
+    return memCompanies.find((c) => c.id === companyId) ?? null;
+  }
+  const rows = await db.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  return rows[0] ? rowToCompany(rows[0]) : null;
+}
+
+function companyRowToDbValues(c: CompanyRow) {
+  return {
+    id: c.id,
+    name: c.name,
+    contact_name: c.contact_name,
+    email: c.email,
+    phone: c.phone,
+    address_line1: c.address_line1,
+    address_line2: c.address_line2,
+    postal_code: c.postal_code,
+    city: c.city,
+    country: c.country,
+    vat_id: c.vat_id,
+    is_active: c.is_active,
+    is_priority_company: c.is_priority_company,
+    priority_for_live_rides: c.priority_for_live_rides,
+    priority_for_reservations: c.priority_for_reservations,
+    priority_price_threshold: c.priority_price_threshold,
+    priority_timeout_seconds: c.priority_timeout_seconds,
+    release_radius_km: c.release_radius_km,
+    panel_modules: c.panel_modules ?? null,
+  };
+}
+
+function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): CompanyRow {
+  const next: CompanyRow = { ...cur };
+  if (typeof body.name === "string") {
+    const t = body.name.trim();
+    if (t) next.name = t;
+  }
+  if (typeof body.contact_name === "string") next.contact_name = body.contact_name.trim();
+  if (typeof body.email === "string") next.email = body.email.trim();
+  if (typeof body.phone === "string") next.phone = body.phone.trim();
+  if (typeof body.address_line1 === "string") next.address_line1 = body.address_line1.trim();
+  if (typeof body.address_line2 === "string") next.address_line2 = body.address_line2.trim();
+  if (typeof body.postal_code === "string") next.postal_code = body.postal_code.trim();
+  if (typeof body.city === "string") next.city = body.city.trim();
+  if (typeof body.country === "string") next.country = body.country.trim();
+  if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
+  if (typeof body.is_active === "boolean") next.is_active = body.is_active;
+  if (typeof body.is_priority_company === "boolean") next.is_priority_company = body.is_priority_company;
+  if (typeof body.priority_for_live_rides === "boolean") next.priority_for_live_rides = body.priority_for_live_rides;
+  if (typeof body.priority_for_reservations === "boolean") next.priority_for_reservations = body.priority_for_reservations;
+  if (typeof body.priority_price_threshold === "number" && Number.isFinite(body.priority_price_threshold)) {
+    next.priority_price_threshold = body.priority_price_threshold;
+  }
+  if (typeof body.priority_timeout_seconds === "number" && Number.isFinite(body.priority_timeout_seconds)) {
+    next.priority_timeout_seconds = Math.max(0, Math.floor(body.priority_timeout_seconds));
+  }
+  if (typeof body.release_radius_km === "number" && Number.isFinite(body.release_radius_km)) {
+    next.release_radius_km = Math.max(0, body.release_radius_km);
+  }
+  return next;
+}
+
+export async function insertAdminCompany(
+  body: { name: string } & AdminCompanyUpdateBody,
+): Promise<CompanyRow | { error: string }> {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name) return { error: "name_required" };
+
+  const id = `co-${randomUUID()}`;
+  const base: CompanyRow = {
+    id,
+    name,
+    contact_name: "",
+    email: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+    vat_id: "",
+    is_active: true,
+    is_priority_company: false,
+    priority_for_live_rides: false,
+    priority_for_reservations: false,
+    priority_price_threshold: 25,
+    priority_timeout_seconds: 90,
+    release_radius_km: 10,
+    panel_modules: null,
+  };
+  const next = applyAdminCompanyPatch(base, body);
+
+  const db = getDb();
+  if (!db) {
+    memCompanies = [...memCompanies, next];
+    return next;
+  }
+  await db.insert(adminCompaniesTable).values(companyRowToDbValues(next));
+  return next;
+}
+
+export async function updateAdminCompany(
+  companyId: string,
+  body: AdminCompanyUpdateBody,
+): Promise<CompanyRow | null> {
+  const cur = await findCompanyById(companyId);
+  if (!cur) return null;
+  const next = applyAdminCompanyPatch(cur, body);
+
+  const db = getDb();
+  if (!db) {
+    const idx = memCompanies.findIndex((c) => c.id === companyId);
+    if (idx < 0) return null;
+    memCompanies[idx] = next;
+    return next;
+  }
+  await db.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  return next;
 }
 
 export async function patchCompanyPriority(

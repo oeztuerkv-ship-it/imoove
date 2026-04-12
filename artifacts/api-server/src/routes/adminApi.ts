@@ -3,11 +3,14 @@ import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain
 import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
 import {
   addFareArea,
+  type AdminCompanyUpdateBody,
   getAdminStats,
+  insertAdminCompany,
   listCompanies,
   listFareAreas,
   patchCompanyPanelModules,
   patchCompanyPriority,
+  updateAdminCompany,
 } from "../db/adminData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import {
@@ -92,6 +95,36 @@ adminJson.get("/companies", async (_req, res, next) => {
   try {
     const items = await listCompanies();
     res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/companies", async (req, res, next) => {
+  try {
+    const b = req.body as { name?: unknown } & AdminCompanyUpdateBody;
+    const name = typeof b.name === "string" ? b.name : "";
+    const { name: _drop, ...rest } = b;
+    const result = await insertAdminCompany({ name, ...rest });
+    if ("error" in result) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.status(201).json({ ok: true, item: result });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/companies/:companyId", async (req, res, next) => {
+  try {
+    const body = req.body as AdminCompanyUpdateBody;
+    const item = await updateAdminCompany(req.params.companyId, body);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
   } catch (e) {
     next(e);
   }

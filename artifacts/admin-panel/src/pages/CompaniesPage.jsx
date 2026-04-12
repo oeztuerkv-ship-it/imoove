@@ -5,6 +5,50 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 const COMPANIES_URL = `${API_BASE}/admin/companies`;
 const ITEMS_PER_PAGE = 10;
 
+function emptyCompanyForm() {
+  return {
+    name: "",
+    contact_name: "",
+    email: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+    vat_id: "",
+    is_active: true,
+    is_priority_company: false,
+    priority_for_live_rides: false,
+    priority_for_reservations: false,
+    priority_price_threshold: "25",
+    priority_timeout_seconds: "90",
+    release_radius_km: "10",
+  };
+}
+
+function formFromItem(item) {
+  return {
+    name: item.name ?? "",
+    contact_name: item.contact_name ?? "",
+    email: item.email ?? "",
+    phone: item.phone ?? "",
+    address_line1: item.address_line1 ?? "",
+    address_line2: item.address_line2 ?? "",
+    postal_code: item.postal_code ?? "",
+    city: item.city ?? "",
+    country: item.country ?? "",
+    vat_id: item.vat_id ?? "",
+    is_active: !!item.is_active,
+    is_priority_company: !!item.is_priority_company,
+    priority_for_live_rides: !!item.priority_for_live_rides,
+    priority_for_reservations: !!item.priority_for_reservations,
+    priority_price_threshold: String(item.priority_price_threshold ?? 25),
+    priority_timeout_seconds: String(item.priority_timeout_seconds ?? 90),
+    release_radius_km: String(item.release_radius_km ?? 10),
+  };
+}
+
 export default function CompaniesPage() {
   const [items, setItems] = useState([]);
   const [moduleCatalog, setModuleCatalog] = useState([]);
@@ -19,6 +63,13 @@ export default function CompaniesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [page, setPage] = useState(1);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCompanyId, setEditingCompanyId] = useState(null);
+  const [companyForm, setCompanyForm] = useState(emptyCompanyForm);
+  const [formModalSaving, setFormModalSaving] = useState(false);
+  const [formModalError, setFormModalError] = useState("");
 
   useEffect(() => {
     loadCompanies();
@@ -49,6 +100,136 @@ export default function CompaniesPage() {
       setError("Unternehmer konnten nicht geladen werden.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openCreateCompany() {
+    setCompanyForm(emptyCompanyForm());
+    setFormModalError("");
+    setShowCreateModal(true);
+  }
+
+  function openEditCompany(item) {
+    setEditingCompanyId(item.id);
+    setCompanyForm(formFromItem(item));
+    setFormModalError("");
+    setShowEditModal(true);
+  }
+
+  function closeCompanyModals() {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setEditingCompanyId(null);
+    setFormModalError("");
+  }
+
+  function buildCompanyPayload() {
+    const pt = Number(companyForm.priority_price_threshold);
+    const ts = Number(companyForm.priority_timeout_seconds);
+    const rk = Number(companyForm.release_radius_km);
+    return {
+      name: companyForm.name.trim(),
+      contact_name: companyForm.contact_name.trim(),
+      email: companyForm.email.trim(),
+      phone: companyForm.phone.trim(),
+      address_line1: companyForm.address_line1.trim(),
+      address_line2: companyForm.address_line2.trim(),
+      postal_code: companyForm.postal_code.trim(),
+      city: companyForm.city.trim(),
+      country: companyForm.country.trim(),
+      vat_id: companyForm.vat_id.trim(),
+      is_active: companyForm.is_active,
+      is_priority_company: companyForm.is_priority_company,
+      priority_for_live_rides: companyForm.priority_for_live_rides,
+      priority_for_reservations: companyForm.priority_for_reservations,
+      priority_price_threshold: Number.isFinite(pt) ? pt : 0,
+      priority_timeout_seconds: Number.isFinite(ts) ? Math.floor(ts) : 90,
+      release_radius_km: Number.isFinite(rk) ? rk : 10,
+    };
+  }
+
+  async function saveCreateCompany(e) {
+    e.preventDefault();
+    if (!companyForm.name.trim()) {
+      setFormModalError("Name ist Pflicht.");
+      return;
+    }
+    setFormModalSaving(true);
+    setFormModalError("");
+    try {
+      const res = await fetch(COMPANIES_URL, {
+        method: "POST",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(buildCompanyPayload()),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.item) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setItems((prev) => [data.item, ...prev]);
+      closeCompanyModals();
+    } catch (err) {
+      console.error(err);
+      setFormModalError(err.message || "Anlegen fehlgeschlagen.");
+    } finally {
+      setFormModalSaving(false);
+    }
+  }
+
+  async function saveEditCompany(e) {
+    e.preventDefault();
+    if (!editingCompanyId) return;
+    if (!companyForm.name.trim()) {
+      setFormModalError("Name ist Pflicht.");
+      return;
+    }
+    setFormModalSaving(true);
+    setFormModalError("");
+    try {
+      const res = await fetch(`${COMPANIES_URL}/${encodeURIComponent(editingCompanyId)}`, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(buildCompanyPayload()),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.item) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setItems((prev) => prev.map((row) => (row.id === editingCompanyId ? data.item : row)));
+      closeCompanyModals();
+    } catch (err) {
+      console.error(err);
+      setFormModalError(err.message || "Speichern fehlgeschlagen.");
+    } finally {
+      setFormModalSaving(false);
+    }
+  }
+
+  async function toggleCompanyActive(item) {
+    if (item.is_active) {
+      const ok = window.confirm(
+        "Unternehmen deaktivieren? Aktive Panel-Logins für diese Firma werden beim nächsten /me-Check abgewiesen.",
+      );
+      if (!ok) return;
+    }
+    setSavingId(item.id);
+    setError("");
+    try {
+      const res = await fetch(`${COMPANIES_URL}/${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ is_active: !item.is_active }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.item) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setItems((prev) => prev.map((row) => (row.id === item.id ? data.item : row)));
+    } catch (err) {
+      console.error(err);
+      setError("Status konnte nicht geändert werden.");
+    } finally {
+      setSavingId(null);
     }
   }
 
@@ -359,9 +540,14 @@ export default function CompaniesPage() {
 
           <div className="admin-filter-item">
             <label className="admin-field-label">&nbsp;</label>
-            <button type="button" className="admin-btn-refresh" onClick={loadCompanies}>
-              Neu laden
-            </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="admin-btn-refresh" onClick={openCreateCompany}>
+                + Neues Unternehmen
+              </button>
+              <button type="button" className="admin-page-btn" onClick={loadCompanies}>
+                Neu laden
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -413,6 +599,20 @@ export default function CompaniesPage() {
                       {item.is_priority_company ? "PRIO aktiv" : "Keine PRIO"}
                     </span>
                   </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                  <button type="button" className="admin-btn-refresh" onClick={() => openEditCompany(item)}>
+                    Stammdaten bearbeiten
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-page-btn"
+                    disabled={savingId === item.id}
+                    onClick={() => void toggleCompanyActive(item)}
+                  >
+                    {item.is_active ? "Deaktivieren" : "Aktivieren"}
+                  </button>
                 </div>
 
                 <div className="admin-controls-grid">
@@ -573,6 +773,149 @@ export default function CompaniesPage() {
 
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
+
+      {showCreateModal ? (
+        <div className="admin-modal-backdrop" role="presentation" onClick={closeCompanyModals}>
+          <div
+            className="admin-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-company-create-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal__header">
+              <h2 id="admin-company-create-title" className="admin-modal__title">
+                Neues Unternehmen
+              </h2>
+              <button type="button" className="admin-modal__close" onClick={closeCompanyModals} aria-label="Schließen">
+                ×
+              </button>
+            </div>
+            <form className="admin-modal__body" onSubmit={saveCreateCompany}>
+              {formModalError ? <div className="admin-error-banner">{formModalError}</div> : null}
+              <CompanyFormBody form={companyForm} setForm={setCompanyForm} />
+              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+                <button type="submit" className="admin-btn-refresh" disabled={formModalSaving}>
+                  {formModalSaving ? "Speichert …" : "Anlegen"}
+                </button>
+                <button type="button" className="admin-page-btn" onClick={closeCompanyModals} disabled={formModalSaving}>
+                  Abbrechen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {showEditModal ? (
+        <div className="admin-modal-backdrop" role="presentation" onClick={closeCompanyModals}>
+          <div
+            className="admin-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-company-edit-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal__header">
+              <h2 id="admin-company-edit-title" className="admin-modal__title">
+                Unternehmen bearbeiten
+              </h2>
+              <button type="button" className="admin-modal__close" onClick={closeCompanyModals} aria-label="Schließen">
+                ×
+              </button>
+            </div>
+            <form className="admin-modal__body" onSubmit={saveEditCompany}>
+              {formModalError ? <div className="admin-error-banner">{formModalError}</div> : null}
+              <CompanyFormBody form={companyForm} setForm={setCompanyForm} />
+              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+                <button type="submit" className="admin-btn-refresh" disabled={formModalSaving}>
+                  {formModalSaving ? "Speichert …" : "Speichern"}
+                </button>
+                <button type="button" className="admin-page-btn" onClick={closeCompanyModals} disabled={formModalSaving}>
+                  Abbrechen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CompanyFormBody({ form, setForm }) {
+  const ch = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
+  const chk = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.checked }));
+  return (
+    <div className="admin-fields-grid">
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Name *</label>
+        <input className="admin-input" value={form.name} onChange={ch("name")} required />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Ansprechpartner</label>
+        <input className="admin-input" value={form.contact_name} onChange={ch("contact_name")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">E-Mail</label>
+        <input className="admin-input" type="email" value={form.email} onChange={ch("email")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Telefon</label>
+        <input className="admin-input" value={form.phone} onChange={ch("phone")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Adresse Zeile 1</label>
+        <input className="admin-input" value={form.address_line1} onChange={ch("address_line1")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Adresse Zeile 2</label>
+        <input className="admin-input" value={form.address_line2} onChange={ch("address_line2")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">PLZ</label>
+        <input className="admin-input" value={form.postal_code} onChange={ch("postal_code")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Ort</label>
+        <input className="admin-input" value={form.city} onChange={ch("city")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Land</label>
+        <input className="admin-input" value={form.country} onChange={ch("country")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">USt-IdNr.</label>
+        <input className="admin-input" value={form.vat_id} onChange={ch("vat_id")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Ab Preis (PRIO) €</label>
+        <input className="admin-input" value={form.priority_price_threshold} onChange={ch("priority_price_threshold")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Timeout (Sek.)</label>
+        <input className="admin-input" value={form.priority_timeout_seconds} onChange={ch("priority_timeout_seconds")} />
+      </div>
+      <div className="admin-filter-item">
+        <label className="admin-field-label">Freigabe-Radius km</label>
+        <input className="admin-input" value={form.release_radius_km} onChange={ch("release_radius_km")} />
+      </div>
+      <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
+        <span className="admin-switch-row__label">Aktiv (Panel-Login erlaubt)</span>
+        <input type="checkbox" checked={form.is_active} onChange={chk("is_active")} />
+      </label>
+      <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
+        <span className="admin-switch-row__label">PRIO-Unternehmen</span>
+        <input type="checkbox" checked={form.is_priority_company} onChange={chk("is_priority_company")} />
+      </label>
+      <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
+        <span className="admin-switch-row__label">Live-Fahrten PRIO</span>
+        <input type="checkbox" checked={form.priority_for_live_rides} onChange={chk("priority_for_live_rides")} />
+      </label>
+      <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
+        <span className="admin-switch-row__label">Reservierungen PRIO</span>
+        <input type="checkbox" checked={form.priority_for_reservations} onChange={chk("priority_for_reservations")} />
+      </label>
     </div>
   );
 }
