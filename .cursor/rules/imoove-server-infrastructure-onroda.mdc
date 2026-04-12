@@ -7,7 +7,7 @@ alwaysApply: true
 
 **Invarianten & Deploy-Überblick:** siehe **`AGENTS.md`** im Repo-Root; automatische Checks: **`scripts/verify-onroda-repo-invariants.sh`**.
 
-**Reproduzierbarer Live-Stand:** `./scripts/deploy-onroda-production.sh` (Pull, Migrationen mit Tracker `onroda_deploy_migrations`, API- + Panel-Builds, PM2, optional rsync/Nginx) — Details in **`AGENTS.md`** und **`imoove-git-deployment-workflow.mdc`**.
+**Reproduzierbarer Live-Stand (verbindlich):** nur `main` + Push nach `origin/main`, auf dem Server **nur** `cd /root/imoove && ./scripts/deploy-onroda-production.sh` — kein Entwickeln/Committen auf dem Server, keine manuellen Einzel-Schritte statt des Skripts. Details in **`AGENTS.md`** und **`imoove-git-deployment-workflow.mdc`**.
 
 ## Typischer Fehler (Postmortem)
 

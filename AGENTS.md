@@ -2,7 +2,11 @@
 
 Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** und **Server-Build**. Änderungen immer als **Commit + Migration + dokumentierter Deploy-Schritt**, nicht als dauerhafte Sonderlogik nur auf dem Server.
 
-**Verbindlich — was deploybar ist:** Nur Code und Dateien, die **committed** und auf **`main`** nach **`origin/main` gepusht** sind. **Untracked** oder **uncommittete** lokale Änderungen sind **kein** Produktionsstand; der Server sieht sie nach `git pull` nicht. **Produktionsablauf:** lokal pushen → auf dem Server **`./scripts/deploy-onroda-production.sh`**.
+**Verbindlich — so arbeiten wir (Mensch & Agent):**
+
+- **Deploybar** ist nur, was auf **`main` committed** und nach **`origin/main` gepusht** ist. **Untracked** oder nur **lokal geändert** (ohne Push) zählt **nicht**.
+- **Produktionsserver:** dort wird **nicht entwickelt** und **nicht committed**; **keine manuellen** Deploy-Abweichungen (kein eigenes Pull+Build+Restart-Puzzle statt des Skripts).
+- **Einziger Weg live:** lokal **commit + push `main`** → auf dem Server **`cd /root/imoove && ./scripts/deploy-onroda-production.sh`** (Repo-Pfad bei euch wie vereinbart).
 
 ## Pflichtlektüre (Cursor Rules, immer aktiv)
 
@@ -28,10 +32,10 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 ## Deploy-Checkliste (Kurz)
 
-**Standard (ein Skript):** Auf dem Zielserver im Repo-Root:
+**Standard (verbindlich):** Auf dem Zielserver:
 
 ```bash
-./scripts/deploy-onroda-production.sh
+cd /root/imoove && ./scripts/deploy-onroda-production.sh
 ```
 
 Voraussetzungen: `pnpm`, `npm`, `psql`, `pm2`; `DATABASE_URL` in `artifacts/api-server/.env` (oder in der Shell). Optional: `scripts/onroda-deploy.env` aus `scripts/onroda-deploy.example.env` anlegen (PM2-Namen, rsync-Ziele, Nginx-Reload).
@@ -50,7 +54,7 @@ Ablauf im Skript: `git pull` → fehlende SQL-Migrationen (Tabelle `onroda_deplo
 
 **Live-Pfad der Panel-Assets:** Die API liest standardmäßig die gebauten Ordner `artifacts/admin-panel/dist` und `artifacts/partner-panel/dist` relativ zum API-`dist` (siehe `artifacts/api-server/src/app.ts`). Es ist **kein** separates PM2-Frontend nötig, solange Nginx auf **eine** Node-Instanz (Port **3000**) proxyt und keine veralteten Kopien unter `/var/www/…` ausliefert. Wenn eure Nginx-Konfiguration doch auf statische Verzeichnisse zeigt, nach dem Build `ONRODA_RSYNC_*` setzen oder die Pfade anpassen.
 
-Manuell (falls ohne Skript): 1) `git pull` 2) Migrationen 3) API-Build + PM2 4) beide Panel-Builds 5) Stichprobe.
+Deploy **ohne** dieses Skript ist **kein** unterstützter Ablauf mehr — bitte nicht wieder einführen.
 
 ## Automatische Repo-Prüfung
 

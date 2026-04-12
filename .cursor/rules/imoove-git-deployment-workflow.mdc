@@ -10,13 +10,21 @@ alwaysApply: true
 ## Grundsatz
 
 - **`imoove` ist bereits ein Git-Repository** — **kein** erneutes `git init` im Projektroot.
-- **Entwicklung lokal** (oder in klar benannten Branches/PRs). **Server nur für Deployment** (`git pull` + Build + Prozess-Neustart), keine ungeordneten direkten Code-Edits auf dem Server.
+- **Entwicklung lokal** (oder in klar benannten Branches/PRs). **Server nur für Deployment** — siehe unten, **strikt** nur über das Deploy-Skript.
 
 ## Was ist deploybar? (verbindlich)
 
 - **Deploybar** ist nur Stand, der als **Commit auf `main`** existiert und auf **`origin/main`** (bzw. den Remote, den der Server per `git pull` bezieht) **gepusht** ist.
-- **Untracked** Dateien, **nur lokale** Änderungen ohne Commit, oder Commits nur auf einem **anderen Branch** gelten **nicht** als live — der Server und `./scripts/deploy-onroda-production.sh` sehen sie nach `git pull` nicht.
-- **Fester Produktionsweg:** lokal **commit + push nach `main`** → auf dem Server **`./scripts/deploy-onroda-production.sh`** (macht darin `git pull`). Nicht umgekehrt erwarten, dass „Push allein“ den Server aktualisiert; nicht annehmen, dass ungepushte Arbeit „schon draußen“ ist.
+- **Untracked** Dateien, **nur lokale** Änderungen ohne Commit, oder Commits nur auf einem **anderen Branch** gelten **nicht** als live — der Server sieht sie nach `git pull` nicht.
+- **Auf dem Produktionsserver** wird **nicht entwickelt** und **nicht committed** — kein „schneller Fix“ im Working Tree, keine lokalen Commits dort.
+- **Keine manuellen Deploy-Abweichungen:** kein separates `git pull` + Einzel-`npm`/`pnpm`-Builds + `pm2 restart` statt des Skripts (Migrationen vergessen, nur ein Panel gebaut, falsche Reihenfolge — typische Drift).
+- **Einziger unterstützter Weg in Produktion:**
+
+```bash
+cd /root/imoove && ./scripts/deploy-onroda-production.sh
+```
+
+(Repo-Pfad auf dem Server ggf. anpassen; immer **dieses** Skript als Ganzes.) Davor lokal: **commit + push nach `main`**. „Push allein“ aktualisiert den Server nicht — das Skript holt per `git pull`.
 
 ## Lokaler Stand holen / aktualisieren
 
@@ -51,11 +59,10 @@ git push origin main
 
 ## Auf dem Server (nur Deployment)
 
-**Empfohlen: ein fester Ablauf**
+**Verbindlich — nur dieses Kommando für Produktions-Updates:**
 
 ```bash
-cd /root/imoove
-./scripts/deploy-onroda-production.sh
+cd /root/imoove && ./scripts/deploy-onroda-production.sh
 ```
 
 Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabelle `onroda_deploy_migrations` in derselben DB) → Workspace-`pnpm install --frozen-lockfile` + API-Build (`pnpm --filter @workspace/api-server run build`) → **admin-panel** und **partner-panel** jeweils `npm ci && npm run build` → optional `rsync` (siehe `scripts/onroda-deploy.example.env`) → `pm2 restart` (Default: `onroda-api --update-env`).
@@ -66,19 +73,9 @@ Das Skript macht nacheinander: `git pull` → fehlende Migrationen (Tracker-Tabe
 
 **Panel-Static vs PM2:** Unter der Standard-Architektur liefert die **API-Node-Instanz** die gebauten SPAs aus `artifacts/admin-panel/dist` (`/partners/`) und `artifacts/partner-panel/dist` (Panel-Host) — siehe `artifacts/api-server/src/app.ts`. PM2 startet typisch **nur** die API; getrennte PM2-Apps für „nur Static“ sind dann redundant, sofern Nginx auf `127.0.0.1:3000` proxyt. Wenn Nginx stattdessen auf `/var/www/…` ausliefert, nach jedem Build synchronisieren (`ONRODA_RSYNC_*`) oder Nginx-Pfade auf die Repo-`dist`-Ordner legen.
 
-**Manuell (Fallback)**
+Nach dem Deploy kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Admin `/partners/`, CSV-Export.
 
-```bash
-cd /root/imoove
-git pull origin main
-# Migrationen: siehe artifacts/api-server/src/db/migrations/ — vor API-Start einspielen
-cd /root/imoove && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
-cd artifacts/admin-panel && npm ci && npm run build
-cd ../partner-panel && npm ci && npm run build
-pm2 restart onroda-api --update-env
-```
-
-Kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Admin `/partners/`, CSV-Export.
+**Hinweis:** Ein „manueller“ Deploy ohne dieses Skript widerspricht dem verbindlichen Ablauf und soll **nicht** mehr genutzt werden — er reproduziert die früheren Mischstände.
 
 ## `.gitignore` (Pflichtgedanke)
 
@@ -86,7 +83,8 @@ Kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Ad
 
 ## Für Agents
 
-- **Deploybarkeit:** Features/Skripte/Doku gelten für Produktion erst nach **Commit auf `main` + Push**; nie behaupten, etwas sei „auf dem Server“, wenn es nur lokal oder untracked ist.
-- Keine Anweisungen, auf dem Produktions-Server zu „schnell zu fixen“ ohne Pull aus `main`.
+- **Deploybarkeit:** Produktion = **Commit auf `main` + Push nach `origin/main`**; nie behaupten, etwas sei live, wenn es untracked oder ungepusht ist.
+- **Server:** keine Entwicklung, keine Commits dort; Aktualisierung **nur** `cd /root/imoove && ./scripts/deploy-onroda-production.sh` (Pfad wie beim Team vereinbart).
+- Keine Anweisungen zu manuellen Deploy-Schritten statt des Skripts; keine „schnellen Fixes“ nur auf dem Server.
 - Größere Features (Admin live, Partner, Zuweisung) vorher mit dem Team abstimmen, damit sich Arbeit nicht überschneidet.
 - Produktion: Port/Nginx/SSL/Domain-Drift und Wiederherstellung siehe **`imoove-server-infrastructure-onroda.mdc`** (immer aktiv).
