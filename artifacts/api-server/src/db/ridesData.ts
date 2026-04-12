@@ -9,6 +9,8 @@ let memoryRides: RideRequest[] = [];
 function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
   return {
     id: r.id,
+    companyId: r.company_id ?? null,
+    createdByPanelUserId: r.created_by_panel_user_id ?? null,
     createdAt: new Date(r.created_at).toISOString(),
     scheduledAt: r.scheduled_at ? new Date(r.scheduled_at).toISOString() : null,
     status: r.status as RideRequest["status"],
@@ -35,6 +37,8 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
 
 function rideToUpdate(r: RideRequest) {
   return {
+    company_id: r.companyId ?? null,
+    created_by_panel_user_id: r.createdByPanelUserId ?? null,
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
     customer_name: r.customerName,
@@ -61,6 +65,8 @@ function rideToUpdate(r: RideRequest) {
 function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
   return {
     id: r.id,
+    company_id: r.companyId ?? null,
+    created_by_panel_user_id: r.createdByPanelUserId ?? null,
     created_at: new Date(r.createdAt),
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
@@ -91,6 +97,23 @@ export async function listRides(): Promise<RideRequest[]> {
     return [...memoryRides];
   }
   const rows = await db.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
+  return rows.map(rowToRide);
+}
+
+/** Nur Fahrten mit gesetzter company_id = Mandant (Partner-Panel-Scope). */
+export async function listRidesForCompany(companyId: string): Promise<RideRequest[]> {
+  const db = getDb();
+  if (!db) {
+    return memoryRides
+      .filter((r) => r.companyId === companyId)
+      .slice()
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+  const rows = await db
+    .select()
+    .from(ridesTable)
+    .where(eq(ridesTable.company_id, companyId))
+    .orderBy(desc(ridesTable.created_at));
   return rows.map(rowToRide);
 }
 

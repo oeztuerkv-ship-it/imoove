@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components -- Hook gehört zum Auth-Modul. */
+/* eslint-disable react-hooks/set-state-in-effect -- Session-Bootstrap aus externem Token. */
 import {
   createContext,
   useCallback,
@@ -13,7 +15,7 @@ const STORAGE_KEY = "onrodaPanelJwt";
 const PanelAuthContext = createContext(null);
 
 async function fetchMe(jwt) {
-  const res = await fetch(`${API_BASE}/panel-auth/me`, {
+  const res = await fetch(`${API_BASE}/panel/v1/me`, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
   if (!res.ok) return { ok: false };
@@ -83,7 +85,9 @@ export function PanelAuthProvider({ children }) {
       data = {};
     }
     if (!res.ok) {
-      if (data?.error === "invalid_credentials") {
+      if (data?.error === "rate_limited") {
+        setError("Zu viele Anmeldeversuche. Bitte kurz warten und erneut versuchen.");
+      } else if (data?.error === "invalid_credentials") {
         setError("Benutzername oder Passwort ist ungültig.");
       } else if (data?.error === "database_not_configured") {
         setError("Anmeldung nicht möglich: Datenbank ist auf dem Server nicht konfiguriert.");

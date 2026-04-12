@@ -17,7 +17,7 @@ export default function Sidebar({ active, onChange }) {
           <div className="admin-sidebar__brand-icon">O</div>
           <div>
             <div className="admin-sidebar__logo">Onroda</div>
-            <div className="admin-sidebar__logo-sub">Admin Panel</div>
+            <div className="admin-sidebar__logo-sub">Superadmin</div>
           </div>
         </div>
 

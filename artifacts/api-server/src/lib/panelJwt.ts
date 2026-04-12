@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 
-export type PanelRole = "owner" | "manager" | "staff";
+export type PanelRole = "owner" | "manager" | "staff" | "readonly";
 
 export interface PanelJwtClaims {
   panelUserId: string;
@@ -58,7 +58,7 @@ export async function signPanelJwt(claims: PanelJwtClaims, expiresIn = "7d"): Pr
 }
 
 function isPanelRole(v: unknown): v is PanelRole {
-  return v === "owner" || v === "manager" || v === "staff";
+  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
 }
 
 export async function verifyPanelJwt(token: string): Promise<PanelJwtClaims> {

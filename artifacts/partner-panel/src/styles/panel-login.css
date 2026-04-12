@@ -1,0 +1,81 @@
+.partner-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--onroda-space-10);
+  background: var(--onroda-bg-app);
+  color: var(--onroda-text-primary);
+}
+
+.partner-login--boot {
+  text-align: center;
+}
+
+.partner-login__card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-card);
+  padding: var(--onroda-space-10);
+  box-shadow: var(--onroda-shadow-card, 0 12px 40px rgba(15, 23, 42, 0.08));
+}
+
+.partner-login__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--onroda-red);
+}
+
+.partner-login__lead {
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  color: var(--onroda-text-grey);
+  line-height: 1.55;
+}
+
+.partner-login__form {
+  margin-top: var(--onroda-space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--onroda-space-5);
+}
+
+.partner-login__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--onroda-space-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--onroda-text-dark);
+}
+
+.partner-login__input {
+  height: 44px;
+  border-radius: var(--onroda-radius-pill);
+  border: 1px solid var(--onroda-border-outline);
+  padding: 0 14px;
+  font-size: 0.95rem;
+  background: var(--onroda-bg-light);
+  color: var(--onroda-text-primary);
+}
+
+.partner-login__input:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
+}
+
+.partner-login__error {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #b42318;
+  font-weight: 600;
+}
+
+.partner-login__submit {
+  margin-top: var(--onroda-space-2);
+  width: 100%;
+  height: 46px;
+}

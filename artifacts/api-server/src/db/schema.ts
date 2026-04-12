@@ -11,6 +11,14 @@ import {
 /** Fahrten — Spalten snake_case; API mappt auf camelCase (RideRequest). */
 export const ridesTable = pgTable("rides", {
   id: text("id").primaryKey(),
+  /** Mandant (Partner-Portal); NULL = noch nicht zugeordnet / Altbestand. */
+  company_id: text("company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  /** NULL = App/Kunde oder Altbestand; gesetzt bei Anlage über Partner-Panel. */
+  created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   scheduled_at: timestamp("scheduled_at", { withTimezone: true }),
   status: text("status").notNull(),
@@ -70,4 +78,20 @@ export const panelUsersTable = pgTable("panel_users", {
   is_active: boolean("is_active").notNull().default(true),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Audit-Trail für sensible Panel-Aktionen (kein Voll-Audit aller Reads). */
+export const panelAuditLogTable = pgTable("panel_audit_log", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  actor_panel_user_id: text("actor_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  action: text("action").notNull(),
+  subject_type: text("subject_type"),
+  subject_id: text("subject_id"),
+  meta: jsonb("meta").$type<Record<string, unknown>>(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

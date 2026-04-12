@@ -1,12 +1,10 @@
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
-import { usePanelAuth } from "./context/PanelAuthContext.jsx";
 
 import DashboardPage from "./pages/DashboardPage";
 import FaresPage from "./pages/FaresPage";
 import RidesPage from "./pages/RidesPage";
 import CompaniesPage from "./pages/CompaniesPage";
-import PartnerLoginPage from "./pages/PartnerLoginPage.jsx";
 
 function Placeholder({ title, text }) {
   return (
@@ -40,11 +38,11 @@ const PAGE_CONFIG = {
   },
   partners: {
     title: "Partner",
-    subtitle: "Partner- und Portalverwaltung",
+    subtitle: "Hinweis: Unternehmer-Login liegt unter panel.onroda.de (eigenes Portal).",
     component: (
       <Placeholder
-        title="Partner"
-        text="Hier bauen wir als Nächstes Partner, Mitarbeiter und Dokumente ein."
+        title="Partnerportal"
+        text="Das Unternehmerportal ist unter https://panel.onroda.de/ erreichbar (eigene App, eigene API-Pfade /api/panel/v1/)."
       />
     ),
   },
@@ -81,23 +79,10 @@ const PAGE_CONFIG = {
 };
 
 export default function App() {
-  const { user, booting, logout } = usePanelAuth();
   const [active, setActive] = useState("dashboard");
   const [globalSearch, setGlobalSearch] = useState("");
 
   const current = PAGE_CONFIG[active] || PAGE_CONFIG.dashboard;
-
-  if (booting) {
-    return (
-      <div className="partner-login partner-login--boot">
-        <p className="partner-login__lead">Sitzung wird geladen …</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <PartnerLoginPage />;
-  }
 
   return (
     <div className="admin-app">
@@ -113,16 +98,6 @@ export default function App() {
           </div>
 
           <div className="admin-app__topbar-right">
-            <p className="admin-app__session" aria-live="polite">
-              <span className="admin-app__session-company">{user.companyName || "Unternehmen"}</span>
-              <span className="admin-app__session-user">
-                {user.username}
-                {user.role ? ` · ${user.role}` : ""}
-              </span>
-              <button type="button" className="admin-app__session-out" onClick={() => void logout()}>
-                Abmelden
-              </button>
-            </p>
             <label className="admin-search">
               <span className="admin-search__icon" aria-hidden>
                 ⌕

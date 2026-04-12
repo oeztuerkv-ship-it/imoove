@@ -6,10 +6,13 @@ import {
   listFareAreas,
   patchCompanyPriority,
 } from "../db/adminData";
+import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
 export type { CompanyRow, FareAreaRow } from "./adminApi.types";
 
 const router: IRouter = Router();
+
+router.use(requireAdminApiBearer);
 
 router.get("/admin/stats", async (_req, res, next) => {
   try {

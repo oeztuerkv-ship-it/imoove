@@ -1,5 +1,9 @@
 export interface RideRequest {
   id: string;
+  /** Mandant; optional bis Zuordnung / Mobile-Integration. */
+  companyId?: string | null;
+  /** Gesetzt, wenn die Fahrt über das Partner-Panel angelegt wurde. */
+  createdByPanelUserId?: string | null;
   createdAt: string;
   scheduledAt?: string | null;
   from: string;

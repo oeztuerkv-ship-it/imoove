@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 
-export default function PartnerLoginPage() {
+export default function LoginPage() {
   const { login, error } = usePanelAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -20,10 +20,10 @@ export default function PartnerLoginPage() {
   return (
     <div className="partner-login">
       <div className="partner-login__card">
-        <h1 className="partner-login__title">Partner-Anmeldung</h1>
+        <h1 className="partner-login__title">Unternehmerportal</h1>
         <p className="partner-login__lead">
-          Melde dich mit deinem Unternehmenszugang an. Die Daten werden über die API aus der
-          Datenbank geladen.
+          Melde dich mit deinem Unternehmenszugang an. Die Daten kommen aus der Onroda-Datenbank über
+          die API.
         </p>
         <form className="partner-login__form" onSubmit={onSubmit}>
           <label className="partner-login__label">
@@ -50,7 +50,7 @@ export default function PartnerLoginPage() {
             />
           </label>
           {error ? <p className="partner-login__error">{error}</p> : null}
-          <button type="submit" className="admin-btn-primary partner-login__submit" disabled={submitting}>
+          <button type="submit" className="panel-btn-primary partner-login__submit" disabled={submitting}>
             {submitting ? "Anmeldung …" : "Anmelden"}
           </button>
         </form>

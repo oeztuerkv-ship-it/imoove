@@ -36,7 +36,22 @@ function resolvePublicRoot(): string {
   return path.join(apiDistDir, "..", "..", "admin-panel", "dist");
 }
 
+/** Partner-Portal (Vite base `/` → partner-panel/dist), Host panel.onroda.de. */
+function resolvePanelPublicRoot(): string {
+  const fromEnv = process.env["PANEL_STATIC_ROOT"];
+  if (fromEnv && fromEnv.length > 0) {
+    return path.resolve(fromEnv);
+  }
+  const apiDistDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(apiDistDir, "..", "..", "partner-panel", "dist");
+}
+
 const staticRoot = resolveStaticRoot();
+const panelPublicRoot = resolvePanelPublicRoot();
+
+function isPanelBrowserHost(h: string): boolean {
+  return h === "panel.onroda.de";
+}
 
 /* Hinter Nginx/Ingress: korrektes req.protocol / Host für OAuth-Redirects */
 app.set("trust proxy", 1);
@@ -67,8 +82,12 @@ function buildCorsAllowedOrigins(): Set<string> {
     "https://panel.onroda.de",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
     "http://localhost:4173",
     "http://127.0.0.1:4173",
+    "http://localhost:4175",
+    "http://127.0.0.1:4175",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
   ]);
@@ -151,6 +170,28 @@ app.use("/partners", (req, res, next) => {
   });
 });
 
+/* Partner-Panel SPA: nur Host panel.onroda.de (API bleibt api.onroda.de). */
+app.use((req, res, next) => {
+  if (!isPanelBrowserHost(hostname(req))) {
+    return next();
+  }
+  express.static(panelPublicRoot)(req, res, next);
+});
+app.use((req, res, next) => {
+  if (!isPanelBrowserHost(hostname(req))) {
+    return next();
+  }
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return next();
+  }
+  if (req.path.startsWith("/partners")) {
+    return next();
+  }
+  res.sendFile(path.join(panelPublicRoot, "index.html"), (err) => {
+    if (err) next(err);
+  });
+});
+
 /* Marketing-Static darf /partners nicht bedienen (kein altes static/partners mehr überschreiben). */
 app.use((req, res, next) => {
   const p = req.path;
@@ -175,12 +216,22 @@ app.get("/", (req, res, next) => {
       healthV1: "/api/v1/health",
       admin: "/admin",
       adminPanel: "/partners/",
+      partnerPanel: "https://panel.onroda.de/",
       partnerAuth: {
         googlePanelStart: "/api/auth/panel-login",
         panelPasswordLogin: "/api/panel-auth/login",
-        panelMe: "/api/panel-auth/me",
+        panelMe: "/api/panel/v1/me",
+        panelCompany: "/api/panel/v1/company",
+        panelRidesList: "/api/panel/v1/rides",
+        panelRidesCreate: "POST /api/panel/v1/rides",
+        panelHealth: "/api/panel/v1/health",
         panelLogout: "/api/panel-auth/logout",
       },
+    });
+  }
+  if (isPanelBrowserHost(host)) {
+    return res.sendFile(path.join(panelPublicRoot, "index.html"), (err) => {
+      if (err) next(err);
     });
   }
   /* z. B. admin.onroda.de: Root auf gebaute App unter /partners/ */

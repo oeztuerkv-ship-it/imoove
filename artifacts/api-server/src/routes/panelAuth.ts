@@ -1,19 +1,22 @@
 import { Router, type IRouter } from "express";
-import { findActivePanelUserByUsername, findActivePanelUserProfileById } from "../db/panelAuthData";
+import { findActivePanelUserByUsername } from "../db/panelAuthData";
 import { isPostgresConfigured } from "../db/client";
+import { rateLimitPanelLogin } from "../lib/panelLoginRateLimit";
+import { isPanelRoleString } from "../lib/panelPermissions";
 import { verifyPassword } from "../lib/password";
 import { isPanelJwtConfigured, signPanelJwt, type PanelRole } from "../lib/panelJwt";
-import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
 const router: IRouter = Router();
 
-const PANEL_ROLES: readonly PanelRole[] = ["owner", "manager", "staff"];
-
-function isPanelRoleString(v: string): v is PanelRole {
-  return (PANEL_ROLES as readonly string[]).includes(v);
-}
-
 router.post("/panel-auth/login", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPanelLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+
   if (!isPostgresConfigured()) {
     res.status(503).json({
       error: "database_not_configured",
@@ -58,7 +61,7 @@ router.post("/panel-auth/login", async (req, res) => {
       companyId: row.company_id,
       username: row.username,
       email: row.email,
-      role: row.role,
+      role: row.role as PanelRole,
     });
   } catch (e) {
     console.error("[panel-auth/login] signPanelJwt:", e);
@@ -75,43 +78,6 @@ router.post("/panel-auth/login", async (req, res) => {
       username: row.username,
       email: row.email,
       role: row.role,
-    },
-  });
-});
-
-router.get("/panel-auth/me", requirePanelAuth, async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const claims = (req as PanelAuthRequest).panelAuth;
-  if (!claims) {
-    res.status(401).json({ error: "unauthorized" });
-    return;
-  }
-
-  const profile = await findActivePanelUserProfileById(claims.panelUserId);
-  if (!profile || !isPanelRoleString(profile.role)) {
-    res.status(401).json({ error: "user_inactive_or_missing" });
-    return;
-  }
-
-  if (profile.companyId !== claims.companyId || profile.username !== claims.username) {
-    res.status(401).json({ error: "token_out_of_sync" });
-    return;
-  }
-
-  res.json({
-    ok: true,
-    user: {
-      id: profile.id,
-      companyId: profile.companyId,
-      companyName: profile.companyName,
-      username: profile.username,
-      email: profile.email,
-      role: profile.role,
-      createdAt: profile.createdAt.toISOString(),
-      updatedAt: profile.updatedAt.toISOString(),
     },
   });
 });

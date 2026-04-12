@@ -75,7 +75,7 @@ export interface PanelUserProfileRow {
   updatedAt: Date;
 }
 
-/** Profil inkl. Firmenname für GET /panel-auth/me (nur PostgreSQL). */
+/** Profil inkl. Firmenname für GET /api/panel/v1/me (nur PostgreSQL). */
 export async function findActivePanelUserProfileById(id: string): Promise<PanelUserProfileRow | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();

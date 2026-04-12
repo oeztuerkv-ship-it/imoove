@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
+import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const COMPANIES_URL = `${API_BASE}/admin/companies`;
 const ITEMS_PER_PAGE = 10;
@@ -24,7 +25,7 @@ export default function CompaniesPage() {
     setError("");
 
     try {
-      const res = await fetch(COMPANIES_URL);
+      const res = await fetch(COMPANIES_URL, { headers: adminApiHeaders() });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -51,9 +52,7 @@ export default function CompaniesPage() {
     try {
       const res = await fetch(`${COMPANIES_URL}/${companyId}/priority`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(patch),
       });
 

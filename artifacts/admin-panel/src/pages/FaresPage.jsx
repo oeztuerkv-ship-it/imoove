@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
+import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const API_URL = `${API_BASE}/admin/fare-areas`;
 
@@ -26,7 +27,7 @@ export default function FaresPage() {
       setLoading(true);
       setError("");
 
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL, { headers: adminApiHeaders() });
       if (!res.ok) {
         throw new Error("Gebiete konnten nicht geladen werden");
       }
@@ -58,9 +59,7 @@ export default function FaresPage() {
 
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           name: form.name.trim(),
           ruleType: form.ruleType,

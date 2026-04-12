@@ -1,0 +1,264 @@
+/* Partner-Shell — gleiche Token wie Admin, eigene Klassen (keine admin-*-Kollision). */
+
+.panel-app {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background: var(--onroda-bg-app);
+  color: var(--onroda-text-primary);
+  overflow: hidden;
+}
+
+.panel-app__sidebar-col {
+  width: var(--onroda-sidebar-width);
+  min-width: var(--onroda-sidebar-width);
+  max-width: var(--onroda-sidebar-width);
+  flex-shrink: 0;
+  background: var(--onroda-bg-light);
+  border-right: 1px solid var(--onroda-border-subtle);
+}
+
+.panel-app__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--onroda-bg-app);
+  overflow: hidden;
+}
+
+.panel-app__topbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--onroda-space-6);
+  flex-wrap: wrap;
+  padding: 15px var(--onroda-padding-content-x);
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  background: var(--onroda-bg-light);
+}
+
+.panel-app__topbar-left {
+  min-width: 0;
+}
+
+.panel-app__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--onroda-red);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.panel-app__subtitle {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+  color: var(--onroda-text-grey);
+  font-weight: 500;
+}
+
+.panel-app__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--onroda-space-4);
+  flex-wrap: wrap;
+}
+
+.panel-app__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--onroda-bg-app);
+}
+
+.panel-app__content-inner {
+  padding: var(--onroda-padding-content-y) var(--onroda-padding-content-x);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.panel-app__session {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--onroda-text-grey);
+  max-width: 220px;
+  text-align: right;
+}
+
+.panel-app__session-company {
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+  line-height: 1.2;
+}
+
+.panel-app__session-user {
+  font-size: 0.78rem;
+}
+
+.panel-app__session-out {
+  margin-top: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--onroda-red);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.panel-app__session-out:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.panel-sidebar {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--onroda-bg-light);
+  padding: var(--onroda-padding-card-sm) var(--onroda-space-7);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--onroda-text-grey);
+}
+
+.panel-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--onroda-space-4);
+  margin-bottom: var(--onroda-space-11);
+}
+
+.panel-sidebar__brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--onroda-radius-icon);
+  background: var(--onroda-red);
+  color: var(--onroda-text-on-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.panel-sidebar__logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--onroda-red);
+  line-height: 1.1;
+}
+
+.panel-sidebar__logo-sub {
+  color: var(--onroda-text-grey);
+  font-size: 0.85rem;
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.panel-sidebar__section-title {
+  font-size: 0.7rem;
+  color: var(--onroda-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.panel-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--onroda-space-1);
+}
+
+.panel-sidebar__link {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--onroda-text-dark);
+  border-radius: var(--onroda-radius-nav);
+  padding: var(--onroda-space-4) var(--onroda-space-5);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--onroda-space-4);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.panel-sidebar__link:hover {
+  background: var(--onroda-bg-card);
+}
+
+.panel-sidebar__link:focus-visible {
+  outline: 2px solid var(--onroda-red);
+  outline-offset: 2px;
+}
+
+.panel-sidebar__link--active {
+  background: var(--onroda-badge-accent-bg);
+  color: var(--onroda-red);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.panel-sidebar__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--onroda-radius-icon-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--onroda-bg-card);
+  color: var(--onroda-text-muted);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.panel-sidebar__icon--active {
+  background: var(--onroda-red);
+  color: var(--onroda-text-on-brand);
+}
+
+.panel-sidebar__footer {
+  border-top: 1px solid var(--onroda-border-subtle);
+  padding-top: var(--onroda-space-6);
+}
+
+.panel-sidebar__footer-title {
+  font-weight: 700;
+  margin-bottom: var(--onroda-space-1);
+  color: var(--onroda-text-dark);
+}
+
+.panel-sidebar__footer-text {
+  color: var(--onroda-text-grey);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.panel-sidebar__footer-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--onroda-red);
+  text-decoration: none;
+}
+
+.panel-sidebar__footer-link:hover {
+  text-decoration: underline;
+}

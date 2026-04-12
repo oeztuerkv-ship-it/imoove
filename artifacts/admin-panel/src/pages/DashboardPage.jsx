@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
+import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const STATS_URL = `${API_BASE}/admin/stats`;
 
@@ -24,7 +25,7 @@ export default function DashboardPage() {
     setError("");
 
     try {
-      const res = await fetch(STATS_URL);
+      const res = await fetch(STATS_URL, { headers: adminApiHeaders() });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
