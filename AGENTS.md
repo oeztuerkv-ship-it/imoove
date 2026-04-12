@@ -2,6 +2,8 @@
 
 Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** und **Server-Build**. Änderungen immer als **Commit + Migration + dokumentierter Deploy-Schritt**, nicht als dauerhafte Sonderlogik nur auf dem Server.
 
+**Verbindlich — was deploybar ist:** Nur Code und Dateien, die **committed** und auf **`main`** nach **`origin/main` gepusht** sind. **Untracked** oder **uncommittete** lokale Änderungen sind **kein** Produktionsstand; der Server sieht sie nach `git pull` nicht. **Produktionsablauf:** lokal pushen → auf dem Server **`./scripts/deploy-onroda-production.sh`**.
+
 ## Pflichtlektüre (Cursor Rules, immer aktiv)
 
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds

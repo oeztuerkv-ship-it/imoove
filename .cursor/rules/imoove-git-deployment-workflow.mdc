@@ -12,6 +12,12 @@ alwaysApply: true
 - **`imoove` ist bereits ein Git-Repository** — **kein** erneutes `git init` im Projektroot.
 - **Entwicklung lokal** (oder in klar benannten Branches/PRs). **Server nur für Deployment** (`git pull` + Build + Prozess-Neustart), keine ungeordneten direkten Code-Edits auf dem Server.
 
+## Was ist deploybar? (verbindlich)
+
+- **Deploybar** ist nur Stand, der als **Commit auf `main`** existiert und auf **`origin/main`** (bzw. den Remote, den der Server per `git pull` bezieht) **gepusht** ist.
+- **Untracked** Dateien, **nur lokale** Änderungen ohne Commit, oder Commits nur auf einem **anderen Branch** gelten **nicht** als live — der Server und `./scripts/deploy-onroda-production.sh` sehen sie nach `git pull` nicht.
+- **Fester Produktionsweg:** lokal **commit + push nach `main`** → auf dem Server **`./scripts/deploy-onroda-production.sh`** (macht darin `git pull`). Nicht umgekehrt erwarten, dass „Push allein“ den Server aktualisiert; nicht annehmen, dass ungepushte Arbeit „schon draußen“ ist.
+
 ## Lokaler Stand holen / aktualisieren
 
 **Noch kein Clone:**
@@ -80,6 +86,7 @@ Kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Ad
 
 ## Für Agents
 
+- **Deploybarkeit:** Features/Skripte/Doku gelten für Produktion erst nach **Commit auf `main` + Push**; nie behaupten, etwas sei „auf dem Server“, wenn es nur lokal oder untracked ist.
 - Keine Anweisungen, auf dem Produktions-Server zu „schnell zu fixen“ ohne Pull aus `main`.
 - Größere Features (Admin live, Partner, Zuweisung) vorher mit dem Team abstimmen, damit sich Arbeit nicht überschneidet.
 - Produktion: Port/Nginx/SSL/Domain-Drift und Wiederherstellung siehe **`imoove-server-infrastructure-onroda.mdc`** (immer aktiv).
