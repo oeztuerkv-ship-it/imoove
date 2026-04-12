@@ -40866,10 +40866,11 @@ var schema_exports = {};
 __export(schema_exports, {
   adminCompaniesTable: () => adminCompaniesTable,
   fareAreasTable: () => fareAreasTable,
+  panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
   ridesTable: () => ridesTable
 });
-var ridesTable, adminCompaniesTable, fareAreasTable, panelUsersTable;
+var ridesTable, adminCompaniesTable, fareAreasTable, panelUsersTable, panelAuditLogTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -40936,6 +40937,18 @@ var init_schema2 = __esm({
       is_active: boolean("is_active").notNull().default(true),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    panelAuditLogTable = pgTable("panel_audit_log", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      actor_panel_user_id: text("actor_panel_user_id").references(() => panelUsersTable.id, {
+        onDelete: "set null"
+      }),
+      action: text("action").notNull(),
+      subject_type: text("subject_type"),
+      subject_id: text("subject_id"),
+      meta: jsonb("meta").$type(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
   }
 });
@@ -47360,8 +47373,32 @@ async function seedAdminDefaultsIfEmpty() {
   }
 }
 
+// src/middleware/requireAdminApiBearer.ts
+var requireAdminApiBearer = (req, res, next) => {
+  const token = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
+  if (!token) {
+    if (process.env.NODE_ENV === "production") {
+      res.status(503).json({
+        error: "admin_api_auth_not_configured",
+        hint: "Set ADMIN_API_BEARER_TOKEN in the API environment for /admin/* routes."
+      });
+      return;
+    }
+    next();
+    return;
+  }
+  const auth = req.get("authorization") ?? "";
+  const expected = `Bearer ${token}`;
+  if (auth !== expected) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  next();
+};
+
 // src/routes/adminApi.ts
 var router4 = (0, import_express4.Router)();
+router4.use(requireAdminApiBearer);
 router4.get("/admin/stats", async (_req, res, next) => {
   try {
     const stats = await getAdminStats();
@@ -47499,9 +47536,98 @@ async function findActivePanelUserProfileById(id) {
     updatedAt: r.updatedAt
   };
 }
+async function findActivePanelUserById(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(panelUsersTable.id, id),
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
 
 // src/routes/panelAuth.ts
 init_client();
+
+// src/lib/panelLoginRateLimit.ts
+var WINDOW_MS = 6e4;
+var MAX_ATTEMPTS = 25;
+var buckets = /* @__PURE__ */ new Map();
+function keyForReq(ip) {
+  return ip.trim() || "unknown";
+}
+function rateLimitPanelLogin(ip) {
+  const k = keyForReq(ip);
+  const now = Date.now();
+  let b = buckets.get(k);
+  if (!b || now >= b.resetAt) {
+    b = { count: 0, resetAt: now + WINDOW_MS };
+    buckets.set(k, b);
+  }
+  b.count += 1;
+  if (b.count > MAX_ATTEMPTS) {
+    const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
+    return { ok: false, retryAfterSec };
+  }
+  return { ok: true };
+}
+
+// src/lib/panelPermissions.ts
+var ROLE_MATRIX = {
+  owner: [
+    "rides.read",
+    "rides.create",
+    "users.read",
+    "users.manage",
+    "users.reset_password",
+    "self.change_password"
+  ],
+  manager: [
+    "rides.read",
+    "rides.create",
+    "users.read",
+    "users.manage",
+    "users.reset_password",
+    "self.change_password"
+  ],
+  staff: ["rides.read", "rides.create", "users.read", "self.change_password"],
+  readonly: ["rides.read", "users.read", "self.change_password"]
+};
+function isPanelRoleString(v) {
+  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
+}
+function panelCan(role, permission) {
+  return ROLE_MATRIX[role].includes(permission);
+}
+function permissionsForRole(role) {
+  return [...ROLE_MATRIX[role]];
+}
 
 // src/lib/password.ts
 import { randomBytes as randomBytes2, scrypt, timingSafeEqual } from "node:crypto";
@@ -47513,8 +47639,14 @@ var SCRYPT_OPTS = {
   N: 16384,
   r: 8,
   p: 1,
-  maxmem: 128 * 16384 * 8
+  /** Node/scrypt Speicherlimit — zu niedrig → `scrypt` schlägt fehl, `verifyPassword` wirkt wie „falsches Passwort“. Nicht wieder verkleinern. */
+  maxmem: 64 * 1024 * 1024
 };
+async function hashPassword(plain) {
+  const salt = randomBytes2(16);
+  const key = await scryptAsync(plain, salt, KEYLEN, SCRYPT_OPTS);
+  return `${PREFIX}.${salt.toString("base64url")}.${key.toString("base64url")}`;
+}
 async function verifyPassword(plain, stored) {
   if (!stored.startsWith(`${PREFIX}.`)) return false;
   const parts = stored.split(".");
@@ -47577,7 +47709,7 @@ async function signPanelJwt(claims, expiresIn = "7d") {
   }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret);
 }
 function isPanelRole(v) {
-  return v === "owner" || v === "manager" || v === "staff";
+  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
 }
 async function verifyPanelJwt(token) {
   const secret = getSecretKey2();
@@ -47603,11 +47735,14 @@ function payloadToPanelClaims(payload) {
 
 // src/routes/panelAuth.ts
 var router5 = (0, import_express5.Router)();
-var PANEL_ROLES = ["owner", "manager", "staff"];
-function isPanelRoleString(v) {
-  return PANEL_ROLES.includes(v);
-}
 router5.post("/panel-auth/login", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPanelLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
   if (!isPostgresConfigured()) {
     res.status(503).json({
       error: "database_not_configured",
@@ -47672,6 +47807,25 @@ var panelAuth_default = router5;
 // src/routes/panelApi.ts
 var import_express6 = __toESM(require_express2(), 1);
 init_client();
+import { randomUUID as randomUUID2 } from "node:crypto";
+
+// src/db/panelAuditData.ts
+init_client();
+init_schema2();
+async function insertPanelAuditLog(input) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.insert(panelAuditLogTable).values({
+    id: input.id,
+    company_id: input.companyId,
+    actor_panel_user_id: input.actorPanelUserId,
+    action: input.action,
+    subject_type: input.subjectType ?? null,
+    subject_id: input.subjectId ?? null,
+    meta: input.meta ?? null
+  });
+}
 
 // src/db/panelCompanyData.ts
 init_drizzle_orm();
@@ -47697,6 +47851,131 @@ async function getPanelCompanyById(companyId) {
     phone: r.phone,
     isActive: r.is_active
   };
+}
+
+// src/db/panelUsersData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID } from "node:crypto";
+function toPublic(r) {
+  return {
+    id: r.id,
+    username: r.username,
+    email: r.email,
+    role: r.role,
+    isActive: r.is_active,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function listPanelUsersInCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    role: panelUsersTable.role,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).where(eq(panelUsersTable.company_id, companyId)).orderBy(panelUsersTable.username);
+  return rows.map(toPublic);
+}
+async function getPanelUsernamesInCompany(companyId, ids) {
+  if (!isPostgresConfigured() || ids.length === 0) return {};
+  const db2 = getDb();
+  if (!db2) return {};
+  const uniq = [...new Set(ids.filter(Boolean))];
+  if (uniq.length === 0) return {};
+  const rows = await db2.select({ id: panelUsersTable.id, username: panelUsersTable.username }).from(panelUsersTable).where(and(eq(panelUsersTable.company_id, companyId), inArray(panelUsersTable.id, uniq)));
+  const out = {};
+  for (const r of rows) out[r.id] = r.username;
+  return out;
+}
+async function findPanelUserInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    role: panelUsersTable.role,
+    is_active: panelUsersTable.is_active
+  }).from(panelUsersTable).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function insertPanelUser(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = randomUUID();
+  const username = input.username.trim();
+  const email = input.email.trim();
+  try {
+    await db2.insert(panelUsersTable).values({
+      id,
+      company_id: input.companyId,
+      username,
+      email,
+      password_hash: input.passwordHash,
+      role: input.role,
+      is_active: true
+    });
+    return { id };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("unique") || msg.includes("duplicate")) {
+      return null;
+    }
+    throw e;
+  }
+}
+async function patchPanelUserInCompany(id, companyId, patch) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const sets = {
+    updated_at: /* @__PURE__ */ new Date()
+  };
+  if (typeof patch.isActive === "boolean") {
+    sets.is_active = patch.isActive;
+  }
+  if (typeof patch.role === "string" && patch.role.length > 0) {
+    sets.role = patch.role;
+  }
+  const rows = await db2.update(panelUsersTable).set(sets).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({
+    id: panelUsersTable.id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    role: panelUsersTable.role,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  });
+  const r = rows[0];
+  return r ? toPublic(r) : null;
+}
+async function updatePanelUserPasswordInCompany(id, companyId, passwordHash) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const rows = await db2.update(panelUsersTable).set({ password_hash: passwordHash, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({ id: panelUsersTable.id });
+  return rows.length > 0;
+}
+async function panelUsernameTaken(normalized, excludeUserId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const n = normalized.trim().toLowerCase();
+  if (!n) return false;
+  const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
+    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n}`
+  ).limit(1);
+  return rows.length > 0;
 }
 
 // src/routes/panelApi.ts
@@ -47730,10 +48009,6 @@ var requirePanelAuth = async (req, res, next) => {
 
 // src/routes/panelApi.ts
 var router6 = (0, import_express6.Router)();
-var PANEL_ROLES2 = ["owner", "manager", "staff"];
-function isPanelRoleString2(v) {
-  return PANEL_ROLES2.includes(v);
-}
 async function assertActivePanelProfile(req, res) {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
@@ -47745,7 +48020,7 @@ async function assertActivePanelProfile(req, res) {
     return null;
   }
   const profile = await findActivePanelUserProfileById(claims.panelUserId);
-  if (!profile || !isPanelRoleString2(profile.role)) {
+  if (!profile || !isPanelRoleString(profile.role)) {
     res.status(401).json({ error: "user_inactive_or_missing" });
     return null;
   }
@@ -47755,6 +48030,24 @@ async function assertActivePanelProfile(req, res) {
   }
   return { claims, profile };
 }
+function denyUnless(res, profileRole, permission) {
+  if (!isPanelRoleString(profileRole)) {
+    res.status(403).json({ error: "forbidden" });
+    return false;
+  }
+  if (!panelCan(profileRole, permission)) {
+    res.status(403).json({ error: "forbidden", hint: permission });
+    return false;
+  }
+  return true;
+}
+function canAssignPanelRole(actor, target) {
+  if (actor === "owner") return true;
+  if (actor === "manager") {
+    return target === "manager" || target === "staff" || target === "readonly";
+  }
+  return false;
+}
 router6.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
@@ -47762,6 +48055,7 @@ router6.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
   const { profile } = ctx;
+  const role = profile.role;
   res.json({
     ok: true,
     user: {
@@ -47772,7 +48066,8 @@ router6.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       email: profile.email,
       role: profile.role,
       createdAt: profile.createdAt.toISOString(),
-      updatedAt: profile.updatedAt.toISOString()
+      updatedAt: profile.updatedAt.toISOString(),
+      permissions: permissionsForRole(role)
     }
   });
 });
@@ -47791,8 +48086,15 @@ router6.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.read")) return;
     const rides = await listRidesForCompany(ctx.claims.companyId);
-    res.json({ ok: true, rides });
+    const ids = rides.map((r) => r.createdByPanelUserId).filter((x) => Boolean(x));
+    const names = await getPanelUsernamesInCompany(ctx.claims.companyId, ids);
+    const ridesOut = rides.map((r) => ({
+      ...r,
+      createdByUsername: r.createdByPanelUserId ? names[r.createdByPanelUserId] ?? null : null
+    }));
+    res.json({ ok: true, rides: ridesOut });
   } catch (e) {
     next(e);
   }
@@ -47801,6 +48103,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "rides.create")) return;
     const body = req.body;
     const customerName = typeof body.customerName === "string" ? body.customerName.trim() : "";
     if (!customerName) {
@@ -47865,7 +48168,232 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       vehicle
     };
     await insertRide(newReq);
+    await insertPanelAuditLog({
+      id: randomUUID2(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "ride.created",
+      subjectType: "ride",
+      subjectId: newReq.id,
+      meta: { customerName: newReq.customerName }
+    });
     res.status(201).json({ ok: true, ride: newReq });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "self.change_password")) return;
+    const body = req.body;
+    const cur = typeof body.currentPassword === "string" ? body.currentPassword : "";
+    const neu = typeof body.newPassword === "string" ? body.newPassword : "";
+    if (!cur || neu.length < 10) {
+      res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+      return;
+    }
+    const row = await findActivePanelUserById(ctx.claims.panelUserId);
+    if (!row) {
+      res.status(401).json({ error: "user_not_found" });
+      return;
+    }
+    const ok2 = await verifyPassword(cur, row.password_hash);
+    if (!ok2) {
+      res.status(401).json({ error: "invalid_current_password" });
+      return;
+    }
+    const hash = await hashPassword(neu);
+    const updated = await updatePanelUserPasswordInCompany(row.id, row.company_id, hash);
+    if (!updated) {
+      res.status(500).json({ error: "password_update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID2(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "user.self_password_change",
+      subjectType: "panel_user",
+      subjectId: row.id,
+      meta: {}
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "users.read")) return;
+    const users = await listPanelUsersInCompany(ctx.claims.companyId);
+    res.json({ ok: true, users });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
+    const body = req.body;
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const roleRaw = typeof body.role === "string" ? body.role.trim() : "";
+    if (!username || !password || password.length < 10) {
+      res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
+      return;
+    }
+    if (!isPanelRoleString(roleRaw)) {
+      res.status(400).json({ error: "invalid_role" });
+      return;
+    }
+    const targetRole = roleRaw;
+    if (!canAssignPanelRole(ctx.profile.role, targetRole)) {
+      res.status(403).json({ error: "forbidden_role_assignment" });
+      return;
+    }
+    if (await panelUsernameTaken(username.toLowerCase())) {
+      res.status(409).json({ error: "username_taken" });
+      return;
+    }
+    const hash = await hashPassword(password);
+    const created = await insertPanelUser({
+      companyId: ctx.claims.companyId,
+      username,
+      email,
+      role: targetRole,
+      passwordHash: hash
+    });
+    if (!created) {
+      res.status(409).json({ error: "username_taken" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID2(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "user.created",
+      subjectType: "panel_user",
+      subjectId: created.id,
+      meta: { username, role: targetRole }
+    });
+    res.status(201).json({ ok: true, user: { id: created.id, username, email, role: targetRole } });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "users.manage")) return;
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const target = await findPanelUserInCompany(id, ctx.claims.companyId);
+    if (!target) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (target.id === ctx.claims.panelUserId) {
+      res.status(400).json({ error: "cannot_modify_self_here" });
+      return;
+    }
+    if (ctx.profile.role === "manager" && target.role === "owner") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const body = req.body;
+    const patch = {};
+    if (typeof body.isActive === "boolean") patch.isActive = body.isActive;
+    if (typeof body.role === "string" && body.role.trim()) {
+      if (!isPanelRoleString(body.role.trim())) {
+        res.status(400).json({ error: "invalid_role" });
+        return;
+      }
+      const tr = body.role.trim();
+      if (!canAssignPanelRole(ctx.profile.role, tr)) {
+        res.status(403).json({ error: "forbidden_role_assignment" });
+        return;
+      }
+      patch.role = tr;
+    }
+    if (patch.isActive === void 0 && patch.role === void 0) {
+      res.status(400).json({ error: "no_changes" });
+      return;
+    }
+    const updated = await patchPanelUserInCompany(id, ctx.claims.companyId, patch);
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID2(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: patch.isActive === false ? "user.deactivated" : "user.updated",
+      subjectType: "panel_user",
+      subjectId: id,
+      meta: patch
+    });
+    res.json({ ok: true, user: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnless(res, ctx.profile.role, "users.reset_password")) return;
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const target = await findPanelUserInCompany(id, ctx.claims.companyId);
+    if (!target || !target.is_active) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (target.id === ctx.claims.panelUserId) {
+      res.status(400).json({ error: "use_change_password_for_self" });
+      return;
+    }
+    if (ctx.profile.role === "manager" && target.role === "owner") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const body = req.body;
+    const neu = typeof body.newPassword === "string" ? body.newPassword : "";
+    if (neu.length < 10) {
+      res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+      return;
+    }
+    const hash = await hashPassword(neu);
+    const ok2 = await updatePanelUserPasswordInCompany(id, ctx.claims.companyId, hash);
+    if (!ok2) {
+      res.status(500).json({ error: "password_update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID2(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "user.password_reset",
+      subjectType: "panel_user",
+      subjectId: id,
+      meta: {}
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

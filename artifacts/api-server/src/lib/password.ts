@@ -9,7 +9,8 @@ const SCRYPT_OPTS = {
   N: 16384,
   r: 8,
   p: 1,
-  maxmem: 128 * 16384 * 8,
+  /** Node/scrypt Speicherlimit — zu niedrig → `scrypt` schlägt fehl, `verifyPassword` wirkt wie „falsches Passwort“. Nicht wieder verkleinern. */
+  maxmem: 64 * 1024 * 1024,
 } as const;
 
 /** Scrypt-basiertes Passwort-Hashing (kein natives bcrypt-Modul nötig). */

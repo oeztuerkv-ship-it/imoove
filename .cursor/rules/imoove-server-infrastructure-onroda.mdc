@@ -1,0 +1,88 @@
+---
+description: Onroda Produktion — Drift vermeiden (Git, Port 3000, Nginx, SSL, Domains)
+alwaysApply: true
+---
+
+# Onroda: Server-Infrastruktur (Stabilität, keine Drift)
+
+## Typischer Fehler (Postmortem)
+
+Probleme wirken oft wie „Code kaputt“, sind aber oft **Mischzustände**:
+
+- Server-Repo **nicht** auf dem erwarteten Remote-Stand (lokal gepusht, Server alt/anders).
+- **Verschmutztes** Server-Working-Tree: lokale Änderungen, untracked Dateien, alte Build-Artefakte → **gemischter Laufzeitstand** (manche Routen/Dateien alt, manche neu).
+- **Port-Inkonsistenz**: Node z. B. auf **3000**, Nginx/PM2/Doku zeigen auf **3001** → `Connection refused`, **502**, scheinbar zufällige Fehler.
+- **Nginx**: halbe Konfiguration, Backups/Testdateien in `sites-enabled` (werden mitgeladen), doppelte `server_name`-Warnungen, falscher `proxy_pass`.
+- **SSL**: fehlende oder falsche Zertifikate pro Subdomain → HTTPS bricht für Admin/API.
+
+## Verbindliche Zielstruktur (Domains)
+
+- **`onroda.de` / `www.onroda.de`** — öffentliche Website / Marketing (kein „eingeloggtes“ Web-App-Default hier).
+- **`admin.onroda.de`** — Admin-Panel (SPA), sinnvoller Einstieg z. B. **`https://admin.onroda.de/partners/`**.
+- **`api.onroda.de`** — API (REST, OAuth-Callback, JWT-Session).
+- **`panel.onroda.de`** — **Partner-/Unternehmer-Panel** (eigene SPA unter `artifacts/partner-panel`, vom API-Prozess aus `partner-panel/dist`). **Kein** Redirect auf `admin.onroda.de`; Admin und Panel sind getrennte Frontends.
+
+## Verbindlicher interner Port
+
+- **Node/API intern immer Port `3000`** (einheitlich in PM2, `.env` / Startparameter, **Nginx** `proxy_pass`, interner Doku-Stand).
+- Nginx-Upstream für die API: **`http://127.0.0.1:3000`** — nicht wechselnd zwischen 3000/3001.
+
+## Admin-Frontend vs API-URL
+
+- Admin-Panel soll auf Dauer **`https://api.onroda.de/api/...`** ansprechen, **nicht** dauerhaft `onroda.de/api/...` als API-Basis missbrauchen (Marketing-Domain ≠ API-Host).
+
+## Nginx diszipliniert halten
+
+- In **`sites-enabled`** nur **aktive** Konfiguration — **keine** `.bak`, `.backup`, alte Test-Snippets (Nginx lädt alles mit).
+- Nach Änderungen: Syntax prüfen, dann reload — und Warnungen zu doppelten `server_name` ernst nehmen (meist doppelte/verwaiste Dateien).
+
+## SSL
+
+- Zertifikate müssen zu den **tatsächlich** genutzten Hostnamen passen (z. B. **admin** + **api** separat sauber mit Certbot/Deploy-Stand).
+
+## Wenn der Server-Stand „kaputt driftet“ (nur mit Absprache / nach Backup)
+
+1. **Zuerst sichern** (was lokal auf dem Server geändert wurde, falls noch wichtig).
+2. Repo auf Remote-Stand bringen (destruktiv für lokale Server-Änderungen):
+
+```bash
+git fetch origin
+git reset --hard origin/main
+git clean -fd
+```
+
+3. Danach: **Dependencies/Build** wie im Deploy-Playbook, **PM2** neu starten.
+4. **Nginx** prüfen: `proxy_pass` → **`127.0.0.1:3000`**, keine Backup-Dateien in `sites-enabled`.
+
+`git clean -fd` entfernt **untracked** Dateien — nur ausführen, wenn das bewusst gewollt ist.
+
+## Vor jedem Deploy kurz verifizieren
+
+```bash
+git status
+git rev-parse HEAD
+git log --oneline -3
+```
+
+Wenn das Repo nicht sauber ist: nicht „weiter improviseieren“, sondern **sichern** und dann **gezielt** bereinigen oder korrekt mergen — siehe auch `imoove-git-deployment-workflow.mdc`.
+
+## Schichten getrennt denken (Debugging)
+
+1. **Infrastruktur** — Domains, SSL, Nginx, PM2, Port, Git-Stand auf dem Server.
+2. **Anwendung** — API-Routen, Admin-Build, Redirects.
+3. **Daten** — PostgreSQL, Tabellen, Migrationen / Init-Skripte.
+
+Symptom „alles 500“ kann z. B. nur **fehlendes DB-Schema** sein, obwohl Nginx/SSL ok sind. Schema-Referenz im Repo u. a.: `artifacts/api-server/src/db/init-onroda.sql` — nach Einspielen API neu starten und betroffene Endpoints erneut prüfen.
+
+## Panel-Deploy / Postmortem (nicht wiederholen)
+
+- **`rides.company_id`** muss **TEXT** sein wie `admin_companies.id` — kein Mix **INTEGER** (Legacy) und TEXT; sonst scheitert `GET /api/panel/v1/rides` mit 500 bei Vergleich mit `co-demo-1`. Reparatur: Migration **`006_rides_legacy_schema_repair.sql`** (und Daten-Backfill).
+- **Code vor DB deployen** ohne Migration → 500 (fehlende Spalten). Jede Änderung an `schema.ts` / neuen Queries braucht **Migration** und Reihenfolge 001–006 auf der DB.
+- **API-`dist`:** Build **auf dem Server** ausführen (`pnpm run build` / `node build.mjs` in `artifacts/api-server`), nicht auf fremden Rechner-`dist` vertrauen — sonst 502 durch Pfade wie `/Users/.../thread-stream-worker.mjs` im Bundle.
+- **Partner-Panel:** zusätzlich `artifacts/partner-panel`: `npm ci && npm run build`, sonst ist nur die API neu, die Panel-UI alt.
+- **Panel-Passwort (`password.ts`):** `scrypt`-**`maxmem`** im Repo **64 MiB** (`64 * 1024 * 1024`) — zu klein → `verifyPassword` schlägt fehl → Login immer `invalid_credentials`. Wert nicht wieder verkleinern.
+
+## Für Agents
+
+- Keine Empfehlung zu „schnellen“ direkten Produktions-Edits auf dem Server statt **Commit → Push → kontrolliertes Deploy**.
+- Bei Connection refused / 502: **zuerst** Port/Upstream-Konsistenz (3000, `127.0.0.1:3000`) und Git-Drift prüfen, bevor im Anwendungscode wild gesucht wird.

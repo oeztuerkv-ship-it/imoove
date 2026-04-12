@@ -43,6 +43,8 @@ git push origin main
 
 ## Auf dem Server (nur Deployment)
 
+**Admin-Panel**
+
 ```bash
 cd /root/imoove
 git pull origin main
@@ -52,7 +54,30 @@ npm run build
 pm2 restart onroda-admin
 ```
 
-(Paketmanager/PM2-Name bei Bedarf anpassen.)
+**API + Partner-Panel (typischer Gesamtstand nach Panel-/Ride-Änderungen)**
+
+1. `git pull origin main`
+2. **PostgreSQL:** neue Migrationen in `artifacts/api-server/src/db/migrations/` nacheinander einspielen (001 … 006 je nach Stand), **bevor** die neue API läuft — sonst 500 durch fehlende Spalten oder falschen `company_id`-Typ.
+3. API bauen und Prozess neu starten, z. B.:
+
+```bash
+cd /root/imoove/artifacts/api-server
+pnpm install   # oder npm ci, je nach Setup
+pnpm run build # bzw. node ./build.mjs
+pm2 restart onroda-api --update-env
+```
+
+4. Partner-Panel bauen (sonst alte UI trotz neuer API):
+
+```bash
+cd /root/imoove/artifacts/partner-panel
+npm ci
+npm run build
+```
+
+5. Kurz prüfen: Panel-Login, `GET /api/panel/v1/me`, `GET /api/panel/v1/rides`, Fahrten-Seite, CSV-Export.
+
+(Paketmanager/PM2-Namen bei Bedarf anpassen.)
 
 ## `.gitignore` (Pflichtgedanke)
 
@@ -62,3 +87,4 @@ pm2 restart onroda-admin
 
 - Keine Anweisungen, auf dem Produktions-Server zu „schnell zu fixen“ ohne Pull aus `main`.
 - Größere Features (Admin live, Partner, Zuweisung) vorher mit dem Team abstimmen, damit sich Arbeit nicht überschneidet.
+- Produktion: Port/Nginx/SSL/Domain-Drift und Wiederherstellung siehe **`imoove-server-infrastructure-onroda.mdc`** (immer aktiv).
