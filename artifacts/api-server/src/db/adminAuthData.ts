@@ -269,6 +269,57 @@ export async function createAdminAuthUser(input: {
   };
 }
 
+export async function findAdminAuthUserRowById(id: string): Promise<{
+  id: string;
+  username: string;
+  role: AdminRole;
+  isActive: boolean;
+} | null> {
+  if (!isPostgresConfigured()) return null;
+  const db = getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({
+      id: adminAuthUsersTable.id,
+      username: adminAuthUsersTable.username,
+      role: adminAuthUsersTable.role,
+      isActive: adminAuthUsersTable.is_active,
+    })
+    .from(adminAuthUsersTable)
+    .where(eq(adminAuthUsersTable.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseRole(row.role);
+  if (!role) return null;
+  return { id: row.id, username: row.username, role, isActive: row.isActive };
+}
+
+export async function countActiveAdminRoleUsers(): Promise<number> {
+  if (!isPostgresConfigured()) return 0;
+  const db = getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({
+      n: sql<number>`count(*)::int`,
+    })
+    .from(adminAuthUsersTable)
+    .where(and(eq(adminAuthUsersTable.role, "admin"), eq(adminAuthUsersTable.is_active, true)));
+  const raw = rows[0]?.n;
+  return typeof raw === "number" ? raw : Number(raw) || 0;
+}
+
+export async function deleteAdminAuthUserById(id: string): Promise<boolean> {
+  if (!isPostgresConfigured()) return false;
+  const db = getDb();
+  if (!db) return false;
+  const deleted = await db
+    .delete(adminAuthUsersTable)
+    .where(eq(adminAuthUsersTable.id, id))
+    .returning({ id: adminAuthUsersTable.id });
+  return deleted.length > 0;
+}
+
 export async function patchAdminAuthUserById(input: {
   id: string;
   email?: string;

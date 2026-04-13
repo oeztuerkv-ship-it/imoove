@@ -8,7 +8,7 @@ const EMPTY_FORM = {
   role: "admin",
 };
 
-export default function AdminUsersPage() {
+export default function AdminUsersPage({ sessionUsername = "" }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -86,6 +86,37 @@ export default function AdminUsersPage() {
       throw new Error(data?.error || "update_failed");
     }
     setUsers((prev) => prev.map((u) => (u.id === id ? data.user : u)));
+  }
+
+  async function deleteUser(user) {
+    const ok = window.confirm(
+      `Admin-Zugang „${user.username}“ dauerhaft löschen?\n\n` +
+        "Dieser Vorgang kann nicht rückgängig gemacht werden. Aktive Sitzungen verlieren die Gültigkeit.",
+    );
+    if (!ok) return;
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/admin/auth/users/${encodeURIComponent(user.id)}`, {
+        method: "DELETE",
+        headers: adminApiHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 400 && data?.error === "cannot_delete_self") {
+        setError("Sie können Ihren eigenen Zugang nicht löschen.");
+        return;
+      }
+      if (res.status === 400 && data?.error === "last_active_admin") {
+        setError("Der letzte aktive Admin-Zugang kann nicht gelöscht werden.");
+        return;
+      }
+      if (!res.ok || !data?.ok) {
+        setError(data?.error === "not_found" ? "Zugang nicht gefunden." : "Löschen fehlgeschlagen.");
+        return;
+      }
+      await loadUsers();
+    } catch {
+      setError("Löschen fehlgeschlagen.");
+    }
   }
 
   return (
@@ -171,6 +202,19 @@ export default function AdminUsersPage() {
                   onClick={() => void patchUser(user.id, { role: user.role === "admin" ? "service" : "admin" })}
                 >
                   Rolle wechseln
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-danger"
+                  disabled={user.username === sessionUsername}
+                  title={
+                    user.username === sessionUsername
+                      ? "Eigenen Zugang nicht löschbar"
+                      : "Admin-Zugang dauerhaft entfernen"
+                  }
+                  onClick={() => void deleteUser(user)}
+                >
+                  Account löschen
                 </button>
               </div>
             </div>

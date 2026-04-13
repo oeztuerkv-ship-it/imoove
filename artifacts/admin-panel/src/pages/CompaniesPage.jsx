@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PanelModuleIcon } from "../components/PanelModuleIcons.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const COMPANIES_URL = `${API_BASE}/admin/companies`;
+const AZ_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+function firstLetterKey(name) {
+  const s = (name ?? "").trim();
+  if (!s) return "#";
+  const c = s.charAt(0);
+  if (/[a-zA-ZäöüÄÖÜ]/.test(c)) return c.toLocaleUpperCase("de-DE");
+  return "#";
+}
 const ITEMS_PER_PAGE = 10;
 const COMPANY_DASHBOARD_URL = "https://panel.onroda.de/";
 
@@ -70,8 +80,8 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   const [loadingKpis, setLoadingKpis] = useState({});
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [listFilter, setListFilter] = useState("all");
+  const [letterFilter, setLetterFilter] = useState(null);
   const [page, setPage] = useState(1);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -356,18 +366,6 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     }
   }
 
-  function companyStatusBadgeClass(isActive) {
-    return isActive
-      ? "admin-badge admin-badge--company-status-active"
-      : "admin-badge admin-badge--company-status-inactive";
-  }
-
-  function companyPrioBadgeClass(isPrio) {
-    return isPrio
-      ? "admin-badge admin-badge--company-prio-yes"
-      : "admin-badge admin-badge--company-prio-no";
-  }
-
   function formatMoneyEUR(n) {
     const value = Number(n ?? 0);
     return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(
@@ -390,14 +388,14 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     const q = search.trim().toLowerCase();
 
     return items.filter((item) => {
-      const statusValue = item.is_active ? "active" : "inactive";
-      const priorityValue = item.is_priority_company ? "yes" : "no";
+      let matchesList = true;
+      if (listFilter === "active") matchesList = !!item.is_active;
+      else if (listFilter === "inactive") matchesList = !item.is_active;
+      else if (listFilter === "priority") matchesList = !!item.is_priority_company;
 
-      const matchesStatus =
-        statusFilter === "all" ? true : statusValue === statusFilter;
-
-      const matchesPriority =
-        priorityFilter === "all" ? true : priorityValue === priorityFilter;
+      if (letterFilter != null) {
+        if (firstLetterKey(item.name) !== letterFilter) return false;
+      }
 
       const haystack = [
         item.id,
@@ -418,23 +416,28 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
 
       const matchesSearch = q ? haystack.includes(q) : true;
 
-      return matchesStatus && matchesPriority && matchesSearch;
+      return matchesList && matchesSearch;
     });
-  }, [items, search, statusFilter, priorityFilter]);
+  }, [items, search, listFilter, letterFilter]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
+  const sortedFilteredItems = useMemo(
+    () =>
+      [...filteredItems].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "", "de", { sensitivity: "base" }),
+      ),
+    [filteredItems],
   );
+
+  const totalPages = Math.max(1, Math.ceil(sortedFilteredItems.length / ITEMS_PER_PAGE));
 
   const paginatedItems = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
-    return filteredItems.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredItems, page]);
+    return sortedFilteredItems.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedFilteredItems, page]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, priorityFilter]);
+  }, [search, listFilter, letterFilter]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -580,55 +583,73 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
         </div>
       </div>
 
-      <div className="admin-filter-card">
-        <div className="admin-filter-grid">
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Suche</label>
-            <input
-              type="text"
-              className="admin-input"
-              placeholder="Name, E-Mail, Telefon, Kennung …"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Status</label>
-            <select
-              className="admin-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">Alle</option>
-              <option value="active">Aktiv</option>
-              <option value="inactive">Inaktiv</option>
-            </select>
-          </div>
-
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Priorität</label>
-            <select
-              className="admin-select"
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-            >
-              <option value="all">Alle</option>
-              <option value="yes">Mit Priorität</option>
-              <option value="no">Ohne Priorität</option>
-            </select>
-          </div>
-
-          <div className="admin-filter-item">
-            <label className="admin-field-label">&nbsp;</label>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" className="admin-btn-refresh" onClick={openCreateCompany}>
-                + Neues Unternehmen
-              </button>
-              <button type="button" className="admin-page-btn" onClick={loadCompanies}>
-                Neu laden
-              </button>
+      <div className="admin-companies-sticky-head">
+        <div className="admin-filter-card admin-filter-card--flush">
+          <div className="admin-filter-grid admin-filter-grid--companies">
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Suche</label>
+              <input
+                type="search"
+                className="admin-input"
+                placeholder="Firmenname, Kennung, E-Mail …"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoComplete="off"
+              />
             </div>
+
+            <div className="admin-filter-item">
+              <label className="admin-field-label">Ansicht</label>
+              <select
+                className="admin-select"
+                value={listFilter}
+                onChange={(e) => setListFilter(e.target.value)}
+              >
+                <option value="all">Alle Unternehmen</option>
+                <option value="active">Nur aktive</option>
+                <option value="inactive">Nur deaktivierte</option>
+                <option value="priority">Hohe Priorität</option>
+              </select>
+            </div>
+
+            <div className="admin-filter-item">
+              <label className="admin-field-label">&nbsp;</label>
+              <div className="admin-filter-actions">
+                <button type="button" className="admin-btn-refresh" onClick={openCreateCompany}>
+                  + Neues Unternehmen
+                </button>
+                <button type="button" className="admin-page-btn" onClick={loadCompanies}>
+                  Neu laden
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="admin-az-bar" role="toolbar" aria-label="Schnellwahl A–Z">
+            <button
+              type="button"
+              className={`admin-az-btn${letterFilter === null ? " admin-az-btn--active" : ""}`}
+              onClick={() => setLetterFilter(null)}
+            >
+              Alle
+            </button>
+            {AZ_LETTERS.map((L) => (
+              <button
+                key={L}
+                type="button"
+                className={`admin-az-btn${letterFilter === L ? " admin-az-btn--active" : ""}`}
+                onClick={() => setLetterFilter((prev) => (prev === L ? null : L))}
+              >
+                {L}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`admin-az-btn${letterFilter === "#" ? " admin-az-btn--active" : ""}`}
+              onClick={() => setLetterFilter((prev) => (prev === "#" ? null : "#"))}
+              title="Sonstige Anfangsbuchstaben"
+            >
+              #
+            </button>
           </div>
         </div>
       </div>
@@ -639,9 +660,9 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
         <div className="admin-table-toolbar__info">
           Zeige {(page - 1) * ITEMS_PER_PAGE + 1}
           {" - "}
-          {Math.min(page * ITEMS_PER_PAGE, filteredItems.length)}
+          {Math.min(page * ITEMS_PER_PAGE, sortedFilteredItems.length)}
           {" von "}
-          {filteredItems.length}
+          {sortedFilteredItems.length}
         </div>
 
         <div className="admin-pagination">{renderPagination()}</div>
@@ -655,12 +676,12 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
             const isSaving = savingId === item.id;
 
             return (
-              <div key={item.id} className="admin-entity-card">
-                <div className="admin-entity-card__top">
-                  <div>
-                    <div className="admin-entity-card__title">{item.name}</div>
-                    <div className="admin-entity-card__meta">
-                      Kennung {item.id}
+              <div key={item.id} className="admin-entity-card admin-entity-card--company-modern">
+                <div className="admin-entity-card__top admin-company-top admin-company-top--modern">
+                  <div className="admin-company-head-text">
+                    <div className="admin-company-title">{item.name}</div>
+                    <div className="admin-company-subline">
+                      Kennung <span className="admin-company-subline__id">{item.id}</span>
                       {item.contact_name ? ` · ${item.contact_name}` : ""} · {item.email || "keine E-Mail"} ·{" "}
                       {item.phone || "kein Telefon"}
                       {item.city || item.postal_code
@@ -669,29 +690,32 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                     </div>
                   </div>
 
-                  <div className="admin-badge-row" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button type="button" className="admin-btn-refresh" onClick={() => openCompanyDashboard(item)}>
-                      Dashboard öffnen
-                    </button>
-                    <span className={companyStatusBadgeClass(item.is_active)}>
+                  <div className="admin-company-badges">
+                    <span className={`admin-pill${item.is_active ? " admin-pill--success" : " admin-pill--muted"}`}>
                       {item.is_active ? "Aktiv" : "Inaktiv"}
                     </span>
-
                     <span
-                      className={companyPrioBadgeClass(item.is_priority_company)}
+                      className={`admin-pill${item.is_priority_company ? " admin-pill--warn" : " admin-pill--muted"}`}
                     >
-                      {item.is_priority_company ? "Priorität aktiv" : "Ohne Priorität"}
+                      {item.is_priority_company ? "Priorität" : "Standard"}
                     </span>
+                    <button
+                      type="button"
+                      className="admin-btn-outline admin-btn-outline--compact"
+                      onClick={() => openCompanyDashboard(item)}
+                    >
+                      Dashboard öffnen
+                    </button>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                  <button type="button" className="admin-btn-refresh" onClick={() => openEditCompany(item)}>
+                <div className="admin-company-quick-actions">
+                  <button type="button" className="admin-btn-outline" onClick={() => openEditCompany(item)}>
                     Stammdaten bearbeiten
                   </button>
                   <button
                     type="button"
-                    className="admin-page-btn"
+                    className="admin-btn-outline"
                     disabled={savingId === item.id}
                     onClick={() => void toggleCompanyActive(item)}
                   >
@@ -699,104 +723,107 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                   </button>
                 </div>
 
-                <div className="admin-fields-grid" style={{ marginBottom: 12 }}>
-                  <div className="admin-field-tile">
-                    <div className="admin-field-tile__label">Monatsumsatz</div>
-                    <div className="admin-field-tile__value">
+                <div className="admin-company-kpi-grid-3">
+                  <div className="admin-company-kpi-stat">
+                    <div className="admin-company-kpi-stat__label">Monatsumsatz</div>
+                    <div className="admin-company-kpi-stat__value">
                       {loadingKpis[item.id] ? "…" : formatMoneyEUR(kpisByCompany[item.id]?.monthlyRevenue ?? 0)}
                     </div>
                   </div>
-                  <div className="admin-field-tile">
-                    <div className="admin-field-tile__label">Offene Fahrten</div>
-                    <div className="admin-field-tile__value">
+                  <div className="admin-company-kpi-stat">
+                    <div className="admin-company-kpi-stat__label">Offene Fahrten</div>
+                    <div className="admin-company-kpi-stat__value">
                       {loadingKpis[item.id] ? "…" : Number(kpisByCompany[item.id]?.openRides ?? 0)}
                     </div>
                   </div>
-                  <div className="admin-field-tile">
-                    <div className="admin-field-tile__label">Verfügbares Gutschein-Limit</div>
-                    <div className="admin-field-tile__value">
+                  <div className="admin-company-kpi-stat">
+                    <div className="admin-company-kpi-stat__label">Verfügbares Gutschein-Limit</div>
+                    <div className="admin-company-kpi-stat__value">
                       {loadingKpis[item.id] ? "…" : voucherLimitLabel(kpisByCompany[item.id]?.voucherLimitAvailable)}
                     </div>
                   </div>
                 </div>
 
-                <div className="admin-controls-grid">
-                  <label className="admin-switch-row">
-                    <span className="admin-switch-row__label">
-                      Priorität aktiv
-                      <span className="admin-entity-card__meta" style={{ display: "block" }}>
-                        Dieses Unternehmen wird im Matching bevorzugt behandelt.
-                      </span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={!!item.is_priority_company}
-                      disabled={isSaving}
-                      onChange={(e) =>
-                        updateCompanyPriority(item.id, {
-                          is_priority_company: e.target.checked,
-                        })
-                      }
-                    />
-                  </label>
+                <div className="admin-company-prio-toggles">
+                  <div className="admin-company-prio-toggle">
+                    <div>
+                      <div className="admin-switch-row__label">Priorität aktiv</div>
+                      <div className="admin-company-toggle-hint">Dieses Unternehmen wird im Matching bevorzugt behandelt.</div>
+                    </div>
+                    <label className="admin-switch">
+                      <input
+                        type="checkbox"
+                        checked={!!item.is_priority_company}
+                        disabled={isSaving}
+                        onChange={(e) =>
+                          updateCompanyPriority(item.id, {
+                            is_priority_company: e.target.checked,
+                          })
+                        }
+                      />
+                      <span className="admin-switch__slider" aria-hidden />
+                    </label>
+                  </div>
 
-                  <label className="admin-switch-row">
-                    <span className="admin-switch-row__label">
-                      Sofortfahrten priorisieren
-                      <span className="admin-entity-card__meta" style={{ display: "block" }}>
-                        Sofortfahrten werden bevorzugt an Fahrer vermittelt.
-                      </span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={!!item.priority_for_live_rides}
-                      disabled={isSaving}
-                      onChange={(e) =>
-                        updateCompanyPriority(item.id, {
-                          priority_for_live_rides: e.target.checked,
-                        })
-                      }
-                    />
-                  </label>
+                  <div className="admin-company-prio-toggle">
+                    <div>
+                      <div className="admin-switch-row__label">Sofortfahrten priorisieren</div>
+                      <div className="admin-company-toggle-hint">Sofortfahrten werden bevorzugt an Fahrer vermittelt.</div>
+                    </div>
+                    <label className="admin-switch">
+                      <input
+                        type="checkbox"
+                        checked={!!item.priority_for_live_rides}
+                        disabled={isSaving}
+                        onChange={(e) =>
+                          updateCompanyPriority(item.id, {
+                            priority_for_live_rides: e.target.checked,
+                          })
+                        }
+                      />
+                      <span className="admin-switch__slider" aria-hidden />
+                    </label>
+                  </div>
 
-                  <label className="admin-switch-row">
-                    <span className="admin-switch-row__label">
-                      Reservierungen priorisieren
-                      <span className="admin-entity-card__meta" style={{ display: "block" }}>
-                        Terminfahrten werden in der Vorplanung bevorzugt.
-                      </span>
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={!!item.priority_for_reservations}
-                      disabled={isSaving}
-                      onChange={(e) =>
-                        updateCompanyPriority(item.id, {
-                          priority_for_reservations: e.target.checked,
-                        })
-                      }
-                    />
-                  </label>
+                  <div className="admin-company-prio-toggle">
+                    <div>
+                      <div className="admin-switch-row__label">Reservierungen priorisieren</div>
+                      <div className="admin-company-toggle-hint">Terminfahrten werden in der Vorplanung bevorzugt.</div>
+                    </div>
+                    <label className="admin-switch">
+                      <input
+                        type="checkbox"
+                        checked={!!item.priority_for_reservations}
+                        disabled={isSaving}
+                        onChange={(e) =>
+                          updateCompanyPriority(item.id, {
+                            priority_for_reservations: e.target.checked,
+                          })
+                        }
+                      />
+                      <span className="admin-switch__slider" aria-hidden />
+                    </label>
+                  </div>
                 </div>
 
-                <details style={{ marginTop: 12 }}>
-                  <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                <details className="admin-company-advanced">
+                  <summary className="admin-company-advanced__summary">
                     Erweiterte Systemeinstellungen
                   </summary>
-                  <div className="admin-fields-grid" style={{ marginTop: 10 }}>
-                    <div className="admin-field-tile">
+                  <div className="admin-fields-grid admin-company-advanced__grid">
+                    <div className="admin-field-tile admin-company-kpi-tile">
                       <div className="admin-field-tile__label">Ab Preis</div>
                       <div className="admin-field-tile__value">
                         {item.priority_price_threshold} €
                       </div>
                     </div>
-                    <div className="admin-field-tile">
+                    <div className="admin-field-tile admin-company-kpi-tile">
                       <div className="admin-field-tile__label">Timeout</div>
                       <div className="admin-field-tile__value">
                         {item.priority_timeout_seconds} Sek.
                       </div>
                     </div>
-                    <div className="admin-field-tile">
+                    <div className="admin-field-tile admin-company-kpi-tile">
                       <div className="admin-field-tile__label">Radius</div>
                       <div className="admin-field-tile__value">
                         {item.release_radius_km} km
@@ -808,32 +835,41 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                 {isSaving ? <div className="admin-saving-hint">Speichert …</div> : null}
 
                 {moduleCatalog.length > 0 ? (
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--onroda-border-subtle, #e5e7eb)" }}>
-                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Partner-Portal</div>
-                    <p className="admin-entity-card__meta" style={{ marginBottom: 10 }}>
+                  <div className="admin-company-portal">
+                    <div className="admin-company-portal__title">Partner-Portal</div>
+                    <p className="admin-entity-card__meta admin-company-portal__meta">
                       Legt fest, welche Bereiche dieses Unternehmen im Partner-Portal unter panel.onroda.de sieht. Ohne
                       Auswahl sind alle Bereiche aktiv.
                     </p>
                     {editingModulesFor === item.id ? (
                       <>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {moduleCatalog.map((mod) => (
-                            <button
-                              key={mod.id}
-                              type="button"
-                              className={moduleDraft.includes(mod.id) ? "admin-badge admin-badge--company-prio-yes" : "admin-badge admin-badge--company-prio-no"}
-                              title={mod.description}
-                              disabled={savingModulesId === item.id}
-                              onClick={() => toggleModuleDraft(mod.id, !moduleDraft.includes(mod.id))}
-                            >
-                              {mod.label}
-                            </button>
-                          ))}
+                        <div className="admin-module-grid">
+                          {moduleCatalog.map((mod) => {
+                            const on = moduleDraft.includes(mod.id);
+                            return (
+                              <button
+                                key={mod.id}
+                                type="button"
+                                className={`admin-module-tile${on ? " admin-module-tile--on" : ""}`}
+                                title={mod.description}
+                                disabled={savingModulesId === item.id}
+                                onClick={() => toggleModuleDraft(mod.id, !on)}
+                              >
+                                <span className="admin-module-tile__icon" aria-hidden>
+                                  <PanelModuleIcon moduleId={mod.id} />
+                                </span>
+                                <span className="admin-module-tile__text">
+                                  <span className="admin-module-tile__label">{mod.label}</span>
+                                  <span className="admin-module-tile__desc">{on ? "Aktiv" : "Aus"}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
-                        <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                        <div className="admin-company-module-actions">
                           <button
                             type="button"
-                            className="admin-btn-refresh"
+                            className="admin-btn-refresh admin-btn-refresh--compact"
                             disabled={savingModulesId === item.id}
                             onClick={() => void saveCompanyModules(item.id)}
                           >
@@ -841,7 +877,7 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                           </button>
                           <button
                             type="button"
-                            className="admin-page-btn"
+                            className="admin-page-btn admin-page-btn--compact"
                             disabled={savingModulesId === item.id}
                             onClick={() => setEditingModulesFor(null)}
                           >
@@ -851,14 +887,20 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                       </>
                     ) : (
                       <div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                        <div className="admin-module-grid admin-module-grid--readonly">
                           {(item.panel_modules == null ? moduleCatalog : moduleCatalog.filter((m) => item.panel_modules.includes(m.id))).map((m) => (
-                            <span key={m.id} className="admin-badge admin-badge--company-prio-yes" title={m.description}>
-                              {m.label}
-                            </span>
+                            <div key={m.id} className="admin-module-tile admin-module-tile--on admin-module-tile--static" title={m.description}>
+                              <span className="admin-module-tile__icon" aria-hidden>
+                                <PanelModuleIcon moduleId={m.id} />
+                              </span>
+                              <span className="admin-module-tile__text">
+                                <span className="admin-module-tile__label">{m.label}</span>
+                                <span className="admin-module-tile__desc">Aktiv</span>
+                              </span>
+                            </div>
                           ))}
                         </div>
-                        <button type="button" className="admin-btn-refresh" onClick={() => startEditModules(item)}>
+                        <button type="button" className="admin-btn-refresh admin-btn-refresh--compact" onClick={() => startEditModules(item)}>
                           Module bearbeiten
                         </button>
                       </div>

@@ -31,9 +31,12 @@ import {
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
 import {
+  countActiveAdminRoleUsers,
   createAdminPasswordResetToken,
   createAdminAuthUser,
+  deleteAdminAuthUserById,
   findActiveAdminAuthUserByIdentity,
+  findAdminAuthUserRowById,
   findUsableAdminPasswordResetByTokenHash,
   insertAdminAuthAuditLog,
   listAdminAuthUsers,
@@ -423,6 +426,54 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
       },
     });
     res.json({ ok: true, user });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    if (!id) {
+      res.status(400).json({ error: "invalid_id" });
+      return;
+    }
+    const target = await findAdminAuthUserRowById(id);
+    if (!target) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const principal = req.adminAuth;
+    if (principal?.kind === "session" && principal.username === target.username) {
+      res.status(400).json({ error: "cannot_delete_self" });
+      return;
+    }
+    if (target.role === "admin" && target.isActive) {
+      const activeAdmins = await countActiveAdminRoleUsers();
+      if (activeAdmins <= 1) {
+        res.status(400).json({ error: "last_active_admin" });
+        return;
+      }
+    }
+    const removed = await deleteAdminAuthUserById(id);
+    if (!removed) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      username: principal?.username ?? "",
+      action: "admin.auth.user_deleted",
+      meta: { deletedId: id, deletedUsername: target.username, deletedRole: target.role },
+    });
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

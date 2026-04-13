@@ -195,7 +195,7 @@ export default function App() {
       case "settings":
         return <SettingsPage />;
       case "admin-users":
-        return <AdminUsersPage />;
+        return <AdminUsersPage sessionUsername={authUser?.username ?? ""} />;
       default:
         return (
           <DashboardPage

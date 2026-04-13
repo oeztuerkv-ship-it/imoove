@@ -421,17 +421,22 @@
 .admin-dashboard__metric-chip {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 120px;
+  justify-content: center;
+  gap: 8px;
+  min-width: 128px;
+  min-height: 96px;
   padding: var(--onroda-space-4) var(--onroda-space-5);
   border-radius: var(--onroda-radius-md);
   border: 1px solid var(--onroda-border-outline);
   background: var(--onroda-bg-card);
+  box-sizing: border-box;
 }
 
 .admin-dashboard__metric-chip--accent {
   border-color: color-mix(in srgb, var(--onroda-red) 35%, var(--onroda-border-outline));
   min-width: 200px;
+  min-height: 108px;
+  gap: 6px;
 }
 
 .admin-dashboard__metric-chip-label {
@@ -440,16 +445,23 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--onroda-text-muted);
+  line-height: 1.25;
+  margin: 0;
 }
 
 .admin-dashboard__metric-chip-value {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
   color: var(--onroda-red);
+  line-height: 1.15;
+  margin: 0;
 }
 
 .admin-dashboard__metric-chip-hint {
   font-size: 0.78rem;
   color: var(--onroda-text-muted);
   font-weight: 500;
+  line-height: 1.3;
+  margin: 0;
+  margin-top: auto;
 }

@@ -283,71 +283,149 @@ export default function FaresPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSaveArea} className="admin-form-grid">
-          <input
-            className="admin-input"
-            placeholder="z. B. Stadt oder Region"
-            value={form.name}
-            onChange={(e) => handleChange("name", e.target.value)}
-          />
-
-          <select
-            className="admin-select"
-            value={form.ruleType}
-            onChange={(e) => handleChange("ruleType", e.target.value)}
-          >
-            {Object.entries(RULE_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="admin-select"
-            value={form.isRequiredArea}
-            onChange={(e) => handleChange("isRequiredArea", e.target.value)}
-          >
-            <option value="Ja">Pflichtfahrgebiet: Ja</option>
-            <option value="Nein">Pflichtfahrgebiet: Nein</option>
-            <option value="Prüfen">Pflichtfahrgebiet: Prüfen</option>
-          </select>
-
-          <select
-            className="admin-select"
-            value={form.fixedPriceAllowed}
-            onChange={(e) => handleChange("fixedPriceAllowed", e.target.value)}
-          >
-            <option value="Ja">Festpreis erlaubt</option>
-            <option value="Nein">Kein Festpreis</option>
-            <option value="Prüfen">Festpreis: Fall prüfen</option>
-          </select>
-
-          <select className="admin-select" value={form.status} onChange={(e) => handleChange("status", e.target.value)}>
-            <option value="aktiv">Aktiv</option>
-            <option value="inaktiv">Inaktiv</option>
-            <option value="regelbasiert">Regelbasiert</option>
-          </select>
-
-          <label className="admin-inline-check">
+        <form onSubmit={handleSaveArea} className="admin-fares-form">
+          <div className="admin-fares-hero">
+            <label className="admin-field-label" htmlFor="fare-area-name">
+              Gebiet / Stadt / Region
+            </label>
             <input
-              type="checkbox"
-              checked={!!form.isDefault}
-              onChange={(e) => handleChange("isDefault", e.target.checked)}
+              id="fare-area-name"
+              className="admin-input admin-fares-hero-input"
+              placeholder="z. B. Hannover, Region Süd, Flughafen …"
+              value={form.name}
+              onChange={(e) => handleChange("name", e.target.value)}
             />
-            <span>Standardtarif für App</span>
-          </label>
+            <p className="admin-fares-hint">
+              Hauptobjekt des Tarifs — Name und Einordnung stehen über allen Preisfeldern.
+            </p>
+          </div>
 
-          <input className="admin-input" type="number" step="0.01" placeholder="Grundpreis (€)" value={form.baseFareEur} onChange={(e) => handleChange("baseFareEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Preis bis Schwelle / km (€)" value={form.rateFirstKmEur} onChange={(e) => handleChange("rateFirstKmEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Preis ab Schwelle / km (€)" value={form.rateAfterKmEur} onChange={(e) => handleChange("rateAfterKmEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.1" placeholder="Schwelle (km)" value={form.thresholdKm} onChange={(e) => handleChange("thresholdKm", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Wartezeit / Stunde (€)" value={form.waitingPerHourEur} onChange={(e) => handleChange("waitingPerHourEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Servicegebühr (€)" value={form.serviceFeeEur} onChange={(e) => handleChange("serviceFeeEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Onroda Basispreis (€)" value={form.onrodaBaseFareEur} onChange={(e) => handleChange("onrodaBaseFareEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Onroda Preis / km (€)" value={form.onrodaPerKmEur} onChange={(e) => handleChange("onrodaPerKmEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Onroda Mindestpreis (€)" value={form.onrodaMinFareEur} onChange={(e) => handleChange("onrodaMinFareEur", e.target.value)} />
-          <input className="admin-input" type="number" step="0.01" placeholder="Manueller Fixpreis (optional, €)" value={form.manualFixedPriceEur} onChange={(e) => handleChange("manualFixedPriceEur", e.target.value)} />
+          <fieldset className="admin-fares-fieldset">
+            <legend className="admin-fares-legend">Regeltyp &amp; Rahmen</legend>
+            <div className="admin-fares-grid-2">
+              <div>
+                <label className="admin-field-label">Regeltyp</label>
+                <select
+                  className="admin-select"
+                  value={form.ruleType}
+                  onChange={(e) => handleChange("ruleType", e.target.value)}
+                >
+                  {Object.entries(RULE_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="admin-field-label">Status</label>
+                <select className="admin-select" value={form.status} onChange={(e) => handleChange("status", e.target.value)}>
+                  <option value="aktiv">Aktiv</option>
+                  <option value="inaktiv">Inaktiv</option>
+                  <option value="regelbasiert">Regelbasiert</option>
+                </select>
+              </div>
+              <div>
+                <label className="admin-field-label">Pflichtfahrgebiet</label>
+                <select
+                  className="admin-select"
+                  value={form.isRequiredArea}
+                  onChange={(e) => handleChange("isRequiredArea", e.target.value)}
+                >
+                  <option value="Ja">Ja</option>
+                  <option value="Nein">Nein</option>
+                  <option value="Prüfen">Prüfen</option>
+                </select>
+              </div>
+              <div>
+                <label className="admin-field-label">Festpreis im Gebiet</label>
+                <select
+                  className="admin-select"
+                  value={form.fixedPriceAllowed}
+                  onChange={(e) => handleChange("fixedPriceAllowed", e.target.value)}
+                >
+                  <option value="Ja">Erlaubt</option>
+                  <option value="Nein">Nicht erlaubt</option>
+                  <option value="Prüfen">Fall prüfen</option>
+                </select>
+              </div>
+            </div>
+            <label className="admin-inline-check admin-fares-inline-check">
+              <input
+                type="checkbox"
+                checked={!!form.isDefault}
+                onChange={(e) => handleChange("isDefault", e.target.checked)}
+              />
+              <span>Standardtarif für die Onroda-App</span>
+            </label>
+          </fieldset>
+
+          <fieldset className="admin-fares-fieldset">
+            <legend className="admin-fares-legend">Amtlicher Taxameter — Berechnung</legend>
+            <p className="admin-fares-hint">Grundpreis, Kilometer bis/ab Schwelle, Wartezeit und Servicegebühr.</p>
+            <div className="admin-fares-grid-num">
+              <div>
+                <label className="admin-field-label">Grundpreis (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.baseFareEur} onChange={(e) => handleChange("baseFareEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Preis / km bis Schwelle (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.rateFirstKmEur} onChange={(e) => handleChange("rateFirstKmEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Preis / km ab Schwelle (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.rateAfterKmEur} onChange={(e) => handleChange("rateAfterKmEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Schwelle (km)</label>
+                <input className="admin-input" type="number" step="0.1" value={form.thresholdKm} onChange={(e) => handleChange("thresholdKm", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Wartezeit (€ / h)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.waitingPerHourEur} onChange={(e) => handleChange("waitingPerHourEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Servicegebühr (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.serviceFeeEur} onChange={(e) => handleChange("serviceFeeEur", e.target.value)} />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="admin-fares-fieldset">
+            <legend className="admin-fares-legend">Onroda-App Tarif</legend>
+            <p className="admin-fares-hint">Basis, Kilometerpreis und Mindestwert für die App — getrennt vom Taxameter-Block.</p>
+            <div className="admin-fares-grid-num admin-fares-grid-num--3">
+              <div>
+                <label className="admin-field-label">Basispreis App (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.onrodaBaseFareEur} onChange={(e) => handleChange("onrodaBaseFareEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Preis / km App (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.onrodaPerKmEur} onChange={(e) => handleChange("onrodaPerKmEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Mindestpreis App (€)</label>
+                <input className="admin-input" type="number" step="0.01" value={form.onrodaMinFareEur} onChange={(e) => handleChange("onrodaMinFareEur", e.target.value)} />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="admin-fares-fieldset admin-fares-fieldset--fix">
+            <legend className="admin-fares-legend">Fixpreis (manuell)</legend>
+            <p className="admin-fares-hint">
+              Optionaler fester Betrag — eigenständig zur Kilometer-Staffel; leer lassen, wenn nicht genutzt.
+            </p>
+            <div className="admin-fares-fix-row">
+              <input
+                className="admin-input"
+                type="number"
+                step="0.01"
+                placeholder="z. B. 45,00"
+                value={form.manualFixedPriceEur}
+                onChange={(e) => handleChange("manualFixedPriceEur", e.target.value)}
+              />
+            </div>
+          </fieldset>
 
           <div className="admin-toolbar-row admin-toolbar-row--form-span">
             <button type="submit" className="admin-btn-primary" disabled={saving}>

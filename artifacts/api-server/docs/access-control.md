@@ -8,6 +8,7 @@ Kurzüberblick über **drei getrennte Identitäten**: Plattform-Admin, Partner-P
 - **Auth:** `Authorization: Bearer <ADMIN_API_BEARER_TOKEN>` — Middleware `src/middleware/requireAdminApiBearer.ts`.
 - **Rechte:** Vollzugriff auf alle in diesen Routen implementierten Operationen (Mandanten, globale Fahrten, Partner-Zugänge, …). Kein `panel_users.role`-Bezug.
 - **Partner-Zugänge anlegen:** Jede gültige `PanelRole` (`owner`, `manager`, `staff`, `readonly`) ist erlaubt — unabhängig von Partner-internen Zuweisungsregeln.
+- **Admin-DB-Zugänge:** `GET/POST/PATCH/DELETE /api/admin/auth/users` nur mit Rolle **`admin`** im JWT (nicht `service`). `DELETE` verweigert Selbstlöschung und Löschen des letzten **aktiven** `admin`-Kontos (`cannot_delete_self`, `last_active_admin`).
 
 ## 2. Partner-Panel (Unternehmen)
 
