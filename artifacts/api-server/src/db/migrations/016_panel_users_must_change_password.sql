@@ -1,0 +1,2 @@
+ALTER TABLE panel_users
+  ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT TRUE;
