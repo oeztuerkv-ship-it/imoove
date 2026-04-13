@@ -401,6 +401,8 @@ export type AdminRideListQuery = {
   driverId?: string;
   /** Freitext über ID, Kunde, Route, Fahrer, passengerId */
   q?: string;
+  /** Standard: neueste zuerst (`desc`). */
+  sortCreated?: "asc" | "desc";
 };
 
 export type AdminRideRow = RideRequest & { companyName: string | null };
@@ -501,11 +503,16 @@ export async function listRidesAdminPage(
   const db = getDb();
   const cond = buildAdminRideConditions(query);
   const whereSql = cond.length ? and(...cond) : undefined;
+  const sortDesc = query.sortCreated !== "asc";
   if (!db) {
     const filtered = memoryRides.filter((r) => matchesAdminMemoryQuery(r, query));
-    filtered.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    filtered.sort((a, b) => {
+      const cmp = a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
+      return sortDesc ? -cmp : cmp;
+    });
     return filtered.slice(offset, offset + limit).map((ride) => ({ ...ride, companyName: null }));
   }
+  const orderCreated = sortDesc ? desc(ridesTable.created_at) : asc(ridesTable.created_at);
   const rows = await db
     .select({
       ride: ridesTable,
@@ -514,7 +521,7 @@ export async function listRidesAdminPage(
     .from(ridesTable)
     .leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id))
     .where(whereSql)
-    .orderBy(desc(ridesTable.created_at))
+    .orderBy(orderCreated)
     .limit(limit)
     .offset(offset);
   return rows.map((x) => ({

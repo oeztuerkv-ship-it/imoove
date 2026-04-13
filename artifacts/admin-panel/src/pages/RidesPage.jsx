@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -53,6 +53,32 @@ function rideStatusDe(status) {
     rejected: "Abgelehnt",
   };
   return m[s] || (s || "—");
+}
+
+/** Status-Filter: „Alle“ zuerst, danach A–Z nach deutscher Bezeichnung. */
+const RIDE_STATUS_FILTER_OPTIONS = (() => {
+  const ids = ["pending", "accepted", "arrived", "in_progress", "completed", "cancelled", "rejected"];
+  const rest = ids.map((value) => ({ value, label: rideStatusDe(value) }));
+  rest.sort((a, b) => a.label.localeCompare(b.label, "de", { sensitivity: "base" }));
+  return [{ value: "all", label: "Alle" }, ...rest];
+})();
+
+function rideTripType(ride) {
+  return ride.scheduledAt ? "Termin" : "Sofort";
+}
+
+function rideStatusToneClass(status) {
+  const s = String(status || "");
+  if (s === "completed") return "admin-status-pill admin-status-pill--ok";
+  if (s === "cancelled" || s === "rejected") return "admin-status-pill admin-status-pill--bad";
+  if (s === "pending") return "admin-status-pill admin-status-pill--pending";
+  return "admin-status-pill admin-status-pill--active";
+}
+
+function csvEscapeCell(v) {
+  const s = String(v ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 function rideSourceLabel(ride) {
@@ -124,8 +150,15 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
   const [createdFrom, setCreatedFrom] = useState("");
   const [createdTo, setCreatedTo] = useState("");
   const [driverFilter, setDriverFilter] = useState("");
+  const [ridesSort, setRidesSort] = useState("desc");
+  const [exportBusy, setExportBusy] = useState(false);
 
   const [companies, setCompanies] = useState([]);
+
+  const companiesAz = useMemo(
+    () => [...companies].sort((a, b) => (a.name || "").localeCompare(b.name || "", "de", { sensitivity: "base" })),
+    [companies],
+  );
 
   const [detailId, setDetailId] = useState(null);
   const [detailRide, setDetailRide] = useState(null);
@@ -201,6 +234,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         if (createdFrom.trim()) params.set("createdFrom", createdFrom.trim());
         if (createdTo.trim()) params.set("createdTo", createdTo.trim());
         if (driverFilter.trim()) params.set("driverId", driverFilter.trim());
+        params.set("sortCreated", ridesSort === "asc" ? "asc" : "desc");
 
         const res = await fetch(`${RIDES_URL}?${params.toString()}`, {
           headers: adminApiHeaders(),
@@ -229,7 +263,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         if (showLoader) setLoading(false);
       }
     },
-    [page, debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter],
+    [page, debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter, ridesSort],
   );
 
   useEffect(() => {
@@ -245,7 +279,83 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter]);
+  }, [debouncedQ, statusFilter, companyFilter, createdFrom, createdTo, driverFilter, ridesSort]);
+
+  async function exportRidesCsv() {
+    setExportBusy(true);
+    setError("");
+    try {
+      const collected = [];
+      let p = 1;
+      const pageSize = 100;
+      const maxPages = 50;
+      let totalExpected = Infinity;
+      while (p <= maxPages && collected.length < totalExpected) {
+        const params = new URLSearchParams();
+        params.set("page", String(p));
+        params.set("pageSize", String(pageSize));
+        if (debouncedQ) params.set("q", debouncedQ);
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        if (companyFilter !== "all") params.set("companyId", companyFilter);
+        if (createdFrom.trim()) params.set("createdFrom", createdFrom.trim());
+        if (createdTo.trim()) params.set("createdTo", createdTo.trim());
+        if (driverFilter.trim()) params.set("driverId", driverFilter.trim());
+        params.set("sortCreated", ridesSort === "asc" ? "asc" : "desc");
+        const res = await fetch(`${RIDES_URL}?${params.toString()}`, { headers: adminApiHeaders() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok || !Array.isArray(data.items)) {
+          throw new Error("Export: Fahrten konnten nicht geladen werden.");
+        }
+        totalExpected = typeof data.total === "number" ? data.total : collected.length + data.items.length;
+        collected.push(...data.items);
+        if (data.items.length < pageSize) break;
+        p += 1;
+      }
+      const header = [
+        "Zeitpunkt",
+        "Fahrt-Typ",
+        "Unternehmen",
+        "Fahrzeug",
+        "Fahrtart",
+        "Fahrt-ID",
+        "Kunde",
+        "Status",
+        "Von",
+        "Nach",
+      ];
+      const lines = [header.map(csvEscapeCell).join(",")];
+      for (const ride of collected) {
+        const when = ride.scheduledAt || ride.createdAt;
+        lines.push(
+          [
+            formatDate(when),
+            rideTripType(ride),
+            ride.companyName || ride.companyId || "",
+            ride.vehicle || "",
+            rideKindLabel(ride.rideKind),
+            ride.id || "",
+            ride.customerName || "",
+            rideStatusDe(ride.status),
+            ride.from || "",
+            ride.to || "",
+          ]
+            .map(csvEscapeCell)
+            .join(","),
+        );
+      }
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `onroda-fahrten-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "CSV-Export fehlgeschlagen.");
+    } finally {
+      setExportBusy(false);
+    }
+  }
 
   async function loadDetail(id) {
     setDetailId(id);
@@ -329,18 +439,6 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
     if (ride?.driverId) return true;
     const s = ride?.status;
     return s === "accepted" || s === "arrived" || s === "in_progress";
-  }
-
-  function rideStatusBadgeClass(status) {
-    const s = String(status || "—");
-    if (s === "pending") return "admin-badge admin-badge--ride-status-pending";
-    if (s === "cancelled") return "admin-badge admin-badge--ride-status-cancelled";
-    if (s === "completed") return "admin-badge admin-badge--ride-status-completed";
-    if (s === "accepted") return "admin-badge admin-badge--ride-status-accepted";
-    if (s === "in_progress") return "admin-badge admin-badge--ride-status-assigned";
-    if (s === "arrived") return "admin-badge admin-badge--ride-status-accepted";
-    if (s === "rejected") return "admin-badge admin-badge--ride-status-cancelled";
-    return "admin-badge";
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -443,23 +541,23 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
           <div className="admin-stat-label">Alle Fahrten</div>
-          <div className="admin-stat-value">{statsLoading ? "…" : s.total}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{statsLoading ? "…" : s.total}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Offen</div>
-          <div className="admin-stat-value">{statsLoading ? "…" : s.pending}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{statsLoading ? "…" : s.pending}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Aktiv</div>
-          <div className="admin-stat-value">{statsLoading ? "…" : s.active}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{statsLoading ? "…" : s.active}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Abgeschlossen</div>
-          <div className="admin-stat-value">{statsLoading ? "…" : s.completed}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{statsLoading ? "…" : s.completed}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Storniert</div>
-          <div className="admin-stat-value">{statsLoading ? "…" : s.cancelled}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{statsLoading ? "…" : s.cancelled}</div>
         </div>
       </div>
 
@@ -479,27 +577,32 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
           <div className="admin-filter-item">
             <label className="admin-field-label">Status</label>
             <select className="admin-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">Alle</option>
-              <option value="pending">Offen</option>
-              <option value="accepted">Angenommen</option>
-              <option value="arrived">Vor Ort</option>
-              <option value="in_progress">Unterwegs</option>
-              <option value="completed">Abgeschlossen</option>
-              <option value="cancelled">Storniert</option>
-              <option value="rejected">Abgelehnt</option>
+              {RIDE_STATUS_FILTER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="admin-filter-item">
-            <label className="admin-field-label">Unternehmen</label>
+            <label className="admin-field-label">Unternehmen (A–Z)</label>
             <select className="admin-select" value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}>
               <option value="all">Alle</option>
-              {companies.map((c) => (
+              {companiesAz.map((c) => (
                 <option key={c.id} value={c.id} title={c.id}>
                   {c.name}
                   {!c.is_active ? " (inaktiv)" : ""}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="admin-filter-item">
+            <label className="admin-field-label">Sortierung (Erstellzeit)</label>
+            <select className="admin-select" value={ridesSort} onChange={(e) => setRidesSort(e.target.value)}>
+              <option value="desc">Neueste zuerst</option>
+              <option value="asc">Älteste zuerst</option>
             </select>
           </div>
 
@@ -536,9 +639,14 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
           <div className="admin-filter-item">
             <label className="admin-field-label">&nbsp;</label>
-            <button type="button" className="admin-btn-refresh" onClick={() => void loadRides(true)}>
-              Neu laden
-            </button>
+            <div className="admin-filter-actions">
+              <button type="button" className="admin-btn-refresh" onClick={() => void loadRides(true)}>
+                Neu laden
+              </button>
+              <button type="button" className="admin-page-btn" disabled={exportBusy} onClick={() => void exportRidesCsv()}>
+                {exportBusy ? "Export …" : "CSV exportieren"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -553,109 +661,126 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
 
-      <div className="admin-table-card">
+      <div className="admin-table-card admin-table-card--flush">
         {rides.length === 0 ? (
           <div className="admin-info-banner">Keine Fahrten gefunden.</div>
         ) : (
-          <div className="admin-table-scroll">
-            <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--rides-compact admin-cs-grid--rides-min">
-              <div>ID/Status</div>
-              <div>Kunde/Firma</div>
-              <div>Route (Von ➔ Nach)</div>
-              <div>Preis</div>
-              <div>Geplant</div>
-              <div>Fahrer</div>
-              <div>Notiz</div>
-              <div>Aktion</div>
-            </div>
+          <div className="admin-rides-table-wrap">
+            <table className="admin-rides-table">
+              <thead>
+                <tr>
+                  <th>Zeitpunkt</th>
+                  <th>Fahrt-Typ</th>
+                  <th>Unternehmen</th>
+                  <th>Fahrzeug / Kategorie</th>
+                  <th>Fahrt-ID</th>
+                  <th>Kunde</th>
+                  <th>Status</th>
+                  <th className="admin-rides-table__col-actions">Aktion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rides.map((ride) => {
+                  const releaseAllowed = canRelease(ride);
+                  const firmenLabel = ride.companyName || ride.companyId || "—";
+                  const noteText = rideInternalNote(ride);
+                  const hasNote = noteText.length > 0;
+                  const isExpanded = expandedNoteId === ride.id;
+                  const driverLabel = driverDisplayName(ride.driverName || ride.driverId);
+                  const when = ride.scheduledAt || ride.createdAt;
+                  const vehCat = [ride.vehicle || "—", rideKindLabel(ride.rideKind)].join(" · ");
 
-            {rides.map((ride) => {
-              const releaseAllowed = canRelease(ride);
-              const firmenLabel = ride.companyName || ride.companyId || "—";
-              const noteText = rideInternalNote(ride);
-              const hasNote = noteText.length > 0;
-              const isExpanded = expandedNoteId === ride.id;
-              const driverLabel = driverDisplayName(ride.driverName || ride.driverId);
-
-              return (
-                <div key={ride.id}>
-                  <div className="admin-table-row admin-cs-grid admin-cs-grid--rides-compact admin-cs-grid--rides-min">
-                    <div>
-                      <div className="admin-mono admin-cell-strong">{ride.id || "—"}</div>
-                      <span className={rideStatusBadgeClass(ride.status)}>{rideStatusDe(ride.status)}</span>
-                    </div>
-                    <div>
-                      <div className="admin-cell-strong">{ride.customerName || "—"}</div>
-                      <div className="admin-table-sub">{firmenLabel}</div>
-                    </div>
-                    <div title={`${ride.from || "—"} ➔ ${ride.to || "—"}`}>
-                      <div className="admin-cell-strong">{ride.from || "—"}</div>
-                      <div className="admin-table-sub">➔ {ride.to || "—"}</div>
-                    </div>
-                    <div>
-                      <div className="admin-cell-strong">{formatMoney(ride.estimatedFare)}</div>
-                      <div className="admin-table-sub">{paymentMethodLabel(ride.paymentMethod)}</div>
-                    </div>
-                    <div>{formatDate(ride.scheduledAt)}</div>
-                    <div>
-                      {driverLabel ? (
-                        <span>{driverLabel}</span>
-                      ) : (
-                        <span className="admin-driver-searching">Suche…</span>
-                      )}
-                    </div>
-                    <div>
-                      {hasNote ? (
-                        <button
-                          type="button"
-                          className="admin-note-icon-btn"
-                          title="Interne Notiz anzeigen"
-                          aria-label="Interne Notiz anzeigen"
-                          onClick={() => setExpandedNoteId((prev) => (prev === ride.id ? null : ride.id))}
-                        >
-                          💬
-                        </button>
-                      ) : (
-                        <span className="admin-table-sub">—</span>
-                      )}
-                    </div>
-                    <div className="admin-actions-cell admin-actions-cell--row">
-                      <button
-                        type="button"
-                        className={
-                          "admin-btn-action" +
-                          (!releaseAllowed || busyId === ride.id ? " admin-btn-action--disabled" : "")
-                        }
-                        onClick={() => releaseRide(ride.id)}
-                        disabled={!releaseAllowed || busyId === ride.id}
-                      >
-                        {busyId === ride.id ? "…" : "Zuweisen"}
-                      </button>
-                      <details className="admin-overflow-menu">
-                        <summary className="admin-overflow-menu__trigger" aria-label="Weitere Aktionen">
-                          ⋯
-                        </summary>
-                        <div className="admin-overflow-menu__panel">
-                          <button type="button" className="admin-overflow-menu__item" onClick={() => void loadDetail(ride.id)}>
-                            Details
+                  return (
+                    <Fragment key={ride.id}>
+                      <tr className="admin-rides-table__row">
+                        <td className="admin-crisp-numeric admin-rides-table__nowrap">{formatDate(when)}</td>
+                        <td>{rideTripType(ride)}</td>
+                        <td>
+                          <div className="admin-ellipsis" title={firmenLabel}>
+                            {firmenLabel}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="admin-ellipsis" title={vehCat}>
+                            {vehCat}
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-link-mono admin-crisp-numeric"
+                            onClick={() => void loadDetail(ride.id)}
+                            title="Details öffnen"
+                          >
+                            {ride.id || "—"}
                           </button>
-                          <button type="button" className="admin-overflow-menu__item" onClick={() => void copyRideId(ride.id)}>
-                            ID kopieren
+                        </td>
+                        <td>
+                          <div className="admin-ellipsis" title={ride.customerName || ""}>
+                            {ride.customerName || "—"}
+                          </div>
+                          {driverLabel ? (
+                            <div className="admin-table-sub admin-ellipsis" title={ride.driverId || ""}>
+                              Fahrer: {driverLabel}
+                            </div>
+                          ) : (
+                            <div className="admin-driver-searching">Fahrer: Suche…</div>
+                          )}
+                        </td>
+                        <td>
+                          <span className={rideStatusToneClass(ride.status)}>{rideStatusDe(ride.status)}</span>
+                          <div className="admin-table-sub">{formatMoney(ride.estimatedFare)}</div>
+                        </td>
+                        <td className="admin-rides-table__actions">
+                          {hasNote ? (
+                            <button
+                              type="button"
+                              className="admin-note-icon-btn"
+                              title="Interne Notiz"
+                              aria-label="Interne Notiz"
+                              onClick={() => setExpandedNoteId((prev) => (prev === ride.id ? null : ride.id))}
+                            >
+                              💬
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={
+                              "admin-btn-action admin-btn-action--table" +
+                              (!releaseAllowed || busyId === ride.id ? " admin-btn-action--disabled" : "")
+                            }
+                            onClick={() => releaseRide(ride.id)}
+                            disabled={!releaseAllowed || busyId === ride.id}
+                          >
+                            {busyId === ride.id ? "…" : "Zuweisen"}
                           </button>
-                        </div>
-                      </details>
-                    </div>
-                  </div>
-                  {isExpanded ? (
-                    <div className="admin-table-row admin-table-row--note">
-                      <div>
-                        <strong>Notiz:</strong> {noteText}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                          <details className="admin-overflow-menu">
+                            <summary className="admin-overflow-menu__trigger" aria-label="Weitere Aktionen">
+                              ⋯
+                            </summary>
+                            <div className="admin-overflow-menu__panel">
+                              <button type="button" className="admin-overflow-menu__item" onClick={() => void loadDetail(ride.id)}>
+                                Details
+                              </button>
+                              <button type="button" className="admin-overflow-menu__item" onClick={() => void copyRideId(ride.id)}>
+                                ID kopieren
+                              </button>
+                            </div>
+                          </details>
+                        </td>
+                      </tr>
+                      {isExpanded ? (
+                        <tr className="admin-rides-table__note-row">
+                          <td colSpan={8}>
+                            <strong>Notiz:</strong> {noteText}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

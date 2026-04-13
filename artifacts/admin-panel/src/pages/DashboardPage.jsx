@@ -453,33 +453,33 @@ export default function DashboardPage({ onOpenRide, onOpenCompany }) {
       <div className="admin-dashboard__metrics-strip">
         <div className="admin-dashboard__metric-chip">
           <span className="admin-dashboard__metric-chip-label">Fahrten gesamt</span>
-          <span className="admin-dashboard__metric-chip-value">{r.total}</span>
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">{r.total}</span>
         </div>
         <div className="admin-dashboard__metric-chip">
           <span className="admin-dashboard__metric-chip-label">Offen</span>
-          <span className="admin-dashboard__metric-chip-value">{r.pending}</span>
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">{r.pending}</span>
         </div>
         <div className="admin-dashboard__metric-chip">
           <span className="admin-dashboard__metric-chip-label">Aktiv</span>
-          <span className="admin-dashboard__metric-chip-value">{r.active}</span>
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">{r.active}</span>
         </div>
         <div className="admin-dashboard__metric-chip">
           <span className="admin-dashboard__metric-chip-label">Abgeschlossen</span>
-          <span className="admin-dashboard__metric-chip-value">{r.completed}</span>
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">{r.completed}</span>
         </div>
         <div className="admin-dashboard__metric-chip">
           <span className="admin-dashboard__metric-chip-label">Unternehmen</span>
-          <span className="admin-dashboard__metric-chip-value">
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">
             {stats.companies.active}/{stats.companies.total}
           </span>
         </div>
         <div className="admin-dashboard__metric-chip">
           <span className="admin-dashboard__metric-chip-label">Fahrer (mind. eine Fahrt)</span>
-          <span className="admin-dashboard__metric-chip-value">{stats.drivers.distinctWithRide}</span>
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">{stats.drivers.distinctWithRide}</span>
         </div>
         <div className="admin-dashboard__metric-chip admin-dashboard__metric-chip--accent">
           <span className="admin-dashboard__metric-chip-label">Umsatz ({formatPeriodLabel(stats, revenuePreset)})</span>
-          <span className="admin-dashboard__metric-chip-value">{formatMoneyEUR(stats.revenue.completedSum)}</span>
+          <span className="admin-dashboard__metric-chip-value admin-crisp-numeric">{formatMoneyEUR(stats.revenue.completedSum)}</span>
           <span className="admin-dashboard__metric-chip-hint">{stats.revenue.completedRideCount} Fahrten</span>
         </div>
       </div>

@@ -1014,10 +1014,10 @@
   position: sticky;
   top: 0;
   z-index: 12;
-  margin-bottom: var(--onroda-space-4);
-  padding-bottom: var(--onroda-space-3);
-  background: color-mix(in srgb, var(--onroda-bg-page, var(--onroda-bg-card)) 92%, transparent);
-  backdrop-filter: blur(10px);
+  margin-bottom: var(--onroda-space-3);
+  padding-bottom: var(--onroda-space-2);
+  /* Kein backdrop-filter: vermeidet Weichzeichner bei Text/Zahlen in manchen Browsern */
+  background: var(--onroda-bg-page, var(--onroda-bg-card));
   border-bottom: 1px solid var(--onroda-border-subtle);
 }
 
@@ -1102,7 +1102,9 @@
 }
 
 .admin-entity-card--company-modern {
-  border-radius: var(--onroda-radius-card, 12px);
+  border-radius: var(--onroda-radius-md, 10px);
+  padding: 12px 14px;
+  gap: 8px;
 }
 
 .admin-company-top--modern {
@@ -1117,10 +1119,10 @@
 }
 
 .admin-company-title {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: color-mix(in srgb, var(--onroda-text) 88%, #0f172a);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   line-height: 1.25;
 }
 
@@ -1183,8 +1185,8 @@
 .admin-company-kpi-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--onroda-space-3);
-  margin-top: var(--onroda-space-5);
+  gap: 8px;
+  margin-top: 8px;
 }
 
 @media (max-width: 720px) {
@@ -1194,15 +1196,15 @@
 }
 
 .admin-company-kpi-stat {
-  min-height: 88px;
-  padding: var(--onroda-space-4);
-  border-radius: var(--onroda-radius-md, 8px);
+  min-height: 64px;
+  padding: 8px 10px;
+  border-radius: var(--onroda-radius-sm, 6px);
   background: color-mix(in srgb, #f8fafc 92%, var(--onroda-bg-card));
   border: 1px solid var(--onroda-border-subtle);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .admin-company-kpi-stat__label {
@@ -1215,18 +1217,18 @@
 }
 
 .admin-company-kpi-stat__value {
-  font-size: 1.25rem;
+  font-size: 18px;
   font-weight: 800;
   color: var(--onroda-red);
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .admin-company-prio-toggles {
   display: flex;
   flex-direction: column;
-  gap: var(--onroda-space-3);
-  margin-top: var(--onroda-space-5);
-  padding-top: var(--onroda-space-4);
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--onroda-border-subtle);
 }
 
@@ -1234,7 +1236,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--onroda-space-4);
+  gap: 10px;
+  padding: 4px 0;
 }
 
 .admin-company-toggle-hint {
@@ -1247,9 +1250,9 @@
 
 .admin-module-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 10px;
-  margin-top: var(--onroda-space-3);
+  grid-template-columns: repeat(auto-fill, minmax(142px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .admin-module-grid--readonly {
@@ -1259,9 +1262,9 @@
 .admin-module-tile {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border-radius: var(--onroda-radius-md, 8px);
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--onroda-radius-sm, 6px);
   border: 1px solid var(--onroda-border-outline);
   background: var(--onroda-bg-card);
   text-align: left;
@@ -1301,9 +1304,9 @@
 }
 
 .admin-module-tile__label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .admin-module-tile__desc {
@@ -1318,7 +1321,7 @@
 .admin-fares-form {
   display: flex;
   flex-direction: column;
-  gap: var(--onroda-space-8);
+  gap: var(--onroda-space-6);
 }
 
 .admin-fares-hero {
@@ -1406,4 +1409,166 @@
 .admin-fares-fix-row {
   margin-top: var(--onroda-space-3);
   max-width: 280px;
+}
+
+.admin-fares-grid-num--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 520px) {
+  .admin-fares-grid-num--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-fares-subhead {
+  margin-top: var(--onroda-space-5);
+  margin-bottom: 2px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--onroda-text-grey);
+}
+
+.admin-fares-fieldset > .admin-fares-subhead:first-of-type {
+  margin-top: var(--onroda-space-3);
+}
+
+.admin-fares-hint--tight {
+  margin-top: 4px;
+  margin-bottom: 0;
+  font-size: 0.78rem;
+}
+
+/* —— Scharfe Zahlen / Beträge (kein Weichzeichner durch Layer/Filter) —— */
+.admin-crisp-numeric {
+  transform: none;
+  filter: none;
+  -webkit-font-smoothing: subpixel-antialiased;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.admin-stat-value.admin-crisp-numeric {
+  font-size: 28px;
+  line-height: 1.12;
+}
+
+/* —— Fahrten: kompakte Datentabelle —— */
+.admin-table-card--flush {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.admin-rides-table-wrap {
+  width: 100%;
+  padding: 0 12px 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-rides-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.admin-rides-table thead th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--onroda-text-muted);
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  background: color-mix(in srgb, var(--onroda-bg-card) 96%, var(--onroda-border-subtle));
+  white-space: nowrap;
+}
+
+.admin-rides-table tbody td {
+  padding: 8px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+}
+
+.admin-rides-table__row:hover td {
+  background: color-mix(in srgb, var(--onroda-red) 4%, transparent);
+}
+
+.admin-rides-table__nowrap {
+  white-space: nowrap;
+}
+
+.admin-rides-table__col-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.admin-rides-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-btn-action--table {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.admin-rides-table__note-row td {
+  background: color-mix(in srgb, var(--onroda-text-muted) 6%, var(--onroda-bg-card));
+  font-size: 0.8rem;
+}
+
+.admin-link-mono {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--onroda-red) 85%, #1e293b);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.admin-link-mono:hover {
+  color: var(--onroda-red);
+}
+
+.admin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+}
+
+.admin-status-pill--ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admin-status-pill--bad {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-status-pill--pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.admin-status-pill--active {
+  background: color-mix(in srgb, var(--onroda-red) 12%, var(--onroda-bg-card));
+  color: var(--onroda-text);
 }

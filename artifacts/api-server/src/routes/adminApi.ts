@@ -106,6 +106,9 @@ function parseAdminRideListQuery(req: Request): { ok: true; query: AdminRideList
   }
   if (typeof q.driverId === "string" && q.driverId.trim()) query.driverId = q.driverId.trim();
   if (typeof q.q === "string" && q.q.trim()) query.q = q.q.trim();
+  const sortRaw = typeof q.sortCreated === "string" ? q.sortCreated.trim().toLowerCase() : "";
+  if (sortRaw === "asc") query.sortCreated = "asc";
+  else if (sortRaw === "desc") query.sortCreated = "desc";
   return { ok: true, query };
 }
 

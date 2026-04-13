@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
@@ -40,6 +40,14 @@ function ruleTypeLabel(value) {
 export default function FaresPage() {
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
+
+  const ruleTypeOptionsSorted = useMemo(
+    () =>
+      Object.entries(RULE_TYPE_LABELS).sort((a, b) =>
+        a[1].localeCompare(b[1], "de", { sensitivity: "base" }),
+      ),
+    [],
+  );
 
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -256,22 +264,22 @@ export default function FaresPage() {
       <div className="admin-stat-grid admin-stat-grid--wide">
         <div className="admin-stat-card">
           <div className="admin-stat-label">Gebiete gesamt</div>
-          <div className="admin-stat-value">{areas.length}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{areas.length}</div>
         </div>
 
         <div className="admin-stat-card">
           <div className="admin-stat-label">Amtliche Tarife</div>
-          <div className="admin-stat-value">{officialCount}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{officialCount}</div>
         </div>
 
         <div className="admin-stat-card">
           <div className="admin-stat-label">Vertragstarife</div>
-          <div className="admin-stat-value">{contractCount}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{contractCount}</div>
         </div>
 
         <div className="admin-stat-card">
           <div className="admin-stat-label">Sonderregeln</div>
-          <div className="admin-stat-value">{specialCount}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{specialCount}</div>
         </div>
       </div>
 
@@ -310,7 +318,7 @@ export default function FaresPage() {
                   value={form.ruleType}
                   onChange={(e) => handleChange("ruleType", e.target.value)}
                 >
-                  {Object.entries(RULE_TYPE_LABELS).map(([value, label]) => (
+                  {ruleTypeOptionsSorted.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
@@ -362,11 +370,18 @@ export default function FaresPage() {
 
           <fieldset className="admin-fares-fieldset">
             <legend className="admin-fares-legend">Amtlicher Taxameter — Berechnung</legend>
-            <p className="admin-fares-hint">Grundpreis, Kilometer bis/ab Schwelle, Wartezeit und Servicegebühr.</p>
-            <div className="admin-fares-grid-num">
+            <div className="admin-fares-subhead">Grundpreis &amp; Kilometer</div>
+            <p className="admin-fares-hint admin-fares-hint--tight">
+              Einstiegspreis, dann Staffelung ab Erreichen der Kilometer-Schwelle.
+            </p>
+            <div className="admin-fares-grid-num admin-fares-grid-num--2">
               <div>
                 <label className="admin-field-label">Grundpreis (€)</label>
                 <input className="admin-input" type="number" step="0.01" value={form.baseFareEur} onChange={(e) => handleChange("baseFareEur", e.target.value)} />
+              </div>
+              <div>
+                <label className="admin-field-label">Schwelle (km)</label>
+                <input className="admin-input" type="number" step="0.1" value={form.thresholdKm} onChange={(e) => handleChange("thresholdKm", e.target.value)} />
               </div>
               <div>
                 <label className="admin-field-label">Preis / km bis Schwelle (€)</label>
@@ -376,10 +391,10 @@ export default function FaresPage() {
                 <label className="admin-field-label">Preis / km ab Schwelle (€)</label>
                 <input className="admin-input" type="number" step="0.01" value={form.rateAfterKmEur} onChange={(e) => handleChange("rateAfterKmEur", e.target.value)} />
               </div>
-              <div>
-                <label className="admin-field-label">Schwelle (km)</label>
-                <input className="admin-input" type="number" step="0.1" value={form.thresholdKm} onChange={(e) => handleChange("thresholdKm", e.target.value)} />
-              </div>
+            </div>
+            <div className="admin-fares-subhead">Wartezeit &amp; Zuschläge</div>
+            <p className="admin-fares-hint admin-fares-hint--tight">Wartezeit pro Stunde und optionale Servicegebühr.</p>
+            <div className="admin-fares-grid-num admin-fares-grid-num--2">
               <div>
                 <label className="admin-field-label">Wartezeit (€ / h)</label>
                 <input className="admin-input" type="number" step="0.01" value={form.waitingPerHourEur} onChange={(e) => handleChange("waitingPerHourEur", e.target.value)} />
@@ -393,8 +408,8 @@ export default function FaresPage() {
 
           <fieldset className="admin-fares-fieldset">
             <legend className="admin-fares-legend">Onroda-App Tarif</legend>
-            <p className="admin-fares-hint">Basis, Kilometerpreis und Mindestwert für die App — getrennt vom Taxameter-Block.</p>
-            <div className="admin-fares-grid-num admin-fares-grid-num--3">
+            <div className="admin-fares-subhead">Basis &amp; Preis pro km</div>
+            <div className="admin-fares-grid-num admin-fares-grid-num--2">
               <div>
                 <label className="admin-field-label">Basispreis App (€)</label>
                 <input className="admin-input" type="number" step="0.01" value={form.onrodaBaseFareEur} onChange={(e) => handleChange("onrodaBaseFareEur", e.target.value)} />
@@ -403,10 +418,11 @@ export default function FaresPage() {
                 <label className="admin-field-label">Preis / km App (€)</label>
                 <input className="admin-input" type="number" step="0.01" value={form.onrodaPerKmEur} onChange={(e) => handleChange("onrodaPerKmEur", e.target.value)} />
               </div>
-              <div>
-                <label className="admin-field-label">Mindestpreis App (€)</label>
-                <input className="admin-input" type="number" step="0.01" value={form.onrodaMinFareEur} onChange={(e) => handleChange("onrodaMinFareEur", e.target.value)} />
-              </div>
+            </div>
+            <div className="admin-fares-subhead">Mindestpreis</div>
+            <p className="admin-fares-hint admin-fares-hint--tight">Untergrenze für die App-Berechnung (0 = keine Mindestgrenze).</p>
+            <div className="admin-fares-fix-row">
+              <input className="admin-input" type="number" step="0.01" value={form.onrodaMinFareEur} onChange={(e) => handleChange("onrodaMinFareEur", e.target.value)} />
             </div>
           </fieldset>
 

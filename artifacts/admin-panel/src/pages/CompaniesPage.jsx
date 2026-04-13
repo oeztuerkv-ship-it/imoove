@@ -474,6 +474,23 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     };
   }, [items]);
 
+  const companyListFilterOptions = useMemo(() => {
+    const rest = [
+      { value: "active", label: "Nur aktive" },
+      { value: "inactive", label: "Nur deaktivierte" },
+      { value: "priority", label: "Hohe Priorität" },
+    ].sort((a, b) => a.label.localeCompare(b.label, "de", { sensitivity: "base" }));
+    return [{ value: "all", label: "Alle Unternehmen" }, ...rest];
+  }, []);
+
+  const moduleCatalogAz = useMemo(
+    () =>
+      [...moduleCatalog].sort((a, b) =>
+        (a.label || "").localeCompare(b.label || "", "de", { sensitivity: "base" }),
+      ),
+    [moduleCatalog],
+  );
+
   function renderPagination() {
     const buttons = [];
     const start = Math.max(1, page - 2);
@@ -567,19 +584,19 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
           <div className="admin-stat-label">Gesamt</div>
-          <div className="admin-stat-value">{stats.total}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{stats.total}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Aktiv</div>
-          <div className="admin-stat-value">{stats.active}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{stats.active}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Inaktiv</div>
-          <div className="admin-stat-value">{stats.inactive}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{stats.inactive}</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-label">Mit Priorität</div>
-          <div className="admin-stat-value">{stats.priority}</div>
+          <div className="admin-stat-value admin-crisp-numeric">{stats.priority}</div>
         </div>
       </div>
 
@@ -605,10 +622,11 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                 value={listFilter}
                 onChange={(e) => setListFilter(e.target.value)}
               >
-                <option value="all">Alle Unternehmen</option>
-                <option value="active">Nur aktive</option>
-                <option value="inactive">Nur deaktivierte</option>
-                <option value="priority">Hohe Priorität</option>
+                {companyListFilterOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -726,19 +744,19 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                 <div className="admin-company-kpi-grid-3">
                   <div className="admin-company-kpi-stat">
                     <div className="admin-company-kpi-stat__label">Monatsumsatz</div>
-                    <div className="admin-company-kpi-stat__value">
+                    <div className="admin-company-kpi-stat__value admin-crisp-numeric">
                       {loadingKpis[item.id] ? "…" : formatMoneyEUR(kpisByCompany[item.id]?.monthlyRevenue ?? 0)}
                     </div>
                   </div>
                   <div className="admin-company-kpi-stat">
                     <div className="admin-company-kpi-stat__label">Offene Fahrten</div>
-                    <div className="admin-company-kpi-stat__value">
+                    <div className="admin-company-kpi-stat__value admin-crisp-numeric">
                       {loadingKpis[item.id] ? "…" : Number(kpisByCompany[item.id]?.openRides ?? 0)}
                     </div>
                   </div>
                   <div className="admin-company-kpi-stat">
                     <div className="admin-company-kpi-stat__label">Verfügbares Gutschein-Limit</div>
-                    <div className="admin-company-kpi-stat__value">
+                    <div className="admin-company-kpi-stat__value admin-crisp-numeric">
                       {loadingKpis[item.id] ? "…" : voucherLimitLabel(kpisByCompany[item.id]?.voucherLimitAvailable)}
                     </div>
                   </div>
@@ -844,7 +862,7 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                     {editingModulesFor === item.id ? (
                       <>
                         <div className="admin-module-grid">
-                          {moduleCatalog.map((mod) => {
+                          {moduleCatalogAz.map((mod) => {
                             const on = moduleDraft.includes(mod.id);
                             return (
                               <button
@@ -888,7 +906,10 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                     ) : (
                       <div>
                         <div className="admin-module-grid admin-module-grid--readonly">
-                          {(item.panel_modules == null ? moduleCatalog : moduleCatalog.filter((m) => item.panel_modules.includes(m.id))).map((m) => (
+                          {(item.panel_modules == null
+                            ? moduleCatalogAz
+                            : moduleCatalogAz.filter((m) => item.panel_modules.includes(m.id))
+                          ).map((m) => (
                             <div key={m.id} className="admin-module-tile admin-module-tile--on admin-module-tile--static" title={m.description}>
                               <span className="admin-module-tile__icon" aria-hidden>
                                 <PanelModuleIcon moduleId={m.id} />
