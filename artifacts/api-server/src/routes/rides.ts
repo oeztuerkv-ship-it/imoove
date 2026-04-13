@@ -16,7 +16,10 @@ import {
   resetRidesDemo,
   updateRide,
 } from "../db/ridesData";
-import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
+import {
+  DEFAULT_AUTHORIZATION_SOURCE,
+  parseAuthorizationSource,
+} from "../domain/rideAuthorization";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 
 export type { RideRequest } from "../domain/rideRequest";
@@ -67,8 +70,19 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "payer_kind_invalid" });
       return;
     }
+    if (
+      raw.authorizationSource != null &&
+      raw.authorizationSource !== "" &&
+      (typeof raw.authorizationSource !== "string" ||
+        parseAuthorizationSource(raw.authorizationSource) === null)
+    ) {
+      res.status(400).json({ error: "authorization_source_invalid" });
+      return;
+    }
     const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
     const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
+    const authorizationSource =
+      parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
     const newReq: RideRequest = {
       ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
@@ -80,7 +94,7 @@ router.post("/rides", async (req, res, next) => {
       payerKind,
       voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
       billingReference: parseOptionalBillingTag(raw.billingReference, 256),
-      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      authorizationSource,
       accessCodeId: null,
     };
     const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;

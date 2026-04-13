@@ -11,7 +11,8 @@ import { randomBytes } from "node:crypto";
  * `ACCESS_CODE_TYPES` klassifizieren den Geschäftsfall (Hotel, Firma, …); technisch ein zentrales Modell.
  */
 
-export const AUTHORIZATION_SOURCES = ["passenger_direct", "access_code"] as const;
+/** `partner` = Mandanten-/B2B-Kontext (z. B. Partner-API), ohne digitale Code-Einlösung. */
+export const AUTHORIZATION_SOURCES = ["passenger_direct", "access_code", "partner"] as const;
 export type AuthorizationSource = (typeof AUTHORIZATION_SOURCES)[number];
 
 /** Klassifikation des Auftraggebers / Kanals — kein separates Abrechnungsmodell pro Typ. */

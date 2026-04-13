@@ -12,6 +12,7 @@ export type RideKind = (typeof RIDE_KINDS)[number];
  * als **Kostenübernahme durch den Mandanten** laufen (`payerKind: company`); `finalFare` nach Abschluss
  * ist dann die Abrechnungsgrundlage gegenüber diesem Auftraggeber.
  */
+/** API/Clients dürfen synonym `external` senden → wird als `third_party` gespeichert. */
 export const PAYER_KINDS = ["passenger", "company", "insurance", "voucher", "third_party"] as const;
 export type PayerKind = (typeof PAYER_KINDS)[number];
 
@@ -44,6 +45,7 @@ export function parseRideKind(v: unknown): RideKind | null {
 export function parsePayerKind(v: unknown): PayerKind | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
+  if (s.toLowerCase() === "external") return "third_party";
   return isPayerKind(s) ? s : null;
 }
 

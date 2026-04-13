@@ -7,6 +7,7 @@ const PAYMENT_DISPLAY: Record<PaymentMethod, string> = {
   card: "Kreditkarte",
   voucher: "Transportschein (Krankenkasse)",
   app: "App-Zahlung",
+  access_code: "Gutschein / Freigabe-Code",
 };
 
 /** Kurzbeschreibung der Freigabe-Art für Kund:innen (gleiche Sprache wie im Partner-/Fahrerbereich). */
@@ -40,6 +41,13 @@ export function customerPayerBlockFromBooking(
         : "Es fällt ein Eigenanteil an (siehe Preisbox). Der Rest wird über die Krankenkasse abgerechnet.",
     };
   }
+  if (paymentMethod === "access_code") {
+    return {
+      title: "Gutschein / Freigabe",
+      subtitle:
+        "Sie haben einen digitalen Code von Hotel, Firma oder Auftraggeber? Geben Sie ihn unten ein — die Abrechnung läuft über den Kostenträger, nicht bar bei Ihnen.",
+    };
+  }
   const label = PAYMENT_DISPLAY[paymentMethod];
   return {
     title: "Zahlung",
@@ -51,7 +59,7 @@ export function customerPayerBlockFromBooking(
 export function customerPayerBlockFromRideRequest(req: RideRequest): CustomerPayerBlock {
   const pm = (req.paymentMethod || "").trim() || "Bar";
   const isVoucherish =
-    req.authorizationSource === "passenger_direct" &&
+    (req.authorizationSource === "passenger_direct" || req.authorizationSource === "partner") &&
     (req.payerKind === "voucher" ||
       req.payerKind === "insurance" ||
       pm.toLowerCase().includes("krankenkasse") ||

@@ -25,8 +25,8 @@ export type RideKind = "standard" | "medical" | "voucher" | "company";
 /** Entspricht API `payerKind`. */
 export type PayerKind = "passenger" | "company" | "insurance" | "voucher" | "third_party";
 
-/** Entspricht API `authorizationSource` — Direktzahlung vs. digitaler Zugangscode. */
-export type AuthorizationSource = "passenger_direct" | "access_code";
+/** Entspricht API `authorizationSource` — Direktzahlung, Code-Freigabe oder B2B/Mandant. */
+export type AuthorizationSource = "passenger_direct" | "access_code" | "partner";
 
 export type AccessCodeSummary = { codeType: string; label: string };
 
@@ -189,7 +189,11 @@ function normalizeRequest(r: any): RideRequest {
 
   const authRaw = r.authorizationSource ?? r.authorization_source;
   const authorizationSource: AuthorizationSource =
-    authRaw === "access_code" ? "access_code" : "passenger_direct";
+    authRaw === "access_code"
+      ? "access_code"
+      : authRaw === "partner"
+        ? "partner"
+        : "passenger_direct";
 
   const summaryRaw = r.accessCodeSummary ?? r.access_code_summary;
   let accessCodeSummary: AccessCodeSummary | null = null;

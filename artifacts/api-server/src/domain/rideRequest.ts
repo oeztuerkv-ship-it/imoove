@@ -32,7 +32,8 @@ export interface RideRequest {
   /** Freitext: Aktenzeichen, Kostenstelle, Leistungsreferenz (KV, Firma, …). */
   billingReference?: string | null;
   /**
-   * Freigabe: Fahrgast direkt (App-Zahlung o. ä.) oder **digitale Kostenübernahme** per Zugangscode.
+   * Freigabe: Fahrgast direkt (App-Zahlung o. ä.), **digitale Kostenübernahme** per Zugangscode,
+   * oder Mandanten-/B2B-Kontext (`partner`), sofern ohne Code gebucht.
    * @default passenger_direct
    */
   authorizationSource: AuthorizationSource;
