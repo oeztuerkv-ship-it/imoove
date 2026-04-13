@@ -61,6 +61,29 @@ Optional:
   - `session_version`-basierte Session-Invalidierung nach Passwortwechsel/Reset
 - Phase B bindet den echten Mailversand an.
 
+## Verbindliche Produktions-Baseline (Admin-Passwort-Reset)
+
+Ab Release-Stand mit Fix **Enumeration-/Debug-Leak** (`password-reset/request` liefert in **Produktion** nie Debug-Felder; siehe `artifacts/api-server/src/routes/adminApi.ts`): Diese Zeile ist die **verbindliche Referenz** fuer Admin-Auth-Reset-Verhalten in Production. Aenderungen daran nur bewusst, mit Security-Review und erneuter Live-Abnahme.
+
+### `POST /api/admin/auth/password-reset/request` (Production)
+
+- **HTTP 200** sowohl bei bekannter als auch bei unbekannter Identitaet (kein User-Existenz-Leak ueber Statuscode).
+- **Identische** Außen-`message` in beiden Faellen.
+- **Antwort-JSON** ausschliesslich `{ "ok": true, "message": "<fester Hinweistext>" }` — **keine** zusaetzlichen Keys, insbesondere **kein** `debugResetToken`, **kein** `debugResetExpiresAt`.
+- Debug-Token in der Response nur in **Nicht-Produktion** und nur bei gesetztem `ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE=1` (lokal/CI); **niemals** bei `NODE_ENV=production`, unabhaengig von anderen Env-Variablen.
+
+### Reset-Flow (Live abgenommene Eigenschaften)
+
+- Reset-Anfrage persistiert Token/Audit wie spezifiziert; **keine Enumeration** nach aussen (siehe oben).
+- Reset mit **gueltigem** Token: Erfolg; **einmalige** Gueltigkeit des Tokens (`used_at`).
+- **Abgelaufene/ungueltige** Tokens: erwarteter Fehlerpfad.
+- Nach erfolgreichem Reset: **altes Passwort** ungueltig; **`session_version`** erhoeht — **bestehende JWTs** ungueltig.
+
+### Regression
+
+- Script: `npm run test:admin-password-reset` (inkl. gleicher JSON-Keys fuer Request-Responses wo anwendbar).
+- Nach Deploy: kurzer Live-Check zwei Requests (bekannt/unbekannt) — gleiche `message`, gleiche Keys, keine Debug-Felder.
+
 Reset-Test lokal/staging:
 
 ```bash
