@@ -11,6 +11,7 @@ const PORT = Number(process.env.TEST_API_PORT || "19876");
 const base = `http://127.0.0.1:${PORT}`;
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CODE = "E2E-GUTSCHEIN-TEST";
+const adminBearer = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
 
 async function waitForHealth(maxAttempts = 60) {
   for (let i = 0; i < maxAttempts; i += 1) {
@@ -42,9 +43,12 @@ async function main() {
   try {
     await waitForHealth();
 
+    const adminHeaders = { "Content-Type": "application/json" };
+    if (adminBearer) adminHeaders.Authorization = `Bearer ${adminBearer}`;
+
     let res = await fetch(`${base}/api/admin/access-codes`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({
         code: CODE,
         codeType: "voucher",
@@ -53,6 +57,13 @@ async function main() {
     });
     const createdCode = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error(
+          "Access-Code anlegen fehlgeschlagen: 401 unauthorized. " +
+          "Setze ADMIN_API_BEARER_TOKEN und starte erneut, z. B. " +
+          "ADMIN_API_BEARER_TOKEN=... npm run test:access-code",
+        );
+      }
       throw new Error(`Access-Code anlegen fehlgeschlagen: ${res.status} ${JSON.stringify(createdCode)}`);
     }
 
