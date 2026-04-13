@@ -14,9 +14,9 @@
     minmax(140px, 1.1fr)
     minmax(180px, 1.2fr)
     minmax(220px, 1.8fr)
+    minmax(120px, 0.9fr)
     minmax(140px, 1fr)
     minmax(110px, 0.9fr)
-    minmax(120px, 0.9fr)
     70px
     minmax(160px, 1.1fr);
 }
@@ -375,7 +375,7 @@
   display: grid;
   gap: var(--onroda-space-4);
   align-items: center;
-  padding: var(--onroda-space-5) var(--onroda-space-6);
+  padding: 10px var(--onroda-space-6);
   border-bottom: 1px solid var(--onroda-border-subtle);
   font-size: 0.95rem;
   color: var(--onroda-text-dark);

@@ -9,6 +9,8 @@
 --   012 → rides.access_code_normalized_snapshot
 --   013 → rides.partner_booking_meta
 --   014 → public.partner_ride_series
+--   016 → panel_users.must_change_password
+--   017 → fare_areas pricing fields
 
 DO $$
 DECLARE
@@ -90,6 +92,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'partner_ride_series'
   ) THEN
     errs := array_append(errs, 'table partner_ride_series (Migration 014)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'panel_users' AND column_name = 'must_change_password'
+  ) THEN
+    errs := array_append(errs, 'panel_users.must_change_password (Migration 016)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fare_areas' AND column_name = 'base_fare_eur'
+  ) THEN
+    errs := array_append(errs, 'fare_areas.base_fare_eur (Migration 017)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

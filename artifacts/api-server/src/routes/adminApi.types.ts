@@ -33,6 +33,17 @@ export interface FareAreaRow {
   isRequiredArea: string;
   fixedPriceAllowed: string;
   status: string;
+  isDefault: boolean;
+  baseFareEur: number;
+  rateFirstKmEur: number;
+  rateAfterKmEur: number;
+  thresholdKm: number;
+  waitingPerHourEur: number;
+  serviceFeeEur: number;
+  onrodaBaseFareEur: number;
+  onrodaPerKmEur: number;
+  onrodaMinFareEur: number;
+  manualFixedPriceEur: number | null;
 }
 
 /** Admin-Dashboard: Kennzahlen aus Postgres (camelCase JSON). */

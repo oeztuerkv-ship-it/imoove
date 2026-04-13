@@ -64,6 +64,17 @@ const seedFareAreas: FareAreaRow[] = [
     isRequiredArea: "Ja",
     fixedPriceAllowed: "Prüfen",
     status: "aktiv",
+    isDefault: true,
+    baseFareEur: 4.3,
+    rateFirstKmEur: 3.0,
+    rateAfterKmEur: 2.5,
+    thresholdKm: 4,
+    waitingPerHourEur: 38,
+    serviceFeeEur: 0,
+    onrodaBaseFareEur: 3.5,
+    onrodaPerKmEur: 2.2,
+    onrodaMinFareEur: 0,
+    manualFixedPriceEur: null,
   },
 ];
 
@@ -102,6 +113,76 @@ function rowToFareArea(r: typeof fareAreasTable.$inferSelect): FareAreaRow {
     isRequiredArea: r.is_required_area,
     fixedPriceAllowed: r.fixed_price_allowed,
     status: r.status,
+    isDefault: r.is_default,
+    baseFareEur: r.base_fare_eur,
+    rateFirstKmEur: r.rate_first_km_eur,
+    rateAfterKmEur: r.rate_after_km_eur,
+    thresholdKm: r.threshold_km,
+    waitingPerHourEur: r.waiting_per_hour_eur,
+    serviceFeeEur: r.service_fee_eur,
+    onrodaBaseFareEur: r.onroda_base_fare_eur,
+    onrodaPerKmEur: r.onroda_per_km_eur,
+    onrodaMinFareEur: r.onroda_min_fare_eur,
+    manualFixedPriceEur: r.manual_fixed_price_eur ?? null,
+  };
+}
+
+export type PublicFareProfile = {
+  areaId: string | null;
+  areaName: string;
+  baseFareEur: number;
+  rateFirstKmEur: number;
+  rateAfterKmEur: number;
+  thresholdKm: number;
+  waitingPerHourEur: number;
+  serviceFeeEur: number;
+  onrodaBaseFareEur: number;
+  onrodaPerKmEur: number;
+  onrodaMinFareEur: number;
+  manualFixedPriceEur: number | null;
+};
+
+function asMoney(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return n;
+}
+
+export async function getPublicFareProfile(): Promise<PublicFareProfile> {
+  const defaults: PublicFareProfile = {
+    areaId: null,
+    areaName: "Standard",
+    baseFareEur: 4.3,
+    rateFirstKmEur: 3.0,
+    rateAfterKmEur: 2.5,
+    thresholdKm: 4,
+    waitingPerHourEur: 38,
+    serviceFeeEur: 0,
+    onrodaBaseFareEur: 3.5,
+    onrodaPerKmEur: 2.2,
+    onrodaMinFareEur: 0,
+    manualFixedPriceEur: null,
+  };
+  const areas = await listFareAreas();
+  const active = areas.filter((x) => x.status === "aktiv");
+  const row = active.find((x) => x.isDefault) ?? active[0] ?? areas[0];
+  if (!row) return defaults;
+  return {
+    areaId: row.id,
+    areaName: row.name,
+    baseFareEur: asMoney(row.baseFareEur, defaults.baseFareEur),
+    rateFirstKmEur: asMoney(row.rateFirstKmEur, defaults.rateFirstKmEur),
+    rateAfterKmEur: asMoney(row.rateAfterKmEur, defaults.rateAfterKmEur),
+    thresholdKm: asMoney(row.thresholdKm, defaults.thresholdKm),
+    waitingPerHourEur: asMoney(row.waitingPerHourEur, defaults.waitingPerHourEur),
+    serviceFeeEur: asMoney(row.serviceFeeEur, defaults.serviceFeeEur),
+    onrodaBaseFareEur: asMoney(row.onrodaBaseFareEur, defaults.onrodaBaseFareEur),
+    onrodaPerKmEur: asMoney(row.onrodaPerKmEur, defaults.onrodaPerKmEur),
+    onrodaMinFareEur: asMoney(row.onrodaMinFareEur, defaults.onrodaMinFareEur),
+    manualFixedPriceEur:
+      row.manualFixedPriceEur != null && Number.isFinite(Number(row.manualFixedPriceEur))
+        ? Number(row.manualFixedPriceEur)
+        : null,
   };
 }
 
@@ -548,6 +629,17 @@ export async function addFareArea(body: {
   isRequiredArea: string;
   fixedPriceAllowed: string;
   status: string;
+  isDefault?: boolean;
+  baseFareEur?: number;
+  rateFirstKmEur?: number;
+  rateAfterKmEur?: number;
+  thresholdKm?: number;
+  waitingPerHourEur?: number;
+  serviceFeeEur?: number;
+  onrodaBaseFareEur?: number;
+  onrodaPerKmEur?: number;
+  onrodaMinFareEur?: number;
+  manualFixedPriceEur?: number | null;
 }): Promise<FareAreaRow[]> {
   const id = `fa-${Date.now()}`;
   const row: FareAreaRow = {
@@ -557,6 +649,18 @@ export async function addFareArea(body: {
     isRequiredArea: body.isRequiredArea,
     fixedPriceAllowed: body.fixedPriceAllowed,
     status: body.status,
+    isDefault: body.isDefault === true,
+    baseFareEur: asMoney(body.baseFareEur, 4.3),
+    rateFirstKmEur: asMoney(body.rateFirstKmEur, 3.0),
+    rateAfterKmEur: asMoney(body.rateAfterKmEur, 2.5),
+    thresholdKm: asMoney(body.thresholdKm, 4),
+    waitingPerHourEur: asMoney(body.waitingPerHourEur, 38),
+    serviceFeeEur: asMoney(body.serviceFeeEur, 0),
+    onrodaBaseFareEur: asMoney(body.onrodaBaseFareEur, 3.5),
+    onrodaPerKmEur: asMoney(body.onrodaPerKmEur, 2.2),
+    onrodaMinFareEur: asMoney(body.onrodaMinFareEur, 0),
+    manualFixedPriceEur:
+      body.manualFixedPriceEur == null ? null : asMoney(body.manualFixedPriceEur, 0),
   };
   const db = getDb();
   if (!db) {
@@ -570,7 +674,28 @@ export async function addFareArea(body: {
     is_required_area: row.isRequiredArea,
     fixed_price_allowed: row.fixedPriceAllowed,
     status: row.status,
+    is_default: row.isDefault,
+    base_fare_eur: row.baseFareEur,
+    rate_first_km_eur: row.rateFirstKmEur,
+    rate_after_km_eur: row.rateAfterKmEur,
+    threshold_km: row.thresholdKm,
+    waiting_per_hour_eur: row.waitingPerHourEur,
+    service_fee_eur: row.serviceFeeEur,
+    onroda_base_fare_eur: row.onrodaBaseFareEur,
+    onroda_per_km_eur: row.onrodaPerKmEur,
+    onroda_min_fare_eur: row.onrodaMinFareEur,
+    manual_fixed_price_eur: row.manualFixedPriceEur,
   });
+  if (row.isDefault) {
+    await db
+      .update(fareAreasTable)
+      .set({ is_default: false })
+      .where(and(ne(fareAreasTable.id, row.id), eq(fareAreasTable.is_default, true)));
+    await db
+      .update(fareAreasTable)
+      .set({ is_default: true })
+      .where(eq(fareAreasTable.id, row.id));
+  }
   return listFareAreas();
 }
 
@@ -580,6 +705,17 @@ export type FareAreaPatchBody = Partial<{
   isRequiredArea: string;
   fixedPriceAllowed: string;
   status: string;
+  isDefault: boolean;
+  baseFareEur: number;
+  rateFirstKmEur: number;
+  rateAfterKmEur: number;
+  thresholdKm: number;
+  waitingPerHourEur: number;
+  serviceFeeEur: number;
+  onrodaBaseFareEur: number;
+  onrodaPerKmEur: number;
+  onrodaMinFareEur: number;
+  manualFixedPriceEur: number | null;
 }>;
 
 export async function updateFareArea(id: string, patch: FareAreaPatchBody): Promise<FareAreaRow | null> {
@@ -595,6 +731,19 @@ export async function updateFareArea(id: string, patch: FareAreaPatchBody): Prom
       ...(typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {}),
       ...(typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {}),
       ...(typeof patch.status === "string" ? { status: patch.status } : {}),
+      ...(typeof patch.isDefault === "boolean" ? { isDefault: patch.isDefault } : {}),
+      ...(typeof patch.baseFareEur === "number" ? { baseFareEur: patch.baseFareEur } : {}),
+      ...(typeof patch.rateFirstKmEur === "number" ? { rateFirstKmEur: patch.rateFirstKmEur } : {}),
+      ...(typeof patch.rateAfterKmEur === "number" ? { rateAfterKmEur: patch.rateAfterKmEur } : {}),
+      ...(typeof patch.thresholdKm === "number" ? { thresholdKm: patch.thresholdKm } : {}),
+      ...(typeof patch.waitingPerHourEur === "number" ? { waitingPerHourEur: patch.waitingPerHourEur } : {}),
+      ...(typeof patch.serviceFeeEur === "number" ? { serviceFeeEur: patch.serviceFeeEur } : {}),
+      ...(typeof patch.onrodaBaseFareEur === "number" ? { onrodaBaseFareEur: patch.onrodaBaseFareEur } : {}),
+      ...(typeof patch.onrodaPerKmEur === "number" ? { onrodaPerKmEur: patch.onrodaPerKmEur } : {}),
+      ...(typeof patch.onrodaMinFareEur === "number" ? { onrodaMinFareEur: patch.onrodaMinFareEur } : {}),
+      ...(patch.manualFixedPriceEur === null || typeof patch.manualFixedPriceEur === "number"
+        ? { manualFixedPriceEur: patch.manualFixedPriceEur }
+        : {}),
     };
     memFareAreas = memFareAreas.map((a, i) => (i === idx ? next : a));
     return next;
@@ -610,7 +759,26 @@ export async function updateFareArea(id: string, patch: FareAreaPatchBody): Prom
     ...(typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {}),
     ...(typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {}),
     ...(typeof patch.status === "string" ? { status: patch.status } : {}),
+    ...(typeof patch.isDefault === "boolean" ? { isDefault: patch.isDefault } : {}),
+    ...(typeof patch.baseFareEur === "number" ? { baseFareEur: patch.baseFareEur } : {}),
+    ...(typeof patch.rateFirstKmEur === "number" ? { rateFirstKmEur: patch.rateFirstKmEur } : {}),
+    ...(typeof patch.rateAfterKmEur === "number" ? { rateAfterKmEur: patch.rateAfterKmEur } : {}),
+    ...(typeof patch.thresholdKm === "number" ? { thresholdKm: patch.thresholdKm } : {}),
+    ...(typeof patch.waitingPerHourEur === "number" ? { waitingPerHourEur: patch.waitingPerHourEur } : {}),
+    ...(typeof patch.serviceFeeEur === "number" ? { serviceFeeEur: patch.serviceFeeEur } : {}),
+    ...(typeof patch.onrodaBaseFareEur === "number" ? { onrodaBaseFareEur: patch.onrodaBaseFareEur } : {}),
+    ...(typeof patch.onrodaPerKmEur === "number" ? { onrodaPerKmEur: patch.onrodaPerKmEur } : {}),
+    ...(typeof patch.onrodaMinFareEur === "number" ? { onrodaMinFareEur: patch.onrodaMinFareEur } : {}),
+    ...(patch.manualFixedPriceEur === null || typeof patch.manualFixedPriceEur === "number"
+      ? { manualFixedPriceEur: patch.manualFixedPriceEur }
+      : {}),
   };
+  if (next.isDefault) {
+    await db
+      .update(fareAreasTable)
+      .set({ is_default: false })
+      .where(and(ne(fareAreasTable.id, id), eq(fareAreasTable.is_default, true)));
+  }
   await db
     .update(fareAreasTable)
     .set({
@@ -619,6 +787,17 @@ export async function updateFareArea(id: string, patch: FareAreaPatchBody): Prom
       is_required_area: next.isRequiredArea,
       fixed_price_allowed: next.fixedPriceAllowed,
       status: next.status,
+      is_default: next.isDefault,
+      base_fare_eur: next.baseFareEur,
+      rate_first_km_eur: next.rateFirstKmEur,
+      rate_after_km_eur: next.rateAfterKmEur,
+      threshold_km: next.thresholdKm,
+      waiting_per_hour_eur: next.waitingPerHourEur,
+      service_fee_eur: next.serviceFeeEur,
+      onroda_base_fare_eur: next.onrodaBaseFareEur,
+      onroda_per_km_eur: next.onrodaPerKmEur,
+      onroda_min_fare_eur: next.onrodaMinFareEur,
+      manual_fixed_price_eur: next.manualFixedPriceEur,
     })
     .where(eq(fareAreasTable.id, id));
   return next;
@@ -699,6 +878,17 @@ export async function seedAdminDefaultsIfEmpty(): Promise<void> {
         is_required_area: a.isRequiredArea,
         fixed_price_allowed: a.fixedPriceAllowed,
         status: a.status,
+        is_default: a.isDefault,
+        base_fare_eur: a.baseFareEur,
+        rate_first_km_eur: a.rateFirstKmEur,
+        rate_after_km_eur: a.rateAfterKmEur,
+        threshold_km: a.thresholdKm,
+        waiting_per_hour_eur: a.waitingPerHourEur,
+        service_fee_eur: a.serviceFeeEur,
+        onroda_base_fare_eur: a.onrodaBaseFareEur,
+        onroda_per_km_eur: a.onrodaPerKmEur,
+        onroda_min_fare_eur: a.onrodaMinFareEur,
+        manual_fixed_price_eur: a.manualFixedPriceEur,
       })),
     );
   }

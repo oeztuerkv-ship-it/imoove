@@ -8,10 +8,11 @@ import React, {
 } from "react";
 
 import { calculateFare, calculateOnrodaFixFare, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
+import { getApiBaseUrl } from "@/utils/apiBase";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
 
 export type VehicleType = "standard" | "xl" | "wheelchair" | "onroda";
-export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app";
+export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app" | "access_code";
 
 export interface VehicleOption {
   id: VehicleType;
@@ -128,6 +129,7 @@ interface RideContextValue extends RideState {
 const RideContext = createContext<RideContextValue | null>(null);
 const HISTORY_KEY = "@taxi_ride_history";
 const RESET_KEY   = "@Onroda_reset_v1";
+const API_BASE = getApiBaseUrl();
 
 export function RideProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
@@ -174,6 +176,30 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
       if (!selectedVehicle) {
         setFareBreakdown(null);
         return;
+      }
+      if (API_BASE) {
+        try {
+          const u = new URL(`${API_BASE}/fare-estimate`);
+          u.searchParams.set("distanceKm", String(result.distanceKm));
+          u.searchParams.set("vehicle", selectedVehicle);
+          const res = await fetch(u.toString(), { cache: "no-store" });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data?.ok && Number.isFinite(data?.estimate?.total)) {
+            const total = Number(data.estimate.total);
+            const base = Number(data.profile?.baseFareEur ?? 0);
+            setFareBreakdown({
+              baseFare: base,
+              distanceCharge: Math.max(0, ceilToTenth(total - base)),
+              waitingCharge: 0,
+              total,
+              distanceKm: Math.round(result.distanceKm * 100) / 100,
+              fareKind: selectedVehicle === "onroda" ? "onroda_fix" : "taxameter",
+            });
+            return;
+          }
+        } catch {
+          /* fallback auf lokale Berechnung */
+        }
       }
       if (selectedVehicle === "onroda") {
         setFareBreakdown(calculateOnrodaFixFare(result.distanceKm));

@@ -21,6 +21,7 @@ import {
   parseAuthorizationSource,
 } from "../domain/rideAuthorization";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
+import { getPublicFareProfile } from "../db/adminData";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -36,6 +37,64 @@ export const driverLocations = new Map<string, DriverLocation>();
 export const customerLocations = new Map<string, DriverLocation>();
 
 const router = Router();
+
+function ceilToTenth(amount: number): number {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  return Math.ceil((safe + Number.EPSILON) * 10) / 10;
+}
+
+router.get("/fare-config", async (_req, res, next) => {
+  try {
+    const profile = await getPublicFareProfile();
+    res.json({ ok: true, profile });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fare-estimate", async (req, res, next) => {
+  try {
+    const distanceKm = Number(req.query.distanceKm ?? 0);
+    const waitingMinutes = Number(req.query.waitingMinutes ?? 0);
+    const vehicle = String(req.query.vehicle ?? "standard").trim().toLowerCase();
+    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+      res.status(400).json({ error: "distance_km_invalid" });
+      return;
+    }
+    const profile = await getPublicFareProfile();
+    const waitPerMinute = profile.waitingPerHourEur / 60;
+    const firstKm = Math.min(distanceKm, profile.thresholdKm);
+    const restKm = Math.max(0, distanceKm - profile.thresholdKm);
+    const distanceCharge = firstKm * profile.rateFirstKmEur + restKm * profile.rateAfterKmEur;
+    const waitingCharge = Math.max(0, waitingMinutes) * waitPerMinute;
+    const taxiTotal = ceilToTenth(profile.baseFareEur + distanceCharge + waitingCharge + profile.serviceFeeEur);
+    const multipliers: Record<string, number> = { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 };
+    const adjustedTaxi = ceilToTenth(taxiTotal * (multipliers[vehicle] ?? 1));
+    const onrodaDistancePart = ceilToTenth(distanceKm * profile.onrodaPerKmEur);
+    const onrodaTotal = Math.max(
+      profile.onrodaMinFareEur,
+      Math.ceil((profile.onrodaBaseFareEur + onrodaDistancePart - Number.EPSILON)),
+    );
+    const estimate =
+      vehicle === "onroda"
+        ? (profile.manualFixedPriceEur != null ? profile.manualFixedPriceEur : onrodaTotal)
+        : adjustedTaxi;
+    res.json({
+      ok: true,
+      profile,
+      estimate: {
+        distanceKm,
+        waitingMinutes,
+        vehicle,
+        total: estimate,
+        taxiTotal: adjustedTaxi,
+        onrodaTotal,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 
 router.get("/rides", async (_req, res, next) => {
   try {

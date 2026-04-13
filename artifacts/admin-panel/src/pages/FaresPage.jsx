@@ -20,6 +20,17 @@ const emptyForm = () => ({
   isRequiredArea: "Ja",
   fixedPriceAllowed: "Prüfen",
   status: "aktiv",
+  isDefault: false,
+  baseFareEur: "4.30",
+  rateFirstKmEur: "3.00",
+  rateAfterKmEur: "2.50",
+  thresholdKm: "4",
+  waitingPerHourEur: "38",
+  serviceFeeEur: "0",
+  onrodaBaseFareEur: "3.50",
+  onrodaPerKmEur: "2.20",
+  onrodaMinFareEur: "0",
+  manualFixedPriceEur: "",
 });
 
 function ruleTypeLabel(value) {
@@ -34,6 +45,7 @@ export default function FaresPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [activeProfile, setActiveProfile] = useState(null);
 
   useEffect(() => {
     loadAreas();
@@ -51,6 +63,7 @@ export default function FaresPage() {
 
       const data = await res.json();
       setAreas(Array.isArray(data.items) ? data.items : []);
+      setActiveProfile(data?.activeProfile ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
     } finally {
@@ -70,6 +83,17 @@ export default function FaresPage() {
       isRequiredArea: area.isRequiredArea ?? "Ja",
       fixedPriceAllowed: area.fixedPriceAllowed ?? "Prüfen",
       status: area.status ?? "aktiv",
+      isDefault: !!area.isDefault,
+      baseFareEur: String(area.baseFareEur ?? 4.3),
+      rateFirstKmEur: String(area.rateFirstKmEur ?? 3),
+      rateAfterKmEur: String(area.rateAfterKmEur ?? 2.5),
+      thresholdKm: String(area.thresholdKm ?? 4),
+      waitingPerHourEur: String(area.waitingPerHourEur ?? 38),
+      serviceFeeEur: String(area.serviceFeeEur ?? 0),
+      onrodaBaseFareEur: String(area.onrodaBaseFareEur ?? 3.5),
+      onrodaPerKmEur: String(area.onrodaPerKmEur ?? 2.2),
+      onrodaMinFareEur: String(area.onrodaMinFareEur ?? 0),
+      manualFixedPriceEur: area.manualFixedPriceEur == null ? "" : String(area.manualFixedPriceEur),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -119,6 +143,17 @@ export default function FaresPage() {
             isRequiredArea: form.isRequiredArea,
             fixedPriceAllowed: form.fixedPriceAllowed,
             status: form.status,
+            isDefault: !!form.isDefault,
+            baseFareEur: Number(form.baseFareEur),
+            rateFirstKmEur: Number(form.rateFirstKmEur),
+            rateAfterKmEur: Number(form.rateAfterKmEur),
+            thresholdKm: Number(form.thresholdKm),
+            waitingPerHourEur: Number(form.waitingPerHourEur),
+            serviceFeeEur: Number(form.serviceFeeEur),
+            onrodaBaseFareEur: Number(form.onrodaBaseFareEur),
+            onrodaPerKmEur: Number(form.onrodaPerKmEur),
+            onrodaMinFareEur: Number(form.onrodaMinFareEur),
+            manualFixedPriceEur: form.manualFixedPriceEur.trim() ? Number(form.manualFixedPriceEur) : null,
           }),
         });
         const data = await res.json().catch(() => null);
@@ -139,6 +174,17 @@ export default function FaresPage() {
           isRequiredArea: form.isRequiredArea,
           fixedPriceAllowed: form.fixedPriceAllowed,
           status: form.status,
+          isDefault: !!form.isDefault,
+          baseFareEur: Number(form.baseFareEur),
+          rateFirstKmEur: Number(form.rateFirstKmEur),
+          rateAfterKmEur: Number(form.rateAfterKmEur),
+          thresholdKm: Number(form.thresholdKm),
+          waitingPerHourEur: Number(form.waitingPerHourEur),
+          serviceFeeEur: Number(form.serviceFeeEur),
+          onrodaBaseFareEur: Number(form.onrodaBaseFareEur),
+          onrodaPerKmEur: Number(form.onrodaPerKmEur),
+          onrodaMinFareEur: Number(form.onrodaMinFareEur),
+          manualFixedPriceEur: form.manualFixedPriceEur.trim() ? Number(form.manualFixedPriceEur) : null,
         }),
       });
 
@@ -231,6 +277,11 @@ export default function FaresPage() {
 
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">{editingId ? "Gebiet bearbeiten" : "Gebiet hinzufügen"}</div>
+        {activeProfile ? (
+          <div className="admin-info-banner" style={{ marginBottom: 12 }}>
+            Aktiver App-Tarif: <strong>{activeProfile.areaName}</strong>
+          </div>
+        ) : null}
 
         <form onSubmit={handleSaveArea} className="admin-form-grid">
           <input
@@ -278,6 +329,26 @@ export default function FaresPage() {
             <option value="regelbasiert">Regelbasiert</option>
           </select>
 
+          <label className="admin-inline-check">
+            <input
+              type="checkbox"
+              checked={!!form.isDefault}
+              onChange={(e) => handleChange("isDefault", e.target.checked)}
+            />
+            <span>Standardtarif für App</span>
+          </label>
+
+          <input className="admin-input" type="number" step="0.01" placeholder="Grundpreis (€)" value={form.baseFareEur} onChange={(e) => handleChange("baseFareEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Preis bis Schwelle / km (€)" value={form.rateFirstKmEur} onChange={(e) => handleChange("rateFirstKmEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Preis ab Schwelle / km (€)" value={form.rateAfterKmEur} onChange={(e) => handleChange("rateAfterKmEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.1" placeholder="Schwelle (km)" value={form.thresholdKm} onChange={(e) => handleChange("thresholdKm", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Wartezeit / Stunde (€)" value={form.waitingPerHourEur} onChange={(e) => handleChange("waitingPerHourEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Servicegebühr (€)" value={form.serviceFeeEur} onChange={(e) => handleChange("serviceFeeEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Onroda Basispreis (€)" value={form.onrodaBaseFareEur} onChange={(e) => handleChange("onrodaBaseFareEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Onroda Preis / km (€)" value={form.onrodaPerKmEur} onChange={(e) => handleChange("onrodaPerKmEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Onroda Mindestpreis (€)" value={form.onrodaMinFareEur} onChange={(e) => handleChange("onrodaMinFareEur", e.target.value)} />
+          <input className="admin-input" type="number" step="0.01" placeholder="Manueller Fixpreis (optional, €)" value={form.manualFixedPriceEur} onChange={(e) => handleChange("manualFixedPriceEur", e.target.value)} />
+
           <div className="admin-toolbar-row admin-toolbar-row--form-span">
             <button type="submit" className="admin-btn-primary" disabled={saving}>
               {saving ? "Wird gespeichert …" : editingId ? "Änderungen speichern" : "Hinzufügen"}
@@ -302,8 +373,8 @@ export default function FaresPage() {
               <div className="admin-data-table__head admin-cs-grid admin-cs-grid--fare-areas-managed">
                 <div>Gebiet</div>
                 <div>Regeltyp</div>
-                <div>Pflichtfahrt</div>
-                <div>Festpreis</div>
+                <div>Tarif</div>
+                <div>Fixpreis</div>
                 <div>Status</div>
                 <div>Aktionen</div>
               </div>
@@ -316,8 +387,10 @@ export default function FaresPage() {
                   <div className="admin-ellipsis" title={ruleTypeLabel(a.ruleType)}>
                     {ruleTypeLabel(a.ruleType)}
                   </div>
-                  <div>{a.isRequiredArea}</div>
-                  <div>{a.fixedPriceAllowed}</div>
+                  <div>
+                    {Number(a.baseFareEur ?? 0).toFixed(2)} + {Number(a.rateFirstKmEur ?? 0).toFixed(2)} /km
+                  </div>
+                  <div>{a.manualFixedPriceEur != null ? `${Number(a.manualFixedPriceEur).toFixed(2)} €` : "—"}</div>
                   <div>
                     {a.status === "regelbasiert" ? (
                       <span className="admin-muted" title="Status nur über Bearbeiten ändern">
@@ -333,6 +406,7 @@ export default function FaresPage() {
                         <span className="admin-switch__slider" aria-hidden />
                       </label>
                     )}
+                    {a.isDefault ? <span className="admin-table-sub"> Standard</span> : null}
                   </div>
                   <div className="admin-toolbar-row">
                     <button type="button" className="admin-btn-refresh" onClick={() => startEdit(a)}>

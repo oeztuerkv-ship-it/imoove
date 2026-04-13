@@ -31,7 +31,18 @@ CREATE TABLE IF NOT EXISTS fare_areas (
   rule_type TEXT NOT NULL,
   is_required_area TEXT NOT NULL,
   fixed_price_allowed TEXT NOT NULL,
-  status TEXT NOT NULL
+  status TEXT NOT NULL,
+  is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  base_fare_eur DOUBLE PRECISION NOT NULL DEFAULT 4.3,
+  rate_first_km_eur DOUBLE PRECISION NOT NULL DEFAULT 3.0,
+  rate_after_km_eur DOUBLE PRECISION NOT NULL DEFAULT 2.5,
+  threshold_km DOUBLE PRECISION NOT NULL DEFAULT 4,
+  waiting_per_hour_eur DOUBLE PRECISION NOT NULL DEFAULT 38,
+  service_fee_eur DOUBLE PRECISION NOT NULL DEFAULT 0,
+  onroda_base_fare_eur DOUBLE PRECISION NOT NULL DEFAULT 3.5,
+  onroda_per_km_eur DOUBLE PRECISION NOT NULL DEFAULT 2.2,
+  onroda_min_fare_eur DOUBLE PRECISION NOT NULL DEFAULT 0,
+  manual_fixed_price_eur DOUBLE PRECISION
 );
 
 -- Digitale Freigabe / Kostenübernahme (Hotel, Firma, …); code_type = Kanal; company_id = Abrechnungs-Mandant.
@@ -46,6 +57,8 @@ CREATE TABLE IF NOT EXISTS access_codes (
   valid_from TIMESTAMPTZ,
   valid_until TIMESTAMPTZ,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  lifecycle_status TEXT NOT NULL DEFAULT 'active',
+  reserved_ride_id TEXT,
   meta JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -96,6 +109,7 @@ CREATE TABLE IF NOT EXISTS panel_users (
   email TEXT NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
+  must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

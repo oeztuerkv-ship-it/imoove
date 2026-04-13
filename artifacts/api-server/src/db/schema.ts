@@ -49,6 +49,10 @@ export const accessCodesTable = pgTable("access_codes", {
   valid_from: timestamp("valid_from", { withTimezone: true }),
   valid_until: timestamp("valid_until", { withTimezone: true }),
   is_active: boolean("is_active").notNull().default(true),
+  /** active | reserved | redeemed */
+  lifecycle_status: text("lifecycle_status").notNull().default("active"),
+  /** Verknüpfung zur laufenden Buchung (atomare Sperre). */
+  reserved_ride_id: text("reserved_ride_id"),
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -60,6 +64,17 @@ export const fareAreasTable = pgTable("fare_areas", {
   is_required_area: text("is_required_area").notNull(),
   fixed_price_allowed: text("fixed_price_allowed").notNull(),
   status: text("status").notNull(),
+  is_default: boolean("is_default").notNull().default(false),
+  base_fare_eur: doublePrecision("base_fare_eur").notNull().default(4.3),
+  rate_first_km_eur: doublePrecision("rate_first_km_eur").notNull().default(3.0),
+  rate_after_km_eur: doublePrecision("rate_after_km_eur").notNull().default(2.5),
+  threshold_km: doublePrecision("threshold_km").notNull().default(4),
+  waiting_per_hour_eur: doublePrecision("waiting_per_hour_eur").notNull().default(38),
+  service_fee_eur: doublePrecision("service_fee_eur").notNull().default(0),
+  onroda_base_fare_eur: doublePrecision("onroda_base_fare_eur").notNull().default(3.5),
+  onroda_per_km_eur: doublePrecision("onroda_per_km_eur").notNull().default(2.2),
+  onroda_min_fare_eur: doublePrecision("onroda_min_fare_eur").notNull().default(0),
+  manual_fixed_price_eur: doublePrecision("manual_fixed_price_eur"),
 });
 
 /** Partner-Panel (panel.onroda.de): Login pro Unternehmen, nur mit PostgreSQL. */
@@ -72,6 +87,7 @@ export const panelUsersTable = pgTable("panel_users", {
   email: text("email").notNull().default(""),
   password_hash: text("password_hash").notNull(),
   role: text("role").notNull(),
+  must_change_password: boolean("must_change_password").notNull().default(true),
   is_active: boolean("is_active").notNull().default(true),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

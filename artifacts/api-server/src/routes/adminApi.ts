@@ -10,6 +10,7 @@ import {
   type FareAreaPatchBody,
   getAdminStats,
   getCompanyKpis,
+  getPublicFareProfile,
   findCompanyById,
   insertAdminCompany,
   listCompanies,
@@ -42,6 +43,7 @@ import {
 } from "../db/ridesData";
 import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
+import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 
@@ -237,7 +239,9 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
     const body = req.body as { username?: string; email?: string; role?: string; password?: string };
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
+    const rawPassword = typeof body.password === "string" ? body.password : "";
+    const generatedPassword = rawPassword ? "" : generateTemporaryPassword();
+    const password = rawPassword || generatedPassword;
     const roleRaw = typeof body.role === "string" ? body.role.trim() : "";
     if (!username || !password || password.length < 10) {
       res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
@@ -259,6 +263,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       email,
       role: targetRole,
       passwordHash: hash,
+      mustChangePassword: true,
     });
     if (!created) {
       res.status(409).json({ error: "username_taken" });
@@ -273,7 +278,15 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       subjectId: created.id,
       meta: { username, role: targetRole, source: "platform_admin_api" },
     });
-    res.status(201).json({ ok: true, user: { id: created.id, username, email, role: targetRole } });
+    res.status(201).json({
+      ok: true,
+      user: { id: created.id, username, email, role: targetRole, mustChangePassword: true },
+      onboarding: {
+        username,
+        ...(generatedPassword ? { initialPassword: generatedPassword } : {}),
+        mustChangePassword: true,
+      },
+    });
   } catch (e) {
     next(e);
   }
@@ -377,7 +390,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     const hash = await hashPassword(neu);
-    const ok = await updatePanelUserPasswordInCompany(userId, companyId, hash);
+    const ok = await updatePanelUserPasswordInCompany(userId, companyId, hash, true);
     if (!ok) {
       res.status(500).json({ error: "password_update_failed" });
       return;
@@ -504,7 +517,8 @@ adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
 adminJson.get("/fare-areas", async (_req, res, next) => {
   try {
     const items = await listFareAreas();
-    res.json({ ok: true, items });
+    const activeProfile = await getPublicFareProfile();
+    res.json({ ok: true, items, activeProfile });
   } catch (e) {
     next(e);
   }
@@ -581,6 +595,17 @@ adminJson.post("/fare-areas", async (req, res, next) => {
       isRequiredArea: string;
       fixedPriceAllowed: string;
       status: string;
+      isDefault: boolean;
+      baseFareEur: number;
+      rateFirstKmEur: number;
+      rateAfterKmEur: number;
+      thresholdKm: number;
+      waitingPerHourEur: number;
+      serviceFeeEur: number;
+      onrodaBaseFareEur: number;
+      onrodaPerKmEur: number;
+      onrodaMinFareEur: number;
+      manualFixedPriceEur: number | null;
     }>;
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) {
@@ -593,6 +618,22 @@ adminJson.post("/fare-areas", async (req, res, next) => {
       isRequiredArea: typeof body.isRequiredArea === "string" ? body.isRequiredArea : "Ja",
       fixedPriceAllowed: typeof body.fixedPriceAllowed === "string" ? body.fixedPriceAllowed : "Prüfen",
       status: typeof body.status === "string" ? body.status : "aktiv",
+      isDefault: body.isDefault === true,
+      baseFareEur: typeof body.baseFareEur === "number" ? body.baseFareEur : undefined,
+      rateFirstKmEur: typeof body.rateFirstKmEur === "number" ? body.rateFirstKmEur : undefined,
+      rateAfterKmEur: typeof body.rateAfterKmEur === "number" ? body.rateAfterKmEur : undefined,
+      thresholdKm: typeof body.thresholdKm === "number" ? body.thresholdKm : undefined,
+      waitingPerHourEur: typeof body.waitingPerHourEur === "number" ? body.waitingPerHourEur : undefined,
+      serviceFeeEur: typeof body.serviceFeeEur === "number" ? body.serviceFeeEur : undefined,
+      onrodaBaseFareEur: typeof body.onrodaBaseFareEur === "number" ? body.onrodaBaseFareEur : undefined,
+      onrodaPerKmEur: typeof body.onrodaPerKmEur === "number" ? body.onrodaPerKmEur : undefined,
+      onrodaMinFareEur: typeof body.onrodaMinFareEur === "number" ? body.onrodaMinFareEur : undefined,
+      manualFixedPriceEur:
+        body.manualFixedPriceEur == null
+          ? null
+          : typeof body.manualFixedPriceEur === "number"
+            ? body.manualFixedPriceEur
+            : undefined,
     });
     res.json({ ok: true, items });
   } catch (e) {
@@ -608,6 +649,17 @@ adminJson.patch("/fare-areas/:id", async (req, res, next) => {
       isRequiredArea: string;
       fixedPriceAllowed: string;
       status: string;
+      isDefault: boolean;
+      baseFareEur: number;
+      rateFirstKmEur: number;
+      rateAfterKmEur: number;
+      thresholdKm: number;
+      waitingPerHourEur: number;
+      serviceFeeEur: number;
+      onrodaBaseFareEur: number;
+      onrodaPerKmEur: number;
+      onrodaMinFareEur: number;
+      manualFixedPriceEur: number | null;
     }>;
     const patch: FareAreaPatchBody = {};
     if (typeof body.name === "string") patch.name = body.name;
@@ -615,6 +667,19 @@ adminJson.patch("/fare-areas/:id", async (req, res, next) => {
     if (typeof body.isRequiredArea === "string") patch.isRequiredArea = body.isRequiredArea;
     if (typeof body.fixedPriceAllowed === "string") patch.fixedPriceAllowed = body.fixedPriceAllowed;
     if (typeof body.status === "string") patch.status = body.status;
+    if (typeof body.isDefault === "boolean") patch.isDefault = body.isDefault;
+    if (typeof body.baseFareEur === "number") patch.baseFareEur = body.baseFareEur;
+    if (typeof body.rateFirstKmEur === "number") patch.rateFirstKmEur = body.rateFirstKmEur;
+    if (typeof body.rateAfterKmEur === "number") patch.rateAfterKmEur = body.rateAfterKmEur;
+    if (typeof body.thresholdKm === "number") patch.thresholdKm = body.thresholdKm;
+    if (typeof body.waitingPerHourEur === "number") patch.waitingPerHourEur = body.waitingPerHourEur;
+    if (typeof body.serviceFeeEur === "number") patch.serviceFeeEur = body.serviceFeeEur;
+    if (typeof body.onrodaBaseFareEur === "number") patch.onrodaBaseFareEur = body.onrodaBaseFareEur;
+    if (typeof body.onrodaPerKmEur === "number") patch.onrodaPerKmEur = body.onrodaPerKmEur;
+    if (typeof body.onrodaMinFareEur === "number") patch.onrodaMinFareEur = body.onrodaMinFareEur;
+    if (body.manualFixedPriceEur === null || typeof body.manualFixedPriceEur === "number") {
+      patch.manualFixedPriceEur = body.manualFixedPriceEur;
+    }
     if (Object.keys(patch).length === 0) {
       res.status(400).json({ error: "no_changes" });
       return;

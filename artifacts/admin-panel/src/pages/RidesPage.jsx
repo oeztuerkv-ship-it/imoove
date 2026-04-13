@@ -562,9 +562,9 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
               <div>ID/Status</div>
               <div>Kunde/Firma</div>
               <div>Route (Von ➔ Nach)</div>
+              <div>Preis</div>
               <div>Geplant</div>
               <div>Fahrer</div>
-              <div>Preis</div>
               <div>Notiz</div>
               <div>Aktion</div>
             </div>
@@ -592,6 +592,10 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                       <div className="admin-cell-strong">{ride.from || "—"}</div>
                       <div className="admin-table-sub">➔ {ride.to || "—"}</div>
                     </div>
+                    <div>
+                      <div className="admin-cell-strong">{formatMoney(ride.estimatedFare)}</div>
+                      <div className="admin-table-sub">{paymentMethodLabel(ride.paymentMethod)}</div>
+                    </div>
                     <div>{formatDate(ride.scheduledAt)}</div>
                     <div>
                       {driverLabel ? (
@@ -599,10 +603,6 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                       ) : (
                         <span className="admin-driver-searching">Suche…</span>
                       )}
-                    </div>
-                    <div>
-                      <div className="admin-cell-strong">{formatMoney(ride.estimatedFare)}</div>
-                      <div className="admin-table-sub">{paymentMethodLabel(ride.paymentMethod)}</div>
                     </div>
                     <div>
                       {hasNote ? (
