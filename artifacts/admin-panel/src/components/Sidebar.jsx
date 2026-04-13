@@ -10,7 +10,8 @@ const items = [
   { key: "fares", label: "Tarife & Gebiete", icon: "map" },
 ];
 
-export default function Sidebar({ active, onChange }) {
+export default function Sidebar({ active, onChange, role = "admin" }) {
+  const visibleItems = items.filter((x) => !(role === "service" && x.key === "fares"));
   return (
     <aside className="admin-sidebar">
       <div>
@@ -27,7 +28,7 @@ export default function Sidebar({ active, onChange }) {
         <div className="admin-sidebar__section-title">Navigation</div>
 
         <nav className="admin-sidebar__nav" aria-label="Hauptnavigation">
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = active === item.key;
 
             return (

@@ -46,6 +46,7 @@ import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
+import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
 
 export type { AdminAccessCodeRow, AdminDashboardStats, CompanyRow, FareAreaRow } from "./adminApi.types";
 
@@ -94,6 +95,24 @@ function parseAdminRideListQuery(req: Request): { ok: true; query: AdminRideList
 }
 
 const router: IRouter = Router();
+
+router.post("/admin/auth/login", async (req, res) => {
+  const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const ok = authenticateAdminCredentials(username, password);
+  if (!ok.ok) {
+    res.status(401).json({ error: "invalid_credentials" });
+    return;
+  }
+  const token = await signAdminSessionJwt({ username, role: ok.role });
+  res.json({ ok: true, token, user: { username, role: ok.role } });
+});
+
+router.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+  const role = req.adminAuth?.role ?? "admin";
+  const username = req.adminAuth?.username ?? "admin";
+  res.json({ ok: true, user: { username, role } });
+});
 
 /**
  * Bearer nur für `/admin/*`-JSON — nicht `router.use()` auf die ganze Router-Instanz,
@@ -516,6 +535,10 @@ adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
 
 adminJson.get("/fare-areas", async (_req, res, next) => {
   try {
+    if (_req.adminAuth?.role === "service") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const items = await listFareAreas();
     const activeProfile = await getPublicFareProfile();
     res.json({ ok: true, items, activeProfile });
@@ -589,6 +612,10 @@ adminJson.post("/access-codes", async (req, res, next) => {
 
 adminJson.post("/fare-areas", async (req, res, next) => {
   try {
+    if (req.adminAuth?.role === "service") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body as Partial<{
       name: string;
       ruleType: string;
@@ -643,6 +670,10 @@ adminJson.post("/fare-areas", async (req, res, next) => {
 
 adminJson.patch("/fare-areas/:id", async (req, res, next) => {
   try {
+    if (req.adminAuth?.role === "service") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body as Partial<{
       name: string;
       ruleType: string;
@@ -698,6 +729,10 @@ adminJson.patch("/fare-areas/:id", async (req, res, next) => {
 
 adminJson.delete("/fare-areas/:id", async (req, res, next) => {
   try {
+    if (req.adminAuth?.role === "service") {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const result = await deleteFareArea(req.params.id);
     if (!result.ok) {
       if (result.error === "not_found") {
