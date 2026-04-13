@@ -30,6 +30,8 @@ import {
   panelUsernameTaken,
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
+import { updateAdminAuthPasswordByUsername } from "../db/adminAuthData";
+import { isPostgresConfigured } from "../db/client";
 import {
   adminPreviousDayBounds,
   adminReleaseRide,
@@ -99,7 +101,7 @@ const router: IRouter = Router();
 router.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
-  const ok = authenticateAdminCredentials(username, password);
+  const ok = await authenticateAdminCredentials(username, password);
   if (!ok.ok) {
     res.status(401).json({ error: "invalid_credentials" });
     return;
@@ -112,6 +114,39 @@ router.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const role = req.adminAuth?.role ?? "admin";
   const username = req.adminAuth?.username ?? "admin";
   res.json({ ok: true, user: { username, role } });
+});
+
+router.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+  const principal = req.adminAuth;
+  if (!principal || principal.kind !== "session") {
+    res.status(403).json({ error: "session_required" });
+    return;
+  }
+  const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+  const nextPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (currentPassword.length < 8 || nextPassword.length < 10) {
+    res.status(400).json({ error: "password_fields_invalid", hint: "currentPassword min 8, newPassword min 10" });
+    return;
+  }
+  const auth = await authenticateAdminCredentials(principal.username, currentPassword);
+  if (!auth.ok) {
+    res.status(401).json({ error: "invalid_current_password" });
+    return;
+  }
+  const passwordHash = await hashPassword(nextPassword);
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "admin_auth_store_unavailable" });
+    return;
+  }
+  const updated = await updateAdminAuthPasswordByUsername({
+    username: principal.username,
+    passwordHash,
+  });
+  if (!updated) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 /**

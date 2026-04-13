@@ -53,6 +53,22 @@ Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, 
 
 **Hinweis:** Liegt auf dem Server praktisch nur `dist/` ohne `src/`, ist das **kein** importierbarer Source — dann Backup oder anderes Verzeichnis klären.
 
+## Plattform-Admin: Login per Session/JWT (Produktion)
+
+Das Admin-Panel nutzt nur noch **Benutzername/Passwort → `/api/admin/auth/login` → Session-JWT**.
+Ein statischer Build-Bearer im Frontend wird nicht mehr verwendet.
+
+1. Optional: **`VITE_API_BASE_URL=https://api.onroda.de/api`** — wenn nicht gesetzt, nutzt die App genau diese Produktions-URL (`src/lib/apiBase.js`).
+2. Produktion immer mit expliziter Env-Datei (`.env.production`) bauen.
+3. Nach Deploy immer Health/Auth prüfen:
+
+   ```bash
+   curl -i https://api.onroda.de/api/health
+   curl -i -H "Authorization: Bearer <SESSION_JWT>" https://api.onroda.de/api/admin/stats
+   ```
+
+   Für den zweiten Check zuerst via `/api/admin/auth/login` einloggen und den zurückgegebenen JWT einsetzen.
+
 ## Deploy auf dem Server (nur noch)
 
 **Nach jedem Push auf `main`:** im Server-Clone nur noch pullen, bauen, PM2 neu starten — keinen Source mehr direkt auf dem VPS editieren.
@@ -61,6 +77,7 @@ Das Import-Skript **lässt Build-Ordner weg** (`dist`, `build`, `out`, `.next`, 
 cd /root/imoove
 git pull origin main
 pnpm install --frozen-lockfile
+export VITE_ADMIN_API_BEARER_TOKEN='…'   # identisch mit ADMIN_API_BEARER_TOKEN der API
 pnpm --filter @workspace/api-server run build
 pnpm --filter admin-panel run build
 pm2 restart <api-prozess>

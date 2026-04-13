@@ -10,6 +10,7 @@ import RidesPage from "./pages/RidesPage";
 import CompaniesPage from "./pages/CompaniesPage";
 import PanelUsersPage from "./pages/PanelUsersPage.jsx";
 import AccessCodesPage from "./pages/AccessCodesPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
 
 const PAGE_META = {
   dashboard: {
@@ -35,6 +36,10 @@ const PAGE_META = {
   "access-codes": {
     title: "Zugangscodes",
     subtitle: "Digitale Freigaben und interne Zuordnung verwalten",
+  },
+  settings: {
+    title: "Einstellungen",
+    subtitle: "Konto und Sicherheit der Plattform-Konsole",
   },
 };
 
@@ -143,6 +148,8 @@ export default function App() {
         return <FaresPage />;
       case "access-codes":
         return <AccessCodesPage />;
+      case "settings":
+        return <SettingsPage />;
       default:
         return (
           <DashboardPage

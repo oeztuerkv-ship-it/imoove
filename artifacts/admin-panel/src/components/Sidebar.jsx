@@ -8,6 +8,7 @@ const items = [
   { key: "panel-users", label: "Partner-Zugänge", icon: "people" },
   { key: "access-codes", label: "Zugangscodes", icon: "key" },
   { key: "fares", label: "Tarife & Gebiete", icon: "map" },
+  { key: "settings", label: "Einstellungen", icon: "pulse" },
 ];
 
 export default function Sidebar({ active, onChange, role = "admin" }) {

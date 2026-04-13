@@ -120,6 +120,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS panel_users_username_lower ON panel_users (low
 
 CREATE INDEX IF NOT EXISTS panel_users_company_id_idx ON panel_users (company_id);
 
+CREATE TABLE IF NOT EXISTS admin_auth_users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT admin_auth_users_role_chk CHECK (role IN ('admin', 'service'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_auth_users_username_lower ON admin_auth_users (lower(username));
+
 CREATE TABLE IF NOT EXISTS panel_audit_log (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE CASCADE,

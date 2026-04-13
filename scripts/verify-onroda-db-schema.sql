@@ -11,6 +11,7 @@
 --   014 → public.partner_ride_series
 --   016 → panel_users.must_change_password
 --   017 → fare_areas pricing fields
+--   018 → admin_auth_users (Admin-Login + Passwortwechsel)
 
 DO $$
 DECLARE
@@ -120,6 +121,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fare_areas' AND column_name = 'base_fare_eur'
   ) THEN
     errs := array_append(errs, 'fare_areas.base_fare_eur (Migration 017)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'admin_auth_users'
+  ) THEN
+    errs := array_append(errs, 'table admin_auth_users (Migration 018)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

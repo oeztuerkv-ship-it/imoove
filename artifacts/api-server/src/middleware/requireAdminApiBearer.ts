@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import { jwtVerify, SignJWT } from "jose";
-
-type AdminRole = "admin" | "service";
+import { findActiveAdminAuthUserByUsername, upsertAdminAuthUser, type AdminRole } from "../db/adminAuthData";
+import { hashPassword, verifyPassword } from "../lib/password";
 
 type AdminAuthPrincipal = {
   username: string;
@@ -63,16 +63,33 @@ async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal 
   }
 }
 
-export function authenticateAdminCredentials(
+export async function authenticateAdminCredentials(
   username: string,
   password: string,
-): { ok: true; role: AdminRole } | { ok: false } {
+): Promise<{ ok: true; role: AdminRole } | { ok: false }> {
   const u = username.trim();
   const p = password;
   if (!u || !p) return { ok: false };
+  const dbUser = await findActiveAdminAuthUserByUsername(u);
+  if (dbUser) {
+    const ok = await verifyPassword(p, dbUser.passwordHash);
+    if (!ok) return { ok: false };
+    return { ok: true, role: dbUser.role };
+  }
   const users = readConfiguredUsers();
   const hit = users.find((x) => x.username === u && x.password === p);
   if (!hit) return { ok: false };
+  // First successful env-login seeds persistent DB auth (Option B) for future password changes.
+  try {
+    const hash = await hashPassword(p);
+    await upsertAdminAuthUser({
+      username: hit.username,
+      passwordHash: hash,
+      role: hit.role,
+    });
+  } catch {
+    /* ignore seeding failure, login can still proceed via env fallback */
+  }
   return { ok: true, role: hit.role };
 }
 

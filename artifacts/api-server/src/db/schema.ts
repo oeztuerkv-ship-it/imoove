@@ -93,6 +93,17 @@ export const panelUsersTable = pgTable("panel_users", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Plattform-Admin-Login (admin.onroda.de): lokale Nutzerbasis für Session/JWT-Auth. */
+export const adminAuthUsersTable = pgTable("admin_auth_users", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull(),
+  password_hash: text("password_hash").notNull(),
+  role: text("role").notNull(),
+  is_active: boolean("is_active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Audit-Trail für sensible Panel-Aktionen (kein Voll-Audit aller Reads). */
 export const panelAuditLogTable = pgTable("panel_audit_log", {
   id: text("id").primaryKey(),

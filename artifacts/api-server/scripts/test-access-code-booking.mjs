@@ -52,6 +52,8 @@ async function main() {
       body: JSON.stringify({
         code: CODE,
         codeType: "voucher",
+        // Backward-compat only: some older environments still expected `type`.
+        type: "voucher",
         label: "Automated access-code booking test",
       }),
     });
