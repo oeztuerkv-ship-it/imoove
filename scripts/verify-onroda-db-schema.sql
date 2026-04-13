@@ -75,6 +75,20 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'access_codes' AND column_name = 'lifecycle_status'
+  ) THEN
+    errs := array_append(errs, 'access_codes.lifecycle_status (Migration 013)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'access_codes' AND column_name = 'reserved_ride_id'
+  ) THEN
+    errs := array_append(errs, 'access_codes.reserved_ride_id (Migration 013)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'access_code_normalized_snapshot'
   ) THEN
     errs := array_append(errs, 'rides.access_code_normalized_snapshot (Migration 012)');
