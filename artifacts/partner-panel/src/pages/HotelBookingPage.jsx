@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
-import { hasPanelModule } from "../lib/panelNavigation.js";
 import {
-  estimateSystemFare,
   fetchDistanceMatrixByAddress,
   toIsoFromDatetimeLocal,
 } from "../lib/smartBooking.js";
@@ -14,42 +12,28 @@ function hasPerm(permissions, key) {
 
 export default function HotelBookingPage() {
   const { token, user } = usePanelAuth();
-  const showAccessCode = hasPanelModule(user?.panelModules, "access_codes");
   const canCreate = hasPerm(user?.permissions, "rides.create");
   const [creating, setCreating] = useState(false);
   const [routing, setRouting] = useState(false);
   const [msg, setMsg] = useState("");
+  const [scheduledMode, setScheduledMode] = useState("immediate");
 
   const [form, setForm] = useState({
     guestName: "",
     roomNumber: "",
-    reservationRef: "",
-    billedTo: "",
-    from: "",
     fromFull: "",
-    to: "",
     toFull: "",
     distanceKm: "",
     durationMinutes: "",
     estimatedFare: "",
-    paymentMethod: "rechnung",
     vehicle: "standard",
     scheduledAt: "",
-    rideKind: "standard",
-    payerKind: "company",
-    voucherCode: "",
-    billingReference: "",
     accessCode: "",
   });
   const hasRouteInputs = useMemo(
     () => form.fromFull.trim().length > 0 && form.toFull.trim().length > 0,
     [form.fromFull, form.toFull],
   );
-
-  useEffect(() => {
-    if (!form.accessCode.trim()) return;
-    setForm((f) => (f.payerKind === "company" ? f : { ...f, payerKind: "company" }));
-  }, [form.accessCode]);
 
   async function autoFillRoute() {
     if (!hasRouteInputs) return;
@@ -75,46 +59,73 @@ export default function HotelBookingPage() {
     }
   }
 
+  function shortLabel(full) {
+    return String(full || "").split(",")[0]?.trim() || "—";
+  }
+
+  async function resolveRouteValues() {
+    const d = Number(String(form.distanceKm).replace(",", "."));
+    const m = Number(String(form.durationMinutes).replace(",", "."));
+    const f = Number(String(form.estimatedFare).replace(",", "."));
+    if (Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(f) && d > 0 && m > 0 && f >= 0) {
+      return { distanceKm: d, durationMinutes: m, estimatedFare: f };
+    }
+    const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull);
+    setForm((prev) => ({
+      ...prev,
+      distanceKm: String(route.distanceKm),
+      durationMinutes: String(route.durationMinutes),
+      estimatedFare: String(route.estimatedFare),
+    }));
+    return route;
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     if (!token || !canCreate) return;
     setMsg("");
-    const distanceKm = Number(String(form.distanceKm).replace(",", "."));
-    const durationMinutes = Number(String(form.durationMinutes).replace(",", "."));
-    const estimatedFare = Number(String(form.estimatedFare).replace(",", "."));
     if (!form.guestName.trim()) {
       setMsg("Bitte Gastnamen angeben.");
       return;
     }
-    if (!form.from.trim() || !form.fromFull.trim() || !form.to.trim() || !form.toFull.trim()) {
+    if (!form.roomNumber.trim()) {
+      setMsg("Bitte Zimmer-Nr. angeben (wichtig für Hotel-Abrechnung).");
+      return;
+    }
+    if (!form.fromFull.trim() || !form.toFull.trim()) {
       setMsg("Route unvollständig.");
       return;
     }
-    if (!Number.isFinite(distanceKm) || !Number.isFinite(durationMinutes) || !Number.isFinite(estimatedFare)) {
-      setMsg("Entfernung, Dauer und Preis müssen gültige Zahlen sein.");
+    if (!form.accessCode.trim()) {
+      setMsg("Bitte Freigabe-Code angeben (damit Hotel zahlt).");
+      return;
+    }
+    if (scheduledMode === "scheduled" && !form.scheduledAt.trim()) {
+      setMsg("Bitte Terminzeit angeben.");
       return;
     }
     setCreating(true);
     try {
+      const route = await resolveRouteValues();
       const body = {
         guestName: form.guestName.trim(),
-        from: form.from.trim(),
+        from: shortLabel(form.fromFull),
         fromFull: form.fromFull.trim(),
-        to: form.to.trim(),
+        to: shortLabel(form.toFull),
         toFull: form.toFull.trim(),
-        distanceKm,
-        durationMinutes,
-        estimatedFare,
-        paymentMethod: form.paymentMethod.trim() || "rechnung",
-        vehicle: form.vehicle.trim() || "standard",
-        rideKind: form.rideKind,
-        payerKind: form.payerKind,
+        distanceKm: route.distanceKm,
+        durationMinutes: route.durationMinutes,
+        estimatedFare: route.estimatedFare,
+        paymentMethod: "Gutschein / Freigabe (Code)",
+        vehicle: form.vehicle,
+        rideKind: "standard",
+        payerKind: "company",
         ...(form.roomNumber.trim() ? { roomNumber: form.roomNumber.trim() } : {}),
-        ...(form.reservationRef.trim() ? { reservationRef: form.reservationRef.trim() } : {}),
-        ...(form.billedTo ? { billedTo: form.billedTo } : {}),
-        ...(form.scheduledAt.trim() ? { scheduledAt: toIsoFromDatetimeLocal(form.scheduledAt) } : {}),
-        ...(form.voucherCode.trim() ? { voucherCode: form.voucherCode.trim() } : {}),
-        ...(form.billingReference.trim() ? { billingReference: form.billingReference.trim() } : {}),
+        billedTo: "room_ledger",
+        ...(scheduledMode === "scheduled" && form.scheduledAt.trim()
+          ? { scheduledAt: toIsoFromDatetimeLocal(form.scheduledAt) }
+          : {}),
+        billingReference: `ROOM-${form.roomNumber.trim()}`,
         ...(form.accessCode.trim() ? { accessCode: form.accessCode.trim() } : {}),
       };
       const res = await fetch(`${API_BASE}/panel/v1/bookings/hotel-guest`, {
@@ -152,19 +163,15 @@ export default function HotelBookingPage() {
         ...f,
         guestName: "",
         roomNumber: "",
-        reservationRef: "",
-        from: "",
         fromFull: "",
-        to: "",
         toFull: "",
         distanceKm: "",
         durationMinutes: "",
         estimatedFare: "",
         scheduledAt: "",
-        voucherCode: "",
-        billingReference: "",
         accessCode: "",
       }));
+      setScheduledMode("immediate");
     } catch {
       setMsg("Netzwerkfehler.");
     } finally {
@@ -176,8 +183,7 @@ export default function HotelBookingPage() {
     <div className="panel-page panel-page--rides">
       <h2 className="panel-page__title">Hotel: Gastfahrt / Reservierung</h2>
       <p className="panel-page__lead">
-        Erfassung mit Zimmer, Reservierungsbezug und interner Zahler-Kennzeichnung. Optional Freigabe-Code für
-        digitale Kostenübernahme.
+        Minimum-Flow: Wer, wann, wo, Fahrzeug, Zimmer und Freigabe-Code. Den Rest übernimmt das System.
       </p>
       {!canCreate ? (
         <p className="panel-page__warn">Keine Berechtigung zum Anlegen.</p>
@@ -203,108 +209,38 @@ export default function HotelBookingPage() {
                   autoComplete="off"
                 />
               </label>
-              <label className="panel-rides-form__field">
-                <span>Reservierungs-Nr. (optional)</span>
-                <input
-                  value={form.reservationRef}
-                  onChange={(ev) => setForm((f) => ({ ...f, reservationRef: ev.target.value }))}
-                  autoComplete="off"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Intern: Belastung / Zahler-Hinweis</span>
-                <select
-                  value={form.billedTo}
-                  onChange={(ev) => setForm((f) => ({ ...f, billedTo: ev.target.value }))}
-                >
-                  <option value="">— (kein Zusatz)</option>
-                  <option value="guest">Gast</option>
-                  <option value="room_ledger">Zimmer / City-Ledger</option>
-                  <option value="company">Unternehmen / Master</option>
-                </select>
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Fahrttyp</span>
-                <select
-                  value={form.rideKind}
-                  onChange={(ev) => setForm((f) => ({ ...f, rideKind: ev.target.value }))}
-                >
-                  <option value="standard">Normale Fahrt</option>
-                  <option value="company">Firmenfahrt</option>
-                  <option value="voucher">Gutschein</option>
-                  <option value="medical">Krankenfahrt</option>
-                </select>
-              </label>
-              <div className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Profil</span>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="panel-btn-secondary"
-                    onClick={() => setForm((f) => ({ ...f, rideKind: "medical", vehicle: "wheelchair" }))}
-                  >
-                    Medizinisch / Rollstuhl
-                  </button>
-                  <button
-                    type="button"
-                    className="panel-btn-secondary"
-                    onClick={() => setForm((f) => ({ ...f, rideKind: "standard", vehicle: "standard" }))}
-                  >
-                    Hotel-Standard
-                  </button>
+              <label className="panel-rides-form__field panel-rides-form__field--2">
+                <span>Abholzeit</span>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  <label className="panel-radio-line">
+                    <input
+                      type="radio"
+                      name="scheduleMode"
+                      checked={scheduledMode === "immediate"}
+                      onChange={() => setScheduledMode("immediate")}
+                    />
+                    <span>Sofort</span>
+                  </label>
+                  <label className="panel-radio-line">
+                    <input
+                      type="radio"
+                      name="scheduleMode"
+                      checked={scheduledMode === "scheduled"}
+                      onChange={() => setScheduledMode("scheduled")}
+                    />
+                    <span>Termin</span>
+                  </label>
+                  {scheduledMode === "scheduled" ? (
+                    <input
+                      type="datetime-local"
+                      value={form.scheduledAt}
+                      onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
+                    />
+                  ) : null}
                 </div>
-              </div>
-              <label className="panel-rides-form__field">
-                <span>Zahler (Abrechnung)</span>
-                <select
-                  value={form.payerKind}
-                  onChange={(ev) => setForm((f) => ({ ...f, payerKind: ev.target.value }))}
-                >
-                  <option value="company">Firma / Hotel</option>
-                  <option value="passenger">Fahrgast</option>
-                  <option value="third_party">Dritter</option>
-                  <option value="insurance">Kostenträger (KV)</option>
-                  <option value="voucher">Gutschein</option>
-                </select>
               </label>
               <label className="panel-rides-form__field">
-                <span>Referenz / Kostenstelle</span>
-                <input
-                  value={form.billingReference}
-                  onChange={(ev) => setForm((f) => ({ ...f, billingReference: ev.target.value }))}
-                  autoComplete="off"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Gutscheincode (optional)</span>
-                <input
-                  value={form.voucherCode}
-                  onChange={(ev) => setForm((f) => ({ ...f, voucherCode: ev.target.value }))}
-                  autoComplete="off"
-                />
-              </label>
-              {showAccessCode ? (
-                <label className="panel-rides-form__field panel-rides-form__field--2">
-                  <span>Freigabe-Code (optional)</span>
-                  <input
-                    value={form.accessCode}
-                    onChange={(ev) =>
-                      setForm((f) => ({
-                        ...f,
-                        accessCode: ev.target.value,
-                        payerKind: ev.target.value.trim() ? "company" : f.payerKind,
-                      }))
-                    }
-                    autoComplete="off"
-                  />
-                </label>
-              ) : null}
-              <label className="panel-rides-form__field">
-                <span>Abholort (Kurz)</span>
-                <input value={form.from} onChange={(ev) => setForm((f) => ({ ...f, from: ev.target.value }))} />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Abholort (voll)</span>
+                <span>Abholort</span>
                 <input
                   value={form.fromFull}
                   onChange={(ev) => setForm((f) => ({ ...f, fromFull: ev.target.value }))}
@@ -312,11 +248,7 @@ export default function HotelBookingPage() {
                 />
               </label>
               <label className="panel-rides-form__field">
-                <span>Ziel (Kurz)</span>
-                <input value={form.to} onChange={(ev) => setForm((f) => ({ ...f, to: ev.target.value }))} />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Ziel (voll)</span>
+                <span>Ziel</span>
                 <input
                   value={form.toFull}
                   onChange={(ev) => setForm((f) => ({ ...f, toFull: ev.target.value }))}
@@ -369,12 +301,13 @@ export default function HotelBookingPage() {
                   <option value="onroda">Onroda Fixpreis</option>
                 </select>
               </label>
-              <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Geplant (optional)</span>
+              <label className="panel-rides-form__field">
+                <span>Freigabe-Code</span>
                 <input
-                  type="datetime-local"
-                  value={form.scheduledAt}
-                  onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
+                  value={form.accessCode}
+                  onChange={(ev) => setForm((f) => ({ ...f, accessCode: ev.target.value }))}
+                  autoComplete="off"
+                  required
                 />
               </label>
             </div>
@@ -390,20 +323,6 @@ export default function HotelBookingPage() {
               >
                 {routing ? "Berechne Route …" : "Auto-Kalkulation (KM/Dauer/Preis)"}
               </button>
-              {form.distanceKm && !form.estimatedFare ? (
-                <button
-                  type="button"
-                  className="panel-btn-secondary"
-                  onClick={() =>
-                    setForm((f) => ({
-                      ...f,
-                      estimatedFare: String(estimateSystemFare(Number(String(f.distanceKm).replace(",", ".")))),
-                    }))
-                  }
-                >
-                  Systempreis aus KM setzen
-                </button>
-              ) : null}
             </div>
             <button type="submit" className="panel-btn-primary" disabled={creating}>
               {creating ? "Speichern …" : "Gastfahrt speichern"}
