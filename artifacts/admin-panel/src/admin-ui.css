@@ -9,6 +9,18 @@
   grid-template-columns: var(--onroda-admin-rides-grid-template);
 }
 
+.admin-cs-grid--rides-compact {
+  grid-template-columns:
+    minmax(140px, 1.1fr)
+    minmax(180px, 1.2fr)
+    minmax(220px, 1.8fr)
+    minmax(140px, 1fr)
+    minmax(110px, 0.9fr)
+    minmax(120px, 0.9fr)
+    70px
+    minmax(160px, 1.1fr);
+}
+
 .admin-cs-grid--fare-areas {
   grid-template-columns: var(--onroda-admin-fare-areas-grid-template);
 }
@@ -597,6 +609,100 @@
   flex-direction: column;
   gap: var(--onroda-space-2);
   align-items: stretch;
+}
+
+.admin-actions-cell--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.admin-cell-strong {
+  font-weight: 700;
+}
+
+.admin-driver-searching {
+  color: var(--onroda-badge-danger-fg);
+  font-weight: 700;
+}
+
+.admin-note-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--onroda-border-outline));
+  background: #fef3c7;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-note-icon-btn:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.admin-table-row--note {
+  display: block;
+  background: #fffbeb;
+  color: var(--onroda-text-dark);
+  border-top: 0;
+}
+
+.admin-overflow-menu {
+  position: relative;
+}
+
+.admin-overflow-menu__trigger {
+  list-style: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--onroda-border-outline);
+  border-radius: var(--onroda-radius-md);
+  background: var(--onroda-bg-light);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.admin-overflow-menu__trigger::-webkit-details-marker {
+  display: none;
+}
+
+.admin-overflow-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 150px;
+  background: var(--onroda-bg-card);
+  border: 1px solid var(--onroda-border);
+  border-radius: var(--onroda-radius-md);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 20;
+}
+
+.admin-overflow-menu__item {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--onroda-text-dark);
+  font-weight: 600;
+}
+
+.admin-overflow-menu__item:hover {
+  background: var(--onroda-bg-light);
 }
 
 .admin-modal-backdrop {

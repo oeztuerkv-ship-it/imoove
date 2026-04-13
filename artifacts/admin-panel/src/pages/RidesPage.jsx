@@ -60,6 +60,40 @@ function rideSourceLabel(ride) {
   return "—";
 }
 
+function paymentMethodLabel(method) {
+  const m = String(method || "").trim().toLowerCase();
+  if (!m) return "—";
+  if (m === "bar" || m === "cash") return "Bar";
+  if (m === "access_code" || m === "voucher" || m === "gutschein / code") return "Gutschein";
+  if (m === "card") return "Karte";
+  if (m === "paypal") return "PayPal";
+  return method;
+}
+
+function driverDisplayName(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  const parts = text.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return text;
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  return `${first} ${last.charAt(0).toUpperCase()}.`;
+}
+
+function rideInternalNote(ride) {
+  const direct = typeof ride?.internalNote === "string" ? ride.internalNote.trim() : "";
+  if (direct) return direct;
+  const fromMeta = typeof ride?.partnerBookingMeta?.internalNote === "string"
+    ? ride.partnerBookingMeta.internalNote.trim()
+    : "";
+  if (fromMeta) return fromMeta;
+  const hotelRef = typeof ride?.partnerBookingMeta?.hotel?.reservationRef === "string"
+    ? ride.partnerBookingMeta.hotel.reservationRef.trim()
+    : "";
+  if (hotelRef) return `Reservierung: ${hotelRef}`;
+  return "";
+}
+
 function emptyStats() {
   return {
     rides: {
@@ -97,6 +131,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
   const [detailRide, setDetailRide] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const [expandedNoteId, setExpandedNoteId] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(searchInput.trim()), 400);
@@ -310,6 +345,15 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  async function copyRideId(id) {
+    if (!id || !navigator?.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(id);
+    } catch {
+      /* noop */
+    }
+  }
+
   useEffect(() => {
     if (page > totalPages) {
       setPage(totalPages);
@@ -514,75 +558,101 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
           <div className="admin-info-banner">Keine Fahrten gefunden.</div>
         ) : (
           <div className="admin-table-scroll">
-            <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min">
-              <div>ID</div>
-              <div>Kunde</div>
-              <div>Typ</div>
-              <div>Zahler</div>
-              <div>Freigabe</div>
-              <div>Von</div>
-              <div>Nach</div>
-              <div>Status</div>
-              <div>Firma</div>
+            <div className="admin-table-row admin-table-row--head admin-cs-grid admin-cs-grid--rides-compact admin-cs-grid--rides-min">
+              <div>ID/Status</div>
+              <div>Kunde/Firma</div>
+              <div>Route (Von ➔ Nach)</div>
+              <div>Geplant</div>
               <div>Fahrer</div>
               <div>Preis</div>
-              <div>Erstellt</div>
-              <div>Geplant</div>
-              <div>Quelle</div>
+              <div>Notiz</div>
               <div>Aktion</div>
             </div>
 
             {rides.map((ride) => {
               const releaseAllowed = canRelease(ride);
-              const sourceHint = rideSourceLabel(ride);
               const firmenLabel = ride.companyName || ride.companyId || "—";
+              const noteText = rideInternalNote(ride);
+              const hasNote = noteText.length > 0;
+              const isExpanded = expandedNoteId === ride.id;
+              const driverLabel = driverDisplayName(ride.driverName || ride.driverId);
 
               return (
-                <div key={ride.id} className="admin-table-row admin-cs-grid admin-cs-grid--rides admin-cs-grid--rides-min">
-                  <div className="admin-mono">{ride.id || "—"}</div>
-                  <div>{ride.customerName || "—"}</div>
-                  <div title={[ride.voucherCode, ride.billingReference].filter(Boolean).join(" · ") || ""}>
-                    {rideKindLabel(ride.rideKind)}
+                <div key={ride.id}>
+                  <div className="admin-table-row admin-cs-grid admin-cs-grid--rides-compact admin-cs-grid--rides-min">
+                    <div>
+                      <div className="admin-mono admin-cell-strong">{ride.id || "—"}</div>
+                      <span className={rideStatusBadgeClass(ride.status)}>{rideStatusDe(ride.status)}</span>
+                    </div>
+                    <div>
+                      <div className="admin-cell-strong">{ride.customerName || "—"}</div>
+                      <div className="admin-table-sub">{firmenLabel}</div>
+                    </div>
+                    <div title={`${ride.from || "—"} ➔ ${ride.to || "—"}`}>
+                      <div className="admin-cell-strong">{ride.from || "—"}</div>
+                      <div className="admin-table-sub">➔ {ride.to || "—"}</div>
+                    </div>
+                    <div>{formatDate(ride.scheduledAt)}</div>
+                    <div>
+                      {driverLabel ? (
+                        <span>{driverLabel}</span>
+                      ) : (
+                        <span className="admin-driver-searching">Suche…</span>
+                      )}
+                    </div>
+                    <div>
+                      <div className="admin-cell-strong">{formatMoney(ride.estimatedFare)}</div>
+                      <div className="admin-table-sub">{paymentMethodLabel(ride.paymentMethod)}</div>
+                    </div>
+                    <div>
+                      {hasNote ? (
+                        <button
+                          type="button"
+                          className="admin-note-icon-btn"
+                          title="Interne Notiz anzeigen"
+                          aria-label="Interne Notiz anzeigen"
+                          onClick={() => setExpandedNoteId((prev) => (prev === ride.id ? null : ride.id))}
+                        >
+                          💬
+                        </button>
+                      ) : (
+                        <span className="admin-table-sub">—</span>
+                      )}
+                    </div>
+                    <div className="admin-actions-cell admin-actions-cell--row">
+                      <button
+                        type="button"
+                        className={
+                          "admin-btn-action" +
+                          (!releaseAllowed || busyId === ride.id ? " admin-btn-action--disabled" : "")
+                        }
+                        onClick={() => releaseRide(ride.id)}
+                        disabled={!releaseAllowed || busyId === ride.id}
+                      >
+                        {busyId === ride.id ? "…" : "Zuweisen"}
+                      </button>
+                      <details className="admin-overflow-menu">
+                        <summary className="admin-overflow-menu__trigger" aria-label="Weitere Aktionen">
+                          ⋯
+                        </summary>
+                        <div className="admin-overflow-menu__panel">
+                          <button type="button" className="admin-overflow-menu__item" onClick={() => void loadDetail(ride.id)}>
+                            Details
+                          </button>
+                          <button type="button" className="admin-overflow-menu__item" onClick={() => void copyRideId(ride.id)}>
+                            ID kopieren
+                          </button>
+                        </div>
+                      </details>
+                    </div>
                   </div>
-                  <div>{payerKindLabel(ride.payerKind)}</div>
-                  <div title={ride.authorizationSource === "access_code" ? "Digital über Zugangscode" : ""}>
-                    {authorizationSummary(ride)}
-                  </div>
-                  <div>{ride.from || "—"}</div>
-                  <div>{ride.to || "—"}</div>
-
-                  <div>
-                    <span className={rideStatusBadgeClass(ride.status)}>{rideStatusDe(ride.status)}</span>
-                  </div>
-
-                  <div title={ride.companyId || ""}>{firmenLabel}</div>
-                  <div>{ride.driverId || "—"}</div>
-                  <div>
-                    {formatMoney(ride.estimatedFare)}
-                    {ride.finalFare != null && ride.finalFare !== "" ? (
-                      <span className="admin-table-sub"> / {formatMoney(ride.finalFare)}</span>
-                    ) : null}
-                  </div>
-                  <div>{formatDate(ride.createdAt)}</div>
-                  <div>{formatDate(ride.scheduledAt)}</div>
-                  <div title={ride.createdByPanelUserId ? "Über das Partner-Portal angelegt" : ""}>{sourceHint}</div>
-
-                  <div className="admin-actions-cell">
-                    <button type="button" className="admin-btn-action admin-btn-action--secondary" onClick={() => void loadDetail(ride.id)}>
-                      Details
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        "admin-btn-action" +
-                        (!releaseAllowed || busyId === ride.id ? " admin-btn-action--disabled" : "")
-                      }
-                      onClick={() => releaseRide(ride.id)}
-                      disabled={!releaseAllowed || busyId === ride.id}
-                    >
-                      {busyId === ride.id ? "…" : "Freigeben"}
-                    </button>
-                  </div>
+                  {isExpanded ? (
+                    <div className="admin-table-row admin-table-row--note">
+                      <div>
+                        <strong>Notiz:</strong> {noteText}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
