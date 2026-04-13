@@ -2,10 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
+const ROLE_OPTIONS = [
+  { value: "hotel", label: "Hotel" },
+  { value: "insurance", label: "Krankenkasse" },
+  { value: "admin", label: "Plattform-Admin" },
+  { value: "service", label: "Service / Disposition" },
+  { value: "taxi", label: "Taxi / Flotte" },
+].sort((a, b) => a.label.localeCompare(b.label, "de", { sensitivity: "base" }));
+
 const EMPTY_FORM = {
   username: "",
   password: "",
   role: "admin",
+  scopeCompanyId: "",
 };
 
 export default function AdminUsersPage({ sessionUsername = "" }) {
@@ -50,6 +59,10 @@ export default function AdminUsersPage({ sessionUsername = "" }) {
       setCreateError("Benutzername und Passwort (mind. 10 Zeichen) sind erforderlich.");
       return;
     }
+    if (createForm.role === "hotel" && !createForm.scopeCompanyId.trim()) {
+      setCreateError("Hotel-Zugänge benötigen eine Mandanten-ID (Unternehmens-ID).");
+      return;
+    }
     setCreateBusy(true);
     try {
       const res = await fetch(`${API_BASE}/admin/auth/users`, {
@@ -59,17 +72,22 @@ export default function AdminUsersPage({ sessionUsername = "" }) {
           username: createForm.username.trim(),
           password: createForm.password,
           role: createForm.role,
+          scopeCompanyId: createForm.scopeCompanyId.trim() || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok || !data?.user) {
-        setCreateError(data?.error === "username_taken" ? "Benutzername ist bereits vergeben." : "Admin konnte nicht angelegt werden.");
+        if (data?.error === "scope_company_id_required_for_hotel") {
+          setCreateError("Hotel-Zugänge benötigen eine Mandanten-ID.");
+        } else {
+          setCreateError(data?.error === "username_taken" ? "Benutzername ist bereits vergeben." : "Zugang konnte nicht angelegt werden.");
+        }
         return;
       }
       setCreateForm(EMPTY_FORM);
       await loadUsers();
     } catch {
-      setCreateError("Admin konnte nicht angelegt werden.");
+      setCreateError("Zugang konnte nicht angelegt werden.");
     } finally {
       setCreateBusy(false);
     }
@@ -122,7 +140,7 @@ export default function AdminUsersPage({ sessionUsername = "" }) {
   return (
     <div className="admin-page">
       <section className="admin-panel-card">
-        <h2 className="admin-panel-card__title" style={{ fontSize: "1.2rem" }}>Neuen Admin-Zugang anlegen</h2>
+        <h2 className="admin-panel-card__title" style={{ fontSize: "1.2rem" }}>Neuen Konsole-Zugang anlegen</h2>
         <form className="admin-form-grid" onSubmit={onCreateUser}>
           <div>
             <div className="admin-field-label">Benutzername</div>
@@ -145,19 +163,31 @@ export default function AdminUsersPage({ sessionUsername = "" }) {
             />
           </div>
           <div>
-            <div className="admin-field-label">Rolle</div>
+            <div className="admin-field-label">Rolle (A–Z)</div>
             <select
               className="admin-select"
               value={createForm.role}
               onChange={(e) => setCreateForm((p) => ({ ...p, role: e.target.value }))}
             >
-              <option value="admin">admin</option>
-              <option value="service">service</option>
+              {ROLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
+          </div>
+          <div>
+            <div className="admin-field-label">Mandanten-ID (Hotel)</div>
+            <input
+              className="admin-input"
+              value={createForm.scopeCompanyId}
+              onChange={(e) => setCreateForm((p) => ({ ...p, scopeCompanyId: e.target.value }))}
+              placeholder="z. B. co-demo-1 — Pflicht für Rolle Hotel"
+            />
           </div>
           <div className="admin-toolbar-row admin-toolbar-row--form-span">
             <button className="admin-btn-primary" type="submit" disabled={createBusy}>
-              {createBusy ? "Anlegen …" : "Admin anlegen"}
+              {createBusy ? "Anlegen …" : "Zugang anlegen"}
             </button>
             {createError ? <span className="admin-error-banner" style={{ padding: "8px 12px" }}>{createError}</span> : null}
           </div>
@@ -166,24 +196,63 @@ export default function AdminUsersPage({ sessionUsername = "" }) {
 
       <section className="admin-panel-card">
         <div className="admin-table-toolbar">
-          <div className="admin-panel-card__title" style={{ margin: 0, fontSize: "1.1rem" }}>Admin-Zugänge</div>
+          <div className="admin-panel-card__title" style={{ margin: 0, fontSize: "1.1rem" }}>Konsole-Zugänge</div>
           <button type="button" className="admin-btn-refresh" onClick={() => void loadUsers()} disabled={loading}>
             {loading ? "Lädt …" : "Aktualisieren"}
           </button>
         </div>
         {error ? <div className="admin-error-banner">{error}</div> : null}
         <div className="admin-data-table">
-          <div className="admin-data-table__head admin-cs-grid admin-cs-grid--panel-users">
+          <div className="admin-data-table__head admin-cs-grid admin-cs-grid--admin-auth-users">
             <div>Benutzer</div>
             <div>Rolle</div>
+            <div>Mandant</div>
             <div>Status</div>
             <div>Geändert</div>
             <div>Aktionen</div>
           </div>
           {sortedUsers.map((user) => (
-            <div key={user.id} className="admin-data-table__row admin-cs-grid admin-cs-grid--panel-users">
+            <div key={user.id} className="admin-data-table__row admin-cs-grid admin-cs-grid--admin-auth-users">
               <div className="admin-cell-strong">{user.username}</div>
-              <div>{user.role}</div>
+              <div>
+                <select
+                  className="admin-select"
+                  value={user.role}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    void patchUser(user.id, { role: next }).catch(() => setError("Rolle konnte nicht gespeichert werden."));
+                  }}
+                  aria-label={`Rolle für ${user.username}`}
+                >
+                  {!ROLE_OPTIONS.some((o) => o.value === user.role) ? (
+                    <option value={user.role}>{user.role} (Legacy)</option>
+                  ) : null}
+                  {ROLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <input
+                  key={`${user.id}-${user.scopeCompanyId ?? ""}`}
+                  className="admin-input"
+                  style={{ width: "100%", maxWidth: "100%" }}
+                  defaultValue={user.scopeCompanyId ?? ""}
+                  placeholder="co-…"
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    const next = v || null;
+                    const prev = user.scopeCompanyId?.trim() || null;
+                    if (next === prev) return;
+                    void patchUser(user.id, { scopeCompanyId: next }).catch(() =>
+                      setError("Mandanten-ID konnte nicht gespeichert werden."),
+                    );
+                  }}
+                  aria-label={`Mandanten-ID für ${user.username}`}
+                />
+              </div>
               <div>{user.isActive ? "Aktiv" : "Deaktiviert"}</div>
               <div className="admin-table-sub">
                 {user.updatedAt ? new Date(user.updatedAt).toLocaleString("de-DE") : "—"}
@@ -198,29 +267,22 @@ export default function AdminUsersPage({ sessionUsername = "" }) {
                 </button>
                 <button
                   type="button"
-                  className="admin-btn-action"
-                  onClick={() => void patchUser(user.id, { role: user.role === "admin" ? "service" : "admin" })}
-                >
-                  Rolle wechseln
-                </button>
-                <button
-                  type="button"
                   className="admin-btn-danger"
                   disabled={user.username === sessionUsername}
                   title={
                     user.username === sessionUsername
                       ? "Eigenen Zugang nicht löschbar"
-                      : "Admin-Zugang dauerhaft entfernen"
+                      : "Zugang dauerhaft entfernen"
                   }
                   onClick={() => void deleteUser(user)}
                 >
-                  Account löschen
+                  Löschen
                 </button>
               </div>
             </div>
           ))}
           {!loading && sortedUsers.length === 0 ? (
-            <div className="admin-info-banner">Noch keine Admin-Zugänge vorhanden.</div>
+            <div className="admin-info-banner">Noch keine Zugänge vorhanden.</div>
           ) : null}
         </div>
       </section>

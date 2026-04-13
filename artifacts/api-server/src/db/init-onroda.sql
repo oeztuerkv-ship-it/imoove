@@ -126,11 +126,12 @@ CREATE TABLE IF NOT EXISTS admin_auth_users (
   email TEXT NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
+  scope_company_id TEXT,
   session_version INTEGER NOT NULL DEFAULT 1,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT admin_auth_users_role_chk CHECK (role IN ('admin', 'service'))
+  CONSTRAINT admin_auth_users_role_chk CHECK (role IN ('admin', 'service', 'taxi', 'insurance', 'hotel'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS admin_auth_users_username_lower ON admin_auth_users (lower(username));

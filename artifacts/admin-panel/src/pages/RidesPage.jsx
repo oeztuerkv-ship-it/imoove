@@ -133,7 +133,7 @@ function emptyStats() {
   };
 }
 
-export default function RidesPage({ initialDetailRideId, onInitialDetailRideConsumed }) {
+export default function RidesPage({ initialDetailRideId, onInitialDetailRideConsumed, userRole }) {
   const [rides, setRides] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -180,6 +180,9 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
         const data = await res.json();
         if (data?.ok && Array.isArray(data.items)) {
           setCompanies(data.items);
+          if (userRole === "hotel" && data.items.length === 1 && data.items[0]?.id) {
+            setCompanyFilter(data.items[0].id);
+          }
         }
       } catch {
         /* Firmen-Dropdown optional */
@@ -188,7 +191,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userRole]);
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
@@ -538,6 +541,12 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
   return (
     <div className="admin-page">
+      {userRole === "insurance" ? (
+        <div className="admin-info-banner" style={{ marginBottom: 12 }}>
+          Ansicht eingeschränkt: es werden nur Fahrten mit Kostenträger <strong>Krankenkasse</strong> geladen
+          (Filter wird serverseitig erzwungen).
+        </div>
+      ) : null}
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
           <div className="admin-stat-label">Alle Fahrten</div>
@@ -587,7 +596,13 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
 
           <div className="admin-filter-item">
             <label className="admin-field-label">Unternehmen (A–Z)</label>
-            <select className="admin-select" value={companyFilter} onChange={(e) => setCompanyFilter(e.target.value)}>
+            <select
+              className="admin-select"
+              value={companyFilter}
+              disabled={userRole === "hotel"}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              title={userRole === "hotel" ? "Mandant ist für Hotel-Zugänge fest verdrahtet." : undefined}
+            >
               <option value="all">Alle</option>
               {companiesAz.map((c) => (
                 <option key={c.id} value={c.id} title={c.id}>

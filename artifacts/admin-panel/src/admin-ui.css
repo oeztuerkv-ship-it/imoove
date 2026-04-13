@@ -29,6 +29,16 @@
   grid-template-columns: minmax(100px, 1.1fr) minmax(120px, 1.3fr) 0.85fr 0.65fr minmax(220px, 1.4fr);
 }
 
+.admin-cs-grid--admin-auth-users {
+  grid-template-columns:
+    minmax(100px, 1.1fr)
+    minmax(130px, 1.1fr)
+    minmax(100px, 1fr)
+    0.75fr
+    0.85fr
+    minmax(260px, 1.6fr);
+}
+
 .admin-cs-grid--rides-min {
   min-width: var(--onroda-admin-rides-table-min-width);
 }
@@ -41,6 +51,18 @@
 
 .admin-page--loose {
   gap: var(--onroda-space-10);
+}
+
+.admin-placeholder-list {
+  margin: 12px 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+  color: var(--onroda-text-grey);
+  font-size: 0.92rem;
+}
+
+.admin-placeholder-list li {
+  margin: 6px 0;
 }
 
 .admin-stat-grid {

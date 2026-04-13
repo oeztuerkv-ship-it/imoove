@@ -125,11 +125,12 @@ function amountForRide(ride) {
   return Number.isFinite(n) ? n : null;
 }
 
-export default function DashboardPage({ onOpenRide, onOpenCompany }) {
+export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
+  const hotelLimited = userRole === "hotel";
   const [stats, setStats] = useState(emptyStats);
   const [revenuePreset, setRevenuePreset] = useState("30d");
-  const [loading, setLoading] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [loading, setLoading] = useState(!hotelLimited);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(hotelLimited);
   const [error, setError] = useState("");
 
   const [overviewDay, setOverviewDay] = useState(() => {
@@ -160,6 +161,12 @@ export default function DashboardPage({ onOpenRide, onOpenCompany }) {
       }
 
       const res = await fetch(url, { headers: adminApiHeaders() });
+      if (res.status === 403) {
+        setStats(emptyStats());
+        setHasLoadedOnce(true);
+        setError("");
+        return;
+      }
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -215,6 +222,13 @@ export default function DashboardPage({ onOpenRide, onOpenCompany }) {
       if (/^\d{4}-\d{2}-\d{2}$/.test(dayRaw)) p.set("date", dayRaw);
       const url = p.toString() ? `${OVERVIEW_URL}?${p.toString()}` : OVERVIEW_URL;
       const res = await fetch(url, { headers: adminApiHeaders() });
+      if (res.status === 403) {
+        setAgenda([]);
+        setPartnerDay([]);
+        setRecentCompleted([]);
+        setOverviewError("");
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!data?.ok) throw new Error("Ungültige Antwort");
@@ -232,12 +246,27 @@ export default function DashboardPage({ onOpenRide, onOpenCompany }) {
   }, [overviewDay]);
 
   useEffect(() => {
+    if (hotelLimited) {
+      setStats(emptyStats());
+      setHasLoadedOnce(true);
+      setLoading(false);
+      setError("");
+      return;
+    }
     void loadStats();
-  }, [loadStats]);
+  }, [loadStats, hotelLimited]);
 
   useEffect(() => {
+    if (hotelLimited) {
+      setAgenda([]);
+      setPartnerDay([]);
+      setRecentCompleted([]);
+      setOverviewLoading(false);
+      setOverviewError("");
+      return;
+    }
     void loadOverview();
-  }, [loadOverview]);
+  }, [loadOverview, hotelLimited]);
 
   if (!hasLoadedOnce && loading) {
     return <div className="admin-info-banner">Kennzahlen werden geladen …</div>;
@@ -258,6 +287,11 @@ export default function DashboardPage({ onOpenRide, onOpenCompany }) {
 
   return (
     <div className={`admin-dashboard${loading || overviewLoading ? " admin-dashboard--refreshing" : ""}`}>
+      {hotelLimited ? (
+        <div className="admin-info-banner" style={{ marginBottom: 14 }}>
+          Hotel-Zugang: globale Plattform-KPIs sind deaktiviert. Nutzen Sie <strong>Fahrten</strong> für Ihre Buchungen.
+        </div>
+      ) : null}
       <div className="admin-dashboard__top">
         <div className="admin-dashboard__hero">
           <div>

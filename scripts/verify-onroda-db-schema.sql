@@ -139,6 +139,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_auth_users' AND column_name = 'scope_company_id'
+  ) THEN
+    errs := array_append(errs, 'admin_auth_users.scope_company_id (Migration 021)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'admin_auth_password_resets'
   ) THEN

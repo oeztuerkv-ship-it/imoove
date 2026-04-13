@@ -4,15 +4,17 @@ import {
   findActiveAdminAuthUserByIdentity,
   findActiveAdminAuthUserByUsername,
   upsertAdminAuthUser,
-  type AdminRole,
 } from "../db/adminAuthData";
+import type { AdminRole } from "../lib/adminConsoleRoles";
+import { parseAdminRole } from "../lib/adminConsoleRoles";
 import { isPostgresConfigured } from "../db/client";
 import { hashPassword, verifyPassword } from "../lib/password";
 
-type AdminAuthPrincipal = {
+export type AdminAuthPrincipal = {
   username: string;
   role: AdminRole;
   kind: "bearer" | "session";
+  scopeCompanyId?: string | null;
 };
 
 declare module "express-serve-static-core" {
@@ -63,13 +65,18 @@ async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal 
     });
     if (payload.kind !== "admin_panel") return null;
     const username = typeof payload.username === "string" ? payload.username : "";
-    const role = payload.role === "service" ? "service" : payload.role === "admin" ? "admin" : null;
+    const role = parseAdminRole(typeof payload.role === "string" ? payload.role : "");
     const sessionVersion = typeof payload.sv === "number" ? payload.sv : 1;
     if (!username || !role) return null;
     const user = await findActiveAdminAuthUserByUsername(username);
     if (!user) return null;
     if (user.sessionVersion !== sessionVersion) return null;
-    return { username, role, kind: "session" };
+    return {
+      username,
+      role,
+      kind: "session",
+      scopeCompanyId: user.scopeCompanyId ?? null,
+    };
   } catch {
     return null;
   }
@@ -122,7 +129,7 @@ export const requireAdminApiBearer: RequestHandler = (req, res, next) => {
   const auth = req.get("authorization") ?? "";
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (token && bearer === token) {
-    req.adminAuth = { username: "api_bearer", role: "admin", kind: "bearer" };
+    req.adminAuth = { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
     next();
     return;
   }
@@ -138,7 +145,7 @@ export const requireAdminApiBearer: RequestHandler = (req, res, next) => {
     return;
   }
   if (!token && process.env.NODE_ENV !== "production") {
-    req.adminAuth = { username: "dev_local", role: "admin", kind: "bearer" };
+    req.adminAuth = { username: "dev_local", role: "admin", kind: "bearer", scopeCompanyId: null };
     next();
     return;
   }

@@ -100,6 +100,8 @@ export const adminAuthUsersTable = pgTable("admin_auth_users", {
   email: text("email").notNull().default(""),
   password_hash: text("password_hash").notNull(),
   role: text("role").notNull(),
+  /** Optional: Hotel- (o. ä.) Konsole — nur Fahrten dieses Mandanten. */
+  scope_company_id: text("scope_company_id"),
   session_version: integer("session_version").notNull().default(1),
   is_active: boolean("is_active").notNull().default(true),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

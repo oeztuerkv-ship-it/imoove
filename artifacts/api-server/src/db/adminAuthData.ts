@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
+import type { AdminRole } from "../lib/adminConsoleRoles";
+import { parseAdminRole } from "../lib/adminConsoleRoles";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminAuthAuditLogTable, adminAuthPasswordResetsTable, adminAuthUsersTable } from "./schema";
 
-export type AdminRole = "admin" | "service";
+export type { AdminRole };
 
 export type AdminAuthUserRow = {
   id: string;
@@ -13,6 +15,7 @@ export type AdminAuthUserRow = {
   role: AdminRole;
   sessionVersion: number;
   isActive: boolean;
+  scopeCompanyId: string | null;
 };
 
 export type AdminAuthUserPublicRow = {
@@ -24,6 +27,7 @@ export type AdminAuthUserPublicRow = {
   sessionVersion: number;
   createdAt: Date;
   updatedAt: Date;
+  scopeCompanyId: string | null;
 };
 
 export type AdminAuthPasswordResetRow = {
@@ -34,10 +38,6 @@ export type AdminAuthPasswordResetRow = {
   usedAt: Date | null;
   createdAt: Date;
 };
-
-function parseRole(raw: string): AdminRole | null {
-  return raw === "admin" || raw === "service" ? raw : null;
-}
 
 export async function findActiveAdminAuthUserByUsername(username: string): Promise<AdminAuthUserRow | null> {
   if (!isPostgresConfigured()) return null;
@@ -52,6 +52,7 @@ export async function findActiveAdminAuthUserByUsername(username: string): Promi
       email: adminAuthUsersTable.email,
       passwordHash: adminAuthUsersTable.password_hash,
       role: adminAuthUsersTable.role,
+      scopeCompanyId: adminAuthUsersTable.scope_company_id,
       sessionVersion: adminAuthUsersTable.session_version,
       isActive: adminAuthUsersTable.is_active,
     })
@@ -65,7 +66,7 @@ export async function findActiveAdminAuthUserByUsername(username: string): Promi
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  const role = parseRole(row.role);
+  const role = parseAdminRole(row.role);
   if (!role) return null;
   return {
     id: row.id,
@@ -75,6 +76,7 @@ export async function findActiveAdminAuthUserByUsername(username: string): Promi
     role,
     sessionVersion: row.sessionVersion,
     isActive: row.isActive,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
   };
 }
 
@@ -91,6 +93,7 @@ export async function findActiveAdminAuthUserByIdentity(identity: string): Promi
       email: adminAuthUsersTable.email,
       passwordHash: adminAuthUsersTable.password_hash,
       role: adminAuthUsersTable.role,
+      scopeCompanyId: adminAuthUsersTable.scope_company_id,
       sessionVersion: adminAuthUsersTable.session_version,
       isActive: adminAuthUsersTable.is_active,
     })
@@ -104,7 +107,7 @@ export async function findActiveAdminAuthUserByIdentity(identity: string): Promi
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  const role = parseRole(row.role);
+  const role = parseAdminRole(row.role);
   if (!role) return null;
   return {
     id: row.id,
@@ -114,6 +117,7 @@ export async function findActiveAdminAuthUserByIdentity(identity: string): Promi
     role,
     sessionVersion: row.sessionVersion,
     isActive: row.isActive,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
   };
 }
 
@@ -154,6 +158,7 @@ export async function upsertAdminAuthUser(input: {
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
     role: input.role,
+    scope_company_id: null,
     session_version: 1,
     is_active: true,
     created_at: new Date(),
@@ -192,6 +197,7 @@ export async function listAdminAuthUsers(): Promise<AdminAuthUserPublicRow[]> {
       username: adminAuthUsersTable.username,
       email: adminAuthUsersTable.email,
       role: adminAuthUsersTable.role,
+      scopeCompanyId: adminAuthUsersTable.scope_company_id,
       sessionVersion: adminAuthUsersTable.session_version,
       isActive: adminAuthUsersTable.is_active,
       createdAt: adminAuthUsersTable.created_at,
@@ -201,13 +207,14 @@ export async function listAdminAuthUsers(): Promise<AdminAuthUserPublicRow[]> {
     .orderBy(sql`lower(${adminAuthUsersTable.username}) asc`);
   return rows
     .map((row) => {
-      const role = parseRole(row.role);
+      const role = parseAdminRole(row.role);
       if (!role) return null;
       return {
         id: row.id,
         username: row.username,
         email: row.email,
         role,
+        scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
         sessionVersion: row.sessionVersion,
         isActive: row.isActive,
         createdAt: row.createdAt,
@@ -223,12 +230,17 @@ export async function createAdminAuthUser(input: {
   passwordHash: string;
   role: AdminRole;
   isActive?: boolean;
+  scopeCompanyId?: string | null;
 }): Promise<AdminAuthUserPublicRow | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
   if (!db) return null;
   const username = input.username.trim();
   if (!username) return null;
+  const scope =
+    typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim()
+      ? input.scopeCompanyId.trim()
+      : null;
   const createdRows = await db
     .insert(adminAuthUsersTable)
     .values({
@@ -237,6 +249,7 @@ export async function createAdminAuthUser(input: {
       email: (input.email ?? "").trim(),
       password_hash: input.passwordHash,
       role: input.role,
+      scope_company_id: scope,
       session_version: 1,
       is_active: input.isActive ?? true,
       created_at: new Date(),
@@ -248,6 +261,7 @@ export async function createAdminAuthUser(input: {
       username: adminAuthUsersTable.username,
       email: adminAuthUsersTable.email,
       role: adminAuthUsersTable.role,
+      scopeCompanyId: adminAuthUsersTable.scope_company_id,
       sessionVersion: adminAuthUsersTable.session_version,
       isActive: adminAuthUsersTable.is_active,
       createdAt: adminAuthUsersTable.created_at,
@@ -255,13 +269,14 @@ export async function createAdminAuthUser(input: {
     });
   const created = createdRows[0];
   if (!created) return null;
-  const role = parseRole(created.role);
+  const role = parseAdminRole(created.role);
   if (!role) return null;
   return {
     id: created.id,
     username: created.username,
     email: created.email,
     role,
+    scopeCompanyId: created.scopeCompanyId?.trim() ? created.scopeCompanyId.trim() : null,
     sessionVersion: created.sessionVersion,
     isActive: created.isActive,
     createdAt: created.createdAt,
@@ -290,7 +305,7 @@ export async function findAdminAuthUserRowById(id: string): Promise<{
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  const role = parseRole(row.role);
+  const role = parseAdminRole(row.role);
   if (!role) return null;
   return { id: row.id, username: row.username, role, isActive: row.isActive };
 }
@@ -326,6 +341,7 @@ export async function patchAdminAuthUserById(input: {
   role?: AdminRole;
   isActive?: boolean;
   passwordHash?: string;
+  scopeCompanyId?: string | null;
 }): Promise<AdminAuthUserPublicRow | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
@@ -335,12 +351,19 @@ export async function patchAdminAuthUserById(input: {
     email?: string;
     is_active?: boolean;
     password_hash?: string;
+    scope_company_id?: string | null;
     session_version?: unknown;
     updated_at: Date;
   } = { updated_at: new Date() };
   if (typeof input.role === "string") patch.role = input.role;
   if (typeof input.email === "string") patch.email = input.email.trim();
   if (typeof input.isActive === "boolean") patch.is_active = input.isActive;
+  if (input.scopeCompanyId !== undefined) {
+    patch.scope_company_id =
+      typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim()
+        ? input.scopeCompanyId.trim()
+        : null;
+  }
   if (typeof input.passwordHash === "string" && input.passwordHash) {
     patch.password_hash = input.passwordHash;
     patch.session_version = sql`${adminAuthUsersTable.session_version} + 1`;
@@ -354,6 +377,7 @@ export async function patchAdminAuthUserById(input: {
       username: adminAuthUsersTable.username,
       email: adminAuthUsersTable.email,
       role: adminAuthUsersTable.role,
+      scopeCompanyId: adminAuthUsersTable.scope_company_id,
       sessionVersion: adminAuthUsersTable.session_version,
       isActive: adminAuthUsersTable.is_active,
       createdAt: adminAuthUsersTable.created_at,
@@ -361,13 +385,14 @@ export async function patchAdminAuthUserById(input: {
     });
   const row = rows[0];
   if (!row) return null;
-  const role = parseRole(row.role);
+  const role = parseAdminRole(row.role);
   if (!role) return null;
   return {
     id: row.id,
     username: row.username,
     email: row.email,
     role,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
     sessionVersion: row.sessionVersion,
     isActive: row.isActive,
     createdAt: row.createdAt,

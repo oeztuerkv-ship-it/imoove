@@ -36,6 +36,7 @@ import {
   createAdminAuthUser,
   deleteAdminAuthUserById,
   findActiveAdminAuthUserByIdentity,
+  findActiveAdminAuthUserByUsername,
   findAdminAuthUserRowById,
   findUsableAdminPasswordResetByTokenHash,
   insertAdminAuthAuditLog,
@@ -62,6 +63,19 @@ import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
+import {
+  adminRideRowVisibleToPrincipal,
+  canAccessAdminAccessCodes,
+  canAccessAdminDashboardOverview,
+  canAccessAdminStats,
+  canAdminReleaseRide,
+  canMutateAdminCompanies,
+  canMutateAdminFareAreas,
+  canReadAdminCompaniesList,
+  mergeAdminRideListQueryForPrincipal,
+  parseAdminRole,
+  type AdminRole,
+} from "../lib/adminConsoleRoles";
 
 export type { AdminAccessCodeRow, AdminDashboardStats, CompanyRow, FareAreaRow } from "./adminApi.types";
 
@@ -116,6 +130,10 @@ function isAdminPrincipal(req: Request): boolean {
   return req.adminAuth?.role === "admin";
 }
 
+function adminConsoleRole(req: Request): AdminRole {
+  return req.adminAuth?.role ?? "admin";
+}
+
 function hashResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -135,13 +153,24 @@ router.post("/admin/auth/login", async (req, res) => {
     return;
   }
   const token = await signAdminSessionJwt({ username, role: ok.role });
-  res.json({ ok: true, token, user: { username, role: ok.role }, authSource: ok.source });
+  const row = await findActiveAdminAuthUserByUsername(username);
+  const scopeCompanyId = row?.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null;
+  res.json({
+    ok: true,
+    token,
+    user: { username, role: ok.role, scopeCompanyId },
+    authSource: ok.source,
+  });
 });
 
 router.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const role = req.adminAuth?.role ?? "admin";
   const username = req.adminAuth?.username ?? "admin";
-  res.json({ ok: true, user: { username, role } });
+  const scopeCompanyId =
+    typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim()
+      ? req.adminAuth.scopeCompanyId.trim()
+      : null;
+  res.json({ ok: true, user: { username, role, scopeCompanyId } });
 });
 
 router.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
@@ -350,9 +379,17 @@ router.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : "";
     const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : true;
-    const role = roleRaw === "service" ? "service" : roleRaw === "admin" ? "admin" : null;
+    const scopeRaw = typeof req.body?.scopeCompanyId === "string" ? req.body.scopeCompanyId.trim() : "";
+    const role = parseAdminRole(roleRaw);
     if (!username || password.length < 10 || !role) {
-      res.status(400).json({ error: "user_payload_invalid", hint: "username, password(min10), role(admin|service), optional email" });
+      res.status(400).json({
+        error: "user_payload_invalid",
+        hint: "username, password(min10), role(admin|service|taxi|insurance|hotel), optional email, optional scopeCompanyId (Hotel)",
+      });
+      return;
+    }
+    if (role === "hotel" && !scopeRaw) {
+      res.status(400).json({ error: "scope_company_id_required_for_hotel" });
       return;
     }
     const hash = await hashPassword(password);
@@ -362,6 +399,7 @@ router.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
       passwordHash: hash,
       role,
       isActive,
+      scopeCompanyId: scopeRaw || null,
     });
     if (!created) {
       res.status(409).json({ error: "username_taken" });
@@ -391,9 +429,17 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
     }
     const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : undefined;
     const emailRaw = typeof req.body?.email === "string" ? req.body.email.trim() : undefined;
-    const role = roleRaw === "admin" || roleRaw === "service" ? roleRaw : undefined;
+    const role = roleRaw ? parseAdminRole(roleRaw) : undefined;
     const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : undefined;
     const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+    const scopeBody = req.body as { scopeCompanyId?: unknown };
+    const scopeCompanyIdPatch =
+      Object.prototype.hasOwnProperty.call(scopeBody, "scopeCompanyId") &&
+      (typeof scopeBody.scopeCompanyId === "string" || scopeBody.scopeCompanyId === null)
+        ? typeof scopeBody.scopeCompanyId === "string"
+          ? scopeBody.scopeCompanyId.trim() || null
+          : null
+        : undefined;
     if (roleRaw && !role) {
       res.status(400).json({ error: "invalid_role" });
       return;
@@ -402,7 +448,13 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
       res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
       return;
     }
-    if (role === undefined && isActive === undefined && emailRaw === undefined && !newPassword) {
+    if (
+      role === undefined &&
+      isActive === undefined &&
+      emailRaw === undefined &&
+      !newPassword &&
+      scopeCompanyIdPatch === undefined
+    ) {
       res.status(400).json({ error: "no_changes" });
       return;
     }
@@ -411,6 +463,7 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
       role,
       ...(emailRaw !== undefined ? { email: emailRaw } : {}),
       isActive,
+      ...(scopeCompanyIdPatch !== undefined ? { scopeCompanyId: scopeCompanyIdPatch } : {}),
       ...(newPassword ? { passwordHash: await hashPassword(newPassword) } : {}),
     });
     if (!user) {
@@ -491,6 +544,10 @@ adminJson.use(requireAdminApiBearer);
 
 adminJson.get("/stats", async (req, res, next) => {
   try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const q = req.query as Record<string, unknown>;
     const revenueFrom = parseStatsRevenueBound(q.revenueFrom);
     const revenueTo = parseStatsRevenueBound(q.revenueTo);
@@ -506,6 +563,10 @@ adminJson.get("/stats", async (req, res, next) => {
 /** Operatives Tages-Dashboard: Agenda, Partner-Top, letzte Abschlüsse (camelCase wie /admin/rides). */
 adminJson.get("/dashboard/overview", async (req, res, next) => {
   try {
+    if (!canAccessAdminDashboardOverview(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const q = req.query as Record<string, string | undefined>;
     const bounds = parseAdminDashboardDayBounds(q.date);
     const prev = adminPreviousDayBounds(bounds);
@@ -544,10 +605,18 @@ adminJson.get("/dashboard/overview", async (req, res, next) => {
   }
 });
 
-adminJson.get("/companies", async (_req, res, next) => {
+adminJson.get("/companies", async (req, res, next) => {
   try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const items = await listCompanies();
-    res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    const filtered =
+      role === "hotel" && scope ? items.filter((c) => c.id === scope) : items;
+    res.json({ ok: true, items: filtered, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
   } catch (e) {
     next(e);
   }
@@ -555,6 +624,16 @@ adminJson.get("/companies", async (_req, res, next) => {
 
 adminJson.get("/companies/:companyId/kpis", async (req, res, next) => {
   try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    if (role === "hotel" && scope && req.params.companyId !== scope) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const company = await findCompanyById(req.params.companyId);
     if (!company) {
       res.status(404).json({ error: "company_not_found" });
@@ -569,6 +648,10 @@ adminJson.get("/companies/:companyId/kpis", async (req, res, next) => {
 
 adminJson.post("/companies", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const b = req.body as { name?: unknown } & AdminCompanyUpdateBody;
     const name = typeof b.name === "string" ? b.name : "";
     const { name: _drop, ...rest } = b;
@@ -585,6 +668,10 @@ adminJson.post("/companies", async (req, res, next) => {
 
 adminJson.patch("/companies/:companyId", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body as AdminCompanyUpdateBody;
     const item = await updateAdminCompany(req.params.companyId, body);
     if (!item) {
@@ -599,6 +686,10 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
 
 adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const company = await findCompanyById(req.params.companyId);
     if (!company) {
       res.status(404).json({ error: "company_not_found" });
@@ -613,6 +704,10 @@ adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
 
 adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId } = req.params;
     const company = await findCompanyById(companyId);
     if (!company) {
@@ -681,6 +776,10 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
 
 adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId, userId } = req.params;
     const company = await findCompanyById(companyId);
     if (!company) {
@@ -759,6 +858,10 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
 
 adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId, userId } = req.params;
     const company = await findCompanyById(companyId);
     if (!company) {
@@ -804,12 +907,14 @@ adminJson.get("/rides", async (req, res, next) => {
       res.status(400).json({ error: parsed.error });
       return;
     }
+    const role = adminConsoleRole(req);
+    const scopedQuery = mergeAdminRideListQueryForPrincipal(role, req.adminAuth?.scopeCompanyId, parsed.query);
     const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
     const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
     const offset = (page - 1) * pageSize;
     const [total, rows] = await Promise.all([
-      countRidesAdmin(parsed.query),
-      listRidesAdminPage(parsed.query, pageSize, offset),
+      countRidesAdmin(scopedQuery),
+      listRidesAdminPage(scopedQuery, pageSize, offset),
     ]);
     const items = await attachAccessCodeSummariesToRides(rows);
     res.json({ ok: true, items, total, page, pageSize });
@@ -825,6 +930,11 @@ adminJson.get("/rides/:id", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
     res.json({ ok: true, ride });
   } catch (e) {
@@ -834,6 +944,16 @@ adminJson.get("/rides/:id", async (req, res, next) => {
 
 adminJson.patch("/rides/:id/release", async (req, res, next) => {
   try {
+    const role = adminConsoleRole(req);
+    if (!canAdminReleaseRide(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const existing = await findRideAdminById(req.params.id);
+    if (!existing || !adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, existing)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     const updated = await adminReleaseRide(req.params.id);
     if (!updated) {
       res.status(404).json({ error: "not_found" });
@@ -850,6 +970,10 @@ adminJson.patch("/rides/:id/release", async (req, res, next) => {
 
 adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId } = req.params;
     const body = req.body as Record<string, unknown>;
     if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
@@ -884,6 +1008,10 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
 
 adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId } = req.params;
     const body = req.body as Partial<{
       is_priority_company: boolean;
@@ -903,7 +1031,7 @@ adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
 
 adminJson.get("/fare-areas", async (_req, res, next) => {
   try {
-    if (_req.adminAuth?.role === "service") {
+    if (!canMutateAdminFareAreas(adminConsoleRole(_req))) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -917,6 +1045,10 @@ adminJson.get("/fare-areas", async (_req, res, next) => {
 
 adminJson.get("/access-codes", async (_req, res, next) => {
   try {
+    if (!canAccessAdminAccessCodes(adminConsoleRole(_req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const items = await listAccessCodesAdmin();
     res.json({
       ok: true,
@@ -940,6 +1072,10 @@ adminJson.get("/access-codes", async (_req, res, next) => {
 
 adminJson.post("/access-codes", async (req, res, next) => {
   try {
+    if (!canAccessAdminAccessCodes(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body as Record<string, unknown>;
     const generateCode = body.generateCode === true;
     const code = typeof body.code === "string" ? body.code : "";
@@ -980,7 +1116,7 @@ adminJson.post("/access-codes", async (req, res, next) => {
 
 adminJson.post("/fare-areas", async (req, res, next) => {
   try {
-    if (req.adminAuth?.role === "service") {
+    if (!canMutateAdminFareAreas(adminConsoleRole(req))) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -1038,7 +1174,7 @@ adminJson.post("/fare-areas", async (req, res, next) => {
 
 adminJson.patch("/fare-areas/:id", async (req, res, next) => {
   try {
-    if (req.adminAuth?.role === "service") {
+    if (!canMutateAdminFareAreas(adminConsoleRole(req))) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -1097,7 +1233,7 @@ adminJson.patch("/fare-areas/:id", async (req, res, next) => {
 
 adminJson.delete("/fare-areas/:id", async (req, res, next) => {
   try {
-    if (req.adminAuth?.role === "service") {
+    if (!canMutateAdminFareAreas(adminConsoleRole(req))) {
       res.status(403).json({ error: "forbidden" });
       return;
     }

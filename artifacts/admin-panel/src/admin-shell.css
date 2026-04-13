@@ -1,5 +1,26 @@
 /* App-Shell — hell, an ONRODA-Homepage (Navigation, Karten, Buttons) angelehnt */
 
+.admin-api-banner {
+  flex-shrink: 0;
+  padding: 12px var(--onroda-padding-content-x);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.admin-api-banner--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-bottom-color: #fecaca;
+}
+
+.admin-api-banner--warn {
+  background: #fffbeb;
+  color: #92400e;
+  border-bottom-color: #fde68a;
+}
+
 .admin-app {
   display: flex;
   min-height: 100vh;
@@ -41,6 +62,27 @@
 
 .admin-app__topbar-left {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.admin-nav-menu-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: var(--onroda-radius-nav);
+  border: 1px solid var(--onroda-border-outline);
+  background: var(--onroda-bg-card);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--onroda-text-dark);
+  cursor: pointer;
+}
+
+.admin-nav-menu-btn:hover {
+  border-color: var(--onroda-red);
+  color: var(--onroda-red);
 }
 
 .admin-app__title {
@@ -185,6 +227,7 @@
 .admin-sidebar {
   width: 100%;
   min-height: 100vh;
+  max-height: 100vh;
   background: var(--onroda-bg-light);
   padding: var(--onroda-padding-card-sm) var(--onroda-space-7);
   box-sizing: border-box;
@@ -192,6 +235,153 @@
   flex-direction: column;
   justify-content: space-between;
   color: var(--onroda-text-grey);
+  -webkit-font-smoothing: antialiased;
+}
+
+.admin-sidebar__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-sidebar__nav-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-sidebar__group {
+  border-radius: var(--onroda-radius-nav);
+}
+
+.admin-sidebar__group-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--onroda-border-subtle);
+  border-radius: var(--onroda-radius-nav);
+  background: var(--onroda-bg-card);
+  color: var(--onroda-text-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-sidebar__group-head:hover {
+  border-color: var(--onroda-border-outline);
+}
+
+.admin-sidebar__group-head--active {
+  border-color: rgba(14, 165, 233, 0.35);
+}
+
+.admin-sidebar__group-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-sidebar__group-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-sidebar__icon--group {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.admin-sidebar__chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--onroda-text-muted);
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.admin-sidebar__group-head--open .admin-sidebar__chevron {
+  transform: rotate(180deg);
+}
+
+.admin-sidebar__sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 10px 4px;
+  padding-left: 4px;
+  border-left: 2px solid var(--onroda-border-subtle);
+}
+
+.admin-sidebar__sublink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px 7px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--onroda-radius-nav);
+  background: transparent;
+  color: var(--onroda-text-dark);
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.admin-sidebar__sublink:hover {
+  background: var(--onroda-bg-card);
+}
+
+.admin-sidebar__sublink--active {
+  background: var(--onroda-badge-accent-bg);
+  color: var(--onroda-red);
+  font-weight: 700;
+}
+
+.admin-sidebar__icon--sub {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.admin-sidebar__sublink--active .admin-sidebar__icon--sub {
+  background: var(--onroda-red);
+  color: var(--onroda-text-on-brand);
+}
+
+@media (max-width: 900px) {
+  .admin-app__sidebar-col {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 6px 0 28px rgba(15, 23, 42, 0.12);
+  }
+
+  .admin-app__sidebar-col--open {
+    transform: translateX(0);
+  }
+
+  .admin-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(15, 23, 42, 0.38);
+  }
 }
 
 .admin-sidebar__brand {
