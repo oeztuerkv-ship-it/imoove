@@ -391,7 +391,18 @@ export default function AccessCodesPage() {
                   return (
                     <tr key={row.id}>
                       <td className="panel-table__muted" title="Gespeicherte Form für Abgleich bei Buchungen">
-                        {row.codeNormalized}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                          <span>{row.codeNormalized}</span>
+                          <button
+                            type="button"
+                            className="panel-btn-text"
+                            title="Code kopieren"
+                            aria-label={`Code ${row.codeNormalized} kopieren`}
+                            onClick={() => void copyText(row.codeNormalized)}
+                          >
+                            ⧉
+                          </button>
+                        </span>
                       </td>
                       <td>{typeLabel(row.codeType)}</td>
                       <td>{row.label || "—"}</td>
