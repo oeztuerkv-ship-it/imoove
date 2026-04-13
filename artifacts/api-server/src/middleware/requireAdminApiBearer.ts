@@ -1,6 +1,11 @@
 import type { RequestHandler } from "express";
 import { jwtVerify, SignJWT } from "jose";
-import { findActiveAdminAuthUserByUsername, upsertAdminAuthUser, type AdminRole } from "../db/adminAuthData";
+import {
+  findActiveAdminAuthUserByIdentity,
+  findActiveAdminAuthUserByUsername,
+  upsertAdminAuthUser,
+  type AdminRole,
+} from "../db/adminAuthData";
 import { isPostgresConfigured } from "../db/client";
 import { hashPassword, verifyPassword } from "../lib/password";
 
@@ -34,11 +39,13 @@ function readConfiguredUsers(): Array<{ username: string; password: string; role
 }
 
 export async function signAdminSessionJwt(input: { username: string; role: AdminRole }): Promise<string> {
+  const user = await findActiveAdminAuthUserByUsername(input.username);
   const secret = getAdminSessionSecret();
   return new SignJWT({
     kind: "admin_panel",
     username: input.username,
     role: input.role,
+    sv: user?.sessionVersion ?? 1,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -57,7 +64,11 @@ async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal 
     if (payload.kind !== "admin_panel") return null;
     const username = typeof payload.username === "string" ? payload.username : "";
     const role = payload.role === "service" ? "service" : payload.role === "admin" ? "admin" : null;
+    const sessionVersion = typeof payload.sv === "number" ? payload.sv : 1;
     if (!username || !role) return null;
+    const user = await findActiveAdminAuthUserByUsername(username);
+    if (!user) return null;
+    if (user.sessionVersion !== sessionVersion) return null;
     return { username, role, kind: "session" };
   } catch {
     return null;
@@ -74,7 +85,7 @@ export async function authenticateAdminCredentials(
   const u = username.trim();
   const p = password;
   if (!u || !p) return { ok: false, error: "invalid_credentials" };
-  const dbUser = await findActiveAdminAuthUserByUsername(u);
+  const dbUser = await findActiveAdminAuthUserByIdentity(u);
   if (dbUser) {
     const ok = await verifyPassword(p, dbUser.passwordHash);
     if (!ok) return { ok: false, error: "invalid_credentials" };
@@ -91,6 +102,7 @@ export async function authenticateAdminCredentials(
     const hash = await hashPassword(p);
     await upsertAdminAuthUser({
       username: hit.username,
+      email: "",
       passwordHash: hash,
       role: hit.role,
     });

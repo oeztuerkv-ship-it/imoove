@@ -30,6 +30,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   panel_users.must_change_password → 016_panel_users_must_change_password.sql
   fare_areas pricing fields      → 017_fare_areas_pricing_fields.sql
   admin_auth_users (Login/PW)    → 018_admin_auth_users.sql
+  admin_auth reset flow + audit  → 019_admin_auth_password_reset_flow.sql
 
 Nach Migrationen Schema prüfen:
 

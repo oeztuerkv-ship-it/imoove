@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:access-code": "node ./scripts/test-access-code-booking.mjs",
     "test:admin-auth": "node ./scripts/test-admin-auth-flow.mjs",
+    "test:admin-password-reset": "node ./scripts/test-admin-password-reset-flow.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

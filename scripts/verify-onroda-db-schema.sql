@@ -12,6 +12,7 @@
 --   016 → panel_users.must_change_password
 --   017 → fare_areas pricing fields
 --   018 → admin_auth_users (Admin-Login + Passwortwechsel)
+--   019 → admin_auth_password_resets + admin_auth_audit_log + session_version
 
 DO $$
 DECLARE
@@ -128,6 +129,27 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'admin_auth_users'
   ) THEN
     errs := array_append(errs, 'table admin_auth_users (Migration 018)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_auth_users' AND column_name = 'session_version'
+  ) THEN
+    errs := array_append(errs, 'admin_auth_users.session_version (Migration 019)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'admin_auth_password_resets'
+  ) THEN
+    errs := array_append(errs, 'table admin_auth_password_resets (Migration 019)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'admin_auth_audit_log'
+  ) THEN
+    errs := array_append(errs, 'table admin_auth_audit_log (Migration 019)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

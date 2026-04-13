@@ -97,11 +97,37 @@ export const panelUsersTable = pgTable("panel_users", {
 export const adminAuthUsersTable = pgTable("admin_auth_users", {
   id: text("id").primaryKey(),
   username: text("username").notNull(),
+  email: text("email").notNull().default(""),
   password_hash: text("password_hash").notNull(),
   role: text("role").notNull(),
+  session_version: integer("session_version").notNull().default(1),
   is_active: boolean("is_active").notNull().default(true),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Einmal-Tokens für Admin-Passwort-Reset (gehasht, ablaufend, single-use). */
+export const adminAuthPasswordResetsTable = pgTable("admin_auth_password_resets", {
+  id: text("id").primaryKey(),
+  admin_user_id: text("admin_user_id")
+    .notNull()
+    .references(() => adminAuthUsersTable.id, { onDelete: "cascade" }),
+  token_hash: text("token_hash").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  used_at: timestamp("used_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Nachvollziehbarkeit für Admin-Auth-Ereignisse (Reset angefordert/abgeschlossen/fehlgeschlagen). */
+export const adminAuthAuditLogTable = pgTable("admin_auth_audit_log", {
+  id: text("id").primaryKey(),
+  admin_user_id: text("admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  username: text("username").notNull().default(""),
+  action: text("action").notNull(),
+  meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Audit-Trail für sensible Panel-Aktionen (kein Voll-Audit aller Reads). */

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
@@ -31,8 +31,13 @@ import {
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
 import {
+  createAdminPasswordResetToken,
   createAdminAuthUser,
+  findActiveAdminAuthUserByIdentity,
+  findUsableAdminPasswordResetByTokenHash,
+  insertAdminAuthAuditLog,
   listAdminAuthUsers,
+  markAdminPasswordResetUsed,
   patchAdminAuthUserById,
   updateAdminAuthPasswordByUsername,
 } from "../db/adminAuthData";
@@ -105,6 +110,10 @@ function isAdminPrincipal(req: Request): boolean {
   return req.adminAuth?.role === "admin";
 }
 
+function hashResetToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 const router: IRouter = Router();
 
 router.post("/admin/auth/login", async (req, res) => {
@@ -159,7 +168,141 @@ router.post("/admin/auth/change-password", requireAdminApiBearer, async (req, re
     res.status(500).json({ error: "password_update_failed" });
     return;
   }
+  await insertAdminAuthAuditLog({
+    username: principal.username,
+    action: "admin.auth.password_changed",
+  });
   res.json({ ok: true });
+});
+
+router.post("/admin/auth/password-reset/request", async (req, res) => {
+  const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
+  const generic = {
+    ok: true,
+    message:
+      "Wenn ein passender Zugang existiert, wurde ein Passwort-Reset gestartet. Bitte Support/Administrator kontaktieren.",
+  };
+  if (!identity || !isPostgresConfigured()) {
+    res.json(generic);
+    return;
+  }
+  const user = await findActiveAdminAuthUserByIdentity(identity);
+  if (!user) {
+    await insertAdminAuthAuditLog({
+      username: identity,
+      action: "admin.auth.password_reset_requested_unknown_identity",
+    });
+    res.json(generic);
+    return;
+  }
+  const rawToken = randomBytes(32).toString("base64url");
+  const tokenHash = hashResetToken(rawToken);
+  const configuredTtlMin = Number(process.env.ADMIN_AUTH_RESET_TOKEN_TTL_MINUTES ?? "30");
+  const ttlMsDefault = Math.max(1, Number.isFinite(configuredTtlMin) ? configuredTtlMin : 30) * 60 * 1000;
+  let ttlMs = ttlMsDefault;
+  if (process.env.NODE_ENV !== "production") {
+    const debugExpires = Number(req.body?.debugExpiresInSeconds);
+    if (Number.isFinite(debugExpires) && debugExpires >= 1) ttlMs = debugExpires * 1000;
+  }
+  const expiresAt = new Date(Date.now() + ttlMs);
+  await createAdminPasswordResetToken({
+    adminUserId: user.id,
+    tokenHash,
+    expiresAt,
+  });
+  await insertAdminAuthAuditLog({
+    adminUserId: user.id,
+    username: user.username,
+    action: "admin.auth.password_reset_requested",
+    meta: { expiresAt: expiresAt.toISOString(), delivery: "email_link_phase_a" },
+  });
+  if (process.env.NODE_ENV !== "production" || process.env.ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE === "1") {
+    res.json({ ...generic, debugResetToken: rawToken, debugResetExpiresAt: expiresAt.toISOString() });
+    return;
+  }
+  res.json(generic);
+});
+
+router.post("/admin/auth/password-reset/confirm", async (req, res) => {
+  const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (!token || newPassword.length < 10) {
+    res.status(400).json({ error: "reset_payload_invalid", hint: "token + newPassword(min10)" });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "admin_auth_store_unavailable" });
+    return;
+  }
+  const reset = await findUsableAdminPasswordResetByTokenHash(hashResetToken(token));
+  if (!reset) {
+    await insertAdminAuthAuditLog({
+      username: "",
+      action: "admin.auth.password_reset_confirm_failed",
+      meta: { reason: "invalid_or_expired" },
+    });
+    res.status(400).json({ error: "invalid_or_expired_reset_token" });
+    return;
+  }
+  const passwordHash = await hashPassword(newPassword);
+  const updated = await patchAdminAuthUserById({
+    id: reset.adminUserId,
+    passwordHash,
+  });
+  await markAdminPasswordResetUsed(reset.id);
+  if (!updated) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+  await insertAdminAuthAuditLog({
+    adminUserId: updated.id,
+    username: updated.username,
+    action: "admin.auth.password_reset_completed",
+    meta: { resetId: reset.id },
+  });
+  res.json({ ok: true });
+});
+
+router.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+  if (!isAdminPrincipal(req)) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
+  if (!identity || !isPostgresConfigured()) {
+    res.status(400).json({ error: "identity_required" });
+    return;
+  }
+  const user = await findActiveAdminAuthUserByIdentity(identity);
+  if (!user) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const rawToken = randomBytes(32).toString("base64url");
+  const tokenHash = hashResetToken(rawToken);
+  const expiresRaw = Number(req.body?.expiresInSeconds);
+  const ttlSeconds = Number.isFinite(expiresRaw) && expiresRaw >= 1 ? expiresRaw : 30 * 60;
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+  await createAdminPasswordResetToken({
+    adminUserId: user.id,
+    tokenHash,
+    expiresAt,
+  });
+  await insertAdminAuthAuditLog({
+    adminUserId: user.id,
+    username: user.username,
+    action: "admin.auth.password_reset_link_issued_by_admin",
+    meta: {
+      issuedBy: req.adminAuth?.username ?? "admin",
+      expiresAt: expiresAt.toISOString(),
+    },
+  });
+  res.json({
+    ok: true,
+    delivery: "manual_email_link_phase_a",
+    resetToken: rawToken,
+    expiresAt: expiresAt.toISOString(),
+  });
 });
 
 router.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
@@ -190,17 +333,19 @@ router.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
       return;
     }
     const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
     const password = typeof req.body?.password === "string" ? req.body.password : "";
     const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : "";
     const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : true;
     const role = roleRaw === "service" ? "service" : roleRaw === "admin" ? "admin" : null;
     if (!username || password.length < 10 || !role) {
-      res.status(400).json({ error: "user_payload_invalid", hint: "username, password(min10), role(admin|service)" });
+      res.status(400).json({ error: "user_payload_invalid", hint: "username, password(min10), role(admin|service), optional email" });
       return;
     }
     const hash = await hashPassword(password);
     const created = await createAdminAuthUser({
       username,
+      email,
       passwordHash: hash,
       role,
       isActive,
@@ -209,6 +354,12 @@ router.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
       res.status(409).json({ error: "username_taken" });
       return;
     }
+    await insertAdminAuthAuditLog({
+      adminUserId: created.id,
+      username: created.username,
+      action: "admin.auth.user_created",
+      meta: { role: created.role, isActive: created.isActive },
+    });
     res.status(201).json({ ok: true, user: created });
   } catch (e) {
     next(e);
@@ -226,6 +377,7 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
       return;
     }
     const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : undefined;
+    const emailRaw = typeof req.body?.email === "string" ? req.body.email.trim() : undefined;
     const role = roleRaw === "admin" || roleRaw === "service" ? roleRaw : undefined;
     const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : undefined;
     const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
@@ -237,13 +389,14 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
       res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
       return;
     }
-    if (role === undefined && isActive === undefined && !newPassword) {
+    if (role === undefined && isActive === undefined && emailRaw === undefined && !newPassword) {
       res.status(400).json({ error: "no_changes" });
       return;
     }
     const user = await patchAdminAuthUserById({
       id: req.params.id,
       role,
+      ...(emailRaw !== undefined ? { email: emailRaw } : {}),
       isActive,
       ...(newPassword ? { passwordHash: await hashPassword(newPassword) } : {}),
     });
@@ -251,6 +404,17 @@ router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, ne
       res.status(404).json({ error: "not_found" });
       return;
     }
+    await insertAdminAuthAuditLog({
+      adminUserId: user.id,
+      username: user.username,
+      action: "admin.auth.user_updated",
+      meta: {
+        role: role ?? null,
+        isActive: isActive ?? null,
+        emailUpdated: emailRaw !== undefined,
+        passwordChanged: Boolean(newPassword),
+      },
+    });
     res.json({ ok: true, user });
   } catch (e) {
     next(e);

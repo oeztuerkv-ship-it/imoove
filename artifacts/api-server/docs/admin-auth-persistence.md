@@ -14,6 +14,9 @@
 - `GET /api/admin/auth/users` (nur Rolle `admin`)
 - `POST /api/admin/auth/users` (nur Rolle `admin`)
 - `PATCH /api/admin/auth/users/:id` (nur Rolle `admin`)
+- `POST /api/admin/auth/password-reset/request` (neutral, ohne User-Leak)
+- `POST /api/admin/auth/password-reset/confirm` (token + neues Passwort)
+- `POST /api/admin/auth/password-reset/issue-link` (admin-only, Phase-A manuelle Zustellung)
 
 ## Pflichtfaelle (A-D)
 
@@ -48,3 +51,19 @@ Optional:
 - `ADMIN_AUTH_TEST_PASSWORD`
 - `ADMIN_AUTH_TEST_PASSWORD_NEXT`
 - `ADMIN_AUTH_TEST_API_BASE` (Default `http://127.0.0.1:3000/api`)
+
+## Passwort-vergessen (Phase A)
+
+- Versandweg-Entscheidung: **E-Mail-Link**.
+- Phase A liefert persistente Reset-Mechanik:
+  - Tabelle `admin_auth_password_resets` (gehashte Tokens, expires_at, used_at)
+  - Audit in `admin_auth_audit_log`
+  - `session_version`-basierte Session-Invalidierung nach Passwortwechsel/Reset
+- Phase B bindet den echten Mailversand an.
+
+Reset-Test lokal/staging:
+
+```bash
+cd artifacts/api-server
+ADMIN_AUTH_RESET_TEST_OLD_PASSWORD='...' npm run test:admin-password-reset
+```
