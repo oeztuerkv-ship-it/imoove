@@ -182,6 +182,9 @@ router.post("/admin/auth/password-reset/request", async (req, res) => {
     message:
       "Wenn ein passender Zugang existiert, wurde ein Passwort-Reset gestartet. Bitte Support/Administrator kontaktieren.",
   };
+  const isProduction = process.env.NODE_ENV === "production";
+  const allowResetDebugResponse =
+    !isProduction && process.env.ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE === "1";
   if (!identity || !isPostgresConfigured()) {
     res.json(generic);
     return;
@@ -192,7 +195,11 @@ router.post("/admin/auth/password-reset/request", async (req, res) => {
       username: identity,
       action: "admin.auth.password_reset_requested_unknown_identity",
     });
-    res.json(generic);
+    res.json(
+      allowResetDebugResponse
+        ? { ...generic, debugResetToken: null, debugResetExpiresAt: null }
+        : generic,
+    );
     return;
   }
   const rawToken = randomBytes(32).toString("base64url");
@@ -216,7 +223,7 @@ router.post("/admin/auth/password-reset/request", async (req, res) => {
     action: "admin.auth.password_reset_requested",
     meta: { expiresAt: expiresAt.toISOString(), delivery: "email_link_phase_a" },
   });
-  if (process.env.NODE_ENV !== "production" || process.env.ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE === "1") {
+  if (allowResetDebugResponse) {
     res.json({ ...generic, debugResetToken: rawToken, debugResetExpiresAt: expiresAt.toISOString() });
     return;
   }

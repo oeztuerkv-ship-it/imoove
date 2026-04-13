@@ -62,6 +62,19 @@ async function main() {
   steps.push({ case: 2, label: "request unknown", ...case2 });
   assert(case2.status === 200 && case2.data?.ok, "Case 2 failed");
   assert(case1.data?.message === case2.data?.message, "Case 2 failed: response message differs (enumeration risk)");
+  const keys1 = Object.keys(case1.data ?? {}).sort().join(",");
+  const keys2 = Object.keys(case2.data ?? {}).sort().join(",");
+  assert(keys1 === keys2, `Case 2 failed: response JSON keys differ (enumeration risk): ${keys1} vs ${keys2}`);
+  if (process.env.NODE_ENV === "production") {
+    assert(
+      case1.data?.debugResetToken === undefined && case2.data?.debugResetToken === undefined,
+      "Production must not expose debugResetToken on password-reset/request",
+    );
+    assert(
+      case1.data?.debugResetExpiresAt === undefined && case2.data?.debugResetExpiresAt === undefined,
+      "Production must not expose debugResetExpiresAt on password-reset/request",
+    );
+  }
 
   const issueValid = await request("/admin/auth/password-reset/issue-link", {
     method: "POST",
