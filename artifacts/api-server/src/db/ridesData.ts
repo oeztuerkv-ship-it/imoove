@@ -15,12 +15,7 @@ import {
   isAuthorizationSource,
   normalizeAccessCodeInput,
 } from "../domain/rideAuthorization";
-import {
-  finalizeAccessCodeRedemptionForRideId,
-  releaseAccessCodeReservationForRideId,
-  reserveAccessCodeInTransaction,
-  reserveAccessCodeMemory,
-} from "./accessCodesData";
+import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
 import { getDb } from "./client";
 import { adminCompaniesTable, ridesTable } from "./schema";
 
@@ -309,7 +304,7 @@ export async function insertRideWithOptionalAccessCode(
   const bookingCompanyId = ride.companyId ?? null;
   const db = getDb();
   if (!db) {
-    const red = reserveAccessCodeMemory(trimmed, bookingCompanyId, stripEphemeral(ride).id);
+    const red = redeemAccessCodeMemory(trimmed, bookingCompanyId);
     if (!red.ok) return { ok: false, error: red.error };
     const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
     const r: RideRequest = {
@@ -326,7 +321,7 @@ export async function insertRideWithOptionalAccessCode(
 
   try {
     const out = await db.transaction(async (trx) => {
-      const red = await reserveAccessCodeInTransaction(trx, normalized, bookingCompanyId, ride.id);
+      const red = await redeemAccessCodeInTransaction(trx, normalized, bookingCompanyId);
       if (!red.ok) return { ok: false as const, error: red.error };
       const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
       const r: RideRequest = {
@@ -706,18 +701,6 @@ export function adminPreviousDayBounds(bounds: AdminDayBounds): AdminDayBounds {
   return { start, end };
 }
 
-async function syncAccessCodeLifecycleAfterRideUpdate(prev: RideRequest, next: RideRequest): Promise<void> {
-  if (prev.status === next.status) return;
-  const releaseStatuses = ["cancelled", "rejected"];
-  if (releaseStatuses.includes(next.status)) {
-    await releaseAccessCodeReservationForRideId(next.id);
-    return;
-  }
-  if (next.status === "completed" && prev.status !== "completed") {
-    await finalizeAccessCodeRedemptionForRideId(next.id, { accessCodeId: next.accessCodeId ?? null });
-  }
-}
-
 export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {
   const cur = await findRide(id);
   if (!cur) return null;
@@ -725,11 +708,9 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
   const db = getDb();
   if (!db) {
     memoryRides = memoryRides.map((x) => (x.id === id ? next : x));
-    await syncAccessCodeLifecycleAfterRideUpdate(cur, next);
     return next;
   }
   await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
-  await syncAccessCodeLifecycleAfterRideUpdate(cur, next);
   return next;
 }
 
