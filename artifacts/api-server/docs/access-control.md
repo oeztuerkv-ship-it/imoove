@@ -13,7 +13,7 @@ Kurzüberblick über **drei getrennte Identitäten**: Plattform-Admin, Partner-P
 ## 2. Partner-Panel (Unternehmen)
 
 - **Pfade:** `/panel/v1/*` — `src/routes/panelApi.ts`.
-- **Auth:** `Authorization: Bearer <Panel-JWT>` nach Login — `requirePanelAuth`, danach **DB-abgestimmtes** Profil via `findActivePanelUserProfileById` (`assertActivePanelProfile` in `panelApi.ts`).
+- **Auth:** `Authorization: Bearer <Panel-JWT>` nach Login — `requirePanelAuth`, danach **DB-abgestimmtes** Profil via `findActivePanelUserProfileById` (`assertActivePanelProfile` in `panelApi.ts`). `POST /api/panel-auth/login` akzeptiert **Benutzername** oder (wenn eindeutig) **geschäftliche E-Mail** (`panel_users.email`).
 - **Effektive Rolle:** kommt aus der **Datenbank** (`panel_users.role`), nicht allein aus dem JWT — bei Rollenänderung gilt nach erneutem Login das neue Token.
 - **Berechtigungen:** zentrale Matrix in `src/lib/panelPermissions.ts` (`PanelPermission`, `panelCan`, `permissionsForRole`).
 - **HTTP-403:** zentral über `denyUnlessPanelPermission` in `src/middleware/panelAccess.ts` (gleiche Semantik wie zuvor inline in `panelApi`).

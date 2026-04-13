@@ -1,5 +1,8 @@
 import { Router, type IRouter } from "express";
-import { findActivePanelUserByUsername } from "../db/panelAuthData";
+import {
+  findActivePanelUserByEmailNormalized,
+  findActivePanelUserByUsername,
+} from "../db/panelAuthData";
 import { isPostgresConfigured } from "../db/client";
 import { rateLimitPanelLogin } from "../lib/panelLoginRateLimit";
 import { isPanelRoleString } from "../lib/panelPermissions";
@@ -42,7 +45,10 @@ router.post("/panel-auth/login", async (req, res) => {
     return;
   }
 
-  const row = await findActivePanelUserByUsername(username);
+  let row = await findActivePanelUserByUsername(username);
+  if (!row && username.includes("@")) {
+    row = await findActivePanelUserByEmailNormalized(username);
+  }
   if (!row || !isPanelRoleString(row.role)) {
     res.status(401).json({ error: "invalid_credentials" });
     return;

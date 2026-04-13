@@ -22,16 +22,18 @@ export default function LoginPage() {
       <div className="partner-login__card">
         <h1 className="partner-login__title">Unternehmerportal</h1>
         <p className="partner-login__lead">
-          Melde dich mit deinem Unternehmenszugang an. Die Daten kommen aus der Onroda-Datenbank über
-          die API.
+          Melde dich mit deinem Unternehmenszugang an (Benutzername <strong>oder</strong> die hinterlegte
+          geschäftliche E-Mail). Passwort mindestens 10 Zeichen — bei Erstanlage oft ein temporäres Passwort vom
+          Betreiber.
         </p>
         <form className="partner-login__form" onSubmit={onSubmit}>
           <label className="partner-login__label">
-            Benutzername
+            Benutzername oder E-Mail
             <input
               className="partner-login__input"
               name="username"
               autoComplete="username"
+              placeholder="z. B. max oder name@firma.de"
               value={username}
               onChange={(ev) => setUsername(ev.target.value)}
               required
