@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { and, count, eq, gte, isNotNull, lte, ne, sql } from "drizzle-orm";
+import { and, count, eq, gte, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   adminCompaniesTable,
+  accessCodesTable,
   fareAreasTable,
   panelUsersTable,
   ridesTable,
@@ -243,6 +244,73 @@ export async function listCompanies(): Promise<CompanyRow[]> {
   if (!db) return [...memCompanies];
   const rows = await db.select().from(adminCompaniesTable);
   return rows.map(rowToCompany);
+}
+
+export type CompanyKpis = {
+  monthlyRevenue: number;
+  openRides: number;
+  voucherLimitAvailable: number | null;
+};
+
+export async function getCompanyKpis(companyId: string, now = new Date()): Promise<CompanyKpis> {
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  const openStatuses = ["pending", "accepted", "arrived", "in_progress"];
+  const db = getDb();
+  if (!db) {
+    const { listRidesForCompany } = await import("./ridesData");
+    const rides = await listRidesForCompany(companyId);
+    const monthlyRevenue = rides
+      .filter((r) => {
+        if (r.status !== "completed") return false;
+        const t = new Date(r.createdAt).getTime();
+        return t >= monthStart.getTime() && t < nextMonthStart.getTime();
+      })
+      .reduce((sum, r) => sum + rideRevenueAmount(r), 0);
+    const openRides = rides.filter((r) => openStatuses.includes(r.status)).length;
+    return { monthlyRevenue, openRides, voucherLimitAvailable: null };
+  }
+
+  const [revRow, openRow, voucherRow] = await Promise.all([
+    db
+      .select({
+        monthlyRevenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+      })
+      .from(ridesTable)
+      .where(
+        and(
+          eq(ridesTable.company_id, companyId),
+          eq(ridesTable.status, "completed"),
+          gte(ridesTable.created_at, monthStart),
+          lt(ridesTable.created_at, nextMonthStart),
+        ),
+      ),
+    db
+      .select({ n: count() })
+      .from(ridesTable)
+      .where(and(eq(ridesTable.company_id, companyId), sql`${ridesTable.status} = any(${openStatuses})`)),
+    db
+      .select({
+        remaining: sql<string>`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`,
+      })
+      .from(accessCodesTable)
+      .where(
+        and(
+          eq(accessCodesTable.company_id, companyId),
+          eq(accessCodesTable.code_type, "voucher"),
+          eq(accessCodesTable.is_active, true),
+          or(sql`${accessCodesTable.valid_from} is null`, lte(accessCodesTable.valid_from, now)),
+          or(sql`${accessCodesTable.valid_until} is null`, gte(accessCodesTable.valid_until, now)),
+          isNotNull(accessCodesTable.max_uses),
+        ),
+      ),
+  ]);
+
+  return {
+    monthlyRevenue: num(revRow[0]?.monthlyRevenue),
+    openRides: Number(openRow[0]?.n ?? 0),
+    voucherLimitAvailable: Number(voucherRow[0]?.remaining ?? 0),
+  };
 }
 
 /** Admin-API: PATCH /admin/companies/:id (ohne panel_modules — weiter eigene Route). */

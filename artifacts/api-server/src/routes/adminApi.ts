@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
+import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
 import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
 import {
@@ -8,6 +9,7 @@ import {
   deleteFareArea,
   type FareAreaPatchBody,
   getAdminStats,
+  getCompanyKpis,
   findCompanyById,
   insertAdminCompany,
   listCompanies,
@@ -157,6 +159,20 @@ adminJson.get("/companies", async (_req, res, next) => {
   try {
     const items = await listCompanies();
     res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/companies/:companyId/kpis", async (req, res, next) => {
+  try {
+    const company = await findCompanyById(req.params.companyId);
+    if (!company) {
+      res.status(404).json({ error: "company_not_found" });
+      return;
+    }
+    const kpis = await getCompanyKpis(req.params.companyId);
+    res.json({ ok: true, kpis });
   } catch (e) {
     next(e);
   }
@@ -497,7 +513,21 @@ adminJson.get("/fare-areas", async (_req, res, next) => {
 adminJson.get("/access-codes", async (_req, res, next) => {
   try {
     const items = await listAccessCodesAdmin();
-    res.json({ ok: true, items });
+    res.json({
+      ok: true,
+      items: items.map((row) => {
+        const ps = computeAccessCodePublicStatus({
+          isActive: row.isActive,
+          lifecycleStatus: row.lifecycleStatus ?? "active",
+          reservedRideId: row.reservedRideId ?? null,
+          validFrom: row.validFrom,
+          validUntil: row.validUntil,
+          maxUses: row.maxUses,
+          usesCount: row.usesCount,
+        });
+        return { ...row, publicStatus: ps.status, publicStatusLabel: ps.labelDe };
+      }),
+    });
   } catch (e) {
     next(e);
   }
