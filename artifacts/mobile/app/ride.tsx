@@ -12,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +32,25 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   card: "Kreditkarte",
   voucher: "Transportschein",
   app: "App",
+  access_code: "Gutschein / Freigabe",
 };
+
+function accessCodeBookingErrorMessage(code: string): string {
+  const m: Record<string, string> = {
+    access_code_invalid: "Code unbekannt oder ungültig.",
+    access_code_inactive: "Dieser Code ist deaktiviert.",
+    access_code_expired: "Code noch nicht gültig oder abgelaufen.",
+    access_code_exhausted: "Code bereits eingelöst oder Kontingent aufgebraucht.",
+    access_code_wrong_company: "Code passt nicht zu dieser Buchung.",
+    access_code_in_use: "Code ist gerade für eine andere Fahrt reserviert — bitte kurz warten oder später erneut versuchen.",
+    request_failed: "Buchung konnte nicht gesendet werden.",
+  };
+  if (m[code]) return m[code];
+  if (/unauthorized|anmelden/i.test(code)) {
+    return "Bitte kurz warten und erneut versuchen — die App bereitet noch Ihre Sitzung vor.";
+  }
+  return code;
+}
 
 /** Gleiche Logik wie auf dem Booking-Screen (Fixpreis vs. Taxi). */
 function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: boolean): string {
@@ -51,11 +70,13 @@ const RIDE_PAYMENT_OPTIONS: {
   isEuro?: boolean;
   isVoucher?: boolean;
   isApp?: boolean;
+  isAccessCode?: boolean;
 }[] = [
   { id: "app", label: "App bezahlen", isApp: true },
   { id: "cash", label: "Bar", isEuro: true },
   { id: "paypal", label: "PayPal", isPaypal: true },
   { id: "voucher", label: "Transportschein", isVoucher: true },
+  { id: "access_code", label: "Gutschein / Code", isAccessCode: true },
 ];
 
 export default function RideScreen() {
@@ -84,6 +105,7 @@ export default function RideScreen() {
   const [noTokenVisible, setNoTokenVisible] = useState(false);
   const [preAuthLoading, setPreAuthLoading] = useState(false);
   const [tokenErrorMethod, setTokenErrorMethod] = useState<PaymentMethod | null>(null);
+  const [accessCodeInput, setAccessCodeInput] = useState("");
 
   useEffect(() => {
     if (paymentMethod == null) setPaymentMethod("cash");
@@ -118,67 +140,86 @@ export default function RideScreen() {
       Alert.alert("Nicht möglich", "Fixpreis ist bei Transportschein nicht verfügbar.");
       return;
     }
+    if (paymentMethod === "access_code" && !accessCodeInput.trim()) {
+      Alert.alert("Code fehlt", "Bitte geben Sie den Gutschein- oder Freigabe-Code ein.");
+      return;
+    }
 
     const pm = paymentMethod;
 
-    /* ── 1. Token nur bei Karte/PayPal/App (nicht bei Bar als Standard) ── */
-    const hasToken = await checkPaymentTokenFor(pm);
-    if (!hasToken) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setTokenErrorMethod(pm);
-      setNoTokenVisible(true);
-      return;
+    /* ── 1. Token / Pre-Auth nur bei Online-Zahlung (nicht Bar, Transportschein, Freigabe-Code) ── */
+    const skipWalletSteps = pm === "cash" || pm === "voucher" || pm === "access_code";
+    if (!skipWalletSteps) {
+      const hasToken = await checkPaymentTokenFor(pm);
+      if (!hasToken) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setTokenErrorMethod(pm);
+        setNoTokenVisible(true);
+        return;
+      }
+      const copayment = calculateCopayment(fareBreakdown.total, isExempted);
+      const chargeAmount = pm === "voucher" ? copayment : fareBreakdown.total;
+      const preAuthOk = await runPreAuthorization(chargeAmount, pm);
+      if (!preAuthOk) {
+        Alert.alert("Zahlung fehlgeschlagen", "Die Vorautorisierung konnte nicht durchgeführt werden. Bitte Zahlungsmittel prüfen.");
+        return;
+      }
     }
 
-    /* ── 2. Pre-Authorization ── */
+    /* ── 2. Buchung absenden ── */
     const copayment = calculateCopayment(fareBreakdown.total, isExempted);
     const chargeAmount = pm === "voucher" ? copayment : fareBreakdown.total;
-    const preAuthOk = await runPreAuthorization(chargeAmount, pm);
-    if (!preAuthOk) {
-      Alert.alert("Zahlung fehlgeschlagen", "Die Vorautorisierung konnte nicht durchgeführt werden. Bitte Zahlungsmittel prüfen.");
-      return;
-    }
-
-    /* ── 3. Buchung absenden ── */
     Animated.sequence([
       Animated.timing(btnScale, { toValue: 0.96, duration: 80, useNativeDriver: true }),
       Animated.timing(btnScale, { toValue: 1, duration: 80, useNativeDriver: true }),
-    ]).start(async () => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const paymentLabel =
-        pm === "cash" ? "Bar" :
-        pm === "paypal" ? "PayPal" :
-        pm === "app" ? "App" :
-        pm === "card" ? "Kreditkarte" :
-        pm === "voucher"
-          ? (isExempted ? "Krankenkasse (Befreit: 0,00 €)" : `Krankenkasse (Eigenanteil: ${formatEuro(copayment)})`)
-          : "Bar";
-      const vehicleLabel =
-        selectedVehicle === "standard" ? "Standard" :
-        selectedVehicle === "xl" ? "XL" :
-        selectedVehicle === "onroda" ? "Onroda" :
-        "Rollstuhl";
-      await addRequest({
-        from: origin.displayName.split(",")[0],
-        fromFull: origin.displayName,
-        to: destination?.displayName.split(",")[0] ?? "Ziel",
-        toFull: destination?.displayName ?? "",
-        fromLat: origin.lat,
-        fromLon: origin.lon,
-        toLat: destination?.lat,
-        toLon: destination?.lon,
-        distanceKm: route?.distanceKm ?? 0,
-        durationMinutes: route?.durationMinutes ?? 0,
-        estimatedFare: chargeAmount,
-        paymentMethod: paymentLabel,
-        vehicle: vehicleLabel,
-        customerName: profile.name
-          ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
-          : "Gast",
-        passengerId: passengerId || undefined,
-        scheduledAt: scheduledTime ?? null,
-      });
-      router.replace("/status");
+    ]).start(() => {
+      void (async () => {
+        try {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          const paymentLabel =
+            pm === "cash" ? "Bar" :
+            pm === "paypal" ? "PayPal" :
+            pm === "app" ? "App" :
+            pm === "card" ? "Kreditkarte" :
+            pm === "access_code" ? "Gutschein / Freigabe (Code)" :
+            pm === "voucher"
+              ? (isExempted ? "Krankenkasse (Befreit: 0,00 €)" : `Krankenkasse (Eigenanteil: ${formatEuro(copayment)})`)
+              : "Bar";
+          const vehicleLabel =
+            selectedVehicle === "standard" ? "Standard" :
+            selectedVehicle === "xl" ? "XL" :
+            selectedVehicle === "onroda" ? "Onroda" :
+            "Rollstuhl";
+          await addRequest({
+            from: origin.displayName.split(",")[0],
+            fromFull: origin.displayName,
+            to: destination?.displayName.split(",")[0] ?? "Ziel",
+            toFull: destination?.displayName ?? "",
+            fromLat: origin.lat,
+            fromLon: origin.lon,
+            toLat: destination?.lat,
+            toLon: destination?.lon,
+            distanceKm: route?.distanceKm ?? 0,
+            durationMinutes: route?.durationMinutes ?? 0,
+            estimatedFare: chargeAmount,
+            paymentMethod: paymentLabel,
+            vehicle: vehicleLabel,
+            customerName: profile.name
+              ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
+              : "Gast",
+            passengerId: passengerId || undefined,
+            scheduledAt: scheduledTime ?? null,
+            ...(pm === "access_code" && accessCodeInput.trim()
+              ? { accessCode: accessCodeInput.trim() }
+              : {}),
+          });
+          router.replace("/status");
+        } catch (err) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          const code = err instanceof Error ? err.message : "request_failed";
+          Alert.alert("Buchung fehlgeschlagen", accessCodeBookingErrorMessage(code));
+        }
+      })();
     });
   };
 
@@ -319,6 +360,7 @@ export default function RideScreen() {
                       return;
                     }
                     if (opt.id !== "voucher") setIsExempted(false);
+                    if (opt.id !== "access_code") setAccessCodeInput("");
                     setPaymentMethod(opt.id);
                     Haptics.selectionAsync();
                   }}
@@ -331,6 +373,8 @@ export default function RideScreen() {
                     <Text style={[styles.paypalText, { color: "#1565C0" }]}>P</Text>
                   ) : opt.isVoucher ? (
                     <MaterialCommunityIcons name="ticket-percent-outline" size={16} color={colors.foreground} />
+                  ) : opt.isAccessCode ? (
+                    <MaterialCommunityIcons name="shield-check-outline" size={16} color="#15803D" />
                   ) : (
                     <Feather name="credit-card" size={14} color={colors.foreground} />
                   )}
@@ -340,6 +384,35 @@ export default function RideScreen() {
             })}
           </View>
         </View>
+
+        {paymentMethod === "access_code" ? (
+          <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#86EFAC", backgroundColor: "#F0FDF4", padding: 16, gap: 10 }}>
+            <Text style={[styles.cardLabel, { color: "#15803D" }]}>CODE EINGEBEN</Text>
+            <Text style={{ fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#166534", lineHeight: rf(19) }}>
+              Den Code erhalten Sie z. B. von Hotel, Firma oder Krankenhaus. Er wird bei der Buchung geprüft und mit dieser Fahrt verknüpft.
+            </Text>
+            <TextInput
+              value={accessCodeInput}
+              onChangeText={setAccessCodeInput}
+              placeholder="Freigabe- oder Gutscheincode"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              autoComplete="off"
+              style={{
+                borderWidth: 1.5,
+                borderColor: "#86EFAC",
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                fontSize: rf(16),
+                fontFamily: "Inter_600SemiBold",
+                color: colors.foreground,
+                backgroundColor: colors.card,
+              }}
+            />
+          </View>
+        ) : null}
 
         {paymentMethod === "voucher" ? (
           <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#93C5FD", backgroundColor: "#EFF6FF", padding: 16, gap: 10 }}>
@@ -396,6 +469,13 @@ export default function RideScreen() {
               <Text style={[styles.bottomLabel, { color: "#2563EB" }]}>Eigenanteil</Text>
               <Text style={[styles.bottomPrice, { color: "#2563EB" }]}>
                 {fareBreakdown ? formatEuro(calculateCopayment(fareBreakdown.total, isExempted)) : "–"}
+              </Text>
+            </View>
+          ) : paymentMethod === "access_code" ? (
+            <View style={[styles.priceBox, { borderColor: "#86EFAC", backgroundColor: "#F0FDF4" }]}>
+              <Text style={[styles.bottomLabel, { color: "#15803D" }]}>Abrechnung</Text>
+              <Text style={[styles.bottomPrice, { fontSize: rf(14), color: "#166534" }]}>
+                über Code
               </Text>
             </View>
           ) : fareBreakdown?.fareKind === "onroda_fix" ? (

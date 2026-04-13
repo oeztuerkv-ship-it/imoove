@@ -275,6 +275,18 @@ export default function WalletScreen() {
               onPress={() => Alert.alert("Kreditkarte", "Kartenzahlung via Stripe folgt in Kürze.")}
             />
             <ListRow
+              icon={<MaterialCommunityIcons name="shield-check-outline" size={17} color="#15803D" />}
+              iconBg="#F0FDF4"
+              label="Gutschein / Freigabe-Code"
+              sublabel="Hotel, Firma, Krankenhaus — bei der Buchung eingeben"
+              onPress={() =>
+                Alert.alert(
+                  "Gutschein / Freigabe-Code",
+                  "Wählen Sie bei der Auftragsbestätigung die Zahlungsart „Gutschein / Code“ und tragen Sie den Code ein. Die Abrechnung erfolgt über den Auftraggeber.",
+                )
+              }
+            />
+            <ListRow
               icon={<MaterialCommunityIcons name="ticket-percent-outline" size={17} color="#2563EB" />}
               iconBg="#EFF6FF"
               label="Transportschein"
