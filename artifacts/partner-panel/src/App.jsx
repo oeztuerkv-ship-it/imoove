@@ -12,8 +12,11 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.mustChangePassword && active !== "settings") {
-      queueMicrotask(() => setActive("settings"));
+    /** Pflicht-Passwortwechsel: immer Einstellungen — nicht mit „nur erlaubte Module“ verdrängen (sonst Ping-Pong, wenn z. B. `company_profile` nicht in `panel_modules` ist). */
+    if (user.mustChangePassword) {
+      if (active !== "settings") {
+        queueMicrotask(() => setActive("settings"));
+      }
       return;
     }
     const allowed = new Set(navItems.map((i) => i.key));
