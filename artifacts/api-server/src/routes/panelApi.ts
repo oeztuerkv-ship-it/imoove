@@ -1311,6 +1311,7 @@ router.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =
       codeType: typeof body.codeType === "string" ? body.codeType : "",
       companyId: ctx.claims.companyId,
       label: typeof body.label === "string" ? body.label : undefined,
+      internalNote: typeof body.internalNote === "string" ? body.internalNote : undefined,
       maxUses: typeof body.maxUses === "number" ? body.maxUses : undefined,
       validFrom: typeof body.validFrom === "string" ? body.validFrom : undefined,
       validUntil: typeof body.validUntil === "string" ? body.validUntil : undefined,

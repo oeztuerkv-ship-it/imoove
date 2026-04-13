@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
+import {
+  estimateSystemFare,
+  fetchDistanceMatrixByAddress,
+  toIsoFromDatetimeLocal,
+} from "../lib/smartBooking.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -12,6 +17,7 @@ export default function RideCreatePage() {
   const showAccessCode = hasPanelModule(user?.panelModules, "access_codes");
   const canCreate = hasPerm(user?.permissions, "rides.create");
   const [creating, setCreating] = useState(false);
+  const [routing, setRouting] = useState(false);
   const [createMsg, setCreateMsg] = useState("");
 
   const [form, setForm] = useState({
@@ -33,6 +39,39 @@ export default function RideCreatePage() {
     billingReference: "",
     accessCode: "",
   });
+  const hasRouteInputs = useMemo(
+    () => form.fromFull.trim().length > 0 && form.toFull.trim().length > 0,
+    [form.fromFull, form.toFull],
+  );
+
+  useEffect(() => {
+    if (!form.accessCode.trim()) return;
+    setForm((f) => (f.payerKind === "company" ? f : { ...f, payerKind: "company" }));
+  }, [form.accessCode]);
+
+  async function autoFillRoute() {
+    if (!hasRouteInputs) return;
+    setRouting(true);
+    setCreateMsg("");
+    try {
+      const route = await fetchDistanceMatrixByAddress(form.fromFull, form.toFull);
+      setForm((f) => ({
+        ...f,
+        distanceKm: String(route.distanceKm),
+        durationMinutes: String(route.durationMinutes),
+        estimatedFare: String(route.estimatedFare),
+      }));
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "route_error";
+      setCreateMsg(
+        code === "missing_google_maps_key"
+          ? "Google Maps API-Key fehlt (VITE_GOOGLE_MAPS_API_KEY)."
+          : "Route konnte nicht automatisch berechnet werden.",
+      );
+    } finally {
+      setRouting(false);
+    }
+  }
 
   async function onCreate(e) {
     e.preventDefault();
@@ -68,7 +107,7 @@ export default function RideCreatePage() {
         vehicle: form.vehicle.trim() || "standard",
         rideKind: form.rideKind,
         payerKind: form.payerKind,
-        ...(form.scheduledAt.trim() ? { scheduledAt: form.scheduledAt.trim() } : {}),
+        ...(form.scheduledAt.trim() ? { scheduledAt: toIsoFromDatetimeLocal(form.scheduledAt) } : {}),
         ...(form.passengerId.trim() ? { passengerId: form.passengerId.trim() } : {}),
         ...(form.voucherCode.trim() ? { voucherCode: form.voucherCode.trim() } : {}),
         ...(form.billingReference.trim() ? { billingReference: form.billingReference.trim() } : {}),
@@ -106,7 +145,9 @@ export default function RideCreatePage() {
                             ? "Zugangscode bereits vollständig eingelöst."
                             : code === "access_code_wrong_company"
                               ? "Zugangscode gehört nicht zu Ihrem Unternehmen."
-                              : "Fahrt konnte nicht angelegt werden.",
+                              : code === "access_code_in_use"
+                                ? "Zugangscode ist bereits für eine laufende Buchung reserviert — bitte warten oder anderen Code nutzen."
+                                : "Fahrt konnte nicht angelegt werden.",
         );
         return;
       }
@@ -172,6 +213,25 @@ export default function RideCreatePage() {
                   <option value="company">Firmenfahrt</option>
                 </select>
               </label>
+              <div className="panel-rides-form__field panel-rides-form__field--2">
+                <span>Profile</span>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="panel-btn-secondary"
+                    onClick={() => setForm((f) => ({ ...f, rideKind: "medical", vehicle: "wheelchair" }))}
+                  >
+                    Patienten-Profil
+                  </button>
+                  <button
+                    type="button"
+                    className="panel-btn-secondary"
+                    onClick={() => setForm((f) => ({ ...f, rideKind: "standard", vehicle: "standard" }))}
+                  >
+                    Standard-Profil
+                  </button>
+                </div>
+              </div>
               <label className="panel-rides-form__field">
                 <span>Zahler / Abrechnung</span>
                 <select
@@ -207,7 +267,13 @@ export default function RideCreatePage() {
                   <span>Freigabe-Code / Kostenübernahme (optional)</span>
                   <input
                     value={form.accessCode}
-                    onChange={(ev) => setForm((f) => ({ ...f, accessCode: ev.target.value }))}
+                  onChange={(ev) =>
+                    setForm((f) => ({
+                      ...f,
+                      accessCode: ev.target.value,
+                      payerKind: ev.target.value.trim() ? "company" : f.payerKind,
+                    }))
+                  }
                     placeholder="Vom Auftraggeber mitgeteilter Code"
                     autoComplete="off"
                   />
@@ -227,6 +293,7 @@ export default function RideCreatePage() {
                   value={form.fromFull}
                   onChange={(ev) => setForm((f) => ({ ...f, fromFull: ev.target.value }))}
                   placeholder="Straße, PLZ Ort"
+                  onBlur={() => void autoFillRoute()}
                 />
               </label>
               <label className="panel-rides-form__field">
@@ -235,7 +302,11 @@ export default function RideCreatePage() {
               </label>
               <label className="panel-rides-form__field">
                 <span>Ziel (voll)</span>
-                <input value={form.toFull} onChange={(ev) => setForm((f) => ({ ...f, toFull: ev.target.value }))} />
+                <input
+                  value={form.toFull}
+                  onChange={(ev) => setForm((f) => ({ ...f, toFull: ev.target.value }))}
+                  onBlur={() => void autoFillRoute()}
+                />
               </label>
               <label className="panel-rides-form__field">
                 <span>Entfernung (km)</span>
@@ -243,6 +314,7 @@ export default function RideCreatePage() {
                   inputMode="decimal"
                   value={form.distanceKm}
                   onChange={(ev) => setForm((f) => ({ ...f, distanceKm: ev.target.value }))}
+                  readOnly
                 />
               </label>
               <label className="panel-rides-form__field">
@@ -251,6 +323,7 @@ export default function RideCreatePage() {
                   inputMode="numeric"
                   value={form.durationMinutes}
                   onChange={(ev) => setForm((f) => ({ ...f, durationMinutes: ev.target.value }))}
+                  readOnly
                 />
               </label>
               <label className="panel-rides-form__field">
@@ -259,6 +332,7 @@ export default function RideCreatePage() {
                   inputMode="decimal"
                   value={form.estimatedFare}
                   onChange={(ev) => setForm((f) => ({ ...f, estimatedFare: ev.target.value }))}
+                  readOnly
                 />
               </label>
               <label className="panel-rides-form__field">
@@ -271,18 +345,22 @@ export default function RideCreatePage() {
               </label>
               <label className="panel-rides-form__field">
                 <span>Fahrzeug</span>
-                <input
+                <select
                   value={form.vehicle}
                   onChange={(ev) => setForm((f) => ({ ...f, vehicle: ev.target.value }))}
-                  placeholder="standard, van, …"
-                />
+                >
+                  <option value="standard">Standard</option>
+                  <option value="xl">XL / Van</option>
+                  <option value="wheelchair">Rollstuhl</option>
+                  <option value="onroda">Onroda Fixpreis</option>
+                </select>
               </label>
               <label className="panel-rides-form__field">
-                <span>Geplant (optional, ISO)</span>
+                <span>Geplant (optional)</span>
                 <input
+                  type="datetime-local"
                   value={form.scheduledAt}
                   onChange={(ev) => setForm((f) => ({ ...f, scheduledAt: ev.target.value }))}
-                  placeholder="2026-04-15T14:00:00.000Z"
                 />
               </label>
               <label className="panel-rides-form__field">
@@ -296,6 +374,30 @@ export default function RideCreatePage() {
             {createMsg ? (
               <p className={createMsg.startsWith("Fahrt wurde") ? "panel-page__ok" : "panel-page__warn"}>{createMsg}</p>
             ) : null}
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="panel-btn-secondary"
+                onClick={() => void autoFillRoute()}
+                disabled={routing || !hasRouteInputs}
+              >
+                {routing ? "Berechne Route …" : "Auto-Kalkulation (KM/Dauer/Preis)"}
+              </button>
+              {form.distanceKm && !form.estimatedFare ? (
+                <button
+                  type="button"
+                  className="panel-btn-secondary"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      estimatedFare: String(estimateSystemFare(Number(String(f.distanceKm).replace(",", ".")))),
+                    }))
+                  }
+                >
+                  Systempreis aus KM setzen
+                </button>
+              ) : null}
+            </div>
             <button type="submit" className="panel-btn-primary" disabled={creating}>
               {creating ? "Speichern …" : "Fahrt speichern"}
             </button>

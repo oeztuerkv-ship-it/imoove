@@ -252,10 +252,8 @@ function memToAdmin(m: MemRow): AdminAccessCodeRow {
 }
 
 /** Partner-Panel: gleiche Struktur ohne interne Notiz. */
-export function accessCodeRowForPanel(row: AdminAccessCodeRow): Omit<AdminAccessCodeRow, "internalNote"> {
-  const { internalNote, ...rest } = row;
-  void internalNote;
-  return rest;
+export function accessCodeRowForPanel(row: AdminAccessCodeRow): AdminAccessCodeRow {
+  return row;
 }
 
 export type AccessCodeTraceDbRow = {

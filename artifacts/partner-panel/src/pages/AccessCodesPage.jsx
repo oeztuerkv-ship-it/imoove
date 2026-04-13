@@ -20,6 +20,17 @@ function typeLabel(t) {
 
 /** Lesbarer Status für Liste (Kostenübernahme ↔ Fahrten über access_code_id). */
 function usageStatus(row) {
+  if (row.publicStatusLabel && row.publicStatus) {
+    const tone =
+      row.publicStatus === "reserved"
+        ? "pending"
+        : row.publicStatus === "redeemed" || row.publicStatus === "expired"
+          ? "warn"
+          : row.publicStatus === "cancelled"
+            ? "muted"
+            : "ok";
+    return { label: row.publicStatusLabel, tone };
+  }
   const now = Date.now();
   if (!row.isActive) return { label: "Deaktiviert", tone: "muted" };
   if (row.validFrom) {
@@ -43,6 +54,21 @@ function fmtShort(iso) {
   return d.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
 }
 
+function normalizeIsoDateInput(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const de = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+  if (de) {
+    const day = de[1].padStart(2, "0");
+    const month = de[2].padStart(2, "0");
+    const yy = de[3];
+    const year = yy.length === 2 ? `20${yy}` : yy;
+    return `${year}-${month}-${day}`;
+  }
+  return s;
+}
+
 export default function AccessCodesPage() {
   const { token, user } = usePanelAuth();
   const canManage = hasPerm(user?.permissions, "access_codes.manage");
@@ -57,6 +83,7 @@ export default function AccessCodesPage() {
     code: "",
     codeType: "general",
     label: "",
+    internalNote: "",
     maxUses: "",
     validFrom: "",
     validUntil: "",
@@ -118,9 +145,10 @@ export default function AccessCodesPage() {
         codeType: form.codeType,
         ...(codeMode === "manual" ? { code: form.code.trim() } : {}),
         ...(form.label.trim() ? { label: form.label.trim() } : {}),
+        ...(form.internalNote.trim() ? { internalNote: form.internalNote.trim() } : {}),
         ...(maxUses !== undefined ? { maxUses } : {}),
-        ...(form.validFrom.trim() ? { validFrom: form.validFrom.trim() } : {}),
-        ...(form.validUntil.trim() ? { validUntil: form.validUntil.trim() } : {}),
+        ...(form.validFrom.trim() ? { validFrom: normalizeIsoDateInput(form.validFrom) } : {}),
+        ...(form.validUntil.trim() ? { validUntil: normalizeIsoDateInput(form.validUntil) } : {}),
       };
       const res = await fetch(`${API_BASE}/panel/v1/access-codes`, {
         method: "POST",
@@ -136,6 +164,8 @@ export default function AccessCodesPage() {
         else if (data?.error === "code_required") setFormMsg("Code fehlt.");
         else if (data?.error === "code_type_invalid") setFormMsg("Ungültiger Typ.");
         else if (data?.error === "code_generate_failed") setFormMsg("Generierung fehlgeschlagen — bitte erneut versuchen.");
+        else if (data?.error === "valid_from_invalid") setFormMsg("Gültig ab ist ungültig (ISO: YYYY-MM-DD).");
+        else if (data?.error === "valid_until_invalid") setFormMsg("Gültig bis ist ungültig (ISO: YYYY-MM-DD).");
         else setFormMsg("Anlegen fehlgeschlagen.");
         return;
       }
@@ -143,6 +173,7 @@ export default function AccessCodesPage() {
         code: "",
         codeType: "general",
         label: "",
+        internalNote: "",
         maxUses: "",
         validFrom: "",
         validUntil: "",
@@ -285,6 +316,14 @@ export default function AccessCodesPage() {
                 />
               </label>
               <label className="panel-rides-form__field">
+                <span>Notiz (intern, optional)</span>
+                <input
+                  value={form.internalNote}
+                  onChange={(ev) => setForm((f) => ({ ...f, internalNote: ev.target.value }))}
+                  placeholder="Nur intern sichtbar (z. B. Ansprechpartner)"
+                />
+              </label>
+              <label className="panel-rides-form__field">
                 <span>Max. Nutzungen</span>
                 <input
                   value={form.maxUses}
@@ -295,6 +334,7 @@ export default function AccessCodesPage() {
               <label className="panel-rides-form__field">
                 <span>Gültig ab (optional, ISO)</span>
                 <input
+                  type="date"
                   value={form.validFrom}
                   onChange={(ev) => setForm((f) => ({ ...f, validFrom: ev.target.value }))}
                 />
@@ -302,6 +342,7 @@ export default function AccessCodesPage() {
               <label className="panel-rides-form__field">
                 <span>Gültig bis (optional, ISO)</span>
                 <input
+                  type="date"
                   value={form.validUntil}
                   onChange={(ev) => setForm((f) => ({ ...f, validUntil: ev.target.value }))}
                 />
@@ -337,6 +378,7 @@ export default function AccessCodesPage() {
                   <th>Code (intern)</th>
                   <th>Typ</th>
                   <th>Anzeige</th>
+                  <th>Notiz</th>
                   <th>Nutzungen</th>
                   <th>Zeitraum</th>
                   <th>Status</th>
@@ -353,13 +395,14 @@ export default function AccessCodesPage() {
                       </td>
                       <td>{typeLabel(row.codeType)}</td>
                       <td>{row.label || "—"}</td>
+                      <td className="panel-table__muted">{row.internalNote || "—"}</td>
                       <td className="panel-table__muted">
                         {row.maxUses != null ? `${row.usesCount} / ${row.maxUses}` : `${row.usesCount} / ∞`}
                       </td>
                       <td className="panel-table__muted">
                         {fmtShort(row.validFrom)} — {fmtShort(row.validUntil)}
                       </td>
-                      <td>
+                      <td title={row.reservedRideId ? `Gebunden an Fahrt ${row.reservedRideId}` : ""}>
                         <span
                           className={
                             st.tone === "ok"

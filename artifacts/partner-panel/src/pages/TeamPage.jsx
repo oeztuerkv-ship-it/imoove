@@ -419,15 +419,13 @@ export default function TeamPage() {
                               Sperren
                             </button>
                           ) : (
-                            <>
-                              <button type="button" className="panel-btn-text" onClick={() => void reactivate(u.id)}>
-                                Reaktivieren
-                              </button>
-                              <button type="button" className="panel-btn-text" onClick={() => void removePermanently(u.id)}>
-                                Entfernen
-                              </button>
-                            </>
+                            <button type="button" className="panel-btn-text" onClick={() => void reactivate(u.id)}>
+                              Reaktivieren
+                            </button>
                           )}
+                          <button type="button" className="panel-btn-text" onClick={() => void removePermanently(u.id)}>
+                            Löschen
+                          </button>
                         </>
                       ) : null}
                       {resetPw && u.isActive && u.id !== user?.id ? (

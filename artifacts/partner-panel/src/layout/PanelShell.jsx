@@ -10,6 +10,7 @@ import MedicalRoundTripPage from "../pages/MedicalRoundTripPage.jsx";
 import MedicalSeriesPage from "../pages/MedicalSeriesPage.jsx";
 import BillingPage from "../pages/BillingPage.jsx";
 import CompanyRidesPage from "../pages/CompanyRidesPage.jsx";
+import SettingsPage from "../pages/SettingsPage.jsx";
 
 const PAGES = {
   overview: {
@@ -63,6 +64,11 @@ const PAGES = {
     title: "Meine Abrechnung",
     subtitle: "Monatsübersicht, Filter und CSV-Export",
     component: <BillingPage />,
+  },
+  settings: {
+    title: "Einstellungen",
+    subtitle: "Persönliche Sicherheit und Konto",
+    component: <SettingsPage />,
   },
 };
 
