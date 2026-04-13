@@ -12,6 +12,13 @@ import PanelUsersPage from "./pages/PanelUsersPage.jsx";
 import AccessCodesPage from "./pages/AccessCodesPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
+import AdminPasswordResetPage from "./pages/AdminPasswordResetPage.jsx";
+
+function isAdminPasswordResetPath() {
+  if (typeof window === "undefined") return false;
+  const normalized = window.location.pathname.replace(/\/+$/, "") || "/";
+  return normalized.endsWith("/password-reset");
+}
 
 const PAGE_META = {
   dashboard: {
@@ -54,10 +61,6 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null);
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [forgotIdentity, setForgotIdentity] = useState("");
-  const [forgotToken, setForgotToken] = useState("");
-  const [forgotNewPassword, setForgotNewPassword] = useState("");
-  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
-  const [forgotStep, setForgotStep] = useState("request");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMessage, setForgotMessage] = useState("");
   const [authError, setAuthError] = useState("");
@@ -141,47 +144,8 @@ export default function App() {
         return;
       }
       setForgotMessage(data?.message || "Wenn ein Konto existiert, wurde ein Reset gestartet.");
-      setForgotStep("confirm");
     } catch {
       setForgotMessage("Reset-Anfrage konnte nicht verarbeitet werden.");
-    } finally {
-      setForgotBusy(false);
-    }
-  }
-
-  async function onForgotConfirm(e) {
-    e.preventDefault();
-    if (forgotNewPassword.length < 10) {
-      setForgotMessage("Neues Passwort muss mindestens 10 Zeichen haben.");
-      return;
-    }
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotMessage("Passwort und Bestätigung stimmen nicht überein.");
-      return;
-    }
-    setForgotBusy(true);
-    setForgotMessage("");
-    try {
-      const res = await fetch(`${API_BASE}/admin/auth/password-reset/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: forgotToken.trim(),
-          newPassword: forgotNewPassword,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        setForgotMessage("Reset-Token ist ungültig oder abgelaufen.");
-        return;
-      }
-      setForgotMessage("Passwort wurde erfolgreich zurückgesetzt. Bitte jetzt einloggen.");
-      setForgotStep("request");
-      setForgotToken("");
-      setForgotNewPassword("");
-      setForgotConfirmPassword("");
-    } catch {
-      setForgotMessage("Reset-Token ist ungültig oder abgelaufen.");
     } finally {
       setForgotBusy(false);
     }
@@ -253,6 +217,10 @@ export default function App() {
   }
 
   if (!authUser) {
+    if (isAdminPasswordResetPath()) {
+      return <AdminPasswordResetPage />;
+    }
+    const resetPageHref = `${import.meta.env.BASE_URL}password-reset`.replace(/([^:]\/)\/+/g, "$1");
     return (
       <div className="admin-page" style={{ maxWidth: 460, margin: "40px auto" }}>
         <div className="admin-panel-card">
@@ -282,54 +250,26 @@ export default function App() {
           </form>
           <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--onroda-border-subtle)" }}>
             <div className="admin-table-sub" style={{ marginBottom: 10 }}>Passwort vergessen</div>
-            {forgotStep === "request" ? (
-              <form onSubmit={onForgotRequest} className="admin-form-vertical">
-                <input
-                  className="admin-input"
-                  placeholder="Benutzername oder E-Mail"
-                  value={forgotIdentity}
-                  onChange={(e) => setForgotIdentity(e.target.value)}
-                  required
-                />
-                <button type="submit" className="admin-btn-refresh" disabled={forgotBusy}>
-                  {forgotBusy ? "Sende …" : "Reset anfordern"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={onForgotConfirm} className="admin-form-vertical">
-                <input
-                  className="admin-input"
-                  placeholder="Reset-Token"
-                  value={forgotToken}
-                  onChange={(e) => setForgotToken(e.target.value)}
-                  required
-                />
-                <input
-                  className="admin-input"
-                  type="password"
-                  placeholder="Neues Passwort (mind. 10 Zeichen)"
-                  value={forgotNewPassword}
-                  onChange={(e) => setForgotNewPassword(e.target.value)}
-                  required
-                />
-                <input
-                  className="admin-input"
-                  type="password"
-                  placeholder="Neues Passwort bestätigen"
-                  value={forgotConfirmPassword}
-                  onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                  required
-                />
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button type="submit" className="admin-btn-refresh" disabled={forgotBusy}>
-                    {forgotBusy ? "Setze …" : "Passwort zurücksetzen"}
-                  </button>
-                  <button type="button" className="admin-page-btn admin-page-btn--compact" onClick={() => setForgotStep("request")} disabled={forgotBusy}>
-                    Zurück
-                  </button>
-                </div>
-              </form>
-            )}
+            <p className="admin-table-sub" style={{ marginBottom: 10, lineHeight: 1.45 }}>
+              Schritt 1: Zugang anfragen. Schritt 2: Mit dem Link aus der E-Mail ein neues Passwort setzen —{" "}
+              <a href={resetPageHref} style={{ color: "var(--onroda-accent-strong, #0ea5e9)" }}>
+                Passwort zurücksetzen
+              </a>
+              .
+            </p>
+            <form onSubmit={onForgotRequest} className="admin-form-vertical">
+              <input
+                className="admin-input"
+                placeholder="Benutzername oder E-Mail"
+                value={forgotIdentity}
+                onChange={(e) => setForgotIdentity(e.target.value)}
+                autoComplete="username"
+                required
+              />
+              <button type="submit" className="admin-btn-refresh" disabled={forgotBusy}>
+                {forgotBusy ? "Sende …" : "Reset anfordern"}
+              </button>
+            </form>
             {forgotMessage ? <div className="admin-info-banner" style={{ marginTop: 10 }}>{forgotMessage}</div> : null}
           </div>
         </div>
