@@ -11,6 +11,7 @@ import CompaniesPage from "./pages/CompaniesPage";
 import PanelUsersPage from "./pages/PanelUsersPage.jsx";
 import AccessCodesPage from "./pages/AccessCodesPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
+import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 
 const PAGE_META = {
   dashboard: {
@@ -41,6 +42,10 @@ const PAGE_META = {
     title: "Einstellungen",
     subtitle: "Konto und Sicherheit der Plattform-Konsole",
   },
+  "admin-users": {
+    title: "Admin-Zugänge",
+    subtitle: "Plattform-Administratoren verwalten (DB-basiert)",
+  },
 };
 
 export default function App() {
@@ -56,7 +61,7 @@ export default function App() {
   const current = PAGE_META[active] || PAGE_META.dashboard;
 
   useEffect(() => {
-    if (authUser?.role === "service" && active === "fares") {
+    if (authUser?.role === "service" && (active === "fares" || active === "admin-users")) {
       setActive("dashboard");
     }
   }, [authUser?.role, active]);
@@ -94,7 +99,13 @@ export default function App() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok || typeof data?.token !== "string") {
-        setAuthError(data?.error === "invalid_credentials" ? "Benutzername oder Passwort falsch." : "Login fehlgeschlagen.");
+        if (data?.error === "invalid_credentials") {
+          setAuthError("Benutzername oder Passwort falsch.");
+        } else if (data?.error === "auth_bootstrap_persist_failed") {
+          setAuthError("Bootstrap-Login konnte nicht in die DB übernommen werden. Bitte Server-Logs prüfen.");
+        } else {
+          setAuthError("Login fehlgeschlagen.");
+        }
         return;
       }
       setAdminSessionToken(data.token);
@@ -150,6 +161,8 @@ export default function App() {
         return <AccessCodesPage />;
       case "settings":
         return <SettingsPage />;
+      case "admin-users":
+        return <AdminUsersPage />;
       default:
         return (
           <DashboardPage

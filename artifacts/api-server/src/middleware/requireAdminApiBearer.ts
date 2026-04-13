@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { jwtVerify, SignJWT } from "jose";
 import { findActiveAdminAuthUserByUsername, upsertAdminAuthUser, type AdminRole } from "../db/adminAuthData";
+import { isPostgresConfigured } from "../db/client";
 import { hashPassword, verifyPassword } from "../lib/password";
 
 type AdminAuthPrincipal = {
@@ -66,20 +67,26 @@ async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal 
 export async function authenticateAdminCredentials(
   username: string,
   password: string,
-): Promise<{ ok: true; role: AdminRole } | { ok: false }> {
+): Promise<
+  | { ok: true; role: AdminRole; source: "db" | "env_bootstrap" }
+  | { ok: false; error: "invalid_credentials" | "bootstrap_persist_failed" }
+> {
   const u = username.trim();
   const p = password;
-  if (!u || !p) return { ok: false };
+  if (!u || !p) return { ok: false, error: "invalid_credentials" };
   const dbUser = await findActiveAdminAuthUserByUsername(u);
   if (dbUser) {
     const ok = await verifyPassword(p, dbUser.passwordHash);
-    if (!ok) return { ok: false };
-    return { ok: true, role: dbUser.role };
+    if (!ok) return { ok: false, error: "invalid_credentials" };
+    return { ok: true, role: dbUser.role, source: "db" };
   }
   const users = readConfiguredUsers();
   const hit = users.find((x) => x.username === u && x.password === p);
-  if (!hit) return { ok: false };
-  // First successful env-login seeds persistent DB auth (Option B) for future password changes.
+  if (!hit) return { ok: false, error: "invalid_credentials" };
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "bootstrap_persist_failed" };
+  }
+  // First successful env-login must seed persistent DB auth for future logins/password changes.
   try {
     const hash = await hashPassword(p);
     await upsertAdminAuthUser({
@@ -88,9 +95,9 @@ export async function authenticateAdminCredentials(
       role: hit.role,
     });
   } catch {
-    /* ignore seeding failure, login can still proceed via env fallback */
+    return { ok: false, error: "bootstrap_persist_failed" };
   }
-  return { ok: true, role: hit.role };
+  return { ok: true, role: hit.role, source: "env_bootstrap" };
 }
 
 /**

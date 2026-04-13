@@ -30,7 +30,12 @@ import {
   panelUsernameTaken,
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
-import { updateAdminAuthPasswordByUsername } from "../db/adminAuthData";
+import {
+  createAdminAuthUser,
+  listAdminAuthUsers,
+  patchAdminAuthUserById,
+  updateAdminAuthPasswordByUsername,
+} from "../db/adminAuthData";
 import { isPostgresConfigured } from "../db/client";
 import {
   adminPreviousDayBounds,
@@ -96,6 +101,10 @@ function parseAdminRideListQuery(req: Request): { ok: true; query: AdminRideList
   return { ok: true, query };
 }
 
+function isAdminPrincipal(req: Request): boolean {
+  return req.adminAuth?.role === "admin";
+}
+
 const router: IRouter = Router();
 
 router.post("/admin/auth/login", async (req, res) => {
@@ -103,11 +112,15 @@ router.post("/admin/auth/login", async (req, res) => {
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok = await authenticateAdminCredentials(username, password);
   if (!ok.ok) {
+    if (ok.error === "bootstrap_persist_failed") {
+      res.status(503).json({ error: "auth_bootstrap_persist_failed" });
+      return;
+    }
     res.status(401).json({ error: "invalid_credentials" });
     return;
   }
   const token = await signAdminSessionJwt({ username, role: ok.role });
-  res.json({ ok: true, token, user: { username, role: ok.role } });
+  res.json({ ok: true, token, user: { username, role: ok.role }, authSource: ok.source });
 });
 
 router.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
@@ -147,6 +160,101 @@ router.post("/admin/auth/change-password", requireAdminApiBearer, async (req, re
     return;
   }
   res.json({ ok: true });
+});
+
+router.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const users = await listAdminAuthUsers();
+    res.json({ ok: true, users });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : "";
+    const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : true;
+    const role = roleRaw === "service" ? "service" : roleRaw === "admin" ? "admin" : null;
+    if (!username || password.length < 10 || !role) {
+      res.status(400).json({ error: "user_payload_invalid", hint: "username, password(min10), role(admin|service)" });
+      return;
+    }
+    const hash = await hashPassword(password);
+    const created = await createAdminAuthUser({
+      username,
+      passwordHash: hash,
+      role,
+      isActive,
+    });
+    if (!created) {
+      res.status(409).json({ error: "username_taken" });
+      return;
+    }
+    res.status(201).json({ ok: true, user: created });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : undefined;
+    const role = roleRaw === "admin" || roleRaw === "service" ? roleRaw : undefined;
+    const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : undefined;
+    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+    if (roleRaw && !role) {
+      res.status(400).json({ error: "invalid_role" });
+      return;
+    }
+    if (newPassword && newPassword.length < 10) {
+      res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+      return;
+    }
+    if (role === undefined && isActive === undefined && !newPassword) {
+      res.status(400).json({ error: "no_changes" });
+      return;
+    }
+    const user = await patchAdminAuthUserById({
+      id: req.params.id,
+      role,
+      isActive,
+      ...(newPassword ? { passwordHash: await hashPassword(newPassword) } : {}),
+    });
+    if (!user) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, user });
+  } catch (e) {
+    next(e);
+  }
 });
 
 /**

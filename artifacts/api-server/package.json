@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:access-code": "node ./scripts/test-access-code-booking.mjs",
+    "test:admin-auth": "node ./scripts/test-admin-auth-flow.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -8,11 +8,12 @@ const items = [
   { key: "panel-users", label: "Partner-Zugänge", icon: "people" },
   { key: "access-codes", label: "Zugangscodes", icon: "key" },
   { key: "fares", label: "Tarife & Gebiete", icon: "map" },
+  { key: "admin-users", label: "Admin-Zugänge", icon: "people" },
   { key: "settings", label: "Einstellungen", icon: "pulse" },
 ];
 
 export default function Sidebar({ active, onChange, role = "admin" }) {
-  const visibleItems = items.filter((x) => !(role === "service" && x.key === "fares"));
+  const visibleItems = items.filter((x) => !(role === "service" && (x.key === "fares" || x.key === "admin-users")));
   return (
     <aside className="admin-sidebar">
       <div>
