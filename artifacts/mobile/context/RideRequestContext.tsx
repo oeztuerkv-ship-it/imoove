@@ -266,9 +266,33 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         setPassengerId(newId);
       }
     }).catch(() => {
-      setPassengerId(uuid());
+      const fallback = uuid();
+      AsyncStorage.setItem(PASSENGER_ID_KEY, fallback).catch(() => {});
+      setPassengerId(fallback);
     });
   }, []);
+
+  const ensurePassengerId = useCallback(async (): Promise<string> => {
+    if (passengerId && passengerId.trim().length > 0) return passengerId.trim();
+    try {
+      const stored = await AsyncStorage.getItem(PASSENGER_ID_KEY);
+      if (stored && stored.trim().length > 0) {
+        const resolved = stored.trim();
+        setPassengerId(resolved);
+        return resolved;
+      }
+    } catch {
+      /* ignore */
+    }
+    const created = uuid();
+    try {
+      await AsyncStorage.setItem(PASSENGER_ID_KEY, created);
+    } catch {
+      /* ignore */
+    }
+    setPassengerId(created);
+    return created;
+  }, [passengerId]);
 
   const fetchAll = useCallback(async () => {
     if (!API_BASE) return;
@@ -338,6 +362,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         accessCode?: string | null;
       },
     ): Promise<string> => {
+      const resolvedPassengerId = await ensurePassengerId();
       const rideKind = req.rideKind ?? "standard";
       const payerKind = req.payerKind ?? "passenger";
       const accessTrim = typeof req.accessCode === "string" ? req.accessCode.trim() : "";
@@ -345,6 +370,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       void _unused;
       const payload = {
         ...reqForBody,
+        passengerId:
+          typeof reqForBody.passengerId === "string" && reqForBody.passengerId.trim().length > 0
+            ? reqForBody.passengerId.trim()
+            : resolvedPassengerId,
         rideKind,
         payerKind,
         voucherCode: req.voucherCode ?? undefined,
@@ -357,6 +386,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         void _oc;
         const newReq: RideRequest = {
           ...reqSansCode,
+          passengerId:
+            typeof reqSansCode.passengerId === "string" && reqSansCode.passengerId.trim().length > 0
+              ? reqSansCode.passengerId.trim()
+              : resolvedPassengerId,
           rideKind,
           payerKind,
           voucherCode: req.voucherCode ?? null,
@@ -390,7 +423,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       await fetchAll();
       return id;
     },
-    [fetchAll],
+    [ensurePassengerId, fetchAll],
   );
 
   const acceptRequest = useCallback(
