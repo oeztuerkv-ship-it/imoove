@@ -15,7 +15,12 @@ import {
   isAuthorizationSource,
   normalizeAccessCodeInput,
 } from "../domain/rideAuthorization";
-import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
+import {
+  finalizeAccessCodeRedemptionForRideId,
+  releaseAccessCodeReservationForRideId,
+  reserveAccessCodeInTransaction,
+  reserveAccessCodeMemory,
+} from "./accessCodesData";
 import { getDb } from "./client";
 import { adminCompaniesTable, ridesTable } from "./schema";
 
@@ -275,7 +280,8 @@ export async function insertRide(r: RideRequest, tx?: any): Promise<void> {
 
 /**
  * Buchung mit optionalem Zugangscode: atomare Einlösung (Postgres) bzw. In-Memory.
- * Ohne Code: `passenger_direct`, kein `access_code_id`.
+ * Ohne Code: übernimmt `ride.authorizationSource` (`passenger_direct` | `partner`), kein `access_code_id`.
+ *   `access_code` ohne mitgelieferten gültigen Code wird zu `passenger_direct` normalisiert.
  * Mit Code: digitale Kostenübernahme — `payerKind` wird auf `company` gesetzt, wenn ein `companyId` ermittelbar ist.
  */
 export async function insertRideWithOptionalAccessCode(
@@ -284,9 +290,12 @@ export async function insertRideWithOptionalAccessCode(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const trimmed = typeof accessCodePlain === "string" ? accessCodePlain.trim() : "";
   if (!trimmed) {
+    let auth = ride.authorizationSource;
+    if (auth === "access_code") auth = DEFAULT_AUTHORIZATION_SOURCE;
+    else if (!isAuthorizationSource(auth)) auth = DEFAULT_AUTHORIZATION_SOURCE;
     const r: RideRequest = {
       ...stripEphemeral(ride),
-      authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
+      authorizationSource: auth,
       accessCodeId: null,
       accessCodeNormalizedSnapshot: null,
     };
@@ -300,7 +309,7 @@ export async function insertRideWithOptionalAccessCode(
   const bookingCompanyId = ride.companyId ?? null;
   const db = getDb();
   if (!db) {
-    const red = redeemAccessCodeMemory(trimmed, bookingCompanyId);
+    const red = reserveAccessCodeMemory(trimmed, bookingCompanyId, stripEphemeral(ride).id);
     if (!red.ok) return { ok: false, error: red.error };
     const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
     const r: RideRequest = {
@@ -317,7 +326,7 @@ export async function insertRideWithOptionalAccessCode(
 
   try {
     const out = await db.transaction(async (trx) => {
-      const red = await redeemAccessCodeInTransaction(trx, normalized, bookingCompanyId);
+      const red = await reserveAccessCodeInTransaction(trx, normalized, bookingCompanyId, ride.id);
       if (!red.ok) return { ok: false as const, error: red.error };
       const resolvedCompanyId = ride.companyId ?? red.companyIdOnCode ?? null;
       const r: RideRequest = {
@@ -697,6 +706,18 @@ export function adminPreviousDayBounds(bounds: AdminDayBounds): AdminDayBounds {
   return { start, end };
 }
 
+async function syncAccessCodeLifecycleAfterRideUpdate(prev: RideRequest, next: RideRequest): Promise<void> {
+  if (prev.status === next.status) return;
+  const releaseStatuses = ["cancelled", "rejected"];
+  if (releaseStatuses.includes(next.status)) {
+    await releaseAccessCodeReservationForRideId(next.id);
+    return;
+  }
+  if (next.status === "completed" && prev.status !== "completed") {
+    await finalizeAccessCodeRedemptionForRideId(next.id, { accessCodeId: next.accessCodeId ?? null });
+  }
+}
+
 export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {
   const cur = await findRide(id);
   if (!cur) return null;
@@ -704,9 +725,11 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
   const db = getDb();
   if (!db) {
     memoryRides = memoryRides.map((x) => (x.id === id ? next : x));
+    await syncAccessCodeLifecycleAfterRideUpdate(cur, next);
     return next;
   }
   await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  await syncAccessCodeLifecycleAfterRideUpdate(cur, next);
   return next;
 }
 
