@@ -24,6 +24,11 @@ const seedCompanies: CompanyRow[] = [
     city: "",
     country: "",
     vat_id: "",
+    company_kind: "taxi",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
     is_active: true,
     is_priority_company: true,
     priority_for_live_rides: true,
@@ -31,7 +36,16 @@ const seedCompanies: CompanyRow[] = [
     priority_price_threshold: 25,
     priority_timeout_seconds: 90,
     release_radius_km: 12,
-    panel_modules: null,
+    panel_modules: [
+      "overview",
+      "rides_list",
+      "rides_create",
+      "company_profile",
+      "team",
+      "access_codes",
+      "billing",
+      "taxi_fleet",
+    ],
   },
   {
     id: "co-demo-2",
@@ -45,6 +59,11 @@ const seedCompanies: CompanyRow[] = [
     city: "",
     country: "",
     vat_id: "",
+    company_kind: "general",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,
@@ -94,6 +113,11 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     city: r.city,
     country: r.country,
     vat_id: r.vat_id,
+    company_kind: r.company_kind ?? "general",
+    tax_id: r.tax_id ?? "",
+    concession_number: r.concession_number ?? "",
+    compliance_gewerbe_storage_key: r.compliance_gewerbe_storage_key ?? null,
+    compliance_insurance_storage_key: r.compliance_insurance_storage_key ?? null,
     is_active: r.is_active,
     is_priority_company: r.is_priority_company,
     priority_for_live_rides: r.priority_for_live_rides,
@@ -406,6 +430,11 @@ export type AdminCompanyUpdateBody = Partial<{
   city: string;
   country: string;
   vat_id: string;
+  company_kind: string;
+  tax_id: string;
+  concession_number: string;
+  compliance_gewerbe_storage_key: string | null;
+  compliance_insurance_storage_key: string | null;
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;
@@ -437,6 +466,11 @@ function companyRowToDbValues(c: CompanyRow) {
     city: c.city,
     country: c.country,
     vat_id: c.vat_id,
+    company_kind: c.company_kind,
+    tax_id: c.tax_id,
+    concession_number: c.concession_number,
+    compliance_gewerbe_storage_key: c.compliance_gewerbe_storage_key,
+    compliance_insurance_storage_key: c.compliance_insurance_storage_key,
     is_active: c.is_active,
     is_priority_company: c.is_priority_company,
     priority_for_live_rides: c.priority_for_live_rides,
@@ -463,6 +497,20 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.city === "string") next.city = body.city.trim();
   if (typeof body.country === "string") next.country = body.country.trim();
   if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
+  if (typeof body.company_kind === "string") {
+    const k = body.company_kind.trim();
+    if (k === "taxi" || k === "general") next.company_kind = k;
+  }
+  if (typeof body.tax_id === "string") next.tax_id = body.tax_id.trim();
+  if (typeof body.concession_number === "string") next.concession_number = body.concession_number.trim();
+  if (body.compliance_gewerbe_storage_key === null) next.compliance_gewerbe_storage_key = null;
+  if (typeof body.compliance_gewerbe_storage_key === "string") {
+    next.compliance_gewerbe_storage_key = body.compliance_gewerbe_storage_key.trim() || null;
+  }
+  if (body.compliance_insurance_storage_key === null) next.compliance_insurance_storage_key = null;
+  if (typeof body.compliance_insurance_storage_key === "string") {
+    next.compliance_insurance_storage_key = body.compliance_insurance_storage_key.trim() || null;
+  }
   if (typeof body.is_active === "boolean") next.is_active = body.is_active;
   if (typeof body.is_priority_company === "boolean") next.is_priority_company = body.is_priority_company;
   if (typeof body.priority_for_live_rides === "boolean") next.priority_for_live_rides = body.priority_for_live_rides;
@@ -498,6 +546,11 @@ export async function insertAdminCompany(
     city: "",
     country: "",
     vat_id: "",
+    company_kind: "general",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,

@@ -15,6 +15,7 @@ export default function OverviewPage() {
   const [pwNew, setPwNew] = useState("");
   const [pwMsg, setPwMsg] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
+  const [fleetDash, setFleetDash] = useState(null);
 
   useEffect(() => {
     if (!token) return;
@@ -41,6 +42,26 @@ export default function OverviewPage() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !hasPanelModule(user?.panelModules, "taxi_fleet")) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/fleet/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled || !res.ok || !data?.ok) return;
+        setFleetDash(data);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.panelModules]);
 
   async function onChangePassword(e) {
     e.preventDefault();
@@ -90,6 +111,28 @@ export default function OverviewPage() {
         </p>
       </div>
       {companyErr ? <p className="panel-page__warn">{companyErr}</p> : null}
+      {fleetDash ? (
+        <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
+          <h3 className="panel-card__title">Flotte — Kurzüberblick</h3>
+          <div className="panel-fleet-dash">
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{fleetDash.driversOnline ?? 0}</span>
+              <span className="panel-fleet-dash__lbl">Fahrer online</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{fleetDash.driversTotal ?? 0}</span>
+              <span className="panel-fleet-dash__lbl">Fahrer gesamt</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{fleetDash.vehiclesActive ?? 0}</span>
+              <span className="panel-fleet-dash__lbl">Aktive Fahrzeuge</span>
+            </div>
+          </div>
+          <p className="panel-page__lead" style={{ marginTop: 10 }}>
+            Details finden Sie unter <strong>Flotte &amp; Fahrer</strong> in der Seitenleiste.
+          </p>
+        </div>
+      ) : null}
       <div className="panel-card panel-card--hint panel-card--wide">
         <h3 className="panel-card__title">Was Sie hier tun können</h3>
         <ul className="panel-hint-list">

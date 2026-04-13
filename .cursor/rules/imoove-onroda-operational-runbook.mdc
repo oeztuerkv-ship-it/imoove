@@ -1,0 +1,38 @@
+---
+description: Merkzettel Admin/Partner/Mobile — Auth, Deploy, typische Startfehler (Invalid hook call, 401)
+alwaysApply: true
+---
+
+# Onroda: Betriebs-Runbook (Admin, Partner, Mobile)
+
+Wenn etwas „nicht startet“ oder 401 zeigt: zuerst diese Checkliste, nicht am falschen Layer debuggen.
+
+## Plattform-Admin (`admin.onroda.de/partners/`)
+
+- **SPA:** `artifacts/admin-panel`, Production-Base **`/partners/`**.
+- **API:** `https://api.onroda.de/api/admin/*` (nicht Marketing-Domain).
+- **Auth:** statischer **Bearer** (kein Panel-JWT).
+- **Build:** `VITE_ADMIN_API_BEARER_TOKEN` muss beim Vite-Build gesetzt sein (z. B. in `scripts/onroda-deploy.env` mit `export`, siehe `scripts/onroda-deploy.example.env`).
+- **API:** `ADMIN_API_BEARER_TOKEN` in der API-`.env`.
+- **Beide Strings zeichengenau identisch.** Nach Token-Wechsel: **Admin-Panel neu bauen** — sonst 401 im Browser, API kann trotzdem laufen.
+- **Health:** `GET /api/health` / `/api/healthz` unabhängig vom Admin-Bearer.
+
+## Partner-Panel (`panel.onroda.de`)
+
+- **API:** `https://api.onroda.de/api/panel/v1/*`.
+- **Auth:** `POST /api/panel-auth/login` → JWT → `Authorization: Bearer <jwt>`.
+- **`401` auf `/api/panel/v1/*` ohne Login/JWT ist erwartet**, kein Backend-Bug.
+
+## Mobile (`artifacts/mobile`)
+
+- **Pfad:** Repo-Ordner **`artifacts/mobile`** (nicht `mobile-app`).
+- **Start:** `pnpm run dev` (Script mit `expo start` + `--clear`), nicht blind `pnpm start` erwarten.
+- **`Invalid hook call` / `useState` of null** oft: **doppeltes React** (pnpm/Monorepo) **oder** `useFonts` aus `@expo-google-fonts/inter`.
+- **Stabiler Font-Weg:** in `app/_layout.tsx` **`Font.loadAsync`** (`expo-font`) für die Inter-/Icon-Maps nutzen — **`useFonts` aus `@expo-google-fonts/inter` nicht** im Root-Layout.
+- **Layout:** **Kein** frühes `return null` für die ganze App wegen Fonts — sonst fehlen kurz `UserProvider` etc. (`useUser` bricht). Splash per `SplashScreen.hideAsync()` nach Font-Laden/Fehler; **Navigation/Provider trotzdem sofort mounten** (siehe Kommentar in `_layout.tsx`).
+- **Metro:** `artifacts/mobile/metro.config.js` — `disableHierarchicalLookup`, `extraNodeModules` für `react`/`react-dom`/optional `scheduler`/`use-sync-external-store` beibehalten bei Hook-Problemen.
+- **Paketdeklaration:** Kern-Runtime (`expo`, `react`, `react-native`, `expo-router`, `expo-font`, RN-Libs, …) in **`artifacts/mobile/package.json` unter `dependencies`**, nicht nur unter `devDependencies`.
+
+## Bekannte nächste Baustelle (Stand Team)
+
+- **Google-Anmeldung Mobile:** ggf. **`JSON parse`**-Fehler im Flow — separat debuggen (Callback-URL, API-Antwort, leerer Body).

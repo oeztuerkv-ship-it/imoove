@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PanelModuleIcon } from "../components/PanelModuleIcons.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
@@ -19,6 +19,9 @@ const COMPANY_DASHBOARD_URL = "https://panel.onroda.de/";
 function emptyCompanyForm() {
   return {
     company_type: "service_provider",
+    company_kind: "general",
+    tax_id: "",
+    concession_number: "",
     customer_category: "hotel",
     patient_data_required: false,
     name: "",
@@ -44,6 +47,9 @@ function emptyCompanyForm() {
 function formFromItem(item) {
   return {
     company_type: "service_provider",
+    company_kind: item.company_kind === "taxi" ? "taxi" : "general",
+    tax_id: item.tax_id ?? "",
+    concession_number: item.concession_number ?? "",
     customer_category: "hotel",
     patient_data_required: false,
     name: item.name ?? "",
@@ -83,6 +89,7 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   const [listFilter, setListFilter] = useState("all");
   const [letterFilter, setLetterFilter] = useState(null);
   const [page, setPage] = useState(1);
+  const [expandedCompanyId, setExpandedCompanyId] = useState(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -174,6 +181,9 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       city: companyForm.city.trim(),
       country: companyForm.country.trim(),
       vat_id: companyForm.vat_id.trim(),
+      company_kind: companyForm.company_kind === "taxi" ? "taxi" : "general",
+      tax_id: companyForm.tax_id.trim(),
+      concession_number: companyForm.concession_number.trim(),
       is_active: companyForm.is_active,
       is_priority_company: companyForm.is_priority_company,
       priority_for_live_rides: companyForm.priority_for_live_rides,
@@ -686,251 +696,302 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
 
-      <div className="admin-entity-list">
+      <div className="admin-companies-table-wrap">
         {paginatedItems.length === 0 ? (
           <div className="admin-info-banner">Keine Unternehmen gefunden.</div>
         ) : (
-          paginatedItems.map((item) => {
-            const isSaving = savingId === item.id;
+          <table className="admin-companies-table">
+            <caption className="admin-companies-table__caption">
+              Mandanten — tabellarische Übersicht; Details für Priorität und Partner-Module ausklappbar.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Unternehmen</th>
+                <th scope="col">Status</th>
+                <th scope="col" className="admin-companies-table__num">
+                  Monat €
+                </th>
+                <th scope="col" className="admin-companies-table__num">
+                  Offen
+                </th>
+                <th scope="col" className="admin-companies-table__num">
+                  Limit
+                </th>
+                <th scope="col">Portal</th>
+                <th scope="col" className="admin-companies-table__actions">
+                  Aktionen
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedItems.map((item) => {
+                const isSaving = savingId === item.id;
+                const open = expandedCompanyId === item.id;
+                const portalLabel =
+                  item.panel_modules == null
+                    ? "Alle"
+                    : `${item.panel_modules.length}/${moduleCatalog.length}`;
 
-            return (
-              <div key={item.id} className="admin-entity-card admin-entity-card--company-modern">
-                <div className="admin-entity-card__top admin-company-top admin-company-top--modern">
-                  <div className="admin-company-head-text">
-                    <div className="admin-company-title">{item.name}</div>
-                    <div className="admin-company-subline">
-                      Kennung <span className="admin-company-subline__id">{item.id}</span>
-                      {item.contact_name ? ` · ${item.contact_name}` : ""} · {item.email || "keine E-Mail"} ·{" "}
-                      {item.phone || "kein Telefon"}
-                      {item.city || item.postal_code
-                        ? ` · ${[item.postal_code, item.city].filter(Boolean).join(" ")}`
-                        : ""}
-                    </div>
-                  </div>
-
-                  <div className="admin-company-badges">
-                    <span className={`admin-pill${item.is_active ? " admin-pill--success" : " admin-pill--muted"}`}>
-                      {item.is_active ? "Aktiv" : "Inaktiv"}
-                    </span>
-                    <span
-                      className={`admin-pill${item.is_priority_company ? " admin-pill--warn" : " admin-pill--muted"}`}
-                    >
-                      {item.is_priority_company ? "Priorität" : "Standard"}
-                    </span>
-                    <button
-                      type="button"
-                      className="admin-btn-outline admin-btn-outline--compact"
-                      onClick={() => openCompanyDashboard(item)}
-                    >
-                      Dashboard öffnen
-                    </button>
-                  </div>
-                </div>
-
-                <div className="admin-company-quick-actions">
-                  <button type="button" className="admin-btn-outline" onClick={() => openEditCompany(item)}>
-                    Stammdaten bearbeiten
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-btn-outline"
-                    disabled={savingId === item.id}
-                    onClick={() => void toggleCompanyActive(item)}
-                  >
-                    {item.is_active ? "Deaktivieren" : "Aktivieren"}
-                  </button>
-                </div>
-
-                <div className="admin-company-kpi-grid-3">
-                  <div className="admin-company-kpi-stat">
-                    <div className="admin-company-kpi-stat__label">Monatsumsatz</div>
-                    <div className="admin-company-kpi-stat__value admin-crisp-numeric">
-                      {loadingKpis[item.id] ? "…" : formatMoneyEUR(kpisByCompany[item.id]?.monthlyRevenue ?? 0)}
-                    </div>
-                  </div>
-                  <div className="admin-company-kpi-stat">
-                    <div className="admin-company-kpi-stat__label">Offene Fahrten</div>
-                    <div className="admin-company-kpi-stat__value admin-crisp-numeric">
-                      {loadingKpis[item.id] ? "…" : Number(kpisByCompany[item.id]?.openRides ?? 0)}
-                    </div>
-                  </div>
-                  <div className="admin-company-kpi-stat">
-                    <div className="admin-company-kpi-stat__label">Verfügbares Gutschein-Limit</div>
-                    <div className="admin-company-kpi-stat__value admin-crisp-numeric">
-                      {loadingKpis[item.id] ? "…" : voucherLimitLabel(kpisByCompany[item.id]?.voucherLimitAvailable)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="admin-company-prio-toggles">
-                  <div className="admin-company-prio-toggle">
-                    <div>
-                      <div className="admin-switch-row__label">Priorität aktiv</div>
-                      <div className="admin-company-toggle-hint">Dieses Unternehmen wird im Matching bevorzugt behandelt.</div>
-                    </div>
-                    <label className="admin-switch">
-                      <input
-                        type="checkbox"
-                        checked={!!item.is_priority_company}
-                        disabled={isSaving}
-                        onChange={(e) =>
-                          updateCompanyPriority(item.id, {
-                            is_priority_company: e.target.checked,
-                          })
-                        }
-                      />
-                      <span className="admin-switch__slider" aria-hidden />
-                    </label>
-                  </div>
-
-                  <div className="admin-company-prio-toggle">
-                    <div>
-                      <div className="admin-switch-row__label">Sofortfahrten priorisieren</div>
-                      <div className="admin-company-toggle-hint">Sofortfahrten werden bevorzugt an Fahrer vermittelt.</div>
-                    </div>
-                    <label className="admin-switch">
-                      <input
-                        type="checkbox"
-                        checked={!!item.priority_for_live_rides}
-                        disabled={isSaving}
-                        onChange={(e) =>
-                          updateCompanyPriority(item.id, {
-                            priority_for_live_rides: e.target.checked,
-                          })
-                        }
-                      />
-                      <span className="admin-switch__slider" aria-hidden />
-                    </label>
-                  </div>
-
-                  <div className="admin-company-prio-toggle">
-                    <div>
-                      <div className="admin-switch-row__label">Reservierungen priorisieren</div>
-                      <div className="admin-company-toggle-hint">Terminfahrten werden in der Vorplanung bevorzugt.</div>
-                    </div>
-                    <label className="admin-switch">
-                      <input
-                        type="checkbox"
-                        checked={!!item.priority_for_reservations}
-                        disabled={isSaving}
-                        onChange={(e) =>
-                          updateCompanyPriority(item.id, {
-                            priority_for_reservations: e.target.checked,
-                          })
-                        }
-                      />
-                      <span className="admin-switch__slider" aria-hidden />
-                    </label>
-                  </div>
-                </div>
-
-                <details className="admin-company-advanced">
-                  <summary className="admin-company-advanced__summary">
-                    Erweiterte Systemeinstellungen
-                  </summary>
-                  <div className="admin-fields-grid admin-company-advanced__grid">
-                    <div className="admin-field-tile admin-company-kpi-tile">
-                      <div className="admin-field-tile__label">Ab Preis</div>
-                      <div className="admin-field-tile__value">
-                        {item.priority_price_threshold} €
-                      </div>
-                    </div>
-                    <div className="admin-field-tile admin-company-kpi-tile">
-                      <div className="admin-field-tile__label">Timeout</div>
-                      <div className="admin-field-tile__value">
-                        {item.priority_timeout_seconds} Sek.
-                      </div>
-                    </div>
-                    <div className="admin-field-tile admin-company-kpi-tile">
-                      <div className="admin-field-tile__label">Radius</div>
-                      <div className="admin-field-tile__value">
-                        {item.release_radius_km} km
-                      </div>
-                    </div>
-                  </div>
-                </details>
-
-                {isSaving ? <div className="admin-saving-hint">Speichert …</div> : null}
-
-                {moduleCatalog.length > 0 ? (
-                  <div className="admin-company-portal">
-                    <div className="admin-company-portal__title">Partner-Portal</div>
-                    <p className="admin-entity-card__meta admin-company-portal__meta">
-                      Legt fest, welche Bereiche dieses Unternehmen im Partner-Portal unter panel.onroda.de sieht. Ohne
-                      Auswahl sind alle Bereiche aktiv.
-                    </p>
-                    {editingModulesFor === item.id ? (
-                      <>
-                        <div className="admin-module-grid">
-                          {moduleCatalogAz.map((mod) => {
-                            const on = moduleDraft.includes(mod.id);
-                            return (
-                              <button
-                                key={mod.id}
-                                type="button"
-                                className={`admin-module-tile${on ? " admin-module-tile--on" : ""}`}
-                                title={mod.description}
-                                disabled={savingModulesId === item.id}
-                                onClick={() => toggleModuleDraft(mod.id, !on)}
-                              >
-                                <span className="admin-module-tile__icon" aria-hidden>
-                                  <PanelModuleIcon moduleId={mod.id} />
-                                </span>
-                                <span className="admin-module-tile__text">
-                                  <span className="admin-module-tile__label">{mod.label}</span>
-                                  <span className="admin-module-tile__desc">{on ? "Aktiv" : "Aus"}</span>
-                                </span>
-                              </button>
-                            );
-                          })}
+                return (
+                  <Fragment key={item.id}>
+                    <tr className={open ? "admin-companies-table__row admin-companies-table__row--open" : "admin-companies-table__row"}>
+                      <td>
+                        <div className="admin-companies-table__name">{item.name}</div>
+                        <div className="admin-companies-table__id" title={item.id}>
+                          {item.id}
                         </div>
-                        <div className="admin-company-module-actions">
+                        <div className="admin-companies-table__sub">
+                          {[item.contact_name, item.email, item.phone].filter(Boolean).join(" · ") || "—"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-companies-table__pills">
+                          <span className={`admin-pill${item.is_active ? " admin-pill--success" : " admin-pill--muted"}`}>
+                            {item.is_active ? "Aktiv" : "Inaktiv"}
+                          </span>
+                          <span
+                            className={`admin-pill${item.is_priority_company ? " admin-pill--warn" : " admin-pill--muted"}`}
+                          >
+                            {item.is_priority_company ? "Prio" : "Std"}
+                          </span>
+                        </div>
+                        <div className="admin-companies-table__prio-mini admin-table-sub">
+                          Prio {item.is_priority_company ? "ja" : "nein"} · SF {item.priority_for_live_rides ? "ja" : "nein"} · Res{" "}
+                          {item.priority_for_reservations ? "ja" : "nein"}
+                        </div>
+                      </td>
+                      <td className="admin-companies-table__num">
+                        <span className="admin-crisp-numeric">
+                          {loadingKpis[item.id] ? "…" : formatMoneyEUR(kpisByCompany[item.id]?.monthlyRevenue ?? 0)}
+                        </span>
+                      </td>
+                      <td className="admin-companies-table__num">
+                        <span className="admin-crisp-numeric">
+                          {loadingKpis[item.id] ? "…" : Number(kpisByCompany[item.id]?.openRides ?? 0)}
+                        </span>
+                      </td>
+                      <td className="admin-companies-table__num">
+                        <span className="admin-crisp-numeric">
+                          {loadingKpis[item.id] ? "…" : voucherLimitLabel(kpisByCompany[item.id]?.voucherLimitAvailable)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="admin-companies-table__portal-label">{portalLabel}</span>
+                        <div className="admin-table-sub">Module</div>
+                      </td>
+                      <td className="admin-companies-table__actions">
+                        <div className="admin-companies-table__action-btns">
                           <button
                             type="button"
-                            className="admin-btn-refresh admin-btn-refresh--compact"
-                            disabled={savingModulesId === item.id}
-                            onClick={() => void saveCompanyModules(item.id)}
+                            className="admin-btn-outline admin-btn-outline--compact"
+                            onClick={() => openCompanyDashboard(item)}
                           >
-                            {savingModulesId === item.id ? "Speichert …" : "Module speichern"}
+                            Panel
+                          </button>
+                          <button type="button" className="admin-btn-outline admin-btn-outline--compact" onClick={() => openEditCompany(item)}>
+                            Stammdaten
                           </button>
                           <button
                             type="button"
-                            className="admin-page-btn admin-page-btn--compact"
-                            disabled={savingModulesId === item.id}
-                            onClick={() => setEditingModulesFor(null)}
+                            className="admin-btn-outline admin-btn-outline--compact"
+                            disabled={isSaving}
+                            onClick={() => void toggleCompanyActive(item)}
                           >
-                            Abbrechen
+                            {item.is_active ? "Aus" : "An"}
+                          </button>
+                          <button
+                            type="button"
+                            className={
+                              "admin-page-btn admin-page-btn--compact" +
+                              (open ? " admin-page-btn--active" : "")
+                            }
+                            onClick={() => {
+                              setExpandedCompanyId((prev) => {
+                                if (prev === item.id) {
+                                  setEditingModulesFor(null);
+                                  return null;
+                                }
+                                setEditingModulesFor(null);
+                                return item.id;
+                              });
+                            }}
+                            aria-expanded={open}
+                          >
+                            {open ? "Zu" : "Details"}
                           </button>
                         </div>
-                      </>
-                    ) : (
-                      <div>
-                        <div className="admin-module-grid admin-module-grid--readonly">
-                          {(item.panel_modules == null
-                            ? moduleCatalogAz
-                            : moduleCatalogAz.filter((m) => item.panel_modules.includes(m.id))
-                          ).map((m) => (
-                            <div key={m.id} className="admin-module-tile admin-module-tile--on admin-module-tile--static" title={m.description}>
-                              <span className="admin-module-tile__icon" aria-hidden>
-                                <PanelModuleIcon moduleId={m.id} />
+                      </td>
+                    </tr>
+                    {open ? (
+                      <tr className="admin-companies-table__detail">
+                        <td colSpan={7}>
+                          <div className="admin-companies-expand">
+                            <div className="admin-company-prio-toggles admin-company-prio-toggles--table">
+                              <div className="admin-company-prio-toggle">
+                                <div>
+                                  <div className="admin-switch-row__label">Priorität aktiv</div>
+                                  <div className="admin-company-toggle-hint">Matching bevorzugt dieses Unternehmen.</div>
+                                </div>
+                                <label className="admin-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!item.is_priority_company}
+                                    disabled={isSaving}
+                                    onChange={(e) =>
+                                      updateCompanyPriority(item.id, {
+                                        is_priority_company: e.target.checked,
+                                      })
+                                    }
+                                  />
+                                  <span className="admin-switch__slider" aria-hidden />
+                                </label>
+                              </div>
+                              <div className="admin-company-prio-toggle">
+                                <div>
+                                  <div className="admin-switch-row__label">Sofortfahrten priorisieren</div>
+                                  <div className="admin-company-toggle-hint">Sofortfahrten bevorzugt vermitteln.</div>
+                                </div>
+                                <label className="admin-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!item.priority_for_live_rides}
+                                    disabled={isSaving}
+                                    onChange={(e) =>
+                                      updateCompanyPriority(item.id, {
+                                        priority_for_live_rides: e.target.checked,
+                                      })
+                                    }
+                                  />
+                                  <span className="admin-switch__slider" aria-hidden />
+                                </label>
+                              </div>
+                              <div className="admin-company-prio-toggle">
+                                <div>
+                                  <div className="admin-switch-row__label">Reservierungen priorisieren</div>
+                                  <div className="admin-company-toggle-hint">Terminfahrten in der Vorplanung bevorzugen.</div>
+                                </div>
+                                <label className="admin-switch">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!item.priority_for_reservations}
+                                    disabled={isSaving}
+                                    onChange={(e) =>
+                                      updateCompanyPriority(item.id, {
+                                        priority_for_reservations: e.target.checked,
+                                      })
+                                    }
+                                  />
+                                  <span className="admin-switch__slider" aria-hidden />
+                                </label>
+                              </div>
+                            </div>
+
+                            <div className="admin-companies-expand__meta">
+                              <span>
+                                Ab Preis <strong className="admin-crisp-numeric">{item.priority_price_threshold} €</strong>
                               </span>
-                              <span className="admin-module-tile__text">
-                                <span className="admin-module-tile__label">{m.label}</span>
-                                <span className="admin-module-tile__desc">Aktiv</span>
+                              <span>
+                                Timeout <strong className="admin-crisp-numeric">{item.priority_timeout_seconds}s</strong>
+                              </span>
+                              <span>
+                                Radius <strong className="admin-crisp-numeric">{item.release_radius_km} km</strong>
                               </span>
                             </div>
-                          ))}
-                        </div>
-                        <button type="button" className="admin-btn-refresh admin-btn-refresh--compact" onClick={() => startEditModules(item)}>
-                          Module bearbeiten
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })
+
+                            {isSaving ? <div className="admin-saving-hint">Speichert …</div> : null}
+
+                            {moduleCatalog.length > 0 ? (
+                              <div className="admin-company-portal admin-company-portal--table">
+                                <div className="admin-company-portal__title">Partner-Portal (panel.onroda.de)</div>
+                                <p className="admin-entity-card__meta admin-company-portal__meta">
+                                  Ohne Auswahl sind alle Bereiche aktiv. Änderungen gelten für diesen Mandanten.
+                                </p>
+                                {editingModulesFor === item.id ? (
+                                  <>
+                                    <div className="admin-module-grid admin-module-grid--dense">
+                                      {moduleCatalogAz.map((mod) => {
+                                        const on = moduleDraft.includes(mod.id);
+                                        return (
+                                          <button
+                                            key={mod.id}
+                                            type="button"
+                                            className={`admin-module-tile${on ? " admin-module-tile--on" : ""}`}
+                                            title={mod.description}
+                                            disabled={savingModulesId === item.id}
+                                            onClick={() => toggleModuleDraft(mod.id, !on)}
+                                          >
+                                            <span className="admin-module-tile__icon" aria-hidden>
+                                              <PanelModuleIcon moduleId={mod.id} />
+                                            </span>
+                                            <span className="admin-module-tile__text">
+                                              <span className="admin-module-tile__label">{mod.label}</span>
+                                              <span className="admin-module-tile__desc">{on ? "An" : "Aus"}</span>
+                                            </span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="admin-company-module-actions">
+                                      <button
+                                        type="button"
+                                        className="admin-btn-refresh admin-btn-refresh--compact"
+                                        disabled={savingModulesId === item.id}
+                                        onClick={() => void saveCompanyModules(item.id)}
+                                      >
+                                        {savingModulesId === item.id ? "Speichert …" : "Module speichern"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="admin-page-btn admin-page-btn--compact"
+                                        disabled={savingModulesId === item.id}
+                                        onClick={() => setEditingModulesFor(null)}
+                                      >
+                                        Abbrechen
+                                      </button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div>
+                                    <div className="admin-module-grid admin-module-grid--readonly admin-module-grid--dense">
+                                      {(item.panel_modules == null
+                                        ? moduleCatalogAz
+                                        : moduleCatalogAz.filter((m) => item.panel_modules.includes(m.id))
+                                      ).map((m) => (
+                                        <div
+                                          key={m.id}
+                                          className="admin-module-tile admin-module-tile--on admin-module-tile--static"
+                                          title={m.description}
+                                        >
+                                          <span className="admin-module-tile__icon" aria-hidden>
+                                            <PanelModuleIcon moduleId={m.id} />
+                                          </span>
+                                          <span className="admin-module-tile__text">
+                                            <span className="admin-module-tile__label">{m.label}</span>
+                                            <span className="admin-module-tile__desc">An</span>
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="admin-btn-refresh admin-btn-refresh--compact"
+                                      onClick={() => startEditModules(item)}
+                                    >
+                                      Module bearbeiten
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -1050,6 +1111,41 @@ function CompanyFormBody({ form, setForm, moduleCatalog = [], mode = "create" })
           </label>
         </div>
       </div>
+      <div className="admin-filter-item" style={{ gridColumn: "1 / -1" }}>
+        <label className="admin-field-label">Mandanten-Art (Plattform)</label>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <label className="admin-switch-row" style={{ gap: 8 }}>
+            <input
+              type="radio"
+              name="companyKind"
+              checked={form.company_kind === "general"}
+              onChange={() => setForm((p) => ({ ...p, company_kind: "general" }))}
+            />
+            <span className="admin-switch-row__label">Allgemein</span>
+          </label>
+          <label className="admin-switch-row" style={{ gap: 8 }}>
+            <input
+              type="radio"
+              name="companyKind"
+              checked={form.company_kind === "taxi"}
+              onChange={() => setForm((p) => ({ ...p, company_kind: "taxi" }))}
+            />
+            <span className="admin-switch-row__label">Taxi-Unternehmer (Flotte / Fahrer-Logins)</span>
+          </label>
+        </div>
+      </div>
+      {form.company_kind === "taxi" ? (
+        <div className="admin-filter-item">
+          <label className="admin-field-label">Steuer-ID</label>
+          <input className="admin-input" value={form.tax_id} onChange={ch("tax_id")} />
+        </div>
+      ) : null}
+      {form.company_kind === "taxi" ? (
+        <div className="admin-filter-item">
+          <label className="admin-field-label">Konzessionsnummer</label>
+          <input className="admin-input" value={form.concession_number} onChange={ch("concession_number")} />
+        </div>
+      ) : null}
       <div className="admin-filter-item">
         <label className="admin-field-label">Name *</label>
         <input className="admin-input" value={form.name} onChange={ch("name")} required />

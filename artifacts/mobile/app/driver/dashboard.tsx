@@ -980,6 +980,24 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
     : { lat: req.toLat ?? 48.69, lon: req.toLon ?? 9.2216, displayName: req.toFull };
 
   const handleFinishTap = () => {
+    if (isCodeRide && !isKK) {
+      const label = req.accessCodeSummary?.label ?? "Freigabe-Code";
+      Alert.alert(
+        "Fahrt abschließen",
+        `Zahlung läuft über die Freigabe „${label}“ (${accessCodeTypeDe(req.accessCodeSummary?.codeType ?? "general")}). Kein Barkassieren nötig — Betrag dient nur der Abrechnung mit dem Kostenträger.`,
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Abschließen",
+            onPress: () => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              onComplete(req.estimatedFare);
+            },
+          },
+        ],
+      );
+      return;
+    }
     if (isKK) {
       const parsed = parseEuroDriverInput(driverEigenanteil);
       const euro = parsed ?? req.estimatedFare;
@@ -1424,7 +1442,15 @@ export default function DriverDashboard() {
 
   const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h } = useDriver();
   const { history } = useRide();
-  const { pendingRequests: allPending, acceptedRequest, acceptRequest, rejectByDriver, driverCancelRequest, cancelRequest, completeRequest } = useRideRequests();
+  const {
+    pendingRequests: allPending,
+    driverAcceptedRequest: acceptedRequest,
+    acceptRequest,
+    rejectByDriver,
+    driverCancelRequest,
+    cancelRequest,
+    completeRequest,
+  } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
   const prevPendingIds = useRef<Set<string>>(new Set());

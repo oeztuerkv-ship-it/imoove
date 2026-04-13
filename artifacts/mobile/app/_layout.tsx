@@ -1,15 +1,16 @@
+import "react-native-gesture-handler";
+import React, { useEffect, useState } from "react";
 import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
-  useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
-import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -26,6 +27,21 @@ import { UserProvider } from "@/context/UserContext";
 
 WebBrowser.maybeCompleteAuthSession();
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * Schriften nur über `expo-font` / `Font.loadAsync` laden.
+ * Nicht `useFonts` aus `@expo-google-fonts/inter` verwenden — der Hook bindet oft eine zweite
+ * React-Instanz (pnpm/Metro) → „Invalid hook call“ / `useState` of null.
+ */
+const ROOT_FONT_MAP = {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  ...Feather.font,
+  ...Ionicons.font,
+  ...MaterialCommunityIcons.font,
+};
 
 const queryClient = new QueryClient();
 
@@ -53,15 +69,22 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    ...Feather.font,
-    ...Ionicons.font,
-    ...MaterialCommunityIcons.font,
-  });
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [fontError, setFontError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Font.loadAsync(ROOT_FONT_MAP)
+      .then(() => {
+        if (!cancelled) setFontsLoaded(true);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setFontError(e instanceof Error ? e : new Error(String(e)));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();

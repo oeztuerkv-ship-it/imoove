@@ -64,10 +64,6 @@ Umgebung (Auswahl):
   ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS Pause zwischen Versuchen (Default: 2)
   ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Schritt 8 überspringen (nur Notfall)
 
-  VITE_ADMIN_API_BEARER_TOKEN  Pflicht für funktionierendes Plattform-Admin-Panel: in scripts/onroda-deploy.env
-                               mit export setzen (identisch mit ADMIN_API_BEARER_TOKEN auf der API), siehe
-                               scripts/onroda-deploy.example.env
-
 EOF
 }
 
@@ -294,9 +290,6 @@ do_panel_builds() {
     echo "[dry-run] (cd \"$ROOT\" && pnpm --filter admin-panel run build)"
     echo "[dry-run] (cd \"$ROOT\" && pnpm --filter partner-panel run build)"
     return 0
-  fi
-  if [[ -z "${VITE_ADMIN_API_BEARER_TOKEN:-}" ]]; then
-    log "WARNUNG: VITE_ADMIN_API_BEARER_TOKEN ist nicht gesetzt — Admin-Panel wird ohne Bearer gebaut (Browser: 401 auf /api/admin/*). In scripts/onroda-deploy.env: export VITE_ADMIN_API_BEARER_TOKEN='…' (gleicher Wert wie ADMIN_API_BEARER_TOKEN in artifacts/api-server/.env)."
   fi
   log "Build admin-panel…"
   (cd "$ROOT" && pnpm --filter admin-panel run build)

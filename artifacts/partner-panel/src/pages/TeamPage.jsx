@@ -36,6 +36,7 @@ export default function TeamPage() {
     password: "",
   });
   const [creating, setCreating] = useState(false);
+  const [onboarding, setOnboarding] = useState(null);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -78,6 +79,7 @@ export default function TeamPage() {
     });
     setEditOpen(true);
     setMsg("");
+    setOnboarding(null);
   }
 
   async function saveEdit(e) {
@@ -145,6 +147,7 @@ export default function TeamPage() {
         return;
       }
       setMsg("Mitarbeiter angelegt.");
+      setOnboarding(data?.onboarding ?? null);
       setForm({ username: "", email: "", role: "staff", password: "" });
       await loadUsers();
     } catch {
@@ -328,6 +331,12 @@ export default function TeamPage() {
       <p className="panel-page__lead">Zugänge und Rollen für Ihr Unternehmen.</p>
       {err ? <p className="panel-page__warn">{err}</p> : null}
       {msg ? <p className={msg.includes("fehl") || msg.includes("nicht") ? "panel-page__warn" : "panel-page__ok"}>{msg}</p> : null}
+      {onboarding?.username ? (
+        <p className="panel-page__warn">
+          Zugang erstellt: Benutzername <strong>{onboarding.username}</strong>
+          {onboarding.initialPassword ? `, Startpasswort ${onboarding.initialPassword}` : ""}. Beim ersten Login muss das Passwort geändert werden.
+        </p>
+      ) : null}
 
       {manage ? (
         <div className="panel-card panel-card--wide">
@@ -362,14 +371,14 @@ export default function TeamPage() {
                 </select>
               </label>
               <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Initiales Passwort</span>
+                <span>Initiales Passwort (optional)</span>
                 <input
                   type="password"
                   value={form.password}
                   onChange={(ev) => setForm((f) => ({ ...f, password: ev.target.value }))}
                   autoComplete="new-password"
-                  required
                   minLength={10}
+                  placeholder="Leer lassen = automatisch erzeugen"
                 />
               </label>
             </div>

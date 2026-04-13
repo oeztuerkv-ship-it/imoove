@@ -33,6 +33,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   admin_auth reset flow + audit  → 019_admin_auth_password_reset_flow.sql
   rides.partner_booking_meta       → 020_rides_partner_booking_meta.sql
   admin_auth Konsole Rollen/Scope → 021_admin_auth_console_roles_scope.sql
+  Taxi-Flotte / Fahrer / Fahrzeuge     → 022_taxi_fleet_partner.sql
 
 Nach Migrationen Schema prüfen:
 

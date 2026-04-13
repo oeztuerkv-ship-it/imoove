@@ -227,6 +227,8 @@ app.get("/", (req, res, next) => {
         panelRidesCreate: "POST /api/panel/v1/rides",
         panelHealth: "/api/panel/v1/health",
         panelLogout: "/api/panel-auth/logout",
+        fleetAuthLogin: "/api/fleet-auth/login",
+        fleetDriverMe: "/api/fleet-driver/v1/me",
       },
     });
   }

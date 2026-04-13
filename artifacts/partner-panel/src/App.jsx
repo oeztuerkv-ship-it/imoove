@@ -12,6 +12,10 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+    if (user.mustChangePassword && active !== "settings") {
+      queueMicrotask(() => setActive("settings"));
+      return;
+    }
     const allowed = new Set(navItems.map((i) => i.key));
     if (allowed.size === 0) return;
     if (!allowed.has(active)) {

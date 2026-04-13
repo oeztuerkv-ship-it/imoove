@@ -16,6 +16,13 @@ export interface PanelCompanyPublic {
   country: string;
   vatId: string;
   isActive: boolean;
+  /** Mandanten-Typ: `taxi` = Flotten-/Fahrer-Modul möglich. */
+  companyKind: "general" | "taxi";
+  /** Nur sinnvoll bei `companyKind === "taxi"` (Steuer-ID). */
+  taxId: string;
+  concessionNumber: string;
+  hasComplianceGewerbe: boolean;
+  hasComplianceInsurance: boolean;
 }
 
 export type PanelCompanyProfilePatch = Partial<{
@@ -29,6 +36,8 @@ export type PanelCompanyProfilePatch = Partial<{
   city: string;
   country: string;
   vatId: string;
+  taxId: string;
+  concessionNumber: string;
 }>;
 
 const MAX = {
@@ -36,6 +45,8 @@ const MAX = {
   line: 500,
   short: 120,
   vat: 64,
+  tax: 64,
+  concession: 80,
 } as const;
 
 function clip(s: string, max: number): string {
@@ -58,6 +69,11 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     country: r.country,
     vatId: r.vat_id,
     isActive: r.is_active,
+    companyKind: r.company_kind === "taxi" ? "taxi" : "general",
+    taxId: r.tax_id ?? "",
+    concessionNumber: r.concession_number ?? "",
+    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
+    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
   };
 }
 
@@ -140,6 +156,15 @@ export async function patchPanelCompanyProfile(
   }
   if (patch.vatId !== undefined) {
     set.vat_id = clip(patch.vatId, MAX.vat);
+  }
+
+  if (r0.company_kind === "taxi") {
+    if (patch.taxId !== undefined) {
+      set.tax_id = clip(patch.taxId, MAX.tax);
+    }
+    if (patch.concessionNumber !== undefined) {
+      set.concession_number = clip(patch.concessionNumber, MAX.concession);
+    }
   }
 
   if (Object.keys(set).length === 0) {

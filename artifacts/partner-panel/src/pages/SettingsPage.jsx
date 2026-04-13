@@ -3,7 +3,7 @@ import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 
 export default function SettingsPage() {
-  const { token } = usePanelAuth();
+  const { token, user, refreshUser } = usePanelAuth();
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", newPasswordRepeat: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -47,6 +47,7 @@ export default function SettingsPage() {
       }
       setMsg("Passwort erfolgreich geändert.");
       setForm({ currentPassword: "", newPassword: "", newPasswordRepeat: "" });
+      await refreshUser();
     } catch {
       setMsg("Netzwerkfehler beim Passwort-Ändern.");
     } finally {
@@ -58,6 +59,11 @@ export default function SettingsPage() {
     <div className="panel-page panel-page--profile">
       <h2 className="panel-page__title">Einstellungen</h2>
       <p className="panel-page__lead">Persönliche Sicherheitseinstellungen für Ihr Panel-Konto.</p>
+      {user?.mustChangePassword ? (
+        <p className="panel-page__warn">
+          Für dieses Konto ist ein Startpasswort gesetzt. Bitte jetzt ein eigenes Passwort vergeben.
+        </p>
+      ) : null}
 
       <div className="panel-card panel-card--wide">
         <h3 className="panel-card__title">Passwort ändern</h3>

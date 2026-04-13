@@ -10,6 +10,7 @@ export interface PanelUserRow {
   email: string;
   password_hash: string;
   role: string;
+  must_change_password: boolean;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -35,6 +36,7 @@ export async function findActivePanelUserByUsername(
       email: panelUsersTable.email,
       password_hash: panelUsersTable.password_hash,
       role: panelUsersTable.role,
+      must_change_password: panelUsersTable.must_change_password,
       is_active: panelUsersTable.is_active,
       created_at: panelUsersTable.created_at,
       updated_at: panelUsersTable.updated_at,
@@ -59,6 +61,7 @@ export async function findActivePanelUserByUsername(
     email: r.email,
     password_hash: r.password_hash,
     role: r.role,
+    must_change_password: r.must_change_password,
     is_active: r.is_active,
     created_at: r.created_at,
     updated_at: r.updated_at,
@@ -69,9 +72,12 @@ export interface PanelUserProfileRow {
   id: string;
   companyId: string;
   companyName: string;
+  /** Mandanten-Typ (`taxi` = Flotten-Modul möglich). */
+  companyKind: "general" | "taxi";
   username: string;
   email: string;
   role: string;
+  mustChangePassword: boolean;
   createdAt: Date;
   updatedAt: Date;
   /** Normalisierte Modul-Whitelist; `null` = alle Panel-Module aktiv (Legacy). */
@@ -89,9 +95,11 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
       id: panelUsersTable.id,
       companyId: panelUsersTable.company_id,
       companyName: adminCompaniesTable.name,
+      companyKindRaw: adminCompaniesTable.company_kind,
       username: panelUsersTable.username,
       email: panelUsersTable.email,
       role: panelUsersTable.role,
+      mustChangePassword: panelUsersTable.must_change_password,
       createdAt: panelUsersTable.created_at,
       updatedAt: panelUsersTable.updated_at,
       companyPanelModulesJson: adminCompaniesTable.panel_modules,
@@ -113,9 +121,11 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
     id: r.id,
     companyId: r.companyId,
     companyName: r.companyName,
+    companyKind: r.companyKindRaw === "taxi" ? "taxi" : "general",
     username: r.username,
     email: r.email,
     role: r.role,
+    mustChangePassword: r.mustChangePassword,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     panelModules: normalizeStoredPanelModules(r.companyPanelModulesJson),
@@ -134,6 +144,7 @@ export async function findActivePanelUserById(id: string): Promise<PanelUserRow 
       email: panelUsersTable.email,
       password_hash: panelUsersTable.password_hash,
       role: panelUsersTable.role,
+      must_change_password: panelUsersTable.must_change_password,
       is_active: panelUsersTable.is_active,
       created_at: panelUsersTable.created_at,
       updated_at: panelUsersTable.updated_at,
@@ -158,6 +169,7 @@ export async function findActivePanelUserById(id: string): Promise<PanelUserRow 
     email: r.email,
     password_hash: r.password_hash,
     role: r.role,
+    must_change_password: r.must_change_password,
     is_active: r.is_active,
     created_at: r.created_at,
     updated_at: r.updated_at,

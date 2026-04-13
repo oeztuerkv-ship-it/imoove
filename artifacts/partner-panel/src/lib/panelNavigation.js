@@ -15,6 +15,7 @@ export const PANEL_NAV_ITEMS = [
   { key: "company-rides", moduleId: "company_rides", label: "Firmenfahrten", icon: "⎔" },
   { key: "recurring", moduleId: "recurring_rides", label: "Serienfahrten", icon: "↻" },
   { key: "billing", moduleId: "billing", label: "Abrechnung", icon: "€" },
+  { key: "fleet", moduleId: "taxi_fleet", label: "Flotte & Fahrer", icon: "⛯" },
   { key: "settings", moduleId: "company_profile", label: "Einstellungen", icon: "⚙" },
 ];
 

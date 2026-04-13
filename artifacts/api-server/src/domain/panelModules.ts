@@ -76,6 +76,13 @@ export const PANEL_MODULE_DEFINITIONS = [
     productIntent:
       "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostenträger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik.",
   },
+  {
+    id: "taxi_fleet",
+    label: "Flotte & Fahrer",
+    description: "Fahrzeuge, Fahrer-Logins, Zuweisung (nur Mandant Taxi)",
+    productIntent:
+      "Taxi-Unternehmer: eigene PKW-Flotte, Fahrer mit Passwort/Session, P-Schein/TÜV-Felder, Compliance-Uploads; Multi-Tenancy strikt über company_id.",
+  },
 ] as const;
 
 export type PanelModuleId = (typeof PANEL_MODULE_DEFINITIONS)[number]["id"];
@@ -105,7 +112,10 @@ export function normalizeStoredPanelModules(raw: unknown): string[] | null {
  * Effektiv aktive Module: `null` = alle (Legacy). Leeres Array = nichts freigeschaltet (nur für Tests).
  */
 export function resolveEffectivePanelModules(stored: string[] | null | undefined): PanelModuleId[] {
-  if (stored == null) return [...ALL_PANEL_MODULE_IDS];
+  /** `taxi_fleet` nie implizit über „alle Module“ (Legacy-NULL) — nur explizit in der Whitelist. */
+  if (stored == null) {
+    return ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet");
+  }
   const set = new Set(stored);
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
 }

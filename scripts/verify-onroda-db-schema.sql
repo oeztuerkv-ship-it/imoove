@@ -159,6 +159,34 @@ BEGIN
     errs := array_append(errs, 'table admin_auth_audit_log (Migration 019)');
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'company_kind'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.company_kind (Migration 022)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers'
+  ) THEN
+    errs := array_append(errs, 'table fleet_drivers (Migration 022)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'fleet_vehicles'
+  ) THEN
+    errs := array_append(errs, 'table fleet_vehicles (Migration 022)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'driver_vehicle_assignments'
+  ) THEN
+    errs := array_append(errs, 'table driver_vehicle_assignments (Migration 022)');
+  END IF;
+
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
     RAISE EXCEPTION
       'onroda_db_schema_verify_failed: fehlt % — Tracker-Einträge in onroda_deploy_migrations reichen nicht; fehlende Migration(en) mit psql -f …/artifacts/api-server/src/db/migrations/… ausführen (siehe MIGRATION_ORDER.txt), dann Deploy erneut.',

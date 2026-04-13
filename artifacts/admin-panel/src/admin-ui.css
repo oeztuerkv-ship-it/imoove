@@ -1594,3 +1594,141 @@
   background: color-mix(in srgb, var(--onroda-red) 12%, var(--onroda-bg-card));
   color: var(--onroda-text);
 }
+
+/* —— Unternehmen: Tabellen-Ansicht (Operator-Dashboard) —— */
+.admin-companies-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--onroda-border-subtle);
+  border-radius: var(--onroda-radius-md, 10px);
+  background: var(--onroda-bg-card);
+}
+
+.admin-companies-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-companies-table__caption {
+  caption-side: top;
+  text-align: left;
+  padding: 8px 12px 10px;
+  font-size: 0.78rem;
+  color: var(--onroda-text-muted);
+  font-weight: 600;
+}
+
+.admin-companies-table th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--onroda-border-subtle);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--onroda-text-muted);
+  background: color-mix(in srgb, var(--onroda-bg-app) 55%, var(--onroda-bg-card));
+}
+
+.admin-companies-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--onroda-border-subtle);
+  vertical-align: top;
+}
+
+.admin-companies-table__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.admin-companies-table__actions {
+  min-width: 188px;
+}
+
+.admin-companies-table__row:hover td {
+  background: color-mix(in srgb, var(--onroda-red) 4%, transparent);
+}
+
+.admin-companies-table__row--open td {
+  border-bottom: none;
+}
+
+.admin-companies-table__name {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--onroda-text);
+}
+
+.admin-companies-table__id {
+  margin-top: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--onroda-text-grey);
+  word-break: break-all;
+  max-width: 20rem;
+}
+
+.admin-companies-table__sub {
+  font-size: 0.76rem;
+  color: var(--onroda-text-muted);
+  line-height: 1.35;
+  margin-top: 4px;
+  max-width: 22rem;
+}
+
+.admin-companies-table__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-companies-table__prio-mini {
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.admin-companies-table__portal-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.admin-companies-table__action-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.admin-companies-table__detail td {
+  padding: 0;
+  background: color-mix(in srgb, #f8fafc 90%, var(--onroda-bg-card));
+  border-bottom: 1px solid var(--onroda-border-subtle);
+}
+
+.admin-companies-expand {
+  padding: 12px 14px 14px;
+}
+
+.admin-companies-expand__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin: 10px 0 8px;
+  font-size: 0.82rem;
+  color: var(--onroda-text-grey);
+}
+
+.admin-company-prio-toggles--table {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.admin-company-portal--table {
+  margin-top: 12px;
+}
+
+.admin-module-grid--dense {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 5px;
+}

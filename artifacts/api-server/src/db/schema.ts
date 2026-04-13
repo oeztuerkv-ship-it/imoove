@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   doublePrecision,
   integer,
   jsonb,
@@ -29,6 +30,68 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   release_radius_km: doublePrecision("release_radius_km").notNull().default(10),
   /** JSON-Array von Modul-IDs; NULL = alle Module aktiv (Legacy). */
   panel_modules: jsonb("panel_modules").$type<string[] | null>(),
+  /** general | taxi — Taxi aktiviert Flotten-/Fahrer-Flows (API + Modul taxi_fleet). */
+  company_kind: text("company_kind").notNull().default("general"),
+  /** Steuer-ID (nicht USt-IdNr.; die bleibt in vat_id). */
+  tax_id: text("tax_id").notNull().default(""),
+  concession_number: text("concession_number").notNull().default(""),
+  compliance_gewerbe_storage_key: text("compliance_gewerbe_storage_key"),
+  compliance_insurance_storage_key: text("compliance_insurance_storage_key"),
+});
+
+/** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */
+export const fleetDriversTable = pgTable("fleet_drivers", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  first_name: text("first_name").notNull().default(""),
+  last_name: text("last_name").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  password_hash: text("password_hash").notNull(),
+  session_version: integer("session_version").notNull().default(1),
+  is_active: boolean("is_active").notNull().default(true),
+  access_status: text("access_status").notNull().default("active"),
+  must_change_password: boolean("must_change_password").notNull().default(true),
+  p_schein_number: text("p_schein_number").notNull().default(""),
+  p_schein_expiry: date("p_schein_expiry"),
+  p_schein_doc_storage_key: text("p_schein_doc_storage_key"),
+  last_login_at: timestamp("last_login_at", { withTimezone: true }),
+  last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fleetVehiclesTable = pgTable("fleet_vehicles", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  license_plate: text("license_plate").notNull(),
+  vin: text("vin").notNull().default(""),
+  color: text("color").notNull().default(""),
+  model: text("model").notNull().default(""),
+  vehicle_type: text("vehicle_type").notNull().default("sedan"),
+  taxi_order_number: text("taxi_order_number").notNull().default(""),
+  next_inspection_date: date("next_inspection_date"),
+  is_active: boolean("is_active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const driverVehicleAssignmentsTable = pgTable("driver_vehicle_assignments", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  driver_id: text("driver_id")
+    .notNull()
+    .references(() => fleetDriversTable.id, { onDelete: "cascade" }),
+  vehicle_id: text("vehicle_id")
+    .notNull()
+    .references(() => fleetVehiclesTable.id, { onDelete: "cascade" }),
+  assigned_at: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**

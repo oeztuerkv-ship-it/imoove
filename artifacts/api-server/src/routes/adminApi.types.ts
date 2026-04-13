@@ -12,6 +12,12 @@ export interface CompanyRow {
   city: string;
   country: string;
   vat_id: string;
+  /** general | taxi */
+  company_kind: string;
+  tax_id: string;
+  concession_number: string;
+  compliance_gewerbe_storage_key: string | null;
+  compliance_insurance_storage_key: string | null;
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;

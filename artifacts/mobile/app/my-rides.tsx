@@ -46,6 +46,7 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   card: "Kreditkarte",
   voucher: "Transportschein",
   app: "App-Zahlung",
+  access_code: "Gutschein / Freigabe",
 };
 
 const PAYMENT_ICONS: Record<PaymentMethod, string> = {
@@ -54,6 +55,7 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   card: "credit-card",
   voucher: "shield",
   app: "smartphone",
+  access_code: "ticket-confirmation",
 };
 
 type FilterTab = "alle" | "aktiv" | "abgeschlossen" | "storniert";
@@ -251,13 +253,18 @@ export default function MyRidesScreen() {
             </View>
 
             {myActiveRequests.map((req) => {
-              const date    = new Date(req.createdAt);
-              const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+              const hasPickup = req.scheduledAt != null;
+              const when = hasPickup ? new Date(req.scheduledAt as Date) : new Date(req.createdAt);
+              const dateStr = when.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+              const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+              const whenLabel = hasPickup ? `Abholung ${dateStr} · ${timeStr} Uhr` : `${timeStr} Uhr · gebucht`;
               return (
                 <View key={req.id} style={[styles.activeCard, { backgroundColor: "#1E3A5F08", borderColor: "#2563EB33" }]}>
                   <View style={styles.rideHeader}>
                     <StatusBadge status={req.status} />
-                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{timeStr} Uhr</Text>
+                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]} numberOfLines={2}>
+                      {whenLabel}
+                    </Text>
                   </View>
 
                   <View style={styles.routeRow}>

@@ -11,6 +11,7 @@ import MedicalSeriesPage from "../pages/MedicalSeriesPage.jsx";
 import BillingPage from "../pages/BillingPage.jsx";
 import CompanyRidesPage from "../pages/CompanyRidesPage.jsx";
 import SettingsPage from "../pages/SettingsPage.jsx";
+import FleetPage from "../pages/FleetPage.jsx";
 
 const PAGES = {
   overview: {
@@ -64,6 +65,11 @@ const PAGES = {
     title: "Meine Abrechnung",
     subtitle: "Monatsübersicht, Filter und CSV-Export",
     component: <BillingPage />,
+  },
+  fleet: {
+    title: "Meine Flotte & Fahrer",
+    subtitle: "Fahrzeuge, Fahrer-Logins und Nachweise für Ihr Taxiunternehmen",
+    component: <FleetPage />,
   },
   settings: {
     title: "Einstellungen",

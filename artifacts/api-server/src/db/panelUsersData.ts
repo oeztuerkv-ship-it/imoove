@@ -8,6 +8,7 @@ export interface PanelUserPublicRow {
   username: string;
   email: string;
   role: string;
+  mustChangePassword: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +19,7 @@ function toPublic(r: {
   username: string;
   email: string;
   role: string;
+  must_change_password: boolean;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -27,6 +29,7 @@ function toPublic(r: {
     username: r.username,
     email: r.email,
     role: r.role,
+    mustChangePassword: r.must_change_password,
     isActive: r.is_active,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
@@ -43,6 +46,7 @@ export async function listPanelUsersInCompany(companyId: string): Promise<PanelU
       username: panelUsersTable.username,
       email: panelUsersTable.email,
       role: panelUsersTable.role,
+      must_change_password: panelUsersTable.must_change_password,
       is_active: panelUsersTable.is_active,
       created_at: panelUsersTable.created_at,
       updated_at: panelUsersTable.updated_at,
@@ -98,6 +102,7 @@ export async function insertPanelUser(input: {
   email: string;
   role: string;
   passwordHash: string;
+  mustChangePassword?: boolean;
 }): Promise<{ id: string } | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
@@ -113,6 +118,7 @@ export async function insertPanelUser(input: {
       email,
       password_hash: input.passwordHash,
       role: input.role,
+      must_change_password: input.mustChangePassword ?? true,
       is_active: true,
     });
     return { id };
@@ -157,6 +163,7 @@ export async function patchPanelUserInCompany(
       username: panelUsersTable.username,
       email: panelUsersTable.email,
       role: panelUsersTable.role,
+      must_change_password: panelUsersTable.must_change_password,
       is_active: panelUsersTable.is_active,
       created_at: panelUsersTable.created_at,
       updated_at: panelUsersTable.updated_at,
@@ -187,13 +194,18 @@ export async function updatePanelUserPasswordInCompany(
   id: string,
   companyId: string,
   passwordHash: string,
+  mustChangePassword?: boolean,
 ): Promise<boolean> {
   if (!isPostgresConfigured()) return false;
   const db = getDb();
   if (!db) return false;
   const rows = await db
     .update(panelUsersTable)
-    .set({ password_hash: passwordHash, updated_at: new Date() })
+    .set({
+      password_hash: passwordHash,
+      ...(typeof mustChangePassword === "boolean" ? { must_change_password: mustChangePassword } : {}),
+      updated_at: new Date(),
+    })
     .where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId)))
     .returning({ id: panelUsersTable.id });
   return rows.length > 0;

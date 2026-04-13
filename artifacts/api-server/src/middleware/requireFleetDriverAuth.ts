@@ -1,0 +1,52 @@
+import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { FleetDriverJwtClaims } from "../lib/fleetDriverJwt";
+import { verifyFleetDriverJwt } from "../lib/fleetDriverJwt";
+import { findFleetDriverAuthRow } from "../db/fleetDriversData";
+
+export type FleetDriverAuthRequest = Request & { fleetDriverAuth?: FleetDriverJwtClaims };
+
+function bearerToken(req: Request): string | null {
+  const raw = req.get("authorization")?.trim();
+  if (!raw) return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  const t = m?.[1]?.trim();
+  return t && t.length > 0 ? t : null;
+}
+
+/**
+ * Fleet-Fahrer-Session: JWT + Abgleich `session_version` und `access_status` in der DB (Sperre = sofort 401).
+ */
+export const requireFleetDriverAuth: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const token = bearerToken(req);
+  if (!token) {
+    res.status(401).json({
+      error: "unauthorized",
+      hint: "Send Authorization: Bearer <fleet_jwt> from POST /api/fleet-auth/login.",
+    });
+    return;
+  }
+  try {
+    const claims = await verifyFleetDriverJwt(token);
+    const row = await findFleetDriverAuthRow(claims.fleetDriverId);
+    if (!row || row.company_id !== claims.companyId) {
+      res.status(401).json({ error: "invalid_token" });
+      return;
+    }
+    if (!row.is_active || row.access_status !== "active") {
+      res.status(403).json({ error: "driver_suspended" });
+      return;
+    }
+    if (row.session_version !== claims.sessionVersion) {
+      res.status(401).json({ error: "token_revoked" });
+      return;
+    }
+    (req as FleetDriverAuthRequest).fleetDriverAuth = claims;
+    next();
+  } catch {
+    res.status(401).json({ error: "invalid_token" });
+  }
+};

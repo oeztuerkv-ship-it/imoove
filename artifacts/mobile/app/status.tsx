@@ -43,7 +43,33 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   card: "Kreditkarte",
   voucher: "Transportschein",
   app: "App-Zahlung",
+  access_code: "Gutschein / Freigabe",
 };
+
+/** Quitting: Icon aus Server-Auftrag ableiten (Context kann nach Abschluss leer sein). */
+type ReceiptPayIcon = "card" | "paypal" | "app" | "access_code" | "voucher" | "cash";
+
+function receiptPaymentIconKind(req: RideRequest | null, ctxPm: PaymentMethod | null): ReceiptPayIcon {
+  if (req?.authorizationSource === "access_code") return "access_code";
+  const line = (req?.paymentMethod ?? "").toLowerCase();
+  if (line.includes("paypal")) return "paypal";
+  if (line.includes("kredit") || line.includes("karte") || line.includes("card")) return "card";
+  if (line.includes("app-zahlung") || line.includes("app zahlung")) return "app";
+  if (
+    line.includes("krankenkasse") ||
+    line.includes("transportschein") ||
+    line.includes("befreit") ||
+    line.includes("eigenanteil")
+  ) {
+    return "voucher";
+  }
+  if (ctxPm === "access_code") return "access_code";
+  if (ctxPm === "card") return "card";
+  if (ctxPm === "paypal") return "paypal";
+  if (ctxPm === "app") return "app";
+  if (ctxPm === "voucher") return "voucher";
+  return "cash";
+}
 
 const TIP_OPTIONS = [
   { label: "1 €", amt: 1 },
@@ -92,8 +118,14 @@ export default function StatusScreen() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { destination, origin, fareBreakdown, route, paymentMethod, completeRide, cancelRide } = useRide();
-  const { completedRequest, acceptedRequest, lastAddedRequestId, cancelRequest, refreshRequests, myActiveRequests } =
-    useRideRequests();
+  const {
+    passengerCompletedRequest: completedRequest,
+    passengerAcceptedRequest: acceptedRequest,
+    lastAddedRequestId,
+    cancelRequest,
+    refreshRequests,
+    myActiveRequests,
+  } = useRideRequests();
   const { driver: driverProfile } = useDriver();
 
   const driverName = driverProfile?.name ?? FALLBACK_DRIVER.name;
@@ -396,15 +428,25 @@ export default function StatusScreen() {
                         : "—"}
                   </Text>
                 </View>
-                {paymentMethod === "card" ? (
-                  <Feather name="credit-card" size={24} color="#374151" />
-                ) : paymentMethod === "paypal" ? (
-                  <Text style={styles.paypalIcon}>P</Text>
-                ) : paymentMethod === "app" ? (
-                  <Feather name="smartphone" size={24} color="#374151" />
-                ) : (
-                  <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#374151", lineHeight: 24 }}>€</Text>
-                )}
+                {(() => {
+                  const iconKind = receiptPaymentIconKind(completedRequest, paymentMethod);
+                  if (iconKind === "card") {
+                    return <Feather name="credit-card" size={24} color="#374151" />;
+                  }
+                  if (iconKind === "paypal") {
+                    return <Text style={styles.paypalIcon}>P</Text>;
+                  }
+                  if (iconKind === "app") {
+                    return <Feather name="smartphone" size={24} color="#374151" />;
+                  }
+                  if (iconKind === "access_code") {
+                    return <MaterialCommunityIcons name="shield-check-outline" size={26} color="#15803D" />;
+                  }
+                  if (iconKind === "voucher") {
+                    return <MaterialCommunityIcons name="ticket-percent-outline" size={26} color="#2563EB" />;
+                  }
+                  return <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#374151", lineHeight: 24 }}>€</Text>;
+                })()}
               </View>
               <View style={styles.receiptDivider} />
               <Text style={[styles.receiptLabel, { marginBottom: 8 }]}>Trinkgeld für {driverFirstName}:</Text>

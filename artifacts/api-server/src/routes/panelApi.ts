@@ -56,12 +56,17 @@ import {
   permissionsForRole,
 } from "../lib/panelPermissions";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { generateTemporaryPassword } from "../lib/tempPassword";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
 const router: IRouter = Router();
 
-async function assertActivePanelProfile(req: PanelAuthRequest, res: Response) {
+async function assertActivePanelProfile(
+  req: PanelAuthRequest,
+  res: Response,
+  opts?: { allowPasswordChangeRequired?: boolean },
+) {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return null;
@@ -78,6 +83,10 @@ async function assertActivePanelProfile(req: PanelAuthRequest, res: Response) {
   }
   if (profile.companyId !== claims.companyId || profile.username !== claims.username) {
     res.status(401).json({ error: "token_out_of_sync" });
+    return null;
+  }
+  if (profile.mustChangePassword && !opts?.allowPasswordChangeRequired) {
+    res.status(403).json({ error: "password_change_required" });
     return null;
   }
   return { claims, profile };
@@ -417,7 +426,9 @@ router.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
 });
 
 router.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
-  const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+  const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res, {
+    allowPasswordChangeRequired: true,
+  });
   if (!ctx) return;
   const { profile } = ctx;
   const role = profile.role as PanelRole;
@@ -428,9 +439,11 @@ router.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       id: profile.id,
       companyId: profile.companyId,
       companyName: profile.companyName,
+      companyKind: profile.companyKind,
       username: profile.username,
       email: profile.email,
       role: profile.role,
+      mustChangePassword: profile.mustChangePassword,
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString(),
       permissions: permissionsForRole(role),
@@ -475,6 +488,8 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const ci = str("city");
     const co = str("country");
     const vi = str("vatId");
+    const taxId = str("taxId");
+    const concessionNumber = str("concessionNumber");
     if (n !== undefined) patch.name = n;
     if (cn !== undefined) patch.contactName = cn;
     if (em !== undefined) patch.email = em;
@@ -485,6 +500,8 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     if (ci !== undefined) patch.city = ci;
     if (co !== undefined) patch.country = co;
     if (vi !== undefined) patch.vatId = vi;
+    if (taxId !== undefined) patch.taxId = taxId;
+    if (concessionNumber !== undefined) patch.concessionNumber = concessionNumber;
 
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {
@@ -1394,7 +1411,9 @@ router.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, ne
 
 router.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
   try {
-    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res, {
+      allowPasswordChangeRequired: true,
+    });
     if (!ctx) return;
     if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "self.change_password")) return;
@@ -1416,7 +1435,7 @@ router.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, n
         return;
       }
       const hash = await hashPassword(neu);
-      const updated = await updatePanelUserPasswordInCompany(row.id, row.company_id, hash);
+      const updated = await updatePanelUserPasswordInCompany(row.id, row.company_id, hash, false);
       if (!updated) {
         res.status(500).json({ error: "password_update_failed" });
         return;
@@ -1458,7 +1477,9 @@ router.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     const body = req.body as { username?: string; email?: string; role?: string; password?: string };
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
+    const rawPassword = typeof body.password === "string" ? body.password : "";
+    const generatedPassword = rawPassword ? "" : generateTemporaryPassword();
+    const password = rawPassword || generatedPassword;
     const roleRaw = typeof body.role === "string" ? body.role.trim() : "";
     if (!username || !password || password.length < 10) {
       res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
@@ -1484,6 +1505,7 @@ router.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       email,
       role: targetRole,
       passwordHash: hash,
+      mustChangePassword: true,
     });
     if (!created) {
       res.status(409).json({ error: "username_taken" });
@@ -1498,7 +1520,15 @@ router.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       subjectId: created.id,
       meta: { username, role: targetRole },
     });
-    res.status(201).json({ ok: true, user: { id: created.id, username, email, role: targetRole } });
+    res.status(201).json({
+      ok: true,
+      user: { id: created.id, username, email, role: targetRole, mustChangePassword: true },
+      onboarding: {
+        username,
+        ...(generatedPassword ? { initialPassword: generatedPassword } : {}),
+        mustChangePassword: true,
+      },
+    });
   } catch (e) {
     next(e);
   }
@@ -1686,7 +1716,7 @@ router.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, 
         return;
       }
       const hash = await hashPassword(neu);
-      const ok = await updatePanelUserPasswordInCompany(id, ctx.claims.companyId, hash);
+      const ok = await updatePanelUserPasswordInCompany(id, ctx.claims.companyId, hash, true);
       if (!ok) {
         res.status(500).json({ error: "password_update_failed" });
         return;

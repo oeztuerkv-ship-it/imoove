@@ -313,7 +313,9 @@ export default function AccessCodesPage() {
                 <div className="admin-mono">
                   {row.maxUses != null ? `${row.usesCount} / ${row.maxUses}` : `${row.usesCount}`}
                 </div>
-                <div>{row.isActive ? "aktiv" : "inaktiv"}</div>
+                <div title={row.reservedRideId ? `Fahrt ${row.reservedRideId}` : ""}>
+                  {row.publicStatusLabel ?? (row.isActive ? "aktiv" : "inaktiv")}
+                </div>
               </div>
             ))}
           </div>

@@ -56,6 +56,12 @@
   font-size: 0.9rem;
 }
 
+.panel-page__muted {
+  margin: 8px 0 0;
+  color: var(--onroda-text-grey);
+  font-size: 0.88rem;
+}
+
 .panel-card {
   margin-top: var(--onroda-space-8);
   max-width: 480px;
@@ -448,4 +454,124 @@
 .panel-pill--pending {
   background: rgba(234, 179, 8, 0.15);
   color: #a16207;
+}
+
+/* —— Flotte & Fahrer (Taxi-Mandant) —— */
+.panel-fleet-dash {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  margin-top: 10px;
+}
+
+.panel-fleet-dash__kpi {
+  min-width: 140px;
+}
+
+.panel-fleet-dash__num {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #115e59;
+  line-height: 1.1;
+}
+
+.panel-fleet-dash__lbl {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--onroda-text-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel-fleet-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.panel-fleet-tab {
+  border: 1px solid var(--onroda-border-subtle, #d6d3d1);
+  background: var(--onroda-bg-light, #fafaf9);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--onroda-text-grey);
+}
+
+.panel-fleet-tab--on {
+  background: rgba(17, 94, 89, 0.12);
+  border-color: rgba(17, 94, 89, 0.35);
+  color: #115e59;
+}
+
+.panel-fleet-toolbar {
+  margin-bottom: 12px;
+}
+
+.panel-fleet-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--onroda-text-dark);
+}
+
+.panel-fleet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.panel-fleet-table th,
+.panel-fleet-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--onroda-border-subtle, #e7e5e4);
+}
+
+.panel-fleet-table__actions {
+  white-space: nowrap;
+}
+
+.panel-fleet-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.panel-fleet-btn--blue {
+  background: #2563eb;
+  color: #fff;
+}
+
+.panel-fleet-btn--red {
+  background: #dc2626;
+  color: #fff;
+}
+
+.panel-fleet-uploads {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.panel-fleet-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-fleet-upload__lbl {
+  font-weight: 700;
+  font-size: 0.9rem;
 }

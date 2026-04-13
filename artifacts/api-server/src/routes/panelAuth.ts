@@ -72,12 +72,14 @@ router.post("/panel-auth/login", async (req, res) => {
   res.json({
     ok: true,
     token,
+    passwordChangeRequired: row.must_change_password,
     user: {
       id: row.id,
       companyId: row.company_id,
       username: row.username,
       email: row.email,
       role: row.role,
+      mustChangePassword: row.must_change_password,
     },
   });
 });

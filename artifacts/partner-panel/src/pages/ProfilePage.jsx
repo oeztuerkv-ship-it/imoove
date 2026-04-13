@@ -18,6 +18,9 @@ function emptyCompanyForm() {
     city: "",
     country: "",
     vatId: "",
+    taxId: "",
+    concessionNumber: "",
+    companyKind: "general",
   };
 }
 
@@ -58,6 +61,9 @@ export default function ProfilePage() {
         city: c.city ?? "",
         country: c.country ?? "",
         vatId: c.vatId ?? "",
+        taxId: c.taxId ?? "",
+        concessionNumber: c.concessionNumber ?? "",
+        companyKind: c.companyKind === "taxi" ? "taxi" : "general",
       });
     } catch {
       setErr("Firmendaten konnten nicht geladen werden.");
@@ -94,6 +100,9 @@ export default function ProfilePage() {
           city: form.city,
           country: form.country,
           vatId: form.vatId,
+          ...(form.companyKind === "taxi"
+            ? { taxId: form.taxId, concessionNumber: form.concessionNumber }
+            : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -119,6 +128,9 @@ export default function ProfilePage() {
           city: c.city ?? "",
           country: c.country ?? "",
           vatId: c.vatId ?? "",
+          taxId: c.taxId ?? "",
+          concessionNumber: c.concessionNumber ?? "",
+          companyKind: c.companyKind === "taxi" ? "taxi" : "general",
         });
       }
       await refreshUser();
@@ -247,13 +259,33 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>USt-IdNr. / Steuernummer (optional)</span>
+                <span>USt-IdNr. (optional)</span>
                 <input
                   value={form.vatId}
                   onChange={(ev) => setForm((f) => ({ ...f, vatId: ev.target.value }))}
                   disabled={!canEdit}
                 />
               </label>
+              {form.companyKind === "taxi" ? (
+                <>
+                  <label className="panel-rides-form__field">
+                    <span>Steuer-ID (Pflicht für Taxi-Betrieb)</span>
+                    <input
+                      value={form.taxId}
+                      onChange={(ev) => setForm((f) => ({ ...f, taxId: ev.target.value }))}
+                      disabled={!canEdit}
+                    />
+                  </label>
+                  <label className="panel-rides-form__field">
+                    <span>Konzessionsnummer</span>
+                    <input
+                      value={form.concessionNumber}
+                      onChange={(ev) => setForm((f) => ({ ...f, concessionNumber: ev.target.value }))}
+                      disabled={!canEdit}
+                    />
+                  </label>
+                </>
+              ) : null}
             </div>
             {canEdit ? (
               <div className="panel-profile-actions">

@@ -22,7 +22,12 @@ CREATE TABLE IF NOT EXISTS admin_companies (
   priority_price_threshold DOUBLE PRECISION NOT NULL DEFAULT 0,
   priority_timeout_seconds INTEGER NOT NULL DEFAULT 90,
   release_radius_km DOUBLE PRECISION NOT NULL DEFAULT 10,
-  panel_modules JSONB DEFAULT NULL
+  panel_modules JSONB DEFAULT NULL,
+  company_kind TEXT NOT NULL DEFAULT 'general',
+  tax_id TEXT NOT NULL DEFAULT '',
+  concession_number TEXT NOT NULL DEFAULT '',
+  compliance_gewerbe_storage_key TEXT,
+  compliance_insurance_storage_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS fare_areas (
@@ -198,6 +203,65 @@ CREATE TABLE IF NOT EXISTS partner_ride_series (
 );
 
 CREATE INDEX IF NOT EXISTS partner_ride_series_company_idx ON partner_ride_series (company_id, created_at DESC);
+
+-- Taxi-Unternehmer / Flotte (siehe Migration 022 — hier für frische Instanzen gespiegelt)
+CREATE TABLE IF NOT EXISTS fleet_drivers (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  first_name TEXT NOT NULL DEFAULT '',
+  last_name TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  password_hash TEXT NOT NULL,
+  session_version INTEGER NOT NULL DEFAULT 1,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  access_status TEXT NOT NULL DEFAULT 'active',
+  must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
+  p_schein_number TEXT NOT NULL DEFAULT '',
+  p_schein_expiry DATE,
+  p_schein_doc_storage_key TEXT,
+  last_login_at TIMESTAMPTZ,
+  last_heartbeat_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS fleet_drivers_email_lower_uidx ON fleet_drivers (lower(trim(email)));
+CREATE INDEX IF NOT EXISTS fleet_drivers_company_idx ON fleet_drivers (company_id);
+
+CREATE TABLE IF NOT EXISTS fleet_vehicles (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE CASCADE,
+  license_plate TEXT NOT NULL,
+  vin TEXT NOT NULL DEFAULT '',
+  color TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  vehicle_type TEXT NOT NULL DEFAULT 'sedan',
+  taxi_order_number TEXT NOT NULL DEFAULT '',
+  next_inspection_date DATE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT fleet_vehicles_type_chk CHECK (
+    vehicle_type IN ('sedan', 'station_wagon', 'van', 'wheelchair')
+  )
+);
+
+CREATE INDEX IF NOT EXISTS fleet_vehicles_company_idx ON fleet_vehicles (company_id);
+CREATE INDEX IF NOT EXISTS fleet_vehicles_plate_idx ON fleet_vehicles (company_id, license_plate);
+
+CREATE TABLE IF NOT EXISTS driver_vehicle_assignments (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE CASCADE,
+  driver_id TEXT NOT NULL REFERENCES fleet_drivers (id) ON DELETE CASCADE,
+  vehicle_id TEXT NOT NULL REFERENCES fleet_vehicles (id) ON DELETE CASCADE,
+  assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT driver_vehicle_assignments_driver_uidx UNIQUE (driver_id),
+  CONSTRAINT driver_vehicle_assignments_vehicle_uidx UNIQUE (vehicle_id)
+);
+
+CREATE INDEX IF NOT EXISTS driver_vehicle_assignments_company_idx ON driver_vehicle_assignments (company_id);
 
 -- Ersten Benutzer: company_id = bestehende admin_companies.id; password_hash = Ausgabe von
 -- hashPassword() (artifacts/api-server/src/lib/password.ts), Präfix v1.*.

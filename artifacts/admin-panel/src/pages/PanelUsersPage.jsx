@@ -36,6 +36,7 @@ export default function PanelUsersPage() {
   });
   const [createSaving, setCreateSaving] = useState(false);
   const [createErr, setCreateErr] = useState("");
+  const [createOnboarding, setCreateOnboarding] = useState(null);
 
   const [editUser, setEditUser] = useState(null);
   const [editForm, setEditForm] = useState({ username: "", email: "", role: "staff", isActive: true });
@@ -99,6 +100,7 @@ export default function PanelUsersPage() {
     if (!companyId) return;
     setCreateSaving(true);
     setCreateErr("");
+    setCreateOnboarding(null);
     try {
       const res = await fetch(usersUrl(companyId), {
         method: "POST",
@@ -109,6 +111,7 @@ export default function PanelUsersPage() {
       if (!res.ok) {
         throw new Error(data?.error || data?.hint || `HTTP ${res.status}`);
       }
+      setCreateOnboarding(data?.onboarding ?? null);
       setShowCreate(false);
       setCreateForm({ username: "", email: "", role: "staff", password: "" });
       await loadUsers();
@@ -236,6 +239,12 @@ export default function PanelUsersPage() {
       </div>
 
       {error ? <div className="admin-error-banner">{error}</div> : null}
+      {createOnboarding?.username ? (
+        <div className="admin-info-banner">
+          Zugang erstellt: <strong>{createOnboarding.username}</strong>
+          {createOnboarding.initialPassword ? ` / Startpasswort: ${createOnboarding.initialPassword}` : ""}. Beim ersten Login ist Passwortwechsel Pflicht.
+        </div>
+      ) : null}
 
       {!companyId ? (
         <div className="admin-info-banner">Bitte ein Unternehmen auswählen.</div>
@@ -327,15 +336,15 @@ export default function PanelUsersPage() {
                 </select>
               </div>
               <div className="admin-filter-item">
-                <label className="admin-field-label">Passwort * (min. 10 Zeichen)</label>
+                <label className="admin-field-label">Passwort (optional, min. 10 Zeichen)</label>
                 <input
                   className="admin-input"
                   type="password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm((p) => ({ ...p, password: e.target.value }))}
-                  required
                   minLength={10}
                   autoComplete="new-password"
+                  placeholder="Leer lassen = automatisch erzeugen"
                 />
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
