@@ -59,7 +59,14 @@ Umgebung (Auswahl):
   ONRODA_RELOAD_NGINX       Wenn 1: nginx -t && systemctl reload nginx
   ONRODA_HEALTHCHECK_URLS   Leerzeichen-getrennte GET-URLs (Default: http://127.0.0.1:<PORT>/api/healthz, PORT aus api-server/.env oder 3000)
   ONRODA_HEALTHCHECK_TIMEOUT Sekunden für curl (Default: 20)
+  ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS  Wartezeit direkt nach PM2-Restart vor erstem Check (Default: 3)
+  ONRODA_HEALTHCHECK_RETRIES Anzahl Versuche pro URL (Default: 8)
+  ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS Pause zwischen Versuchen (Default: 2)
   ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Schritt 8 überspringen (nur Notfall)
+
+  VITE_ADMIN_API_BEARER_TOKEN  Pflicht für funktionierendes Plattform-Admin-Panel: in scripts/onroda-deploy.env
+                               mit export setzen (identisch mit ADMIN_API_BEARER_TOKEN auf der API), siehe
+                               scripts/onroda-deploy.example.env
 
 EOF
 }
@@ -288,6 +295,9 @@ do_panel_builds() {
     echo "[dry-run] (cd \"$ROOT\" && pnpm --filter partner-panel run build)"
     return 0
   fi
+  if [[ -z "${VITE_ADMIN_API_BEARER_TOKEN:-}" ]]; then
+    log "WARNUNG: VITE_ADMIN_API_BEARER_TOKEN ist nicht gesetzt — Admin-Panel wird ohne Bearer gebaut (Browser: 401 auf /api/admin/*). In scripts/onroda-deploy.env: export VITE_ADMIN_API_BEARER_TOKEN='…' (gleicher Wert wie ADMIN_API_BEARER_TOKEN in artifacts/api-server/.env)."
+  fi
   log "Build admin-panel…"
   (cd "$ROOT" && pnpm --filter admin-panel run build)
   log "Build partner-panel…"
@@ -308,6 +318,9 @@ do_health_checks() {
     exit 1
   }
   local timeout="${ONRODA_HEALTHCHECK_TIMEOUT:-20}"
+  local initial_wait="${ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS:-3}"
+  local retries="${ONRODA_HEALTHCHECK_RETRIES:-8}"
+  local retry_delay="${ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS:-2}"
   local urls=()
   if [[ -n "${ONRODA_HEALTHCHECK_URLS:-}" ]]; then
     read -r -a urls <<<"${ONRODA_HEALTHCHECK_URLS}"
@@ -317,11 +330,28 @@ do_health_checks() {
     urls=("http://127.0.0.1:${port}/api/healthz")
   fi
   local url
+  if [[ "$initial_wait" =~ ^[0-9]+$ ]] && [[ "$initial_wait" -gt 0 ]]; then
+    log "Warte ${initial_wait}s auf App-Start nach PM2-Restart …"
+    sleep "$initial_wait"
+  fi
   for url in "${urls[@]}"; do
     [[ -z "$url" ]] && continue
-    log "Health-Check: GET $url"
-    if ! curl -sfS --max-time "$timeout" "$url" >/dev/null; then
-      echo "[deploy-onroda] Health-Check fehlgeschlagen (kein HTTP 2xx oder Timeout): $url" >&2
+    local attempt=1
+    local ok=0
+    while [[ "$attempt" -le "$retries" ]]; do
+      log "Health-Check (${attempt}/${retries}): GET $url"
+      if curl -sfS --max-time "$timeout" "$url" >/dev/null; then
+        ok=1
+        break
+      fi
+      if [[ "$attempt" -lt "$retries" ]]; then
+        log "Health-Check noch nicht bereit ($url) — retry in ${retry_delay}s …"
+        sleep "$retry_delay"
+      fi
+      attempt=$((attempt + 1))
+    done
+    if [[ "$ok" -ne 1 ]]; then
+      echo "[deploy-onroda] Health-Check fehlgeschlagen nach ${retries} Versuchen: $url" >&2
       exit 1
     fi
   done
