@@ -38,14 +38,14 @@ export default function DriverLoginScreen() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await new Promise((r) => setTimeout(r, 600));
-    const success = await login(email, password);
+    const result = await login(email, password);
     setLoading(false);
-    if (success) {
+    if (result.ok) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/driver/dashboard");
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Anmeldung fehlgeschlagen", "E-Mail oder Passwort ist falsch.");
+      Alert.alert("Anmeldung fehlgeschlagen", result.error || "E-Mail oder Passwort ist falsch.");
     }
   };
 
