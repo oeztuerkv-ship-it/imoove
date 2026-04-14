@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const canEdit = hasPerm(user?.permissions, "company.update");
 
   const [form, setForm] = useState(emptyCompanyForm);
+  const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -40,9 +41,11 @@ export default function ProfilePage() {
       if (!res.ok || !data?.ok || !data.company) {
         setErr("Firmendaten konnten nicht geladen werden.");
         setForm(emptyCompanyForm());
+        setCompany(null);
         return;
       }
       const c = data.company;
+      setCompany(c);
       setForm({
         contactName: c.contactName ?? "",
         supportEmail: c.supportEmail ?? "",
@@ -53,6 +56,7 @@ export default function ProfilePage() {
       });
     } catch {
       setErr("Firmendaten konnten nicht geladen werden.");
+      setCompany(null);
     } finally {
       setLoading(false);
     }
@@ -96,6 +100,7 @@ export default function ProfilePage() {
       setOkMsg("Firmendaten wurden gespeichert.");
       if (data.company) {
         const c = data.company;
+        setCompany(c);
         setForm({
           contactName: c.contactName ?? "",
           supportEmail: c.supportEmail ?? "",
