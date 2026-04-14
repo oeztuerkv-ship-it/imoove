@@ -1,8 +1,9 @@
--- Erwartetes PostgreSQL-Schema für die Onroda-API (Drizzle / Migrations 006–014).
+-- Erwartetes PostgreSQL-Schema für die Onroda-API (Drizzle / nummerierte SQL-Migrationen).
 -- Wird nach SQL-Migrationen ausgeführt; bricht mit RAISE ab, wenn Objekte fehlen.
 -- Kein Ersatz für Migrationen — nur Absicherung gegen Tracker-/Restore-Drift.
+-- Vollständige Reihenfolge: artifacts/api-server/src/db/migrations/MIGRATION_ORDER.txt
 --
--- Zuordnung (bei neuen Migrationen hier und ggf. in init-onroda.sql spiegeln):
+-- Zuordnung (Auszug — bei neuen Migrationen hier und ggf. in init-onroda.sql spiegeln):
 --   006 → u. a. rides.scheduled_at
 --   008 → rides.ride_kind, payer_kind, voucher_code, billing_reference
 --   009 → access_codes + rides.authorization_source, access_code_id
@@ -13,6 +14,9 @@
 --   017 → fare_areas pricing fields
 --   018 → admin_auth_users (Admin-Login + Passwortwechsel)
 --   019 → admin_auth_password_resets + admin_auth_audit_log + session_version
+--   022 → Taxi-Flotte (fleet_drivers, fleet_vehicles, …)
+--   023 → Governance + company_change_requests
+--   024 → ride_events (Status-Historie pro Fahrt)
 
 DO $$
 DECLARE

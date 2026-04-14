@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prüft, ob die Produktions-DB die von der API erwarteten Objekte hat (012–014).
+# Prüft, ob die Produktions-DB die von der API erwarteten Objekte hat (siehe verify-onroda-db-schema.sql / MIGRATION_ORDER.txt).
 # Gleiche DATABASE_URL-Logik wie deploy-onroda-production.sh.
 set -euo pipefail
 
@@ -45,4 +45,4 @@ command -v psql >/dev/null 2>&1 || { echo "[verify-onroda-db-schema] psql nicht 
 [[ -f "$SQL_FILE" ]] || { echo "[verify-onroda-db-schema] Fehlt: $SQL_FILE" >&2; exit 1; }
 
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$SQL_FILE"
-echo "[verify-onroda-db-schema] OK — Schema passt zu Migrations-Erwartung (012–014)."
+echo "[verify-onroda-db-schema] OK — Schema passt zu den Prüfungen in verify-onroda-db-schema.sql."
