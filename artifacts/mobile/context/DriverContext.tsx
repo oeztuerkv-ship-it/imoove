@@ -106,9 +106,22 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok || !data?.token || !data?.driver) {
-        const msg = await fetchErrorMessage(res, "Anmeldung fehlgeschlagen.");
+      const rawText = await res.text();
+      let data: Record<string, unknown> = {};
+      try {
+        data = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok || data?.ok !== true || !data?.token || !data?.driver) {
+        const parsedError = typeof data.error === "string" ? data.error : "";
+        const parsedHint = typeof data.hint === "string" ? data.hint : "";
+        const bodySnippet = rawText.trim().slice(0, 400);
+        const msg =
+          parsedError || parsedHint
+            ? [parsedError, parsedHint].filter(Boolean).join("\n\n")
+            : `HTTP ${res.status} ${res.statusText || ""}\n${bodySnippet || "Anmeldung fehlgeschlagen."}`.trim();
         setLastError(msg);
         return { ok: false, error: msg };
       }
@@ -129,8 +142,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
       return { ok: true };
-    } catch {
-      const msg = "Netzwerkfehler beim Fahrer-Login.";
+    } catch (error) {
+      const msg = `Netzwerkfehler beim Fahrer-Login: ${error instanceof Error ? error.message : String(error)}`;
       setLastError(msg);
       return { ok: false, error: msg };
     }
