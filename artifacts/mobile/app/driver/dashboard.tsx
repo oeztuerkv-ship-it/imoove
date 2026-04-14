@@ -35,6 +35,18 @@ function isKrankenkasseRide(paymentMethod: string) {
   return paymentMethod.startsWith("Krankenkasse");
 }
 
+function accessCodeErrorMessage(code: string): string {
+  const m: Record<string, string> = {
+    access_code_invalid: "Der eingegebene Code ist ungueltig oder unbekannt.",
+    access_code_inactive: "Dieser Code ist deaktiviert.",
+    access_code_expired: "Dieser Code ist noch nicht gueltig oder bereits abgelaufen.",
+    access_code_exhausted: "Dieser Code wurde bereits vollstaendig eingeloest.",
+    access_code_wrong_company: "Dieser Code passt nicht zu diesem Unternehmen.",
+    request_failed: "Die Fahrt konnte nicht erstellt werden.",
+  };
+  return m[code] ?? "Die Fahrt konnte nicht erstellt werden.";
+}
+
 function accessCodeTypeDe(t: string): string {
   const m: Record<string, string> = {
     voucher: "Gutschein",
@@ -793,7 +805,6 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
   const [finalPriceInput, setFinalPriceInput] = useState(req.estimatedFare.toFixed(2).replace(".", ","));
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
-  const isCodeRide = req.authorizationSource === "access_code";
   const [kkEigenOpen, setKkEigenOpen] = useState(false);
   const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
     req.estimatedFare.toFixed(2).replace(".", ","),
@@ -980,24 +991,6 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
     : { lat: req.toLat ?? 48.69, lon: req.toLon ?? 9.2216, displayName: req.toFull };
 
   const handleFinishTap = () => {
-    if (isCodeRide && !isKK) {
-      const label = req.accessCodeSummary?.label ?? "Freigabe-Code";
-      Alert.alert(
-        "Fahrt abschließen",
-        `Zahlung läuft über die Freigabe „${label}“ (${accessCodeTypeDe(req.accessCodeSummary?.codeType ?? "general")}). Kein Barkassieren nötig — Betrag dient nur der Abrechnung mit dem Kostenträger.`,
-        [
-          { text: "Abbrechen", style: "cancel" },
-          {
-            text: "Abschließen",
-            onPress: () => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              onComplete(req.estimatedFare);
-            },
-          },
-        ],
-      );
-      return;
-    }
     if (isKK) {
       const parsed = parseEuroDriverInput(driverEigenanteil);
       const euro = parsed ?? req.estimatedFare;
@@ -1134,16 +1127,6 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
                 {kkEigenOpen ? "Zum Schließen antippen" : "Antippen · Eigenanteil"}
               </Text>
             </Pressable>
-          ) : isCodeRide ? (
-            <View style={activeStyles.statItem}>
-              <Feather name="shield" size={14} color="#16A34A" />
-              <Text style={[activeStyles.statValue, { color: "#15803D" }]} numberOfLines={2}>
-                {req.accessCodeSummary?.label ?? "Code-Fahrt"}
-              </Text>
-              <Text style={[activeStyles.statLabel, { color: colors.mutedForeground }]}>
-                {accessCodeTypeDe(req.accessCodeSummary?.codeType ?? "general")}
-              </Text>
-            </View>
           ) : (
             <View style={activeStyles.statItem}>
               <Feather name="credit-card" size={14} color={colors.mutedForeground} />
@@ -1444,7 +1427,8 @@ export default function DriverDashboard() {
   const { history } = useRide();
   const {
     pendingRequests: allPending,
-    driverAcceptedRequest: acceptedRequest,
+    acceptedRequest,
+    addRequest,
     acceptRequest,
     rejectByDriver,
     driverCancelRequest,
@@ -1452,6 +1436,12 @@ export default function DriverDashboard() {
     completeRequest,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
+  const [showCodeRideModal, setShowCodeRideModal] = useState(false);
+  const [codeRideFrom, setCodeRideFrom] = useState("");
+  const [codeRideTo, setCodeRideTo] = useState("");
+  const [codeRideAccessCode, setCodeRideAccessCode] = useState("");
+  const [codeRideCustomer, setCodeRideCustomer] = useState("");
+  const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
   const prevPendingIds = useRef<Set<string>>(new Set());
   const firstRender = useRef(true);
@@ -1523,7 +1513,7 @@ export default function DriverDashboard() {
     return () => { sub?.remove(); };
   }, []);
 
-  const driverId = driver?.email ?? "";
+  const driverId = driver?.id || driver?.email || "";
 
   const pendingRequests = allPending.filter(
     (r) => !(r.rejectedBy ?? []).includes(driverId)
@@ -1582,6 +1572,51 @@ export default function DriverDashboard() {
     await logout();
     router.replace("/");
   };
+
+  const resetCodeRideForm = useCallback(() => {
+    setCodeRideFrom("");
+    setCodeRideTo("");
+    setCodeRideAccessCode("");
+    setCodeRideCustomer("");
+  }, []);
+
+  const handleCreateCodeRide = useCallback(async () => {
+    const from = codeRideFrom.trim();
+    const to = codeRideTo.trim();
+    const accessCode = codeRideAccessCode.trim();
+    if (!from || !to || !accessCode) {
+      Alert.alert("Codefahrt", "Bitte Start, Ziel und Gutschein-/Freigabe-Code eingeben.");
+      return;
+    }
+    if (!driver) return;
+    setCodeRideSubmitting(true);
+    try {
+      await addRequest({
+        from,
+        fromFull: from,
+        to,
+        toFull: to,
+        distanceKm: 0,
+        durationMinutes: 0,
+        estimatedFare: 0,
+        paymentMethod: "Code",
+        vehicle: driver.car || "Taxi",
+        customerName: codeRideCustomer.trim() || "Laufkunde",
+        accessCode,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowCodeRideModal(false);
+      resetCodeRideForm();
+      setActiveTab("auftraege");
+      Alert.alert("Codefahrt", "Code akzeptiert. Die Fahrt wurde erstellt.");
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "request_failed";
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Codefahrt", accessCodeErrorMessage(code));
+    } finally {
+      setCodeRideSubmitting(false);
+    }
+  }, [addRequest, codeRideAccessCode, codeRideCustomer, codeRideFrom, codeRideTo, driver, resetCodeRideForm]);
 
   if (!driver) return null;
 
@@ -1662,6 +1697,16 @@ export default function DriverDashboard() {
             {activeTab === "uebersicht" && <TabUebersicht pendingRequests={pendingRequests} onAccept={handleAccept} onReject={handleReject} driverPos={driverPos} isAvailable={driver.isAvailable} />}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
+                <View style={styles.ordersHeaderRow}>
+                  <Text style={[styles.ordersHeaderTitle, { color: colors.foreground }]}>Offene Auftraege</Text>
+                  <Pressable
+                    style={styles.ordersPlusBtn}
+                    onPress={() => setShowCodeRideModal(true)}
+                  >
+                    <Feather name="plus" size={18} color="#fff" />
+                    <Text style={styles.ordersPlusText}>Code einloesen</Text>
+                  </Pressable>
+                </View>
                 {pendingRequests.length === 0 ? (
                   <View style={styles.emptyCenter}>
                     <MaterialCommunityIcons name="taxi" size={56} color="#9CA3AF" />
@@ -1754,6 +1799,105 @@ export default function DriverDashboard() {
           );
         })}
       </View>
+
+      <Modal
+        visible={showCodeRideModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (codeRideSubmitting) return;
+          setShowCodeRideModal(false);
+          resetCodeRideForm();
+        }}
+      >
+        <KeyboardAvoidingView style={activeStyles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => {
+              if (codeRideSubmitting) return;
+              setShowCodeRideModal(false);
+              resetCodeRideForm();
+            }}
+          />
+          <View style={activeStyles.priceModal}>
+            <View style={activeStyles.priceModalHandle} />
+            <Text style={activeStyles.priceModalTitle}>Codefahrt anlegen</Text>
+            <Text style={activeStyles.priceModalSub}>
+              Fuer Laufkunden mit Gutschein- oder Freigabe-Code.
+            </Text>
+            <View style={styles.codeRideField}>
+              <Text style={styles.codeRideLabel}>Start</Text>
+              <TextInput
+                style={styles.codeRideInput}
+                value={codeRideFrom}
+                onChangeText={setCodeRideFrom}
+                placeholder="z. B. Bahnhof Esslingen"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+            <View style={styles.codeRideField}>
+              <Text style={styles.codeRideLabel}>Ziel</Text>
+              <TextInput
+                style={styles.codeRideInput}
+                value={codeRideTo}
+                onChangeText={setCodeRideTo}
+                placeholder="z. B. Klinik Stuttgart"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+            <View style={styles.codeRideField}>
+              <Text style={styles.codeRideLabel}>Gutschein-/Freigabe-Code</Text>
+              <TextInput
+                style={styles.codeRideInput}
+                value={codeRideAccessCode}
+                onChangeText={setCodeRideAccessCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                placeholder="z. B. HOTEL-STUTTGART-2026"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+            <View style={styles.codeRideField}>
+              <Text style={styles.codeRideLabel}>Kundenname (optional)</Text>
+              <TextInput
+                style={styles.codeRideInput}
+                value={codeRideCustomer}
+                onChangeText={setCodeRideCustomer}
+                placeholder="Laufkunde"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+            <View style={activeStyles.priceModalBtns}>
+              <Pressable
+                style={activeStyles.priceCancelBtn}
+                onPress={() => {
+                  if (codeRideSubmitting) return;
+                  setShowCodeRideModal(false);
+                  resetCodeRideForm();
+                }}
+              >
+                <Text style={activeStyles.priceCancelText}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                style={activeStyles.priceConfirmBtn}
+                onPress={() => {
+                  void handleCreateCodeRide();
+                }}
+                disabled={codeRideSubmitting}
+              >
+                {codeRideSubmitting ? (
+                  <Text style={activeStyles.priceConfirmText}>Erstelle...</Text>
+                ) : (
+                  <>
+                    <Feather name="check" size={16} color="#fff" />
+                    <Text style={activeStyles.priceConfirmText}>Fahrt erstellen</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -1787,6 +1931,31 @@ const styles = StyleSheet.create({
   emptyCenter: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, paddingTop: 80 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptySub: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  ordersHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  ordersHeaderTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  ordersPlusBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#2563EB",
+  },
+  ordersPlusText: { color: "#fff", fontSize: 12, fontFamily: "Inter_700Bold" },
+  codeRideField: { gap: 6 },
+  codeRideLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#374151" },
+  codeRideInput: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: "#111827",
+    backgroundColor: "#F9FAFB",
+  },
 
   /* Instant card */
   reqCard: {
