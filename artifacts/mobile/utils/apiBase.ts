@@ -5,7 +5,12 @@
 export function getApiBaseUrl(): string {
   const raw = (process.env.EXPO_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "");
   if (!raw) return "";
-  return raw.endsWith("/api") ? raw : `${raw}/api`;
+  let normalized = raw;
+  // Production safety net: marketing host does not expose full app API methods.
+  if (normalized === "https://onroda.de" || normalized === "https://www.onroda.de") {
+    normalized = "https://api.onroda.de";
+  }
+  return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
 }
 
 /** Body von fehlgeschlagenen API-Responses lesen (z. B. error + hint vom Auth-Start). */
