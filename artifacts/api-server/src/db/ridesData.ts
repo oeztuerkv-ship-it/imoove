@@ -17,10 +17,14 @@ import {
 } from "../domain/rideAuthorization";
 import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
 import { getDb } from "./client";
-import { adminCompaniesTable, ridesTable } from "./schema";
+import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
+
+function makeEventId(prefix = "REV"): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function stripEphemeral(r: RideRequest): RideRequest {
   const { accessCodeSummary: _a, ...rest } = r;
@@ -271,6 +275,16 @@ export async function insertRide(r: RideRequest, tx?: any): Promise<void> {
     return;
   }
   await run.insert(ridesTable).values(rideToInsert(persisted));
+  await run.insert(rideEventsTable).values({
+    id: makeEventId(),
+    ride_id: persisted.id,
+    event_type: "ride_created",
+    from_status: null,
+    to_status: persisted.status,
+    actor_type: "system",
+    actor_id: null,
+    payload: {},
+  });
 }
 
 /**
@@ -718,6 +732,18 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
     return next;
   }
   await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  if (cur.status !== next.status) {
+    await db.insert(rideEventsTable).values({
+      id: makeEventId(),
+      ride_id: id,
+      event_type: "ride_status_changed",
+      from_status: cur.status,
+      to_status: next.status,
+      actor_type: "system",
+      actor_id: null,
+      payload: {},
+    });
+  }
   return next;
 }
 

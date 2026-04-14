@@ -35,6 +35,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   admin_auth Konsole Rollen/Scope → 021_admin_auth_console_roles_scope.sql
   Taxi-Flotte / Fahrer / Fahrzeuge     → 022_taxi_fleet_partner.sql
   Governance-Status + Change-Requests  → 023_company_governance_hardening.sql
+  Ride-Event-Historie                  → 024_ride_events_status_history.sql
 
 Nach Migrationen Schema prüfen:
 

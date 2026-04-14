@@ -63,17 +63,27 @@ type FilterTab = "alle" | "aktiv" | "abgeschlossen" | "storniert";
 function StatusBadge({ status }: { status: string }) {
   const colors = useColors();
   const config = {
+    requested:   { label: "Anfrage erfasst",    bg: "#F59E0B22", fg: "#D97706" },
+    searching_driver: { label: "Fahrer wird gesucht", bg: "#F59E0B22", fg: "#D97706" },
+    offered:     { label: "Angebot läuft",      bg: "#F59E0B22", fg: "#D97706" },
     pending:     { label: "Warte auf Fahrer", bg: "#F59E0B22", fg: "#D97706" },
     accepted:    { label: "Fahrer kommt",     bg: "#16A34A22", fg: "#16A34A" },
+    driver_arriving: { label: "Fahrer unterwegs", bg: "#16A34A22", fg: "#16A34A" },
+    driver_waiting: { label: "Fahrer wartet", bg: "#16A34A22", fg: "#16A34A" },
+    passenger_onboard: { label: "Kunde an Bord", bg: "#2563EB22", fg: "#2563EB" },
     in_progress: { label: "Fahrt läuft",      bg: "#2563EB22", fg: "#2563EB" },
     completed:   { label: "Abgeschlossen",    bg: colors.success + "22", fg: colors.success },
+    cancelled_by_customer: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
+    cancelled_by_driver: { label: "Vom Fahrer storniert", bg: "#EF444422", fg: "#EF4444" },
+    cancelled_by_system: { label: "Systemstorno", bg: "#EF444422", fg: "#EF4444" },
+    expired: { label: "Abgelaufen", bg: "#EF444422", fg: "#EF4444" },
     cancelled:   { label: "Storniert",        bg: "#EF444422", fg: "#EF4444" },
     rejected:    { label: "Abgelehnt",        bg: "#EF444422", fg: "#EF4444" },
   }[status] ?? { label: status, bg: "#9CA3AF22", fg: "#9CA3AF" };
 
   return (
     <View style={[styles.statusBadge, { backgroundColor: config.bg }]}>
-      {status === "pending" && (
+      {(status === "pending" || status === "requested" || status === "searching_driver" || status === "offered") && (
         <ActivityIndicator size={10} color={config.fg} style={{ marginRight: 5 }} />
       )}
       <Text style={[styles.statusText, { color: config.fg }]}>{config.label}</Text>
@@ -304,20 +314,29 @@ export default function MyRidesScreen() {
                     </View>
                   </View>
 
-                  {req.status === "accepted" && (
+                  {(req.status === "accepted" || req.status === "driver_arriving") && (
                     <View style={[styles.driverHint, { backgroundColor: "#16A34A11", borderColor: "#16A34A33" }]}>
                       <Feather name="check-circle" size={14} color="#16A34A" />
                       <Text style={[styles.driverHintText, { color: "#16A34A" }]}>Fahrer auf dem Weg zu dir</Text>
                     </View>
                   )}
-                  {req.status === "pending" && (
+                  {(req.status === "pending" || req.status === "requested" || req.status === "searching_driver" || req.status === "offered") && (
                     <View style={[styles.driverHint, { backgroundColor: "#F59E0B11", borderColor: "#F59E0B33" }]}>
                       <Feather name="clock" size={14} color="#D97706" />
                       <Text style={[styles.driverHintText, { color: "#D97706" }]}>Auftrag aufgegeben — Fahrer wird gesucht …</Text>
                     </View>
                   )}
 
-                  {(req.status === "pending" || req.status === "accepted" || req.status === "arrived" || req.status === "in_progress") && (
+                  {(req.status === "pending" ||
+                    req.status === "requested" ||
+                    req.status === "searching_driver" ||
+                    req.status === "offered" ||
+                    req.status === "accepted" ||
+                    req.status === "driver_arriving" ||
+                    req.status === "driver_waiting" ||
+                    req.status === "passenger_onboard" ||
+                    req.status === "arrived" ||
+                    req.status === "in_progress") && (
                     <Pressable
                       style={[styles.liveMapRow, { borderColor: colors.border }]}
                       onPress={() => router.push("/status")}
@@ -328,7 +347,13 @@ export default function MyRidesScreen() {
                     </Pressable>
                   )}
 
-                  {(req.status === "pending" || req.status === "accepted") && (
+                  {(req.status === "pending" ||
+                    req.status === "requested" ||
+                    req.status === "searching_driver" ||
+                    req.status === "offered" ||
+                    req.status === "accepted" ||
+                    req.status === "driver_arriving" ||
+                    req.status === "driver_waiting") && (
                     <Pressable
                       style={[styles.actionBtn, { borderColor: "#EF444466", backgroundColor: "#EF444408" }]}
                       onPress={() => Alert.alert("Fahrt stornieren?", "Möchtest du diesen Auftrag wirklich stornieren?", [

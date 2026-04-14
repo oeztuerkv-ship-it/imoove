@@ -11,10 +11,21 @@ import React, {
 import { getApiBaseUrl } from "@/utils/apiBase";
 
 export type RequestStatus =
+  | "draft"
+  | "requested"
+  | "searching_driver"
+  | "offered"
   | "pending"
   | "accepted"
+  | "driver_arriving"
+  | "driver_waiting"
+  | "passenger_onboard"
   | "arrived"
   | "in_progress"
+  | "cancelled_by_customer"
+  | "cancelled_by_driver"
+  | "cancelled_by_system"
+  | "expired"
   | "rejected"
   | "cancelled"
   | "completed";
@@ -94,6 +105,7 @@ interface RideRequestContextValue {
     },
   ) => Promise<string>;
   acceptRequest: (id: string, driverId?: string) => Promise<void>;
+  markDriverArriving: (id: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
   cancelRequest: (id: string) => Promise<void>;
@@ -117,6 +129,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   myCancelledRequests: [],
   addRequest: async () => "",
   acceptRequest: async () => {},
+  markDriverArriving: async () => {},
   rejectRequest: async () => {},
   rejectByDriver: async () => {},
   cancelRequest: async () => {},
@@ -241,7 +254,7 @@ function normalizeRequest(r: any): RideRequest {
     customerName: String(customerName),
     passengerId: r.passengerId ?? r.passenger_id,
     driverId: r.driverId ?? r.driver_id ?? null,
-    status: (r.status ?? "pending") as RequestStatus,
+    status: (r.status ?? "requested") as RequestStatus,
     rejectedBy: r.rejectedBy ?? [],
   } as RideRequest;
 }
@@ -306,7 +319,11 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       if (normalized.length > lastCountRef.current) {
         const newReqs = normalized.slice(0, normalized.length - lastCountRef.current);
         const newest = newReqs[0];
-        if (newest?.status === "pending" && lastCountRef.current > 0) {
+        if (
+          newest &&
+          (newest.status === "requested" || newest.status === "searching_driver" || newest.status === "offered" || newest.status === "pending") &&
+          lastCountRef.current > 0
+        ) {
           setLastAddedRequestId(newest.id);
         }
       }
@@ -327,7 +344,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const patchStatus = useCallback(
     async (id: string, status: RequestStatus, finalFare?: number, driverId?: string) => {
       if (!API_BASE) return;
-      await fetch(`${API_BASE}/rides/${id}/status`, {
+      const res = await fetch(`${API_BASE}/rides/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -336,6 +353,18 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           ...(driverId != null ? { driverId } : {}),
         }),
       });
+      if (!res.ok) {
+        let errorCode = "status_update_failed";
+        try {
+          const body = (await res.json()) as { error?: unknown };
+          if (typeof body.error === "string" && body.error.trim()) {
+            errorCode = body.error.trim();
+          }
+        } catch {
+          // keep default errorCode
+        }
+        throw new Error(errorCode);
+      }
       await fetchAll();
     },
     [fetchAll],
@@ -399,7 +428,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           accessCodeSummary: accessTrim ? { codeType: "general", label: "Offline (nicht geprüft)" } : null,
           id,
           createdAt: new Date(),
-          status: "pending",
+          status: "requested",
           rejectedBy: [],
         };
         setRequests((prev) => [newReq, ...prev]);
@@ -430,6 +459,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     (id: string, driverId?: string) => patchStatus(id, "accepted", undefined, driverId),
     [patchStatus],
   );
+  const markDriverArriving = useCallback((id: string) => patchStatus(id, "driver_arriving"), [patchStatus]);
   const rejectRequest = useCallback((id: string) => patchStatus(id, "rejected"), [patchStatus]);
 
   const rejectByDriver = useCallback(
@@ -445,7 +475,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     [fetchAll],
   );
 
-  const cancelRequest = useCallback((id: string) => patchStatus(id, "cancelled"), [patchStatus]);
+  const cancelRequest = useCallback((id: string) => patchStatus(id, "cancelled_by_customer"), [patchStatus]);
 
   const driverCancelRequest = useCallback(
     async (id: string, driverId: string) => {
@@ -460,17 +490,24 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     [fetchAll],
   );
 
-  const arriveAtCustomer = useCallback((id: string) => patchStatus(id, "arrived"), [patchStatus]);
-  const startDriving = useCallback((id: string) => patchStatus(id, "in_progress"), [patchStatus]);
+  const arriveAtCustomer = useCallback((id: string) => patchStatus(id, "driver_waiting"), [patchStatus]);
+  const startDriving = useCallback((id: string) => patchStatus(id, "passenger_onboard"), [patchStatus]);
   const completeRequest = useCallback(
     (id: string, finalFare?: number) => patchStatus(id, "completed", finalFare),
     [patchStatus],
   );
 
-  const pendingRequests = requests.filter((r) => r.status === "pending");
+  const pendingRequests = requests.filter(
+    (r) => r.status === "pending" || r.status === "requested" || r.status === "searching_driver" || r.status === "offered",
+  );
   const acceptedRequest =
     requests.find((r) =>
-      r.status === "accepted" || r.status === "arrived" || r.status === "in_progress"
+      r.status === "accepted" ||
+      r.status === "driver_arriving" ||
+      r.status === "driver_waiting" ||
+      r.status === "passenger_onboard" ||
+      r.status === "arrived" ||
+      r.status === "in_progress"
     ) ?? null;
   const completedRequest =
     requests.filter((r) => r.status === "completed").slice(-1)[0] ?? null;
@@ -479,7 +516,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     ? requests.filter(
         (r) =>
           r.passengerId === passengerId &&
-          (r.status === "pending" || r.status === "accepted" || r.status === "arrived" || r.status === "in_progress"),
+          (r.status === "pending" ||
+            r.status === "requested" ||
+            r.status === "searching_driver" ||
+            r.status === "offered" ||
+            r.status === "accepted" ||
+            r.status === "driver_arriving" ||
+            r.status === "driver_waiting" ||
+            r.status === "passenger_onboard" ||
+            r.status === "arrived" ||
+            r.status === "in_progress"),
       )
     : [];
 
@@ -487,7 +533,12 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     ? requests.filter(
         (r) =>
           r.passengerId === passengerId &&
-          (r.status === "cancelled" || r.status === "rejected"),
+          (r.status === "cancelled" ||
+            r.status === "cancelled_by_customer" ||
+            r.status === "cancelled_by_driver" ||
+            r.status === "cancelled_by_system" ||
+            r.status === "expired" ||
+            r.status === "rejected"),
       )
     : [];
 
@@ -505,6 +556,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         myCancelledRequests,
         addRequest,
         acceptRequest,
+        markDriverArriving,
         rejectRequest,
         rejectByDriver,
         cancelRequest,

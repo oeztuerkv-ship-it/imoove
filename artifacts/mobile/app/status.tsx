@@ -161,9 +161,10 @@ export default function StatusScreen() {
 
   const rawPhase: "searching" | "accepted" | "preparing" | "arrived" | "driving" | "completed" =
     completedRequest ? "completed"
-    : acceptedRequest?.status === "in_progress" ? "driving"
-    : acceptedRequest?.status === "arrived" ? "arrived"
+    : acceptedRequest?.status === "in_progress" || acceptedRequest?.status === "passenger_onboard" ? "driving"
+    : acceptedRequest?.status === "arrived" || acceptedRequest?.status === "driver_waiting" ? "arrived"
     : acceptedRequest && acceptedRequest.scheduledAt && withinPickupHour ? "preparing"
+    : acceptedRequest?.status === "accepted" || acceptedRequest?.status === "driver_arriving" ? "accepted"
     : acceptedRequest ? "accepted"
     : "searching";
 

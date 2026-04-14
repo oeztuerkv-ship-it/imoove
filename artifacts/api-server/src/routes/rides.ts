@@ -38,6 +38,68 @@ export const customerLocations = new Map<string, DriverLocation>();
 
 const router = Router();
 
+const ACTIVE_RIDE_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
+  "requested",
+  "searching_driver",
+  "offered",
+  "accepted",
+  "driver_arriving",
+  "driver_waiting",
+  "passenger_onboard",
+  "in_progress",
+  // Legacy compatibility
+  "pending",
+  "arrived",
+]);
+
+function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
+  if (typeof raw !== "string") return null;
+  const s = raw.trim();
+  if (!s) return null;
+  const allowed: RideRequest["status"][] = [
+    "draft",
+    "requested",
+    "searching_driver",
+    "offered",
+    "pending",
+    "accepted",
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "arrived",
+    "in_progress",
+    "completed",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system",
+    "expired",
+    "rejected",
+    "cancelled",
+  ];
+  return (allowed as string[]).includes(s) ? (s as RideRequest["status"]) : null;
+}
+
+function canTransitionStatus(
+  from: RideRequest["status"],
+  to: RideRequest["status"],
+): boolean {
+  if (from === to) return true;
+  const map: Partial<Record<RideRequest["status"], RideRequest["status"][]>> = {
+    draft: ["requested", "cancelled_by_customer", "cancelled"],
+    requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+    searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+    offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
+    pending: ["accepted", "driver_arriving", "driver_waiting", "in_progress", "completed", "cancelled", "rejected", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    accepted: ["driver_arriving", "driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "cancelled"],
+    driver_arriving: ["driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    driver_waiting: ["passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    passenger_onboard: ["in_progress", "completed", "cancelled_by_system"],
+    arrived: ["passenger_onboard", "in_progress", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
+    in_progress: ["completed", "cancelled_by_system", "cancelled"],
+  };
+  return (map[from] ?? []).includes(to);
+}
+
 function ceilToTenth(amount: number): number {
   const safe = Number.isFinite(amount) ? amount : 0;
   return Math.ceil((safe + Number.EPSILON) * 10) / 10;
@@ -146,7 +208,7 @@ router.post("/rides", async (req, res, next) => {
       ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      status: "pending",
+      status: "requested",
       rejectedBy: [],
       driverId: null,
       rideKind,
@@ -179,17 +241,26 @@ router.patch("/rides/:id/status", async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, finalFare, driverId } = req.body as {
-      status: RideRequest["status"];
+      status: unknown;
       finalFare?: number;
       driverId?: string;
     };
+    const nextStatus = normalizeStatusInput(status);
+    if (!nextStatus) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
       return;
     }
+    if (!canTransitionStatus(cur.status, nextStatus)) {
+      res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
+      return;
+    }
     const updated = await updateRide(id, {
-      status,
+      status: nextStatus,
       ...(finalFare != null ? { finalFare } : {}),
       ...(driverId != null ? { driverId } : {}),
     });
@@ -265,7 +336,12 @@ router.get("/rides/:id/customer-location", (req, res) => {
 router.post("/rides/:id/reject", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { driverId } = req.body as { driverId: string };
+    const driverIdRaw = (req.body as { driverId?: unknown }).driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    if (!driverId) {
+      res.status(400).json({ error: "driver_id_required" });
+      return;
+    }
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
@@ -287,18 +363,46 @@ router.post("/rides/:id/reject", async (req, res, next) => {
 router.post("/rides/:id/driver-cancel", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { driverId } = req.body as { driverId: string };
+    const driverIdRaw = (req.body as { driverId?: unknown }).driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
       return;
     }
     const existing = cur.rejectedBy ?? [];
-    const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
+    const rejectedBy = driverId
+      ? (existing.includes(driverId) ? existing : [...existing, driverId])
+      : existing;
     const updated = await updateRide(id, {
-      status: "pending",
+      status: "searching_driver",
       driverId: null,
       rejectedBy,
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:id/driver-hard-cancel", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverIdRaw = (req.body as { driverId?: unknown }).driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const updated = await updateRide(id, {
+      status: "cancelled_by_driver",
+      driverId: null,
+      rejectedBy: driverId ? [...new Set([...(cur.rejectedBy ?? []), driverId])] : (cur.rejectedBy ?? []),
     });
     if (!updated) {
       res.status(500).json({ error: "update_failed" });

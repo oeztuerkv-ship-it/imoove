@@ -76,10 +76,21 @@ export interface RideRequest {
   driverId?: string | null;
   rejectedBy: string[];
   status:
+    | "draft"
+    | "requested"
+    | "searching_driver"
+    | "offered"
     | "pending"
     | "accepted"
+    | "driver_arriving"
+    | "driver_waiting"
+    | "passenger_onboard"
     | "arrived"
     | "in_progress"
+    | "cancelled_by_customer"
+    | "cancelled_by_driver"
+    | "cancelled_by_system"
+    | "expired"
     | "rejected"
     | "cancelled"
     | "completed";

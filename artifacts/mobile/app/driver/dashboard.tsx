@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   KeyboardAvoidingView,
@@ -799,8 +800,10 @@ function TabProfil({ driver, onLogout }: { driver: DriverProfile; onLogout: () =
 /* ─── Active Ride Screen (with final price modal) ─── */
 function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onComplete: (finalFare: number) => void; onCancel: () => void }) {
   const colors = useColors();
-  const { startDriving, arriveAtCustomer } = useRideRequests();
-  const [phase, setPhase] = useState<ActivePhase>("pickup");
+  const { startDriving, arriveAtCustomer, markDriverArriving } = useRideRequests();
+  const [phase, setPhase] = useState<ActivePhase>(
+    req.status === "in_progress" || req.status === "passenger_onboard" ? "driving" : "pickup",
+  );
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [finalPriceInput, setFinalPriceInput] = useState(req.estimatedFare.toFixed(2).replace(".", ","));
   const isKK = isKrankenkasseRide(req.paymentMethod);
@@ -885,6 +888,9 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
     if (!driverCoords || req.fromLat == null || req.fromLon == null) return;
     if (navAutoStarted.current) return;
     navAutoStarted.current = true;
+    if (req.status === "accepted") {
+      void markDriverArriving(req.id);
+    }
     router.push({
       pathname: "/driver/navigation" as "/driver/navigation",
       params: {
@@ -907,7 +913,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
         paymentMethod: req.paymentMethod,
       },
     });
-  }, [driverCoords, phase, req]);
+  }, [driverCoords, phase, req, markDriverArriving]);
 
   // Open in-app navigation screen manually
   // Phase "pickup": Fahrerstandort → Abholort des Kunden
@@ -917,6 +923,9 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
       const dLat = driverCoords?.lat ?? 0;
       const dLon = driverCoords?.lon ?? 0;
       if (!dLat || !dLon || req.fromLat == null) return;
+      if (req.status === "accepted") {
+        void markDriverArriving(req.id);
+      }
       router.push({
         pathname: "/driver/navigation" as "/driver/navigation",
         params: {
@@ -964,7 +973,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
         },
       });
     }
-  }, [phase, req, driverCoords]);
+  }, [phase, req, driverCoords, markDriverArriving]);
 
   const canStart = !req.scheduledAt || (new Date(req.scheduledAt).getTime() - now) <= 60 * 60 * 1000;
   const minutesUntilUnlock = req.scheduledAt
@@ -1426,6 +1435,7 @@ export default function DriverDashboard() {
   const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h } = useDriver();
   const { history } = useRide();
   const {
+    requests,
     pendingRequests: allPending,
     acceptedRequest,
     addRequest,
@@ -1518,6 +1528,18 @@ export default function DriverDashboard() {
   const pendingRequests = allPending.filter(
     (r) => !(r.rejectedBy ?? []).includes(driverId)
   );
+  const activeDriverRequest =
+    requests.find(
+      (r) =>
+        (r.status === "accepted" ||
+          r.status === "driver_arriving" ||
+          r.status === "driver_waiting" ||
+          r.status === "passenger_onboard" ||
+          r.status === "arrived" ||
+          r.status === "in_progress") &&
+        r.driverId === driverId,
+    ) ??
+    (acceptedRequest && acceptedRequest.driverId === driverId ? acceptedRequest : null);
 
   const appRides = history.filter((r) => r.status === "completed");
   const allRides = useMemo(() => {
@@ -1541,9 +1563,18 @@ export default function DriverDashboard() {
   }, [appRides]);
 
   const handleAccept = async (id: string) => {
-    stopRideSound().catch(() => {});
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await acceptRequest(id, driverId);
+    try {
+      stopRideSound().catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await acceptRequest(id, driverId);
+      setActiveTab("uebersicht");
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "Annahme fehlgeschlagen",
+        "Der Auftrag konnte nicht angenommen werden. Bitte aktualisieren und erneut versuchen.",
+      );
+    }
   };
   const handleReject = async (id: string) => {
     stopRideSound().catch(() => {});
@@ -1556,7 +1587,7 @@ export default function DriverDashboard() {
   };
   const handleCancel = async (id: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    const req = acceptedRequest;
+    const req = activeDriverRequest;
     await driverCancelRequest(id, driverId);
     if (req?.scheduledAt) {
       const pickupMs = new Date(req.scheduledAt).getTime();
@@ -1618,7 +1649,13 @@ export default function DriverDashboard() {
     }
   }, [addRequest, codeRideAccessCode, codeRideCustomer, codeRideFrom, codeRideTo, driver, resetCodeRideForm]);
 
-  if (!driver) return null;
+  if (!driver) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color="#DC2626" />
+      </View>
+    );
+  }
 
   if (isBlocked && blockedUntilDate) {
     const unblockStr = blockedUntilDate.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -1690,8 +1727,12 @@ export default function DriverDashboard() {
 
       {/* Content */}
       <View style={{ flex: 1 }}>
-        {acceptedRequest ? (
-          <ActiveRideScreen req={acceptedRequest} onComplete={(fare) => handleComplete(acceptedRequest.id, fare)} onCancel={() => handleCancel(acceptedRequest.id)} />
+        {activeDriverRequest ? (
+          <ActiveRideScreen
+            req={activeDriverRequest}
+            onComplete={(fare) => handleComplete(activeDriverRequest.id, fare)}
+            onCancel={() => handleCancel(activeDriverRequest.id)}
+          />
         ) : (
           <>
             {activeTab === "uebersicht" && <TabUebersicht pendingRequests={pendingRequests} onAccept={handleAccept} onReject={handleReject} driverPos={driverPos} isAvailable={driver.isAvailable} />}

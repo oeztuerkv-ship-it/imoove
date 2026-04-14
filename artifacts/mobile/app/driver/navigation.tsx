@@ -222,13 +222,13 @@ export default function DriverNavigationScreen() {
   };
 
   const handleAngekommen = async () => {
-    await patchStatus("arrived");
+    await patchStatus("driver_waiting");
     trySpeak("Angekommen. Bitte Fahrt starten wenn der Kunde eingestiegen ist.", soundRef.current);
     setHasArrived(true);   // ← stay on screen, button changes to "Fahrt beginnen"
   };
 
   const handleFahrtBeginnen = async () => {
-    await patchStatus("in_progress");
+    await patchStatus("passenger_onboard");
     trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
     router.replace({
       pathname: "/driver/navigation" as "/driver/navigation",

@@ -308,6 +308,21 @@ export const ridesTable = pgTable("rides", {
     .default({}),
 });
 
+/** Event-Historie pro Fahrt (Statuswechsel, Matching, Storno, Abschluss, etc.). */
+export const rideEventsTable = pgTable("ride_events", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  event_type: text("event_type").notNull(),
+  from_status: text("from_status"),
+  to_status: text("to_status"),
+  actor_type: text("actor_type").notNull().default("system"),
+  actor_id: text("actor_id"),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Medizinische Serienfahrten: Kopfdatensatz; Fahrten tragen seriesId in partner_booking_meta. */
 export const partnerRideSeriesTable = pgTable("partner_ride_series", {
   id: text("id").primaryKey(),
