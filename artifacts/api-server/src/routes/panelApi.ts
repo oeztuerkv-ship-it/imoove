@@ -17,6 +17,11 @@ import {
   type PanelCompanyProfilePatch,
 } from "../db/panelCompanyData";
 import {
+  insertCompanyChangeRequest,
+  listCompanyChangeRequestsByCompany,
+} from "../db/companyChangeRequestsData";
+import { getCompanyGovernanceGate } from "../db/companyGovernanceData";
+import {
   deleteInactivePanelUserInCompany,
   findPanelUserInCompany,
   insertPanelUser,
@@ -110,6 +115,12 @@ function denyUnlessCompanyOrOverview(res: Response, profile: PanelUserProfileRow
   if (e.includes("overview") || e.includes("company_profile")) return true;
   res.status(403).json({ error: "module_disabled", hint: "overview_or_company_profile" });
   return false;
+}
+
+function permissionFlag(obj: Record<string, unknown> | undefined, key: string, fallback = false): boolean {
+  if (!obj) return fallback;
+  const v = obj[key];
+  return typeof v === "boolean" ? v : fallback;
 }
 
 async function enrichPanelRidesForResponse(rides: RideRequest[]): Promise<RideRequest[]> {
@@ -478,30 +489,18 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const str = (k: string) => (typeof body[k] === "string" ? body[k] : undefined);
 
     const patch: PanelCompanyProfilePatch = {};
-    const n = str("name");
     const cn = str("contactName");
-    const em = str("email");
-    const ph = str("phone");
-    const a1 = str("addressLine1");
-    const a2 = str("addressLine2");
-    const pc = str("postalCode");
-    const ci = str("city");
-    const co = str("country");
-    const vi = str("vatId");
-    const taxId = str("taxId");
-    const concessionNumber = str("concessionNumber");
-    if (n !== undefined) patch.name = n;
+    const dispoPhone = str("dispoPhone");
+    const supportEmail = str("supportEmail");
+    const logoUrl = str("logoUrl");
+    const openingHours = str("openingHours");
+    const businessNotes = str("businessNotes");
     if (cn !== undefined) patch.contactName = cn;
-    if (em !== undefined) patch.email = em;
-    if (ph !== undefined) patch.phone = ph;
-    if (a1 !== undefined) patch.addressLine1 = a1;
-    if (a2 !== undefined) patch.addressLine2 = a2;
-    if (pc !== undefined) patch.postalCode = pc;
-    if (ci !== undefined) patch.city = ci;
-    if (co !== undefined) patch.country = co;
-    if (vi !== undefined) patch.vatId = vi;
-    if (taxId !== undefined) patch.taxId = taxId;
-    if (concessionNumber !== undefined) patch.concessionNumber = concessionNumber;
+    if (dispoPhone !== undefined) patch.dispoPhone = dispoPhone;
+    if (supportEmail !== undefined) patch.supportEmail = supportEmail;
+    if (logoUrl !== undefined) patch.logoUrl = logoUrl;
+    if (openingHours !== undefined) patch.openingHours = openingHours;
+    if (businessNotes !== undefined) patch.businessNotes = businessNotes;
 
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {
@@ -514,7 +513,7 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
         res.status(400).json({ error: code });
         return;
       }
-      if (code === "name_required" || code === "email_invalid") {
+      if (code === "email_invalid") {
         res.status(400).json({ error: code });
         return;
       }
@@ -533,6 +532,61 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     });
 
     res.json({ ok: true, company: result.company });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const rows = await listCompanyChangeRequestsByCompany(ctx.claims.companyId);
+    res.json({ ok: true, requests: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const b = req.body as { requestType?: unknown; reason?: unknown; payload?: unknown };
+    const requestType = typeof b.requestType === "string" ? b.requestType.trim() : "";
+    const reason = typeof b.reason === "string" ? b.reason.trim() : "";
+    const payload =
+      b.payload && typeof b.payload === "object" && !Array.isArray(b.payload)
+        ? (b.payload as Record<string, unknown>)
+        : {};
+    if (!requestType) {
+      res.status(400).json({ error: "request_type_required" });
+      return;
+    }
+    const created = await insertCompanyChangeRequest({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      requestedByPanelUserId: ctx.claims.panelUserId,
+      requestType,
+      reason,
+      payload,
+    });
+    if (!created) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "company.change_request.created",
+      subjectType: "company_change_request",
+      subjectId: created.id,
+      meta: { requestType },
+    });
+    res.status(201).json({ ok: true, request: created });
   } catch (e) {
     next(e);
   }
@@ -666,6 +720,21 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       }
       const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
       const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
+      const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+      if (g && payerKind === "insurance") {
+        const okInsurer = permissionFlag(g.insurerPermissions, "book", false);
+        if (!okInsurer) {
+          res.status(403).json({ error: "insurer_booking_not_allowed" });
+          return;
+        }
+      }
+      if (g && rideKind === "voucher") {
+        const okVoucher = permissionFlag(g.farePermissions, "voucher", false);
+        if (!okVoucher) {
+          res.status(403).json({ error: "voucher_booking_not_allowed" });
+          return;
+        }
+      }
       const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
       const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 

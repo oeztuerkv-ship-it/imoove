@@ -1113,26 +1113,18 @@ function CompanyFormBody({ form, setForm, moduleCatalog = [], mode = "create" })
       </div>
       <div className="admin-filter-item" style={{ gridColumn: "1 / -1" }}>
         <label className="admin-field-label">Mandanten-Art (Plattform)</label>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <label className="admin-switch-row" style={{ gap: 8 }}>
-            <input
-              type="radio"
-              name="companyKind"
-              checked={form.company_kind === "general"}
-              onChange={() => setForm((p) => ({ ...p, company_kind: "general" }))}
-            />
-            <span className="admin-switch-row__label">Allgemein</span>
-          </label>
-          <label className="admin-switch-row" style={{ gap: 8 }}>
-            <input
-              type="radio"
-              name="companyKind"
-              checked={form.company_kind === "taxi"}
-              onChange={() => setForm((p) => ({ ...p, company_kind: "taxi" }))}
-            />
-            <span className="admin-switch-row__label">Taxi-Unternehmer (Flotte / Fahrer-Logins)</span>
-          </label>
-        </div>
+        <select
+          className="admin-input"
+          value={form.company_kind}
+          onChange={(e) => setForm((p) => ({ ...p, company_kind: e.target.value }))}
+        >
+          <option value="general">Allgemein</option>
+          <option value="taxi">Taxi-Unternehmer (Flotte / Fahrer-Logins)</option>
+          <option value="voucher_client">Gutscheinkunde</option>
+          <option value="insurer">Krankenkasse / Versicherer</option>
+          <option value="hotel">Hotel</option>
+          <option value="corporate">Firmenkunde / Corporate</option>
+        </select>
       </div>
       {form.company_kind === "taxi" ? (
         <div className="admin-filter-item">

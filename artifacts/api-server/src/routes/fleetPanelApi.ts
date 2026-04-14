@@ -31,6 +31,11 @@ import {
   listAssignmentsForCompany,
   setDriverVehicleAssignment,
 } from "../db/fleetAssignmentsData";
+import {
+  countFleetDriversForCompany,
+  countFleetVehiclesForCompany,
+  getCompanyGovernanceGate,
+} from "../db/companyGovernanceData";
 import { hashPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
@@ -84,6 +89,23 @@ async function assertFleetPanel(
     return null;
   }
   return { claims, profile };
+}
+
+async function requireFleetProvisioningReady(
+  companyId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await getCompanyGovernanceGate(companyId);
+  if (!gate) return { ok: false, error: "company_not_found" };
+  if (gate.companyKind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
+  if (gate.isBlocked) return { ok: false, error: "company_blocked" };
+  if (gate.verificationStatus !== "verified") return { ok: false, error: "company_not_verified" };
+  if (gate.complianceStatus !== "compliant") return { ok: false, error: "company_not_compliant" };
+  if (gate.contractStatus !== "active") return { ok: false, error: "contract_not_active" };
+  if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
+  if (!gate.hasComplianceGewerbe || !gate.hasComplianceInsurance) {
+    return { ok: false, error: "required_documents_missing" };
+  }
+  return { ok: true };
 }
 
 router.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
@@ -144,6 +166,17 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
+    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    if (!gate.ok) {
+      res.status(403).json({ error: gate.error });
+      return;
+    }
+    const c = await countFleetDriversForCompany(ctx.claims.companyId);
+    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
+    if (limits && c >= limits.maxDrivers) {
+      res.status(403).json({ error: "driver_limit_reached", maxDrivers: limits.maxDrivers });
+      return;
+    }
     const email = typeof b.email === "string" ? b.email : "";
     const firstName = typeof b.firstName === "string" ? b.firstName : "";
     const lastName = typeof b.lastName === "string" ? b.lastName : "";
@@ -347,6 +380,17 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
+    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    if (!gate.ok) {
+      res.status(403).json({ error: gate.error });
+      return;
+    }
+    const c = await countFleetVehiclesForCompany(ctx.claims.companyId);
+    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
+    if (limits && c >= limits.maxVehicles) {
+      res.status(403).json({ error: "vehicle_limit_reached", maxVehicles: limits.maxVehicles });
+      return;
+    }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
     const vehicleType = (typeof b.vehicleType === "string" ? b.vehicleType : "sedan") as FleetVehicleType;
     const allowed: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];

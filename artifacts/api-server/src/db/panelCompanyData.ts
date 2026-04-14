@@ -16,37 +16,40 @@ export interface PanelCompanyPublic {
   country: string;
   vatId: string;
   isActive: boolean;
-  /** Mandanten-Typ: `taxi` = Flotten-/Fahrer-Modul möglich. */
-  companyKind: "general" | "taxi";
-  /** Nur sinnvoll bei `companyKind === "taxi"` (Steuer-ID). */
+  /** Mandanten-Typ: Governance steuert Module, Preise, Flows. */
+  companyKind: "general" | "taxi" | "voucher_client" | "insurer" | "hotel" | "corporate";
   taxId: string;
   concessionNumber: string;
   hasComplianceGewerbe: boolean;
   hasComplianceInsurance: boolean;
+  legalForm: string;
+  ownerName: string;
+  supportEmail: string;
+  dispoPhone: string;
+  logoUrl: string;
+  openingHours: string;
+  businessNotes: string;
+  verificationStatus: string;
+  complianceStatus: string;
+  contractStatus: string;
+  isBlocked: boolean;
+  maxDrivers: number;
+  maxVehicles: number;
 }
 
 export type PanelCompanyProfilePatch = Partial<{
-  name: string;
   contactName: string;
-  email: string;
-  phone: string;
-  addressLine1: string;
-  addressLine2: string;
-  postalCode: string;
-  city: string;
-  country: string;
-  vatId: string;
-  taxId: string;
-  concessionNumber: string;
+  dispoPhone: string;
+  supportEmail: string;
+  logoUrl: string;
+  openingHours: string;
+  businessNotes: string;
 }>;
 
 const MAX = {
-  name: 200,
-  line: 500,
   short: 120,
-  vat: 64,
-  tax: 64,
-  concession: 80,
+  line: 500,
+  url: 2048,
 } as const;
 
 function clip(s: string, max: number): string {
@@ -69,11 +72,31 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     country: r.country,
     vatId: r.vat_id,
     isActive: r.is_active,
-    companyKind: r.company_kind === "taxi" ? "taxi" : "general",
+    companyKind:
+      r.company_kind === "taxi" ||
+      r.company_kind === "voucher_client" ||
+      r.company_kind === "insurer" ||
+      r.company_kind === "hotel" ||
+      r.company_kind === "corporate"
+        ? r.company_kind
+        : "general",
     taxId: r.tax_id ?? "",
     concessionNumber: r.concession_number ?? "",
     hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
     hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
+    legalForm: r.legal_form ?? "",
+    ownerName: r.owner_name ?? "",
+    supportEmail: r.support_email ?? "",
+    dispoPhone: r.dispo_phone ?? "",
+    logoUrl: r.logo_url ?? "",
+    openingHours: r.opening_hours ?? "",
+    businessNotes: r.business_notes ?? "",
+    verificationStatus: r.verification_status ?? "pending",
+    complianceStatus: r.compliance_status ?? "pending",
+    contractStatus: r.contract_status ?? "inactive",
+    isBlocked: Boolean(r.is_blocked),
+    maxDrivers: r.max_drivers ?? 100,
+    maxVehicles: r.max_vehicles ?? 100,
   };
 }
 
@@ -92,7 +115,8 @@ export async function getPanelCompanyById(companyId: string): Promise<PanelCompa
 }
 
 /**
- * Nur Stammdaten, die das Partner-Panel pflegen darf — keine PRIO-/Aktiv-Flags.
+ * Partner darf nur operative Kontaktdaten pflegen.
+ * Kritische Stamm-/Vertrags-/Compliance-Felder laufen über company_change_requests.
  */
 export async function patchPanelCompanyProfile(
   companyId: string,
@@ -119,52 +143,27 @@ export async function patchPanelCompanyProfile(
 
   const set: Partial<typeof adminCompaniesTable.$inferInsert> = {};
 
-  if (patch.name !== undefined) {
-    const name = clip(patch.name, MAX.name);
-    if (!name) {
-      return { ok: false, error: "name_required" };
-    }
-    set.name = name;
-  }
   if (patch.contactName !== undefined) {
     set.contact_name = clip(patch.contactName, MAX.short);
   }
-  if (patch.email !== undefined) {
-    const e = clip(patch.email, MAX.short);
+  if (patch.supportEmail !== undefined) {
+    const e = clip(patch.supportEmail, MAX.short);
     if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
       return { ok: false, error: "email_invalid" };
     }
-    set.email = e;
+    set.support_email = e;
   }
-  if (patch.phone !== undefined) {
-    set.phone = clip(patch.phone, MAX.short);
+  if (patch.dispoPhone !== undefined) {
+    set.dispo_phone = clip(patch.dispoPhone, MAX.short);
   }
-  if (patch.addressLine1 !== undefined) {
-    set.address_line1 = clip(patch.addressLine1, MAX.line);
+  if (patch.logoUrl !== undefined) {
+    set.logo_url = clip(patch.logoUrl, MAX.url);
   }
-  if (patch.addressLine2 !== undefined) {
-    set.address_line2 = clip(patch.addressLine2, MAX.line);
+  if (patch.openingHours !== undefined) {
+    set.opening_hours = clip(patch.openingHours, MAX.line);
   }
-  if (patch.postalCode !== undefined) {
-    set.postal_code = clip(patch.postalCode, 32);
-  }
-  if (patch.city !== undefined) {
-    set.city = clip(patch.city, MAX.short);
-  }
-  if (patch.country !== undefined) {
-    set.country = clip(patch.country, MAX.short);
-  }
-  if (patch.vatId !== undefined) {
-    set.vat_id = clip(patch.vatId, MAX.vat);
-  }
-
-  if (r0.company_kind === "taxi") {
-    if (patch.taxId !== undefined) {
-      set.tax_id = clip(patch.taxId, MAX.tax);
-    }
-    if (patch.concessionNumber !== undefined) {
-      set.concession_number = clip(patch.concessionNumber, MAX.concession);
-    }
+  if (patch.businessNotes !== undefined) {
+    set.business_notes = clip(patch.businessNotes, MAX.line);
   }
 
   if (Object.keys(set).length === 0) {

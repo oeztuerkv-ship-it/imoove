@@ -53,7 +53,7 @@ function rowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow
   };
 }
 
-export async function getCompanyKind(companyId: string): Promise<"general" | "taxi" | null> {
+export async function getCompanyKind(companyId: string): Promise<string | null> {
   if (!isPostgresConfigured()) return null;
   const db = getDb();
   if (!db) return null;
@@ -63,8 +63,7 @@ export async function getCompanyKind(companyId: string): Promise<"general" | "ta
     .where(eq(adminCompaniesTable.id, companyId))
     .limit(1);
   const k = rows[0]?.k;
-  if (k === "taxi" || k === "general") return k;
-  return null;
+  return typeof k === "string" ? k : null;
 }
 
 export async function findFleetDriverAuthRow(id: string): Promise<FleetDriverAuthRow | null> {

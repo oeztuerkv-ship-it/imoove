@@ -8,19 +8,12 @@ function hasPerm(permissions, key) {
 
 function emptyCompanyForm() {
   return {
-    name: "",
     contactName: "",
-    email: "",
-    phone: "",
-    addressLine1: "",
-    addressLine2: "",
-    postalCode: "",
-    city: "",
-    country: "",
-    vatId: "",
-    taxId: "",
-    concessionNumber: "",
-    companyKind: "general",
+    supportEmail: "",
+    dispoPhone: "",
+    logoUrl: "",
+    openingHours: "",
+    businessNotes: "",
   };
 }
 
@@ -51,19 +44,12 @@ export default function ProfilePage() {
       }
       const c = data.company;
       setForm({
-        name: c.name ?? "",
         contactName: c.contactName ?? "",
-        email: c.email ?? "",
-        phone: c.phone ?? "",
-        addressLine1: c.addressLine1 ?? "",
-        addressLine2: c.addressLine2 ?? "",
-        postalCode: c.postalCode ?? "",
-        city: c.city ?? "",
-        country: c.country ?? "",
-        vatId: c.vatId ?? "",
-        taxId: c.taxId ?? "",
-        concessionNumber: c.concessionNumber ?? "",
-        companyKind: c.companyKind === "taxi" ? "taxi" : "general",
+        supportEmail: c.supportEmail ?? "",
+        dispoPhone: c.dispoPhone ?? "",
+        logoUrl: c.logoUrl ?? "",
+        openingHours: c.openingHours ?? "",
+        businessNotes: c.businessNotes ?? "",
       });
     } catch {
       setErr("Firmendaten konnten nicht geladen werden.");
@@ -90,19 +76,12 @@ export default function ProfilePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: form.name,
           contactName: form.contactName,
-          email: form.email,
-          phone: form.phone,
-          addressLine1: form.addressLine1,
-          addressLine2: form.addressLine2,
-          postalCode: form.postalCode,
-          city: form.city,
-          country: form.country,
-          vatId: form.vatId,
-          ...(form.companyKind === "taxi"
-            ? { taxId: form.taxId, concessionNumber: form.concessionNumber }
-            : {}),
+          supportEmail: form.supportEmail,
+          dispoPhone: form.dispoPhone,
+          logoUrl: form.logoUrl,
+          openingHours: form.openingHours,
+          businessNotes: form.businessNotes,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -118,19 +97,12 @@ export default function ProfilePage() {
       if (data.company) {
         const c = data.company;
         setForm({
-          name: c.name ?? "",
           contactName: c.contactName ?? "",
-          email: c.email ?? "",
-          phone: c.phone ?? "",
-          addressLine1: c.addressLine1 ?? "",
-          addressLine2: c.addressLine2 ?? "",
-          postalCode: c.postalCode ?? "",
-          city: c.city ?? "",
-          country: c.country ?? "",
-          vatId: c.vatId ?? "",
-          taxId: c.taxId ?? "",
-          concessionNumber: c.concessionNumber ?? "",
-          companyKind: c.companyKind === "taxi" ? "taxi" : "general",
+          supportEmail: c.supportEmail ?? "",
+          dispoPhone: c.dispoPhone ?? "",
+          logoUrl: c.logoUrl ?? "",
+          openingHours: c.openingHours ?? "",
+          businessNotes: c.businessNotes ?? "",
         });
       }
       await refreshUser();
@@ -143,7 +115,7 @@ export default function ProfilePage() {
 
   return (
     <div className="panel-page panel-page--profile">
-      <h2 className="panel-page__title">Profil und Firma</h2>
+      <h2 className="panel-page__title">Profil und Governance</h2>
       <p className="panel-page__lead">
         Stammdaten Ihres Unternehmens aus der Datenbank. Änderungen nur für <strong>Owner</strong> und{" "}
         <strong>Manager</strong>.
@@ -168,7 +140,7 @@ export default function ProfilePage() {
 
       {!loading ? (
         <div className="panel-card panel-card--wide">
-          <h3 className="panel-card__title">Unternehmensdaten</h3>
+          <h3 className="panel-card__title">Operative Kontaktdaten (frei änderbar)</h3>
           {!canEdit ? (
             <p className="panel-page__lead">Nur Owner oder Manager dürfen Firmendaten bearbeiten.</p>
           ) : null}
@@ -176,17 +148,7 @@ export default function ProfilePage() {
           <form className="panel-rides-form" onSubmit={onSave}>
             <div className="panel-rides-form__grid">
               <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Firmenname</span>
-                <input
-                  value={form.name}
-                  onChange={(ev) => setForm((f) => ({ ...f, name: ev.target.value }))}
-                  required
-                  disabled={!canEdit}
-                  autoComplete="organization"
-                />
-              </label>
-              <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Ansprechpartner</span>
+                <span>Kontaktperson</span>
                 <input
                   value={form.contactName}
                   onChange={(ev) => setForm((f) => ({ ...f, contactName: ev.target.value }))}
@@ -195,97 +157,47 @@ export default function ProfilePage() {
                 />
               </label>
               <label className="panel-rides-form__field">
-                <span>Straße, Hausnummer</span>
+                <span>Dispo-Telefon</span>
                 <input
-                  value={form.addressLine1}
-                  onChange={(ev) => setForm((f) => ({ ...f, addressLine1: ev.target.value }))}
-                  disabled={!canEdit}
-                  autoComplete="street-address"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Adresszusatz</span>
-                <input
-                  value={form.addressLine2}
-                  onChange={(ev) => setForm((f) => ({ ...f, addressLine2: ev.target.value }))}
-                  disabled={!canEdit}
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>PLZ</span>
-                <input
-                  value={form.postalCode}
-                  onChange={(ev) => setForm((f) => ({ ...f, postalCode: ev.target.value }))}
-                  disabled={!canEdit}
-                  autoComplete="postal-code"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Ort</span>
-                <input
-                  value={form.city}
-                  onChange={(ev) => setForm((f) => ({ ...f, city: ev.target.value }))}
-                  disabled={!canEdit}
-                  autoComplete="address-level2"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Land</span>
-                <input
-                  value={form.country}
-                  onChange={(ev) => setForm((f) => ({ ...f, country: ev.target.value }))}
-                  disabled={!canEdit}
-                  autoComplete="country-name"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Telefon (Firma)</span>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(ev) => setForm((f) => ({ ...f, phone: ev.target.value }))}
+                  value={form.dispoPhone}
+                  onChange={(ev) => setForm((f) => ({ ...f, dispoPhone: ev.target.value }))}
                   disabled={!canEdit}
                   autoComplete="tel"
                 />
               </label>
               <label className="panel-rides-form__field">
-                <span>E-Mail (Firma)</span>
+                <span>Support-E-Mail</span>
                 <input
                   type="email"
-                  value={form.email}
-                  onChange={(ev) => setForm((f) => ({ ...f, email: ev.target.value }))}
+                  value={form.supportEmail}
+                  onChange={(ev) => setForm((f) => ({ ...f, supportEmail: ev.target.value }))}
                   disabled={!canEdit}
-                  autoComplete="email"
+                />
+              </label>
+              <label className="panel-rides-form__field">
+                <span>Logo-URL</span>
+                <input
+                  value={form.logoUrl}
+                  onChange={(ev) => setForm((f) => ({ ...f, logoUrl: ev.target.value }))}
+                  disabled={!canEdit}
                 />
               </label>
               <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>USt-IdNr. (optional)</span>
+                <span>Öffnungszeiten</span>
                 <input
-                  value={form.vatId}
-                  onChange={(ev) => setForm((f) => ({ ...f, vatId: ev.target.value }))}
+                  value={form.openingHours}
+                  onChange={(ev) => setForm((f) => ({ ...f, openingHours: ev.target.value }))}
                   disabled={!canEdit}
                 />
               </label>
-              {form.companyKind === "taxi" ? (
-                <>
-                  <label className="panel-rides-form__field">
-                    <span>Steuer-ID (Pflicht für Taxi-Betrieb)</span>
-                    <input
-                      value={form.taxId}
-                      onChange={(ev) => setForm((f) => ({ ...f, taxId: ev.target.value }))}
-                      disabled={!canEdit}
-                    />
-                  </label>
-                  <label className="panel-rides-form__field">
-                    <span>Konzessionsnummer</span>
-                    <input
-                      value={form.concessionNumber}
-                      onChange={(ev) => setForm((f) => ({ ...f, concessionNumber: ev.target.value }))}
-                      disabled={!canEdit}
-                    />
-                  </label>
-                </>
-              ) : null}
+              <label className="panel-rides-form__field panel-rides-form__field--2">
+                <span>Interne Notizen</span>
+                <input
+                  value={form.businessNotes}
+                  onChange={(ev) => setForm((f) => ({ ...f, businessNotes: ev.target.value }))}
+                  disabled={!canEdit}
+                />
+              </label>
             </div>
             {canEdit ? (
               <div className="panel-profile-actions">
@@ -298,6 +210,36 @@ export default function ProfilePage() {
               </div>
             ) : null}
           </form>
+        </div>
+      ) : null}
+
+      {!loading && company ? (
+        <div className="panel-card panel-card--wide">
+          <h3 className="panel-card__title">Geschützte Stammdaten (nur Admin / Änderungsantrag)</h3>
+          <p className="panel-page__lead">
+            Firmenname, Rechtsform, Inhaber, Steuerdaten, Konzession, offizielle Anschrift, Rechnungsdaten,
+            Vertrags-/Compliance-Status und Limits sind gesperrt.
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Status</span>
+            {company.verificationStatus} / {company.complianceStatus} / {company.contractStatus}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Limits</span>
+            Fahrer {company.maxDrivers} · Fahrzeuge {company.maxVehicles}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Firma</span>
+            {company.name}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Rechtsform</span>
+            {company.legalForm || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Inhaber</span>
+            {company.ownerName || "—"}
+          </p>
         </div>
       ) : null}
     </div>

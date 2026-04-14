@@ -29,6 +29,30 @@ const seedCompanies: CompanyRow[] = [
     concession_number: "",
     compliance_gewerbe_storage_key: null,
     compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "verified",
+    compliance_status: "compliant",
+    contract_status: "active",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
     is_active: true,
     is_priority_company: true,
     priority_for_live_rides: true,
@@ -64,6 +88,30 @@ const seedCompanies: CompanyRow[] = [
     concession_number: "",
     compliance_gewerbe_storage_key: null,
     compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "pending",
+    compliance_status: "pending",
+    contract_status: "inactive",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,
@@ -118,6 +166,30 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     concession_number: r.concession_number ?? "",
     compliance_gewerbe_storage_key: r.compliance_gewerbe_storage_key ?? null,
     compliance_insurance_storage_key: r.compliance_insurance_storage_key ?? null,
+    legal_form: r.legal_form ?? "",
+    owner_name: r.owner_name ?? "",
+    billing_name: r.billing_name ?? "",
+    billing_address_line1: r.billing_address_line1 ?? "",
+    billing_address_line2: r.billing_address_line2 ?? "",
+    billing_postal_code: r.billing_postal_code ?? "",
+    billing_city: r.billing_city ?? "",
+    billing_country: r.billing_country ?? "",
+    bank_iban: r.bank_iban ?? "",
+    bank_bic: r.bank_bic ?? "",
+    support_email: r.support_email ?? "",
+    dispo_phone: r.dispo_phone ?? "",
+    logo_url: r.logo_url ?? "",
+    opening_hours: r.opening_hours ?? "",
+    business_notes: r.business_notes ?? "",
+    verification_status: r.verification_status ?? "pending",
+    compliance_status: r.compliance_status ?? "pending",
+    contract_status: r.contract_status ?? "inactive",
+    is_blocked: r.is_blocked ?? false,
+    max_drivers: r.max_drivers ?? 100,
+    max_vehicles: r.max_vehicles ?? 100,
+    fare_permissions: (r.fare_permissions as Record<string, unknown> | null) ?? {},
+    insurer_permissions: (r.insurer_permissions as Record<string, unknown> | null) ?? {},
+    area_assignments: (r.area_assignments as string[] | null) ?? [],
     is_active: r.is_active,
     is_priority_company: r.is_priority_company,
     priority_for_live_rides: r.priority_for_live_rides,
@@ -435,6 +507,30 @@ export type AdminCompanyUpdateBody = Partial<{
   concession_number: string;
   compliance_gewerbe_storage_key: string | null;
   compliance_insurance_storage_key: string | null;
+  legal_form: string;
+  owner_name: string;
+  billing_name: string;
+  billing_address_line1: string;
+  billing_address_line2: string;
+  billing_postal_code: string;
+  billing_city: string;
+  billing_country: string;
+  bank_iban: string;
+  bank_bic: string;
+  support_email: string;
+  dispo_phone: string;
+  logo_url: string;
+  opening_hours: string;
+  business_notes: string;
+  verification_status: string;
+  compliance_status: string;
+  contract_status: string;
+  is_blocked: boolean;
+  max_drivers: number;
+  max_vehicles: number;
+  fare_permissions: Record<string, unknown>;
+  insurer_permissions: Record<string, unknown>;
+  area_assignments: string[];
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;
@@ -471,6 +567,30 @@ function companyRowToDbValues(c: CompanyRow) {
     concession_number: c.concession_number,
     compliance_gewerbe_storage_key: c.compliance_gewerbe_storage_key,
     compliance_insurance_storage_key: c.compliance_insurance_storage_key,
+    legal_form: c.legal_form,
+    owner_name: c.owner_name,
+    billing_name: c.billing_name,
+    billing_address_line1: c.billing_address_line1,
+    billing_address_line2: c.billing_address_line2,
+    billing_postal_code: c.billing_postal_code,
+    billing_city: c.billing_city,
+    billing_country: c.billing_country,
+    bank_iban: c.bank_iban,
+    bank_bic: c.bank_bic,
+    support_email: c.support_email,
+    dispo_phone: c.dispo_phone,
+    logo_url: c.logo_url,
+    opening_hours: c.opening_hours,
+    business_notes: c.business_notes,
+    verification_status: c.verification_status,
+    compliance_status: c.compliance_status,
+    contract_status: c.contract_status,
+    is_blocked: c.is_blocked,
+    max_drivers: c.max_drivers,
+    max_vehicles: c.max_vehicles,
+    fare_permissions: c.fare_permissions,
+    insurer_permissions: c.insurer_permissions,
+    area_assignments: c.area_assignments,
     is_active: c.is_active,
     is_priority_company: c.is_priority_company,
     priority_for_live_rides: c.priority_for_live_rides,
@@ -499,7 +619,9 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
   if (typeof body.company_kind === "string") {
     const k = body.company_kind.trim();
-    if (k === "taxi" || k === "general") next.company_kind = k;
+    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate"].includes(k)) {
+      next.company_kind = k;
+    }
   }
   if (typeof body.tax_id === "string") next.tax_id = body.tax_id.trim();
   if (typeof body.concession_number === "string") next.concession_number = body.concession_number.trim();
@@ -510,6 +632,53 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (body.compliance_insurance_storage_key === null) next.compliance_insurance_storage_key = null;
   if (typeof body.compliance_insurance_storage_key === "string") {
     next.compliance_insurance_storage_key = body.compliance_insurance_storage_key.trim() || null;
+  }
+  if (typeof body.legal_form === "string") next.legal_form = body.legal_form.trim();
+  if (typeof body.owner_name === "string") next.owner_name = body.owner_name.trim();
+  if (typeof body.billing_name === "string") next.billing_name = body.billing_name.trim();
+  if (typeof body.billing_address_line1 === "string") next.billing_address_line1 = body.billing_address_line1.trim();
+  if (typeof body.billing_address_line2 === "string") next.billing_address_line2 = body.billing_address_line2.trim();
+  if (typeof body.billing_postal_code === "string") next.billing_postal_code = body.billing_postal_code.trim();
+  if (typeof body.billing_city === "string") next.billing_city = body.billing_city.trim();
+  if (typeof body.billing_country === "string") next.billing_country = body.billing_country.trim();
+  if (typeof body.bank_iban === "string") next.bank_iban = body.bank_iban.trim();
+  if (typeof body.bank_bic === "string") next.bank_bic = body.bank_bic.trim();
+  if (typeof body.support_email === "string") next.support_email = body.support_email.trim();
+  if (typeof body.dispo_phone === "string") next.dispo_phone = body.dispo_phone.trim();
+  if (typeof body.logo_url === "string") next.logo_url = body.logo_url.trim();
+  if (typeof body.opening_hours === "string") next.opening_hours = body.opening_hours.trim();
+  if (typeof body.business_notes === "string") next.business_notes = body.business_notes.trim();
+  if (typeof body.verification_status === "string") {
+    const v = body.verification_status.trim();
+    if (["pending", "in_review", "verified", "rejected"].includes(v)) next.verification_status = v;
+  }
+  if (typeof body.compliance_status === "string") {
+    const v = body.compliance_status.trim();
+    if (["pending", "in_review", "compliant", "non_compliant"].includes(v)) next.compliance_status = v;
+  }
+  if (typeof body.contract_status === "string") {
+    const v = body.contract_status.trim();
+    if (["inactive", "active", "suspended", "terminated"].includes(v)) next.contract_status = v;
+  }
+  if (typeof body.is_blocked === "boolean") next.is_blocked = body.is_blocked;
+  if (typeof body.max_drivers === "number" && Number.isFinite(body.max_drivers)) {
+    next.max_drivers = Math.max(0, Math.floor(body.max_drivers));
+  }
+  if (typeof body.max_vehicles === "number" && Number.isFinite(body.max_vehicles)) {
+    next.max_vehicles = Math.max(0, Math.floor(body.max_vehicles));
+  }
+  if (body.fare_permissions && typeof body.fare_permissions === "object" && !Array.isArray(body.fare_permissions)) {
+    next.fare_permissions = body.fare_permissions as Record<string, unknown>;
+  }
+  if (
+    body.insurer_permissions &&
+    typeof body.insurer_permissions === "object" &&
+    !Array.isArray(body.insurer_permissions)
+  ) {
+    next.insurer_permissions = body.insurer_permissions as Record<string, unknown>;
+  }
+  if (Array.isArray(body.area_assignments)) {
+    next.area_assignments = body.area_assignments.filter((x): x is string => typeof x === "string");
   }
   if (typeof body.is_active === "boolean") next.is_active = body.is_active;
   if (typeof body.is_priority_company === "boolean") next.is_priority_company = body.is_priority_company;
@@ -551,6 +720,30 @@ export async function insertAdminCompany(
     concession_number: "",
     compliance_gewerbe_storage_key: null,
     compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "pending",
+    compliance_status: "pending",
+    contract_status: "inactive",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,

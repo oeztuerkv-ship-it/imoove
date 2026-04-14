@@ -31,6 +31,10 @@ import {
   updatePanelUserPasswordInCompany,
 } from "../db/panelUsersData";
 import {
+  decideCompanyChangeRequest,
+  listCompanyChangeRequestsAdmin,
+} from "../db/companyChangeRequestsData";
+import {
   countActiveAdminRoleUsers,
   createAdminPasswordResetToken,
   createAdminAuthUser,
@@ -679,6 +683,53 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/company-change-requests", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const statusRaw = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    const status =
+      statusRaw === "pending" || statusRaw === "approved" || statusRaw === "rejected"
+        ? statusRaw
+        : undefined;
+    const rows = await listCompanyChangeRequestsAdmin(status ? { status } : undefined);
+    res.json({ ok: true, requests: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/company-change-requests/:id/decision", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const b = req.body as { status?: unknown; note?: unknown };
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    if (statusRaw !== "approved" && statusRaw !== "rejected") {
+      res.status(400).json({ error: "invalid_status" });
+      return;
+    }
+    const note = typeof b.note === "string" ? b.note.trim() : "";
+    const row = await decideCompanyChangeRequest({
+      id: req.params.id,
+      status: statusRaw,
+      note,
+      adminUserId: null,
+    });
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, request: row });
   } catch (e) {
     next(e);
   }

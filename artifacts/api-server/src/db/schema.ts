@@ -37,6 +37,30 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   concession_number: text("concession_number").notNull().default(""),
   compliance_gewerbe_storage_key: text("compliance_gewerbe_storage_key"),
   compliance_insurance_storage_key: text("compliance_insurance_storage_key"),
+  legal_form: text("legal_form").notNull().default(""),
+  owner_name: text("owner_name").notNull().default(""),
+  billing_name: text("billing_name").notNull().default(""),
+  billing_address_line1: text("billing_address_line1").notNull().default(""),
+  billing_address_line2: text("billing_address_line2").notNull().default(""),
+  billing_postal_code: text("billing_postal_code").notNull().default(""),
+  billing_city: text("billing_city").notNull().default(""),
+  billing_country: text("billing_country").notNull().default(""),
+  bank_iban: text("bank_iban").notNull().default(""),
+  bank_bic: text("bank_bic").notNull().default(""),
+  support_email: text("support_email").notNull().default(""),
+  dispo_phone: text("dispo_phone").notNull().default(""),
+  logo_url: text("logo_url").notNull().default(""),
+  opening_hours: text("opening_hours").notNull().default(""),
+  business_notes: text("business_notes").notNull().default(""),
+  verification_status: text("verification_status").notNull().default("pending"),
+  compliance_status: text("compliance_status").notNull().default("pending"),
+  contract_status: text("contract_status").notNull().default("inactive"),
+  is_blocked: boolean("is_blocked").notNull().default(false),
+  max_drivers: integer("max_drivers").notNull().default(100),
+  max_vehicles: integer("max_vehicles").notNull().default(100),
+  fare_permissions: jsonb("fare_permissions").$type<Record<string, unknown>>().notNull().default({}),
+  insurer_permissions: jsonb("insurer_permissions").$type<Record<string, unknown>>().notNull().default({}),
+  area_assignments: jsonb("area_assignments").$type<string[]>().notNull().default([]),
 });
 
 /** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */
@@ -209,6 +233,27 @@ export const panelAuditLogTable = pgTable("panel_audit_log", {
   subject_id: text("subject_id"),
   meta: jsonb("meta").$type<Record<string, unknown>>(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const companyChangeRequestsTable = pgTable("company_change_requests", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  requested_by_panel_user_id: text("requested_by_panel_user_id")
+    .notNull()
+    .references(() => panelUsersTable.id, { onDelete: "restrict" }),
+  request_type: text("request_type").notNull(),
+  status: text("status").notNull().default("pending"),
+  reason: text("reason").notNull().default(""),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  admin_decision_note: text("admin_decision_note").notNull().default(""),
+  decided_by_admin_user_id: text("decided_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  decided_at: timestamp("decided_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Fahrten — Spalten snake_case; API mappt auf camelCase (RideRequest). */
