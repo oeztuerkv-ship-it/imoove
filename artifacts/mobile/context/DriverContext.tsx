@@ -121,7 +121,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         const msg =
           parsedError || parsedHint
             ? [parsedError, parsedHint].filter(Boolean).join("\n\n")
-            : `HTTP ${res.status} ${res.statusText || ""}\n${bodySnippet || "Anmeldung fehlgeschlagen."}`.trim();
+            : `HTTP ${res.status} ${res.statusText || ""}\nURL: ${API_BASE}/fleet-auth/login\n${bodySnippet || "Anmeldung fehlgeschlagen."}`.trim();
         setLastError(msg);
         return { ok: false, error: msg };
       }

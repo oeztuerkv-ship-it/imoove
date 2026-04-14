@@ -7,8 +7,15 @@ export function getApiBaseUrl(): string {
   if (!raw) return "";
   let normalized = raw;
   // Production safety net: marketing host does not expose full app API methods.
-  if (normalized === "https://onroda.de" || normalized === "https://www.onroda.de") {
-    normalized = "https://api.onroda.de";
+  try {
+    const u = new URL(normalized);
+    const host = u.hostname.toLowerCase();
+    if (host === "onroda.de" || host === "www.onroda.de") {
+      u.hostname = "api.onroda.de";
+      normalized = `${u.protocol}//${u.hostname}${u.port ? `:${u.port}` : ""}`;
+    }
+  } catch {
+    // Keep raw value on malformed env URL and let fetch diagnostics surface it.
   }
   return normalized.endsWith("/api") ? normalized : `${normalized}/api`;
 }
