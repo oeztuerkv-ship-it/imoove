@@ -35,8 +35,10 @@ config.resolver.disableHierarchicalLookup = true;
 const extra = {};
 const reactDir = resolvePkgDir("react");
 const reactDomDir = resolvePkgDir("react-dom");
+const expoMetroRuntimeDir = resolvePkgDir("@expo/metro-runtime");
 if (reactDir) extra.react = reactDir;
 if (reactDomDir) extra["react-dom"] = reactDomDir;
+if (expoMetroRuntimeDir) extra["@expo/metro-runtime"] = expoMetroRuntimeDir;
 
 const schedulerDir = resolvePkgDir("scheduler");
 if (schedulerDir) extra.scheduler = schedulerDir;
