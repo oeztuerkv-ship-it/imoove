@@ -18,10 +18,10 @@ async function fetchMe(jwt) {
   const res = await fetch(`${API_BASE}/panel/v1/me`, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
-  if (!res.ok) return { ok: false };
+  if (!res.ok) return { ok: false, status: res.status };
   const data = await res.json().catch(() => ({}));
-  if (!data?.ok || !data.user) return { ok: false };
-  return { ok: true, user: data.user };
+  if (!data?.ok || !data.user) return { ok: false, status: res.status };
+  return { ok: true, user: data.user, status: res.status };
 }
 
 export function PanelAuthProvider({ children }) {
@@ -60,8 +60,14 @@ export function PanelAuthProvider({ children }) {
       const r = await fetchMe(token);
       if (cancelled) return;
       if (!r.ok) {
-        clearSession();
+        if (r.status === 401 || r.status === 403) {
+          clearSession();
+        } else {
+          setError("Partner-API aktuell nicht erreichbar. Bitte kurz neu laden.");
+          setUser(null);
+        }
       } else {
+        setError("");
         setUser(r.user);
       }
       if (!cancelled) setBooting(false);
@@ -75,9 +81,14 @@ export function PanelAuthProvider({ children }) {
     if (!token) return false;
     const r = await fetchMe(token);
     if (!r.ok) {
-      clearSession();
+      if (r.status === 401 || r.status === 403) {
+        clearSession();
+      } else {
+        setError("Partner-API aktuell nicht erreichbar. Bitte später erneut versuchen.");
+      }
       return false;
     }
+    setError("");
     setUser(r.user);
     return true;
   }, [token, clearSession]);

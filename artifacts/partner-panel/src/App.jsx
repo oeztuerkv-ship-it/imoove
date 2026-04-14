@@ -8,7 +8,10 @@ export default function App() {
   const { user, booting, logout } = usePanelAuth();
   const [active, setActive] = useState("overview");
 
-  const navItems = useMemo(() => filterNavItems(user?.panelModules), [user?.panelModules]);
+  const navItems = useMemo(
+    () => filterNavItems(user?.panelModules, user?.permissions),
+    [user?.panelModules, user?.permissions],
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -22,7 +25,7 @@ export default function App() {
     const allowed = new Set(navItems.map((i) => i.key));
     if (allowed.size === 0) return;
     if (!allowed.has(active)) {
-      const next = firstNavKey(user.panelModules);
+      const next = firstNavKey(user.panelModules, user.permissions);
       if (next) queueMicrotask(() => setActive(next));
     }
   }, [user, navItems, active]);
