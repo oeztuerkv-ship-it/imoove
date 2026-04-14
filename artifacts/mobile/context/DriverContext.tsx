@@ -26,7 +26,8 @@ interface DriverContextValue {
   isBlocked: boolean;
   blockedUntilDate: Date | null;
   driver: DriverProfile | null;
-  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  login: (email: string, password: string) => Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
   setAvailable: (v: boolean) => void;
   blockDriver48h: () => Promise<void>;
@@ -40,6 +41,7 @@ const DriverContext = createContext<DriverContextValue>({
   blockedUntilDate: null,
   driver: null,
   login: async () => ({ ok: false, error: "Anmeldung fehlgeschlagen." }),
+  changePassword: async () => ({ ok: false, error: "Passwortänderung fehlgeschlagen." }),
   logout: async () => {},
   setAvailable: () => {},
   blockDriver48h: async () => {},
@@ -98,7 +100,10 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+    async (
+      email: string,
+      password: string,
+    ): Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }> => {
     setLastError("");
     try {
       const res = await fetch(`${API_BASE}/fleet-auth/login`, {
@@ -141,7 +146,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-      return { ok: true };
+      const mustChangePassword = Boolean(data.passwordChangeRequired ?? d.mustChangePassword);
+      return { ok: true, mustChangePassword };
     } catch (error) {
       const msg = `Netzwerkfehler beim Fahrer-Login: ${error instanceof Error ? error.message : String(error)}`;
       setLastError(msg);
@@ -149,6 +155,55 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }
     },
     [],
+  );
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+      if (!driver?.authToken) return { ok: false, error: "Nicht angemeldet." };
+      if (newPassword.length < 10) {
+        return { ok: false, error: "Neues Passwort muss mindestens 10 Zeichen haben." };
+      }
+      try {
+        const res = await fetch(`${API_BASE}/fleet-driver/v1/change-password`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${driver.authToken}`,
+          },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const rawText = await res.text();
+        let data: Record<string, unknown> = {};
+        try {
+          data = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : {};
+        } catch {
+          data = {};
+        }
+        if (!res.ok || data?.ok !== true) {
+          const parsedError = typeof data.error === "string" ? data.error : "";
+          const parsedHint = typeof data.hint === "string" ? data.hint : "";
+          const bodySnippet = rawText.trim().slice(0, 400);
+          const msg =
+            parsedError || parsedHint
+              ? [parsedError, parsedHint].filter(Boolean).join("\n\n")
+              : `HTTP ${res.status} ${res.statusText || ""}\n${bodySnippet || "Passwortänderung fehlgeschlagen."}`.trim();
+          return { ok: false, error: msg };
+        }
+        setDriver((prev) => {
+          if (!prev) return prev;
+          const updated = { ...prev, mustChangePassword: false };
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+          return updated;
+        });
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: `Netzwerkfehler bei Passwortänderung: ${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
+    },
+    [driver?.authToken],
   );
 
   const logout = useCallback(async () => {
@@ -208,6 +263,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         blockedUntilDate,
         driver,
         login,
+        changePassword,
         logout,
         setAvailable,
         blockDriver48h,

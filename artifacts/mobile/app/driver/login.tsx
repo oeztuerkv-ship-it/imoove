@@ -42,7 +42,7 @@ export default function DriverLoginScreen() {
     setLoading(false);
     if (result.ok) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/driver/dashboard");
+      router.replace(result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard");
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Anmeldung fehlgeschlagen", result.error || "E-Mail oder Passwort ist falsch.");

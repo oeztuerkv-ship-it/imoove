@@ -63,6 +63,7 @@ function RootLayoutNav() {
       <Stack.Screen name="fahrt-reservieren" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
       <Stack.Screen name="driver/login" options={{ headerShown: false }} />
+      <Stack.Screen name="driver/change-password" options={{ headerShown: false }} />
       <Stack.Screen name="driver/dashboard" options={{ headerShown: false }} />
     </Stack>
   );

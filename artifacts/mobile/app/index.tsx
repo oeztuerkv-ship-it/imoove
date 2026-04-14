@@ -414,7 +414,7 @@ export default function HomeScreen() {
       return () => setIsHomeFocused(false);
     }, []),
   );
-  const { loading: driverLoading, isLoggedIn: isDriverLoggedIn } = useDriver();
+  const { loading: driverLoading, isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
   const { profile, updateProfile, loginWithGoogle, registerLocalCustomer } = useUser();
 
   const {
@@ -450,9 +450,9 @@ export default function HomeScreen() {
   /* ── After driver login, navigate to dashboard ── */
   useEffect(() => {
     if (isDriverLoggedIn) {
-      router.replace("/driver/dashboard");
+      router.replace(driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard");
     }
-  }, [isDriverLoggedIn]);
+  }, [isDriverLoggedIn, driverProfile?.mustChangePassword]);
 
   /* ── Search overlay state ── */
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -818,7 +818,7 @@ export default function HomeScreen() {
   }
   /* Nur auf dem fokussierten Home-Screen umleiten — sonst stört <Redirect> andere Routen (z. B. Modals). */
   if (isDriverLoggedIn && isHomeFocused) {
-    return <Redirect href="/driver/dashboard" />;
+    return <Redirect href={driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard"} />;
   }
   if (isDriverLoggedIn && !isHomeFocused) {
     return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
