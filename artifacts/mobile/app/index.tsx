@@ -10,7 +10,6 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
-  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -18,7 +17,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -163,14 +161,12 @@ function HorizontalVehicleSlider({
   colors,
   viewportWidth,
   selectedVehicle,
-  expandedBannerId,
   onSlideSnap,
   onMehrErfahren,
 }: {
   colors: VehicleSliderColors;
   viewportWidth: number;
   selectedVehicle: VehicleType | null;
-  expandedBannerId: HomeBannerSlideId | null;
   onSlideSnap: (id: HomeBannerSlideId) => void;
   onMehrErfahren: (id: HomeBannerSlideId) => void;
 }) {
@@ -237,13 +233,11 @@ function HorizontalVehicleSlider({
         onScrollEndDrag={onScrollEnd}
       >
         {HOME_SLIDER_ORDER.map((slideId, i) => {
-          const expanded = expandedBannerId === slideId;
           const snapFocused = dotIndex === i;
           const headlines = getBannerHeadlines(slideId);
           const metaLine = getBannerMeta(slideId);
-          const longCopy = getBannerLongCopy(slideId);
-          const borderW = expanded ? 2.5 : snapFocused ? 2 : 0;
-          const borderColor = expanded ? ONRODA_MARK_RED : snapFocused ? colors.primary : "transparent";
+          const borderW = snapFocused ? 2 : 0;
+          const borderColor = snapFocused ? colors.primary : "transparent";
           return (
             <View
               key={slideId}
@@ -255,9 +249,9 @@ function HorizontalVehicleSlider({
                   backgroundColor: SLIDER_BEIGE,
                   borderWidth: borderW,
                   borderColor,
-                  shadowOpacity: expanded ? 0.16 : snapFocused ? 0.1 : 0.06,
-                  shadowRadius: expanded ? 16 : 10,
-                  elevation: expanded ? 10 : snapFocused ? 5 : 3,
+                  shadowOpacity: snapFocused ? 0.1 : 0.06,
+                  shadowRadius: 10,
+                  elevation: snapFocused ? 5 : 3,
                 },
               ]}
             >
@@ -284,22 +278,6 @@ function HorizontalVehicleSlider({
                 </View>
                 <BannerTrustIllustration slideId={slideId} />
               </View>
-              {expanded && (
-                <View style={[styles.vehicleSliderExpand, { borderTopColor: SLIDER_BEIGE_DEEP }]}>
-                  {longCopy.map((line, j) => (
-                    <Text
-                      key={j}
-                      style={[
-                        styles.vehicleSliderExpandLine,
-                        { color: colors.mutedForeground },
-                        j < longCopy.length - 1 && { marginBottom: 10 },
-                      ]}
-                    >
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-              )}
             </View>
           );
         })}
@@ -485,7 +463,6 @@ export default function HomeScreen() {
   const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
   const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
   const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
-  const [expandedBannerId, setExpandedBannerId] = useState<HomeBannerSlideId | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Auf der Karte mit Ziel: Sofort vs. Termin — gleicher Einstieg wie `reserve-ride`. */
@@ -506,12 +483,6 @@ export default function HomeScreen() {
   useEffect(() => {
     AsyncStorage.getItem("@Onroda_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
     AsyncStorage.getItem("@Onroda_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
   }, []);
 
   const savePreset = (type: "home" | "work", loc: GeoLocation) => {
@@ -652,10 +623,6 @@ export default function HomeScreen() {
     if (!destination) setBookingMode("immediate");
   }, [destination]);
 
-  useEffect(() => {
-    if (destination) setExpandedBannerId(null);
-  }, [destination]);
-
   /* ── Suchmaske: Fokus Abholort (nach Reservierungszeit) oder Ziel (Standard) ── */
   useEffect(() => {
     if (!isSearchActive) return;
@@ -768,7 +735,6 @@ export default function HomeScreen() {
 
   const handleVehicleMehrErfahren = useCallback(
     (id: HomeBannerSlideId) => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (id !== "krankenfahrten") {
         if (id === "onroda" && paymentMethod === "voucher") {
@@ -777,7 +743,8 @@ export default function HomeScreen() {
         }
         setSelectedVehicle(id);
       }
-      setExpandedBannerId((prev) => (prev === id ? null : id));
+      const detailLines = getBannerLongCopy(id);
+      Alert.alert(getBannerMeta(id), detailLines.join("\n\n"));
     },
     [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
   );
@@ -1022,7 +989,6 @@ export default function HomeScreen() {
                   colors={homeBannerSliderColors}
                   viewportWidth={vehicleSliderViewportHome}
                   selectedVehicle={selectedVehicle}
-                  expandedBannerId={expandedBannerId}
                   onSlideSnap={handleVehicleSlideSnap}
                   onMehrErfahren={handleVehicleMehrErfahren}
                 />

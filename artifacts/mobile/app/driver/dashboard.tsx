@@ -1878,7 +1878,7 @@ export default function DriverDashboard() {
   const totalPending = sofortCount + vorbestellungCount;
 
   const tabs: { id: Tab; label: string; icon: string; badge?: number }[] = [
-    { id: "uebersicht", label: "Übersicht", icon: "map", badge: sofortCount > 0 ? sofortCount : undefined },
+    { id: "uebersicht", label: "Navi", icon: "map", badge: sofortCount > 0 ? sofortCount : undefined },
     { id: "auftraege", label: "Aufträge", icon: "radio", badge: totalPending > 0 ? totalPending : undefined },
     { id: "fahrten", label: "Meine Fahrten", icon: "list" },
     { id: "geldbeutel", label: "Geldbeutel", icon: "pocket" },
@@ -2021,7 +2021,7 @@ export default function DriverDashboard() {
                   <View style={styles.badge}><Text style={styles.badgeText}>{tab.badge}</Text></View>
                 ) : null}
               </View>
-              <Text style={[styles.tabLabel, { color: active ? "#DC2626" : colors.mutedForeground, fontFamily: active ? "Inter_700Bold" : "Inter_400Regular" }]}>
+              <Text style={[styles.tabLabel, { color: active ? "#DC2626" : colors.mutedForeground }]}>
                 {tab.label}
               </Text>
               {active && <View style={styles.tabActiveBar} />}
@@ -2170,9 +2170,9 @@ const styles = StyleSheet.create({
   logoutBtn: { width: 32, height: 32, justifyContent: "center", alignItems: "center" },
 
   tabBar: { flexDirection: "row", borderTopWidth: 1, paddingTop: 6 },
-  tabBtn: { flex: 1, alignItems: "center", paddingVertical: 6, gap: 3, position: "relative" },
+  tabBtn: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 54, paddingVertical: 6, gap: 3, position: "relative" },
   tabIconWrap: { position: "relative" },
-  tabLabel: { fontSize: 10 },
+  tabLabel: { fontSize: 10, fontFamily: "Inter_500Medium" },
   tabActiveBar: { position: "absolute", bottom: -6, left: "20%", right: "20%", height: 2, backgroundColor: "#DC2626", borderRadius: 1 },
   badge: { position: "absolute", top: -5, right: -8, backgroundColor: "#DC2626", borderRadius: 8, minWidth: 16, height: 16, justifyContent: "center", alignItems: "center", paddingHorizontal: 3 },
   badgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },

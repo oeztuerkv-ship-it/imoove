@@ -334,12 +334,12 @@ export default function StatusScreen() {
       Alert.alert("Storno-Grund fehlt", "Bitte zuerst einen Grund angeben.");
       return;
     }
-    const cancelId = lastAddedRequestId ?? acceptedRequest?.id;
+    const fallbackIdFromActiveRequests =
+      [...myActiveRequests]
+        .sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime())[0]?.id ?? null;
+    const cancelId = acceptedRequest?.id ?? lastAddedRequestId ?? fallbackIdFromActiveRequests;
     if (!cancelId) {
-      setCancelModalOpen(false);
-      setCancelReason("");
-      cancelRide();
-      router.replace("/");
+      Alert.alert("Storno nicht möglich", "Es wurde keine aktive Fahrt gefunden.");
       return;
     }
     const isDriverArrived =
@@ -357,22 +357,36 @@ export default function StatusScreen() {
             text: "Trotzdem stornieren",
             style: "destructive",
             onPress: () => {
-              void cancelRequest(cancelId, 5, reason);
-              setCancelModalOpen(false);
-              setCancelReason("");
-              cancelRide();
-              router.replace("/");
+              void (async () => {
+                try {
+                  await cancelRequest(cancelId, 5, reason);
+                  await refreshRequests();
+                  setCancelModalOpen(false);
+                  setCancelReason("");
+                  cancelRide();
+                  router.replace("/");
+                } catch (error) {
+                  const code = error instanceof Error ? error.message : "";
+                  Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
+                }
+              })();
             },
           },
         ],
       );
       return;
     }
-    await cancelRequest(cancelId, undefined, reason);
-    setCancelModalOpen(false);
-    setCancelReason("");
-    cancelRide();
-    router.replace("/");
+    try {
+      await cancelRequest(cancelId, undefined, reason);
+      await refreshRequests();
+      setCancelModalOpen(false);
+      setCancelReason("");
+      cancelRide();
+      router.replace("/");
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
+    }
   };
 
   useEffect(() => {

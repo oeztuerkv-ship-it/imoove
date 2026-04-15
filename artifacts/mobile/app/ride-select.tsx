@@ -69,7 +69,12 @@ export default function RideSelectScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Wähle deine Fahrt</Text>
+        <View style={styles.titleWrap}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Wähle deine Fahrt</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            Onroda Fixpreis-Garantie (längere Wartezeit möglich)
+          </Text>
+        </View>
         <View style={{ width: 36 }} />
       </View>
 
@@ -195,6 +200,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, justifyContent: "center", alignItems: "center" },
   title: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  titleWrap: { alignItems: "center", flex: 1 },
+  subtitle: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2, textAlign: "center" },
   content: { padding: 16, gap: 14, paddingBottom: 20 },
   routePreview: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 8 },
   routeLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase" },
