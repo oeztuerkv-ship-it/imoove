@@ -22,7 +22,7 @@ function typeLabel(t) {
 function usageStatus(row) {
   if (row.publicStatusLabel && row.publicStatus) {
     const tone =
-      row.publicStatus === "reserved"
+      row.publicStatus === "reserved" || row.publicStatus === "not_yet_valid"
         ? "pending"
         : row.publicStatus === "redeemed" || row.publicStatus === "expired"
           ? "warn"

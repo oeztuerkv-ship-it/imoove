@@ -36,6 +36,8 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Taxi-Flotte / Fahrer / Fahrzeuge     → 022_taxi_fleet_partner.sql
   Governance-Status + Change-Requests  → 023_company_governance_hardening.sql
   Ride-Event-Historie                  → 024_ride_events_status_history.sql
+  Unternehmensanfragen                 → 025_partner_registration_requests.sql
+  Anfrage-Dokumente + Timeline         → 026_partner_registration_docs_timeline.sql
 
 Nach Migrationen Schema prüfen:
 

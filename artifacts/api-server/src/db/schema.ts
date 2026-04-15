@@ -256,6 +256,73 @@ export const companyChangeRequestsTable = pgTable("company_change_requests", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const partnerRegistrationRequestsTable = pgTable("partner_registration_requests", {
+  id: text("id").primaryKey(),
+  company_name: text("company_name").notNull(),
+  legal_form: text("legal_form").notNull().default(""),
+  partner_type: text("partner_type").notNull(),
+  uses_vouchers: boolean("uses_vouchers").notNull().default(false),
+  contact_first_name: text("contact_first_name").notNull().default(""),
+  contact_last_name: text("contact_last_name").notNull().default(""),
+  email: text("email").notNull(),
+  phone: text("phone").notNull().default(""),
+  address_line1: text("address_line1").notNull().default(""),
+  postal_code: text("postal_code").notNull().default(""),
+  city: text("city").notNull().default(""),
+  country: text("country").notNull().default(""),
+  tax_id: text("tax_id").notNull().default(""),
+  vat_id: text("vat_id").notNull().default(""),
+  concession_number: text("concession_number").notNull().default(""),
+  desired_region: text("desired_region").notNull().default(""),
+  requested_usage: jsonb("requested_usage").$type<Record<string, unknown>>().notNull().default({}),
+  documents_meta: jsonb("documents_meta").$type<Record<string, unknown>>().notNull().default({}),
+  notes: text("notes").notNull().default(""),
+  registration_status: text("registration_status").notNull().default("open"),
+  verification_status: text("verification_status").notNull().default("pending"),
+  compliance_status: text("compliance_status").notNull().default("pending"),
+  contract_status: text("contract_status").notNull().default("inactive"),
+  missing_documents_note: text("missing_documents_note").notNull().default(""),
+  admin_note: text("admin_note").notNull().default(""),
+  master_data_locked: boolean("master_data_locked").notNull().default(true),
+  linked_company_id: text("linked_company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  reviewed_by_admin_user_id: text("reviewed_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const partnerRegistrationDocumentsTable = pgTable("partner_registration_documents", {
+  id: text("id").primaryKey(),
+  request_id: text("request_id")
+    .notNull()
+    .references(() => partnerRegistrationRequestsTable.id, { onDelete: "cascade" }),
+  category: text("category").notNull().default("general"),
+  original_file_name: text("original_file_name").notNull(),
+  mime_type: text("mime_type").notNull().default("application/octet-stream"),
+  storage_path: text("storage_path").notNull(),
+  file_size_bytes: integer("file_size_bytes").notNull().default(0),
+  uploaded_by_actor_type: text("uploaded_by_actor_type").notNull().default("partner"),
+  uploaded_by_actor_label: text("uploaded_by_actor_label").notNull().default(""),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const partnerRegistrationTimelineTable = pgTable("partner_registration_timeline", {
+  id: text("id").primaryKey(),
+  request_id: text("request_id")
+    .notNull()
+    .references(() => partnerRegistrationRequestsTable.id, { onDelete: "cascade" }),
+  actor_type: text("actor_type").notNull(),
+  actor_label: text("actor_label").notNull().default(""),
+  event_type: text("event_type").notNull(),
+  message: text("message").notNull().default(""),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Fahrten — Spalten snake_case; API mappt auf camelCase (RideRequest). */
 export const ridesTable = pgTable("rides", {
   id: text("id").primaryKey(),

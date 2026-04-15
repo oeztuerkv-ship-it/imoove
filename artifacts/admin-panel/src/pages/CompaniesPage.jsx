@@ -4,7 +4,17 @@ import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const COMPANIES_URL = `${API_BASE}/admin/companies`;
+const REG_REQUESTS_URL = `${API_BASE}/admin/company-registration-requests`;
 const AZ_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const REG_STATUS_TABS = [
+  { value: "all", label: "Alle" },
+  { value: "open", label: "Offen" },
+  { value: "in_review", label: "In Bearbeitung" },
+  { value: "documents_required", label: "Warten auf Unterlagen" },
+  { value: "approved", label: "Freigegeben" },
+  { value: "rejected", label: "Abgelehnt" },
+  { value: "blocked", label: "Gesperrt" },
+];
 
 function firstLetterKey(name) {
   const s = (name ?? "").trim();
@@ -74,6 +84,7 @@ function formFromItem(item) {
 
 export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompanyConsumed }) {
   const companyIntentHandled = useRef(null);
+  const [mainTab, setMainTab] = useState("companies");
   const [items, setItems] = useState([]);
   const [moduleCatalog, setModuleCatalog] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,10 +108,22 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   const [companyForm, setCompanyForm] = useState(emptyCompanyForm);
   const [formModalSaving, setFormModalSaving] = useState(false);
   const [formModalError, setFormModalError] = useState("");
+  const [regStatusFilter, setRegStatusFilter] = useState("all");
+  const [registrationRequests, setRegistrationRequests] = useState([]);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
+  const [registrationDetail, setRegistrationDetail] = useState(null);
+  const [registrationDetailLoading, setRegistrationDetailLoading] = useState(false);
+  const [registrationActionBusy, setRegistrationActionBusy] = useState(false);
 
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (mainTab !== "requests") return;
+    void loadRegistrationRequests(regStatusFilter);
+  }, [mainTab, regStatusFilter]);
 
   useEffect(() => {
     if (!initialOpenCompanyId) {
@@ -143,6 +166,112 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       setError("Unternehmen konnten nicht geladen werden.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadRegistrationRequests(status = "all") {
+    setRegistrationLoading(true);
+    setRegistrationError("");
+    try {
+      const qs =
+        status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+      const res = await fetch(`${REG_REQUESTS_URL}${qs}`, { headers: adminApiHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json().catch(() => null);
+      if (!data?.ok || !Array.isArray(data.items)) throw new Error("Ungültige Antwort");
+      setRegistrationRequests(data.items);
+    } catch {
+      setRegistrationError("Unternehmensanfragen konnten nicht geladen werden.");
+    } finally {
+      setRegistrationLoading(false);
+    }
+  }
+
+  async function patchRegistrationRequest(id, patch) {
+    setRegistrationActionBusy(true);
+    setRegistrationError("");
+    try {
+      const res = await fetch(`${REG_REQUESTS_URL}/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.item) throw new Error(data?.error || `HTTP ${res.status}`);
+      setRegistrationRequests((prev) => prev.map((r) => (r.id === id ? data.item : r)));
+      setRegistrationDetail((prev) => (prev?.id === id ? data.item : prev));
+      return data.item;
+    } catch (e) {
+      console.error(e);
+      setRegistrationError("Anfrage konnte nicht aktualisiert werden.");
+      return null;
+    } finally {
+      setRegistrationActionBusy(false);
+    }
+  }
+
+  async function approveRegistrationRequest(id) {
+    setRegistrationActionBusy(true);
+    setRegistrationError("");
+    try {
+      const res = await fetch(`${REG_REQUESTS_URL}/${encodeURIComponent(id)}/approve`, {
+        method: "POST",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      if (data.request) {
+        setRegistrationRequests((prev) => prev.map((r) => (r.id === id ? data.request : r)));
+        await loadRegistrationDetail(id);
+      }
+      if (data.company) {
+        setItems((prev) => [data.company, ...prev]);
+      }
+    } catch (e) {
+      console.error(e);
+      setRegistrationError("Freigabe fehlgeschlagen.");
+    } finally {
+      setRegistrationActionBusy(false);
+    }
+  }
+
+  async function loadRegistrationDetail(id) {
+    setRegistrationDetailLoading(true);
+    setRegistrationError("");
+    try {
+      const res = await fetch(`${REG_REQUESTS_URL}/${encodeURIComponent(id)}`, {
+        headers: adminApiHeaders(),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok || !data.request) throw new Error(data?.error || `HTTP ${res.status}`);
+      setRegistrationDetail(data);
+    } catch (e) {
+      console.error(e);
+      setRegistrationError("Anfragedetail konnte nicht geladen werden.");
+    } finally {
+      setRegistrationDetailLoading(false);
+    }
+  }
+
+  async function sendAdminMessageToRequest(id, message) {
+    setRegistrationActionBusy(true);
+    setRegistrationError("");
+    try {
+      const res = await fetch(`${REG_REQUESTS_URL}/${encodeURIComponent(id)}/messages`, {
+        method: "POST",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ message }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      await loadRegistrationDetail(id);
+      return true;
+    } catch (e) {
+      console.error(e);
+      setRegistrationError("Admin-Nachricht konnte nicht gesendet werden.");
+      return false;
+    } finally {
+      setRegistrationActionBusy(false);
     }
   }
 
@@ -591,6 +720,25 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
 
   return (
     <div className="admin-page">
+      <div className="admin-toolbar-row">
+        <button
+          type="button"
+          className={`admin-page-btn ${mainTab === "companies" ? "admin-page-btn--active" : ""}`}
+          onClick={() => setMainTab("companies")}
+        >
+          Unternehmen
+        </button>
+        <button
+          type="button"
+          className={`admin-page-btn ${mainTab === "requests" ? "admin-page-btn--active" : ""}`}
+          onClick={() => setMainTab("requests")}
+        >
+          Unternehmensanfragen
+        </button>
+      </div>
+
+      {mainTab === "companies" ? (
+        <>
       <div className="admin-stat-grid">
         <div className="admin-stat-card">
           <div className="admin-stat-label">Gesamt</div>
@@ -1002,6 +1150,36 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
 
         <div className="admin-pagination">{renderPagination()}</div>
       </div>
+        </>
+      ) : (
+        <RegistrationRequestsSection
+          items={registrationRequests}
+          loading={registrationLoading}
+          error={registrationError}
+          statusFilter={regStatusFilter}
+          onStatusFilterChange={setRegStatusFilter}
+          detail={registrationDetail}
+          detailLoading={registrationDetailLoading}
+          onOpenDetail={(r) => {
+            setRegistrationDetail({ request: r, documents: [], timeline: [] });
+            void loadRegistrationDetail(r.id);
+          }}
+          onCloseDetail={() => setRegistrationDetail(null)}
+          actionBusy={registrationActionBusy}
+          onReload={() => loadRegistrationRequests(regStatusFilter)}
+          onSetStatus={(id, status) => patchRegistrationRequest(id, { status })}
+          onSetDocsMissing={(id) =>
+            patchRegistrationRequest(id, {
+              status: "documents_required",
+              complianceStatus: "missing_documents",
+            })
+          }
+          onApprove={approveRegistrationRequest}
+          onReject={(id) => patchRegistrationRequest(id, { status: "rejected" })}
+          onInReview={(id) => patchRegistrationRequest(id, { status: "in_review" })}
+          onSendAdminMessage={sendAdminMessageToRequest}
+        />
+      )}
 
       {showCreateModal ? (
         <div className="admin-modal-backdrop" role="presentation" onClick={closeCompanyModals}>
@@ -1251,5 +1429,320 @@ function CompanyFormBody({ form, setForm, moduleCatalog = [], mode = "create" })
         </div>
       ) : null}
     </div>
+  );
+}
+
+function regStatusLabel(s) {
+  switch (s) {
+    case "open":
+      return "Offen";
+    case "in_review":
+      return "In Bearbeitung";
+    case "documents_required":
+      return "Unterlagen fehlen";
+    case "approved":
+      return "Freigegeben";
+    case "rejected":
+      return "Abgelehnt";
+    case "blocked":
+      return "Gesperrt";
+    default:
+      return s ?? "—";
+  }
+}
+
+function RegistrationRequestsSection({
+  items,
+  loading,
+  error,
+  statusFilter,
+  onStatusFilterChange,
+  detail,
+  detailLoading,
+  onOpenDetail,
+  onCloseDetail,
+  actionBusy,
+  onReload,
+  onSetStatus,
+  onSetDocsMissing,
+  onApprove,
+  onReject,
+  onInReview,
+  onSendAdminMessage,
+}) {
+  const [adminMessage, setAdminMessage] = useState("");
+  const [adminUploadFile, setAdminUploadFile] = useState(null);
+  const request = detail?.request ?? detail ?? null;
+  const docs = Array.isArray(detail?.documents) ? detail.documents : [];
+  const timeline = Array.isArray(detail?.timeline) ? detail.timeline : [];
+  return (
+    <>
+      <div className="admin-filter-card">
+        <div className="admin-toolbar-row">
+          {REG_STATUS_TABS.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              className={`admin-page-btn ${statusFilter === t.value ? "admin-page-btn--active" : ""}`}
+              onClick={() => onStatusFilterChange(t.value)}
+            >
+              {t.label}
+            </button>
+          ))}
+          <button type="button" className="admin-btn-refresh" onClick={onReload}>
+            Neu laden
+          </button>
+        </div>
+      </div>
+
+      {error ? <div className="admin-error-banner">{error}</div> : null}
+
+      {loading ? (
+        <div className="admin-info-banner">Unternehmensanfragen werden geladen …</div>
+      ) : items.length === 0 ? (
+        <div className="admin-info-banner">Keine Anfragen in diesem Status.</div>
+      ) : (
+        <div className="admin-companies-table-wrap">
+          <table className="admin-companies-table">
+            <thead>
+              <tr>
+                <th>Unternehmen</th>
+                <th>Typ</th>
+                <th>Status</th>
+                <th>Kontakt</th>
+                <th>Region</th>
+                <th>Eingang</th>
+                <th className="admin-companies-table__actions">Aktionen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((r) => (
+                <tr key={r.id} className="admin-companies-table__row">
+                  <td>
+                    <div className="admin-companies-table__name">{r.companyName}</div>
+                    <div className="admin-companies-table__id">{r.id}</div>
+                  </td>
+                  <td>{r.partnerType}</td>
+                  <td>
+                    <span className="admin-status-pill admin-status-pill--active">{regStatusLabel(r.registrationStatus)}</span>
+                  </td>
+                  <td>
+                    {[`${r.contactFirstName ?? ""} ${r.contactLastName ?? ""}`.trim(), r.email, r.phone]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </td>
+                  <td>{r.desiredRegion || "—"}</td>
+                  <td>{new Date(r.createdAt).toLocaleString("de-DE")}</td>
+                  <td className="admin-companies-table__actions">
+                    <div className="admin-companies-table__action-btns">
+                      <button type="button" className="admin-btn-outline admin-btn-outline--compact" onClick={() => onOpenDetail(r)}>
+                        Details
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-outline admin-btn-outline--compact"
+                        disabled={actionBusy}
+                        onClick={() => onInReview(r.id)}
+                      >
+                        In Bearbeitung
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-outline admin-btn-outline--compact"
+                        disabled={actionBusy}
+                        onClick={() => onSetDocsMissing(r.id)}
+                      >
+                        Unterlagen fehlen
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-refresh admin-btn-refresh--compact"
+                        disabled={actionBusy || r.registrationStatus === "approved"}
+                        onClick={() => onApprove(r.id)}
+                      >
+                        Freigeben
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-danger"
+                        disabled={actionBusy}
+                        onClick={() => onReject(r.id)}
+                      >
+                        Ablehnen
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {request ? (
+        <div className="admin-modal-backdrop" role="presentation" onClick={onCloseDetail}>
+          <div className="admin-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal__header">
+              <h2 className="admin-modal__title">Anfrage: {request.companyName}</h2>
+              <button type="button" className="admin-modal__close" onClick={onCloseDetail} aria-label="Schließen">
+                ×
+              </button>
+            </div>
+            <div className="admin-modal__body">
+              {detailLoading ? <div className="admin-info-banner">Lade Details …</div> : null}
+              <dl className="admin-detail-grid">
+                <div><dt>Status</dt><dd>{regStatusLabel(request.registrationStatus)}</dd></div>
+                <div><dt>Partner-Typ</dt><dd>{request.partnerType}</dd></div>
+                <div><dt>Gutscheine</dt><dd>{request.usesVouchers ? "Ja" : "Nein"}</dd></div>
+                <div><dt>Verifizierung</dt><dd>{request.verificationStatus}</dd></div>
+                <div><dt>Compliance</dt><dd>{request.complianceStatus}</dd></div>
+                <div><dt>Vertrag</dt><dd>{request.contractStatus}</dd></div>
+                <div><dt>Kontakt</dt><dd>{`${request.contactFirstName} ${request.contactLastName}`.trim()}</dd></div>
+                <div><dt>E-Mail</dt><dd>{request.email}</dd></div>
+                <div><dt>Telefon</dt><dd>{request.phone}</dd></div>
+                <div><dt>Adresse</dt><dd>{[request.addressLine1, request.postalCode, request.city, request.country].filter(Boolean).join(", ")}</dd></div>
+                <div><dt>Tax ID</dt><dd>{request.taxId || "—"}</dd></div>
+                <div><dt>USt-ID</dt><dd>{request.vatId || "—"}</dd></div>
+                <div><dt>Konzession</dt><dd>{request.concessionNumber || "—"}</dd></div>
+                <div><dt>Region</dt><dd>{request.desiredRegion || "—"}</dd></div>
+                <div><dt>Linked Company</dt><dd>{request.linkedCompanyId || "—"}</dd></div>
+              </dl>
+              <h3 style={{ marginTop: 16 }}>Dokumente</h3>
+              {docs.length === 0 ? (
+                <p className="admin-table-sub">Noch keine Dokumente.</p>
+              ) : (
+                <ul className="admin-placeholder-list">
+                  {docs.map((d) => (
+                    <li key={d.id}>
+                      <button
+                        type="button"
+                        className="admin-btn-outline admin-btn-outline--compact"
+                        onClick={async () => {
+                          const res = await fetch(
+                            `${REG_REQUESTS_URL}/${encodeURIComponent(request.id)}/documents/${encodeURIComponent(d.id)}/download`,
+                            { headers: adminApiHeaders() },
+                          );
+                          if (!res.ok) return;
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = d.originalFileName || "document.bin";
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        {d.originalFileName}
+                      </button>{" "}
+                      ({d.category}, {Math.round((d.fileSizeBytes ?? 0) / 1024)} KB)
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <h3 style={{ marginTop: 16 }}>Timeline / Kommunikation</h3>
+              {timeline.length === 0 ? (
+                <p className="admin-table-sub">Noch keine Timeline-Einträge.</p>
+              ) : (
+                <ul className="admin-placeholder-list">
+                  {timeline.slice(0, 20).map((t) => (
+                    <li key={t.id}>
+                      <strong>{new Date(t.createdAt).toLocaleString("de-DE")}</strong> · {t.actorType} ·{" "}
+                      {t.eventType} · {t.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="admin-toolbar-row" style={{ marginTop: 12 }}>
+                <input
+                  className="admin-input"
+                  placeholder="Rückfrage/Nachricht an Partner"
+                  value={adminMessage}
+                  onChange={(e) => setAdminMessage(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="admin-btn-outline"
+                  disabled={actionBusy || !adminMessage.trim()}
+                  onClick={async () => {
+                    const ok = await onSendAdminMessage(request.id, adminMessage.trim());
+                    if (ok) setAdminMessage("");
+                  }}
+                >
+                  Nachricht senden
+                </button>
+              </div>
+              <div className="admin-toolbar-row" style={{ marginTop: 10 }}>
+                <input
+                  className="admin-input"
+                  type="file"
+                  onChange={(e) => setAdminUploadFile(e.target.files?.[0] ?? null)}
+                />
+                <button
+                  type="button"
+                  className="admin-btn-outline"
+                  disabled={actionBusy || !adminUploadFile}
+                  onClick={async () => {
+                    if (!adminUploadFile) return;
+                    const toBase64 = (file) =>
+                      new Promise((resolve, reject) => {
+                        const r = new FileReader();
+                        r.onload = () => resolve(String(r.result ?? ""));
+                        r.onerror = () => reject(new Error("file_read_failed"));
+                        r.readAsDataURL(file);
+                      });
+                    try {
+                      const contentBase64 = await toBase64(adminUploadFile);
+                      const res = await fetch(
+                        `${REG_REQUESTS_URL}/${encodeURIComponent(request.id)}/documents`,
+                        {
+                          method: "POST",
+                          headers: adminApiHeaders({ "Content-Type": "application/json" }),
+                          body: JSON.stringify({
+                            fileName: adminUploadFile.name,
+                            mimeType: adminUploadFile.type || "application/octet-stream",
+                            category: "admin_note",
+                            contentBase64,
+                          }),
+                        },
+                      );
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok || !data?.ok) return;
+                      setAdminUploadFile(null);
+                      await onSendAdminMessage(request.id, `Dokument hinzugefügt: ${adminUploadFile.name}`);
+                    } catch {
+                      // ignore, user can retry
+                    }
+                  }}
+                >
+                  Admin-Dokument hochladen
+                </button>
+              </div>
+              <p className="admin-table-sub" style={{ marginTop: 14 }}>
+                Hinweis: Stammdaten bleiben gesperrt (`masterDataLocked=true`) und werden nur über Admin-Freigabe übernommen.
+              </p>
+              <div className="admin-toolbar-row" style={{ marginTop: 14 }}>
+                <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onSetStatus(request.id, "open")}>
+                  Offen
+                </button>
+                <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onInReview(request.id)}>
+                  In Bearbeitung
+                </button>
+                <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onSetDocsMissing(request.id)}>
+                  Dokumente nachfordern
+                </button>
+                <button type="button" className="admin-btn-refresh" disabled={actionBusy} onClick={() => onApprove(request.id)}>
+                  Freigeben & Unternehmen anlegen
+                </button>
+                <button type="button" className="admin-btn-danger" disabled={actionBusy} onClick={() => onReject(request.id)}>
+                  Ablehnen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

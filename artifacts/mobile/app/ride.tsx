@@ -39,7 +39,9 @@ function accessCodeBookingErrorMessage(code: string): string {
   const m: Record<string, string> = {
     access_code_invalid: "Code unbekannt oder ungültig.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
-    access_code_expired: "Code noch nicht gültig oder abgelaufen.",
+    access_code_not_yet_valid:
+      "Dieser Code ist noch nicht gültig. Bitte ab dem in der Freigabe genannten Zeitpunkt erneut buchen.",
+    access_code_expired: "Dieser Code ist abgelaufen (Gültigkeitsende überschritten).",
     access_code_exhausted: "Code bereits eingelöst oder Kontingent aufgebraucht.",
     access_code_wrong_company: "Code passt nicht zu dieser Buchung.",
     access_code_in_use: "Code ist gerade für eine andere Fahrt reserviert — bitte kurz warten oder später erneut versuchen.",

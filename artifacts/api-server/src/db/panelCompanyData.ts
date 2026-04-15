@@ -29,6 +29,15 @@ export interface PanelCompanyPublic {
   logoUrl: string;
   openingHours: string;
   businessNotes: string;
+  /** Offizielle Rechnungs-/Stammanschrift (vom Admin gepflegt, im Panel nur Anzeige). */
+  billingName: string;
+  billingAddressLine1: string;
+  billingAddressLine2: string;
+  billingPostalCode: string;
+  billingCity: string;
+  billingCountry: string;
+  bankIban: string;
+  bankBic: string;
   verificationStatus: string;
   complianceStatus: string;
   contractStatus: string;
@@ -91,6 +100,14 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     logoUrl: r.logo_url ?? "",
     openingHours: r.opening_hours ?? "",
     businessNotes: r.business_notes ?? "",
+    billingName: r.billing_name ?? "",
+    billingAddressLine1: r.billing_address_line1 ?? "",
+    billingAddressLine2: r.billing_address_line2 ?? "",
+    billingPostalCode: r.billing_postal_code ?? "",
+    billingCity: r.billing_city ?? "",
+    billingCountry: r.billing_country ?? "",
+    bankIban: r.bank_iban ?? "",
+    bankBic: r.bank_bic ?? "",
     verificationStatus: r.verification_status ?? "pending",
     complianceStatus: r.compliance_status ?? "pending",
     contractStatus: r.contract_status ?? "inactive",

@@ -40,7 +40,8 @@ function accessCodeErrorMessage(code: string): string {
   const m: Record<string, string> = {
     access_code_invalid: "Der eingegebene Code ist ungueltig oder unbekannt.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
-    access_code_expired: "Dieser Code ist noch nicht gueltig oder bereits abgelaufen.",
+    access_code_not_yet_valid: "Dieser Code ist noch nicht gueltig (Startdatum/Zeit der Freigabe).",
+    access_code_expired: "Dieser Code ist abgelaufen.",
     access_code_exhausted: "Dieser Code wurde bereits vollstaendig eingeloest.",
     access_code_wrong_company: "Dieser Code passt nicht zu diesem Unternehmen.",
     request_failed: "Die Fahrt konnte nicht erstellt werden.",
@@ -133,156 +134,165 @@ function PulsingDot({ color = "#22C55E" }: { color?: string }) {
   );
 }
 
-function getCardTitle(req: RideRequest): string {
-  if (req.scheduledAt) return "📅 TERMIN-FAHRT";
-  return "⚡ BLITZ-ANFRAGE";
+function customerShortLabel(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 3).toLowerCase();
+  return `${parts[0]!.slice(0, 3).toLowerCase()} ${parts[parts.length - 1]!.slice(0, 1).toLowerCase()}.`;
 }
 
-/* ─── Instant Request Card ─── */
+/* ─── Sofortfahrt-Karte (hell, Google-ähnlich) — ohne Preis / Taxameter ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
-  const distToPickup = (driverPos && req.fromLat != null && req.fromLon != null)
-    ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
-    : null;
-  const distKmText = distToPickup != null
-    ? (distToPickup < 1 ? `${Math.round(distToPickup * 1000)} m` : `${distToPickup.toFixed(1)} km`)
-    : null;
-  const distMinText = distToPickup != null
-    ? `${Math.max(1, Math.round(distToPickup / 0.5))} Min`
-    : null;
-  const initials = req.customerName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-  const title = getCardTitle(req);
-  const isBlitz = !req.scheduledAt;
+  const distToPickupM =
+    driverPos && req.fromLat != null && req.fromLon != null
+      ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon)
+      : null;
+  const distPickupLabel =
+    distToPickupM != null
+      ? distToPickupM < 1000
+        ? `${Math.round(distToPickupM)} m entfernt`
+        : `${(distToPickupM / 1000).toFixed(1)} km entfernt`
+      : null;
+  const { date, time } = fmt(req.createdAt);
   const codeLine = accessCodeRideLine(req);
+  const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
+
+  const pillGray = {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#F1F5F9",
+  } as const;
+  const pillRed = {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#FEE2E2",
+  } as const;
 
   return (
-    <View style={{
-      backgroundColor: "#1C1C1E",
-      borderRadius: 24,
-      marginHorizontal: 14,
-      marginBottom: 14,
-      overflow: "hidden",
-      shadowColor: isBlitz ? "#FACC15" : "#F59E0B",
-      shadowOpacity: 0.25,
-      shadowRadius: 20,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 12,
-    }}>
-
-      {/* ── Titel-Kapsel ── */}
-      <View style={{ alignItems: "center", paddingTop: 20, paddingBottom: 4 }}>
-        <View style={{
-          backgroundColor: isBlitz ? "#FACC15" : "#F59E0B",
-          borderRadius: 999,
-          paddingHorizontal: 22,
-          paddingVertical: 6,
-          shadowColor: isBlitz ? "#FACC15" : "#F59E0B",
-          shadowOpacity: 0.7,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 8,
-        }}>
-          <Text style={{ color: "#111", fontFamily: "Inter_700Bold", fontSize: 14, letterSpacing: 1.2 }}>
-            {title}
-          </Text>
-        </View>
-      </View>
-
-      {/* ── Profil + Name + Sterne ── */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 22, paddingTop: 20, paddingBottom: 16 }}>
-        {/* Avatar */}
-        <View style={{
-          width: 60, height: 60, borderRadius: 30,
-          backgroundColor: "#374151",
-          borderWidth: 2, borderColor: "#FACC15",
-          alignItems: "center", justifyContent: "center",
-        }}>
-          <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: "#F8FAFC" }}>{initials}</Text>
-        </View>
-        {/* Name + Sterne */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color: "#F8FAFC", letterSpacing: -0.5 }} numberOfLines={1}>
-            {req.customerName}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
-            <Text style={{ fontSize: 15, color: "#FACC15" }}>★★★★★</Text>
-            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#94A3B8" }}>4.9</Text>
-          </View>
-          {codeLine ? (
-            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#4ADE80", marginTop: 8 }} numberOfLines={2}>
-              {codeLine}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
-      {/* Trennlinie */}
-      <View style={{ height: 1, backgroundColor: "#2D2D2F", marginHorizontal: 22 }} />
-
-      {/* ── Adresse ── */}
-      <View style={{ paddingHorizontal: 22, paddingTop: 14, paddingBottom: 4, gap: 8 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#4ADE80", marginTop: 5 }} />
-          <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: "#CBD5E1" }} numberOfLines={2}>
-            {req.fromFull}
-          </Text>
-        </View>
-      </View>
-
-      {/* ── Distanz-Box ── */}
-      {distKmText && (
-        <View style={{
-          backgroundColor: "#2C3E50",
-          marginHorizontal: 22,
-          marginVertical: 16,
-          borderRadius: 14,
-          paddingVertical: 14,
-          paddingHorizontal: 18,
+    <View
+      style={{
+        marginHorizontal: 14,
+        marginBottom: 14,
+        borderRadius: 20,
+        borderWidth: 2,
+        borderColor: "#22C55E",
+        backgroundColor: "#fff",
+        overflow: "hidden",
+        shadowColor: "#000",
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 10,
+      }}
+    >
+      <View
+        style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-        }}>
-          <Text style={{ fontSize: 20 }}>📍</Text>
-          <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: "#93C5FD" }}>
-            {distKmText}
-          </Text>
-          <Text style={{ fontSize: 16, fontFamily: "Inter_400Regular", color: "#64748B" }}>·</Text>
-          <Text style={{ fontSize: 18, fontFamily: "Inter_600SemiBold", color: "#93C5FD" }}>
-            {distMinText}
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          backgroundColor: "#F0FDF4",
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
+          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 15, color: "#0F172A" }}>Sofortfahrt</Text>
+        </View>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
+          {date} · {time} Uhr
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
+        {distPickupLabel ? (
+          <View style={pillRed}>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{distPickupLabel}</Text>
+          </View>
+        ) : null}
+        <View style={pillGray}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#475569" }}>
+            {req.distanceKm.toFixed(1)} km
           </Text>
         </View>
-      )}
+        <View style={pillGray}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#475569" }}>{req.vehicle}</Text>
+        </View>
+      </View>
 
-      {/* ── Action Buttons ── */}
-      <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 22, paddingBottom: 20 }}>
-        <Pressable
-          onPress={onAccept}
-          style={({ pressed }) => ({
-            flex: 2,
-            backgroundColor: pressed ? "#15803D" : "#16A34A",
-            borderRadius: 16,
-            paddingVertical: 16,
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "row",
-            gap: 8,
-          })}
-        >
-          <Feather name="check" size={20} color="#fff" />
-          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 17 }}>Akzeptieren</Text>
-        </Pressable>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#22C55E", marginTop: 4 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B", letterSpacing: 0.5 }}>VON</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0F172A" }} numberOfLines={2}>
+              {req.fromFull}
+            </Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#DC2626", marginTop: 4 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B", letterSpacing: 0.5 }}>BIS</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0F172A" }} numberOfLines={2}>
+              {req.toFull}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {codeLine ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+          <Feather name="shield" size={14} color="#16A34A" />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#15803D" }} numberOfLines={2}>
+            {codeLine}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
+        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#334155" }}>{customerShortLabel(req.customerName)}</Text>
+        <Text style={{ color: "#CBD5E1" }}>·</Text>
+        <MaterialCommunityIcons name="cash" size={16} color="#64748B" />
+        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#475569" }}>{payLabel}</Text>
+      </View>
+
+      <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 14, paddingBottom: 16 }}>
         <Pressable
           onPress={onReject}
           style={({ pressed }) => ({
             flex: 1,
-            backgroundColor: pressed ? "#991B1B" : "#DC2626",
-            borderRadius: 16,
-            paddingVertical: 16,
+            flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
+            gap: 6,
+            borderRadius: 14,
+            paddingVertical: 14,
+            borderWidth: 2,
+            borderColor: "#DC2626",
+            backgroundColor: pressed ? "#FEF2F2" : "#fff",
           })}
         >
-          <Feather name="x" size={24} color="#fff" />
+          <Feather name="x" size={18} color="#DC2626" />
+          <Text style={{ color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 }}>Ablehnen</Text>
+        </Pressable>
+        <Pressable
+          onPress={onAccept}
+          style={({ pressed }) => ({
+            flex: 2,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            borderRadius: 14,
+            paddingVertical: 14,
+            backgroundColor: pressed ? "#15803D" : "#16A34A",
+          })}
+        >
+          <Feather name="check" size={20} color="#fff" />
+          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 }}>Annehmen</Text>
         </Pressable>
       </View>
     </View>
@@ -369,8 +379,8 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
         </View>
         <View style={styles.schedStatDivider} />
         <View style={styles.schedStatItem}>
-          <MaterialCommunityIcons name="currency-eur" size={12} color="#6B7280" />
-          <Text style={[styles.schedStatText, { color: "#22C55E", fontFamily: "Inter_700Bold" }]}>ca. {formatEuro(req.estimatedFare)}</Text>
+          <Feather name="clock" size={12} color="#6B7280" />
+          <Text style={styles.schedStatText}>{Math.max(1, Math.round(req.durationMinutes || 0))} Min</Text>
         </View>
       </View>
 
@@ -484,7 +494,9 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
         <View style={[styles.mapStatusDot, { backgroundColor: isAvailable ? "#22C55E" : "#6B7280" }]} />
         <Text style={styles.mapStatusText}>
           {isAvailable
-            ? firstReq ? `${instantReqs.length} Auftrag${instantReqs.length > 1 ? "̈e" : ""} wartend` : "Warte auf Aufträge"
+            ? firstReq
+              ? `${instantReqs.length} ${instantReqs.length > 1 ? "Aufträge" : "Auftrag"} wartend`
+              : "Warte auf Aufträge"
             : "Offline — Keine Aufträge"}
         </Text>
       </View>
@@ -570,8 +582,10 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
                 </View>
                 <View style={styles.mapStatDivider} />
                 <View style={styles.mapStatItem}>
-                  <Text style={[styles.mapStatValue, { color: "#22C55E" }]}>{formatEuro(activeReq.estimatedFare)}</Text>
-                  <Text style={styles.mapStatLabel}>ca. Preis</Text>
+                  <Text style={[styles.mapStatValue, { color: "#0F172A" }]}>
+                    {Math.max(1, Math.round(activeReq.durationMinutes || 0))} Min
+                  </Text>
+                  <Text style={styles.mapStatLabel}>Fahrtzeit (ca.)</Text>
                 </View>
               </View>
             </>
@@ -920,12 +934,17 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
   // Phase "driving": Abholort → Zieladresse
   const openNavigation = useCallback(() => {
     if (phase === "pickup") {
-      const dLat = driverCoords?.lat ?? 0;
-      const dLon = driverCoords?.lon ?? 0;
-      if (!dLat || !dLon || req.fromLat == null) return;
+      if (driverCoords == null || req.fromLat == null || req.fromLon == null) {
+        Alert.alert("Navigation", "GPS oder Abholkoordinaten fehlen. Bitte Ortungsdienste aktivieren oder warten, bis die Fahrt Koordinaten hat.");
+        return;
+      }
+      const dLat = driverCoords.lat;
+      const dLon = driverCoords.lon;
       if (req.status === "accepted") {
         void markDriverArriving(req.id);
       }
+      const destLat = req.toLat ?? req.fromLat;
+      const destLon = req.toLon ?? req.fromLon;
       router.push({
         pathname: "/driver/navigation" as "/driver/navigation",
         params: {
@@ -941,15 +960,20 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
           pickupLat: String(req.fromLat),
           pickupLon: String(req.fromLon),
           pickupName: req.fromFull,
-          destLat: String(req.toLat ?? req.fromLat),
-          destLon: String(req.toLon ?? req.fromLon),
+          destLat: String(destLat),
+          destLon: String(destLon),
           destName: req.toFull ?? req.fromFull,
           estimatedFare: String(req.estimatedFare),
           paymentMethod: req.paymentMethod,
         },
       });
     } else {
-      if (req.fromLat == null || req.toLat == null) return;
+      if (req.fromLat == null || req.fromLon == null) {
+        Alert.alert("Navigation", "Für diese Fahrt fehlen Koordinaten zum Zielbereich.");
+        return;
+      }
+      const destLat = req.toLat ?? req.fromLat;
+      const destLon = req.toLon ?? req.fromLon;
       router.push({
         pathname: "/driver/navigation" as "/driver/navigation",
         params: {
@@ -958,15 +982,15 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
           fromLat: String(req.fromLat),
           fromLon: String(req.fromLon),
           fromName: req.fromFull,
-          toLat: String(req.toLat),
-          toLon: String(req.toLon),
-          toName: req.toFull,
+          toLat: String(destLat),
+          toLon: String(destLon),
+          toName: req.toFull ?? req.fromFull,
           customerName: req.customerName,
           pickupLat: String(req.fromLat),
           pickupLon: String(req.fromLon),
           pickupName: req.fromFull,
-          destLat: String(req.toLat),
-          destLon: String(req.toLon),
+          destLat: String(destLat),
+          destLon: String(destLon),
           destName: req.toFull ?? req.fromFull,
           estimatedFare: String(req.estimatedFare),
           paymentMethod: req.paymentMethod,
@@ -1523,7 +1547,8 @@ export default function DriverDashboard() {
     return () => { sub?.remove(); };
   }, []);
 
-  const driverId = driver?.id || driver?.email || "";
+  /** Nur echte Fleet-Driver-ID — E-Mail als driver_id bricht API-/Statuslogik. */
+  const driverId = driver?.id ?? "";
 
   const pendingRequests = allPending.filter(
     (r) => !(r.rejectedBy ?? []).includes(driverId)
@@ -1563,17 +1588,25 @@ export default function DriverDashboard() {
   }, [appRides]);
 
   const handleAccept = async (id: string) => {
+    if (!driverId.trim()) {
+      Alert.alert("Annahme nicht möglich", "Bitte erneut als Fahrer anmelden (keine Fahrer-ID in der Sitzung).");
+      return;
+    }
     try {
       stopRideSound().catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await acceptRequest(id, driverId);
       setActiveTab("uebersicht");
-    } catch {
+    } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        "Annahme fehlgeschlagen",
-        "Der Auftrag konnte nicht angenommen werden. Bitte aktualisieren und erneut versuchen.",
-      );
+      const code = e instanceof Error ? e.message.trim() : "";
+      const detail =
+        code === "status_transition_invalid"
+          ? "Für diesen Auftrag ist „Annehmen“ gerade nicht erlaubt (Status). Bitte runterziehen zum Aktualisieren oder kurz warten."
+          : code
+            ? `Technisch: ${code}`
+            : "Der Auftrag konnte nicht angenommen werden. Bitte aktualisieren und erneut versuchen.";
+      Alert.alert("Annahme fehlgeschlagen", detail);
     }
   };
   const handleReject = async (id: string) => {

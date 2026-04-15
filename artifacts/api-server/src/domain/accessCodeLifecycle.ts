@@ -4,6 +4,7 @@
  */
 export const ACCESS_CODE_PUBLIC_STATUSES = [
   "active",
+  "not_yet_valid",
   "reserved",
   "redeemed",
   "cancelled",
@@ -41,7 +42,7 @@ export function computeAccessCodePublicStatus(row: AccessCodeStatusInput): {
   if (row.validFrom) {
     const t = new Date(row.validFrom).getTime();
     if (Number.isFinite(t) && t > now) {
-      return { status: "expired", labelDe: "Noch nicht gültig" };
+      return { status: "not_yet_valid", labelDe: "Noch nicht gültig" };
     }
   }
   if (row.validUntil) {

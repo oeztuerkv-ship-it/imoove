@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { Router, type IRouter, type Request } from "express";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
@@ -34,6 +35,20 @@ import {
   decideCompanyChangeRequest,
   listCompanyChangeRequestsAdmin,
 } from "../db/companyChangeRequestsData";
+import {
+  addPartnerRegistrationDocument,
+  addPartnerRegistrationMessage,
+  addPartnerRegistrationTimelineEvent,
+  attachCompanyToPartnerRegistrationRequest,
+  findPartnerRegistrationDocumentById,
+  findPartnerRegistrationRequestById,
+  getPartnerRegistrationDetailAdmin,
+  isPartnerType,
+  isRegistrationStatus,
+  listPartnerRegistrationRequestsAdmin,
+  patchPartnerRegistrationRequest,
+  resolvePartnerRegistrationStorageAbsolutePath,
+} from "../db/partnerRegistrationRequestsData";
 import {
   countActiveAdminRoleUsers,
   createAdminPasswordResetToken,
@@ -136,6 +151,23 @@ function isAdminPrincipal(req: Request): boolean {
 
 function adminConsoleRole(req: Request): AdminRole {
   return req.adminAuth?.role ?? "admin";
+}
+
+function partnerTypeToCompanyKind(partnerType: string): "taxi" | "hotel" | "insurer" | "corporate" | "voucher_client" | "general" {
+  switch (partnerType) {
+    case "taxi":
+      return "taxi";
+    case "hotel":
+      return "hotel";
+    case "insurance":
+      return "insurer";
+    case "business":
+      return "corporate";
+    case "voucher_partner":
+      return "voucher_client";
+    default:
+      return "general";
+  }
 }
 
 function hashResetToken(token: string): string {
@@ -730,6 +762,283 @@ adminJson.post("/company-change-requests/:id/decision", async (req, res, next) =
       return;
     }
     res.json({ ok: true, request: row });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/company-registration-requests", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const statusRaw = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    if (statusRaw && !isRegistrationStatus(statusRaw)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const items = await listPartnerRegistrationRequestsAdmin(
+      statusRaw ? statusRaw : undefined,
+    );
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/company-registration-requests/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    const verificationRaw = typeof b.verificationStatus === "string" ? b.verificationStatus.trim() : "";
+    const complianceRaw = typeof b.complianceStatus === "string" ? b.complianceStatus.trim() : "";
+    const contractRaw = typeof b.contractStatus === "string" ? b.contractStatus.trim() : "";
+    if (statusRaw && !isRegistrationStatus(statusRaw)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const verificationStatus =
+      verificationRaw === "pending" ||
+      verificationRaw === "in_review" ||
+      verificationRaw === "verified" ||
+      verificationRaw === "rejected"
+        ? verificationRaw
+        : undefined;
+    const complianceStatus =
+      complianceRaw === "pending" ||
+      complianceRaw === "complete" ||
+      complianceRaw === "missing_documents" ||
+      complianceRaw === "rejected"
+        ? complianceRaw
+        : undefined;
+    const contractStatus =
+      contractRaw === "inactive" ||
+      contractRaw === "pending" ||
+      contractRaw === "active" ||
+      contractRaw === "suspended" ||
+      contractRaw === "terminated"
+        ? contractRaw
+        : undefined;
+    const item = await patchPartnerRegistrationRequest(req.params.id, {
+      ...(statusRaw ? { status: statusRaw } : {}),
+      ...(verificationStatus ? { verificationStatus } : {}),
+      ...(complianceStatus ? { complianceStatus } : {}),
+      ...(contractStatus ? { contractStatus } : {}),
+      ...(typeof b.missingDocumentsNote === "string"
+        ? { missingDocumentsNote: b.missingDocumentsNote.trim() }
+        : {}),
+      ...(typeof b.adminNote === "string" ? { adminNote: b.adminNote.trim() } : {}),
+      reviewedByAdminUserId: null,
+    });
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/company-registration-requests/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const detail = await getPartnerRegistrationDetailAdmin(req.params.id);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/company-registration-requests/:id/messages", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!message) {
+      res.status(400).json({ error: "message_required" });
+      return;
+    }
+    const row = await findPartnerRegistrationRequestById(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const actorLabel = req.adminAuth?.username ?? "admin";
+    await addPartnerRegistrationMessage(row.id, "admin", actorLabel, message);
+    await patchPartnerRegistrationRequest(row.id, { status: "in_review" });
+    res.status(201).json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/company-registration-requests/:id/documents", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const row = await findPartnerRegistrationRequestById(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const category = typeof req.body?.category === "string" ? req.body.category.trim() : "general";
+    const fileName = typeof req.body?.fileName === "string" ? req.body.fileName.trim() : "";
+    const mimeType = typeof req.body?.mimeType === "string" ? req.body.mimeType.trim() : "application/octet-stream";
+    const contentBase64 =
+      typeof req.body?.contentBase64 === "string" ? req.body.contentBase64.trim() : "";
+    if (!fileName || !contentBase64) {
+      res.status(400).json({ error: "file_required" });
+      return;
+    }
+    const actorLabel = req.adminAuth?.username ?? "admin";
+    const doc = await addPartnerRegistrationDocument({
+      requestId: row.id,
+      category,
+      originalFileName: fileName,
+      mimeType,
+      contentBase64,
+      uploadedByActorType: "admin",
+      uploadedByActorLabel: actorLabel,
+    });
+    if (!doc) {
+      res.status(503).json({ error: "upload_failed" });
+      return;
+    }
+    await addPartnerRegistrationTimelineEvent({
+      requestId: row.id,
+      actorType: "admin",
+      actorLabel,
+      eventType: "admin_document_added",
+      message: `Admin-Dokument hinzugefügt: ${fileName}`,
+      payload: { category },
+    });
+    res.status(201).json({ ok: true, document: doc });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get(
+  "/company-registration-requests/:requestId/documents/:docId/download",
+  async (req, res, next) => {
+    try {
+      if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+        res.status(403).json({ error: "forbidden" });
+        return;
+      }
+      if (!isPostgresConfigured()) {
+        res.status(503).json({ error: "database_not_configured" });
+        return;
+      }
+      const doc = await findPartnerRegistrationDocumentById(req.params.docId);
+      if (!doc || doc.requestId !== req.params.requestId) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const abs = await resolvePartnerRegistrationStorageAbsolutePath(doc.storagePath);
+      const buf = await readFile(abs);
+      res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(doc.originalFileName || "document.bin")}"`,
+      );
+      res.status(200).send(buf);
+    } catch (e) {
+      next(e);
+    }
+  },
+);
+
+adminJson.post("/company-registration-requests/:id/approve", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const reqRow = await findPartnerRegistrationRequestById(req.params.id);
+    if (!reqRow) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (reqRow.linkedCompanyId) {
+      res.status(409).json({ error: "already_approved", companyId: reqRow.linkedCompanyId });
+      return;
+    }
+    if (!isPartnerType(reqRow.partnerType)) {
+      res.status(400).json({ error: "partner_type_invalid" });
+      return;
+    }
+    const createdCompany = await insertAdminCompany({
+      name: reqRow.companyName,
+      legal_form: reqRow.legalForm,
+      company_kind: partnerTypeToCompanyKind(reqRow.partnerType),
+      contact_name: `${reqRow.contactFirstName} ${reqRow.contactLastName}`.trim(),
+      email: reqRow.email,
+      phone: reqRow.phone,
+      address_line1: reqRow.addressLine1,
+      postal_code: reqRow.postalCode,
+      city: reqRow.city,
+      country: reqRow.country,
+      tax_id: reqRow.taxId,
+      vat_id: reqRow.vatId,
+      concession_number: reqRow.concessionNumber,
+      business_notes: reqRow.notes,
+      contract_status: "active",
+      verification_status: "verified",
+      compliance_status: "compliant",
+      is_active: true,
+    });
+    if ("error" in createdCompany) {
+      res.status(400).json({ error: createdCompany.error });
+      return;
+    }
+    const updatedReq = await attachCompanyToPartnerRegistrationRequest(
+      reqRow.id,
+      createdCompany.id,
+      null,
+    );
+    res.status(201).json({ ok: true, company: createdCompany, request: updatedReq });
   } catch (e) {
     next(e);
   }

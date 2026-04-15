@@ -17,6 +17,8 @@
 --   022 → Taxi-Flotte (fleet_drivers, fleet_vehicles, …)
 --   023 → Governance + company_change_requests
 --   024 → ride_events (Status-Historie pro Fahrt)
+--   025 → partner_registration_requests (Unternehmensanfragen)
+--   026 → partner_registration_documents + partner_registration_timeline
 
 DO $$
 DECLARE
@@ -217,6 +219,27 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'ride_events'
   ) THEN
     errs := array_append(errs, 'table ride_events (Migration 024)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'partner_registration_requests'
+  ) THEN
+    errs := array_append(errs, 'table partner_registration_requests (Migration 025)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'partner_registration_documents'
+  ) THEN
+    errs := array_append(errs, 'table partner_registration_documents (Migration 026)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'partner_registration_timeline'
+  ) THEN
+    errs := array_append(errs, 'table partner_registration_timeline (Migration 026)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

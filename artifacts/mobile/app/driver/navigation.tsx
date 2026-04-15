@@ -340,6 +340,15 @@ export default function DriverNavigationScreen() {
   const currentStep = steps[stepIdx] ?? null;
   const nextStep    = steps[stepIdx + 1] ?? null;
   const streetName  = currentStep?.instruction ?? (isPickupPhase ? pickupName : destName);
+  /** Nach „Angekommen“: grüner Balken wie Google Maps — Fokus auf Start, nicht auf ersten Routing-Schritt. */
+  const topPrimaryText =
+    isPickupPhase && hasArrived ? "Fahrt beginnen" : streetName;
+  const topDistanceText =
+    isPickupPhase && hasArrived && distToPickup > 0
+      ? `in ${fmtDist(distToPickup)}`
+      : currentStep && currentStep.distanceM > 0
+        ? `in ${fmtDist(currentStep.distanceM)}`
+        : "";
 
   // ─── Bottom action button ───────────────────────────────────────────────────
   let actionBtn: React.ReactNode;
@@ -407,7 +416,13 @@ export default function DriverNavigationScreen() {
           pinColor={isPickupPhase ? "#22C55E" : "#DC2626"}
         />
         {polyline.length > 1 && (
-          <Polyline coordinates={polyline} strokeColor="#00C8FF" strokeWidth={7} lineCap="round" lineJoin="round" />
+          <Polyline
+            coordinates={polyline}
+            strokeColor="#4285F4"
+            strokeWidth={9}
+            lineCap="round"
+            lineJoin="round"
+          />
         )}
       </MapView>
 
@@ -420,10 +435,8 @@ export default function DriverNavigationScreen() {
             </Animated.View>
             <View style={styles.topText}>
               <Text style={styles.topLabel}>Richtung</Text>
-              <Text style={styles.topStreet} numberOfLines={1}>{streetName}</Text>
-              {currentStep && currentStep.distanceM > 0 && (
-                <Text style={styles.topDist}>in {fmtDist(currentStep.distanceM)}</Text>
-              )}
+              <Text style={styles.topStreet} numberOfLines={2}>{topPrimaryText}</Text>
+              {topDistanceText ? <Text style={styles.topDist}>{topDistanceText}</Text> : null}
             </View>
           </View>
         </View>
@@ -480,10 +493,14 @@ export default function DriverNavigationScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
               <MaterialCommunityIcons
                 name={
-                  (params.paymentMethod ?? "").startsWith("Krankenkasse") ? "ticket-percent-outline"
-                  : (params.paymentMethod ?? "").toLowerCase().includes("karte") || (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte") ? "credit-card-outline"
-                  : (params.paymentMethod ?? "").toLowerCase().includes("paypal") ? "cellphone"
-                  : "currency-eur"
+                  (params.paymentMethod ?? "").startsWith("Krankenkasse")
+                    ? "ticket-percent-outline"
+                    : (params.paymentMethod ?? "").toLowerCase().includes("karte") ||
+                        (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte")
+                      ? "credit-card-outline"
+                      : (params.paymentMethod ?? "").toLowerCase().includes("paypal")
+                        ? "cellphone"
+                        : "cash"
                 }
                 size={15}
                 color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
@@ -625,7 +642,7 @@ const styles = StyleSheet.create({
   actionBtnGreen: { backgroundColor: "#22C55E" },
   actionBtnGray:  { backgroundColor: "#374151" },
   actionBtnBlue:  { backgroundColor: "#2563EB" },
-  actionBtnRed:   { backgroundColor: "#DC2626" },
+  actionBtnRed:   { backgroundColor: "#EA4335" },
   actionBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
   actionBtnTextGray: { color: "#9CA3AF" },
   actionBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: 1 },

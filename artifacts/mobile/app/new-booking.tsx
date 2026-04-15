@@ -353,7 +353,9 @@ export default function NewBookingScreen() {
     const m: Record<string, string> = {
       access_code_invalid: "Der eingegebene Code ist ungültig oder unbekannt.",
       access_code_inactive: "Dieser Code ist deaktiviert.",
-      access_code_expired: "Dieser Code ist noch nicht gültig oder bereits abgelaufen.",
+      access_code_not_yet_valid:
+        "Dieser Code ist noch nicht gültig. Bitte erst ab dem gültigen Beginn buchen (siehe Partner-Freigabe).",
+      access_code_expired: "Dieser Code ist abgelaufen.",
       access_code_exhausted: "Dieser Code wurde bereits vollständig eingelöst.",
       access_code_wrong_company: "Dieser Code passt nicht zu dieser Buchung.",
       request_failed: "Die Buchung konnte nicht gesendet werden.",

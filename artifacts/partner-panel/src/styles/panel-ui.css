@@ -162,6 +162,19 @@
   font-weight: 600;
 }
 
+.panel-card__subtitle {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--onroda-text-muted);
+  letter-spacing: 0.03em;
+}
+
+.panel-card__muted {
+  color: var(--onroda-text-muted);
+  font-size: 0.9em;
+}
+
 .panel-card--wide {
   max-width: 920px;
 }

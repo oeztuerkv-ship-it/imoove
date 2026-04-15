@@ -8,6 +8,7 @@ import { accessCodesTable } from "./schema";
 export type RedeemErrorCode =
   | "access_code_invalid"
   | "access_code_inactive"
+  | "access_code_not_yet_valid"
   | "access_code_expired"
   | "access_code_exhausted"
   | "access_code_wrong_company";
@@ -78,7 +79,7 @@ async function loadLabelsByIds(ids: string[]): Promise<Map<string, { codeType: s
 function validateMemRow(row: MemRow, bookingCompanyId: string | null): RedeemErrorCode | null {
   if (!row.is_active) return "access_code_inactive";
   const t = new Date();
-  if (row.valid_from && row.valid_from > t) return "access_code_expired";
+  if (row.valid_from && row.valid_from > t) return "access_code_not_yet_valid";
   if (row.valid_until && row.valid_until < t) return "access_code_expired";
   if (row.max_uses != null && row.uses_count >= row.max_uses) return "access_code_exhausted";
   if (bookingCompanyId && row.company_id && row.company_id !== bookingCompanyId) {
@@ -186,7 +187,7 @@ export async function redeemAccessCodeInTransaction(
   ) {
     return { ok: false, error: "access_code_wrong_company" };
   }
-  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_expired" };
+  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
   if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
   if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
   return { ok: false, error: "access_code_exhausted" };

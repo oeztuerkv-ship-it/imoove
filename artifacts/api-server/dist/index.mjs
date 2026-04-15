@@ -115,8 +115,8 @@ var require_package = __commonJS({
 // ../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js
 var require_main = __commonJS({
   "../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js"(exports, module) {
-    var fs = __require("fs");
-    var path3 = __require("path");
+    var fs2 = __require("fs");
+    var path5 = __require("path");
     var os = __require("os");
     var crypto2 = __require("crypto");
     var packageJson = require_package();
@@ -222,7 +222,7 @@ var require_main = __commonJS({
       if (options && options.path && options.path.length > 0) {
         if (Array.isArray(options.path)) {
           for (const filepath of options.path) {
-            if (fs.existsSync(filepath)) {
+            if (fs2.existsSync(filepath)) {
               possibleVaultPath = filepath.endsWith(".vault") ? filepath : `${filepath}.vault`;
             }
           }
@@ -230,15 +230,15 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path3.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path5.resolve(process.cwd(), ".env.vault");
       }
-      if (fs.existsSync(possibleVaultPath)) {
+      if (fs2.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
       }
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path3.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path5.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       _log("Loading env from encrypted .env.vault");
@@ -251,7 +251,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path3.resolve(process.cwd(), ".env");
+      const dotenvPath = path5.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       const debug = Boolean(options && options.debug);
       if (options && options.encoding) {
@@ -274,13 +274,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path4 of optionPaths) {
+      for (const path6 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs.readFileSync(path4, { encoding }));
+          const parsed = DotenvModule.parse(fs2.readFileSync(path6, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path4} ${e.message}`);
+            _debug(`Failed to load ${path6} ${e.message}`);
           }
           lastError = e;
         }
@@ -2582,7 +2582,7 @@ var require_websocket = __commonJS({
     var http = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes5, createHash: createHash2 } = __require("crypto");
+    var { randomBytes: randomBytes6, createHash: createHash3 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -3112,7 +3112,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes5(16).toString("base64");
+      const key = randomBytes6(16).toString("base64");
       const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -3242,7 +3242,7 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash2("sha1").update(key + GUID).digest("base64");
+        const digest = createHash3("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -3609,7 +3609,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter = __require("events");
     var http = __require("http");
     var { Duplex } = __require("stream");
-    var { createHash: createHash2 } = __require("crypto");
+    var { createHash: createHash3 } = __require("crypto");
     var extension2 = require_extension();
     var PerMessageDeflate2 = require_permessage_deflate();
     var subprotocol2 = require_subprotocol();
@@ -3910,7 +3910,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash2("sha1").update(key + GUID).digest("base64");
+        const digest = createHash3("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -19267,11 +19267,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path3) {
-      if (!path3 || typeof path3 !== "string") {
+    function lookup(path5) {
+      if (!path5 || typeof path5 !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path3).toLowerCase().slice(1);
+      var extension3 = extname("x." + path5).toLowerCase().slice(1);
       if (!extension3) {
         return false;
       }
@@ -22743,13 +22743,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path3 = __require("node:path");
-    var fs = __require("node:fs");
-    var dirname = path3.dirname;
-    var basename = path3.basename;
-    var extname = path3.extname;
-    var join = path3.join;
-    var resolve = path3.resolve;
+    var path5 = __require("node:path");
+    var fs2 = __require("node:fs");
+    var dirname = path5.dirname;
+    var basename = path5.basename;
+    var extname = path5.extname;
+    var join = path5.join;
+    var resolve = path5.resolve;
     module.exports = View2;
     function View2(name, options) {
       var opts = options || {};
@@ -22778,17 +22778,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View2.prototype.lookup = function lookup(name) {
-      var path4;
+      var path6;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name);
-      for (var i = 0; i < roots.length && !path4; i++) {
+      for (var i = 0; i < roots.length && !path6; i++) {
         var root = roots[i];
         var loc = resolve(root, name);
         var dir = dirname(loc);
         var file = basename(loc);
-        path4 = this.resolve(dir, file);
+        path6 = this.resolve(dir, file);
       }
-      return path4;
+      return path6;
     };
     View2.prototype.render = function render(options, callback) {
       var sync = true;
@@ -22810,21 +22810,21 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path4 = join(dir, file);
-      var stat = tryStat(path4);
+      var path6 = join(dir, file);
+      var stat = tryStat(path6);
       if (stat && stat.isFile()) {
-        return path4;
+        return path6;
       }
-      path4 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path4);
+      path6 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path6);
       if (stat && stat.isFile()) {
-        return path4;
+        return path6;
       }
     };
-    function tryStat(path4) {
-      debug('stat "%s"', path4);
+    function tryStat(path6) {
+      debug('stat "%s"', path6);
       try {
-        return fs.statSync(path4);
+        return fs2.statSync(path6);
       } catch (e) {
         return void 0;
       }
@@ -23960,15 +23960,15 @@ var require_dist = __commonJS({
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path3 = "";
+        let path5 = "";
         function writePath() {
-          if (!path3)
+          if (!path5)
             return;
           output.push({
             type: "text",
-            value: encodePath(path3)
+            value: encodePath(path5)
           });
-          path3 = "";
+          path5 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -23980,7 +23980,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str);
             }
-            path3 += chars[index++];
+            path5 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -24024,7 +24024,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str);
           }
-          path3 += value;
+          path5 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str);
@@ -24034,17 +24034,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str);
     }
-    function compile(path3, options = {}) {
+    function compile(path5, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path3 === "object" ? path3 : parse(path3, options);
+      const data = typeof path5 === "object" ? path5 : parse(path5, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode3);
-      return function path4(params = {}) {
+      return function path6(params = {}) {
         const missing = [];
-        const path5 = fn(params, missing);
+        const path7 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path5;
+        return path7;
       };
     }
     function tokensToFunction(tokens, delimiter, encode3) {
@@ -24106,9 +24106,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path3, options = {}) {
+    function match(path5, options = {}) {
       const { decode: decode2 = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path3, options);
+      const { regexp, keys } = pathToRegexp(path5, options);
       const decoders = keys.map((key) => {
         if (decode2 === false)
           return NOOP_VALUE;
@@ -24120,7 +24120,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path4 = m[0];
+        const path6 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -24129,21 +24129,21 @@ var require_dist = __commonJS({
           const decoder2 = decoders[i - 1];
           params[key.name] = decoder2(m[i]);
         }
-        return { path: path4, params };
+        return { path: path6, params };
       };
     }
-    function pathToRegexp(path3, options = {}) {
+    function pathToRegexp(path5, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path4) {
-        if (Array.isArray(path4)) {
-          for (const p of path4)
+      function process2(path6) {
+        if (Array.isArray(path6)) {
+          for (const p of path6)
             process2(p);
           return;
         }
-        const data = typeof path4 === "object" ? path4 : parse(path4, options);
+        const data = typeof path6 === "object" ? path6 : parse(path6, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -24154,7 +24154,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path3);
+      process2(path5);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -24294,18 +24294,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path3, options, fn) {
+    function Layer(path5, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path3, options, fn);
+        return new Layer(path5, options, fn);
       }
-      debug("new %o", path3);
+      debug("new %o", path5);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path3 === "/" && opts.end === false;
+      this.slash = path5 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -24344,7 +24344,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path3) ? path3.map(matcher) : [matcher(path3)];
+      this.matchers = Array.isArray(path5) ? path5.map(matcher) : [matcher(path5)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -24384,9 +24384,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path3) {
+    Layer.prototype.match = function match(path5) {
       let match2;
-      if (path3 != null) {
+      if (path5 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -24394,7 +24394,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path3);
+          match2 = this.matchers[i](path5);
           i++;
         }
       }
@@ -24422,13 +24422,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path3) {
-      if (path3 instanceof RegExp || path3 === "/") {
-        return path3;
+    function loosen(path5) {
+      if (path5 instanceof RegExp || path5 === "/") {
+        return path5;
       }
-      return Array.isArray(path3) ? path3.map(function(p) {
+      return Array.isArray(path5) ? path5.map(function(p) {
         return loosen(p);
-      }) : String(path3).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path5).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -24444,9 +24444,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path3) {
-      debug("new %o", path3);
-      this.path = path3;
+    function Route(path5) {
+      debug("new %o", path5);
+      this.path = path5;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router9;
+    module.exports = Router12;
     module.exports.Route = Route;
-    function Router9(options) {
-      if (!(this instanceof Router9)) {
-        return new Router9(options);
+    function Router12(options) {
+      if (!(this instanceof Router12)) {
+        return new Router12(options);
       }
       const opts = options || {};
-      function router9(req, res, next) {
-        router9.handle(req, res, next);
+      function router12(req, res, next) {
+        router12.handle(req, res, next);
       }
-      Object.setPrototypeOf(router9, this);
-      router9.caseSensitive = opts.caseSensitive;
-      router9.mergeParams = opts.mergeParams;
-      router9.params = {};
-      router9.strict = opts.strict;
-      router9.stack = [];
-      return router9;
+      Object.setPrototypeOf(router12, this);
+      router12.caseSensitive = opts.caseSensitive;
+      router12.mergeParams = opts.mergeParams;
+      router12.params = {};
+      router12.strict = opts.strict;
+      router12.stack = [];
+      return router12;
     }
-    Router9.prototype = function() {
+    Router12.prototype = function() {
     };
-    Router9.prototype.param = function param(name, fn) {
+    Router12.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router9.prototype.handle = function handle(req, res, callback) {
+    Router12.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24654,8 +24654,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path3 = getPathname(req);
-        if (path3 == null) {
+        const path5 = getPathname(req);
+        if (path5 == null) {
           return done(layerError);
         }
         let layer;
@@ -24663,7 +24663,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path3);
+          match = matchLayer(layer, path5);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -24701,18 +24701,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path3);
+            trimPrefix(layer, layerError, layerPath, path5);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path3) {
+      function trimPrefix(layer, layerError, layerPath, path5) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path3.substring(0, layerPath.length)) {
+          if (layerPath !== path5.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path3[layerPath.length];
+          const c = path5[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -24734,9 +24734,9 @@ var require_router = __commonJS({
         }
       }
     };
-    Router9.prototype.use = function use(handler) {
+    Router12.prototype.use = function use(handler) {
       let offset = 0;
-      let path3 = "/";
+      let path5 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -24744,7 +24744,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path3 = handler;
+          path5 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -24756,8 +24756,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path3, fn.name || "<anonymous>");
-        const layer = new Layer(path3, {
+        debug("use %o %s", path5, fn.name || "<anonymous>");
+        const layer = new Layer(path5, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -24767,9 +24767,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router9.prototype.route = function route(path3) {
-      const route2 = new Route(path3);
-      const layer = new Layer(path3, {
+    Router12.prototype.route = function route(path5) {
+      const route2 = new Route(path5);
+      const layer = new Layer(path5, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -24782,8 +24782,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router9.prototype[method] = function(path3) {
-        const route = this.route(path3);
+      Router12.prototype[method] = function(path5) {
+        const route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -24812,9 +24812,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path3) {
+    function matchLayer(layer, path5) {
       try {
-        return layer.match(path3);
+        return layer.match(path5);
       } catch (err) {
         return err;
       }
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router9 = require_router();
+    var Router12 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router9 = null;
+      var router12 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router9 === null) {
-            router9 = new Router9({
+          if (router12 === null) {
+            router12 = new Router12({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router9;
+          return router12;
         }
       });
     };
@@ -25042,7 +25042,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path3 = "/";
+      var path5 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -25050,22 +25050,22 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path3 = fn;
+          path5 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router9 = this.router;
+      var router12 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router9.use(path3, fn2);
+          return router12.use(path5, fn2);
         }
-        debug(".use app under %s", path3);
-        fn2.mountpath = path3;
+        debug(".use app under %s", path5);
+        fn2.mountpath = path5;
         fn2.parent = this;
-        router9.use(path3, function mounted_app(req, res, next) {
+        router12.use(path5, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -25077,8 +25077,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path3) {
-      return this.router.route(path3);
+    app2.route = function route(path5) {
+      return this.router.route(path5);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -25121,7 +25121,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path3() {
+    app2.path = function path5() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -25137,17 +25137,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path3) {
+      app2[method] = function(path5) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path3);
+          return this.set(path5);
         }
-        var route = this.route(path3);
+        var route = this.route(path5);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path3) {
-      var route = this.route(path3);
+    app2.all = function all(path5) {
+      var route = this.route(path5);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -26057,7 +26057,7 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname2) ? hostname2.split(".").reverse() : [hostname2];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path3() {
+    defineGetter(req, "path", function path5() {
       return parse(this).pathname;
     });
     defineGetter(req, "host", function host() {
@@ -26464,32 +26464,32 @@ var require_send = __commonJS({
     var escapeHtml2 = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
-    var fs = __require("fs");
+    var fs2 = __require("fs");
     var mime = require_mime_types();
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path3 = __require("path");
+    var path5 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path3.extname;
-    var join = path3.join;
-    var normalize = path3.normalize;
-    var resolve = path3.resolve;
-    var sep = path3.sep;
+    var extname = path5.extname;
+    var join = path5.join;
+    var normalize = path5.normalize;
+    var resolve = path5.resolve;
+    var sep = path5.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path4, options) {
-      return new SendStream(req, path4, options);
+    function send(req, path6, options) {
+      return new SendStream(req, path6, options);
     }
-    function SendStream(req, path4, options) {
+    function SendStream(req, path6, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path4;
+      this.path = path6;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -26603,10 +26603,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path4) {
+    SendStream.prototype.redirect = function redirect(path6) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path4);
+        this.emit("directory", res, path6);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -26626,38 +26626,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path4 = decode2(this.path);
-      if (path4 === -1) {
+      var path6 = decode2(this.path);
+      if (path6 === -1) {
         this.error(400);
         return res;
       }
-      if (~path4.indexOf("\0")) {
+      if (~path6.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path4) {
-          path4 = normalize("." + sep + path4);
+        if (path6) {
+          path6 = normalize("." + sep + path6);
         }
-        if (UP_PATH_REGEXP.test(path4)) {
-          debug('malicious path "%s"', path4);
+        if (UP_PATH_REGEXP.test(path6)) {
+          debug('malicious path "%s"', path6);
           this.error(403);
           return res;
         }
-        parts = path4.split(sep);
-        path4 = normalize(join(root, path4));
+        parts = path6.split(sep);
+        path6 = normalize(join(root, path6));
       } else {
-        if (UP_PATH_REGEXP.test(path4)) {
-          debug('malicious path "%s"', path4);
+        if (UP_PATH_REGEXP.test(path6)) {
+          debug('malicious path "%s"', path6);
           this.error(403);
           return res;
         }
-        parts = normalize(path4).split(sep);
-        path4 = resolve(path4);
+        parts = normalize(path6).split(sep);
+        path6 = resolve(path6);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path4);
+        debug('%s dotfile "%s"', this._dotfiles, path6);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -26671,13 +26671,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path4);
+        this.sendIndex(path6);
         return res;
       }
-      this.sendFile(path4);
+      this.sendFile(path6);
       return res;
     };
-    SendStream.prototype.send = function send2(path4, stat) {
+    SendStream.prototype.send = function send2(path6, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -26689,9 +26689,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path4);
-      this.setHeader(path4, stat);
-      this.type(path4);
+      debug('pipe "%s"', path6);
+      this.setHeader(path6, stat);
+      this.type(path6);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -26740,30 +26740,30 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path4, opts);
+      this.stream(path6, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path4) {
+    SendStream.prototype.sendFile = function sendFile(path6) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path4);
-      fs.stat(path4, function onstat(err, stat) {
-        var pathEndsWithSep = path4[path4.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path4) && !pathEndsWithSep) {
+      debug('stat "%s"', path6);
+      fs2.stat(path6, function onstat(err, stat) {
+        var pathEndsWithSep = path6[path6.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path6) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path4);
+        if (stat.isDirectory()) return self.redirect(path6);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path4, stat);
-        self.send(path4, stat);
+        self.emit("file", path6, stat);
+        self.send(path6, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path4 + "." + self._extensions[i++];
+        var p = path6 + "." + self._extensions[i++];
         debug('stat "%s"', p);
-        fs.stat(p, function(err2, stat) {
+        fs2.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self.emit("file", p, stat);
@@ -26771,7 +26771,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path4) {
+    SendStream.prototype.sendIndex = function sendIndex(path6) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -26779,9 +26779,9 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path4, self._index[i]);
+        var p = join(path6, self._index[i]);
         debug('stat "%s"', p);
-        fs.stat(p, function(err2, stat) {
+        fs2.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self.emit("file", p, stat);
@@ -26790,10 +26790,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path4, options) {
+    SendStream.prototype.stream = function stream(path6, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs.createReadStream(path4, options);
+      var stream2 = fs2.createReadStream(path6, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -26808,17 +26808,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path4) {
+    SendStream.prototype.type = function type(path6) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path4);
+      var ext = extname(path6);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path4, stat) {
+    SendStream.prototype.setHeader = function setHeader(path6, stat) {
       var res = this.res;
-      this.emit("headers", res, path4, stat);
+      this.emit("headers", res, path6, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -26876,9 +26876,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode2(path4) {
+    function decode2(path6) {
       try {
-        return decodeURIComponent(path4);
+        return decodeURIComponent(path6);
       } catch (err) {
         return -1;
       }
@@ -27022,7 +27022,7 @@ var require_response = __commonJS({
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path3 = __require("node:path");
+    var path5 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign2 = require_cookie_signature().sign;
@@ -27031,8 +27031,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path3.extname;
-    var resolve = path3.resolve;
+    var extname = path5.extname;
+    var resolve = path5.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -27178,26 +27178,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path4, options, callback) {
+    res.sendFile = function sendFile(path6, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path4) {
+      if (!path6) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path4 !== "string") {
+      if (typeof path6 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path4)) {
+      if (!opts.root && !pathIsAbsolute(path6)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path4);
+      var pathname = encodeURI(path6);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -27208,7 +27208,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path4, filename, options, callback) {
+    res.download = function download(path6, filename, options, callback) {
       var done = callback;
       var name = filename;
       var opts = options || null;
@@ -27225,7 +27225,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name || path4)
+        "Content-Disposition": contentDisposition(name || path6)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -27238,7 +27238,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path4) : path4;
+      var fullPath = !opts.root ? resolve(path6) : path6;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -27521,11 +27521,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path3 = parseUrl(req).pathname;
-        if (path3 === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path3 = "";
+        var path5 = parseUrl(req).pathname;
+        if (path5 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path5 = "";
         }
-        var stream = send(req, path3, opts);
+        var stream = send(req, path5, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router9 = require_router();
+    var Router12 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router9.Route;
-    exports.Router = Router9;
+    exports.Route = Router12.Route;
+    exports.Router = Router12;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -28173,8 +28173,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path3 = req.path;
-        _req.url = typeof path3 === "string" ? path3 : req.url ? req.url.path || req.url : void 0;
+        const path5 = req.path;
+        _req.url = typeof path5 === "string" ? path5 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -28339,14 +28339,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path3) {
+    function parsePath(path5) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path3.length; i++) {
-        const char2 = path3[i];
+      for (let i = 0; i < path5.length; i++) {
+        const char2 = path5[i];
         if (!inBrackets && char2 === ".") {
           if (current) {
             parts.push(current);
@@ -28477,10 +28477,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path3 of paths) {
-        const parts = parsePath(path3);
+      for (const path5 of paths) {
+        const parts = parsePath(path5);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path3, remove);
+          redactWildcardPath(obj, parts, censor, path5, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -28565,8 +28565,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path3) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path3];
+            const wrappedCensor = typeof censor === "function" ? (value, path5) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path5];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -28601,8 +28601,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path3 of pathsToClone) {
-        const parts = parsePath(path3);
+      for (const path5 of pathsToClone) {
+        const parts = parsePath(path5);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -28654,24 +28654,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path3) {
-      if (typeof path3 !== "string") {
+    function validatePath(path5) {
+      if (typeof path5 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path3 === "") {
+      if (path5 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path3.includes("..")) {
-        throw new Error(`Invalid redaction path (${path3})`);
+      if (path5.includes("..")) {
+        throw new Error(`Invalid redaction path (${path5})`);
       }
-      if (path3.includes(",")) {
-        throw new Error(`Invalid redaction path (${path3})`);
+      if (path5.includes(",")) {
+        throw new Error(`Invalid redaction path (${path5})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path3.length; i++) {
-        const char2 = path3[i];
+      for (let i = 0; i < path5.length; i++) {
+        const char2 = path5[i];
         if ((char2 === '"' || char2 === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -28685,20 +28685,20 @@ var require_redact = __commonJS({
         } else if (char2 === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path3})`);
+            throw new Error(`Invalid redaction path (${path5})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path3})`);
+        throw new Error(`Invalid redaction path (${path5})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path3 of paths) {
-        validatePath(path3);
+      for (const path5 of paths) {
+        validatePath(path5);
       }
     }
     function slowRedact(options = {}) {
@@ -28866,8 +28866,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path3) => {
-            return censor(value, [k, ...path3]);
+          const wrappedCensor = typeof censor === "function" ? (value, path5) => {
+            return censor(value, [k, ...path5]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -29085,10 +29085,10 @@ var require_atomic_sleep = __commonJS({
 var require_sonic_boom = __commonJS({
   "../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports, module) {
     "use strict";
-    var fs = __require("fs");
+    var fs2 = __require("fs");
     var EventEmitter = __require("events");
     var inherits = __require("util").inherits;
-    var path3 = __require("path");
+    var path5 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -29142,27 +29142,27 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs.mkdirSync(path3.dirname(file), { recursive: true });
-          const fd = fs.openSync(file, flags, mode);
+          if (sonic.mkdir) fs2.mkdirSync(path5.dirname(file), { recursive: true });
+          const fd = fs2.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
           fileOpened(err);
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs.mkdir(path3.dirname(file), { recursive: true }, (err) => {
+        fs2.mkdir(path5.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
-          fs.open(file, flags, mode, fileOpened);
+          fs2.open(file, flags, mode, fileOpened);
         });
       } else {
-        fs.open(file, flags, mode, fileOpened);
+        fs2.open(file, flags, mode, fileOpened);
       }
     }
     function SonicBoom(opts) {
       if (!(this instanceof SonicBoom)) {
         return new SonicBoom(opts);
       }
-      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir, retryEAGAIN, fsync, contentMode, mode } = opts || {};
+      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir2, retryEAGAIN, fsync, contentMode, mode } = opts || {};
       fd = fd || dest;
       this._len = 0;
       this.fd = -1;
@@ -29187,7 +29187,7 @@ var require_sonic_boom = __commonJS({
       this.append = append || false;
       this.mode = mode;
       this.retryEAGAIN = retryEAGAIN || (() => true);
-      this.mkdir = mkdir || false;
+      this.mkdir = mkdir2 || false;
       let fsWriteSync;
       let fsWrite;
       if (contentMode === kContentModeBuffer) {
@@ -29196,8 +29196,8 @@ var require_sonic_boom = __commonJS({
         this.flush = flushBuffer;
         this.flushSync = flushBufferSync;
         this._actualWrite = actualWriteBuffer;
-        fsWriteSync = () => fs.writeSync(this.fd, this._writingBuf);
-        fsWrite = () => fs.write(this.fd, this._writingBuf, this.release);
+        fsWriteSync = () => fs2.writeSync(this.fd, this._writingBuf);
+        fsWrite = () => fs2.write(this.fd, this._writingBuf, this.release);
       } else if (contentMode === void 0 || contentMode === kContentModeUtf8) {
         this._writingBuf = "";
         this.write = write;
@@ -29206,15 +29206,15 @@ var require_sonic_boom = __commonJS({
         this._actualWrite = actualWrite;
         fsWriteSync = () => {
           if (Buffer.isBuffer(this._writingBuf)) {
-            return fs.writeSync(this.fd, this._writingBuf);
+            return fs2.writeSync(this.fd, this._writingBuf);
           }
-          return fs.writeSync(this.fd, this._writingBuf, "utf8");
+          return fs2.writeSync(this.fd, this._writingBuf, "utf8");
         };
         fsWrite = () => {
           if (Buffer.isBuffer(this._writingBuf)) {
-            return fs.write(this.fd, this._writingBuf, this.release);
+            return fs2.write(this.fd, this._writingBuf, this.release);
           }
-          return fs.write(this.fd, this._writingBuf, "utf8", this.release);
+          return fs2.write(this.fd, this._writingBuf, "utf8", this.release);
         };
       } else {
         throw new Error(`SonicBoom supports "${kContentModeUtf8}" and "${kContentModeBuffer}", but passed ${contentMode}`);
@@ -29271,7 +29271,7 @@ var require_sonic_boom = __commonJS({
           }
         }
         if (this._fsync) {
-          fs.fsyncSync(this.fd);
+          fs2.fsyncSync(this.fd);
         }
         const len = this._len;
         if (this._reopening) {
@@ -29385,7 +29385,7 @@ var require_sonic_boom = __commonJS({
       const onDrain = () => {
         if (!this._fsync) {
           try {
-            fs.fsync(this.fd, (err) => {
+            fs2.fsync(this.fd, (err) => {
               this._flushPending = false;
               cb(err);
             });
@@ -29487,7 +29487,7 @@ var require_sonic_boom = __commonJS({
       const fd = this.fd;
       this.once("ready", () => {
         if (fd !== this.fd) {
-          fs.close(fd, (err) => {
+          fs2.close(fd, (err) => {
             if (err) {
               return this.emit("error", err);
             }
@@ -29536,7 +29536,7 @@ var require_sonic_boom = __commonJS({
           buf = this._bufs[0];
         }
         try {
-          const n = Buffer.isBuffer(buf) ? fs.writeSync(this.fd, buf) : fs.writeSync(this.fd, buf, "utf8");
+          const n = Buffer.isBuffer(buf) ? fs2.writeSync(this.fd, buf) : fs2.writeSync(this.fd, buf, "utf8");
           const releasedBufObj = releaseWritingBuf(buf, this._len, n);
           buf = releasedBufObj.writingBuf;
           this._len = releasedBufObj.len;
@@ -29552,7 +29552,7 @@ var require_sonic_boom = __commonJS({
         }
       }
       try {
-        fs.fsyncSync(this.fd);
+        fs2.fsyncSync(this.fd);
       } catch {
       }
     }
@@ -29573,7 +29573,7 @@ var require_sonic_boom = __commonJS({
           buf = mergeBuf(this._bufs[0], this._lens[0]);
         }
         try {
-          const n = fs.writeSync(this.fd, buf);
+          const n = fs2.writeSync(this.fd, buf);
           buf = buf.subarray(n);
           this._len = Math.max(this._len - n, 0);
           if (buf.length <= 0) {
@@ -29601,13 +29601,13 @@ var require_sonic_boom = __commonJS({
       this._writingBuf = this._writingBuf.length ? this._writingBuf : this._bufs.shift() || "";
       if (this.sync) {
         try {
-          const written = Buffer.isBuffer(this._writingBuf) ? fs.writeSync(this.fd, this._writingBuf) : fs.writeSync(this.fd, this._writingBuf, "utf8");
+          const written = Buffer.isBuffer(this._writingBuf) ? fs2.writeSync(this.fd, this._writingBuf) : fs2.writeSync(this.fd, this._writingBuf, "utf8");
           release(null, written);
         } catch (err) {
           release(err);
         }
       } else {
-        fs.write(this.fd, this._writingBuf, release);
+        fs2.write(this.fd, this._writingBuf, release);
       }
     }
     function actualWriteBuffer() {
@@ -29616,7 +29616,7 @@ var require_sonic_boom = __commonJS({
       this._writingBuf = this._writingBuf.length ? this._writingBuf : mergeBuf(this._bufs.shift(), this._lens.shift());
       if (this.sync) {
         try {
-          const written = fs.writeSync(this.fd, this._writingBuf);
+          const written = fs2.writeSync(this.fd, this._writingBuf);
           release(null, written);
         } catch (err) {
           release(err);
@@ -29625,7 +29625,7 @@ var require_sonic_boom = __commonJS({
         if (kCopyBuffer) {
           this._writingBuf = Buffer.from(this._writingBuf);
         }
-        fs.write(this.fd, this._writingBuf, release);
+        fs2.write(this.fd, this._writingBuf, release);
       }
     }
     function actualClose(sonic) {
@@ -29641,12 +29641,12 @@ var require_sonic_boom = __commonJS({
       sonic._lens = [];
       assert(typeof sonic.fd === "number", `sonic.fd must be a number, got ${typeof sonic.fd}`);
       try {
-        fs.fsync(sonic.fd, closeWrapped);
+        fs2.fsync(sonic.fd, closeWrapped);
       } catch {
       }
       function closeWrapped() {
         if (sonic.fd !== 1 && sonic.fd !== 2) {
-          fs.close(sonic.fd, done);
+          fs2.close(sonic.fd, done);
         } else {
           done();
         }
@@ -32010,9 +32010,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path3 = __require("path");
+        const path5 = __require("path");
         const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
-        return path3.resolve(outputDir, p.replace(/^\.\//, ""));
+        return path5.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -33985,7 +33985,7 @@ var init_query_promise = __esm({
 function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
-    (result2, { path: path3, field }, columnIndex) => {
+    (result2, { path: path5, field }, columnIndex) => {
       let decoder2;
       if (is(field, Column)) {
         decoder2 = field;
@@ -33997,8 +33997,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         decoder2 = field.sql.decoder;
       }
       let node = result2;
-      for (const [pathChunkIndex, pathChunk] of path3.entries()) {
-        if (pathChunkIndex < path3.length - 1) {
+      for (const [pathChunkIndex, pathChunk] of path5.entries()) {
+        if (pathChunkIndex < path5.length - 1) {
           if (!(pathChunk in node)) {
             node[pathChunk] = {};
           }
@@ -34006,8 +34006,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         } else {
           const rawValue = row[columnIndex];
           const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
-          if (joinsNotNullableMap && is(field, Column) && path3.length === 2) {
-            const objectName = path3[0];
+          if (joinsNotNullableMap && is(field, Column) && path5.length === 2) {
+            const objectName = path5[0];
             if (!(objectName in nullifyMap)) {
               nullifyMap[objectName] = value === null ? getTableName(field.table) : false;
             } else if (typeof nullifyMap[objectName] === "string" && nullifyMap[objectName] !== getTableName(field.table)) {
@@ -40939,14 +40939,25 @@ var init_node_postgres = __esm({
 var schema_exports = {};
 __export(schema_exports, {
   accessCodesTable: () => accessCodesTable,
+  adminAuthAuditLogTable: () => adminAuthAuditLogTable,
+  adminAuthPasswordResetsTable: () => adminAuthPasswordResetsTable,
+  adminAuthUsersTable: () => adminAuthUsersTable,
   adminCompaniesTable: () => adminCompaniesTable,
+  companyChangeRequestsTable: () => companyChangeRequestsTable,
+  driverVehicleAssignmentsTable: () => driverVehicleAssignmentsTable,
   fareAreasTable: () => fareAreasTable,
+  fleetDriversTable: () => fleetDriversTable,
+  fleetVehiclesTable: () => fleetVehiclesTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
+  partnerRegistrationDocumentsTable: () => partnerRegistrationDocumentsTable,
+  partnerRegistrationRequestsTable: () => partnerRegistrationRequestsTable,
+  partnerRegistrationTimelineTable: () => partnerRegistrationTimelineTable,
   partnerRideSeriesTable: () => partnerRideSeriesTable,
+  rideEventsTable: () => rideEventsTable,
   ridesTable: () => ridesTable
 });
-var adminCompaniesTable, accessCodesTable, fareAreasTable, panelUsersTable, panelAuditLogTable, ridesTable, partnerRideSeriesTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, partnerRideSeriesTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -40970,7 +40981,79 @@ var init_schema2 = __esm({
       priority_timeout_seconds: integer("priority_timeout_seconds").notNull().default(90),
       release_radius_km: doublePrecision("release_radius_km").notNull().default(10),
       /** JSON-Array von Modul-IDs; NULL = alle Module aktiv (Legacy). */
-      panel_modules: jsonb("panel_modules").$type()
+      panel_modules: jsonb("panel_modules").$type(),
+      /** general | taxi — Taxi aktiviert Flotten-/Fahrer-Flows (API + Modul taxi_fleet). */
+      company_kind: text("company_kind").notNull().default("general"),
+      /** Steuer-ID (nicht USt-IdNr.; die bleibt in vat_id). */
+      tax_id: text("tax_id").notNull().default(""),
+      concession_number: text("concession_number").notNull().default(""),
+      compliance_gewerbe_storage_key: text("compliance_gewerbe_storage_key"),
+      compliance_insurance_storage_key: text("compliance_insurance_storage_key"),
+      legal_form: text("legal_form").notNull().default(""),
+      owner_name: text("owner_name").notNull().default(""),
+      billing_name: text("billing_name").notNull().default(""),
+      billing_address_line1: text("billing_address_line1").notNull().default(""),
+      billing_address_line2: text("billing_address_line2").notNull().default(""),
+      billing_postal_code: text("billing_postal_code").notNull().default(""),
+      billing_city: text("billing_city").notNull().default(""),
+      billing_country: text("billing_country").notNull().default(""),
+      bank_iban: text("bank_iban").notNull().default(""),
+      bank_bic: text("bank_bic").notNull().default(""),
+      support_email: text("support_email").notNull().default(""),
+      dispo_phone: text("dispo_phone").notNull().default(""),
+      logo_url: text("logo_url").notNull().default(""),
+      opening_hours: text("opening_hours").notNull().default(""),
+      business_notes: text("business_notes").notNull().default(""),
+      verification_status: text("verification_status").notNull().default("pending"),
+      compliance_status: text("compliance_status").notNull().default("pending"),
+      contract_status: text("contract_status").notNull().default("inactive"),
+      is_blocked: boolean("is_blocked").notNull().default(false),
+      max_drivers: integer("max_drivers").notNull().default(100),
+      max_vehicles: integer("max_vehicles").notNull().default(100),
+      fare_permissions: jsonb("fare_permissions").$type().notNull().default({}),
+      insurer_permissions: jsonb("insurer_permissions").$type().notNull().default({}),
+      area_assignments: jsonb("area_assignments").$type().notNull().default([])
+    });
+    fleetDriversTable = pgTable("fleet_drivers", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      email: text("email").notNull(),
+      first_name: text("first_name").notNull().default(""),
+      last_name: text("last_name").notNull().default(""),
+      phone: text("phone").notNull().default(""),
+      password_hash: text("password_hash").notNull(),
+      session_version: integer("session_version").notNull().default(1),
+      is_active: boolean("is_active").notNull().default(true),
+      access_status: text("access_status").notNull().default("active"),
+      must_change_password: boolean("must_change_password").notNull().default(true),
+      p_schein_number: text("p_schein_number").notNull().default(""),
+      p_schein_expiry: date("p_schein_expiry"),
+      p_schein_doc_storage_key: text("p_schein_doc_storage_key"),
+      last_login_at: timestamp("last_login_at", { withTimezone: true }),
+      last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    fleetVehiclesTable = pgTable("fleet_vehicles", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      license_plate: text("license_plate").notNull(),
+      vin: text("vin").notNull().default(""),
+      color: text("color").notNull().default(""),
+      model: text("model").notNull().default(""),
+      vehicle_type: text("vehicle_type").notNull().default("sedan"),
+      taxi_order_number: text("taxi_order_number").notNull().default(""),
+      next_inspection_date: date("next_inspection_date"),
+      is_active: boolean("is_active").notNull().default(true),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    driverVehicleAssignmentsTable = pgTable("driver_vehicle_assignments", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      driver_id: text("driver_id").notNull().references(() => fleetDriversTable.id, { onDelete: "cascade" }),
+      vehicle_id: text("vehicle_id").notNull().references(() => fleetVehiclesTable.id, { onDelete: "cascade" }),
+      assigned_at: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow()
     });
     accessCodesTable = pgTable("access_codes", {
       id: text("id").primaryKey(),
@@ -41023,6 +41106,37 @@ var init_schema2 = __esm({
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
+    adminAuthUsersTable = pgTable("admin_auth_users", {
+      id: text("id").primaryKey(),
+      username: text("username").notNull(),
+      email: text("email").notNull().default(""),
+      password_hash: text("password_hash").notNull(),
+      role: text("role").notNull(),
+      /** Optional: Hotel- (o. ä.) Konsole — nur Fahrten dieses Mandanten. */
+      scope_company_id: text("scope_company_id"),
+      session_version: integer("session_version").notNull().default(1),
+      is_active: boolean("is_active").notNull().default(true),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    adminAuthPasswordResetsTable = pgTable("admin_auth_password_resets", {
+      id: text("id").primaryKey(),
+      admin_user_id: text("admin_user_id").notNull().references(() => adminAuthUsersTable.id, { onDelete: "cascade" }),
+      token_hash: text("token_hash").notNull(),
+      expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+      used_at: timestamp("used_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    adminAuthAuditLogTable = pgTable("admin_auth_audit_log", {
+      id: text("id").primaryKey(),
+      admin_user_id: text("admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      username: text("username").notNull().default(""),
+      action: text("action").notNull(),
+      meta: jsonb("meta").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
     panelAuditLogTable = pgTable("panel_audit_log", {
       id: text("id").primaryKey(),
       company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
@@ -41033,6 +41147,82 @@ var init_schema2 = __esm({
       subject_type: text("subject_type"),
       subject_id: text("subject_id"),
       meta: jsonb("meta").$type(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    companyChangeRequestsTable = pgTable("company_change_requests", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      requested_by_panel_user_id: text("requested_by_panel_user_id").notNull().references(() => panelUsersTable.id, { onDelete: "restrict" }),
+      request_type: text("request_type").notNull(),
+      status: text("status").notNull().default("pending"),
+      reason: text("reason").notNull().default(""),
+      payload: jsonb("payload").$type().notNull().default({}),
+      admin_decision_note: text("admin_decision_note").notNull().default(""),
+      decided_by_admin_user_id: text("decided_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      decided_at: timestamp("decided_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    partnerRegistrationRequestsTable = pgTable("partner_registration_requests", {
+      id: text("id").primaryKey(),
+      company_name: text("company_name").notNull(),
+      legal_form: text("legal_form").notNull().default(""),
+      partner_type: text("partner_type").notNull(),
+      uses_vouchers: boolean("uses_vouchers").notNull().default(false),
+      contact_first_name: text("contact_first_name").notNull().default(""),
+      contact_last_name: text("contact_last_name").notNull().default(""),
+      email: text("email").notNull(),
+      phone: text("phone").notNull().default(""),
+      address_line1: text("address_line1").notNull().default(""),
+      postal_code: text("postal_code").notNull().default(""),
+      city: text("city").notNull().default(""),
+      country: text("country").notNull().default(""),
+      tax_id: text("tax_id").notNull().default(""),
+      vat_id: text("vat_id").notNull().default(""),
+      concession_number: text("concession_number").notNull().default(""),
+      desired_region: text("desired_region").notNull().default(""),
+      requested_usage: jsonb("requested_usage").$type().notNull().default({}),
+      documents_meta: jsonb("documents_meta").$type().notNull().default({}),
+      notes: text("notes").notNull().default(""),
+      registration_status: text("registration_status").notNull().default("open"),
+      verification_status: text("verification_status").notNull().default("pending"),
+      compliance_status: text("compliance_status").notNull().default("pending"),
+      contract_status: text("contract_status").notNull().default("inactive"),
+      missing_documents_note: text("missing_documents_note").notNull().default(""),
+      admin_note: text("admin_note").notNull().default(""),
+      master_data_locked: boolean("master_data_locked").notNull().default(true),
+      linked_company_id: text("linked_company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      reviewed_by_admin_user_id: text("reviewed_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    partnerRegistrationDocumentsTable = pgTable("partner_registration_documents", {
+      id: text("id").primaryKey(),
+      request_id: text("request_id").notNull().references(() => partnerRegistrationRequestsTable.id, { onDelete: "cascade" }),
+      category: text("category").notNull().default("general"),
+      original_file_name: text("original_file_name").notNull(),
+      mime_type: text("mime_type").notNull().default("application/octet-stream"),
+      storage_path: text("storage_path").notNull(),
+      file_size_bytes: integer("file_size_bytes").notNull().default(0),
+      uploaded_by_actor_type: text("uploaded_by_actor_type").notNull().default("partner"),
+      uploaded_by_actor_label: text("uploaded_by_actor_label").notNull().default(""),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    partnerRegistrationTimelineTable = pgTable("partner_registration_timeline", {
+      id: text("id").primaryKey(),
+      request_id: text("request_id").notNull().references(() => partnerRegistrationRequestsTable.id, { onDelete: "cascade" }),
+      actor_type: text("actor_type").notNull(),
+      actor_label: text("actor_label").notNull().default(""),
+      event_type: text("event_type").notNull(),
+      message: text("message").notNull().default(""),
+      payload: jsonb("payload").$type().notNull().default({}),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
     ridesTable = pgTable("rides", {
@@ -41081,6 +41271,17 @@ var init_schema2 = __esm({
       access_code_normalized_snapshot: text("access_code_normalized_snapshot"),
       /** Hotel/Medizin/Serien — nur Panel; nicht in öffentlichem Ride-Pool ausliefern. */
       partner_booking_meta: jsonb("partner_booking_meta").$type().notNull().default({})
+    });
+    rideEventsTable = pgTable("ride_events", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      event_type: text("event_type").notNull(),
+      from_status: text("from_status"),
+      to_status: text("to_status"),
+      actor_type: text("actor_type").notNull().default("system"),
+      actor_id: text("actor_id"),
+      payload: jsonb("payload").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
     partnerRideSeriesTable = pgTable("partner_ride_series", {
       id: text("id").primaryKey(),
@@ -41169,7 +41370,7 @@ async function loadLabelsByIds(ids) {
 function validateMemRow(row, bookingCompanyId) {
   if (!row.is_active) return "access_code_inactive";
   const t = /* @__PURE__ */ new Date();
-  if (row.valid_from && row.valid_from > t) return "access_code_expired";
+  if (row.valid_from && row.valid_from > t) return "access_code_not_yet_valid";
   if (row.valid_until && row.valid_until < t) return "access_code_expired";
   if (row.max_uses != null && row.uses_count >= row.max_uses) return "access_code_exhausted";
   if (bookingCompanyId && row.company_id && row.company_id !== bookingCompanyId) {
@@ -41238,7 +41439,7 @@ async function redeemAccessCodeInTransaction(tx, normalized, bookingCompanyId) {
   if (bookingCompanyId && probe.company_id && probe.company_id !== bookingCompanyId) {
     return { ok: false, error: "access_code_wrong_company" };
   }
-  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_expired" };
+  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
   if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
   if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
   return { ok: false, error: "access_code_exhausted" };
@@ -41533,6 +41734,9 @@ __export(ridesData_exports, {
   resetRidesDemo: () => resetRidesDemo,
   updateRide: () => updateRide
 });
+function makeEventId(prefix = "REV") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 function stripEphemeral(r) {
   const { accessCodeSummary: _a, ...rest } = r;
   return rest;
@@ -41734,6 +41938,16 @@ async function insertRide(r, tx) {
     return;
   }
   await run.insert(ridesTable).values(rideToInsert(persisted));
+  await run.insert(rideEventsTable).values({
+    id: makeEventId(),
+    ride_id: persisted.id,
+    event_type: "ride_created",
+    from_status: null,
+    to_status: persisted.status,
+    actor_type: "system",
+    actor_id: null,
+    payload: {}
+  });
 }
 async function insertRideWithOptionalAccessCode(ride, accessCodePlain) {
   const trimmed = typeof accessCodePlain === "string" ? accessCodePlain.trim() : "";
@@ -41905,15 +42119,20 @@ async function listRidesAdminPage(query, limit, offset) {
   const db2 = getDb();
   const cond = buildAdminRideConditions(query);
   const whereSql = cond.length ? and(...cond) : void 0;
+  const sortDesc = query.sortCreated !== "asc";
   if (!db2) {
     const filtered = memoryRides.filter((r) => matchesAdminMemoryQuery(r, query));
-    filtered.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+    filtered.sort((a, b) => {
+      const cmp = a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
+      return sortDesc ? -cmp : cmp;
+    });
     return filtered.slice(offset, offset + limit).map((ride) => ({ ...ride, companyName: null }));
   }
+  const orderCreated = sortDesc ? desc(ridesTable.created_at) : asc(ridesTable.created_at);
   const rows = await db2.select({
     ride: ridesTable,
     companyName: adminCompaniesTable.name
-  }).from(ridesTable).leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id)).where(whereSql).orderBy(desc(ridesTable.created_at)).limit(limit).offset(offset);
+  }).from(ridesTable).leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id)).where(whereSql).orderBy(orderCreated).limit(limit).offset(offset);
   return rows.map((x) => ({
     ...rowToRide(x.ride),
     companyName: x.companyName ?? null
@@ -42053,6 +42272,18 @@ async function updateRide(id, patch) {
     return next;
   }
   await db2.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  if (cur.status !== next.status) {
+    await db2.insert(rideEventsTable).values({
+      id: makeEventId(),
+      ride_id: id,
+      event_type: "ride_status_changed",
+      from_status: cur.status,
+      to_status: next.status,
+      actor_type: "system",
+      actor_id: null,
+      payload: {}
+    });
+  }
   return next;
 }
 async function adminReleaseRide(id) {
@@ -42115,14 +42346,14 @@ var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
 // src/app.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express12 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
-import path2 from "path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import path4 from "path";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // src/routes/index.ts
-var import_express7 = __toESM(require_express2(), 1);
+var import_express10 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -42605,8 +42836,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path3, errorMaps, issueData } = params;
-  const fullPath = [...path3, ...issueData.path || []];
+  const { data, path: path5, errorMaps, issueData } = params;
+  const fullPath = [...path5, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -42722,11 +42953,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path3, key) {
+  constructor(parent, value, path5, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path3;
+    this._path = path5;
     this._key = key;
   }
   get path() {
@@ -46269,6 +46500,12 @@ var PANEL_MODULE_DEFINITIONS = [
     label: "Abrechnung",
     description: "Ums\xE4tze, Perioden, Exporte",
     productIntent: "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostentr\xE4ger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik."
+  },
+  {
+    id: "taxi_fleet",
+    label: "Flotte & Fahrer",
+    description: "Fahrzeuge, Fahrer-Logins, Zuweisung (nur Mandant Taxi)",
+    productIntent: "Taxi-Unternehmer: eigene PKW-Flotte, Fahrer mit Passwort/Session, P-Schein/T\xDCV-Felder, Compliance-Uploads; Multi-Tenancy strikt \xFCber company_id."
   }
 ];
 var ID_SET = new Set(PANEL_MODULE_DEFINITIONS.map((d) => d.id));
@@ -46289,7 +46526,9 @@ function normalizeStoredPanelModules(raw) {
   return out;
 }
 function resolveEffectivePanelModules(stored) {
-  if (stored == null) return [...ALL_PANEL_MODULE_IDS];
+  if (stored == null) {
+    return ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet");
+  }
   const set = new Set(stored);
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
 }
@@ -46308,6 +46547,35 @@ var seedCompanies = [
     city: "",
     country: "",
     vat_id: "",
+    company_kind: "taxi",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "verified",
+    compliance_status: "compliant",
+    contract_status: "active",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
     is_active: true,
     is_priority_company: true,
     priority_for_live_rides: true,
@@ -46315,7 +46583,16 @@ var seedCompanies = [
     priority_price_threshold: 25,
     priority_timeout_seconds: 90,
     release_radius_km: 12,
-    panel_modules: null
+    panel_modules: [
+      "overview",
+      "rides_list",
+      "rides_create",
+      "company_profile",
+      "team",
+      "access_codes",
+      "billing",
+      "taxi_fleet"
+    ]
   },
   {
     id: "co-demo-2",
@@ -46329,6 +46606,35 @@ var seedCompanies = [
     city: "",
     country: "",
     vat_id: "",
+    company_kind: "general",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "pending",
+    compliance_status: "pending",
+    contract_status: "inactive",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,
@@ -46375,6 +46681,35 @@ function rowToCompany(r) {
     city: r.city,
     country: r.country,
     vat_id: r.vat_id,
+    company_kind: r.company_kind ?? "general",
+    tax_id: r.tax_id ?? "",
+    concession_number: r.concession_number ?? "",
+    compliance_gewerbe_storage_key: r.compliance_gewerbe_storage_key ?? null,
+    compliance_insurance_storage_key: r.compliance_insurance_storage_key ?? null,
+    legal_form: r.legal_form ?? "",
+    owner_name: r.owner_name ?? "",
+    billing_name: r.billing_name ?? "",
+    billing_address_line1: r.billing_address_line1 ?? "",
+    billing_address_line2: r.billing_address_line2 ?? "",
+    billing_postal_code: r.billing_postal_code ?? "",
+    billing_city: r.billing_city ?? "",
+    billing_country: r.billing_country ?? "",
+    bank_iban: r.bank_iban ?? "",
+    bank_bic: r.bank_bic ?? "",
+    support_email: r.support_email ?? "",
+    dispo_phone: r.dispo_phone ?? "",
+    logo_url: r.logo_url ?? "",
+    opening_hours: r.opening_hours ?? "",
+    business_notes: r.business_notes ?? "",
+    verification_status: r.verification_status ?? "pending",
+    compliance_status: r.compliance_status ?? "pending",
+    contract_status: r.contract_status ?? "inactive",
+    is_blocked: r.is_blocked ?? false,
+    max_drivers: r.max_drivers ?? 100,
+    max_vehicles: r.max_vehicles ?? 100,
+    fare_permissions: r.fare_permissions ?? {},
+    insurer_permissions: r.insurer_permissions ?? {},
+    area_assignments: r.area_assignments ?? [],
     is_active: r.is_active,
     is_priority_company: r.is_priority_company,
     priority_for_live_rides: r.priority_for_live_rides,
@@ -46620,6 +46955,35 @@ function companyRowToDbValues(c) {
     city: c.city,
     country: c.country,
     vat_id: c.vat_id,
+    company_kind: c.company_kind,
+    tax_id: c.tax_id,
+    concession_number: c.concession_number,
+    compliance_gewerbe_storage_key: c.compliance_gewerbe_storage_key,
+    compliance_insurance_storage_key: c.compliance_insurance_storage_key,
+    legal_form: c.legal_form,
+    owner_name: c.owner_name,
+    billing_name: c.billing_name,
+    billing_address_line1: c.billing_address_line1,
+    billing_address_line2: c.billing_address_line2,
+    billing_postal_code: c.billing_postal_code,
+    billing_city: c.billing_city,
+    billing_country: c.billing_country,
+    bank_iban: c.bank_iban,
+    bank_bic: c.bank_bic,
+    support_email: c.support_email,
+    dispo_phone: c.dispo_phone,
+    logo_url: c.logo_url,
+    opening_hours: c.opening_hours,
+    business_notes: c.business_notes,
+    verification_status: c.verification_status,
+    compliance_status: c.compliance_status,
+    contract_status: c.contract_status,
+    is_blocked: c.is_blocked,
+    max_drivers: c.max_drivers,
+    max_vehicles: c.max_vehicles,
+    fare_permissions: c.fare_permissions,
+    insurer_permissions: c.insurer_permissions,
+    area_assignments: c.area_assignments,
     is_active: c.is_active,
     is_priority_company: c.is_priority_company,
     priority_for_live_rides: c.priority_for_live_rides,
@@ -46645,6 +47009,65 @@ function applyAdminCompanyPatch(cur, body) {
   if (typeof body.city === "string") next.city = body.city.trim();
   if (typeof body.country === "string") next.country = body.country.trim();
   if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
+  if (typeof body.company_kind === "string") {
+    const k = body.company_kind.trim();
+    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate"].includes(k)) {
+      next.company_kind = k;
+    }
+  }
+  if (typeof body.tax_id === "string") next.tax_id = body.tax_id.trim();
+  if (typeof body.concession_number === "string") next.concession_number = body.concession_number.trim();
+  if (body.compliance_gewerbe_storage_key === null) next.compliance_gewerbe_storage_key = null;
+  if (typeof body.compliance_gewerbe_storage_key === "string") {
+    next.compliance_gewerbe_storage_key = body.compliance_gewerbe_storage_key.trim() || null;
+  }
+  if (body.compliance_insurance_storage_key === null) next.compliance_insurance_storage_key = null;
+  if (typeof body.compliance_insurance_storage_key === "string") {
+    next.compliance_insurance_storage_key = body.compliance_insurance_storage_key.trim() || null;
+  }
+  if (typeof body.legal_form === "string") next.legal_form = body.legal_form.trim();
+  if (typeof body.owner_name === "string") next.owner_name = body.owner_name.trim();
+  if (typeof body.billing_name === "string") next.billing_name = body.billing_name.trim();
+  if (typeof body.billing_address_line1 === "string") next.billing_address_line1 = body.billing_address_line1.trim();
+  if (typeof body.billing_address_line2 === "string") next.billing_address_line2 = body.billing_address_line2.trim();
+  if (typeof body.billing_postal_code === "string") next.billing_postal_code = body.billing_postal_code.trim();
+  if (typeof body.billing_city === "string") next.billing_city = body.billing_city.trim();
+  if (typeof body.billing_country === "string") next.billing_country = body.billing_country.trim();
+  if (typeof body.bank_iban === "string") next.bank_iban = body.bank_iban.trim();
+  if (typeof body.bank_bic === "string") next.bank_bic = body.bank_bic.trim();
+  if (typeof body.support_email === "string") next.support_email = body.support_email.trim();
+  if (typeof body.dispo_phone === "string") next.dispo_phone = body.dispo_phone.trim();
+  if (typeof body.logo_url === "string") next.logo_url = body.logo_url.trim();
+  if (typeof body.opening_hours === "string") next.opening_hours = body.opening_hours.trim();
+  if (typeof body.business_notes === "string") next.business_notes = body.business_notes.trim();
+  if (typeof body.verification_status === "string") {
+    const v = body.verification_status.trim();
+    if (["pending", "in_review", "verified", "rejected"].includes(v)) next.verification_status = v;
+  }
+  if (typeof body.compliance_status === "string") {
+    const v = body.compliance_status.trim();
+    if (["pending", "in_review", "compliant", "non_compliant"].includes(v)) next.compliance_status = v;
+  }
+  if (typeof body.contract_status === "string") {
+    const v = body.contract_status.trim();
+    if (["inactive", "active", "suspended", "terminated"].includes(v)) next.contract_status = v;
+  }
+  if (typeof body.is_blocked === "boolean") next.is_blocked = body.is_blocked;
+  if (typeof body.max_drivers === "number" && Number.isFinite(body.max_drivers)) {
+    next.max_drivers = Math.max(0, Math.floor(body.max_drivers));
+  }
+  if (typeof body.max_vehicles === "number" && Number.isFinite(body.max_vehicles)) {
+    next.max_vehicles = Math.max(0, Math.floor(body.max_vehicles));
+  }
+  if (body.fare_permissions && typeof body.fare_permissions === "object" && !Array.isArray(body.fare_permissions)) {
+    next.fare_permissions = body.fare_permissions;
+  }
+  if (body.insurer_permissions && typeof body.insurer_permissions === "object" && !Array.isArray(body.insurer_permissions)) {
+    next.insurer_permissions = body.insurer_permissions;
+  }
+  if (Array.isArray(body.area_assignments)) {
+    next.area_assignments = body.area_assignments.filter((x) => typeof x === "string");
+  }
   if (typeof body.is_active === "boolean") next.is_active = body.is_active;
   if (typeof body.is_priority_company === "boolean") next.is_priority_company = body.is_priority_company;
   if (typeof body.priority_for_live_rides === "boolean") next.priority_for_live_rides = body.priority_for_live_rides;
@@ -46676,6 +47099,35 @@ async function insertAdminCompany(body) {
     city: "",
     country: "",
     vat_id: "",
+    company_kind: "general",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "pending",
+    compliance_status: "pending",
+    contract_status: "inactive",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,
@@ -46974,6 +47426,49 @@ var DEMO = [];
 var driverLocations = /* @__PURE__ */ new Map();
 var customerLocations = /* @__PURE__ */ new Map();
 var router2 = (0, import_express2.Router)();
+function normalizeStatusInput(raw) {
+  if (typeof raw !== "string") return null;
+  const s = raw.trim();
+  if (!s) return null;
+  const allowed = [
+    "draft",
+    "requested",
+    "searching_driver",
+    "offered",
+    "pending",
+    "accepted",
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "arrived",
+    "in_progress",
+    "completed",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system",
+    "expired",
+    "rejected",
+    "cancelled"
+  ];
+  return allowed.includes(s) ? s : null;
+}
+function canTransitionStatus(from, to) {
+  if (from === to) return true;
+  const map = {
+    draft: ["requested", "cancelled_by_customer", "cancelled"],
+    requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+    searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+    offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
+    pending: ["accepted", "driver_arriving", "driver_waiting", "in_progress", "completed", "cancelled", "rejected", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    accepted: ["driver_arriving", "driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "cancelled"],
+    driver_arriving: ["driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    driver_waiting: ["passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    passenger_onboard: ["in_progress", "completed", "cancelled_by_system"],
+    arrived: ["passenger_onboard", "in_progress", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
+    in_progress: ["completed", "cancelled_by_system", "cancelled"]
+  };
+  return (map[from] ?? []).includes(to);
+}
 function ceilToTenth(amount) {
   const safe = Number.isFinite(amount) ? amount : 0;
   return Math.ceil((safe + Number.EPSILON) * 10) / 10;
@@ -47061,7 +47556,7 @@ router2.post("/rides", async (req, res, next) => {
       ...raw,
       id: `REQ-${Date.now()}`,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-      status: "pending",
+      status: "requested",
       rejectedBy: [],
       driverId: null,
       rideKind,
@@ -47093,13 +47588,22 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, finalFare, driverId } = req.body;
+    const nextStatus = normalizeStatusInput(status);
+    if (!nextStatus) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
       return;
     }
+    if (!canTransitionStatus(cur.status, nextStatus)) {
+      res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
+      return;
+    }
     const updated = await updateRide(id, {
-      status,
+      status: nextStatus,
       ...finalFare != null ? { finalFare } : {},
       ...driverId != null ? { driverId } : {}
     });
@@ -47168,7 +47672,12 @@ router2.get("/rides/:id/customer-location", (req, res) => {
 router2.post("/rides/:id/reject", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { driverId } = req.body;
+    const driverIdRaw = req.body.driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    if (!driverId) {
+      res.status(400).json({ error: "driver_id_required" });
+      return;
+    }
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
@@ -47189,18 +47698,43 @@ router2.post("/rides/:id/reject", async (req, res, next) => {
 router2.post("/rides/:id/driver-cancel", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { driverId } = req.body;
+    const driverIdRaw = req.body.driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
       return;
     }
     const existing = cur.rejectedBy ?? [];
-    const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
+    const rejectedBy = driverId ? existing.includes(driverId) ? existing : [...existing, driverId] : existing;
     const updated = await updateRide(id, {
-      status: "pending",
+      status: "searching_driver",
       driverId: null,
       rejectedBy
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/driver-hard-cancel", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverIdRaw = req.body.driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const updated = await updateRide(id, {
+      status: "cancelled_by_driver",
+      driverId: null,
+      rejectedBy: driverId ? [.../* @__PURE__ */ new Set([...cur.rejectedBy ?? [], driverId])] : cur.rejectedBy ?? []
     });
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
@@ -47231,8 +47765,8 @@ import { createHash, randomBytes as randomBytes2 } from "crypto";
 import admin from "firebase-admin";
 function isFirebaseAdminConfigured() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const path3 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  return raw.length > 0 || path3.length > 0;
+  const path5 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  return raw.length > 0 || path5.length > 0;
 }
 function ensureFirebaseApp() {
   if (admin.apps.length > 0) {
@@ -48277,7 +48811,7 @@ function validateClaimsSet(protectedHeader, encodedPayload, options = {}) {
   if (typ && (typeof protectedHeader.typ !== "string" || normalizeTyp(protectedHeader.typ) !== normalizeTyp(typ))) {
     throw new JWTClaimValidationFailed('unexpected "typ" JWT header value', payload, "typ", "check_failed");
   }
-  const { requiredClaims = [], issuer: issuer3, subject, audience, maxTokenAge } = options;
+  const { requiredClaims = [], issuer: issuer4, subject, audience, maxTokenAge } = options;
   const presenceCheck = [...requiredClaims];
   if (maxTokenAge !== void 0)
     presenceCheck.push("iat");
@@ -48285,14 +48819,14 @@ function validateClaimsSet(protectedHeader, encodedPayload, options = {}) {
     presenceCheck.push("aud");
   if (subject !== void 0)
     presenceCheck.push("sub");
-  if (issuer3 !== void 0)
+  if (issuer4 !== void 0)
     presenceCheck.push("iss");
   for (const claim of new Set(presenceCheck.reverse())) {
     if (!(claim in payload)) {
       throw new JWTClaimValidationFailed(`missing required "${claim}" claim`, payload, claim, "missing");
     }
   }
-  if (issuer3 && !(Array.isArray(issuer3) ? issuer3 : [issuer3]).includes(payload.iss)) {
+  if (issuer4 && !(Array.isArray(issuer4) ? issuer4 : [issuer4]).includes(payload.iss)) {
     throw new JWTClaimValidationFailed('unexpected "iss" claim value', payload, "iss", "check_failed");
   }
   if (subject && payload.sub !== subject) {
@@ -48531,8 +49065,8 @@ var SignJWT = class {
   constructor(payload = {}) {
     this.#jwt = new JWTClaimsBuilder(payload);
   }
-  setIssuer(issuer3) {
-    this.#jwt.iss = issuer3;
+  setIssuer(issuer4) {
+    this.#jwt.iss = issuer4;
     return this;
   }
   setSubject(subject) {
@@ -48993,7 +49527,8 @@ var auth_default = router3;
 
 // src/routes/adminApi.ts
 var import_express4 = __toESM(require_express2(), 1);
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { createHash as createHash2, randomBytes as randomBytes5, randomUUID as randomUUID6 } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 // src/domain/accessCodeLifecycle.ts
 function computeAccessCodePublicStatus(row) {
@@ -49004,7 +49539,7 @@ function computeAccessCodePublicStatus(row) {
   if (row.validFrom) {
     const t = new Date(row.validFrom).getTime();
     if (Number.isFinite(t) && t > now) {
-      return { status: "expired", labelDe: "Noch nicht g\xFCltig" };
+      return { status: "not_yet_valid", labelDe: "Noch nicht g\xFCltig" };
     }
   }
   if (row.validUntil) {
@@ -49198,7 +49733,772 @@ async function panelUsernameTaken(normalized, excludeUserId) {
   return rows.length > 0;
 }
 
+// src/db/companyChangeRequestsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function mapRow(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    requestedByPanelUserId: r.requested_by_panel_user_id,
+    requestType: r.request_type,
+    status: r.status,
+    reason: r.reason,
+    payload: r.payload ?? {},
+    adminDecisionNote: r.admin_decision_note,
+    decidedByAdminUserId: r.decided_by_admin_user_id ?? null,
+    decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function insertCompanyChangeRequest(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.insert(companyChangeRequestsTable).values({
+    id: input.id,
+    company_id: input.companyId,
+    requested_by_panel_user_id: input.requestedByPanelUserId,
+    request_type: input.requestType,
+    reason: input.reason,
+    payload: input.payload,
+    status: "pending",
+    admin_decision_note: ""
+  }).returning();
+  return rows[0] ? mapRow(rows[0]) : null;
+}
+async function listCompanyChangeRequestsByCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(companyChangeRequestsTable).where(eq(companyChangeRequestsTable.company_id, companyId)).orderBy(desc(companyChangeRequestsTable.created_at));
+  return rows.map(mapRow);
+}
+async function listCompanyChangeRequestsAdmin(opts) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const where = opts?.status ? eq(companyChangeRequestsTable.status, opts.status) : void 0;
+  const rows = where ? await db2.select().from(companyChangeRequestsTable).where(where).orderBy(desc(companyChangeRequestsTable.created_at)) : await db2.select().from(companyChangeRequestsTable).orderBy(desc(companyChangeRequestsTable.created_at));
+  return rows.map(mapRow);
+}
+async function decideCompanyChangeRequest(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const where = input.companyId ? and(eq(companyChangeRequestsTable.id, input.id), eq(companyChangeRequestsTable.company_id, input.companyId)) : eq(companyChangeRequestsTable.id, input.id);
+  const rows = await db2.update(companyChangeRequestsTable).set({
+    status: input.status,
+    admin_decision_note: input.note,
+    decided_by_admin_user_id: input.adminUserId ?? null,
+    decided_at: /* @__PURE__ */ new Date(),
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(where).returning();
+  return rows[0] ? mapRow(rows[0]) : null;
+}
+
+// src/db/partnerRegistrationRequestsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID4 } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path2 from "node:path";
+var PARTNER_TYPES = [
+  "taxi",
+  "hotel",
+  "insurance",
+  "medical",
+  "care",
+  "business",
+  "voucher_partner",
+  "other"
+];
+var REGISTRATION_STATUSES = [
+  "open",
+  "in_review",
+  "documents_required",
+  "approved",
+  "rejected",
+  "blocked"
+];
+function mapRow2(r) {
+  return {
+    id: r.id,
+    companyName: r.company_name,
+    legalForm: r.legal_form,
+    partnerType: r.partner_type,
+    usesVouchers: r.uses_vouchers,
+    contactFirstName: r.contact_first_name,
+    contactLastName: r.contact_last_name,
+    email: r.email,
+    phone: r.phone,
+    addressLine1: r.address_line1,
+    postalCode: r.postal_code,
+    city: r.city,
+    country: r.country,
+    taxId: r.tax_id,
+    vatId: r.vat_id,
+    concessionNumber: r.concession_number,
+    desiredRegion: r.desired_region,
+    requestedUsage: r.requested_usage ?? {},
+    documentsMeta: r.documents_meta ?? {},
+    notes: r.notes,
+    registrationStatus: r.registration_status,
+    verificationStatus: r.verification_status,
+    complianceStatus: r.compliance_status,
+    contractStatus: r.contract_status,
+    missingDocumentsNote: r.missing_documents_note,
+    adminNote: r.admin_note,
+    masterDataLocked: r.master_data_locked,
+    linkedCompanyId: r.linked_company_id,
+    reviewedByAdminUserId: r.reviewed_by_admin_user_id,
+    reviewedAt: r.reviewed_at?.toISOString() ?? null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+function mapDocRow(r) {
+  return {
+    id: r.id,
+    requestId: r.request_id,
+    category: r.category,
+    originalFileName: r.original_file_name,
+    mimeType: r.mime_type,
+    storagePath: r.storage_path,
+    fileSizeBytes: r.file_size_bytes,
+    uploadedByActorType: r.uploaded_by_actor_type,
+    uploadedByActorLabel: r.uploaded_by_actor_label,
+    createdAt: r.created_at.toISOString()
+  };
+}
+function mapTimelineRow(r) {
+  return {
+    id: r.id,
+    requestId: r.request_id,
+    actorType: r.actor_type,
+    actorLabel: r.actor_label,
+    eventType: r.event_type,
+    message: r.message,
+    payload: r.payload ?? {},
+    createdAt: r.created_at.toISOString()
+  };
+}
+function uploadsBaseDir() {
+  const fromEnv = (process.env.PARTNER_REGISTRATION_UPLOAD_DIR ?? "").trim();
+  if (fromEnv) return fromEnv;
+  return path2.resolve(process.cwd(), "artifacts/api-server/uploads/partner-registration");
+}
+async function persistDocFile(opts) {
+  const base = uploadsBaseDir();
+  const safeName = opts.originalFileName.replace(/[^\w.\-]+/g, "_").slice(0, 120) || "document.bin";
+  const ext = path2.extname(safeName) || ".bin";
+  const dir = path2.join(base, opts.requestId);
+  await mkdir(dir, { recursive: true });
+  const fileName = `${Date.now()}-${randomUUID4()}${ext}`;
+  const absPath = path2.join(dir, fileName);
+  const relPath = path2.relative(base, absPath);
+  const cleaned = opts.contentBase64.includes(",") ? opts.contentBase64.split(",").pop() ?? "" : opts.contentBase64;
+  const buf = Buffer.from(cleaned, "base64");
+  await writeFile(absPath, buf);
+  return { absPath, relPath, sizeBytes: buf.byteLength };
+}
+function isPartnerType(v) {
+  return PARTNER_TYPES.includes(v);
+}
+function isRegistrationStatus(v) {
+  return REGISTRATION_STATUSES.includes(v);
+}
+async function createPartnerRegistrationRequest(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = `prr-${randomUUID4()}`;
+  await db2.insert(partnerRegistrationRequestsTable).values({
+    id,
+    company_name: input.companyName,
+    legal_form: input.legalForm,
+    partner_type: input.partnerType,
+    uses_vouchers: input.usesVouchers,
+    contact_first_name: input.contactFirstName,
+    contact_last_name: input.contactLastName,
+    email: input.email,
+    phone: input.phone,
+    address_line1: input.addressLine1,
+    postal_code: input.postalCode,
+    city: input.city,
+    country: input.country,
+    tax_id: input.taxId,
+    vat_id: input.vatId,
+    concession_number: input.concessionNumber,
+    desired_region: input.desiredRegion,
+    requested_usage: input.requestedUsage,
+    documents_meta: input.documentsMeta,
+    notes: input.notes
+  });
+  await addPartnerRegistrationTimelineEvent({
+    requestId: id,
+    actorType: "partner",
+    actorLabel: input.email,
+    eventType: "request_submitted",
+    message: "Registrierungsanfrage eingegangen.",
+    payload: { partnerType: input.partnerType, usesVouchers: input.usesVouchers }
+  });
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(eq(partnerRegistrationRequestsTable.id, id)).limit(1);
+  return rows[0] ? mapRow2(rows[0]) : null;
+}
+async function listPartnerRegistrationRequestsAdmin(status) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const where = status ? eq(partnerRegistrationRequestsTable.registration_status, status) : void 0;
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(where).orderBy(desc(partnerRegistrationRequestsTable.created_at));
+  return rows.map(mapRow2);
+}
+async function findPartnerRegistrationRequestById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(eq(partnerRegistrationRequestsTable.id, id)).limit(1);
+  return rows[0] ? mapRow2(rows[0]) : null;
+}
+async function findLatestPartnerRegistrationRequestByEmail(email) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(sql`lower(${partnerRegistrationRequestsTable.email}) = ${email.trim().toLowerCase()}`).orderBy(desc(partnerRegistrationRequestsTable.created_at)).limit(1);
+  return rows[0] ? mapRow2(rows[0]) : null;
+}
+async function patchPartnerRegistrationRequest(id, patch) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const set = {
+    updated_at: sql`NOW()`
+  };
+  if (patch.status) set.registration_status = patch.status;
+  if (patch.verificationStatus) set.verification_status = patch.verificationStatus;
+  if (patch.complianceStatus) set.compliance_status = patch.complianceStatus;
+  if (patch.contractStatus) set.contract_status = patch.contractStatus;
+  if (patch.missingDocumentsNote !== void 0) set.missing_documents_note = patch.missingDocumentsNote;
+  if (patch.adminNote !== void 0) set.admin_note = patch.adminNote;
+  if (patch.reviewedByAdminUserId !== void 0) set.reviewed_by_admin_user_id = patch.reviewedByAdminUserId;
+  if (patch.status || patch.reviewedByAdminUserId !== void 0) set.reviewed_at = sql`NOW()`;
+  await db2.update(partnerRegistrationRequestsTable).set(set).where(eq(partnerRegistrationRequestsTable.id, id));
+  if (patch.status || patch.missingDocumentsNote !== void 0 || patch.adminNote !== void 0 || patch.verificationStatus || patch.complianceStatus || patch.contractStatus) {
+    await addPartnerRegistrationTimelineEvent({
+      requestId: id,
+      actorType: "admin",
+      actorLabel: patch.reviewedByAdminUserId ?? "admin",
+      eventType: "admin_status_update",
+      message: "Anfrage-Status/Pr\xFCffelder aktualisiert.",
+      payload: {
+        status: patch.status ?? null,
+        verificationStatus: patch.verificationStatus ?? null,
+        complianceStatus: patch.complianceStatus ?? null,
+        contractStatus: patch.contractStatus ?? null,
+        missingDocumentsNote: patch.missingDocumentsNote ?? null
+      }
+    });
+  }
+  return findPartnerRegistrationRequestById(id);
+}
+async function attachCompanyToPartnerRegistrationRequest(id, companyId, adminUserId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  await db2.update(partnerRegistrationRequestsTable).set({
+    linked_company_id: companyId,
+    registration_status: "approved",
+    contract_status: "active",
+    verification_status: "verified",
+    compliance_status: "complete",
+    reviewed_by_admin_user_id: adminUserId,
+    reviewed_at: sql`NOW()`,
+    updated_at: sql`NOW()`
+  }).where(
+    and(
+      eq(partnerRegistrationRequestsTable.id, id),
+      eq(partnerRegistrationRequestsTable.master_data_locked, true)
+    )
+  );
+  await addPartnerRegistrationTimelineEvent({
+    requestId: id,
+    actorType: "admin",
+    actorLabel: adminUserId ?? "admin",
+    eventType: "approved_company_created",
+    message: "Anfrage freigegeben und Unternehmen angelegt.",
+    payload: { companyId }
+  });
+  return findPartnerRegistrationRequestById(id);
+}
+async function addPartnerRegistrationTimelineEvent(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = `prtl-${randomUUID4()}`;
+  await db2.insert(partnerRegistrationTimelineTable).values({
+    id,
+    request_id: input.requestId,
+    actor_type: input.actorType,
+    actor_label: input.actorLabel,
+    event_type: input.eventType,
+    message: input.message,
+    payload: input.payload ?? {}
+  });
+  return id;
+}
+async function addPartnerRegistrationMessage(requestId, actorType, actorLabel, message2) {
+  return addPartnerRegistrationTimelineEvent({
+    requestId,
+    actorType,
+    actorLabel,
+    eventType: "message",
+    message: message2
+  });
+}
+async function addPartnerRegistrationDocument(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = `prdoc-${randomUUID4()}`;
+  const persisted = await persistDocFile({
+    requestId: input.requestId,
+    originalFileName: input.originalFileName,
+    contentBase64: input.contentBase64
+  });
+  await db2.insert(partnerRegistrationDocumentsTable).values({
+    id,
+    request_id: input.requestId,
+    category: input.category || "general",
+    original_file_name: input.originalFileName,
+    mime_type: input.mimeType,
+    storage_path: persisted.relPath,
+    file_size_bytes: persisted.sizeBytes,
+    uploaded_by_actor_type: input.uploadedByActorType,
+    uploaded_by_actor_label: input.uploadedByActorLabel
+  });
+  await addPartnerRegistrationTimelineEvent({
+    requestId: input.requestId,
+    actorType: input.uploadedByActorType,
+    actorLabel: input.uploadedByActorLabel,
+    eventType: "document_uploaded",
+    message: `Dokument hochgeladen: ${input.originalFileName}`,
+    payload: { category: input.category, size: persisted.sizeBytes }
+  });
+  const rows = await db2.select().from(partnerRegistrationDocumentsTable).where(eq(partnerRegistrationDocumentsTable.id, id)).limit(1);
+  return rows[0] ? mapDocRow(rows[0]) : null;
+}
+async function listPartnerRegistrationDocuments(requestId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(partnerRegistrationDocumentsTable).where(eq(partnerRegistrationDocumentsTable.request_id, requestId)).orderBy(desc(partnerRegistrationDocumentsTable.created_at));
+  return rows.map(mapDocRow);
+}
+async function findPartnerRegistrationDocumentById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(partnerRegistrationDocumentsTable).where(eq(partnerRegistrationDocumentsTable.id, id)).limit(1);
+  return rows[0] ? mapDocRow(rows[0]) : null;
+}
+async function listPartnerRegistrationTimeline(requestId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(partnerRegistrationTimelineTable).where(eq(partnerRegistrationTimelineTable.request_id, requestId)).orderBy(desc(partnerRegistrationTimelineTable.created_at));
+  return rows.map(mapTimelineRow);
+}
+async function getPartnerRegistrationDetailAdmin(requestId) {
+  const req = await findPartnerRegistrationRequestById(requestId);
+  if (!req) return null;
+  const [documents, timeline] = await Promise.all([
+    listPartnerRegistrationDocuments(requestId),
+    listPartnerRegistrationTimeline(requestId)
+  ]);
+  return { request: req, documents, timeline };
+}
+async function resolvePartnerRegistrationStorageAbsolutePath(relPath) {
+  return path2.join(uploadsBaseDir(), relPath);
+}
+
+// src/db/adminAuthData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID5 } from "node:crypto";
+
+// src/lib/adminConsoleRoles.ts
+var ADMIN_ROLE_VALUES = ["admin", "service", "taxi", "insurance", "hotel"];
+function parseAdminRole(raw) {
+  const s = raw.trim();
+  return ADMIN_ROLE_VALUES.includes(s) ? s : null;
+}
+function canAccessAdminStats(role) {
+  return role !== "hotel";
+}
+function canAccessAdminDashboardOverview(role) {
+  return role !== "hotel";
+}
+function canReadAdminCompaniesList(role) {
+  return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
+}
+function canMutateAdminCompanies(role) {
+  return role === "admin" || role === "service";
+}
+function canMutateAdminFareAreas(role) {
+  return role === "admin" || role === "taxi";
+}
+function canAccessAdminAccessCodes(role) {
+  return role === "admin" || role === "service" || role === "taxi";
+}
+function canAdminReleaseRide(role) {
+  return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
+}
+var HOTEL_NO_SCOPE_COMPANY_ID = "__onroda_hotel_no_scope__";
+function mergeAdminRideListQueryForPrincipal(role, scopeCompanyId, query) {
+  if (role === "insurance") {
+    return { ...query, payerKind: "insurance" };
+  }
+  if (role === "hotel") {
+    const id = scopeCompanyId?.trim();
+    return { ...query, companyId: id || HOTEL_NO_SCOPE_COMPANY_ID };
+  }
+  return query;
+}
+function adminRideRowVisibleToPrincipal(role, scopeCompanyId, ride) {
+  if (role === "insurance") {
+    return ride.payerKind === "insurance";
+  }
+  if (role === "hotel") {
+    const id = scopeCompanyId?.trim();
+    if (!id) return false;
+    return String(ride.companyId ?? "") === id;
+  }
+  return true;
+}
+
+// src/db/adminAuthData.ts
+init_client();
+init_schema2();
+async function findActiveAdminAuthUserByUsername(username) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = username.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    passwordHash: adminAuthUsersTable.password_hash,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active
+  }).from(adminAuthUsersTable).where(
+    and(
+      sql`lower(${adminAuthUsersTable.username}) = ${normalized}`,
+      eq(adminAuthUsersTable.is_active, true)
+    )
+  ).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    passwordHash: row.passwordHash,
+    role,
+    sessionVersion: row.sessionVersion,
+    isActive: row.isActive,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null
+  };
+}
+async function findActiveAdminAuthUserByIdentity(identity) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = identity.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    passwordHash: adminAuthUsersTable.password_hash,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active
+  }).from(adminAuthUsersTable).where(
+    and(
+      eq(adminAuthUsersTable.is_active, true),
+      sql`(lower(${adminAuthUsersTable.username}) = ${normalized} OR lower(${adminAuthUsersTable.email}) = ${normalized})`
+    )
+  ).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    passwordHash: row.passwordHash,
+    role,
+    sessionVersion: row.sessionVersion,
+    isActive: row.isActive,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null
+  };
+}
+async function upsertAdminAuthUser(input) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  const username = input.username.trim();
+  if (!username) return;
+  const existingRows = await db2.select({ id: adminAuthUsersTable.id }).from(adminAuthUsersTable).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).limit(1);
+  const existing = existingRows[0];
+  if (existing) {
+    await db2.update(adminAuthUsersTable).set({
+      password_hash: input.passwordHash,
+      email: (input.email ?? "").trim(),
+      role: input.role,
+      session_version: sql`${adminAuthUsersTable.session_version}`,
+      is_active: true,
+      updated_at: /* @__PURE__ */ new Date()
+    }).where(eq(adminAuthUsersTable.id, existing.id));
+    return;
+  }
+  await db2.insert(adminAuthUsersTable).values({
+    id: randomUUID5(),
+    username,
+    email: (input.email ?? "").trim(),
+    password_hash: input.passwordHash,
+    role: input.role,
+    scope_company_id: null,
+    session_version: 1,
+    is_active: true,
+    created_at: /* @__PURE__ */ new Date(),
+    updated_at: /* @__PURE__ */ new Date()
+  });
+}
+async function updateAdminAuthPasswordByUsername(input) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const username = input.username.trim();
+  if (!username) return false;
+  const rows = await db2.update(adminAuthUsersTable).set({
+    password_hash: input.passwordHash,
+    session_version: sql`${adminAuthUsersTable.session_version} + 1`,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).returning({ id: adminAuthUsersTable.id });
+  return rows.length > 0;
+}
+async function listAdminAuthUsers() {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active,
+    createdAt: adminAuthUsersTable.created_at,
+    updatedAt: adminAuthUsersTable.updated_at
+  }).from(adminAuthUsersTable).orderBy(sql`lower(${adminAuthUsersTable.username}) asc`);
+  return rows.map((row) => {
+    const role = parseAdminRole(row.role);
+    if (!role) return null;
+    return {
+      id: row.id,
+      username: row.username,
+      email: row.email,
+      role,
+      scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
+      sessionVersion: row.sessionVersion,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    };
+  }).filter((row) => row !== null);
+}
+async function createAdminAuthUser(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const username = input.username.trim();
+  if (!username) return null;
+  const scope = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
+  const createdRows = await db2.insert(adminAuthUsersTable).values({
+    id: randomUUID5(),
+    username,
+    email: (input.email ?? "").trim(),
+    password_hash: input.passwordHash,
+    role: input.role,
+    scope_company_id: scope,
+    session_version: 1,
+    is_active: input.isActive ?? true,
+    created_at: /* @__PURE__ */ new Date(),
+    updated_at: /* @__PURE__ */ new Date()
+  }).onConflictDoNothing().returning({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active,
+    createdAt: adminAuthUsersTable.created_at,
+    updatedAt: adminAuthUsersTable.updated_at
+  });
+  const created = createdRows[0];
+  if (!created) return null;
+  const role = parseAdminRole(created.role);
+  if (!role) return null;
+  return {
+    id: created.id,
+    username: created.username,
+    email: created.email,
+    role,
+    scopeCompanyId: created.scopeCompanyId?.trim() ? created.scopeCompanyId.trim() : null,
+    sessionVersion: created.sessionVersion,
+    isActive: created.isActive,
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt
+  };
+}
+async function findAdminAuthUserRowById(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    role: adminAuthUsersTable.role,
+    isActive: adminAuthUsersTable.is_active
+  }).from(adminAuthUsersTable).where(eq(adminAuthUsersTable.id, id)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return { id: row.id, username: row.username, role, isActive: row.isActive };
+}
+async function countActiveAdminRoleUsers() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({
+    n: sql`count(*)::int`
+  }).from(adminAuthUsersTable).where(and(eq(adminAuthUsersTable.role, "admin"), eq(adminAuthUsersTable.is_active, true)));
+  const raw = rows[0]?.n;
+  return typeof raw === "number" ? raw : Number(raw) || 0;
+}
+async function deleteAdminAuthUserById(id) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const deleted = await db2.delete(adminAuthUsersTable).where(eq(adminAuthUsersTable.id, id)).returning({ id: adminAuthUsersTable.id });
+  return deleted.length > 0;
+}
+async function patchAdminAuthUserById(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const patch = { updated_at: /* @__PURE__ */ new Date() };
+  if (typeof input.role === "string") patch.role = input.role;
+  if (typeof input.email === "string") patch.email = input.email.trim();
+  if (typeof input.isActive === "boolean") patch.is_active = input.isActive;
+  if (input.scopeCompanyId !== void 0) {
+    patch.scope_company_id = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
+  }
+  if (typeof input.passwordHash === "string" && input.passwordHash) {
+    patch.password_hash = input.passwordHash;
+    patch.session_version = sql`${adminAuthUsersTable.session_version} + 1`;
+  }
+  const rows = await db2.update(adminAuthUsersTable).set(patch).where(eq(adminAuthUsersTable.id, input.id)).returning({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active,
+    createdAt: adminAuthUsersTable.created_at,
+    updatedAt: adminAuthUsersTable.updated_at
+  });
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    role,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
+    sessionVersion: row.sessionVersion,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+async function createAdminPasswordResetToken(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.insert(adminAuthPasswordResetsTable).values({
+    id: randomUUID5(),
+    admin_user_id: input.adminUserId,
+    token_hash: input.tokenHash,
+    expires_at: input.expiresAt,
+    created_at: /* @__PURE__ */ new Date()
+  }).returning({
+    id: adminAuthPasswordResetsTable.id,
+    adminUserId: adminAuthPasswordResetsTable.admin_user_id,
+    tokenHash: adminAuthPasswordResetsTable.token_hash,
+    expiresAt: adminAuthPasswordResetsTable.expires_at,
+    usedAt: adminAuthPasswordResetsTable.used_at,
+    createdAt: adminAuthPasswordResetsTable.created_at
+  });
+  return rows[0] ?? null;
+}
+async function findUsableAdminPasswordResetByTokenHash(tokenHash) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: adminAuthPasswordResetsTable.id,
+    adminUserId: adminAuthPasswordResetsTable.admin_user_id,
+    tokenHash: adminAuthPasswordResetsTable.token_hash,
+    expiresAt: adminAuthPasswordResetsTable.expires_at,
+    usedAt: adminAuthPasswordResetsTable.used_at,
+    createdAt: adminAuthPasswordResetsTable.created_at
+  }).from(adminAuthPasswordResetsTable).where(eq(adminAuthPasswordResetsTable.token_hash, tokenHash)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  if (row.usedAt) return null;
+  if (row.expiresAt.getTime() <= Date.now()) return null;
+  return row;
+}
+async function markAdminPasswordResetUsed(id) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(adminAuthPasswordResetsTable).set({ used_at: /* @__PURE__ */ new Date() }).where(eq(adminAuthPasswordResetsTable.id, id));
+}
+async function insertAdminAuthAuditLog(input) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.insert(adminAuthAuditLogTable).values({
+    id: randomUUID5(),
+    admin_user_id: input.adminUserId ?? null,
+    username: (input.username ?? "").trim(),
+    action: input.action,
+    meta: input.meta ?? {},
+    created_at: /* @__PURE__ */ new Date()
+  });
+}
+
 // src/routes/adminApi.ts
+init_client();
 init_ridesData();
 
 // src/lib/password.ts
@@ -49254,7 +50554,9 @@ var ROLE_MATRIX = {
     "self.change_password",
     "company.update",
     "access_codes.read",
-    "access_codes.manage"
+    "access_codes.manage",
+    "fleet.read",
+    "fleet.manage"
   ],
   manager: [
     "rides.read",
@@ -49265,10 +50567,19 @@ var ROLE_MATRIX = {
     "self.change_password",
     "company.update",
     "access_codes.read",
-    "access_codes.manage"
+    "access_codes.manage",
+    "fleet.read",
+    "fleet.manage"
   ],
-  staff: ["rides.read", "rides.create", "users.read", "self.change_password", "access_codes.read"],
-  readonly: ["rides.read", "users.read", "self.change_password", "access_codes.read"]
+  staff: [
+    "rides.read",
+    "rides.create",
+    "users.read",
+    "self.change_password",
+    "access_codes.read",
+    "fleet.read"
+  ],
+  readonly: ["rides.read", "users.read", "self.change_password", "access_codes.read", "fleet.read"]
 };
 function isPanelRoleString(v) {
   return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
@@ -49301,26 +50612,112 @@ function generateTemporaryPassword(length = 14) {
 }
 
 // src/middleware/requireAdminApiBearer.ts
+init_client();
+function getAdminSessionSecret() {
+  const s = (process.env.ADMIN_PANEL_JWT_SECRET ?? process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!s) throw new Error("ADMIN_PANEL_JWT_SECRET not configured");
+  return new TextEncoder().encode(s);
+}
+function readConfiguredUsers() {
+  const users = [];
+  const ownerUser = (process.env.ADMIN_PANEL_USERNAME ?? "").trim();
+  const ownerPass = (process.env.ADMIN_PANEL_PASSWORD ?? "").trim();
+  if (ownerUser && ownerPass) users.push({ username: ownerUser, password: ownerPass, role: "admin" });
+  const svcUser = (process.env.ADMIN_PANEL_SERVICE_USERNAME ?? "").trim();
+  const svcPass = (process.env.ADMIN_PANEL_SERVICE_PASSWORD ?? "").trim();
+  if (svcUser && svcPass) users.push({ username: svcUser, password: svcPass, role: "service" });
+  return users;
+}
+async function signAdminSessionJwt(input) {
+  const user = await findActiveAdminAuthUserByUsername(input.username);
+  const secret = getAdminSessionSecret();
+  return new SignJWT({
+    kind: "admin_panel",
+    username: input.username,
+    role: input.role,
+    sv: user?.sessionVersion ?? 1
+  }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setIssuer("onroda-admin").setExpirationTime("12h").sign(secret);
+}
+async function verifyAdminSessionJwt(token) {
+  try {
+    const secret = getAdminSessionSecret();
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+      issuer: "onroda-admin"
+    });
+    if (payload.kind !== "admin_panel") return null;
+    const username = typeof payload.username === "string" ? payload.username : "";
+    const role = parseAdminRole(typeof payload.role === "string" ? payload.role : "");
+    const sessionVersion = typeof payload.sv === "number" ? payload.sv : 1;
+    if (!username || !role) return null;
+    const user = await findActiveAdminAuthUserByUsername(username);
+    if (!user) return null;
+    if (user.sessionVersion !== sessionVersion) return null;
+    return {
+      username,
+      role,
+      kind: "session",
+      scopeCompanyId: user.scopeCompanyId ?? null
+    };
+  } catch {
+    return null;
+  }
+}
+async function authenticateAdminCredentials(username, password) {
+  const u = username.trim();
+  const p = password;
+  if (!u || !p) return { ok: false, error: "invalid_credentials" };
+  const dbUser = await findActiveAdminAuthUserByIdentity(u);
+  if (dbUser) {
+    const ok2 = await verifyPassword(p, dbUser.passwordHash);
+    if (!ok2) return { ok: false, error: "invalid_credentials" };
+    return { ok: true, role: dbUser.role, source: "db" };
+  }
+  const users = readConfiguredUsers();
+  const hit = users.find((x) => x.username === u && x.password === p);
+  if (!hit) return { ok: false, error: "invalid_credentials" };
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "bootstrap_persist_failed" };
+  }
+  try {
+    const hash = await hashPassword(p);
+    await upsertAdminAuthUser({
+      username: hit.username,
+      email: "",
+      passwordHash: hash,
+      role: hit.role
+    });
+  } catch {
+    return { ok: false, error: "bootstrap_persist_failed" };
+  }
+  return { ok: true, role: hit.role, source: "env_bootstrap" };
+}
 var requireAdminApiBearer = (req, res, next) => {
   const token = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
-  if (!token) {
-    if (process.env.NODE_ENV === "production") {
-      res.status(503).json({
-        error: "admin_api_auth_not_configured",
-        hint: "Set ADMIN_API_BEARER_TOKEN in the API environment for /admin/* routes."
-      });
-      return;
-    }
+  const auth = req.get("authorization") ?? "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (token && bearer === token) {
+    req.adminAuth = { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
     next();
     return;
   }
-  const auth = req.get("authorization") ?? "";
-  const expected = `Bearer ${token}`;
-  if (auth !== expected) {
-    res.status(401).json({ error: "unauthorized" });
+  if (bearer) {
+    void verifyAdminSessionJwt(bearer).then((principal) => {
+      if (principal) {
+        req.adminAuth = principal;
+        next();
+        return;
+      }
+      res.status(401).json({ error: "unauthorized" });
+    });
     return;
   }
-  next();
+  if (!token && process.env.NODE_ENV !== "production") {
+    req.adminAuth = { username: "dev_local", role: "admin", kind: "bearer", scopeCompanyId: null };
+    next();
+    return;
+  }
+  res.status(401).json({ error: "unauthorized" });
 };
 
 // src/routes/adminApi.ts
@@ -49363,13 +50760,411 @@ function parseAdminRideListQuery(req) {
   }
   if (typeof q.driverId === "string" && q.driverId.trim()) query.driverId = q.driverId.trim();
   if (typeof q.q === "string" && q.q.trim()) query.q = q.q.trim();
+  const sortRaw = typeof q.sortCreated === "string" ? q.sortCreated.trim().toLowerCase() : "";
+  if (sortRaw === "asc") query.sortCreated = "asc";
+  else if (sortRaw === "desc") query.sortCreated = "desc";
   return { ok: true, query };
 }
+function isAdminPrincipal(req) {
+  return req.adminAuth?.role === "admin";
+}
+function adminConsoleRole(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+function partnerTypeToCompanyKind(partnerType) {
+  switch (partnerType) {
+    case "taxi":
+      return "taxi";
+    case "hotel":
+      return "hotel";
+    case "insurance":
+      return "insurer";
+    case "business":
+      return "corporate";
+    case "voucher_partner":
+      return "voucher_client";
+    default:
+      return "general";
+  }
+}
+function hashResetToken(token) {
+  return createHash2("sha256").update(token).digest("hex");
+}
 var router4 = (0, import_express4.Router)();
+router4.post("/admin/auth/login", async (req, res) => {
+  const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const ok2 = await authenticateAdminCredentials(username, password);
+  if (!ok2.ok) {
+    if (ok2.error === "bootstrap_persist_failed") {
+      res.status(503).json({ error: "auth_bootstrap_persist_failed" });
+      return;
+    }
+    res.status(401).json({ error: "invalid_credentials" });
+    return;
+  }
+  const token = await signAdminSessionJwt({ username, role: ok2.role });
+  const row = await findActiveAdminAuthUserByUsername(username);
+  const scopeCompanyId = row?.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null;
+  res.json({
+    ok: true,
+    token,
+    user: { username, role: ok2.role, scopeCompanyId },
+    authSource: ok2.source
+  });
+});
+router4.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+  const role = req.adminAuth?.role ?? "admin";
+  const username = req.adminAuth?.username ?? "admin";
+  const scopeCompanyId = typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim() ? req.adminAuth.scopeCompanyId.trim() : null;
+  res.json({ ok: true, user: { username, role, scopeCompanyId } });
+});
+router4.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+  const principal = req.adminAuth;
+  if (!principal || principal.kind !== "session") {
+    res.status(403).json({ error: "session_required" });
+    return;
+  }
+  const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+  const nextPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (currentPassword.length < 8 || nextPassword.length < 10) {
+    res.status(400).json({ error: "password_fields_invalid", hint: "currentPassword min 8, newPassword min 10" });
+    return;
+  }
+  const auth = await authenticateAdminCredentials(principal.username, currentPassword);
+  if (!auth.ok) {
+    res.status(401).json({ error: "invalid_current_password" });
+    return;
+  }
+  const passwordHash = await hashPassword(nextPassword);
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "admin_auth_store_unavailable" });
+    return;
+  }
+  const updated = await updateAdminAuthPasswordByUsername({
+    username: principal.username,
+    passwordHash
+  });
+  if (!updated) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+  await insertAdminAuthAuditLog({
+    username: principal.username,
+    action: "admin.auth.password_changed"
+  });
+  res.json({ ok: true });
+});
+router4.post("/admin/auth/password-reset/request", async (req, res) => {
+  const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
+  const generic = {
+    ok: true,
+    message: "Wenn ein passender Zugang existiert, wurde ein Passwort-Reset gestartet. Bitte Support/Administrator kontaktieren."
+  };
+  const isProduction2 = process.env.NODE_ENV === "production";
+  const allowResetDebugResponse = !isProduction2 && process.env.ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE === "1";
+  if (!identity || !isPostgresConfigured()) {
+    res.json(generic);
+    return;
+  }
+  const user = await findActiveAdminAuthUserByIdentity(identity);
+  if (!user) {
+    await insertAdminAuthAuditLog({
+      username: identity,
+      action: "admin.auth.password_reset_requested_unknown_identity"
+    });
+    res.json(
+      allowResetDebugResponse ? { ...generic, debugResetToken: null, debugResetExpiresAt: null } : generic
+    );
+    return;
+  }
+  const rawToken = randomBytes5(32).toString("base64url");
+  const tokenHash = hashResetToken(rawToken);
+  const configuredTtlMin = Number(process.env.ADMIN_AUTH_RESET_TOKEN_TTL_MINUTES ?? "30");
+  const ttlMsDefault = Math.max(1, Number.isFinite(configuredTtlMin) ? configuredTtlMin : 30) * 60 * 1e3;
+  let ttlMs = ttlMsDefault;
+  if (process.env.NODE_ENV !== "production") {
+    const debugExpires = Number(req.body?.debugExpiresInSeconds);
+    if (Number.isFinite(debugExpires) && debugExpires >= 1) ttlMs = debugExpires * 1e3;
+  }
+  const expiresAt = new Date(Date.now() + ttlMs);
+  await createAdminPasswordResetToken({
+    adminUserId: user.id,
+    tokenHash,
+    expiresAt
+  });
+  await insertAdminAuthAuditLog({
+    adminUserId: user.id,
+    username: user.username,
+    action: "admin.auth.password_reset_requested",
+    meta: { expiresAt: expiresAt.toISOString(), delivery: "email_link_phase_a" }
+  });
+  if (allowResetDebugResponse) {
+    res.json({ ...generic, debugResetToken: rawToken, debugResetExpiresAt: expiresAt.toISOString() });
+    return;
+  }
+  res.json(generic);
+});
+router4.post("/admin/auth/password-reset/confirm", async (req, res) => {
+  const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+  const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+  if (!token || newPassword.length < 10) {
+    res.status(400).json({ error: "reset_payload_invalid", hint: "token + newPassword(min10)" });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "admin_auth_store_unavailable" });
+    return;
+  }
+  const reset = await findUsableAdminPasswordResetByTokenHash(hashResetToken(token));
+  if (!reset) {
+    await insertAdminAuthAuditLog({
+      username: "",
+      action: "admin.auth.password_reset_confirm_failed",
+      meta: { reason: "invalid_or_expired" }
+    });
+    res.status(400).json({ error: "invalid_or_expired_reset_token" });
+    return;
+  }
+  const passwordHash = await hashPassword(newPassword);
+  const updated = await patchAdminAuthUserById({
+    id: reset.adminUserId,
+    passwordHash
+  });
+  await markAdminPasswordResetUsed(reset.id);
+  if (!updated) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+  await insertAdminAuthAuditLog({
+    adminUserId: updated.id,
+    username: updated.username,
+    action: "admin.auth.password_reset_completed",
+    meta: { resetId: reset.id }
+  });
+  res.json({ ok: true });
+});
+router4.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+  if (!isAdminPrincipal(req)) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
+  if (!identity || !isPostgresConfigured()) {
+    res.status(400).json({ error: "identity_required" });
+    return;
+  }
+  const user = await findActiveAdminAuthUserByIdentity(identity);
+  if (!user) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  const rawToken = randomBytes5(32).toString("base64url");
+  const tokenHash = hashResetToken(rawToken);
+  const expiresRaw = Number(req.body?.expiresInSeconds);
+  const ttlSeconds = Number.isFinite(expiresRaw) && expiresRaw >= 1 ? expiresRaw : 30 * 60;
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1e3);
+  await createAdminPasswordResetToken({
+    adminUserId: user.id,
+    tokenHash,
+    expiresAt
+  });
+  await insertAdminAuthAuditLog({
+    adminUserId: user.id,
+    username: user.username,
+    action: "admin.auth.password_reset_link_issued_by_admin",
+    meta: {
+      issuedBy: req.adminAuth?.username ?? "admin",
+      expiresAt: expiresAt.toISOString()
+    }
+  });
+  res.json({
+    ok: true,
+    delivery: "manual_email_link_phase_a",
+    resetToken: rawToken,
+    expiresAt: expiresAt.toISOString()
+  });
+});
+router4.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const users = await listAdminAuthUsers();
+    res.json({ ok: true, users });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : "";
+    const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : true;
+    const scopeRaw = typeof req.body?.scopeCompanyId === "string" ? req.body.scopeCompanyId.trim() : "";
+    const role = parseAdminRole(roleRaw);
+    if (!username || password.length < 10 || !role) {
+      res.status(400).json({
+        error: "user_payload_invalid",
+        hint: "username, password(min10), role(admin|service|taxi|insurance|hotel), optional email, optional scopeCompanyId (Hotel)"
+      });
+      return;
+    }
+    if (role === "hotel" && !scopeRaw) {
+      res.status(400).json({ error: "scope_company_id_required_for_hotel" });
+      return;
+    }
+    const hash = await hashPassword(password);
+    const created = await createAdminAuthUser({
+      username,
+      email,
+      passwordHash: hash,
+      role,
+      isActive,
+      scopeCompanyId: scopeRaw || null
+    });
+    if (!created) {
+      res.status(409).json({ error: "username_taken" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      adminUserId: created.id,
+      username: created.username,
+      action: "admin.auth.user_created",
+      meta: { role: created.role, isActive: created.isActive }
+    });
+    res.status(201).json({ ok: true, user: created });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const roleRaw = typeof req.body?.role === "string" ? req.body.role.trim() : void 0;
+    const emailRaw = typeof req.body?.email === "string" ? req.body.email.trim() : void 0;
+    const role = roleRaw ? parseAdminRole(roleRaw) : void 0;
+    const isActive = typeof req.body?.isActive === "boolean" ? req.body.isActive : void 0;
+    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+    const scopeBody = req.body;
+    const scopeCompanyIdPatch = Object.prototype.hasOwnProperty.call(scopeBody, "scopeCompanyId") && (typeof scopeBody.scopeCompanyId === "string" || scopeBody.scopeCompanyId === null) ? typeof scopeBody.scopeCompanyId === "string" ? scopeBody.scopeCompanyId.trim() || null : null : void 0;
+    if (roleRaw && !role) {
+      res.status(400).json({ error: "invalid_role" });
+      return;
+    }
+    if (newPassword && newPassword.length < 10) {
+      res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+      return;
+    }
+    if (role === void 0 && isActive === void 0 && emailRaw === void 0 && !newPassword && scopeCompanyIdPatch === void 0) {
+      res.status(400).json({ error: "no_changes" });
+      return;
+    }
+    const user = await patchAdminAuthUserById({
+      id: req.params.id,
+      role,
+      ...emailRaw !== void 0 ? { email: emailRaw } : {},
+      isActive,
+      ...scopeCompanyIdPatch !== void 0 ? { scopeCompanyId: scopeCompanyIdPatch } : {},
+      ...newPassword ? { passwordHash: await hashPassword(newPassword) } : {}
+    });
+    if (!user) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      adminUserId: user.id,
+      username: user.username,
+      action: "admin.auth.user_updated",
+      meta: {
+        role: role ?? null,
+        isActive: isActive ?? null,
+        emailUpdated: emailRaw !== void 0,
+        passwordChanged: Boolean(newPassword)
+      }
+    });
+    res.json({ ok: true, user });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+  try {
+    if (!isAdminPrincipal(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "admin_auth_store_unavailable" });
+      return;
+    }
+    const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+    if (!id) {
+      res.status(400).json({ error: "invalid_id" });
+      return;
+    }
+    const target = await findAdminAuthUserRowById(id);
+    if (!target) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const principal = req.adminAuth;
+    if (principal?.kind === "session" && principal.username === target.username) {
+      res.status(400).json({ error: "cannot_delete_self" });
+      return;
+    }
+    if (target.role === "admin" && target.isActive) {
+      const activeAdmins = await countActiveAdminRoleUsers();
+      if (activeAdmins <= 1) {
+        res.status(400).json({ error: "last_active_admin" });
+        return;
+      }
+    }
+    const removed = await deleteAdminAuthUserById(id);
+    if (!removed) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      username: principal?.username ?? "",
+      action: "admin.auth.user_deleted",
+      meta: { deletedId: id, deletedUsername: target.username, deletedRole: target.role }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
 var adminJson = (0, import_express4.Router)();
 adminJson.use(requireAdminApiBearer);
 adminJson.get("/stats", async (req, res, next) => {
   try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const q = req.query;
     const revenueFrom = parseStatsRevenueBound(q.revenueFrom);
     const revenueTo = parseStatsRevenueBound(q.revenueTo);
@@ -49383,6 +51178,10 @@ adminJson.get("/stats", async (req, res, next) => {
 });
 adminJson.get("/dashboard/overview", async (req, res, next) => {
   try {
+    if (!canAccessAdminDashboardOverview(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const q = req.query;
     const bounds = parseAdminDashboardDayBounds(q.date);
     const prev = adminPreviousDayBounds(bounds);
@@ -49416,16 +51215,33 @@ adminJson.get("/dashboard/overview", async (req, res, next) => {
     next(e);
   }
 });
-adminJson.get("/companies", async (_req, res, next) => {
+adminJson.get("/companies", async (req, res, next) => {
   try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const items = await listCompanies();
-    res.json({ ok: true, items, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    const filtered = role === "hotel" && scope ? items.filter((c) => c.id === scope) : items;
+    res.json({ ok: true, items: filtered, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
   } catch (e) {
     next(e);
   }
 });
 adminJson.get("/companies/:companyId/kpis", async (req, res, next) => {
   try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    if (role === "hotel" && scope && req.params.companyId !== scope) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const company = await findCompanyById(req.params.companyId);
     if (!company) {
       res.status(404).json({ error: "company_not_found" });
@@ -49439,6 +51255,10 @@ adminJson.get("/companies/:companyId/kpis", async (req, res, next) => {
 });
 adminJson.post("/companies", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const b = req.body;
     const name = typeof b.name === "string" ? b.name : "";
     const { name: _drop, ...rest } = b;
@@ -49454,6 +51274,10 @@ adminJson.post("/companies", async (req, res, next) => {
 });
 adminJson.patch("/companies/:companyId", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body;
     const item = await updateAdminCompany(req.params.companyId, body);
     if (!item) {
@@ -49465,8 +51289,302 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.get("/company-change-requests", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const statusRaw = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    const status = statusRaw === "pending" || statusRaw === "approved" || statusRaw === "rejected" ? statusRaw : void 0;
+    const rows = await listCompanyChangeRequestsAdmin(status ? { status } : void 0);
+    res.json({ ok: true, requests: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/company-change-requests/:id/decision", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const b = req.body;
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    if (statusRaw !== "approved" && statusRaw !== "rejected") {
+      res.status(400).json({ error: "invalid_status" });
+      return;
+    }
+    const note = typeof b.note === "string" ? b.note.trim() : "";
+    const row = await decideCompanyChangeRequest({
+      id: req.params.id,
+      status: statusRaw,
+      note,
+      adminUserId: null
+    });
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, request: row });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/company-registration-requests", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const statusRaw = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    if (statusRaw && !isRegistrationStatus(statusRaw)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const items = await listPartnerRegistrationRequestsAdmin(
+      statusRaw ? statusRaw : void 0
+    );
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/company-registration-requests/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    const verificationRaw = typeof b.verificationStatus === "string" ? b.verificationStatus.trim() : "";
+    const complianceRaw = typeof b.complianceStatus === "string" ? b.complianceStatus.trim() : "";
+    const contractRaw = typeof b.contractStatus === "string" ? b.contractStatus.trim() : "";
+    if (statusRaw && !isRegistrationStatus(statusRaw)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const verificationStatus = verificationRaw === "pending" || verificationRaw === "in_review" || verificationRaw === "verified" || verificationRaw === "rejected" ? verificationRaw : void 0;
+    const complianceStatus = complianceRaw === "pending" || complianceRaw === "complete" || complianceRaw === "missing_documents" || complianceRaw === "rejected" ? complianceRaw : void 0;
+    const contractStatus = contractRaw === "inactive" || contractRaw === "pending" || contractRaw === "active" || contractRaw === "suspended" || contractRaw === "terminated" ? contractRaw : void 0;
+    const item = await patchPartnerRegistrationRequest(req.params.id, {
+      ...statusRaw ? { status: statusRaw } : {},
+      ...verificationStatus ? { verificationStatus } : {},
+      ...complianceStatus ? { complianceStatus } : {},
+      ...contractStatus ? { contractStatus } : {},
+      ...typeof b.missingDocumentsNote === "string" ? { missingDocumentsNote: b.missingDocumentsNote.trim() } : {},
+      ...typeof b.adminNote === "string" ? { adminNote: b.adminNote.trim() } : {},
+      reviewedByAdminUserId: null
+    });
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/company-registration-requests/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const detail = await getPartnerRegistrationDetailAdmin(req.params.id);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/company-registration-requests/:id/messages", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const message2 = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    if (!message2) {
+      res.status(400).json({ error: "message_required" });
+      return;
+    }
+    const row = await findPartnerRegistrationRequestById(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const actorLabel = req.adminAuth?.username ?? "admin";
+    await addPartnerRegistrationMessage(row.id, "admin", actorLabel, message2);
+    await patchPartnerRegistrationRequest(row.id, { status: "in_review" });
+    res.status(201).json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/company-registration-requests/:id/documents", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const row = await findPartnerRegistrationRequestById(req.params.id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const category = typeof req.body?.category === "string" ? req.body.category.trim() : "general";
+    const fileName = typeof req.body?.fileName === "string" ? req.body.fileName.trim() : "";
+    const mimeType = typeof req.body?.mimeType === "string" ? req.body.mimeType.trim() : "application/octet-stream";
+    const contentBase64 = typeof req.body?.contentBase64 === "string" ? req.body.contentBase64.trim() : "";
+    if (!fileName || !contentBase64) {
+      res.status(400).json({ error: "file_required" });
+      return;
+    }
+    const actorLabel = req.adminAuth?.username ?? "admin";
+    const doc = await addPartnerRegistrationDocument({
+      requestId: row.id,
+      category,
+      originalFileName: fileName,
+      mimeType,
+      contentBase64,
+      uploadedByActorType: "admin",
+      uploadedByActorLabel: actorLabel
+    });
+    if (!doc) {
+      res.status(503).json({ error: "upload_failed" });
+      return;
+    }
+    await addPartnerRegistrationTimelineEvent({
+      requestId: row.id,
+      actorType: "admin",
+      actorLabel,
+      eventType: "admin_document_added",
+      message: `Admin-Dokument hinzugef\xFCgt: ${fileName}`,
+      payload: { category }
+    });
+    res.status(201).json({ ok: true, document: doc });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get(
+  "/company-registration-requests/:requestId/documents/:docId/download",
+  async (req, res, next) => {
+    try {
+      if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+        res.status(403).json({ error: "forbidden" });
+        return;
+      }
+      if (!isPostgresConfigured()) {
+        res.status(503).json({ error: "database_not_configured" });
+        return;
+      }
+      const doc = await findPartnerRegistrationDocumentById(req.params.docId);
+      if (!doc || doc.requestId !== req.params.requestId) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const abs = await resolvePartnerRegistrationStorageAbsolutePath(doc.storagePath);
+      const buf = await readFile(abs);
+      res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(doc.originalFileName || "document.bin")}"`
+      );
+      res.status(200).send(buf);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+adminJson.post("/company-registration-requests/:id/approve", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const reqRow = await findPartnerRegistrationRequestById(req.params.id);
+    if (!reqRow) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (reqRow.linkedCompanyId) {
+      res.status(409).json({ error: "already_approved", companyId: reqRow.linkedCompanyId });
+      return;
+    }
+    if (!isPartnerType(reqRow.partnerType)) {
+      res.status(400).json({ error: "partner_type_invalid" });
+      return;
+    }
+    const createdCompany = await insertAdminCompany({
+      name: reqRow.companyName,
+      legal_form: reqRow.legalForm,
+      company_kind: partnerTypeToCompanyKind(reqRow.partnerType),
+      contact_name: `${reqRow.contactFirstName} ${reqRow.contactLastName}`.trim(),
+      email: reqRow.email,
+      phone: reqRow.phone,
+      address_line1: reqRow.addressLine1,
+      postal_code: reqRow.postalCode,
+      city: reqRow.city,
+      country: reqRow.country,
+      tax_id: reqRow.taxId,
+      vat_id: reqRow.vatId,
+      concession_number: reqRow.concessionNumber,
+      business_notes: reqRow.notes,
+      contract_status: "active",
+      verification_status: "verified",
+      compliance_status: "compliant",
+      is_active: true
+    });
+    if ("error" in createdCompany) {
+      res.status(400).json({ error: createdCompany.error });
+      return;
+    }
+    const updatedReq = await attachCompanyToPartnerRegistrationRequest(
+      reqRow.id,
+      createdCompany.id,
+      null
+    );
+    res.status(201).json({ ok: true, company: createdCompany, request: updatedReq });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const company = await findCompanyById(req.params.companyId);
     if (!company) {
       res.status(404).json({ error: "company_not_found" });
@@ -49480,6 +51598,10 @@ adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
 });
 adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId } = req.params;
     const company = await findCompanyById(companyId);
     if (!company) {
@@ -49524,7 +51646,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID4(),
+      id: randomUUID6(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -49547,6 +51669,10 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
 });
 adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId, userId } = req.params;
     const company = await findCompanyById(companyId);
     if (!company) {
@@ -49594,7 +51720,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID4(),
+      id: randomUUID6(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -49609,6 +51735,10 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
 });
 adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId, userId } = req.params;
     const company = await findCompanyById(companyId);
     if (!company) {
@@ -49633,7 +51763,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID4(),
+      id: randomUUID6(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -49653,12 +51783,14 @@ adminJson.get("/rides", async (req, res, next) => {
       res.status(400).json({ error: parsed.error });
       return;
     }
+    const role = adminConsoleRole(req);
+    const scopedQuery = mergeAdminRideListQueryForPrincipal(role, req.adminAuth?.scopeCompanyId, parsed.query);
     const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
     const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
     const offset = (page - 1) * pageSize;
     const [total, rows] = await Promise.all([
-      countRidesAdmin(parsed.query),
-      listRidesAdminPage(parsed.query, pageSize, offset)
+      countRidesAdmin(scopedQuery),
+      listRidesAdminPage(scopedQuery, pageSize, offset)
     ]);
     const items = await attachAccessCodeSummariesToRides(rows);
     res.json({ ok: true, items, total, page, pageSize });
@@ -49673,6 +51805,11 @@ adminJson.get("/rides/:id", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
     res.json({ ok: true, ride });
   } catch (e) {
@@ -49681,6 +51818,16 @@ adminJson.get("/rides/:id", async (req, res, next) => {
 });
 adminJson.patch("/rides/:id/release", async (req, res, next) => {
   try {
+    const role = adminConsoleRole(req);
+    if (!canAdminReleaseRide(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const existing = await findRideAdminById(req.params.id);
+    if (!existing || !adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, existing)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     const updated = await adminReleaseRide(req.params.id);
     if (!updated) {
       res.status(404).json({ error: "not_found" });
@@ -49696,6 +51843,10 @@ adminJson.patch("/rides/:id/release", async (req, res, next) => {
 });
 adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId } = req.params;
     const body = req.body;
     if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
@@ -49729,6 +51880,10 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
 });
 adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
   try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const { companyId } = req.params;
     const body = req.body;
     const item = await patchCompanyPriority(companyId, body);
@@ -49743,6 +51898,10 @@ adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
 });
 adminJson.get("/fare-areas", async (_req, res, next) => {
   try {
+    if (!canMutateAdminFareAreas(adminConsoleRole(_req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const items = await listFareAreas();
     const activeProfile = await getPublicFareProfile();
     res.json({ ok: true, items, activeProfile });
@@ -49752,6 +51911,10 @@ adminJson.get("/fare-areas", async (_req, res, next) => {
 });
 adminJson.get("/access-codes", async (_req, res, next) => {
   try {
+    if (!canAccessAdminAccessCodes(adminConsoleRole(_req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const items = await listAccessCodesAdmin();
     res.json({
       ok: true,
@@ -49774,6 +51937,10 @@ adminJson.get("/access-codes", async (_req, res, next) => {
 });
 adminJson.post("/access-codes", async (req, res, next) => {
   try {
+    if (!canAccessAdminAccessCodes(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body;
     const generateCode = body.generateCode === true;
     const code = typeof body.code === "string" ? body.code : "";
@@ -49813,6 +51980,10 @@ adminJson.post("/access-codes", async (req, res, next) => {
 });
 adminJson.post("/fare-areas", async (req, res, next) => {
   try {
+    if (!canMutateAdminFareAreas(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body;
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) {
@@ -49844,6 +52015,10 @@ adminJson.post("/fare-areas", async (req, res, next) => {
 });
 adminJson.patch("/fare-areas/:id", async (req, res, next) => {
   try {
+    if (!canMutateAdminFareAreas(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const body = req.body;
     const patch = {};
     if (typeof body.name === "string") patch.name = body.name;
@@ -49881,6 +52056,10 @@ adminJson.patch("/fare-areas/:id", async (req, res, next) => {
 });
 adminJson.delete("/fare-areas/:id", async (req, res, next) => {
   try {
+    if (!canMutateAdminFareAreas(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
     const result = await deleteFareArea(req.params.id);
     if (!result.ok) {
       if (result.error === "not_found") {
@@ -49949,6 +52128,45 @@ async function findActivePanelUserByUsername(username) {
     updated_at: r.updated_at
   };
 }
+async function findActivePanelUserByEmailNormalized(email) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !normalized.includes("@")) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      sql`lower(trim(${panelUsersTable.email})) = ${normalized}`,
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(2);
+  if (rows.length !== 1) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    must_change_password: r.must_change_password,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
 async function findActivePanelUserProfileById(id) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
@@ -49957,6 +52175,7 @@ async function findActivePanelUserProfileById(id) {
     id: panelUsersTable.id,
     companyId: panelUsersTable.company_id,
     companyName: adminCompaniesTable.name,
+    companyKindRaw: adminCompaniesTable.company_kind,
     username: panelUsersTable.username,
     email: panelUsersTable.email,
     role: panelUsersTable.role,
@@ -49977,6 +52196,7 @@ async function findActivePanelUserProfileById(id) {
     id: r.id,
     companyId: r.companyId,
     companyName: r.companyName,
+    companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" ? r.companyKindRaw : "general",
     username: r.username,
     email: r.email,
     role: r.role,
@@ -50142,7 +52362,10 @@ router5.post("/panel-auth/login", async (req, res) => {
     res.status(400).json({ error: "username_and_password_required" });
     return;
   }
-  const row = await findActivePanelUserByUsername(username);
+  let row = await findActivePanelUserByUsername(username);
+  if (!row && username.includes("@")) {
+    row = await findActivePanelUserByEmailNormalized(username);
+  }
   if (!row || !isPanelRoleString(row.role)) {
     res.status(401).json({ error: "invalid_credentials" });
     return;
@@ -50183,23 +52406,213 @@ router5.post("/panel-auth/login", async (req, res) => {
 router5.post("/panel-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
+router5.post("/panel-auth/registration-request", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const body = req.body ?? {};
+  const str = (k) => typeof body[k] === "string" ? body[k].trim() : "";
+  const companyName = str("companyName");
+  const legalForm = str("legalForm");
+  const partnerTypeRaw = str("partnerType");
+  const contactFirstName = str("contactFirstName");
+  const contactLastName = str("contactLastName");
+  const email = str("email").toLowerCase();
+  const phone = str("phone");
+  const addressLine1 = str("addressLine1");
+  const postalCode = str("postalCode");
+  const city = str("city");
+  const country = str("country");
+  if (!companyName || !partnerTypeRaw || !contactFirstName || !contactLastName || !email || !phone || !addressLine1 || !postalCode || !city || !country) {
+    res.status(400).json({ error: "required_fields_missing" });
+    return;
+  }
+  if (!isPartnerType(partnerTypeRaw)) {
+    res.status(400).json({ error: "partner_type_invalid" });
+    return;
+  }
+  const usesVouchers = body.usesVouchers === true;
+  const requestedUsage = body.requestedUsage && typeof body.requestedUsage === "object" && !Array.isArray(body.requestedUsage) ? body.requestedUsage : {};
+  const documentsMeta = body.documentsMeta && typeof body.documentsMeta === "object" && !Array.isArray(body.documentsMeta) ? body.documentsMeta : {};
+  const created = await createPartnerRegistrationRequest({
+    companyName,
+    legalForm,
+    partnerType: partnerTypeRaw,
+    usesVouchers,
+    contactFirstName,
+    contactLastName,
+    email,
+    phone,
+    addressLine1,
+    postalCode,
+    city,
+    country,
+    taxId: str("taxId"),
+    vatId: str("vatId"),
+    concessionNumber: str("concessionNumber"),
+    desiredRegion: str("desiredRegion"),
+    requestedUsage,
+    documentsMeta,
+    notes: str("notes")
+  });
+  if (!created) {
+    res.status(503).json({ error: "create_failed" });
+    return;
+  }
+  res.status(201).json({ ok: true, request: created });
+});
+router5.get("/panel-auth/registration-request-status", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+  if (!email) {
+    res.status(400).json({ error: "email_required" });
+    return;
+  }
+  const row = await findLatestPartnerRegistrationRequestByEmail(email);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json({ ok: true, request: row });
+});
+router5.get("/panel-auth/registration-request/:id", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+  if (!id || !email) {
+    res.status(400).json({ error: "id_and_email_required" });
+    return;
+  }
+  const detail = await getPartnerRegistrationDetailAdmin(id);
+  if (!detail) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((detail.request.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  res.json({ ok: true, ...detail });
+});
+router5.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const message2 = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!id || !email || !message2) {
+    res.status(400).json({ error: "id_email_message_required" });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(id);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((row.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  await addPartnerRegistrationMessage(id, "partner", email, message2);
+  res.status(201).json({ ok: true });
+});
+router5.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  const payload = req.body?.payload && typeof req.body.payload === "object" && !Array.isArray(req.body.payload) ? req.body.payload : {};
+  if (!id || !email || !reason) {
+    res.status(400).json({ error: "id_email_reason_required" });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(id);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((row.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  await addPartnerRegistrationTimelineEvent({
+    requestId: id,
+    actorType: "partner",
+    actorLabel: email,
+    eventType: "master_data_change_requested",
+    message: reason,
+    payload
+  });
+  await patchPartnerRegistrationRequest(id, { status: "in_review" });
+  res.status(201).json({ ok: true });
+});
+router5.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "general";
+  const fileName = typeof req.body?.fileName === "string" ? req.body.fileName.trim() : "";
+  const mimeType = typeof req.body?.mimeType === "string" ? req.body.mimeType.trim() : "application/octet-stream";
+  const contentBase64 = typeof req.body?.contentBase64 === "string" ? req.body.contentBase64.trim() : "";
+  if (!id || !email || !fileName || !contentBase64) {
+    res.status(400).json({ error: "id_email_file_required" });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(id);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((row.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const doc = await addPartnerRegistrationDocument({
+    requestId: id,
+    category,
+    originalFileName: fileName,
+    mimeType,
+    contentBase64,
+    uploadedByActorType: "partner",
+    uploadedByActorLabel: email
+  });
+  if (!doc) {
+    res.status(503).json({ error: "upload_failed" });
+    return;
+  }
+  res.status(201).json({ ok: true, document: doc });
+});
 var panelAuth_default = router5;
 
 // src/routes/panelApi.ts
 var import_express6 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID8 } from "node:crypto";
 
 // src/db/panelCompanyData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
 var MAX = {
-  name: 200,
-  line: 500,
   short: 120,
-  vat: 64
+  line: 500,
+  url: 2048
 };
 function clip(s, max) {
   const t = s.trim();
@@ -50219,7 +52632,33 @@ function rowToPanelPublic(r) {
     city: r.city,
     country: r.country,
     vatId: r.vat_id,
-    isActive: r.is_active
+    isActive: r.is_active,
+    companyKind: r.company_kind === "taxi" || r.company_kind === "voucher_client" || r.company_kind === "insurer" || r.company_kind === "hotel" || r.company_kind === "corporate" ? r.company_kind : "general",
+    taxId: r.tax_id ?? "",
+    concessionNumber: r.concession_number ?? "",
+    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
+    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
+    legalForm: r.legal_form ?? "",
+    ownerName: r.owner_name ?? "",
+    supportEmail: r.support_email ?? "",
+    dispoPhone: r.dispo_phone ?? "",
+    logoUrl: r.logo_url ?? "",
+    openingHours: r.opening_hours ?? "",
+    businessNotes: r.business_notes ?? "",
+    billingName: r.billing_name ?? "",
+    billingAddressLine1: r.billing_address_line1 ?? "",
+    billingAddressLine2: r.billing_address_line2 ?? "",
+    billingPostalCode: r.billing_postal_code ?? "",
+    billingCity: r.billing_city ?? "",
+    billingCountry: r.billing_country ?? "",
+    bankIban: r.bank_iban ?? "",
+    bankBic: r.bank_bic ?? "",
+    verificationStatus: r.verification_status ?? "pending",
+    complianceStatus: r.compliance_status ?? "pending",
+    contractStatus: r.contract_status ?? "inactive",
+    isBlocked: Boolean(r.is_blocked),
+    maxDrivers: r.max_drivers ?? 100,
+    maxVehicles: r.max_vehicles ?? 100
   };
 }
 async function getPanelCompanyById(companyId) {
@@ -50249,43 +52688,27 @@ async function patchPanelCompanyProfile(companyId, patch) {
     return { ok: false, error: "no_changes" };
   }
   const set = {};
-  if (patch.name !== void 0) {
-    const name = clip(patch.name, MAX.name);
-    if (!name) {
-      return { ok: false, error: "name_required" };
-    }
-    set.name = name;
-  }
   if (patch.contactName !== void 0) {
     set.contact_name = clip(patch.contactName, MAX.short);
   }
-  if (patch.email !== void 0) {
-    const e = clip(patch.email, MAX.short);
+  if (patch.supportEmail !== void 0) {
+    const e = clip(patch.supportEmail, MAX.short);
     if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
       return { ok: false, error: "email_invalid" };
     }
-    set.email = e;
+    set.support_email = e;
   }
-  if (patch.phone !== void 0) {
-    set.phone = clip(patch.phone, MAX.short);
+  if (patch.dispoPhone !== void 0) {
+    set.dispo_phone = clip(patch.dispoPhone, MAX.short);
   }
-  if (patch.addressLine1 !== void 0) {
-    set.address_line1 = clip(patch.addressLine1, MAX.line);
+  if (patch.logoUrl !== void 0) {
+    set.logo_url = clip(patch.logoUrl, MAX.url);
   }
-  if (patch.addressLine2 !== void 0) {
-    set.address_line2 = clip(patch.addressLine2, MAX.line);
+  if (patch.openingHours !== void 0) {
+    set.opening_hours = clip(patch.openingHours, MAX.line);
   }
-  if (patch.postalCode !== void 0) {
-    set.postal_code = clip(patch.postalCode, 32);
-  }
-  if (patch.city !== void 0) {
-    set.city = clip(patch.city, MAX.short);
-  }
-  if (patch.country !== void 0) {
-    set.country = clip(patch.country, MAX.short);
-  }
-  if (patch.vatId !== void 0) {
-    set.vat_id = clip(patch.vatId, MAX.vat);
+  if (patch.businessNotes !== void 0) {
+    set.business_notes = clip(patch.businessNotes, MAX.line);
   }
   if (Object.keys(set).length === 0) {
     return { ok: false, error: "no_changes" };
@@ -50299,6 +52722,69 @@ async function patchPanelCompanyProfile(companyId, patch) {
   return { ok: true, company: rowToPanelPublic(r1) };
 }
 
+// src/db/companyGovernanceData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+async function getFleetLoginCompanyDenyReason(companyId) {
+  if (!isPostgresConfigured()) return "company_not_found";
+  const db2 = getDb();
+  if (!db2) return "company_not_found";
+  const rows = await db2.select({
+    is_active: adminCompaniesTable.is_active,
+    is_blocked: adminCompaniesTable.is_blocked,
+    contract_status: adminCompaniesTable.contract_status
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r = rows[0];
+  if (!r) return "company_not_found";
+  if (!r.is_active) return "company_inactive";
+  if (Boolean(r.is_blocked)) return "company_blocked";
+  const cs = String(r.contract_status ?? "").trim() || "inactive";
+  if (cs !== "active") return "contract_not_active";
+  return null;
+}
+async function getCompanyGovernanceGate(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  const requiredProfileComplete = Boolean(
+    String(r.name ?? "").trim() && String(r.legal_form ?? "").trim() && String(r.owner_name ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.billing_name ?? "").trim() && String(r.billing_address_line1 ?? "").trim() && String(r.billing_postal_code ?? "").trim() && String(r.billing_city ?? "").trim() && String(r.billing_country ?? "").trim()
+  );
+  return {
+    companyId: r.id,
+    companyKind: r.company_kind ?? "general",
+    verificationStatus: r.verification_status ?? "pending",
+    complianceStatus: r.compliance_status ?? "pending",
+    contractStatus: r.contract_status ?? "inactive",
+    isBlocked: Boolean(r.is_blocked),
+    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
+    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
+    maxDrivers: r.max_drivers ?? 100,
+    maxVehicles: r.max_vehicles ?? 100,
+    requiredProfileComplete,
+    farePermissions: r.fare_permissions ?? {},
+    insurerPermissions: r.insurer_permissions ?? {},
+    areaAssignments: Array.isArray(r.area_assignments) ? r.area_assignments.filter((x) => typeof x === "string") : []
+  };
+}
+async function countFleetDriversForCompany(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: count() }).from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
+  return Number(rows[0]?.n ?? 0);
+}
+async function countFleetVehiclesForCompany(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: count() }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
+  return Number(rows[0]?.n ?? 0);
+}
+
 // src/routes/panelApi.ts
 init_accessCodesData();
 init_ridesData();
@@ -50307,7 +52793,7 @@ init_ridesData();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID5 } from "node:crypto";
+import { randomUUID as randomUUID7 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -50325,7 +52811,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID5()}`;
+  const id = `SRS-${randomUUID7()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -50476,6 +52962,41 @@ function denyUnlessCompanyOrOverview(res, profile) {
   res.status(403).json({ error: "module_disabled", hint: "overview_or_company_profile" });
   return false;
 }
+function permissionFlag(obj, key, fallback = false) {
+  if (!obj) return fallback;
+  const v = obj[key];
+  return typeof v === "boolean" ? v : fallback;
+}
+function normalizeAreaAssignments(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v) => typeof v === "string").map((v) => v.trim().toLowerCase()).filter((v) => v.length > 0);
+}
+function isRouteCoveredByAreas(areas, route) {
+  if (areas.length === 0) return true;
+  const haystack = [
+    route.from,
+    route.fromFull,
+    route.to,
+    route.toFull
+  ].filter((v) => typeof v === "string" && v.trim().length > 0).map((v) => v.toLowerCase());
+  if (haystack.length === 0) return false;
+  return areas.some((a) => haystack.some((h) => h.includes(a)));
+}
+function checkCompanyBookingGovernance(gate, input) {
+  if (!gate) return { ok: true };
+  if (input.payerKind === "insurance" && !permissionFlag(gate.insurerPermissions, "book", false)) {
+    return { ok: false, error: "insurer_booking_not_allowed" };
+  }
+  if (input.rideKind === "voucher" && !permissionFlag(gate.farePermissions, "voucher", false)) {
+    return { ok: false, error: "voucher_booking_not_allowed" };
+  }
+  const areas = normalizeAreaAssignments(gate.areaAssignments);
+  if ((input.routeChecks ?? []).length > 0) {
+    const allCovered = input.routeChecks.every((r) => isRouteCoveredByAreas(areas, r));
+    if (!allCovered) return { ok: false, error: "route_outside_assigned_area" };
+  }
+  return { ok: true };
+}
 async function enrichPanelRidesForResponse(rides) {
   const enriched = await attachAccessCodeSummariesToRides(rides);
   const codeIds = [...new Set(enriched.map((r) => r.accessCodeId).filter((x) => Boolean(x)))];
@@ -50488,7 +53009,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID6()}`;
+  return `REQ-${randomUUID8()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -50729,6 +53250,7 @@ router6.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
       id: profile.id,
       companyId: profile.companyId,
       companyName: profile.companyName,
+      companyKind: profile.companyKind,
       username: profile.username,
       email: profile.email,
       role: profile.role,
@@ -50761,26 +53283,18 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const body = req.body;
     const str = (k) => typeof body[k] === "string" ? body[k] : void 0;
     const patch = {};
-    const n = str("name");
     const cn = str("contactName");
-    const em = str("email");
-    const ph = str("phone");
-    const a1 = str("addressLine1");
-    const a2 = str("addressLine2");
-    const pc = str("postalCode");
-    const ci = str("city");
-    const co = str("country");
-    const vi = str("vatId");
-    if (n !== void 0) patch.name = n;
+    const dispoPhone = str("dispoPhone");
+    const supportEmail = str("supportEmail");
+    const logoUrl = str("logoUrl");
+    const openingHours = str("openingHours");
+    const businessNotes = str("businessNotes");
     if (cn !== void 0) patch.contactName = cn;
-    if (em !== void 0) patch.email = em;
-    if (ph !== void 0) patch.phone = ph;
-    if (a1 !== void 0) patch.addressLine1 = a1;
-    if (a2 !== void 0) patch.addressLine2 = a2;
-    if (pc !== void 0) patch.postalCode = pc;
-    if (ci !== void 0) patch.city = ci;
-    if (co !== void 0) patch.country = co;
-    if (vi !== void 0) patch.vatId = vi;
+    if (dispoPhone !== void 0) patch.dispoPhone = dispoPhone;
+    if (supportEmail !== void 0) patch.supportEmail = supportEmail;
+    if (logoUrl !== void 0) patch.logoUrl = logoUrl;
+    if (openingHours !== void 0) patch.openingHours = openingHours;
+    if (businessNotes !== void 0) patch.businessNotes = businessNotes;
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {
       const code = result.error;
@@ -50792,7 +53306,7 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
         res.status(400).json({ error: code });
         return;
       }
-      if (code === "name_required" || code === "email_invalid") {
+      if (code === "email_invalid") {
         res.status(400).json({ error: code });
         return;
       }
@@ -50800,7 +53314,7 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -50809,6 +53323,56 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
       meta: { fields: Object.keys(patch) }
     });
     res.json({ ok: true, company: result.company });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const rows = await listCompanyChangeRequestsByCompany(ctx.claims.companyId);
+    res.json({ ok: true, requests: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const b = req.body;
+    const requestType = typeof b.requestType === "string" ? b.requestType.trim() : "";
+    const reason = typeof b.reason === "string" ? b.reason.trim() : "";
+    const payload = b.payload && typeof b.payload === "object" && !Array.isArray(b.payload) ? b.payload : {};
+    if (!requestType) {
+      res.status(400).json({ error: "request_type_required" });
+      return;
+    }
+    const created = await insertCompanyChangeRequest({
+      id: randomUUID8(),
+      companyId: ctx.claims.companyId,
+      requestedByPanelUserId: ctx.claims.panelUserId,
+      requestType,
+      reason,
+      payload
+    });
+    if (!created) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID8(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "company.change_request.created",
+      subjectType: "company_change_request",
+      subjectId: created.id,
+      meta: { requestType }
+    });
+    res.status(201).json({ ok: true, request: created });
   } catch (e) {
     next(e);
   }
@@ -50917,6 +53481,16 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     }
     const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
     const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [{ from, fromFull, to, toFull }]
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const newReq = {
@@ -50970,7 +53544,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -51023,6 +53597,16 @@ router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     }
     const rideKind = parseRideKind(rawRk) ?? "standard";
     const payerKind = parsePayerKind(rawPk) ?? "company";
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [{ from: leg.from, fromFull: leg.fromFull, to: leg.to, toFull: leg.toFull }]
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const partnerBookingMeta = {
@@ -51086,7 +53670,7 @@ router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -51144,6 +53728,19 @@ router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [
+        { from: outLeg.from, fromFull: outLeg.fromFull, to: outLeg.to, toFull: outLeg.toFull },
+        { from: retLeg.from, fromFull: retLeg.fromFull, to: retLeg.to, toFull: retLeg.toFull }
+      ]
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const idOut = reqRideId();
@@ -51240,7 +53837,7 @@ router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       [savedOut, savedRet].filter((x) => Boolean(x))
     );
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -51314,6 +53911,16 @@ router6.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [{ from: leg.from, fromFull: leg.fromFull, to: leg.to, toFull: leg.toFull }]
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
     const seriesRow = await insertPartnerRideSeries({
@@ -51396,7 +54003,7 @@ router6.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
     const enriched = await enrichPanelRidesForResponse(loaded.filter((x) => Boolean(x)));
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -51525,7 +54132,7 @@ router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -51572,7 +54179,7 @@ router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -51617,7 +54224,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -51686,7 +54293,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -51773,7 +54380,7 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -51828,7 +54435,7 @@ router6.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -51878,7 +54485,7 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID6(),
+      id: randomUUID8(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -51893,20 +54500,1132 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
 });
 var panelApi_default = router6;
 
-// src/routes/index.ts
+// src/routes/fleetAuth.ts
+var import_express7 = __toESM(require_express2(), 1);
+init_client();
+
+// src/db/fleetDriversData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID9 } from "node:crypto";
+function rowToList(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    email: r.email,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    phone: r.phone,
+    accessStatus: r.access_status,
+    isActive: r.is_active,
+    mustChangePassword: r.must_change_password,
+    pScheinNumber: r.p_schein_number,
+    pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
+    pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
+    lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function getCompanyKind(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({ k: adminCompaniesTable.company_kind }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const k = rows[0]?.k;
+  return typeof k === "string" ? k : null;
+}
+async function findFleetDriverAuthRow(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: fleetDriversTable.id,
+    company_id: fleetDriversTable.company_id,
+    session_version: fleetDriversTable.session_version,
+    is_active: fleetDriversTable.is_active,
+    access_status: fleetDriversTable.access_status
+  }).from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    session_version: r.session_version,
+    is_active: r.is_active,
+    access_status: r.access_status
+  };
+}
+async function findFleetDriverByEmailNormalized(email) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const em = email.trim().toLowerCase();
+  if (!em) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(sql`lower(trim(${fleetDriversTable.email})) = ${em}`).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetDriverInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function listFleetDriversForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
+  return rows.map(rowToList);
+}
+async function insertFleetDriver(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: "email_invalid" };
+  }
+  const existing = await findFleetDriverByEmailNormalized(email);
+  if (existing) {
+    return { ok: false, error: "email_taken" };
+  }
+  const id = `fd-${randomUUID9()}`;
+  await db2.insert(fleetDriversTable).values({
+    id,
+    company_id: input.companyId,
+    email,
+    first_name: input.firstName.trim(),
+    last_name: input.lastName.trim(),
+    phone: input.phone.trim(),
+    password_hash: input.passwordHash,
+    must_change_password: input.mustChangePassword,
+    is_active: true,
+    access_status: "active",
+    session_version: 1
+  });
+  return { ok: true, id };
+}
+async function patchFleetDriverProfile(id, companyId, patch) {
+  const cur = await findFleetDriverInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.firstName !== void 0) set.first_name = patch.firstName.trim();
+  if (patch.lastName !== void 0) set.last_name = patch.lastName.trim();
+  if (patch.phone !== void 0) set.phone = patch.phone.trim();
+  if (patch.pScheinNumber !== void 0) set.p_schein_number = patch.pScheinNumber.trim();
+  if (patch.pScheinExpiry !== void 0) {
+    const raw = patch.pScheinExpiry?.trim();
+    set.p_schein_expiry = raw ? raw : null;
+  }
+  if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
+  await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
+  return { ok: true };
+}
+async function updateFleetDriverPassword(id, companyId, passwordHash, mustChangePassword) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    password_hash: passwordHash,
+    must_change_password: mustChangePassword,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function suspendFleetDriver(id, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "suspended",
+    is_active: false,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function activateFleetDriver(id, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "active",
+    is_active: true,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function touchFleetDriverLogin(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(fleetDriversTable).set({ last_login_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
+}
+async function touchFleetDriverHeartbeat(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(fleetDriversTable).set({ last_heartbeat_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
+}
+async function countFleetDriversPScheinExpiringSoon(companyId, withinDays) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const today = /* @__PURE__ */ new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const until = new Date(today);
+  until.setUTCDate(until.getUTCDate() + withinDays);
+  const todayStr = today.toISOString().slice(0, 10);
+  const untilStr = until.toISOString().slice(0, 10);
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetDriversTable).where(
+    and(
+      eq(fleetDriversTable.company_id, companyId),
+      isNotNull(fleetDriversTable.p_schein_expiry),
+      gte(fleetDriversTable.p_schein_expiry, todayStr),
+      lte(fleetDriversTable.p_schein_expiry, untilStr)
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function countFleetDriversOnline(companyId, withinSeconds) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const since = new Date(Date.now() - withinSeconds * 1e3);
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetDriversTable).where(
+    and(
+      eq(fleetDriversTable.company_id, companyId),
+      eq(fleetDriversTable.access_status, "active"),
+      eq(fleetDriversTable.is_active, true),
+      isNotNull(fleetDriversTable.last_heartbeat_at),
+      gte(fleetDriversTable.last_heartbeat_at, since)
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+// src/lib/fleetDriverJwt.ts
+function getSecretKey3() {
+  const fleet = (process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim();
+  if (fleet) {
+    return new TextEncoder().encode(fleet);
+  }
+  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
+  if (panel) {
+    return new TextEncoder().encode(panel);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FLEET_DRIVER_JWT_SECRET or PANEL_JWT_SECRET is required for fleet driver tokens in production");
+  }
+  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!auth) {
+    throw new Error("FLEET_DRIVER_JWT_SECRET, PANEL_JWT_SECRET, or AUTH_JWT_SECRET must be set");
+  }
+  return new TextEncoder().encode(auth);
+}
+function issuer3() {
+  return (process.env.FLEET_DRIVER_JWT_ISSUER ?? "onroda-fleet-driver").trim() || "onroda-fleet-driver";
+}
+function isFleetDriverJwtConfigured() {
+  if ((process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim()) return true;
+  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) return true;
+  if (process.env.NODE_ENV === "production") return false;
+  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
+}
+async function signFleetDriverJwt(claims, expiresIn = "14d") {
+  const secret = getSecretKey3();
+  return new SignJWT({
+    kind: "fleet_driver",
+    companyId: claims.companyId,
+    email: claims.email,
+    sv: claims.sessionVersion
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.fleetDriverId).setIssuedAt().setIssuer(issuer3()).setExpirationTime(expiresIn).sign(secret);
+}
+async function verifyFleetDriverJwt(token) {
+  const secret = getSecretKey3();
+  const { payload } = await jwtVerify(token, secret, {
+    issuer: issuer3(),
+    algorithms: ["HS256"]
+  });
+  return payloadToFleetDriverClaims(payload);
+}
+function payloadToFleetDriverClaims(payload) {
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  if (!sub) throw new Error("invalid fleet driver token: missing sub");
+  if (payload.kind !== "fleet_driver") throw new Error("invalid fleet driver token: wrong kind");
+  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const sv = typeof payload.sv === "number" ? payload.sv : Number(payload.sv);
+  if (!companyId || !email || !Number.isFinite(sv)) {
+    throw new Error("invalid fleet driver token: missing claims");
+  }
+  return { fleetDriverId: sub, companyId, email, sessionVersion: Math.floor(sv) };
+}
+
+// src/lib/fleetLoginRateLimit.ts
+var WINDOW_MS2 = 6e4;
+var MAX_ATTEMPTS2 = 25;
+var buckets2 = /* @__PURE__ */ new Map();
+function rateLimitFleetLogin(ip) {
+  const k = ip.trim() || "unknown";
+  const now = Date.now();
+  let b = buckets2.get(k);
+  if (!b || now >= b.resetAt) {
+    b = { count: 0, resetAt: now + WINDOW_MS2 };
+    buckets2.set(k, b);
+  }
+  b.count += 1;
+  if (b.count > MAX_ATTEMPTS2) {
+    const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
+    return { ok: false, retryAfterSec };
+  }
+  return { ok: true };
+}
+
+// src/routes/fleetAuth.ts
 var router7 = (0, import_express7.Router)();
-router7.use(health_default);
-router7.use(auth_default);
-router7.use(panelAuth_default);
-router7.use(panelApi_default);
-router7.use(adminApi_default);
-router7.use(rides_default);
-var routes_default = router7;
+router7.post("/fleet-auth/login", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitFleetLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  if (!isFleetDriverJwtConfigured()) {
+    res.status(503).json({
+      error: "fleet_jwt_not_configured",
+      hint: "Set FLEET_DRIVER_JWT_SECRET or PANEL_JWT_SECRET (or AUTH_JWT_SECRET in non-production)."
+    });
+    return;
+  }
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!email || !password) {
+    res.status(400).json({ error: "email_and_password_required" });
+    return;
+  }
+  const row = await findFleetDriverByEmailNormalized(email);
+  if (!row) {
+    res.status(401).json({ error: "invalid_credentials" });
+    return;
+  }
+  const kind = await getCompanyKind(row.company_id);
+  if (kind !== "taxi") {
+    res.status(403).json({ error: "fleet_login_only_taxi_company" });
+    return;
+  }
+  const deny = await getFleetLoginCompanyDenyReason(row.company_id);
+  if (deny) {
+    res.status(403).json({ error: deny });
+    return;
+  }
+  if (!row.is_active || row.access_status !== "active") {
+    res.status(403).json({ error: "driver_suspended" });
+    return;
+  }
+  const ok2 = await verifyPassword(password, row.password_hash);
+  if (!ok2) {
+    res.status(401).json({ error: "invalid_credentials" });
+    return;
+  }
+  let token;
+  try {
+    token = await signFleetDriverJwt({
+      fleetDriverId: row.id,
+      companyId: row.company_id,
+      email: row.email,
+      sessionVersion: row.session_version
+    });
+  } catch (e) {
+    console.error("[fleet-auth/login] signFleetDriverJwt:", e);
+    res.status(500).json({ error: "token_sign_failed" });
+    return;
+  }
+  await touchFleetDriverLogin(row.id);
+  res.json({
+    ok: true,
+    token,
+    passwordChangeRequired: row.must_change_password,
+    driver: {
+      id: row.id,
+      companyId: row.company_id,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      mustChangePassword: row.must_change_password
+    }
+  });
+});
+router7.post("/fleet-auth/logout", (_req, res) => {
+  res.json({ ok: true });
+});
+var fleetAuth_default = router7;
+
+// src/routes/fleetDriverApi.ts
+var import_express8 = __toESM(require_express2(), 1);
+init_client();
+
+// src/middleware/requireFleetDriverAuth.ts
+function bearerToken2(req) {
+  const raw = req.get("authorization")?.trim();
+  if (!raw) return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  const t = m?.[1]?.trim();
+  return t && t.length > 0 ? t : null;
+}
+var requireFleetDriverAuth = async (req, res, next) => {
+  const token = bearerToken2(req);
+  if (!token) {
+    res.status(401).json({
+      error: "unauthorized",
+      hint: "Send Authorization: Bearer <fleet_jwt> from POST /api/fleet-auth/login."
+    });
+    return;
+  }
+  try {
+    const claims = await verifyFleetDriverJwt(token);
+    const row = await findFleetDriverAuthRow(claims.fleetDriverId);
+    if (!row || row.company_id !== claims.companyId) {
+      res.status(401).json({ error: "invalid_token" });
+      return;
+    }
+    if (!row.is_active || row.access_status !== "active") {
+      res.status(403).json({ error: "driver_suspended" });
+      return;
+    }
+    if (row.session_version !== claims.sessionVersion) {
+      res.status(401).json({ error: "token_revoked" });
+      return;
+    }
+    req.fleetDriverAuth = claims;
+    next();
+  } catch {
+    res.status(401).json({ error: "invalid_token" });
+  }
+};
+
+// src/routes/fleetDriverApi.ts
+var router8 = (0, import_express8.Router)();
+router8.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const a = req.fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+  if (!row) {
+    res.status(401).json({ error: "not_found" });
+    return;
+  }
+  res.json({
+    ok: true,
+    driver: {
+      id: row.id,
+      companyId: row.company_id,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      accessStatus: row.access_status,
+      mustChangePassword: row.must_change_password
+    }
+  });
+});
+router8.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+  const a = req.fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  await touchFleetDriverHeartbeat(a.fleetDriverId);
+  res.json({ ok: true });
+});
+router8.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+  const a = req.fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const body = req.body;
+  const cur = typeof body.currentPassword === "string" ? body.currentPassword : "";
+  const neu = typeof body.newPassword === "string" ? body.newPassword : "";
+  if (neu.length < 10) {
+    res.status(400).json({ error: "password_fields_invalid", hint: "newPassword min length 10" });
+    return;
+  }
+  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+  if (!row) {
+    res.status(401).json({ error: "not_found" });
+    return;
+  }
+  const okCur = await verifyPassword(cur, row.password_hash);
+  if (!okCur) {
+    res.status(400).json({ error: "current_password_invalid" });
+    return;
+  }
+  const hash = await hashPassword(neu);
+  const ok2 = await updateFleetDriverPassword(row.id, row.company_id, hash, false);
+  if (!ok2) {
+    res.status(500).json({ error: "password_update_failed" });
+    return;
+  }
+  res.json({ ok: true });
+});
+var fleetDriverApi_default = router8;
+
+// src/routes/fleetPanelApi.ts
+var import_express9 = __toESM(require_express2(), 1);
+init_drizzle_orm();
+import { randomUUID as randomUUID12 } from "node:crypto";
+import fs from "node:fs/promises";
+import path3 from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+init_client();
+init_schema2();
+
+// src/db/fleetVehiclesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID10 } from "node:crypto";
+function rowToVehicle(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    licensePlate: r.license_plate,
+    vin: r.vin,
+    color: r.color,
+    model: r.model,
+    vehicleType: r.vehicle_type,
+    taxiOrderNumber: r.taxi_order_number,
+    nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
+    isActive: r.is_active,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function countActiveFleetVehicles(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.company_id, companyId), eq(fleetVehiclesTable.is_active, true)));
+  return Number(rows[0]?.n ?? 0);
+}
+async function listFleetVehiclesForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
+  return rows.map(rowToVehicle);
+}
+async function findFleetVehicleInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function insertFleetVehicle(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const plate = input.licensePlate.trim();
+  if (!plate) return { ok: false, error: "license_plate_required" };
+  const id = `fv-${randomUUID10()}`;
+  await db2.insert(fleetVehiclesTable).values({
+    id,
+    company_id: input.companyId,
+    license_plate: plate,
+    vin: (input.vin ?? "").trim(),
+    color: (input.color ?? "").trim(),
+    model: (input.model ?? "").trim(),
+    vehicle_type: input.vehicleType,
+    taxi_order_number: (input.taxiOrderNumber ?? "").trim(),
+    next_inspection_date: input.nextInspectionDate?.trim() || null,
+    is_active: input.isActive ?? true
+  });
+  return { ok: true, id };
+}
+async function patchFleetVehicle(id, companyId, patch) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.licensePlate !== void 0) set.license_plate = patch.licensePlate.trim();
+  if (patch.vin !== void 0) set.vin = patch.vin.trim();
+  if (patch.color !== void 0) set.color = patch.color.trim();
+  if (patch.model !== void 0) set.model = patch.model.trim();
+  if (patch.vehicleType !== void 0) set.vehicle_type = patch.vehicleType;
+  if (patch.taxiOrderNumber !== void 0) set.taxi_order_number = patch.taxiOrderNumber.trim();
+  if (patch.nextInspectionDate !== void 0) {
+    set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
+  }
+  if (patch.isActive !== void 0) set.is_active = patch.isActive;
+  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+
+// src/db/fleetAssignmentsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID11 } from "node:crypto";
+function toRow(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    driverId: r.driver_id,
+    vehicleId: r.vehicle_id,
+    assignedAt: r.assigned_at.toISOString()
+  };
+}
+async function listAssignmentsForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.company_id, companyId));
+  return rows.map(toRow);
+}
+async function setDriverVehicleAssignment(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const dRows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, input.driverId), eq(fleetDriversTable.company_id, input.companyId))).limit(1);
+  if (!dRows[0]) return { ok: false, error: "driver_not_found" };
+  const vRows = await db2.select({ id: fleetVehiclesTable.id }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
+  if (!vRows[0]) return { ok: false, error: "vehicle_not_found" };
+  await db2.transaction(async (tx) => {
+    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
+    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
+    await tx.insert(driverVehicleAssignmentsTable).values({
+      id: `fva-${randomUUID11()}`,
+      company_id: input.companyId,
+      driver_id: input.driverId,
+      vehicle_id: input.vehicleId
+    });
+  });
+  return { ok: true };
+}
+async function clearDriverAssignment(driverId, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.delete(driverVehicleAssignmentsTable).where(
+    and(
+      eq(driverVehicleAssignmentsTable.driver_id, driverId),
+      eq(driverVehicleAssignmentsTable.company_id, companyId)
+    )
+  ).returning({ id: driverVehicleAssignmentsTable.id });
+  return r.length > 0;
+}
+
+// src/routes/fleetPanelApi.ts
+var router9 = (0, import_express9.Router)();
+var pkgRoot = path3.join(path3.dirname(fileURLToPath2(import.meta.url)), "..", "..");
+var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path3.join(pkgRoot, "data", "fleet-uploads");
+function enabledPanelModules2(panelModules) {
+  return resolveEffectivePanelModules(panelModules);
+}
+async function assertFleetPanel(req, res) {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return null;
+  }
+  const claims = req.panelAuth;
+  if (!claims) {
+    res.status(401).json({ error: "unauthorized" });
+    return null;
+  }
+  const profile = await findActivePanelUserProfileById(claims.panelUserId);
+  if (!profile || !isPanelRoleString(profile.role)) {
+    res.status(401).json({ error: "user_inactive_or_missing" });
+    return null;
+  }
+  if (profile.companyId !== claims.companyId) {
+    res.status(401).json({ error: "token_out_of_sync" });
+    return null;
+  }
+  const kind = await getCompanyKind(profile.companyId);
+  if (kind !== "taxi") {
+    res.status(403).json({ error: "fleet_only_taxi_company" });
+    return null;
+  }
+  if (!enabledPanelModules2(profile.panelModules).includes("taxi_fleet")) {
+    res.status(403).json({ error: "module_not_enabled", module: "taxi_fleet" });
+    return null;
+  }
+  return { claims, profile };
+}
+async function requireFleetProvisioningReady(companyId) {
+  const gate = await getCompanyGovernanceGate(companyId);
+  if (!gate) return { ok: false, error: "company_not_found" };
+  if (gate.companyKind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
+  if (gate.isBlocked) return { ok: false, error: "company_blocked" };
+  if (gate.verificationStatus !== "verified") return { ok: false, error: "company_not_verified" };
+  if (gate.complianceStatus !== "compliant") return { ok: false, error: "company_not_compliant" };
+  if (gate.contractStatus !== "active") return { ok: false, error: "contract_not_active" };
+  if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
+  if (!gate.hasComplianceGewerbe || !gate.hasComplianceInsurance) {
+    return { ok: false, error: "required_documents_missing" };
+  }
+  return { ok: true };
+}
+router9.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
+    const companyId = ctx.claims.companyId;
+    const [drivers, vehicles] = await Promise.all([
+      listFleetDriversForCompany(companyId),
+      listFleetVehiclesForCompany(companyId)
+    ]);
+    const online = await countFleetDriversOnline(companyId, 120);
+    const pScheinSoon = await countFleetDriversPScheinExpiringSoon(companyId, 30);
+    const vehiclesActive = await countActiveFleetVehicles(companyId);
+    res.json({
+      ok: true,
+      driversOnline: online,
+      driversTotal: drivers.length,
+      vehiclesActive,
+      vehiclesTotal: vehicles.length,
+      pScheinExpiringWithin30Days: pScheinSoon
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
+    const onlyExpiring = String(req.query.pScheinExpiring ?? "") === "1";
+    let rows = await listFleetDriversForCompany(ctx.claims.companyId);
+    if (onlyExpiring) {
+      const today = /* @__PURE__ */ new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const until = new Date(today);
+      until.setUTCDate(until.getUTCDate() + 30);
+      const t0 = today.toISOString().slice(0, 10);
+      const t1 = until.toISOString().slice(0, 10);
+      rows = rows.filter((d) => {
+        if (!d.pScheinExpiry) return false;
+        return d.pScheinExpiry >= t0 && d.pScheinExpiry <= t1;
+      });
+    }
+    res.json({ ok: true, drivers: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const b = req.body;
+    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    if (!gate.ok) {
+      res.status(403).json({ error: gate.error });
+      return;
+    }
+    const c = await countFleetDriversForCompany(ctx.claims.companyId);
+    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
+    if (limits && c >= limits.maxDrivers) {
+      res.status(403).json({ error: "driver_limit_reached", maxDrivers: limits.maxDrivers });
+      return;
+    }
+    const email = typeof b.email === "string" ? b.email : "";
+    const firstName = typeof b.firstName === "string" ? b.firstName : "";
+    const lastName = typeof b.lastName === "string" ? b.lastName : "";
+    const phone = typeof b.phone === "string" ? b.phone : "";
+    const initialPassword = typeof b.initialPassword === "string" && b.initialPassword.length >= 10 ? b.initialPassword : generateTemporaryPassword();
+    const hash = await hashPassword(initialPassword);
+    const ins = await insertFleetDriver({
+      companyId: ctx.claims.companyId,
+      email,
+      firstName,
+      lastName,
+      phone,
+      passwordHash: hash,
+      mustChangePassword: true
+    });
+    if (!ins.ok) {
+      const code = ins.error;
+      res.status(code === "email_taken" ? 409 : 400).json({ error: code });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID12(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_created",
+      subjectType: "fleet_driver",
+      subjectId: ins.id,
+      meta: { email: email.trim().toLowerCase() }
+    });
+    res.status(201).json({ ok: true, id: ins.id, initialPassword });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const id = req.params.id;
+    const b = req.body;
+    const patch = {};
+    if (typeof b.firstName === "string") patch.firstName = b.firstName;
+    if (typeof b.lastName === "string") patch.lastName = b.lastName;
+    if (typeof b.phone === "string") patch.phone = b.phone;
+    if (typeof b.pScheinNumber === "string") patch.pScheinNumber = b.pScheinNumber;
+    if (b.pScheinExpiry === null || typeof b.pScheinExpiry === "string") {
+      patch.pScheinExpiry = b.pScheinExpiry === null ? null : b.pScheinExpiry;
+    }
+    const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
+    if (!r.ok) {
+      res.status(404).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const ok2 = await suspendFleetDriver(req.params.id, ctx.claims.companyId);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID12(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_suspended",
+      subjectType: "fleet_driver",
+      subjectId: req.params.id,
+      meta: {}
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const ok2 = await activateFleetDriver(req.params.id, ctx.claims.companyId);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID12(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_activated",
+      subjectType: "fleet_driver",
+      subjectId: req.params.id,
+      meta: {}
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const b = req.body;
+    const neu = typeof b.newPassword === "string" && b.newPassword.length >= 10 ? b.newPassword : generateTemporaryPassword();
+    const hash = await hashPassword(neu);
+    const ok2 = await updateFleetDriverPassword(req.params.id, ctx.claims.companyId, hash, true);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID12(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_password_reset",
+      subjectType: "fleet_driver",
+      subjectId: req.params.id,
+      meta: {}
+    });
+    res.json({ ok: true, newPassword: neu });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post(
+  "/panel/v1/fleet/drivers/:id/p-schein-doc",
+  requirePanelAuth,
+  import_express9.default.raw({ type: "application/pdf", limit: "6mb" }),
+  async (req, res, next) => {
+    try {
+      const ctx = await assertFleetPanel(req, res);
+      if (!ctx) return;
+      if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+      const buf = req.body;
+      if (!buf || buf.length < 8) {
+        res.status(400).json({ error: "pdf_body_required" });
+        return;
+      }
+      const id = req.params.id;
+      const row = await findFleetDriverInCompany(id, ctx.claims.companyId);
+      if (!row) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const rel = path3.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID12()}.pdf`);
+      const dest = path3.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path3.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, buf);
+      const storageKey = rel.replace(/\\/g, "/");
+      const pr = await patchFleetDriverProfile(id, ctx.claims.companyId, { pScheinDocStorageKey: storageKey });
+      if (!pr.ok) {
+        res.status(500).json({ error: "update_failed" });
+        return;
+      }
+      res.json({ ok: true, storageKey });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+router9.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
+    let rows = await listFleetVehiclesForCompany(ctx.claims.companyId);
+    if (String(req.query.activeOnly ?? "") === "1") {
+      rows = rows.filter((v) => v.isActive);
+    }
+    res.json({ ok: true, vehicles: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const b = req.body;
+    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    if (!gate.ok) {
+      res.status(403).json({ error: gate.error });
+      return;
+    }
+    const c = await countFleetVehiclesForCompany(ctx.claims.companyId);
+    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
+    if (limits && c >= limits.maxVehicles) {
+      res.status(403).json({ error: "vehicle_limit_reached", maxVehicles: limits.maxVehicles });
+      return;
+    }
+    const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
+    const vehicleType = typeof b.vehicleType === "string" ? b.vehicleType : "sedan";
+    const allowed = ["sedan", "station_wagon", "van", "wheelchair"];
+    if (!allowed.includes(vehicleType)) {
+      res.status(400).json({ error: "invalid_vehicle_type" });
+      return;
+    }
+    const ins = await insertFleetVehicle({
+      companyId: ctx.claims.companyId,
+      licensePlate,
+      vin: typeof b.vin === "string" ? b.vin : "",
+      color: typeof b.color === "string" ? b.color : "",
+      model: typeof b.model === "string" ? b.model : "",
+      vehicleType,
+      taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
+      nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
+      isActive: typeof b.isActive === "boolean" ? b.isActive : true
+    });
+    if (!ins.ok) {
+      res.status(400).json({ error: ins.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID12(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.vehicle_created",
+      subjectType: "fleet_vehicle",
+      subjectId: ins.id,
+      meta: { licensePlate }
+    });
+    res.status(201).json({ ok: true, id: ins.id });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const b = req.body;
+    const patch = {};
+    if (typeof b.licensePlate === "string") patch.licensePlate = b.licensePlate;
+    if (typeof b.vin === "string") patch.vin = b.vin;
+    if (typeof b.color === "string") patch.color = b.color;
+    if (typeof b.model === "string") patch.model = b.model;
+    if (typeof b.taxiOrderNumber === "string") patch.taxiOrderNumber = b.taxiOrderNumber;
+    if (typeof b.nextInspectionDate === "string" || b.nextInspectionDate === null) {
+      patch.nextInspectionDate = b.nextInspectionDate === null ? null : b.nextInspectionDate;
+    }
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    if (typeof b.vehicleType === "string") {
+      const vt = b.vehicleType;
+      const allowed = ["sedan", "station_wagon", "van", "wheelchair"];
+      if (!allowed.includes(vt)) {
+        res.status(400).json({ error: "invalid_vehicle_type" });
+        return;
+      }
+      patch.vehicleType = vt;
+    }
+    const r = await patchFleetVehicle(req.params.id, ctx.claims.companyId, patch);
+    if (!r.ok) {
+      res.status(404).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
+    const rows = await listAssignmentsForCompany(ctx.claims.companyId);
+    res.json({ ok: true, assignments: rows });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const b = req.body;
+    const driverId = typeof b.driverId === "string" ? b.driverId : "";
+    const vehicleId = typeof b.vehicleId === "string" ? b.vehicleId : "";
+    const r = await setDriverVehicleAssignment({
+      companyId: ctx.claims.companyId,
+      driverId,
+      vehicleId
+    });
+    if (!r.ok) {
+      res.status(400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    await clearDriverAssignment(req.params.driverId, ctx.claims.companyId);
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post(
+  "/panel/v1/fleet/compliance/:kind",
+  requirePanelAuth,
+  import_express9.default.raw({ type: "application/pdf", limit: "8mb" }),
+  async (req, res, next) => {
+    try {
+      const ctx = await assertFleetPanel(req, res);
+      if (!ctx) return;
+      if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+      const kind = req.params.kind;
+      if (kind !== "gewerbe" && kind !== "insurance") {
+        res.status(400).json({ error: "invalid_kind" });
+        return;
+      }
+      const buf = req.body;
+      if (!buf || buf.length < 8) {
+        res.status(400).json({ error: "pdf_body_required" });
+        return;
+      }
+      const rel = path3.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID12()}.pdf`);
+      const dest = path3.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path3.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, buf);
+      const storageKey = rel.replace(/\\/g, "/");
+      const db2 = getDb();
+      if (!db2) {
+        res.status(503).json({ error: "database_not_configured" });
+        return;
+      }
+      const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
+      await db2.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, ctx.claims.companyId));
+      await insertPanelAuditLog({
+        id: randomUUID12(),
+        companyId: ctx.claims.companyId,
+        actorPanelUserId: ctx.claims.panelUserId,
+        action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
+        subjectType: "admin_company",
+        subjectId: ctx.claims.companyId,
+        meta: {}
+      });
+      res.json({ ok: true, storageKey });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+var fleetPanelApi_default = router9;
+
+// src/routes/index.ts
+var router10 = (0, import_express10.Router)();
+router10.use(health_default);
+router10.use(auth_default);
+router10.use(panelAuth_default);
+router10.use(fleetAuth_default);
+router10.use(fleetDriverApi_default);
+router10.use(fleetPanelApi_default);
+router10.use(panelApi_default);
+router10.use(adminApi_default);
+router10.use(rides_default);
+var routes_default = router10;
 
 // src/routes/admin.ts
-var import_express8 = __toESM(require_express2(), 1);
-var router8 = (0, import_express8.Router)();
-router8.get("/admin", (_req, res) => {
+var import_express11 = __toESM(require_express2(), 1);
+var router11 = (0, import_express11.Router)();
+router11.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -51926,7 +55645,7 @@ router8.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router8;
+var admin_default = router11;
 
 // src/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
@@ -51947,30 +55666,30 @@ var logger = (0, import_pino.default)({
 });
 
 // src/app.ts
-var app = (0, import_express9.default)();
+var app = (0, import_express12.default)();
 function resolveStaticRoot() {
   const fromEnv = process.env["STATIC_ROOT"];
   if (fromEnv && fromEnv.length > 0) {
-    return path2.resolve(fromEnv);
+    return path4.resolve(fromEnv);
   }
-  const distDir = path2.dirname(fileURLToPath2(import.meta.url));
-  return path2.join(distDir, "..", "static");
+  const distDir = path4.dirname(fileURLToPath3(import.meta.url));
+  return path4.join(distDir, "..", "static");
 }
 function resolvePublicRoot() {
   const fromEnv = process.env["ADMIN_STATIC_ROOT"];
   if (fromEnv && fromEnv.length > 0) {
-    return path2.resolve(fromEnv);
+    return path4.resolve(fromEnv);
   }
-  const apiDistDir = path2.dirname(fileURLToPath2(import.meta.url));
-  return path2.join(apiDistDir, "..", "..", "admin-panel", "dist");
+  const apiDistDir = path4.dirname(fileURLToPath3(import.meta.url));
+  return path4.join(apiDistDir, "..", "..", "admin-panel", "dist");
 }
 function resolvePanelPublicRoot() {
   const fromEnv = process.env["PANEL_STATIC_ROOT"];
   if (fromEnv && fromEnv.length > 0) {
-    return path2.resolve(fromEnv);
+    return path4.resolve(fromEnv);
   }
-  const apiDistDir = path2.dirname(fileURLToPath2(import.meta.url));
-  return path2.join(apiDistDir, "..", "..", "partner-panel", "dist");
+  const apiDistDir = path4.dirname(fileURLToPath3(import.meta.url));
+  return path4.join(apiDistDir, "..", "..", "partner-panel", "dist");
 }
 var staticRoot = resolveStaticRoot();
 var panelPublicRoot = resolvePanelPublicRoot();
@@ -52049,18 +55768,18 @@ app.use(
     maxAge: 86400
   })
 );
-app.use(import_express9.default.json());
-app.use(import_express9.default.urlencoded({ extended: true }));
+app.use(import_express12.default.json());
+app.use(import_express12.default.urlencoded({ extended: true }));
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
 var adminPublicRoot = resolvePublicRoot();
-app.use("/partners", import_express9.default.static(adminPublicRoot));
+app.use("/partners", import_express12.default.static(adminPublicRoot));
 app.use("/partners", (req, res, next) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return next();
   }
-  res.sendFile(path2.join(adminPublicRoot, "index.html"), (err) => {
+  res.sendFile(path4.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
@@ -52068,7 +55787,7 @@ app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) {
     return next();
   }
-  import_express9.default.static(panelPublicRoot)(req, res, next);
+  import_express12.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) {
@@ -52080,7 +55799,7 @@ app.use((req, res, next) => {
   if (req.path.startsWith("/partners")) {
     return next();
   }
-  res.sendFile(path2.join(panelPublicRoot, "index.html"), (err) => {
+  res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
@@ -52089,12 +55808,12 @@ app.use((req, res, next) => {
   if (p === "/partners" || p.startsWith("/partners/")) {
     return next();
   }
-  import_express9.default.static(staticRoot, { index: false })(req, res, next);
+  import_express12.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {
-    const filePath = path2.join(staticRoot, "index.html");
+    const filePath = path4.join(staticRoot, "index.html");
     return res.sendFile(filePath);
   }
   if (isApiHost(host)) {
@@ -52115,12 +55834,14 @@ app.get("/", (req, res, next) => {
         panelRidesList: "/api/panel/v1/rides",
         panelRidesCreate: "POST /api/panel/v1/rides",
         panelHealth: "/api/panel/v1/health",
-        panelLogout: "/api/panel-auth/logout"
+        panelLogout: "/api/panel-auth/logout",
+        fleetAuthLogin: "/api/fleet-auth/login",
+        fleetDriverMe: "/api/fleet-driver/v1/me"
       }
     });
   }
   if (isPanelBrowserHost(host)) {
-    return res.sendFile(path2.join(panelPublicRoot, "index.html"), (err) => {
+    return res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
       if (err) next(err);
     });
   }

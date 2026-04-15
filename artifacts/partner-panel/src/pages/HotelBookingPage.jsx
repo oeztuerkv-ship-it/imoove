@@ -152,7 +152,9 @@ export default function HotelBookingPage() {
                     ? "Code gehört nicht zu Ihrem Unternehmen."
                     : code === "access_code_in_use"
                       ? "Code ist bereits in Benutzung (andere laufende Fahrt)."
-                      : code === "access_code_invalid" || code === "access_code_inactive" || code === "access_code_expired" || code === "access_code_exhausted"
+                      : code === "access_code_not_yet_valid"
+                        ? "Zugangscode ist noch nicht gültig (Startzeit der Freigabe)."
+                        : code === "access_code_invalid" || code === "access_code_inactive" || code === "access_code_expired" || code === "access_code_exhausted"
                         ? "Zugangscode ungültig, abgelaufen oder aufgebraucht."
                         : "Buchung konnte nicht gespeichert werden.",
         );

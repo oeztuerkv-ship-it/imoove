@@ -123,6 +123,50 @@ function permissionFlag(obj: Record<string, unknown> | undefined, key: string, f
   return typeof v === "boolean" ? v : fallback;
 }
 
+function normalizeAreaAssignments(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim().toLowerCase())
+    .filter((v) => v.length > 0);
+}
+
+function isRouteCoveredByAreas(
+  areas: string[],
+  route: { from?: string | null; fromFull?: string | null; to?: string | null; toFull?: string | null },
+): boolean {
+  if (areas.length === 0) return true;
+  const haystack = [
+    route.from,
+    route.fromFull,
+    route.to,
+    route.toFull,
+  ]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map((v) => v.toLowerCase());
+  if (haystack.length === 0) return false;
+  return areas.some((a) => haystack.some((h) => h.includes(a)));
+}
+
+function checkCompanyBookingGovernance(
+  gate: Awaited<ReturnType<typeof getCompanyGovernanceGate>>,
+  input: { rideKind: string; payerKind: string; routeChecks?: Array<{ from?: string | null; fromFull?: string | null; to?: string | null; toFull?: string | null }> },
+): { ok: true } | { ok: false; error: string } {
+  if (!gate) return { ok: true };
+  if (input.payerKind === "insurance" && !permissionFlag(gate.insurerPermissions, "book", false)) {
+    return { ok: false, error: "insurer_booking_not_allowed" };
+  }
+  if (input.rideKind === "voucher" && !permissionFlag(gate.farePermissions, "voucher", false)) {
+    return { ok: false, error: "voucher_booking_not_allowed" };
+  }
+  const areas = normalizeAreaAssignments(gate.areaAssignments);
+  if ((input.routeChecks ?? []).length > 0) {
+    const allCovered = input.routeChecks.every((r) => isRouteCoveredByAreas(areas, r));
+    if (!allCovered) return { ok: false, error: "route_outside_assigned_area" };
+  }
+  return { ok: true };
+}
+
 async function enrichPanelRidesForResponse(rides: RideRequest[]): Promise<RideRequest[]> {
   const enriched = await attachAccessCodeSummariesToRides(rides);
   const codeIds = [...new Set(enriched.map((r) => r.accessCodeId).filter((x): x is string => Boolean(x)))];
@@ -721,19 +765,14 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
       const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
       const g = await getCompanyGovernanceGate(ctx.claims.companyId);
-      if (g && payerKind === "insurance") {
-        const okInsurer = permissionFlag(g.insurerPermissions, "book", false);
-        if (!okInsurer) {
-          res.status(403).json({ error: "insurer_booking_not_allowed" });
-          return;
-        }
-      }
-      if (g && rideKind === "voucher") {
-        const okVoucher = permissionFlag(g.farePermissions, "voucher", false);
-        if (!okVoucher) {
-          res.status(403).json({ error: "voucher_booking_not_allowed" });
-          return;
-        }
+      const gov = checkCompanyBookingGovernance(g, {
+        rideKind,
+        payerKind,
+        routeChecks: [{ from, fromFull, to, toFull }],
+      });
+      if (!gov.ok) {
+        res.status(403).json({ error: gov.error });
+        return;
       }
       const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
       const billingReference = parseOptionalBillingTag(body.billingReference, 256);
@@ -860,6 +899,16 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
     }
     const rideKind = parseRideKind(rawRk) ?? "standard";
     const payerKind = parsePayerKind(rawPk) ?? "company";
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [{ from: leg.from, fromFull: leg.fromFull, to: leg.to, toFull: leg.toFull }],
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
@@ -994,6 +1043,19 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [
+        { from: outLeg.from, fromFull: outLeg.fromFull, to: outLeg.to, toFull: outLeg.toFull },
+        { from: retLeg.from, fromFull: retLeg.fromFull, to: retLeg.to, toFull: retLeg.toFull },
+      ],
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
@@ -1189,6 +1251,16 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const g = await getCompanyGovernanceGate(ctx.claims.companyId);
+    const gov = checkCompanyBookingGovernance(g, {
+      rideKind,
+      payerKind,
+      routeChecks: [{ from: leg.from, fromFull: leg.fromFull, to: leg.to, toFull: leg.toFull }],
+    });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
     const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
     const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 

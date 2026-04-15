@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import { findFleetDriverByEmailNormalized, getCompanyKind, touchFleetDriverLogin } from "../db/fleetDriversData";
-import { getCompanyGovernanceGate } from "../db/companyGovernanceData";
+import { getFleetLoginCompanyDenyReason } from "../db/companyGovernanceData";
 import { isFleetDriverJwtConfigured, signFleetDriverJwt } from "../lib/fleetDriverJwt";
 import { rateLimitFleetLogin } from "../lib/fleetLoginRateLimit";
 import { verifyPassword } from "../lib/password";
@@ -47,9 +47,9 @@ router.post("/fleet-auth/login", async (req, res) => {
     res.status(403).json({ error: "fleet_login_only_taxi_company" });
     return;
   }
-  const gate = await getCompanyGovernanceGate(row.company_id);
-  if (!gate || gate.isBlocked || gate.contractStatus !== "active") {
-    res.status(403).json({ error: "company_access_blocked" });
+  const deny = await getFleetLoginCompanyDenyReason(row.company_id);
+  if (deny) {
+    res.status(403).json({ error: deny });
     return;
   }
 

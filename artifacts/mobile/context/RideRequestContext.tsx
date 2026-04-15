@@ -255,7 +255,11 @@ function normalizeRequest(r: any): RideRequest {
     passengerId: r.passengerId ?? r.passenger_id,
     driverId: r.driverId ?? r.driver_id ?? null,
     status: (r.status ?? "requested") as RequestStatus,
-    rejectedBy: r.rejectedBy ?? [],
+    rejectedBy: Array.isArray(r.rejectedBy)
+      ? r.rejectedBy
+      : Array.isArray(r.rejected_by)
+        ? r.rejected_by
+        : [],
   } as RideRequest;
 }
 

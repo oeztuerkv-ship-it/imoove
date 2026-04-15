@@ -6,6 +6,37 @@ const STORAGE_KEY = "@Onroda_driver_session";
 const DRIVER_HEARTBEAT_MS = 45_000;
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
 
+/** Lesbare Meldung zu `POST /fleet-auth/login` — siehe `getFleetLoginCompanyDenyReason` / `fleetAuth.ts`. */
+function fleetLoginUserMessage(errorCode: string): string {
+  switch (errorCode) {
+    case "invalid_credentials":
+      return "E-Mail oder Passwort ist falsch.";
+    case "company_not_found":
+      return "Unternehmensdaten fehlen. Bitte den Betrieb oder den Support kontaktieren.";
+    case "company_inactive":
+      return "Ihr Unternehmenszugang ist deaktiviert. Bitte den Betrieb oder den Support.";
+    case "company_blocked":
+      return "Ihr Unternehmen ist gesperrt. Bitte den Support kontaktieren.";
+    case "contract_not_active":
+      return "Kein aktiver Vertrag für Ihr Unternehmen hinterlegt. Bitte Betrieb oder Admin: Vertragsstatus muss „active“ sein.";
+    case "fleet_login_only_taxi_company":
+      return "Fahrer-Login steht nur Taxi-Unternehmen zur Verfügung.";
+    case "driver_suspended":
+      return "Ihr Fahrer-Zugang ist pausiert. Bitte den Betrieb kontaktieren.";
+    case "rate_limited":
+      return "Zu viele Anmeldeversuche. Bitte einen Moment warten und erneut versuchen.";
+    case "email_and_password_required":
+      return "Bitte E-Mail und Passwort eingeben.";
+    case "fleet_jwt_not_configured":
+    case "database_not_configured":
+      return "Dienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.";
+    case "company_access_blocked":
+      return "Unternehmenszugang blockiert. Bitte den Betrieb oder den Support (Vertrag / Sperre / Aktivierung).";
+    default:
+      return errorCode || "Anmeldung fehlgeschlagen.";
+  }
+}
+
 export interface DriverProfile {
   id: string;
   companyId: string;
@@ -123,12 +154,13 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         const parsedError = typeof data.error === "string" ? data.error : "";
         const parsedHint = typeof data.hint === "string" ? data.hint : "";
         const bodySnippet = rawText.trim().slice(0, 400);
-        const msg =
-          parsedError || parsedHint
-            ? [parsedError, parsedHint].filter(Boolean).join("\n\n")
+        const userFacing = parsedError
+          ? [fleetLoginUserMessage(parsedError), parsedHint].filter(Boolean).join("\n\n")
+          : parsedHint
+            ? parsedHint
             : `HTTP ${res.status} ${res.statusText || ""}\nURL: ${API_BASE}/fleet-auth/login\n${bodySnippet || "Anmeldung fehlgeschlagen."}`.trim();
-        setLastError(msg);
-        return { ok: false, error: msg };
+        setLastError(userFacing);
+        return { ok: false, error: userFacing };
       }
       const d = data.driver as Record<string, unknown>;
       const profile: DriverProfile = {

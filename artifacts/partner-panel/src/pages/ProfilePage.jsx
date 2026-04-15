@@ -222,8 +222,9 @@ export default function ProfilePage() {
         <div className="panel-card panel-card--wide">
           <h3 className="panel-card__title">Geschützte Stammdaten (nur Admin / Änderungsantrag)</h3>
           <p className="panel-page__lead">
-            Firmenname, Rechtsform, Inhaber, Steuerdaten, Konzession, offizielle Anschrift, Rechnungsdaten,
-            Vertrags-/Compliance-Status und Limits sind gesperrt.
+            Diese Felder kommen direkt aus der Plattform-Datenbank (vom Operator gepflegt). Im Partner-Panel nur
+            Anzeige — keine Bearbeitung. Änderungen laufen über die Onroda-Zentrale oder einen formalen
+            Änderungsantrag.
           </p>
           <p className="panel-card__row">
             <span className="panel-card__k">Status</span>
@@ -244,6 +245,52 @@ export default function ProfilePage() {
           <p className="panel-card__row">
             <span className="panel-card__k">Inhaber</span>
             {company.ownerName || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Steuer-ID</span>
+            {company.taxId || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">USt-IdNr.</span>
+            {company.vatId || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Konzession / Genehmigung</span>
+            {company.concessionNumber || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Offizielle Anschrift</span>
+            {[company.addressLine1, company.addressLine2].filter(Boolean).join(", ") || "—"}
+            <br />
+            <span className="panel-card__muted">
+              {[company.postalCode, company.city, company.country].filter(Boolean).join(" ") || ""}
+            </span>
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Firmen-E-Mail / Telefon</span>
+            {[company.email, company.phone].filter(Boolean).join(" · ") || "—"}
+          </p>
+          <h4 className="panel-card__subtitle">Rechnungsstellung</h4>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Rechnungsempfänger</span>
+            {company.billingName || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">Rechnungsadresse</span>
+            {[company.billingAddressLine1, company.billingAddressLine2].filter(Boolean).join(", ") || "—"}
+            <br />
+            <span className="panel-card__muted">
+              {[company.billingPostalCode, company.billingCity, company.billingCountry].filter(Boolean).join(" ") || ""}
+            </span>
+          </p>
+          <h4 className="panel-card__subtitle">Bankverbindung</h4>
+          <p className="panel-card__row">
+            <span className="panel-card__k">IBAN</span>
+            {company.bankIban || "—"}
+          </p>
+          <p className="panel-card__row">
+            <span className="panel-card__k">BIC</span>
+            {company.bankBic || "—"}
           </p>
         </div>
       ) : null}
