@@ -7,11 +7,33 @@ import { filterNavItems, firstNavKey } from "./lib/panelNavigation.js";
 export default function App() {
   const { user, booting, logout } = usePanelAuth();
   const [active, setActive] = useState("overview");
+  const INACTIVITY_MS = 10 * 60 * 1000;
 
   const navItems = useMemo(
     () => filterNavItems(user?.panelModules, user?.permissions),
     [user?.panelModules, user?.permissions],
   );
+
+  useEffect(() => {
+    if (!user) return;
+    let timer = window.setTimeout(() => {
+      void logout();
+      window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
+    }, INACTIVITY_MS);
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void logout();
+        window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
+      }, INACTIVITY_MS);
+    };
+    const events = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [user, logout]);
 
   useEffect(() => {
     if (!user) return;

@@ -104,6 +104,7 @@ interface RideRequestContextValue {
       voucherCode?: string | null;
       billingReference?: string | null;
       accessCode?: string | null;
+      accessCodeVerifyToken?: string | null;
     },
   ) => Promise<string>;
   acceptRequest: (id: string, driverId?: string) => Promise<void>;
@@ -397,14 +398,21 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         voucherCode?: string | null;
         billingReference?: string | null;
         accessCode?: string | null;
+        accessCodeVerifyToken?: string | null;
       },
     ): Promise<string> => {
       const resolvedPassengerId = await ensurePassengerId();
       const rideKind = req.rideKind ?? "standard";
       const payerKind = req.payerKind ?? "passenger";
       const accessTrim = typeof req.accessCode === "string" ? req.accessCode.trim() : "";
-      const { accessCode: _unused, ...reqForBody } = req as typeof req & { accessCode?: string | null };
+      const verifyToken =
+        typeof req.accessCodeVerifyToken === "string" ? req.accessCodeVerifyToken.trim() : "";
+      const { accessCode: _unused, accessCodeVerifyToken: _uv, ...reqForBody } = req as typeof req & {
+        accessCode?: string | null;
+        accessCodeVerifyToken?: string | null;
+      };
       void _unused;
+      void _uv;
       const payload = {
         ...reqForBody,
         passengerId:
@@ -416,11 +424,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         voucherCode: req.voucherCode ?? undefined,
         billingReference: req.billingReference ?? undefined,
         ...(accessTrim ? { accessCode: accessTrim } : {}),
+        ...(verifyToken ? { accessCodeVerifyToken: verifyToken } : {}),
       };
       if (!API_BASE) {
         const id = `REQ-${Date.now()}`;
-        const { accessCode: _oc, ...reqSansCode } = req as typeof req & { accessCode?: string | null };
+        const { accessCode: _oc, accessCodeVerifyToken: _ov, ...reqSansCode } = req as typeof req & {
+          accessCode?: string | null;
+          accessCodeVerifyToken?: string | null;
+        };
         void _oc;
+        void _ov;
         const newReq: RideRequest = {
           ...reqSansCode,
           passengerId:

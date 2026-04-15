@@ -18,10 +18,12 @@ import {
 } from "../db/ridesData";
 import {
   DEFAULT_AUTHORIZATION_SOURCE,
+  normalizeAccessCodeInput,
   parseAuthorizationSource,
 } from "../domain/rideAuthorization";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
+import { verifyAccessCode } from "../db/accessCodesData";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -37,6 +39,17 @@ export const driverLocations = new Map<string, DriverLocation>();
 export const customerLocations = new Map<string, DriverLocation>();
 
 const router = Router();
+const CODE_VERIFY_TTL_MS = 5 * 60 * 1000;
+const codeVerifySessions = new Map<
+  string,
+  { driverId: string; normalized: string; expiresAt: number }
+>();
+
+function cleanupCodeVerifySessions(now = Date.now()): void {
+  for (const [key, session] of codeVerifySessions) {
+    if (session.expiresAt <= now) codeVerifySessions.delete(key);
+  }
+}
 
 const ACTIVE_RIDE_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
   "requested",
@@ -168,9 +181,41 @@ router.get("/rides", async (_req, res, next) => {
   }
 });
 
+router.post("/rides/access-code/verify", async (req, res, next) => {
+  try {
+    const body = req.body as { accessCode?: unknown; driverId?: unknown };
+    const accessCode = typeof body.accessCode === "string" ? body.accessCode.trim() : "";
+    const driverId = typeof body.driverId === "string" ? body.driverId.trim() : "";
+    if (!accessCode || !driverId) {
+      res.status(400).json({ error: "access_code_or_driver_missing" });
+      return;
+    }
+    const probe = await verifyAccessCode(accessCode, null);
+    if (!probe.ok) {
+      res.status(400).json({ error: probe.error });
+      return;
+    }
+    cleanupCodeVerifySessions();
+    const verifyToken = `acv-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    codeVerifySessions.set(verifyToken, {
+      driverId,
+      normalized: probe.normalized,
+      expiresAt: Date.now() + CODE_VERIFY_TTL_MS,
+    });
+    res.json({
+      ok: true,
+      verifyToken,
+      expiresInSeconds: Math.floor(CODE_VERIFY_TTL_MS / 1000),
+      summary: { codeType: probe.codeType, label: probe.label },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.post("/rides", async (req, res, next) => {
   try {
-    const raw = req.body as Partial<RideRequest>;
+    const raw = req.body as Partial<RideRequest> & { accessCodeVerifyToken?: unknown };
     if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
       res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
       return;
@@ -220,6 +265,27 @@ router.post("/rides", async (req, res, next) => {
     };
     const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;
+    const accessCodeVerifyToken =
+      typeof raw.accessCodeVerifyToken === "string" ? raw.accessCodeVerifyToken.trim() : "";
+    const driverIdForCodeRide =
+      typeof raw.driverId === "string" ? raw.driverId.trim() : "";
+    const normalizedCode = accessCodePlain ? normalizeAccessCodeInput(accessCodePlain) : null;
+    if (normalizedCode && driverIdForCodeRide) {
+      cleanupCodeVerifySessions();
+      const session = accessCodeVerifyToken
+        ? codeVerifySessions.get(accessCodeVerifyToken)
+        : null;
+      const isSessionValid =
+        !!session &&
+        session.expiresAt > Date.now() &&
+        session.driverId === driverIdForCodeRide &&
+        session.normalized === normalizedCode;
+      if (!isSessionValid) {
+        res.status(409).json({ error: "access_code_verify_required" });
+        return;
+      }
+      codeVerifySessions.delete(accessCodeVerifyToken);
+    }
     const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
     if (!ins.ok) {
       res.status(400).json({ error: ins.error });

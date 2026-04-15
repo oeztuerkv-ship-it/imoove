@@ -13,6 +13,10 @@ export type RedeemErrorCode =
   | "access_code_exhausted"
   | "access_code_wrong_company";
 
+export type AccessCodeProbeResult =
+  | { ok: true; id: string; codeType: string; label: string; companyIdOnCode: string | null; normalized: string }
+  | { ok: false; error: RedeemErrorCode };
+
 type MemRow = {
   id: string;
   code_normalized: string;
@@ -111,6 +115,73 @@ export function redeemAccessCodeMemory(
     codeType: row.code_type,
     label: labelOrDefault(row.label),
     companyIdOnCode: row.company_id,
+  };
+}
+
+export function verifyAccessCodeMemory(
+  plain: string,
+  bookingCompanyId: string | null,
+): AccessCodeProbeResult {
+  const normalized = normalizeAccessCodeInput(plain);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const row = memByNormalized.get(normalized);
+  if (!row) return { ok: false, error: "access_code_invalid" };
+  const err = validateMemRow(row, bookingCompanyId);
+  if (err) return { ok: false, error: err };
+  return {
+    ok: true,
+    id: row.id,
+    codeType: row.code_type,
+    label: labelOrDefault(row.label),
+    companyIdOnCode: row.company_id,
+    normalized,
+  };
+}
+
+export async function verifyAccessCode(
+  plain: string,
+  bookingCompanyId: string | null,
+): Promise<AccessCodeProbeResult> {
+  const normalized = normalizeAccessCodeInput(plain);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const db = getDb();
+  if (!db) return verifyAccessCodeMemory(plain, bookingCompanyId);
+  const tnow = new Date();
+  const [probe] = await db
+    .select({
+      id: accessCodesTable.id,
+      code_type: accessCodesTable.code_type,
+      label: accessCodesTable.label,
+      company_id: accessCodesTable.company_id,
+      is_active: accessCodesTable.is_active,
+      valid_from: accessCodesTable.valid_from,
+      valid_until: accessCodesTable.valid_until,
+      max_uses: accessCodesTable.max_uses,
+      uses_count: accessCodesTable.uses_count,
+    })
+    .from(accessCodesTable)
+    .where(eq(accessCodesTable.code_normalized, normalized))
+    .limit(1);
+  if (!probe) return { ok: false, error: "access_code_invalid" };
+  if (!probe.is_active) return { ok: false, error: "access_code_inactive" };
+  if (
+    bookingCompanyId &&
+    probe.company_id &&
+    probe.company_id !== bookingCompanyId
+  ) {
+    return { ok: false, error: "access_code_wrong_company" };
+  }
+  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
+  if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
+  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  if (!isAccessCodeType(probe.code_type)) return { ok: false, error: "access_code_invalid" };
+  return {
+    ok: true,
+    id: probe.id,
+    codeType: probe.code_type,
+    label: labelOrDefault(probe.label ?? ""),
+    companyIdOnCode: probe.company_id ?? null,
+    normalized,
   };
 }
 

@@ -192,6 +192,7 @@ const PAGE_META = {
 };
 
 export default function App() {
+  const INACTIVITY_MS = 10 * 60 * 1000;
   const [active, setActive] = useState("dashboard");
   const [authBooting, setAuthBooting] = useState(true);
   const [authUser, setAuthUser] = useState(null);
@@ -208,6 +209,27 @@ export default function App() {
 
   const current = PAGE_META[active] || PAGE_META.dashboard;
   const userRole = authUser?.role ?? "admin";
+
+  useEffect(() => {
+    if (!authUser) return;
+    let timer = window.setTimeout(() => {
+      onLogout();
+      window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
+    }, INACTIVITY_MS);
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        onLogout();
+        window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
+      }, INACTIVITY_MS);
+    };
+    const events = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, [authUser]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;

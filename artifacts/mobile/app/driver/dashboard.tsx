@@ -44,6 +44,7 @@ function accessCodeErrorMessage(code: string): string {
     access_code_expired: "Dieser Code ist abgelaufen.",
     access_code_exhausted: "Dieser Code wurde bereits vollstaendig eingeloest.",
     access_code_wrong_company: "Dieser Code passt nicht zu diesem Unternehmen.",
+    access_code_verify_required: "Bitte den Code zuerst verifizieren.",
     request_failed: "Die Fahrt konnte nicht erstellt werden.",
   };
   return m[code] ?? "Die Fahrt konnte nicht erstellt werden.";
@@ -1521,6 +1522,7 @@ export default function DriverDashboard() {
   const [codeRideFrom, setCodeRideFrom] = useState("");
   const [codeRideTo, setCodeRideTo] = useState("");
   const [codeRideAccessCode, setCodeRideAccessCode] = useState("");
+  const [codeRideVerifyToken, setCodeRideVerifyToken] = useState("");
   const [codeRideCustomer, setCodeRideCustomer] = useState("");
   const [codeRideVerified, setCodeRideVerified] = useState(false);
   const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
@@ -1700,9 +1702,16 @@ export default function DriverDashboard() {
     setCodeRideFrom("");
     setCodeRideTo("");
     setCodeRideAccessCode("");
+    setCodeRideVerifyToken("");
     setCodeRideCustomer("");
     setCodeRideVerified(false);
   }, []);
+
+  useEffect(() => {
+    if (!codeRideVerified) return;
+    setCodeRideVerified(false);
+    setCodeRideVerifyToken("");
+  }, [codeRideAccessCode]);
 
   const handleVerifyCodeRide = useCallback(() => {
     const accessCode = codeRideAccessCode.trim();
@@ -1710,14 +1719,37 @@ export default function DriverDashboard() {
       Alert.alert("Codefahrt", "Bitte zuerst den Gutschein-/Freigabe-Code eingeben.");
       return;
     }
-    if (accessCode.length < 4) {
-      Alert.alert("Codefahrt", "Der Code ist zu kurz. Bitte vollständigen Code eingeben.");
+    if (!driverId.trim()) {
+      Alert.alert("Codefahrt", "Fahrer-ID fehlt. Bitte neu anmelden.");
       return;
     }
-    setCodeRideVerified(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Codefahrt", "Fahrt genehmigt. Jetzt bitte Start und Ziel eintragen.");
-  }, [codeRideAccessCode]);
+    setCodeRideSubmitting(true);
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/rides/access-code/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessCode, driverId }),
+        });
+        const data = await res.json().catch(() => ({} as { error?: string; verifyToken?: string }));
+        if (!res.ok || !data?.verifyToken) {
+          const code = typeof data?.error === "string" ? data.error : "request_failed";
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert("Codefahrt", accessCodeErrorMessage(code));
+          return;
+        }
+        setCodeRideVerifyToken(data.verifyToken);
+        setCodeRideVerified(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Codefahrt", "Fahrt genehmigt. Jetzt bitte Start und Ziel eintragen.");
+      } catch {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Codefahrt", "Code-Prüfung aktuell nicht möglich. Bitte erneut versuchen.");
+      } finally {
+        setCodeRideSubmitting(false);
+      }
+    })();
+  }, [codeRideAccessCode, driverId]);
 
   const handleCreateCodeRide = useCallback(async () => {
     const from = codeRideFrom.trim();
@@ -1749,7 +1781,9 @@ export default function DriverDashboard() {
         paymentMethod: "Code",
         vehicle: driver.car || "Taxi",
         customerName: codeRideCustomer.trim() || "Laufkunde",
+        driverId,
         accessCode,
+        accessCodeVerifyToken: codeRideVerifyToken,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowCodeRideModal(false);
@@ -1763,7 +1797,7 @@ export default function DriverDashboard() {
     } finally {
       setCodeRideSubmitting(false);
     }
-  }, [addRequest, codeRideAccessCode, codeRideCustomer, codeRideFrom, codeRideTo, codeRideVerified, driver, resetCodeRideForm]);
+  }, [addRequest, codeRideAccessCode, codeRideCustomer, codeRideFrom, codeRideTo, codeRideVerified, codeRideVerifyToken, driver, driverId, resetCodeRideForm]);
 
   if (!driver) {
     return (
