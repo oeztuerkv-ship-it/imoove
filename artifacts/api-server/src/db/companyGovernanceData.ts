@@ -61,21 +61,23 @@ export async function getCompanyGovernanceGate(companyId: string): Promise<Compa
     .limit(1);
   const r = rows[0];
   if (!r) return null;
+  /**
+   * Mindest-Stammdaten für Flotten-Freischaltung (Partner/Admin-UI sichtbar):
+   * Mandanten-Art, Steuer-ID, Konzessionsnummer, Name, E-Mail, Telefon,
+   * Adresse Zeile 1, PLZ, Ort, Land, USt-IdNr.
+   */
   const requiredProfileComplete = Boolean(
-    String(r.name ?? "").trim() &&
-      String(r.legal_form ?? "").trim() &&
-      String(r.owner_name ?? "").trim() &&
+    String(r.company_kind ?? "").trim() &&
       String(r.tax_id ?? "").trim() &&
       String(r.concession_number ?? "").trim() &&
+      String(r.name ?? "").trim() &&
+      String(r.email ?? "").trim() &&
+      String(r.phone ?? "").trim() &&
       String(r.address_line1 ?? "").trim() &&
       String(r.postal_code ?? "").trim() &&
       String(r.city ?? "").trim() &&
       String(r.country ?? "").trim() &&
-      String(r.billing_name ?? "").trim() &&
-      String(r.billing_address_line1 ?? "").trim() &&
-      String(r.billing_postal_code ?? "").trim() &&
-      String(r.billing_city ?? "").trim() &&
-      String(r.billing_country ?? "").trim(),
+      String(r.vat_id ?? "").trim(),
   );
   return {
     companyId: r.id,
