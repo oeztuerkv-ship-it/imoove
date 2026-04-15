@@ -633,10 +633,22 @@ export default function HomeScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [obRegSms, obRegName, obRegEmail, obRegPhone, registerLocalCustomer]);
 
-  /* ── Route fetch (Entfernung auch ohne gewähltes Fahrzeug; Preis erst nach Fahrzeugwahl in der Buchung) ── */
+  /* ── Route fetch: nach Ziel- und Fahrzeugwahl Preis live neu berechnen ── */
   useEffect(() => {
     if (destination) void fetchRoute();
   }, [destination, fetchRoute]);
+
+  useEffect(() => {
+    if (destination && !selectedVehicle) {
+      setSelectedVehicle("onroda");
+    }
+  }, [destination, selectedVehicle, setSelectedVehicle]);
+
+  useEffect(() => {
+    if (destination && selectedVehicle) {
+      void fetchRoute();
+    }
+  }, [destination, selectedVehicle, fetchRoute]);
 
   useEffect(() => {
     if (!destination) setBookingMode("immediate");
@@ -772,19 +784,21 @@ export default function HomeScreen() {
   );
 
 
-  const goToCanonicalBooking = useCallback(() => {
+  const goToDirectCheckout = useCallback(() => {
+    if (!selectedVehicle) {
+      Alert.alert("Fahrzeug wählen", "Bitte wählen Sie zuerst ein Fahrzeug aus.");
+      return;
+    }
+    if (isLoadingRoute || !fareBreakdown) {
+      Alert.alert("Bitte warten", "Der Preis wird gerade berechnet.");
+      return;
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (bookingMode === "immediate") {
       setScheduledTime(null);
     }
-    router.push({
-      pathname: "/reserve-ride",
-      params: {
-        skipWhere: "1",
-        scheduleMode: bookingMode === "immediate" ? "immediate" : "scheduled",
-      },
-    });
-  }, [bookingMode, setScheduledTime]);
+    router.push("/ride");
+  }, [selectedVehicle, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
 
   /* ── GPS ── */
   const handleGpsLocate = async (silent = false) => {
@@ -1049,53 +1063,51 @@ export default function HomeScreen() {
                   marginBottom: 12,
                 }}
               >
-                Gleicher Ablauf für Sofort- und Terminfahrten: Fahrzeug und Zahlung wählen Sie in den nächsten Schritten, die Bestätigung erfolgt immer auf einer Seite.
+                Ziel gesetzt. Wähle jetzt dein Fahrzeug - der Preis wird direkt angezeigt.
               </Text>
-
-              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 4 }]}>WANN?</Text>
-              <View style={styles.timingRow}>
-                <Pressable
-                  style={[
-                    styles.timingBtn,
-                    bookingMode === "immediate" && { backgroundColor: colors.primary, borderColor: colors.primary },
-                  ]}
-                  onPress={() => {
-                    setBookingMode("immediate");
-                    setScheduledTime(null);
-                    Haptics.selectionAsync();
-                  }}
-                >
-                  <Feather name="zap" size={16} color={bookingMode === "immediate" ? "#fff" : colors.foreground} />
-                  <Text
-                    style={[
-                      styles.timingBtnText,
-                      { color: bookingMode === "immediate" ? "#fff" : colors.foreground },
-                    ]}
-                  >
-                    Sofort
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.timingBtn,
-                    bookingMode === "scheduled" && { backgroundColor: "#F59E0B", borderColor: "#F59E0B" },
-                  ]}
-                  onPress={() => {
-                    setBookingMode("scheduled");
-                    Haptics.selectionAsync();
-                  }}
-                >
-                  <Feather name="calendar" size={16} color={bookingMode === "scheduled" ? "#fff" : colors.foreground} />
-                  <Text
-                    style={[
-                      styles.timingBtnText,
-                      { color: bookingMode === "scheduled" ? "#fff" : colors.foreground },
-                    ]}
-                  >
-                    Termin
-                  </Text>
-                </Pressable>
-              </View>
+              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 4 }]}>FAHRZEUG</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookingVehicleScroll}>
+                {VEHICLES.map((v) => {
+                  const active = selectedVehicle === v.id;
+                  const iconCfg = VEHICLE_ICON_CONFIG[v.id];
+                  return (
+                    <Pressable
+                      key={v.id}
+                      style={[
+                        styles.bookingVehicleChip,
+                        {
+                          borderWidth: active ? 2 : 1.5,
+                          borderColor: active ? colors.primary : colors.border,
+                          backgroundColor: active ? colors.primary + "12" : colors.card,
+                        },
+                      ]}
+                      onPress={() => {
+                        setSelectedVehicle(v.id);
+                        Haptics.selectionAsync();
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.bookingVehicleIconCircle,
+                          { backgroundColor: active ? colors.primary + "20" : iconCfg.bg },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={iconCfg.icon as any}
+                          size={22}
+                          color={iconCfg.color}
+                        />
+                      </View>
+                      <Text style={[styles.bookingVehicleName, { color: active ? colors.primary : colors.foreground }]}>
+                        {v.id === "standard" ? "Standard Taxi" : v.name}
+                      </Text>
+                      <Text style={[styles.bookingVehicleSub, { color: colors.mutedForeground }]}>
+                        {iconCfg.seats}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
               {/* ── Service-Badges aus Patienten-Profil ── */}
               {(profile.rollator || profile.blindenhund || profile.sauerstoff || profile.begleitperson ||
@@ -1146,8 +1158,8 @@ export default function HomeScreen() {
                   <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: colors.border }]} />
                   <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
                     <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Preis</Text>
-                    <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: colors.mutedForeground, textAlign: "center" }} numberOfLines={2}>
-                      Im Buchungsflow nach Fahrzeugwahl
+                    <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}>
+                      {fareBreakdown ? formatEuro(fareBreakdown.total) : "—"}
                     </Text>
                   </View>
                 </View>
@@ -1174,14 +1186,12 @@ export default function HomeScreen() {
                     elevation: 3,
                   },
                 ]}
-                onPress={goToCanonicalBooking}
+                onPress={goToDirectCheckout}
               >
-                <Text style={[styles.bookBtnText, { color: "#fff" }]}>Weiter zur Buchung</Text>
+                <Text style={[styles.bookBtnText, { color: "#fff" }]}>Taxi jetzt bestellen</Text>
               </Pressable>
               <Text style={[styles.bookBtnHint, { color: colors.mutedForeground }]}>
-                {bookingMode === "immediate"
-                  ? "Fahrzeug, Zahlung und Auftragsbestätigung im nächsten Schritt."
-                  : "Abholzeit wählen, dann Fahrzeug, Zahlung und Auftragsbestätigung."}
+                Fahrzeug und Preis sind festgelegt. Im nächsten Schritt bestätigen Sie die Bestellung.
               </Text>
             </View>
           </View>
