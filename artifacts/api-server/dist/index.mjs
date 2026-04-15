@@ -41394,6 +41394,57 @@ function redeemAccessCodeMemory(plain, bookingCompanyId) {
     companyIdOnCode: row.company_id
   };
 }
+function verifyAccessCodeMemory(plain, bookingCompanyId) {
+  const normalized = normalizeAccessCodeInput(plain);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const row = memByNormalized.get(normalized);
+  if (!row) return { ok: false, error: "access_code_invalid" };
+  const err = validateMemRow(row, bookingCompanyId);
+  if (err) return { ok: false, error: err };
+  return {
+    ok: true,
+    id: row.id,
+    codeType: row.code_type,
+    label: labelOrDefault(row.label),
+    companyIdOnCode: row.company_id,
+    normalized
+  };
+}
+async function verifyAccessCode(plain, bookingCompanyId) {
+  const normalized = normalizeAccessCodeInput(plain);
+  if (!normalized) return { ok: false, error: "access_code_invalid" };
+  const db2 = getDb();
+  if (!db2) return verifyAccessCodeMemory(plain, bookingCompanyId);
+  const tnow = /* @__PURE__ */ new Date();
+  const [probe] = await db2.select({
+    id: accessCodesTable.id,
+    code_type: accessCodesTable.code_type,
+    label: accessCodesTable.label,
+    company_id: accessCodesTable.company_id,
+    is_active: accessCodesTable.is_active,
+    valid_from: accessCodesTable.valid_from,
+    valid_until: accessCodesTable.valid_until,
+    max_uses: accessCodesTable.max_uses,
+    uses_count: accessCodesTable.uses_count
+  }).from(accessCodesTable).where(eq(accessCodesTable.code_normalized, normalized)).limit(1);
+  if (!probe) return { ok: false, error: "access_code_invalid" };
+  if (!probe.is_active) return { ok: false, error: "access_code_inactive" };
+  if (bookingCompanyId && probe.company_id && probe.company_id !== bookingCompanyId) {
+    return { ok: false, error: "access_code_wrong_company" };
+  }
+  if (probe.valid_from && probe.valid_from > tnow) return { ok: false, error: "access_code_not_yet_valid" };
+  if (probe.valid_until && probe.valid_until < tnow) return { ok: false, error: "access_code_expired" };
+  if (probe.max_uses != null && probe.uses_count >= probe.max_uses) return { ok: false, error: "access_code_exhausted" };
+  if (!isAccessCodeType(probe.code_type)) return { ok: false, error: "access_code_invalid" };
+  return {
+    ok: true,
+    id: probe.id,
+    codeType: probe.code_type,
+    label: labelOrDefault(probe.label ?? ""),
+    companyIdOnCode: probe.company_id ?? null,
+    normalized
+  };
+}
 async function redeemAccessCodeInTransaction(tx, normalized, bookingCompanyId) {
   if (!normalized) return { ok: false, error: "access_code_invalid" };
   const tnow = /* @__PURE__ */ new Date();
@@ -47422,10 +47473,18 @@ async function seedAdminDefaultsIfEmpty() {
 }
 
 // src/routes/rides.ts
+init_accessCodesData();
 var DEMO = [];
 var driverLocations = /* @__PURE__ */ new Map();
 var customerLocations = /* @__PURE__ */ new Map();
 var router2 = (0, import_express2.Router)();
+var CODE_VERIFY_TTL_MS = 5 * 60 * 1e3;
+var codeVerifySessions = /* @__PURE__ */ new Map();
+function cleanupCodeVerifySessions(now = Date.now()) {
+  for (const [key, session] of codeVerifySessions) {
+    if (session.expiresAt <= now) codeVerifySessions.delete(key);
+  }
+}
 function normalizeStatusInput(raw) {
   if (typeof raw !== "string") return null;
   const s = raw.trim();
@@ -47530,6 +47589,37 @@ router2.get("/rides", async (_req, res, next) => {
     next(e);
   }
 });
+router2.post("/rides/access-code/verify", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const accessCode = typeof body.accessCode === "string" ? body.accessCode.trim() : "";
+    const driverId = typeof body.driverId === "string" ? body.driverId.trim() : "";
+    if (!accessCode || !driverId) {
+      res.status(400).json({ error: "access_code_or_driver_missing" });
+      return;
+    }
+    const probe = await verifyAccessCode(accessCode, null);
+    if (!probe.ok) {
+      res.status(400).json({ error: probe.error });
+      return;
+    }
+    cleanupCodeVerifySessions();
+    const verifyToken = `acv-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    codeVerifySessions.set(verifyToken, {
+      driverId,
+      normalized: probe.normalized,
+      expiresAt: Date.now() + CODE_VERIFY_TTL_MS
+    });
+    res.json({
+      ok: true,
+      verifyToken,
+      expiresInSeconds: Math.floor(CODE_VERIFY_TTL_MS / 1e3),
+      summary: { codeType: probe.codeType, label: probe.label }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 router2.post("/rides", async (req, res, next) => {
   try {
     const raw = req.body;
@@ -47568,6 +47658,19 @@ router2.post("/rides", async (req, res, next) => {
     };
     const accessCodeRaw = raw.accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    const accessCodeVerifyToken = typeof raw.accessCodeVerifyToken === "string" ? raw.accessCodeVerifyToken.trim() : "";
+    const driverIdForCodeRide = typeof raw.driverId === "string" ? raw.driverId.trim() : "";
+    const normalizedCode = accessCodePlain ? normalizeAccessCodeInput(accessCodePlain) : null;
+    if (normalizedCode && driverIdForCodeRide) {
+      cleanupCodeVerifySessions();
+      const session = accessCodeVerifyToken ? codeVerifySessions.get(accessCodeVerifyToken) : null;
+      const isSessionValid = !!session && session.expiresAt > Date.now() && session.driverId === driverIdForCodeRide && session.normalized === normalizedCode;
+      if (!isSessionValid) {
+        res.status(409).json({ error: "access_code_verify_required" });
+        return;
+      }
+      codeVerifySessions.delete(accessCodeVerifyToken);
+    }
     const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
     if (!ins.ok) {
       res.status(400).json({ error: ins.error });
@@ -47703,6 +47806,10 @@ router2.post("/rides/:id/driver-cancel", async (req, res, next) => {
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (cur.status === "cancelled_by_customer" || cur.status === "cancelled_by_system" || cur.status === "cancelled_by_driver" || cur.status === "cancelled" || cur.status === "completed") {
+      res.json(stripPartnerOnlyRideFields(cur));
       return;
     }
     const existing = cur.rejectedBy ?? [];
@@ -52751,7 +52858,7 @@ async function getCompanyGovernanceGate(companyId) {
   const r = rows[0];
   if (!r) return null;
   const requiredProfileComplete = Boolean(
-    String(r.name ?? "").trim() && String(r.legal_form ?? "").trim() && String(r.owner_name ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.billing_name ?? "").trim() && String(r.billing_address_line1 ?? "").trim() && String(r.billing_postal_code ?? "").trim() && String(r.billing_city ?? "").trim() && String(r.billing_country ?? "").trim()
+    String(r.company_kind ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.name ?? "").trim() && String(r.email ?? "").trim() && String(r.phone ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.vat_id ?? "").trim()
   );
   return {
     companyId: r.id,
@@ -55174,9 +55281,6 @@ async function requireFleetProvisioningReady(companyId) {
   if (gate.complianceStatus !== "compliant") return { ok: false, error: "company_not_compliant" };
   if (gate.contractStatus !== "active") return { ok: false, error: "contract_not_active" };
   if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
-  if (!gate.hasComplianceGewerbe || !gate.hasComplianceInsurance) {
-    return { ok: false, error: "required_documents_missing" };
-  }
   return { ok: true };
 }
 router9.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
@@ -55893,6 +55997,21 @@ wss.on("connection", (socket) => {
         rooms.get(rideId)?.forEach((client) => {
           if (client !== socket && client.readyState === import_websocket.default.OPEN) {
             client.send(JSON.stringify({ type: "location:customer:update", lat: msg.lat, lon: msg.lon }));
+          }
+        });
+      }
+      if (msg.type === "chat:ride" && rideId) {
+        const text2 = typeof msg.text === "string" ? msg.text.trim() : "";
+        const sender = msg.sender === "driver" ? "driver" : "customer";
+        if (!text2) return;
+        rooms.get(rideId)?.forEach((client) => {
+          if (client.readyState === import_websocket.default.OPEN) {
+            client.send(JSON.stringify({
+              type: "chat:ride:update",
+              sender,
+              text: text2,
+              ts: (/* @__PURE__ */ new Date()).toISOString()
+            }));
           }
         });
       }
