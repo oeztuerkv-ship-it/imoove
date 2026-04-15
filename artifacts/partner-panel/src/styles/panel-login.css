@@ -22,11 +22,32 @@
   box-shadow: var(--onroda-shadow-card, 0 12px 40px rgba(15, 23, 42, 0.08));
 }
 
+.partner-login__brand {
+  margin-bottom: var(--onroda-space-4);
+}
+
+.partner-login__brand-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--onroda-red);
+}
+
+.partner-login__brand-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--onroda-text-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
 .partner-login__title {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--onroda-red);
+  color: var(--onroda-text-dark);
 }
 
 .partner-login__lead {
@@ -139,4 +160,26 @@
   margin-top: var(--onroda-space-6);
   padding-top: var(--onroda-space-5);
   border-top: 1px solid var(--onroda-border-subtle);
+}
+
+.partner-login__forgot-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--onroda-text-grey);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.partner-login__forgot-btn:hover {
+  color: var(--onroda-red);
+}
+
+.partner-login__submit-secondary {
+  background: var(--onroda-bg-light);
+  border: 1px solid var(--onroda-border-outline);
+  color: var(--onroda-text-dark);
 }
