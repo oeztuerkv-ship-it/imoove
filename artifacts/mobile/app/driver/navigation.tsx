@@ -7,6 +7,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -23,6 +24,7 @@ import { sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 
 const API_BASE = getApiBaseUrl();
+const START_SLIDER_HANDLE = 52;
 
 const NIGHT_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -150,8 +152,14 @@ export default function DriverNavigationScreen() {
   const [fareInput, setFareInput] = useState(
     estimatedFare > 0 ? estimatedFare.toFixed(2).replace(".", ",") : "0,00"
   );
+  const [showCancelReasonModal, setShowCancelReasonModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState<string>("");
+  const [customCancelReason, setCustomCancelReason] = useState("");
+  const [sliderWidth, setSliderWidth] = useState(0);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const sliderX = useRef(new Animated.Value(0)).current;
+  const hasTriggeredSlide = useRef(false);
 
   useEffect(() => {
     const native = Platform.OS !== "web";
@@ -253,6 +261,38 @@ export default function DriverNavigationScreen() {
       },
     });
   };
+
+  const maxSlideX = Math.max(0, sliderWidth - START_SLIDER_HANDLE - 8);
+  const resetSlide = useCallback(() => {
+    hasTriggeredSlide.current = false;
+    Animated.spring(sliderX, { toValue: 0, useNativeDriver: true, bounciness: 6 }).start();
+  }, [sliderX]);
+
+  const startRideBySlide = useCallback(async () => {
+    if (hasTriggeredSlide.current) return;
+    hasTriggeredSlide.current = true;
+    await handleFahrtBeginnen();
+    resetSlide();
+  }, [handleFahrtBeginnen, resetSlide]);
+
+  const sliderResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gestureState) =>
+        Math.abs(gestureState.dx) > 4 && hasArrived && isPickupPhase,
+      onPanResponderMove: (_evt, gestureState) => {
+        const next = Math.min(Math.max(0, gestureState.dx), maxSlideX);
+        sliderX.setValue(next);
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (gestureState.dx >= maxSlideX * 0.78) {
+          void startRideBySlide();
+          return;
+        }
+        resetSlide();
+      },
+      onPanResponderTerminate: resetSlide,
+    }),
+  ).current;
 
   const handleFahrtBeenden = () => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
@@ -372,12 +412,20 @@ export default function DriverNavigationScreen() {
         </Pressable>
       );
     } else {
-      // Step 2: "Fahrt beginnen" — unlocked after Angekommen
+      // Step 2: "Fahrt beginnen" via slide-right control
       actionBtn = (
-        <Pressable style={[styles.actionBtn, styles.actionBtnBlue]} onPress={handleFahrtBeginnen}>
-          <MaterialCommunityIcons name="car-arrow-right" size={22} color="#fff" />
-          <Text style={styles.actionBtnText}>Fahrt beginnen</Text>
-        </Pressable>
+        <View
+          style={styles.slideStartTrack}
+          onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
+        >
+          <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
+          <Animated.View
+            {...sliderResponder.panHandlers}
+            style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
+          >
+            <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
+          </Animated.View>
+        </View>
       );
     }
   } else {
@@ -428,6 +476,9 @@ export default function DriverNavigationScreen() {
 
       {/* Top instruction card — Google Maps green */}
       <View style={[styles.topWrapper, { paddingTop: Platform.OS === "ios" ? insets.top : 36 }]}>
+        <View style={styles.topBrandBadge}>
+          <Text style={styles.topBrandBadgeText}>OR</Text>
+        </View>
         <View style={styles.topCard}>
           <View style={styles.topMain}>
             <Animated.View style={{ opacity: pulseAnim }}>
@@ -435,7 +486,9 @@ export default function DriverNavigationScreen() {
             </Animated.View>
             <View style={styles.topText}>
               <Text style={styles.topLabel}>Richtung</Text>
-              <Text style={styles.topStreet} numberOfLines={2}>{topPrimaryText}</Text>
+              <Text style={[styles.topStreet, !isPickupPhase && styles.topStreetDriving]} numberOfLines={2}>
+                {topPrimaryText}
+              </Text>
               {topDistanceText ? <Text style={styles.topDist}>{topDistanceText}</Text> : null}
             </View>
           </View>
@@ -519,23 +572,7 @@ export default function DriverNavigationScreen() {
         {/* Stornieren */}
         <Pressable
           onPress={() =>
-            Alert.alert(
-              "Fahrt abbrechen?",
-              "Möchtest du diesen Auftrag wirklich stornieren?",
-              [
-                { text: "Nein, weiter fahren", style: "cancel" },
-                {
-                  text: "Ja, stornieren",
-                  style: "destructive",
-                  onPress: async () => {
-                    try {
-                      await fetch(`${API_BASE}/rides/${params.rideId}/driver-cancel`, { method: "POST" });
-                    } catch (_) {}
-                    router.back();
-                  },
-                },
-              ]
-            )
+            setShowCancelReasonModal(true)
           }
           style={({ pressed }) => ({
             flexDirection: "row",
@@ -590,6 +627,85 @@ export default function DriverNavigationScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <Modal
+        visible={showCancelReasonModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCancelReasonModal(false)}
+      >
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.cancelReasonCard}>
+            <Text style={styles.cancelReasonTitle}>Storno-Grund</Text>
+            <Text style={styles.cancelReasonLead}>Bitte Grund angeben, damit die Fahrt umgeleitet werden kann.</Text>
+            <View style={styles.cancelReasonOptions}>
+              {[
+                "Kunde nicht gefunden",
+                "Fahrzeugproblem",
+                "Notfall / Unfall",
+                "Kunde nicht erreichbar",
+                "Andere Ursache",
+              ].map((reason) => {
+                const active = cancelReason === reason;
+                return (
+                  <Pressable
+                    key={reason}
+                    style={[styles.cancelReasonChip, active && styles.cancelReasonChipOn]}
+                    onPress={() => setCancelReason(reason)}
+                  >
+                    <Text style={[styles.cancelReasonChipText, active && styles.cancelReasonChipTextOn]}>{reason}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {cancelReason === "Andere Ursache" ? (
+              <TextInput
+                style={styles.cancelReasonInput}
+                placeholder="Grund kurz beschreiben"
+                placeholderTextColor="#9CA3AF"
+                value={customCancelReason}
+                onChangeText={setCustomCancelReason}
+              />
+            ) : null}
+            <View style={styles.cancelReasonBtns}>
+              <Pressable
+                style={styles.cancelReasonBtnGhost}
+                onPress={() => {
+                  setShowCancelReasonModal(false);
+                  setCancelReason("");
+                  setCustomCancelReason("");
+                }}
+              >
+                <Text style={styles.cancelReasonBtnGhostText}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                style={styles.cancelReasonBtnDanger}
+                onPress={async () => {
+                  const reason =
+                    cancelReason === "Andere Ursache" ? customCancelReason.trim() : cancelReason.trim();
+                  if (!reason) {
+                    Alert.alert("Storno-Grund fehlt", "Bitte einen Grund auswählen.");
+                    return;
+                  }
+                  try {
+                    await fetch(`${API_BASE}/rides/${params.rideId}/driver-cancel`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ reason }),
+                    });
+                  } catch (_) {}
+                  setShowCancelReasonModal(false);
+                  setCancelReason("");
+                  setCustomCancelReason("");
+                  router.back();
+                }}
+              >
+                <Text style={styles.cancelReasonBtnDangerText}>Fahrt stornieren</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -600,10 +716,26 @@ const styles = StyleSheet.create({
   /* Top card */
   topWrapper: { position: "absolute", top: 0, left: 0, right: 0 },
   topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 14, paddingTop: 6, paddingBottom: 6 },
+  topBrandBadge: {
+    position: "absolute",
+    top: 6,
+    left: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  topBrandBadgeText: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
   topMain: { flexDirection: "row", alignItems: "center", gap: 10 },
   topText: { flex: 1 },
   topLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
   topStreet: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 21 },
+  topStreetDriving: { fontSize: 21, lineHeight: 25 },
   topDist: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)", marginTop: 1 },
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
@@ -646,9 +778,40 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
   actionBtnTextGray: { color: "#9CA3AF" },
   actionBtnSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: 1 },
+  slideStartTrack: {
+    position: "relative",
+    backgroundColor: "#16A34A",
+    borderRadius: 16,
+    height: 62,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: "#86EFAC",
+  },
+  slideStartHint: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.92)",
+    textAlign: "center",
+    fontFamily: "Inter_600SemiBold",
+    paddingHorizontal: 48,
+  },
+  slideStartHandle: {
+    position: "absolute",
+    left: 4,
+    top: 4,
+    width: START_SLIDER_HANDLE,
+    height: START_SLIDER_HANDLE,
+    borderRadius: START_SLIDER_HANDLE / 2,
+    backgroundColor: "#15803D",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#DCFCE7",
+  },
 
   /* Fare Modal */
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalOverlayCenter: { flex: 1, backgroundColor: "rgba(0,0,0,0.62)", justifyContent: "center", padding: 18 },
   modalCard: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
@@ -677,6 +840,59 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", gap: 8,
   },
   submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  cancelReasonCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 16,
+    gap: 12,
+  },
+  cancelReasonTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#111827" },
+  cancelReasonLead: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#4B5563", lineHeight: 19 },
+  cancelReasonOptions: { gap: 8 },
+  cancelReasonChip: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F9FAFB",
+  },
+  cancelReasonChipOn: { borderColor: "#DC2626", backgroundColor: "#FEF2F2" },
+  cancelReasonChipText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#111827" },
+  cancelReasonChipTextOn: { color: "#B91C1C", fontFamily: "Inter_700Bold" },
+  cancelReasonInput: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 14,
+    color: "#111827",
+    fontFamily: "Inter_400Regular",
+  },
+  cancelReasonBtns: { flexDirection: "row", gap: 10, marginTop: 2 },
+  cancelReasonBtnGhost: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    backgroundColor: "#F9FAFB",
+  },
+  cancelReasonBtnGhostText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#374151" },
+  cancelReasonBtnDanger: {
+    flex: 1.4,
+    borderRadius: 12,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  cancelReasonBtnDangerText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff" },
 
   /* Web fallback */
   webFallback: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16, backgroundColor: "#fff" },

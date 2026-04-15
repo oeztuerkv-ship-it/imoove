@@ -79,6 +79,8 @@ interface RideRequestContextValue {
   pendingRequests: RideRequest[];
   acceptedRequest: RideRequest | null;
   completedRequest: RideRequest | null;
+  passengerAcceptedRequest: RideRequest | null;
+  passengerCompletedRequest: RideRequest | null;
   lastAddedRequestId: string | null;
   isConnected: boolean;
   passengerId: string;
@@ -122,6 +124,8 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   pendingRequests: [],
   acceptedRequest: null,
   completedRequest: null,
+  passengerAcceptedRequest: null,
+  passengerCompletedRequest: null,
   lastAddedRequestId: null,
   isConnected: false,
   passengerId: "",
@@ -516,6 +520,27 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const completedRequest =
     requests.filter((r) => r.status === "completed").slice(-1)[0] ?? null;
 
+  const passengerAcceptedRequest = passengerId
+    ? requests
+        .filter(
+          (r) =>
+            r.passengerId === passengerId &&
+            (r.status === "accepted" ||
+              r.status === "driver_arriving" ||
+              r.status === "driver_waiting" ||
+              r.status === "passenger_onboard" ||
+              r.status === "arrived" ||
+              r.status === "in_progress"),
+        )
+        .slice(-1)[0] ?? null
+    : null;
+
+  const passengerCompletedRequest = passengerId
+    ? requests
+        .filter((r) => r.passengerId === passengerId && r.status === "completed")
+        .slice(-1)[0] ?? null
+    : null;
+
   const myActiveRequests = passengerId
     ? requests.filter(
         (r) =>
@@ -553,6 +578,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         pendingRequests,
         acceptedRequest,
         completedRequest,
+        passengerAcceptedRequest,
+        passengerCompletedRequest,
         lastAddedRequestId,
         isConnected,
         passengerId,
