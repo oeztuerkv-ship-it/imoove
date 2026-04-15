@@ -55810,6 +55810,13 @@ app.use((req, res, next) => {
   }
   import_express12.default.static(staticRoot, { index: false })(req, res, next);
 });
+app.get(["/partnerschaft", "/partner"], (req, res, next) => {
+  const host = hostname(req);
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    return res.sendFile(path4.join(staticRoot, "index.html"));
+  }
+  return next();
+});
 app.get("/", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {

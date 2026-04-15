@@ -202,6 +202,14 @@ app.use((req, res, next) => {
 });
 
 /* Root: Marketing-Domain = nur öffentliche Homepage; App = Mobile + API; Panel später eigene Subdomain. */
+app.get(["/partnerschaft", "/partner"], (req, res, next) => {
+  const host = hostname(req);
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    return res.sendFile(path.join(staticRoot, "index.html"));
+  }
+  return next();
+});
+
 app.get("/", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {

@@ -10,6 +10,19 @@
         nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: white; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--onroda-border-subtle); }
         .logo { font-size: 1.5rem; font-weight: 800; color: var(--onroda-red); letter-spacing: 1px; }
         .nav-links a { color: var(--onroda-text-dark); text-decoration: none; margin-left: 20px; font-weight: 500; font-size: 0.9rem; }
+        .nav-links .nav-cta-request {
+            background: var(--onroda-red);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+        .nav-links .nav-cta-login {
+            border: 1px solid var(--onroda-border-outline);
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+        }
         
         .hero { padding: 80px 5% 40px; display: flex; flex-wrap: wrap; align-items: center; }
         .hero-text { flex: 1; min-width: 300px; padding-right: 20px; }
@@ -36,6 +49,23 @@
         .help-box h3 { font-size: 1.8rem; margin-top: 0; }
 
         .copyright { border-top: 1px solid #333; margin-top: 40px; padding-top: 20px; font-size: 0.8rem; color: #666; text-align: left; }
+        .partner-section { background: var(--onroda-bg-card); border: 1px solid var(--onroda-border); border-radius: 16px; padding: 24px; }
+        .partner-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .partner-field { display: flex; flex-direction: column; gap: 6px; }
+        .partner-field label { font-size: 0.85rem; color: var(--onroda-text-grey); font-weight: 600; }
+        .partner-field input, .partner-field select, .partner-field textarea {
+            border: 1px solid var(--onroda-border-outline);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            font-family: inherit;
+        }
+        .partner-field--full { grid-column: 1 / -1; }
+        .partner-note { font-size: 0.9rem; color: var(--onroda-text-grey); margin-top: 8px; }
+        .partner-msg { margin-top: 10px; font-size: 0.9rem; font-weight: 700; }
+        @media (max-width: 760px) {
+            .partner-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -46,7 +76,8 @@
             <a href="#">Fahrgäste</a>
             <a href="#">Fahrer*innen</a>
             <a href="#">Geschäftsreisen</a>
-            <a href="/partners/">Login</a>
+            <a href="/partnerschaft#partner-anfrage" class="nav-cta-request">Partnerschaft anfragen</a>
+            <a href="/partners/" class="nav-cta-login">Partner-Login</a>
         </div>
     </nav>
 
@@ -55,8 +86,8 @@
             <h1>Die schnelle, sichere und zuverlässige Taxi-App</h1>
             <p>Auf dem Weg zur Arbeit, zum Flughafen oder zur Verabredung? Dann buche jetzt mit ONRODA, deiner zuverlässigen Wahl in L.-Echterdingen.</p>
             <div class="cta-group">
-                <a href="/partners/" class="btn-red">Jetzt Registrieren</a>
-                <a href="#" class="btn-outline">Mehr erfahren</a>
+                <a href="/partnerschaft#partner-anfrage" class="btn-red">Neue Partnerschaft anfragen</a>
+                <a href="/partners/" class="btn-outline">Bestehender Partner? Login</a>
             </div>
         </div>
     </header>
@@ -75,6 +106,82 @@
                 <h3>Digitalisierung der Zukunft</h3>
                 <p>Onroda setzt auf modernste Algorithmen. Wir vernetzen Flottenpartner und Fahrgäste effizienter als je zuvor.</p>
             </div>
+        </div>
+    </section>
+
+    <section class="section" id="partner-anfrage">
+        <div class="partner-section">
+            <h2 style="margin-top:0;color:var(--onroda-red);">Für Unternehmen / Partner</h2>
+            <p class="partner-note">
+                <strong>Neue Partner:</strong> Anfrage senden.<br>
+                <strong>Bestehende Partner:</strong> direkt ins Partner-Login.
+            </p>
+            <form id="partner-request-form">
+                <div class="partner-grid">
+                    <div class="partner-field">
+                        <label for="partnerType">Art des Unternehmens *</label>
+                        <select id="partnerType" required>
+                            <option value="taxi">Taxiunternehmen</option>
+                            <option value="hotel">Hotel</option>
+                            <option value="insurance">Krankenkasse</option>
+                            <option value="medical">Arztpraxis / Klinik</option>
+                            <option value="care">Pflegeheim / soziale Einrichtung</option>
+                            <option value="business">Firmenkunde / Geschäftskunde</option>
+                            <option value="voucher_partner">Gutscheinpartner</option>
+                            <option value="other">Sonstiger Partner</option>
+                        </select>
+                    </div>
+                    <div class="partner-field">
+                        <label for="companyName">Unternehmensname *</label>
+                        <input id="companyName" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="contactFirstName">Ansprechpartner Vorname *</label>
+                        <input id="contactFirstName" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="contactLastName">Ansprechpartner Nachname *</label>
+                        <input id="contactLastName" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="email">Geschäftliche E-Mail *</label>
+                        <input id="email" type="email" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="phone">Geschäftliche Telefonnummer *</label>
+                        <input id="phone" required />
+                    </div>
+                    <div class="partner-field partner-field--full">
+                        <label for="addressLine1">Adresse *</label>
+                        <input id="addressLine1" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="postalCode">PLZ *</label>
+                        <input id="postalCode" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="city">Stadt *</label>
+                        <input id="city" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="country">Land *</label>
+                        <input id="country" value="Deutschland" required />
+                    </div>
+                    <div class="partner-field">
+                        <label for="desiredRegion">Einsatzbereich / Region</label>
+                        <input id="desiredRegion" />
+                    </div>
+                    <div class="partner-field partner-field--full">
+                        <label for="notes">Hinweise</label>
+                        <textarea id="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <button type="submit" class="btn-red" style="border:none;cursor:pointer;">Partnerschaft anfragen</button>
+                    <a href="/partners/" class="btn-outline">Bestehender Partner? Zum Login</a>
+                </div>
+                <p id="partner-request-msg" class="partner-msg" aria-live="polite"></p>
+            </form>
         </div>
     </section>
 
@@ -112,5 +219,48 @@
         </div>
     </footer>
 
+<script>
+(() => {
+  const form = document.getElementById("partner-request-form");
+  const msg = document.getElementById("partner-request-msg");
+  if (!form || !msg) return;
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    msg.textContent = "Anfrage wird gesendet …";
+    const body = {
+      partnerType: document.getElementById("partnerType")?.value || "other",
+      companyName: document.getElementById("companyName")?.value?.trim() || "",
+      contactFirstName: document.getElementById("contactFirstName")?.value?.trim() || "",
+      contactLastName: document.getElementById("contactLastName")?.value?.trim() || "",
+      email: document.getElementById("email")?.value?.trim() || "",
+      phone: document.getElementById("phone")?.value?.trim() || "",
+      addressLine1: document.getElementById("addressLine1")?.value?.trim() || "",
+      postalCode: document.getElementById("postalCode")?.value?.trim() || "",
+      city: document.getElementById("city")?.value?.trim() || "",
+      country: document.getElementById("country")?.value?.trim() || "",
+      desiredRegion: document.getElementById("desiredRegion")?.value?.trim() || "",
+      notes: document.getElementById("notes")?.value?.trim() || "",
+    };
+    try {
+      const res = await fetch("/api/panel-auth/registration-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        msg.textContent = "Anfrage konnte nicht gesendet werden. Bitte prüfe deine Angaben.";
+        return;
+      }
+      msg.textContent = `Anfrage erfolgreich gesendet. Referenz: ${data.request?.id ?? "n/a"}`;
+      form.reset();
+      const country = document.getElementById("country");
+      if (country) country.value = "Deutschland";
+    } catch {
+      msg.textContent = "Netzwerkfehler. Bitte später erneut versuchen.";
+    }
+  });
+})();
+</script>
 </body>
 </html>
