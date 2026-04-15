@@ -725,30 +725,12 @@ export default function StatusScreen() {
         driverMarker={driverMarker}
       />
 
-      {/* Zurück-Button oben links */}
-      <Pressable
-        style={[styles.backBtn, { top: topPad + 12 }]}
-        onPress={() => {
-          Alert.alert(
-            "Fahrt aktiv",
-            "Bitte nicht einfach zurückgehen. Wenn nötig, storniere die Fahrt ausdrücklich.",
-            [
-              { text: "Weiter zur Fahrt", style: "cancel" },
-              { text: "Stornieren", style: "destructive", onPress: () => void handleCancel() },
-            ],
-          );
-        }}
-      >
-        <Feather name="arrow-left" size={20} color="#111" />
-      </Pressable>
-
       {/* Ziel-Label oben rechts */}
       <View style={[styles.destCard, { top: topPad + 12 }]}>
         <MaterialCommunityIcons name="map-marker" size={14} color="#DC2626" />
         <Text style={styles.destCardText} numberOfLines={1}>
           {destination?.displayName ?? "Ziel"}
         </Text>
-        <Feather name="chevron-right" size={13} color="#555" />
       </View>
 
       {/* "Ihr Fahrer ist da!" Banner — arrived phase */}
@@ -795,10 +777,15 @@ export default function StatusScreen() {
             </Text>
           ) : null}
         </View>
-        <Pressable style={styles.uberMsgBtn} onPress={handleMessage}>
-          <Feather name="message-circle" size={20} color="#fff" />
-          {chatUnread ? <View style={styles.chatBadgeDot} /> : null}
-        </Pressable>
+        <View style={styles.uberActions}>
+          <Pressable style={styles.uberMsgBtn} onPress={handleMessage}>
+            <Feather name="message-circle" size={20} color="#fff" />
+            {chatUnread ? <View style={styles.chatBadgeDot} /> : null}
+          </Pressable>
+          <Pressable style={styles.uberCloseBtn} onPress={() => void handleCancel()}>
+            <Feather name="x" size={22} color="#fff" />
+          </Pressable>
+        </View>
       </View>
 
       <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
@@ -850,17 +837,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
 
-  /* Uber-Stil: Zurück-Button */
-  backBtn: {
-    position: "absolute",
-    left: rs(16),
-    width: rs(42), height: rs(42), borderRadius: rs(21),
-    backgroundColor: "#fff",
-    alignItems: "center", justifyContent: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18, shadowRadius: 6, elevation: 6,
-  },
-
   /* Uber-Stil: Ziel-Karte oben rechts */
   destCard: {
     position: "absolute",
@@ -883,23 +859,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingTop: rs(18),
-    minHeight: rs(128),
+    minHeight: rs(140),
     paddingHorizontal: rs(18),
     gap: rs(14),
   },
   uberBarEta: { alignItems: "center", minWidth: rs(48) },
-  uberEtaNum: { fontSize: rf(32), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(36) },
-  uberEtaUnit: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 1 },
+  uberEtaNum: { fontSize: rf(34), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(38) },
+  uberEtaUnit: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 1 },
   uberBarDivider: { width: 1, height: rs(40), backgroundColor: "#374151" },
   uberBarInfo: { flex: 1 },
-  uberBarAddr: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#fff", marginBottom: rs(2) },
-  uberBarStatus: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
-  uberBarPayer: { fontSize: rf(11), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: rs(4), lineHeight: rf(15) },
+  uberBarAddr: { fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#fff", marginBottom: rs(3) },
+  uberBarStatus: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
+  uberBarPayer: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: rs(5), lineHeight: rf(16) },
+  uberActions: { gap: rs(8) },
   uberMsgBtn: {
-    width: rs(40), height: rs(40), borderRadius: rs(20),
+    width: rs(42), height: rs(42), borderRadius: rs(21),
     backgroundColor: "#374151",
     alignItems: "center", justifyContent: "center",
     position: "relative",
+  },
+  uberCloseBtn: {
+    width: rs(42), height: rs(42), borderRadius: rs(21),
+    backgroundColor: "#DC2626",
+    alignItems: "center", justifyContent: "center",
   },
   chatBadgeDot: {
     position: "absolute",

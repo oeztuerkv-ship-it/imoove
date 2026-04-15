@@ -160,7 +160,7 @@ export default function RideScreen() {
         return;
       }
       const copayment = calculateCopayment(fareBreakdown.total, isExempted);
-      const chargeAmount = pm === "voucher" ? copayment : fareBreakdown.total;
+      const chargeAmount = fareBreakdown.total;
       const preAuthOk = await runPreAuthorization(chargeAmount, pm);
       if (!preAuthOk) {
         Alert.alert("Zahlung fehlgeschlagen", "Die Vorautorisierung konnte nicht durchgeführt werden. Bitte Zahlungsmittel prüfen.");
@@ -170,7 +170,7 @@ export default function RideScreen() {
 
     /* ── 2. Buchung absenden ── */
     const copayment = calculateCopayment(fareBreakdown.total, isExempted);
-    const chargeAmount = pm === "voucher" ? copayment : fareBreakdown.total;
+    const chargeAmount = fareBreakdown.total;
     Animated.sequence([
       Animated.timing(btnScale, { toValue: 0.96, duration: 80, useNativeDriver: true }),
       Animated.timing(btnScale, { toValue: 1, duration: 80, useNativeDriver: true }),

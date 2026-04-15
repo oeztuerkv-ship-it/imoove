@@ -1,10 +1,10 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useMemo } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef } from "react";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { VEHICLES, useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
@@ -16,6 +16,7 @@ const WHEELCHAIR_ICON_COLOR = "#0369A1";
 export default function RideSelectScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const mapRef = useRef<MapView>(null);
   const {
     origin,
     destination,
@@ -51,7 +52,7 @@ export default function RideSelectScreen() {
 
   if (!destination) {
     return (
-      <View style={[styles.emptyWrap, { backgroundColor: colors.background }]}>
+      <View style={[styles.emptyWrap, { backgroundColor: "#FFFFFF" }]}>
         <Text style={[styles.emptyText, { color: colors.foreground }]}>
           Bitte zuerst ein Ziel wählen.
         </Text>
@@ -63,7 +64,7 @@ export default function RideSelectScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background, paddingTop: insets.top + 10 }]}>
+    <View style={[styles.root, { backgroundColor: "#FFFFFF", paddingTop: insets.top + 10 }]}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={colors.foreground} />
@@ -73,15 +74,48 @@ export default function RideSelectScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.routePreview, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.routePreview, { borderColor: colors.border, backgroundColor: "#FFFFFF" }]}>
           <Text style={[styles.routeLabel, { color: colors.mutedForeground }]}>Strecken-Vorschau</Text>
           <View style={styles.routeMapWrap}>
-            <RealMapView
-              origin={origin}
-              destination={destination}
-              polyline={route?.polyline}
-              style={StyleSheet.absoluteFill}
-            />
+            {Platform.OS === "web" ? (
+              <View style={styles.routeMapFallback}>
+                <Text style={styles.routeMapFallbackText}>Start → Ziel</Text>
+              </View>
+            ) : (
+              <MapView
+                ref={mapRef}
+                style={StyleSheet.absoluteFill}
+                provider={PROVIDER_GOOGLE}
+                onMapReady={() => {
+                  mapRef.current?.fitToCoordinates(
+                    [
+                      { latitude: origin.lat, longitude: origin.lon },
+                      { latitude: destination.lat, longitude: destination.lon },
+                    ],
+                    {
+                      edgePadding: { top: 36, right: 36, bottom: 36, left: 36 },
+                      animated: true,
+                    },
+                  );
+                }}
+                initialRegion={{
+                  latitude: origin.lat,
+                  longitude: origin.lon,
+                  latitudeDelta: 0.06,
+                  longitudeDelta: 0.06,
+                }}
+              >
+                <Marker coordinate={{ latitude: origin.lat, longitude: origin.lon }} pinColor="#22C55E" />
+                <Marker coordinate={{ latitude: destination.lat, longitude: destination.lon }} pinColor="#DC2626" />
+                {(route?.polyline ?? []).length > 1 ? (
+                  <Polyline
+                    coordinates={(route?.polyline ?? []).map(([lat, lon]) => ({ latitude: lat, longitude: lon }))}
+                    strokeColor={ONRODA_MARK_RED}
+                    strokeWidth={4}
+                  />
+                ) : null}
+              </MapView>
+            )}
           </View>
           <Text style={[styles.routeLine, { color: colors.foreground }]} numberOfLines={1}>
             {origin.displayName}
@@ -91,7 +125,7 @@ export default function RideSelectScreen() {
           </Text>
         </View>
 
-        <View style={[styles.vehiclesCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.vehiclesCard, { borderColor: colors.border, backgroundColor: "#FFFFFF" }]}>
           {VEHICLES.map((v) => {
             const active = selectedVehicle === v.id;
             const price = vehiclePrices.get(v.id);
@@ -165,6 +199,8 @@ const styles = StyleSheet.create({
   routePreview: { borderWidth: 1, borderRadius: 16, padding: 12, gap: 8 },
   routeLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase" },
   routeMapWrap: { height: 130, borderRadius: 12, overflow: "hidden" },
+  routeMapFallback: { flex: 1, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
+  routeMapFallbackText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#111827" },
   routeLine: { fontSize: 13, fontFamily: "Inter_500Medium" },
   vehiclesCard: { borderWidth: 1, borderRadius: 16, padding: 10, gap: 8 },
   vehicleRow: {

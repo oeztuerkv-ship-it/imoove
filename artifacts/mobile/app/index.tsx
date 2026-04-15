@@ -25,7 +25,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
-import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
 import { type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
@@ -547,7 +546,6 @@ export default function HomeScreen() {
   }, [editPresetQuery, editPreset]);
 
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [mapCenterKey, setMapCenterKey] = useState(0);
   const [googleSignInLoading, setGoogleSignInLoading] = useState(false);
 
   /* ── Google OAuth ── */
@@ -742,7 +740,7 @@ export default function HomeScreen() {
     setDestResults([]);
     setIsSearchActive(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/ride-select");
+    router.push("/ride-select" as any);
   };
 
   const closeSearch = () => {
@@ -812,7 +810,6 @@ export default function HomeScreen() {
       setUserGps({ lat: loc.coords.latitude, lon: loc.coords.longitude });
       const geoLoc = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
       setOrigin(geoLoc);
-      if (!silent) setMapCenterKey(k => k + 1);
       if (isSearchActive) setOriginQuery(geoLoc.displayName.split(",")[0]);
       if (!silent) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
@@ -844,31 +841,9 @@ export default function HomeScreen() {
   const showDestResults = !isEditingOrigin && destResults.length > 0;
   const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
 
-  /** Karte: Platz für Chip/FAB oben und Sheet unten – nicht zu extrem zoomen (Standortpunkt sichtbar). */
-  const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
-  const mapEdgePaddingBottom = Math.round(
-    destination
-      ? Math.min(380, Math.max(260, screenHeight * 0.32 + TAB_HEIGHT))
-      : Math.min(460, TAB_HEIGHT + screenHeight * 0.4),
-  );
-
   return (
     <View style={styles.root}>
-      {/* ── FULL-SCREEN MAP ── */}
-      {profile.isLoggedIn && destination ? (
-        <RealMapView
-          origin={origin}
-          destination={destination}
-          polyline={route?.polyline}
-          style={StyleSheet.absoluteFill}
-          centerKey={mapCenterKey}
-          edgePaddingTop={mapEdgePaddingTop}
-          edgePaddingBottom={mapEdgePaddingBottom}
-          userLocation={userGps}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0f0f0f" }]} />
-      )}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
 
       {profile.isLoggedIn ? (<>
 

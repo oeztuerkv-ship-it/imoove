@@ -83,6 +83,12 @@ const MOCK_RIDES = [
 ];
 
 const API_BASE = getApiBaseUrl();
+const DRIVER_MARKET_STATUSES = new Set<RideRequest["status"]>([
+  "pending",
+  "requested",
+  "searching_driver",
+  "offered",
+]);
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
@@ -141,6 +147,22 @@ function customerShortLabel(name: string): string {
   return `${parts[0]!.slice(0, 3).toLowerCase()} ${parts[parts.length - 1]!.slice(0, 1).toLowerCase()}.`;
 }
 
+function rideTypeBadge(req: RideRequest): { label: string; bg: string; color: string } {
+  if (req.authorizationSource === "access_code") {
+    return { label: "Freigabe", bg: "#DCFCE7", color: "#166534" };
+  }
+  if (req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)) {
+    return { label: "Krankenfahrt", bg: "#DBEAFE", color: "#1D4ED8" };
+  }
+  if (req.rideKind === "company" || req.payerKind === "company") {
+    return { label: "Firmenfahrt", bg: "#FEF3C7", color: "#92400E" };
+  }
+  if (req.rideKind === "voucher" || req.payerKind === "voucher") {
+    return { label: "Gutscheinfahrt", bg: "#EDE9FE", color: "#5B21B6" };
+  }
+  return { label: "Taxifahrt", bg: "#F1F5F9", color: "#334155" };
+}
+
 /* ─── Sofortfahrt-Karte (hell, Google-ähnlich) — ohne Preis / Taxameter ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const distToPickupM =
@@ -156,6 +178,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const { date, time } = fmt(req.createdAt);
   const codeLine = accessCodeRideLine(req);
   const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
+  const modeBadge = rideTypeBadge(req);
 
   const pillGray = {
     paddingHorizontal: 10,
@@ -219,6 +242,11 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         </View>
         <View style={pillGray}>
           <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#475569" }}>{req.vehicle}</Text>
+        </View>
+        <View style={[pillGray, { backgroundColor: modeBadge.bg }]}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: modeBadge.color }}>
+            {modeBadge.label}
+          </Text>
         </View>
       </View>
 
@@ -302,6 +330,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 /* ─── Scheduled Request Card ─── */
 function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const codeLine = accessCodeRideLine(req);
+  const modeBadge = rideTypeBadge(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const distToPickup = (driverPos && req.fromLat != null && req.fromLon != null)
     ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
@@ -355,6 +384,10 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
 
       {/* Stats row: km · Dauer · ca. Preis */}
       <View style={styles.schedStats}>
+        <View style={[styles.reqBadge, { backgroundColor: modeBadge.bg }]}>
+          <Text style={[styles.reqBadgeText, { color: modeBadge.color }]}>{modeBadge.label}</Text>
+        </View>
+        <View style={styles.schedStatDivider} />
         <View style={styles.schedStatItem}>
           <Feather name="map-pin" size={12} color="#6B7280" />
           <Text style={styles.schedStatText}>{req.distanceKm.toFixed(1)} km</Text>
@@ -812,7 +845,17 @@ function TabProfil({ driver, onLogout }: { driver: DriverProfile; onLogout: () =
 }
 
 /* ─── Active Ride Screen (with final price modal) ─── */
-function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onComplete: (finalFare: number) => void; onCancel: () => void }) {
+function ActiveRideScreen({
+  req,
+  onComplete,
+  onCancel,
+  driverId,
+}: {
+  req: RideRequest;
+  onComplete: (finalFare: number) => void;
+  onCancel: () => void;
+  driverId: string;
+}) {
   const colors = useColors();
   const { startDriving, arriveAtCustomer, markDriverArriving } = useRideRequests();
   const [phase, setPhase] = useState<ActivePhase>(
@@ -1479,6 +1522,7 @@ export default function DriverDashboard() {
   const [codeRideTo, setCodeRideTo] = useState("");
   const [codeRideAccessCode, setCodeRideAccessCode] = useState("");
   const [codeRideCustomer, setCodeRideCustomer] = useState("");
+  const [codeRideVerified, setCodeRideVerified] = useState(false);
   const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
   const prevPendingIds = useRef<Set<string>>(new Set());
@@ -1516,7 +1560,11 @@ export default function DriverDashboard() {
     }
 
     const newReqs = allPending.filter(
-      (r) => !r.scheduledAt && !prevPendingIds.current.has(r.id)
+      (r) =>
+        DRIVER_MARKET_STATUSES.has(r.status) &&
+        !r.driverId &&
+        !r.scheduledAt &&
+        !prevPendingIds.current.has(r.id),
     );
     if (newReqs.length > 0) {
       const req = newReqs[0];
@@ -1555,6 +1603,8 @@ export default function DriverDashboard() {
   const driverId = driver?.id ?? "";
 
   const pendingRequests = allPending.filter((r) => {
+    if (!DRIVER_MARKET_STATUSES.has(r.status)) return false;
+    if (r.driverId) return false;
     if ((r.rejectedBy ?? []).includes(driverId)) return false;
     const createdMs = new Date(r.createdAt as any).getTime();
     if (!Number.isFinite(createdMs)) return true;
@@ -1651,14 +1701,38 @@ export default function DriverDashboard() {
     setCodeRideTo("");
     setCodeRideAccessCode("");
     setCodeRideCustomer("");
+    setCodeRideVerified(false);
   }, []);
+
+  const handleVerifyCodeRide = useCallback(() => {
+    const accessCode = codeRideAccessCode.trim();
+    if (!accessCode) {
+      Alert.alert("Codefahrt", "Bitte zuerst den Gutschein-/Freigabe-Code eingeben.");
+      return;
+    }
+    if (accessCode.length < 4) {
+      Alert.alert("Codefahrt", "Der Code ist zu kurz. Bitte vollständigen Code eingeben.");
+      return;
+    }
+    setCodeRideVerified(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Codefahrt", "Fahrt genehmigt. Jetzt bitte Start und Ziel eintragen.");
+  }, [codeRideAccessCode]);
 
   const handleCreateCodeRide = useCallback(async () => {
     const from = codeRideFrom.trim();
     const to = codeRideTo.trim();
     const accessCode = codeRideAccessCode.trim();
-    if (!from || !to || !accessCode) {
-      Alert.alert("Codefahrt", "Bitte Start, Ziel und Gutschein-/Freigabe-Code eingeben.");
+    if (!accessCode) {
+      Alert.alert("Codefahrt", "Bitte zuerst einen Gutschein-/Freigabe-Code eingeben.");
+      return;
+    }
+    if (!codeRideVerified) {
+      Alert.alert("Codefahrt", "Bitte zuerst auf „Code prüfen“ tippen.");
+      return;
+    }
+    if (!from || !to) {
+      Alert.alert("Codefahrt", "Bitte Start und Ziel eingeben.");
       return;
     }
     if (!driver) return;
@@ -1689,7 +1763,7 @@ export default function DriverDashboard() {
     } finally {
       setCodeRideSubmitting(false);
     }
-  }, [addRequest, codeRideAccessCode, codeRideCustomer, codeRideFrom, codeRideTo, driver, resetCodeRideForm]);
+  }, [addRequest, codeRideAccessCode, codeRideCustomer, codeRideFrom, codeRideTo, codeRideVerified, driver, resetCodeRideForm]);
 
   if (!driver) {
     return (
@@ -1774,6 +1848,7 @@ export default function DriverDashboard() {
             req={activeDriverRequest}
             onComplete={(fare) => handleComplete(activeDriverRequest.id, fare)}
             onCancel={() => handleCancel(activeDriverRequest.id)}
+            driverId={driverId}
           />
         ) : (
           <>
@@ -1906,28 +1981,8 @@ export default function DriverDashboard() {
             <View style={activeStyles.priceModalHandle} />
             <Text style={activeStyles.priceModalTitle}>Codefahrt anlegen</Text>
             <Text style={activeStyles.priceModalSub}>
-              Fuer Laufkunden mit Gutschein- oder Freigabe-Code.
+              Schritt 1: Code pruefen. Schritt 2: Start und Ziel eintragen.
             </Text>
-            <View style={styles.codeRideField}>
-              <Text style={styles.codeRideLabel}>Start</Text>
-              <TextInput
-                style={styles.codeRideInput}
-                value={codeRideFrom}
-                onChangeText={setCodeRideFrom}
-                placeholder="z. B. Bahnhof Esslingen"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-            <View style={styles.codeRideField}>
-              <Text style={styles.codeRideLabel}>Ziel</Text>
-              <TextInput
-                style={styles.codeRideInput}
-                value={codeRideTo}
-                onChangeText={setCodeRideTo}
-                placeholder="z. B. Klinik Stuttgart"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
             <View style={styles.codeRideField}>
               <Text style={styles.codeRideLabel}>Gutschein-/Freigabe-Code</Text>
               <TextInput
@@ -1940,14 +1995,54 @@ export default function DriverDashboard() {
                 placeholderTextColor="#9CA3AF"
               />
             </View>
+            <Pressable
+              style={[styles.codeRideVerifyBtn, codeRideVerified && styles.codeRideVerifyBtnOk]}
+              onPress={handleVerifyCodeRide}
+              disabled={codeRideSubmitting}
+            >
+              <Feather name={codeRideVerified ? "check-circle" : "shield"} size={16} color="#fff" />
+              <Text style={styles.codeRideVerifyText}>
+                {codeRideVerified ? "Fahrt genehmigt" : "Code pruefen"}
+              </Text>
+            </Pressable>
+            {codeRideVerified ? (
+              <View style={styles.codeRideApprovedHint}>
+                <Text style={styles.codeRideApprovedHintText}>
+                  Code erfolgreich geprueft. Jetzt Von und Ziel eingeben.
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.codeRideField}>
+              <Text style={styles.codeRideLabel}>Von</Text>
+              <TextInput
+                style={[styles.codeRideInput, !codeRideVerified && styles.codeRideInputDisabled]}
+                value={codeRideFrom}
+                onChangeText={setCodeRideFrom}
+                placeholder="z. B. Hotel am Bahnhof"
+                placeholderTextColor="#9CA3AF"
+                editable={codeRideVerified}
+              />
+            </View>
+            <View style={styles.codeRideField}>
+              <Text style={styles.codeRideLabel}>Ziel</Text>
+              <TextInput
+                style={[styles.codeRideInput, !codeRideVerified && styles.codeRideInputDisabled]}
+                value={codeRideTo}
+                onChangeText={setCodeRideTo}
+                placeholder="z. B. Flughafen Stuttgart"
+                placeholderTextColor="#9CA3AF"
+                editable={codeRideVerified}
+              />
+            </View>
             <View style={styles.codeRideField}>
               <Text style={styles.codeRideLabel}>Kundenname (optional)</Text>
               <TextInput
-                style={styles.codeRideInput}
+                style={[styles.codeRideInput, !codeRideVerified && styles.codeRideInputDisabled]}
                 value={codeRideCustomer}
                 onChangeText={setCodeRideCustomer}
                 placeholder="Laufkunde"
                 placeholderTextColor="#9CA3AF"
+                editable={codeRideVerified}
               />
             </View>
             <View style={activeStyles.priceModalBtns}>
@@ -1966,7 +2061,7 @@ export default function DriverDashboard() {
                 onPress={() => {
                   void handleCreateCodeRide();
                 }}
-                disabled={codeRideSubmitting}
+                disabled={codeRideSubmitting || !codeRideVerified}
               >
                 {codeRideSubmitting ? (
                   <Text style={activeStyles.priceConfirmText}>Erstelle...</Text>
@@ -2038,6 +2133,39 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: "#111827",
     backgroundColor: "#F9FAFB",
+  },
+  codeRideInputDisabled: {
+    opacity: 0.55,
+  },
+  codeRideVerifyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: "#1D4ED8",
+    paddingVertical: 11,
+  },
+  codeRideVerifyBtnOk: {
+    backgroundColor: "#16A34A",
+  },
+  codeRideVerifyText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  codeRideApprovedHint: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#86EFAC",
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  codeRideApprovedHintText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "#166534",
   },
 
   /* Instant card */
