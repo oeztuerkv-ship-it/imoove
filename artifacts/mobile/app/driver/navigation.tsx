@@ -166,6 +166,7 @@ export default function DriverNavigationScreen() {
   const [chatInput, setChatInput] = useState("");
   const [lastCustomerMsg, setLastCustomerMsg] = useState("");
   const [chatUnread, setChatUnread] = useState(false);
+  const cancelHandledRef = useRef(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
@@ -317,6 +318,31 @@ export default function DriverNavigationScreen() {
     });
     return () => disconnectSocket();
   }, [params.rideId, chatOpen]);
+
+  useEffect(() => {
+    if (!params.rideId) return;
+    cancelHandledRef.current = false;
+    const timer = setInterval(async () => {
+      if (cancelHandledRef.current) return;
+      try {
+        const res = await fetch(`${API_BASE}/rides`, { cache: "no-store" });
+        if (!res.ok) return;
+        const rides = await res.json() as Array<{ id: string; status: string; cancelReason?: string | null }>;
+        const ride = rides.find((r) => r.id === params.rideId);
+        if (!ride) return;
+        if (ride.status !== "cancelled_by_customer") return;
+        cancelHandledRef.current = true;
+        Alert.alert(
+          "Kunde hat storniert",
+          ride.cancelReason ? `Grund: ${ride.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
+          [{ text: "OK", onPress: () => router.replace("/driver/dashboard") }],
+        );
+      } catch {
+        /* ignore */
+      }
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [params.rideId]);
 
   const handleFahrtBeenden = () => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
@@ -592,7 +618,7 @@ export default function DriverNavigationScreen() {
                 size={15}
                 color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
               />
-              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#94A3B8" }} numberOfLines={1}>
+              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#CBD5E1" }} numberOfLines={1}>
                 {(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "Krankenkasse" : (params.paymentMethod || "Bar")}
               </Text>
             </View>
@@ -858,7 +884,7 @@ const styles = StyleSheet.create({
   etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#4ADE80", lineHeight: 34 },
   etaDetail: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", marginTop: 2 },
   etaCustomerBlock: { flex: 1, justifyContent: "center" },
-  etaCustomer: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
+  etaCustomer: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff" },
   etaDest: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)", marginTop: 3 },
   etaPickupDist: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#4ADE80", marginTop: 4 },
   actionBtnWrapper: { width: "100%" },
