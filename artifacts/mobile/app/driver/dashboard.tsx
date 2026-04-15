@@ -925,6 +925,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
         destName: req.toFull ?? req.fromFull,
         estimatedFare: String(req.estimatedFare),
         paymentMethod: req.paymentMethod,
+        driverId,
       },
     });
   }, [driverCoords, phase, req, markDriverArriving]);
@@ -965,6 +966,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
           destName: req.toFull ?? req.fromFull,
           estimatedFare: String(req.estimatedFare),
           paymentMethod: req.paymentMethod,
+          driverId,
         },
       });
     } else {
@@ -994,6 +996,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
           destName: req.toFull ?? req.fromFull,
           estimatedFare: String(req.estimatedFare),
           paymentMethod: req.paymentMethod,
+          driverId,
         },
       });
     }
@@ -1342,6 +1345,7 @@ function ActiveRideScreen({ req, onComplete, onCancel }: { req: RideRequest; onC
                         destName: req.toFull ?? req.fromFull,
                         estimatedFare: String(req.estimatedFare),
                         paymentMethod: req.paymentMethod,
+                        driverId,
                       },
                     });
                   }
@@ -1550,9 +1554,14 @@ export default function DriverDashboard() {
   /** Nur echte Fleet-Driver-ID — E-Mail als driver_id bricht API-/Statuslogik. */
   const driverId = driver?.id ?? "";
 
-  const pendingRequests = allPending.filter(
-    (r) => !(r.rejectedBy ?? []).includes(driverId)
-  );
+  const pendingRequests = allPending.filter((r) => {
+    if ((r.rejectedBy ?? []).includes(driverId)) return false;
+    const createdMs = new Date(r.createdAt as any).getTime();
+    if (!Number.isFinite(createdMs)) return true;
+    const ageHours = (Date.now() - createdMs) / (1000 * 60 * 60);
+    // Alte, nie angenommene Pools nicht erneut beim Fahrer anzeigen.
+    return ageHours <= 8;
+  });
   const activeDriverRequest =
     requests.find(
       (r) =>

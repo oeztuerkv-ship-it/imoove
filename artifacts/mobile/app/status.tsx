@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
+  BackHandler,
   Easing,
   Modal,
   Platform,
@@ -27,7 +28,7 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
 import { rs, rf } from "@/utils/scale";
-import { connectToRide, disconnectSocket, sendCustomerLocation } from "@/utils/socket";
+import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
 
 const FALLBACK_DRIVER = {
   name: "Vedat Öztürk",
@@ -143,6 +144,10 @@ export default function StatusScreen() {
   const [driverMarker, setDriverMarker] = useState<{ lat: number; lon: number } | null>(null);
   const [noDriverModal, setNoDriverModal] = useState(false);
   const [searchWave, setSearchWave] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [lastDriverMsg, setLastDriverMsg] = useState<string>("");
+  const [chatUnread, setChatUnread] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -183,6 +188,12 @@ export default function StatusScreen() {
     connectToRide(rid, (msg) => {
       if (msg.type === "location:driver:update") {
         setDriverMarker({ lat: msg.lat as number, lon: msg.lon as number });
+      }
+      if (msg.type === "chat:ride:update" && msg.sender === "driver") {
+        const text = typeof msg.text === "string" ? msg.text : "";
+        if (!text) return;
+        setLastDriverMsg(text);
+        if (!chatOpen) setChatUnread(true);
       }
     });
 
@@ -313,7 +324,36 @@ export default function StatusScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setNoDriverModal(false);
     const cancelId = lastAddedRequestId ?? acceptedRequest?.id;
-    if (cancelId) await cancelRequest(cancelId);
+    if (!cancelId) {
+      cancelRide();
+      router.replace("/");
+      return;
+    }
+    const isDriverArrived =
+      acceptedRequest?.status === "driver_waiting" ||
+      acceptedRequest?.status === "arrived" ||
+      acceptedRequest?.status === "passenger_onboard" ||
+      acceptedRequest?.status === "in_progress";
+    if (isDriverArrived) {
+      Alert.alert(
+        "Fahrt stornieren?",
+        "Der Fahrer ist bereits vor Ort. Bei Storno fallen 5,00 € an.",
+        [
+          { text: "Zurück", style: "cancel" },
+          {
+            text: "Trotzdem stornieren",
+            style: "destructive",
+            onPress: () => {
+              void cancelRequest(cancelId, 5);
+              cancelRide();
+              router.replace("/");
+            },
+          },
+        ],
+      );
+      return;
+    }
+    await cancelRequest(cancelId);
     cancelRide();
     router.replace("/");
   };
@@ -333,18 +373,22 @@ export default function StatusScreen() {
     return () => clearTimeout(t);
   }, [customerPhase, searchWave]);
 
+  useEffect(() => {
+    if (customerPhase === "searching" || customerPhase === "completed") return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      Alert.alert(
+        "Fahrt aktiv",
+        "Bitte die Fahrt nicht über Zurück verlassen. Nutzen Sie bei Bedarf die Storno-Aktion.",
+      );
+      return true;
+    });
+    return () => sub.remove();
+  }, [customerPhase]);
+
   const handleMessage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      `Nachricht an ${driverFirstName}`,
-      "Wähle eine schnelle Nachricht:",
-      [
-        { text: "Ich bin gleich da 🚶", onPress: () => {} },
-        { text: "Bitte kurz warten 🙏", onPress: () => {} },
-        { text: "Wo sind Sie gerade? 📍", onPress: () => {} },
-        { text: "Abbrechen", style: "cancel" },
-      ]
-    );
+    setChatUnread(false);
+    setChatOpen(true);
   };
 
   const handleFertig = () => {
@@ -682,7 +726,19 @@ export default function StatusScreen() {
       />
 
       {/* Zurück-Button oben links */}
-      <Pressable style={[styles.backBtn, { top: topPad + 12 }]} onPress={handleCancel}>
+      <Pressable
+        style={[styles.backBtn, { top: topPad + 12 }]}
+        onPress={() => {
+          Alert.alert(
+            "Fahrt aktiv",
+            "Bitte nicht einfach zurückgehen. Wenn nötig, storniere die Fahrt ausdrücklich.",
+            [
+              { text: "Weiter zur Fahrt", style: "cancel" },
+              { text: "Stornieren", style: "destructive", onPress: () => void handleCancel() },
+            ],
+          );
+        }}
+      >
         <Feather name="arrow-left" size={20} color="#111" />
       </Pressable>
 
@@ -741,8 +797,51 @@ export default function StatusScreen() {
         </View>
         <Pressable style={styles.uberMsgBtn} onPress={handleMessage}>
           <Feather name="message-circle" size={20} color="#fff" />
+          {chatUnread ? <View style={styles.chatBadgeDot} /> : null}
         </Pressable>
       </View>
+
+      <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
+        <Pressable style={styles.chatOverlay} onPress={() => setChatOpen(false)}>
+          <Pressable style={styles.chatCard} onPress={() => {}}>
+            <Text style={styles.chatTitle}>Nachricht an {driverFirstName}</Text>
+            {lastDriverMsg ? <Text style={styles.chatIncoming}>Letzte Fahrer-Nachricht: {lastDriverMsg}</Text> : null}
+            <View style={styles.chatQuickRow}>
+              {["Ich bin gleich da", "Bitte kurz warten", "Wo sind Sie gerade?"].map((q) => (
+                <Pressable
+                  key={q}
+                  style={styles.chatQuickBtn}
+                  onPress={() => {
+                    sendRideChat(q, "customer");
+                    setChatOpen(false);
+                  }}
+                >
+                  <Text style={styles.chatQuickBtnText}>{q}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              style={styles.chatInput}
+              placeholder="Eigene Nachricht"
+              placeholderTextColor="#9CA3AF"
+              value={chatInput}
+              onChangeText={setChatInput}
+            />
+            <Pressable
+              style={styles.chatSendBtn}
+              onPress={() => {
+                const msg = chatInput.trim();
+                if (!msg) return;
+                sendRideChat(msg, "customer");
+                setChatInput("");
+                setChatOpen(false);
+              }}
+            >
+              <Text style={styles.chatSendBtnText}>Senden</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -784,6 +883,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingTop: rs(18),
+    minHeight: rs(128),
     paddingHorizontal: rs(18),
     gap: rs(14),
   },
@@ -799,6 +899,18 @@ const styles = StyleSheet.create({
     width: rs(40), height: rs(40), borderRadius: rs(20),
     backgroundColor: "#374151",
     alignItems: "center", justifyContent: "center",
+    position: "relative",
+  },
+  chatBadgeDot: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#EF4444",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
 
   /* Arrived banner */
@@ -1008,6 +1120,47 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
   noDriverBtnSecondaryText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#111111" },
+  chatOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    paddingHorizontal: rs(18),
+  },
+  chatCard: {
+    backgroundColor: "#fff",
+    borderRadius: rs(16),
+    padding: rs(16),
+    gap: rs(10),
+  },
+  chatTitle: { fontSize: rf(17), fontFamily: "Inter_700Bold", color: "#111827" },
+  chatIncoming: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#374151" },
+  chatQuickRow: { gap: rs(8) },
+  chatQuickBtn: {
+    borderRadius: rs(10),
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    backgroundColor: "#F9FAFB",
+    paddingVertical: rs(9),
+    paddingHorizontal: rs(10),
+  },
+  chatQuickBtnText: { fontSize: rf(13), fontFamily: "Inter_500Medium", color: "#111827" },
+  chatInput: {
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    borderRadius: rs(10),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
+    color: "#111827",
+    fontSize: rf(14),
+    fontFamily: "Inter_400Regular",
+  },
+  chatSendBtn: {
+    backgroundColor: "#111827",
+    borderRadius: rs(10),
+    alignItems: "center",
+    paddingVertical: rs(10),
+  },
+  chatSendBtnText: { color: "#fff", fontSize: rf(14), fontFamily: "Inter_700Bold" },
 
   completedBg: { flex: 1, backgroundColor: "#F3F4F6" },
   completedScroll: { paddingHorizontal: rs(20), paddingBottom: rs(40), gap: 0 },

@@ -110,7 +110,7 @@ interface RideRequestContextValue {
   markDriverArriving: (id: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
-  cancelRequest: (id: string) => Promise<void>;
+  cancelRequest: (id: string, finalFare?: number) => Promise<void>;
   driverCancelRequest: (id: string, driverId: string) => Promise<void>;
   arriveAtCustomer: (id: string) => Promise<void>;
   startDriving: (id: string) => Promise<void>;
@@ -483,7 +483,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     [fetchAll],
   );
 
-  const cancelRequest = useCallback((id: string) => patchStatus(id, "cancelled_by_customer"), [patchStatus]);
+  const cancelRequest = useCallback(
+    (id: string, finalFare?: number) => patchStatus(id, "cancelled_by_customer", finalFare),
+    [patchStatus],
+  );
 
   const driverCancelRequest = useCallback(
     async (id: string, driverId: string) => {

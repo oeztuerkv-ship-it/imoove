@@ -69,6 +69,15 @@ export function sendCustomerLocation(lat: number, lon: number) {
   }
 }
 
+/** Send a lightweight in-ride chat message. */
+export function sendRideChat(text: string, sender: "customer" | "driver") {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  if (_ws?.readyState === WebSocket.OPEN && _rideId) {
+    _ws.send(JSON.stringify({ type: "chat:ride", rideId: _rideId, text: trimmed, sender }));
+  }
+}
+
 /** Disconnect and clean up. */
 export function disconnectSocket() {
   if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }

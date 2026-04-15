@@ -66,6 +66,24 @@ wss.on("connection", (socket) => {
           }
         });
       }
+
+      if (msg.type === "chat:ride" && rideId) {
+        const text = typeof (msg as { text?: unknown }).text === "string"
+          ? (msg as { text: string }).text.trim()
+          : "";
+        const sender = (msg as { sender?: unknown }).sender === "driver" ? "driver" : "customer";
+        if (!text) return;
+        rooms.get(rideId)?.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: "chat:ride:update",
+              sender,
+              text,
+              ts: new Date().toISOString(),
+            }));
+          }
+        });
+      }
     } catch { /* ignore malformed messages */ }
   });
 

@@ -370,6 +370,17 @@ router.post("/rides/:id/driver-cancel", async (req, res, next) => {
       res.status(404).json({ error: "not found" });
       return;
     }
+    // Bereits final durch Kunde/System beendet -> nicht erneut in Suchpool schieben.
+    if (
+      cur.status === "cancelled_by_customer" ||
+      cur.status === "cancelled_by_system" ||
+      cur.status === "cancelled_by_driver" ||
+      cur.status === "cancelled" ||
+      cur.status === "completed"
+    ) {
+      res.json(stripPartnerOnlyRideFields(cur));
+      return;
+    }
     const existing = cur.rejectedBy ?? [];
     const rejectedBy = driverId
       ? (existing.includes(driverId) ? existing : [...existing, driverId])

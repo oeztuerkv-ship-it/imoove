@@ -20,7 +20,12 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { sendDriverLocation as socketSendDriver } from "@/utils/socket";
+import {
+  connectToRide,
+  disconnectSocket,
+  sendDriverLocation as socketSendDriver,
+  sendRideChat,
+} from "@/utils/socket";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 
 const API_BASE = getApiBaseUrl();
@@ -106,6 +111,7 @@ export default function DriverNavigationScreen() {
     destLat: string; destLon: string; destName: string;
     estimatedFare: string;
     paymentMethod: string;
+    driverId: string;
   }>();
 
   const phase = params.phase ?? "pickup";
@@ -156,6 +162,10 @@ export default function DriverNavigationScreen() {
   const [cancelReason, setCancelReason] = useState<string>("");
   const [customCancelReason, setCustomCancelReason] = useState("");
   const [sliderWidth, setSliderWidth] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [lastCustomerMsg, setLastCustomerMsg] = useState("");
+  const [chatUnread, setChatUnread] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
@@ -277,6 +287,7 @@ export default function DriverNavigationScreen() {
 
   const sliderResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => hasArrived && isPickupPhase,
       onMoveShouldSetPanResponder: (_evt, gestureState) =>
         Math.abs(gestureState.dx) > 4 && hasArrived && isPickupPhase,
       onPanResponderMove: (_evt, gestureState) => {
@@ -293,6 +304,19 @@ export default function DriverNavigationScreen() {
       onPanResponderTerminate: resetSlide,
     }),
   ).current;
+
+  useEffect(() => {
+    if (!params.rideId) return;
+    connectToRide(params.rideId, (msg) => {
+      if (msg.type === "chat:ride:update" && msg.sender === "customer") {
+        const text = typeof msg.text === "string" ? msg.text : "";
+        if (!text) return;
+        setLastCustomerMsg(text);
+        if (!chatOpen) setChatUnread(true);
+      }
+    });
+    return () => disconnectSocket();
+  }, [params.rideId, chatOpen]);
 
   const handleFahrtBeenden = () => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
@@ -526,6 +550,16 @@ export default function DriverNavigationScreen() {
         >
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
+        <Pressable
+          style={styles.compassBtn}
+          onPress={() => {
+            setChatUnread(false);
+            setChatOpen(true);
+          }}
+        >
+          <Feather name="message-circle" size={18} color="#1B6B3A" />
+          {chatUnread ? <View style={styles.navChatBadge} /> : null}
+        </Pressable>
       </View>
 
       {/* Bottom bar — dark Google Maps style */}
@@ -691,7 +725,7 @@ export default function DriverNavigationScreen() {
                     await fetch(`${API_BASE}/rides/${params.rideId}/driver-cancel`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ reason }),
+                      body: JSON.stringify({ reason, driverId: params.driverId ?? "" }),
                     });
                   } catch (_) {}
                   setShowCancelReasonModal(false);
@@ -705,6 +739,57 @@ export default function DriverNavigationScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
+        <Pressable style={styles.modalOverlayCenter} onPress={() => setChatOpen(false)}>
+          <Pressable style={styles.cancelReasonCard} onPress={() => {}}>
+            <Text style={styles.cancelReasonTitle}>Kundenchat</Text>
+            {lastCustomerMsg ? (
+              <Text style={styles.cancelReasonLead}>Letzte Kunden-Nachricht: {lastCustomerMsg}</Text>
+            ) : (
+              <Text style={styles.cancelReasonLead}>Noch keine neue Nachricht vom Kunden.</Text>
+            )}
+            <View style={styles.cancelReasonOptions}>
+              {["Ich bin gleich da", "Bin vor Ort", "Bitte kurz warten"].map((q) => (
+                <Pressable
+                  key={q}
+                  style={styles.cancelReasonChip}
+                  onPress={() => {
+                    sendRideChat(q, "driver");
+                    setChatOpen(false);
+                  }}
+                >
+                  <Text style={styles.cancelReasonChipText}>{q}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              style={styles.cancelReasonInput}
+              placeholder="Eigene Antwort"
+              placeholderTextColor="#9CA3AF"
+              value={chatInput}
+              onChangeText={setChatInput}
+            />
+            <View style={styles.cancelReasonBtns}>
+              <Pressable style={styles.cancelReasonBtnGhost} onPress={() => setChatOpen(false)}>
+                <Text style={styles.cancelReasonBtnGhostText}>Schließen</Text>
+              </Pressable>
+              <Pressable
+                style={styles.cancelReasonBtnDanger}
+                onPress={() => {
+                  const msg = chatInput.trim();
+                  if (!msg) return;
+                  sendRideChat(msg, "driver");
+                  setChatInput("");
+                  setChatOpen(false);
+                }}
+              >
+                <Text style={styles.cancelReasonBtnDangerText}>Antwort senden</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -740,6 +825,18 @@ const styles = StyleSheet.create({
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
+    position: "relative",
+  },
+  navChatBadge: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#EF4444",
+    borderWidth: 1,
+    borderColor: "#fff",
   },
   dannCard: {
     flexDirection: "row", alignItems: "center", gap: 8,

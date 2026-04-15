@@ -742,6 +742,7 @@ export default function HomeScreen() {
     setDestResults([]);
     setIsSearchActive(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/ride-select");
   };
 
   const closeSearch = () => {
@@ -854,7 +855,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.root}>
       {/* ── FULL-SCREEN MAP ── */}
-      {profile.isLoggedIn ? (
+      {profile.isLoggedIn && destination ? (
         <RealMapView
           origin={origin}
           destination={destination}
@@ -873,22 +874,22 @@ export default function HomeScreen() {
 
       {/* ── ORIGIN CHIP (overlaid on map) — nur ohne Ziel sichtbar ── */}
       {!destination && (
-        <View style={[styles.originChip, { top: topPad + 8 }]}>
-          <View style={styles.originChipRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.originChipLabel}>Start</Text>
-              <Text style={styles.originChipText} numberOfLines={1}>
-                {origin.displayName.split(",").slice(0, 2).join(",")}
-              </Text>
+        <View style={[styles.homeCtaWrap, { top: topPad + 12 }]}>
+          <Pressable
+            style={styles.homeCtaBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsSearchActive(true);
+            }}
+          >
+            <View style={styles.homeCtaIcon}>
+              <Feather name="search" size={18} color="#fff" />
             </View>
-            {gpsLoading
-              ? <ActivityIndicator size="small" color="#DC2626" />
-              : (
-                <Pressable style={styles.originLocBtn} onPress={() => { handleGpsLocate(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}>
-                  <Feather name="map-pin" size={rs(13)} color="#fff" />
-                </Pressable>
-              )}
-          </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.homeCtaTitle}>Wohin soll es gehen?</Text>
+              <Text style={styles.homeCtaSub}>Jetzt Ziel eingeben und Fahrt auswählen</Text>
+            </View>
+          </Pressable>
         </View>
       )}
 
@@ -1858,6 +1859,38 @@ const styles = StyleSheet.create({
   originChipLabel: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#B0B7C3", marginBottom: rs(2), letterSpacing: 0.6, textTransform: "uppercase" },
   originChipRow: { flexDirection: "row", alignItems: "center", gap: rs(8) },
   originChipText: { flex: 1, fontSize: rf(17), fontFamily: "Inter_600SemiBold", color: "#111", letterSpacing: -0.2 },
+  homeCtaWrap: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    zIndex: 20,
+  },
+  homeCtaBtn: {
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  homeCtaIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeCtaTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#111827" },
+  homeCtaSub: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 2 },
   originLocBtn: {
     width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: "#DC2626",
