@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -150,7 +150,6 @@ export default function StatusScreen() {
   const [chatUnread, setChatUnread] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
-  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -323,48 +322,6 @@ export default function StatusScreen() {
     }
   }, [completedRequest]);
 
-  const resolveCurrentCancelId = useCallback(() => {
-    const fallbackIdFromActiveRequests =
-      [...myActiveRequests]
-        .sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime())[0]?.id ?? null;
-    return acceptedRequest?.id ?? fallbackIdFromActiveRequests ?? lastAddedRequestId;
-  }, [acceptedRequest?.id, lastAddedRequestId, myActiveRequests]);
-
-  const performCancel = useCallback(async (reason: string) => {
-    if (cancelSubmitting) return false;
-    const cleanReason = reason.trim();
-    if (!cleanReason) {
-      Alert.alert("Storno-Grund fehlt", "Bitte zuerst einen Grund angeben.");
-      return false;
-    }
-    const cancelId = resolveCurrentCancelId();
-    if (!cancelId) {
-      Alert.alert("Storno nicht möglich", "Es wurde keine aktive Fahrt gefunden.");
-      return false;
-    }
-    const isDriverArrived =
-      acceptedRequest?.status === "driver_waiting" ||
-      acceptedRequest?.status === "arrived" ||
-      acceptedRequest?.status === "passenger_onboard" ||
-      acceptedRequest?.status === "in_progress";
-    try {
-      setCancelSubmitting(true);
-      await cancelRequest(cancelId, isDriverArrived ? 5 : undefined, cleanReason);
-      await refreshRequests();
-      setCancelModalOpen(false);
-      setCancelReason("");
-      cancelRide();
-      router.replace("/");
-      return true;
-    } catch (error) {
-      const code = error instanceof Error ? error.message : "";
-      Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
-      return false;
-    } finally {
-      setCancelSubmitting(false);
-    }
-  }, [acceptedRequest?.status, cancelRequest, cancelRide, cancelSubmitting, refreshRequests, resolveCurrentCancelId]);
-
   const handleCancel = () => {
     setCancelModalOpen(true);
   };
@@ -375,6 +332,14 @@ export default function StatusScreen() {
     const reason = cancelReason.trim();
     if (!reason) {
       Alert.alert("Storno-Grund fehlt", "Bitte zuerst einen Grund angeben.");
+      return;
+    }
+    const cancelId = lastAddedRequestId ?? acceptedRequest?.id;
+    if (!cancelId) {
+      setCancelModalOpen(false);
+      setCancelReason("");
+      cancelRide();
+      router.replace("/");
       return;
     }
     const isDriverArrived =
@@ -392,14 +357,22 @@ export default function StatusScreen() {
             text: "Trotzdem stornieren",
             style: "destructive",
             onPress: () => {
-              void performCancel(reason);
+              void cancelRequest(cancelId, 5, reason);
+              setCancelModalOpen(false);
+              setCancelReason("");
+              cancelRide();
+              router.replace("/");
             },
           },
         ],
       );
       return;
     }
-    await performCancel(reason);
+    await cancelRequest(cancelId, undefined, reason);
+    setCancelModalOpen(false);
+    setCancelReason("");
+    cancelRide();
+    router.replace("/");
   };
 
   useEffect(() => {
@@ -657,11 +630,7 @@ export default function StatusScreen() {
                     "Die Suche wird beendet und du kehrst zur Startseite zurück.",
                     [
                       { text: "Nein", style: "cancel" },
-                      {
-                        text: "Ja, weiter",
-                        style: "destructive",
-                        onPress: () => { void performCancel("Suche abgebrochen durch Kunde"); },
-                      },
+                      { text: "Ja, weiter", style: "destructive", onPress: () => handleCancel() },
                     ],
                   );
                 }}
@@ -857,10 +826,9 @@ export default function StatusScreen() {
               </Pressable>
               <Pressable
                 style={[styles.chatSendBtn, { backgroundColor: "#DC2626", flex: 1 }]}
-                disabled={cancelSubmitting}
                 onPress={() => { void submitCancel(); }}
               >
-                <Text style={styles.chatSendBtnText}>{cancelSubmitting ? "Bitte warten..." : "Jetzt stornieren"}</Text>
+                <Text style={styles.chatSendBtnText}>Jetzt stornieren</Text>
               </Pressable>
             </View>
           </Pressable>

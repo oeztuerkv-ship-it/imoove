@@ -363,17 +363,7 @@ export default function MyRidesScreen() {
                             text: "Ja, stornieren",
                             style: "destructive",
                             onPress: () => {
-                              void (async () => {
-                                try {
-                                  await cancelRequest(req.id, undefined, "Storno durch Kundenansicht (Meine Fahrten)");
-                                } catch (error) {
-                                  const code = error instanceof Error ? error.message : "";
-                                  Alert.alert(
-                                    "Storno fehlgeschlagen",
-                                    code ? `Technisch: ${code}` : "Bitte erneut versuchen.",
-                                  );
-                                }
-                              })();
+                              void cancelRequest(req.id, undefined, "Storno durch Kundenansicht (Meine Fahrten)");
                             },
                           },
                         ])
