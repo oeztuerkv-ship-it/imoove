@@ -848,14 +848,18 @@ export default function HomeScreen() {
       {profile.isLoggedIn ? (<>
 
       {!destination && (
-        <View style={[styles.homeBrandWrap, { top: topPad + 12 }]}>
-          <View style={styles.homeBrandRow}>
-            <View style={styles.homeBrandIcon}><Text style={styles.homeBrandIconText}>OR</Text></View>
-            <View>
-              <Text style={styles.homeBrandTitle}>ONRODA</Text>
-              <Text style={styles.homeBrandSub}>Mobilität neu gedacht</Text>
-            </View>
-          </View>
+        <View style={[styles.topRightFabs, { top: topPad + 12 }]}>
+          <Pressable
+            style={[styles.fab, { backgroundColor: "#fff", borderColor: colors.border }]}
+            onPress={() => { void handleGpsLocate(); }}
+            disabled={gpsLoading}
+          >
+            {gpsLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="navigation" size={16} color={colors.primary} />
+            )}
+          </Pressable>
         </View>
       )}
 
@@ -873,6 +877,12 @@ export default function HomeScreen() {
       {/* ── BOTTOM SHEET ── */}
       <View style={[styles.sheet, { backgroundColor: colors.surface, maxHeight: destination ? "90%" : "84%" }]}>
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+
+        {!destination ? (
+          <View style={{ paddingHorizontal: 10, marginBottom: 8 }}>
+            <Text style={[styles.servicesTitle, { color: colors.foreground }]}>Dienstleistungen</Text>
+          </View>
+        ) : null}
 
         {/* Suche / Route-Anzeige */}
         {destination ? (
@@ -940,7 +950,6 @@ export default function HomeScreen() {
             <>
               {/* Quick destinations */}
               <View style={[styles.quickSection, { borderColor: colors.border }]}>
-                <Text style={[styles.servicesTitle, { color: colors.foreground }]}>Dienstleistungen</Text>
                 <Pressable
                   style={styles.quickRow}
                   onPress={() => {

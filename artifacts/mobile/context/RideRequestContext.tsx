@@ -354,6 +354,12 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const patchStatus = useCallback(
     async (id: string, status: RequestStatus, finalFare?: number, driverId?: string, cancelReason?: string) => {
       if (!API_BASE) return;
+      const normalizedCancelReason =
+        status === "cancelled_by_customer"
+          ? (typeof cancelReason === "string" && cancelReason.trim().length > 0
+              ? cancelReason.trim()
+              : "Storno durch Kunden-App")
+          : undefined;
       const res = await fetch(`${API_BASE}/rides/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -361,7 +367,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           status,
           ...(finalFare != null ? { finalFare } : {}),
           ...(driverId != null ? { driverId } : {}),
-          ...(cancelReason ? { cancelReason } : {}),
+          ...(normalizedCancelReason ? { cancelReason: normalizedCancelReason } : {}),
         }),
       });
       if (!res.ok) {

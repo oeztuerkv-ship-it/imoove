@@ -157,6 +157,11 @@ function rideTypeBadge(req: RideRequest): { label: string; bg: string; color: st
   return { label: "Taxifahrt", bg: "#F1F5F9", color: "#334155" };
 }
 
+function hasOnrodaFixpreisGuarantee(req: RideRequest): boolean {
+  const vehicle = (req.vehicle ?? "").toLowerCase().trim();
+  return vehicle.includes("onroda");
+}
+
 /* ─── Sofortfahrt-Karte (hell, Google-ähnlich) — ohne Preis / Taxameter ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const distToPickupM =
@@ -173,6 +178,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const codeLine = accessCodeRideLine(req);
   const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
   const modeBadge = rideTypeBadge(req);
+  const hasFixpreisGuarantee = hasOnrodaFixpreisGuarantee(req);
 
   const pillGray = {
     paddingHorizontal: 10,
@@ -242,6 +248,14 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             {modeBadge.label}
           </Text>
         </View>
+        {hasFixpreisGuarantee ? (
+          <View style={[pillGray, { backgroundColor: "#FEE2E2", flexDirection: "row", alignItems: "center", gap: 6 }]}>
+            <MaterialCommunityIcons name="shield-check-outline" size={13} color="#B91C1C" />
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>
+              Fixpreis-Garantie
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 10 }}>
@@ -328,6 +342,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const codeLine = accessCodeRideLine(req);
   const modeBadge = rideTypeBadge(req);
+  const hasFixpreisGuarantee = hasOnrodaFixpreisGuarantee(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const distToPickup = (driverPos && req.fromLat != null && req.fromLon != null)
     ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
@@ -384,6 +399,15 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
         <View style={[styles.reqBadge, { backgroundColor: modeBadge.bg }]}>
           <Text style={[styles.reqBadgeText, { color: modeBadge.color }]}>{modeBadge.label}</Text>
         </View>
+        {hasFixpreisGuarantee ? (
+          <>
+            <View style={styles.schedStatDivider} />
+            <View style={[styles.reqBadge, { backgroundColor: "#FEE2E2", flexDirection: "row", alignItems: "center", gap: 6 }]}>
+              <MaterialCommunityIcons name="shield-check-outline" size={13} color="#B91C1C" />
+              <Text style={[styles.reqBadgeText, { color: "#B91C1C" }]}>Fixpreis-Garantie</Text>
+            </View>
+          </>
+        ) : null}
         <View style={styles.schedStatDivider} />
         <View style={styles.schedStatItem}>
           <Feather name="map-pin" size={12} color="#6B7280" />

@@ -356,10 +356,18 @@ export default function MyRidesScreen() {
                     req.status === "driver_waiting") && (
                     <Pressable
                       style={[styles.actionBtn, { borderColor: "#EF444466", backgroundColor: "#EF444408" }]}
-                      onPress={() => Alert.alert("Fahrt stornieren?", "Möchtest du diesen Auftrag wirklich stornieren?", [
-                        { text: "Nein", style: "cancel" },
-                        { text: "Ja, stornieren", style: "destructive", onPress: () => cancelRequest(req.id) },
-                      ])}
+                      onPress={() =>
+                        Alert.alert("Fahrt stornieren?", "Möchtest du diesen Auftrag wirklich stornieren?", [
+                          { text: "Nein", style: "cancel" },
+                          {
+                            text: "Ja, stornieren",
+                            style: "destructive",
+                            onPress: () => {
+                              void cancelRequest(req.id, undefined, "Storno durch Kundenansicht (Meine Fahrten)");
+                            },
+                          },
+                        ])
+                      }
                     >
                       <Feather name="x-circle" size={15} color="#EF4444" />
                       <Text style={[styles.actionBtnText, { color: "#EF4444" }]}>Fahrt stornieren</Text>
