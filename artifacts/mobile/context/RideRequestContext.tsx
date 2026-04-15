@@ -273,6 +273,7 @@ const POLL_INTERVAL_MS = 2500;
 
 export function RideRequestProvider({ children }: { children: React.ReactNode }) {
   const [requests, setRequests] = useState<RideRequest[]>([]);
+  const [locallyCancelledRequestIds, setLocallyCancelledRequestIds] = useState<Set<string>>(new Set());
   const [lastAddedRequestId, setLastAddedRequestId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [passengerId, setPassengerId] = useState("");
@@ -325,6 +326,38 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const data: any[] = await res.json();
       const normalized = data.map(normalizeRequest);
       setRequests(normalized);
+      setLocallyCancelledRequestIds((prev) => {
+        if (prev.size === 0) return prev;
+        const activeIds = new Set(
+          normalized
+            .filter(
+              (r) =>
+                r.status === "pending" ||
+                r.status === "requested" ||
+                r.status === "searching_driver" ||
+                r.status === "offered" ||
+                r.status === "accepted" ||
+                r.status === "driver_arriving" ||
+                r.status === "driver_waiting" ||
+                r.status === "passenger_onboard" ||
+                r.status === "arrived" ||
+                r.status === "in_progress",
+            )
+            .map((r) => r.id),
+        );
+        const next = new Set<string>();
+        prev.forEach((id) => {
+          if (activeIds.has(id)) next.add(id);
+        });
+        if (next.size === prev.size) {
+          let equal = true;
+          next.forEach((id) => {
+            if (!prev.has(id)) equal = false;
+          });
+          if (equal) return prev;
+        }
+        return next;
+      });
       setIsConnected(true);
       if (normalized.length > lastCountRef.current) {
         const newReqs = normalized.slice(0, normalized.length - lastCountRef.current);
@@ -505,8 +538,19 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const cancelRequest = useCallback(
-    (id: string, finalFare?: number, cancelReason?: string) =>
-      patchStatus(id, "cancelled_by_customer", finalFare, undefined, cancelReason),
+    async (id: string, finalFare?: number, cancelReason?: string) => {
+      setLocallyCancelledRequestIds((prev) => new Set(prev).add(id));
+      try {
+        await patchStatus(id, "cancelled_by_customer", finalFare, undefined, cancelReason);
+      } catch (error) {
+        setLocallyCancelledRequestIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        throw error;
+      }
+    },
     [patchStatus],
   );
 
@@ -549,6 +593,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     ? requests
         .filter(
           (r) =>
+            !locallyCancelledRequestIds.has(r.id) &&
             r.passengerId === passengerId &&
             (r.status === "accepted" ||
               r.status === "driver_arriving" ||
@@ -569,12 +614,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const myActiveRequests = passengerId
     ? requests.filter(
         (r) =>
+          !locallyCancelledRequestIds.has(r.id) &&
           r.passengerId === passengerId &&
-          (r.status === "pending" ||
-            r.status === "requested" ||
-            r.status === "searching_driver" ||
-            r.status === "offered" ||
-            r.status === "accepted" ||
+          (r.status === "accepted" ||
             r.status === "driver_arriving" ||
             r.status === "driver_waiting" ||
             r.status === "passenger_onboard" ||

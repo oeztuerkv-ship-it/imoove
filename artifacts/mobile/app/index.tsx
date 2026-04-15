@@ -236,7 +236,7 @@ function HorizontalVehicleSlider({
           const snapFocused = dotIndex === i;
           const headlines = getBannerHeadlines(slideId);
           const metaLine = getBannerMeta(slideId);
-          const borderW = snapFocused ? 2 : 0;
+          const borderW = 2;
           const borderColor = snapFocused ? colors.primary : "transparent";
           return (
             <View
@@ -249,9 +249,9 @@ function HorizontalVehicleSlider({
                   backgroundColor: SLIDER_BEIGE,
                   borderWidth: borderW,
                   borderColor,
-                  shadowOpacity: snapFocused ? 0.1 : 0.06,
+                  shadowOpacity: 0.08,
                   shadowRadius: 10,
-                  elevation: snapFocused ? 5 : 3,
+                  elevation: 4,
                 },
               ]}
             >
@@ -817,14 +817,14 @@ export default function HomeScreen() {
       {!destination && (
         <View style={[styles.topRightFabs, { top: topPad + 12 }]}>
           <Pressable
-            style={[styles.fab, { backgroundColor: "#fff", borderColor: colors.border }]}
+            style={[styles.fab, { backgroundColor: "#111827", borderColor: "#111827" }]}
             onPress={() => { void handleGpsLocate(); }}
             disabled={gpsLoading}
           >
             {gpsLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Feather name="navigation" size={16} color={colors.primary} />
+              <Feather name="navigation" size={16} color="#FFFFFF" />
             )}
           </Pressable>
         </View>
@@ -907,7 +907,7 @@ export default function HomeScreen() {
               }}
             >
               <Feather name="calendar" size={14} color={colors.foreground} />
-              <Text style={[styles.spaeterText, { color: colors.foreground }]}>Fahrt buchen</Text>
+              <Text style={[styles.spaeterText, { color: colors.foreground }]}>Später</Text>
             </Pressable>
           </View>
         )}
@@ -1930,7 +1930,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
-    minHeight: 118,
+    height: 118,
   },
   vehicleRefLeft: { flex: 1, paddingRight: 8, justifyContent: "center" },
   vehicleRefLine1: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 22 },
