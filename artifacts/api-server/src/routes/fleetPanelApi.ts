@@ -102,9 +102,6 @@ async function requireFleetProvisioningReady(
   if (gate.complianceStatus !== "compliant") return { ok: false, error: "company_not_compliant" };
   if (gate.contractStatus !== "active") return { ok: false, error: "contract_not_active" };
   if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
-  if (!gate.hasComplianceGewerbe || !gate.hasComplianceInsurance) {
-    return { ok: false, error: "required_documents_missing" };
-  }
   return { ok: true };
 }
 
