@@ -141,13 +141,6 @@ function PulsingDot({ color = "#22C55E" }: { color?: string }) {
   );
 }
 
-function customerShortLabel(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 3).toLowerCase();
-  return `${parts[0]!.slice(0, 3).toLowerCase()} ${parts[parts.length - 1]!.slice(0, 1).toLowerCase()}.`;
-}
-
 function rideTypeBadge(req: RideRequest): { label: string; bg: string; color: string } {
   if (req.authorizationSource === "access_code") {
     return { label: "Freigabe", bg: "#DCFCE7", color: "#166534" };
@@ -282,10 +275,13 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       ) : null}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
-        <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#334155" }}>{customerShortLabel(req.customerName)}</Text>
+        <Feather name="user" size={15} color="#334155" />
+        <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#334155", flexShrink: 1 }}>
+          {req.customerName}
+        </Text>
         <Text style={{ color: "#CBD5E1" }}>·</Text>
-        <MaterialCommunityIcons name="cash" size={16} color="#64748B" />
-        <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#475569" }}>{payLabel}</Text>
+        <MaterialCommunityIcons name="cash" size={18} color="#64748B" />
+        <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#475569" }}>{payLabel}</Text>
       </View>
 
       <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 14, paddingBottom: 16 }}>
@@ -1626,6 +1622,24 @@ export default function DriverDashboard() {
         r.driverId === driverId,
     ) ??
     (acceptedRequest && acceptedRequest.driverId === driverId ? acceptedRequest : null);
+  const cancelNoticeShownRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!driverId) return;
+    const myCancelled = requests.find(
+      (r) => r.driverId === driverId && r.status === "cancelled_by_customer",
+    );
+    if (!myCancelled) return;
+    if (cancelNoticeShownRef.current.has(myCancelled.id)) return;
+    cancelNoticeShownRef.current.add(myCancelled.id);
+    Alert.alert(
+      "Kunde hat storniert",
+      myCancelled.cancelReason
+        ? `Grund: ${myCancelled.cancelReason}`
+        : "Die Fahrt wurde vom Kunden storniert.",
+    );
+    setActiveTab("uebersicht");
+  }, [requests, driverId]);
 
   const appRides = history.filter((r) => r.status === "completed");
   const allRides = useMemo(() => {

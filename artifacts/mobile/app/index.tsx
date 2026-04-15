@@ -847,24 +847,15 @@ export default function HomeScreen() {
 
       {profile.isLoggedIn ? (<>
 
-      {/* ── ORIGIN CHIP (overlaid on map) — nur ohne Ziel sichtbar ── */}
       {!destination && (
-        <View style={[styles.homeCtaWrap, { top: topPad + 12 }]}>
-          <Pressable
-            style={styles.homeCtaBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setIsSearchActive(true);
-            }}
-          >
-            <View style={styles.homeCtaIcon}>
-              <Feather name="search" size={18} color="#fff" />
+        <View style={[styles.homeBrandWrap, { top: topPad + 12 }]}>
+          <View style={styles.homeBrandRow}>
+            <View style={styles.homeBrandIcon}><Text style={styles.homeBrandIconText}>OR</Text></View>
+            <View>
+              <Text style={styles.homeBrandTitle}>ONRODA</Text>
+              <Text style={styles.homeBrandSub}>Mobilität neu gedacht</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.homeCtaTitle}>Wohin soll es gehen?</Text>
-              <Text style={styles.homeCtaSub}>Jetzt Ziel eingeben und Fahrt auswählen</Text>
-            </View>
-          </Pressable>
+          </View>
         </View>
       )}
 
@@ -949,6 +940,7 @@ export default function HomeScreen() {
             <>
               {/* Quick destinations */}
               <View style={[styles.quickSection, { borderColor: colors.border }]}>
+                <Text style={[styles.servicesTitle, { color: colors.foreground }]}>Dienstleistungen</Text>
                 <Pressable
                   style={styles.quickRow}
                   onPress={() => {
@@ -1834,38 +1826,34 @@ const styles = StyleSheet.create({
   originChipLabel: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#B0B7C3", marginBottom: rs(2), letterSpacing: 0.6, textTransform: "uppercase" },
   originChipRow: { flexDirection: "row", alignItems: "center", gap: rs(8) },
   originChipText: { flex: 1, fontSize: rf(17), fontFamily: "Inter_600SemiBold", color: "#111", letterSpacing: -0.2 },
-  homeCtaWrap: {
+  homeBrandWrap: {
     position: "absolute",
     left: 14,
     right: 14,
     zIndex: 20,
   },
-  homeCtaBtn: {
-    borderRadius: 18,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+  homeBrandRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 6,
+    gap: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  homeCtaIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  homeBrandIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: "#DC2626",
     alignItems: "center",
     justifyContent: "center",
   },
-  homeCtaTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#111827" },
-  homeCtaSub: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#6B7280", marginTop: 2 },
+  homeBrandIconText: { color: "#fff", fontSize: rf(10), fontFamily: "Inter_700Bold" },
+  homeBrandTitle: { fontSize: rf(12), fontFamily: "Inter_700Bold", color: "#111827", letterSpacing: 0.3 },
+  homeBrandSub: { fontSize: rf(11), fontFamily: "Inter_500Medium", color: "#6B7280" },
   originLocBtn: {
     width: rs(26), height: rs(26), borderRadius: rs(13),
     backgroundColor: "#DC2626",
@@ -1932,6 +1920,15 @@ const styles = StyleSheet.create({
 
   /* Quick destinations */
   quickSection: { marginHorizontal: 16, marginBottom: 4, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  servicesTitle: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
+    fontSize: rf(12),
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
   quickRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   quickIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   quickTextWrap: { flex: 1 },

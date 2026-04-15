@@ -47477,6 +47477,7 @@ init_accessCodesData();
 var DEMO = [];
 var driverLocations = /* @__PURE__ */ new Map();
 var customerLocations = /* @__PURE__ */ new Map();
+var customerCancelReasons = /* @__PURE__ */ new Map();
 var router2 = (0, import_express2.Router)();
 var CODE_VERIFY_TTL_MS = 5 * 60 * 1e3;
 var codeVerifySessions = /* @__PURE__ */ new Map();
@@ -47584,7 +47585,8 @@ router2.get("/rides", async (_req, res, next) => {
   try {
     const rows = await listRides();
     const publicRows = rows.map(stripPartnerOnlyRideFields);
-    res.json(await attachAccessCodeSummariesToRides(publicRows));
+    const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
   } catch (e) {
     next(e);
   }
@@ -47690,7 +47692,7 @@ router2.post("/rides", async (req, res, next) => {
 router2.patch("/rides/:id/status", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, finalFare, driverId } = req.body;
+    const { status, finalFare, driverId, cancelReason } = req.body;
     const nextStatus = normalizeStatusInput(status);
     if (!nextStatus) {
       res.status(400).json({ error: "status_invalid" });
@@ -47705,6 +47707,11 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
       res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
       return;
     }
+    const cancelReasonClean = typeof cancelReason === "string" ? cancelReason.trim() : "";
+    if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
+      res.status(400).json({ error: "cancel_reason_required" });
+      return;
+    }
     const updated = await updateRide(id, {
       status: nextStatus,
       ...finalFare != null ? { finalFare } : {},
@@ -47714,7 +47721,13 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
       res.status(500).json({ error: "update_failed" });
       return;
     }
-    res.json(stripPartnerOnlyRideFields(updated));
+    if (nextStatus === "cancelled_by_customer") {
+      customerCancelReasons.set(id, cancelReasonClean);
+    }
+    if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
+      customerCancelReasons.delete(id);
+    }
+    res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
   } catch (e) {
     next(e);
   }

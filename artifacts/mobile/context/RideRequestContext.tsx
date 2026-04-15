@@ -70,6 +70,7 @@ export interface RideRequest {
   customerName: string;
   passengerId?: string;
   driverId?: string | null;
+  cancelReason?: string | null;
   rejectedBy: string[];
   status: RequestStatus;
 }
@@ -111,7 +112,7 @@ interface RideRequestContextValue {
   markDriverArriving: (id: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
-  cancelRequest: (id: string, finalFare?: number) => Promise<void>;
+  cancelRequest: (id: string, finalFare?: number, cancelReason?: string) => Promise<void>;
   driverCancelRequest: (id: string, driverId: string) => Promise<void>;
   arriveAtCustomer: (id: string) => Promise<void>;
   startDriving: (id: string) => Promise<void>;
@@ -351,7 +352,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   }, [fetchAll]);
 
   const patchStatus = useCallback(
-    async (id: string, status: RequestStatus, finalFare?: number, driverId?: string) => {
+    async (id: string, status: RequestStatus, finalFare?: number, driverId?: string, cancelReason?: string) => {
       if (!API_BASE) return;
       const res = await fetch(`${API_BASE}/rides/${id}/status`, {
         method: "PATCH",
@@ -360,6 +361,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           status,
           ...(finalFare != null ? { finalFare } : {}),
           ...(driverId != null ? { driverId } : {}),
+          ...(cancelReason ? { cancelReason } : {}),
         }),
       });
       if (!res.ok) {
@@ -497,7 +499,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const cancelRequest = useCallback(
-    (id: string, finalFare?: number) => patchStatus(id, "cancelled_by_customer", finalFare),
+    (id: string, finalFare?: number, cancelReason?: string) =>
+      patchStatus(id, "cancelled_by_customer", finalFare, undefined, cancelReason),
     [patchStatus],
   );
 

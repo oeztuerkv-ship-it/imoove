@@ -148,6 +148,8 @@ export default function StatusScreen() {
   const [chatInput, setChatInput] = useState("");
   const [lastDriverMsg, setLastDriverMsg] = useState<string>("");
   const [chatUnread, setChatUnread] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -320,11 +322,22 @@ export default function StatusScreen() {
     }
   }, [completedRequest]);
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
+    setCancelModalOpen(true);
+  };
+
+  const submitCancel = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setNoDriverModal(false);
+    const reason = cancelReason.trim();
+    if (!reason) {
+      Alert.alert("Storno-Grund fehlt", "Bitte zuerst einen Grund angeben.");
+      return;
+    }
     const cancelId = lastAddedRequestId ?? acceptedRequest?.id;
     if (!cancelId) {
+      setCancelModalOpen(false);
+      setCancelReason("");
       cancelRide();
       router.replace("/");
       return;
@@ -344,7 +357,9 @@ export default function StatusScreen() {
             text: "Trotzdem stornieren",
             style: "destructive",
             onPress: () => {
-              void cancelRequest(cancelId, 5);
+              void cancelRequest(cancelId, 5, reason);
+              setCancelModalOpen(false);
+              setCancelReason("");
               cancelRide();
               router.replace("/");
             },
@@ -353,7 +368,9 @@ export default function StatusScreen() {
       );
       return;
     }
-    await cancelRequest(cancelId);
+    await cancelRequest(cancelId, undefined, reason);
+    setCancelModalOpen(false);
+    setCancelReason("");
     cancelRide();
     router.replace("/");
   };
@@ -613,7 +630,7 @@ export default function StatusScreen() {
                     "Die Suche wird beendet und du kehrst zur Startseite zurück.",
                     [
                       { text: "Nein", style: "cancel" },
-                      { text: "Ja, stornieren", style: "destructive", onPress: () => { void handleCancel(); } },
+                      { text: "Ja, weiter", style: "destructive", onPress: () => handleCancel() },
                     ],
                   );
                 }}
@@ -686,7 +703,7 @@ export default function StatusScreen() {
                   style={[styles.noDriverBtnSecondary, { borderColor: "#D4D4D4" }]}
                   onPress={() => {
                     setNoDriverModal(false);
-                    void handleCancel();
+                    handleCancel();
                   }}
                 >
                   <Text style={styles.noDriverBtnSecondaryText}>Fahrt stornieren</Text>
@@ -782,11 +799,41 @@ export default function StatusScreen() {
             <Feather name="message-circle" size={20} color="#fff" />
             {chatUnread ? <View style={styles.chatBadgeDot} /> : null}
           </Pressable>
-          <Pressable style={styles.uberCloseBtn} onPress={() => void handleCancel()}>
+          <Pressable style={styles.uberCloseBtn} onPress={() => handleCancel()}>
             <Feather name="x" size={22} color="#fff" />
           </Pressable>
         </View>
       </View>
+
+      <Modal visible={cancelModalOpen} transparent animationType="fade" onRequestClose={() => setCancelModalOpen(false)}>
+        <Pressable style={styles.chatOverlay} onPress={() => setCancelModalOpen(false)}>
+          <Pressable style={styles.chatCard} onPress={() => {}}>
+            <Text style={styles.chatTitle}>Fahrt stornieren</Text>
+            <Text style={styles.chatIncoming}>Bitte Grund angeben. Der Fahrer sieht den Storno-Grund.</Text>
+            <TextInput
+              style={styles.chatInput}
+              placeholder="Storno-Grund eingeben"
+              placeholderTextColor="#9CA3AF"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+            />
+            <View style={{ flexDirection: "row", gap: rs(8) }}>
+              <Pressable
+                style={[styles.chatSendBtn, { backgroundColor: "#6B7280", flex: 1 }]}
+                onPress={() => setCancelModalOpen(false)}
+              >
+                <Text style={styles.chatSendBtnText}>Zurück</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.chatSendBtn, { backgroundColor: "#DC2626", flex: 1 }]}
+                onPress={() => { void submitCancel(); }}
+              >
+                <Text style={styles.chatSendBtnText}>Jetzt stornieren</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
         <Pressable style={styles.chatOverlay} onPress={() => setChatOpen(false)}>

@@ -746,9 +746,9 @@ export default function DriverNavigationScreen() {
           <Pressable style={styles.cancelReasonCard} onPress={() => {}}>
             <Text style={styles.cancelReasonTitle}>Kundenchat</Text>
             {lastCustomerMsg ? (
-              <Text style={styles.cancelReasonLead}>Letzte Kunden-Nachricht: {lastCustomerMsg}</Text>
+              <Text style={styles.cancelReasonLead}>Neue Nachricht vom Kunden: {lastCustomerMsg}</Text>
             ) : (
-              <Text style={styles.cancelReasonLead}>Noch keine neue Nachricht vom Kunden.</Text>
+              <Text style={styles.cancelReasonLead}>Noch keine Nachricht vom Kunden eingegangen.</Text>
             )}
             <View style={styles.cancelReasonOptions}>
               {["Ich bin gleich da", "Bin vor Ort", "Bitte kurz warten"].map((q) => (
