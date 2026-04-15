@@ -80,6 +80,15 @@ function csvEscape(v) {
   return s;
 }
 
+function escapeHtml(raw) {
+  return String(raw ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 const HISTORY_STATUSES = new Set(["completed", "cancelled", "rejected"]);
 
 /**
@@ -88,6 +97,7 @@ const HISTORY_STATUSES = new Set(["completed", "cancelled", "rejected"]);
 export default function PartnerRidesListPage({ variant }) {
   const { token, user } = usePanelAuth();
   const [rides, setRides] = useState([]);
+  const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -131,9 +141,28 @@ export default function PartnerRidesListPage({ variant }) {
     }
   }, [token]);
 
+  const loadCompany = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/company`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.ok && data?.company) {
+        setCompany(data.company);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [token]);
+
   useEffect(() => {
     void loadRides();
   }, [loadRides]);
+
+  useEffect(() => {
+    void loadCompany();
+  }, [loadCompany]);
 
   const displayedRides = useMemo(() => {
     if (variant === "history") {
@@ -198,6 +227,88 @@ export default function PartnerRidesListPage({ variant }) {
     URL.revokeObjectURL(url);
   }, [displayedRides, variant]);
 
+  const onExportPdf = useCallback(() => {
+    if (variant !== "history" || displayedRides.length === 0) return;
+    const nowDe = new Date().toLocaleString("de-DE");
+    const addr = [
+      company?.addressLine1,
+      company?.addressLine2,
+      [company?.postalCode, company?.city].filter(Boolean).join(" "),
+      company?.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const rows = displayedRides
+      .map(
+        (r) => `
+          <tr>
+            <td>${escapeHtml(statusLabel(r.status))}</td>
+            <td>${escapeHtml(rideKindLabel(r.rideKind))}</td>
+            <td>${escapeHtml(payerKindLabel(r.payerKind))}</td>
+            <td>${escapeHtml(r.customerName)}</td>
+            <td>${escapeHtml(`${r.from} → ${r.to}`)}</td>
+            <td>${escapeHtml(Number(r.estimatedFare).toFixed(2))} €</td>
+            <td>${escapeHtml(
+              r.finalFare != null && r.finalFare !== "" ? Number(r.finalFare).toFixed(2) : "—",
+            )} €</td>
+            <td>${escapeHtml(new Date(r.createdAt).toLocaleString("de-DE"))}</td>
+          </tr>`,
+      )
+      .join("");
+
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ONRODA Verlauf PDF</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
+      h1 { margin: 0 0 6px; font-size: 22px; }
+      .meta { margin-bottom: 14px; font-size: 13px; color: #444; line-height: 1.45; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th, td { border: 1px solid #ddd; padding: 7px; text-align: left; vertical-align: top; }
+      th { background: #f5f5f5; }
+      .foot { margin-top: 10px; color: #666; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <h1>ONRODA Fahrtenverlauf (PDF)</h1>
+    <div class="meta">
+      <div><strong>Unternehmen:</strong> ${escapeHtml(company?.name || user?.companyName || "Unternehmen")}</div>
+      <div><strong>Anschrift:</strong> ${escapeHtml(addr || "—")}</div>
+      <div><strong>E-Mail / Telefon:</strong> ${escapeHtml(
+        [company?.email, company?.phone].filter(Boolean).join(" · ") || "—",
+      )}</div>
+      <div><strong>Erstellt am:</strong> ${escapeHtml(nowDe)}</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Typ</th>
+          <th>Zahler</th>
+          <th>Kunde</th>
+          <th>Route</th>
+          <th>Preis</th>
+          <th>Endpreis</th>
+          <th>Angelegt</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="foot">Hinweis: Im Browser bitte "Als PDF speichern".</div>
+  </body>
+</html>`;
+
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  }, [variant, displayedRides, company, user?.companyName]);
+
   const empty = !loading && displayedRides.length === 0 && !err;
 
   const creatorHint = useMemo(
@@ -233,6 +344,16 @@ export default function PartnerRidesListPage({ variant }) {
         >
           CSV exportieren
         </button>
+        {variant === "history" ? (
+          <button
+            type="button"
+            className="panel-btn-secondary"
+            disabled={displayedRides.length === 0}
+            onClick={onExportPdf}
+          >
+            Verlauf als PDF
+          </button>
+        ) : null}
       </div>
 
       <div className="panel-card panel-card--wide panel-card--table">

@@ -52,6 +52,14 @@ export default function App() {
     }
   }, [user, navItems, active]);
 
+  useEffect(() => {
+    if (!user || user.mustChangePassword) return;
+    if (user.companyKind !== "taxi") return;
+    if (active === "fleet") return;
+    if (!navItems.some((i) => i.key === "fleet")) return;
+    queueMicrotask(() => setActive("fleet"));
+  }, [user, active, navItems]);
+
   if (booting) {
     return (
       <div className="partner-login partner-login--boot">

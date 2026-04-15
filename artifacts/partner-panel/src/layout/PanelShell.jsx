@@ -83,9 +83,12 @@ const PAGES = {
  */
 export default function PanelShell({ active, onChange, user, onLogout, navItems }) {
   const current = PAGES[active] || PAGES.overview;
+  const isTaxiMode = user?.companyKind === "taxi" || navItems.some((i) => i.key === "fleet");
+  const modeLabel = isTaxiMode ? "Taximodus" : "Unternehmensmodus";
+  const rootClass = `panel-app panel-app--workspace ${isTaxiMode ? "panel-app--taxi-mode" : "panel-app--business-mode"}`;
 
   return (
-    <div className="panel-app panel-app--workspace">
+    <div className={rootClass}>
       <div className="panel-app__sidebar-col">
         <PanelSidebar active={active} onChange={onChange} items={navItems} />
       </div>
@@ -100,6 +103,7 @@ export default function PanelShell({ active, onChange, user, onLogout, navItems 
           <div className="panel-app__topbar-right">
             <p className="panel-app__session" aria-live="polite">
               <span className="panel-app__session-company">{user?.companyName || "Unternehmen"}</span>
+              <span className="panel-app__mode-badge">{modeLabel}</span>
               <span className="panel-app__session-user">
                 {user?.username}
                 {user?.role ? ` · ${user.role}` : ""}

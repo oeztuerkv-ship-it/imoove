@@ -102,6 +102,22 @@
   font-size: 0.78rem;
 }
 
+.panel-app__mode-badge {
+  margin-top: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+}
+
 .panel-app__session-out {
   margin-top: 4px;
   border: none;
@@ -344,4 +360,10 @@
 
 .panel-app--workspace .panel-app__session-out {
   color: #0f766e;
+}
+
+.panel-app--taxi-mode .panel-app__mode-badge {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
 }
