@@ -2117,7 +2117,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
   },
-  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: 0 },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: rs(3) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
   tabLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium" },
   tabBadge: {
