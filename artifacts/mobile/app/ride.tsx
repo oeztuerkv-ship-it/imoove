@@ -192,7 +192,7 @@ export default function RideScreen() {
             selectedVehicle === "xl" ? "XL" :
             selectedVehicle === "onroda" ? "Onroda" :
             "Rollstuhl";
-          await addRequest({
+          const rideRequestId = await addRequest({
             from: origin.displayName.split(",")[0],
             fromFull: origin.displayName,
             to: destination?.displayName.split(",")[0] ?? "Ziel",
@@ -215,7 +215,7 @@ export default function RideScreen() {
               ? { accessCode: accessCodeInput.trim() }
               : {}),
           });
-          router.replace("/status");
+          router.replace({ pathname: "/status", params: { rideId: rideRequestId } } as any);
         } catch (err) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           const code = err instanceof Error ? err.message : "request_failed";

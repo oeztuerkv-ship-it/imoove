@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -119,6 +119,7 @@ export default function StatusScreen() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { destination, origin, fareBreakdown, route, paymentMethod, completeRide, cancelRide } = useRide();
+  const { rideId: rideIdParam } = useLocalSearchParams<{ rideId?: string }>();
   const {
     passengerCompletedRequest: completedRequest,
     passengerAcceptedRequest: acceptedRequest,
@@ -328,6 +329,9 @@ export default function StatusScreen() {
   };
 
   const resolveCancelableRequestId = () => {
+    const routeRideId = typeof rideIdParam === "string" && rideIdParam.trim().length > 0 ? rideIdParam.trim() : null;
+    if (routeRideId) return routeRideId;
+
     const active = myActiveRequests.find((r) =>
       r.status === "pending" ||
       r.status === "requested" ||
@@ -368,6 +372,7 @@ export default function StatusScreen() {
       return;
     }
     const cancelId = resolveCancelableRequestId();
+    console.log("!!! VERSUCHE STORNO FÜR ID:", cancelId);
     if (!cancelId) {
       finishCancelLocally();
       return;
