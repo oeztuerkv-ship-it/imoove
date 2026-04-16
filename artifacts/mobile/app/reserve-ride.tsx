@@ -781,48 +781,6 @@ export default function ReserveRideScreen() {
                 </>
               )}
 
-              {/* Favoriten: Zuhause / Arbeit auch im Reservieren-Flow */}
-              <View style={styles.whereFavouritesRow}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.whereFavouriteChip,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: "#FFF7ED",
-                      opacity: pressed ? 0.94 : 1,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (savedHome) {
-                      pickPickup(savedHome);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }
-                  }}
-                >
-                  <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
-                  <Text style={[styles.whereFavouriteText, { color: colors.foreground }]}>Zuhause</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.whereFavouriteChip,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: "#EFF6FF",
-                      opacity: pressed ? 0.94 : 1,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (savedWork) {
-                      pickPickup(savedWork);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    }
-                  }}
-                >
-                  <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
-                  <Text style={[styles.whereFavouriteText, { color: colors.foreground }]}>Arbeit</Text>
-                </Pressable>
-              </View>
-
               <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Ziel</Text>
               {destLocked && destination ? (
                 <View style={styles.whereLockedRow}>
@@ -884,6 +842,48 @@ export default function ReserveRideScreen() {
                   ) : null}
                 </>
               )}
+
+              {/* Favoriten: Zuhause / Arbeit – hier als Ziel-Schnellauswahl */}
+              <View style={styles.whereFavouritesRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.whereFavouriteChip,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: "#FFF7ED",
+                      opacity: pressed ? 0.94 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (savedHome) {
+                      pickDestination(savedHome);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
+                  <Text style={[styles.whereFavouriteText, { color: colors.foreground }]}>Zuhause</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.whereFavouriteChip,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: "#EFF6FF",
+                      opacity: pressed ? 0.94 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (savedWork) {
+                      pickDestination(savedWork);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
+                  <Text style={[styles.whereFavouriteText, { color: colors.foreground }]}>Arbeit</Text>
+                </Pressable>
+              </View>
             </View>
             <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
               {whereBothLockedReady
