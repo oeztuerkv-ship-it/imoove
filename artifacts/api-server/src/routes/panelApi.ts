@@ -47,6 +47,7 @@ import {
   listRidesForCompanyFiltered,
   type CompanyRideListFilters,
 } from "../db/ridesData";
+import { initialPanelRideStatus } from "../lib/dispatchStatus";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
@@ -777,13 +778,14 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
       const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
+      const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
       const newReq: RideRequest = {
         id: reqRideId(),
         companyId: ctx.claims.companyId,
         createdByPanelUserId: ctx.claims.panelUserId,
         createdAt: new Date().toISOString(),
-        scheduledAt: scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null,
-        status: "pending",
+        scheduledAt: scheduledAtVal,
+        status: initialPanelRideStatus(scheduledAtVal),
         rejectedBy: [],
         driverId: null,
         customerName,
@@ -928,7 +930,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       createdByPanelUserId: ctx.claims.panelUserId,
       createdAt: new Date().toISOString(),
       scheduledAt: leg.scheduledAt,
-      status: "pending",
+      status: initialPanelRideStatus(leg.scheduledAt),
       rejectedBy: [],
       driverId: null,
       customerName: guestName,
@@ -1067,7 +1069,6 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       companyId: ctx.claims.companyId,
       createdByPanelUserId: ctx.claims.panelUserId,
       createdAt: nowIso,
-      status: "pending" as const,
       rejectedBy: [] as string[],
       driverId: null as string | null,
       customerName,
@@ -1083,6 +1084,7 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     const rideOut: RideRequest = {
       ...base,
       id: idOut,
+      status: initialPanelRideStatus(outLeg.scheduledAt),
       scheduledAt: outLeg.scheduledAt,
       from: outLeg.from,
       fromFull: outLeg.fromFull,
@@ -1111,6 +1113,7 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     const rideRet: RideRequest = {
       ...base,
       id: idRet,
+      status: initialPanelRideStatus(retLeg.scheduledAt),
       scheduledAt: retLeg.scheduledAt,
       from: retLeg.from,
       fromFull: retLeg.fromFull,
@@ -1287,7 +1290,7 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
         createdByPanelUserId: ctx.claims.panelUserId,
         createdAt: nowIso,
         scheduledAt: leg.scheduledAt,
-        status: "pending",
+        status: initialPanelRideStatus(leg.scheduledAt),
         rejectedBy: [],
         driverId: null,
         customerName,

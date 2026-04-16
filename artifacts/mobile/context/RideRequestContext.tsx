@@ -12,6 +12,7 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 
 export type RequestStatus =
   | "draft"
+  | "scheduled"
   | "requested"
   | "searching_driver"
   | "offered"
@@ -78,6 +79,8 @@ export interface RideRequest {
 
 interface RideRequestContextValue {
   requests: RideRequest[];
+  /** Vorbestellungen im Planer (nur Fahrer-Session); nicht im Sofort-Markt-Feed. */
+  scheduledPoolRequests: RideRequest[];
   pendingRequests: RideRequest[];
   acceptedRequest: RideRequest | null;
   completedRequest: RideRequest | null;
@@ -124,6 +127,7 @@ interface RideRequestContextValue {
 
 const RideRequestContext = createContext<RideRequestContextValue>({
   requests: [],
+  scheduledPoolRequests: [],
   pendingRequests: [],
   acceptedRequest: null,
   completedRequest: null,
@@ -306,6 +310,7 @@ const POLL_INTERVAL_MS = 2500;
 
 export function RideRequestProvider({ children }: { children: React.ReactNode }) {
   const [requests, setRequests] = useState<RideRequest[]>([]);
+  const [scheduledPoolRequests, setScheduledPoolRequests] = useState<RideRequest[]>([]);
   const [lastAddedRequestId, setLastAddedRequestId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [passengerId, setPassengerId] = useState("");
@@ -352,36 +357,73 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
   const fetchAll = useCallback(async () => {
     if (!API_BASE) return;
+    const ridesFromPayload = (payload: unknown): RideRequest[] => {
+      const data: any[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray((payload as { rides?: unknown })?.rides)
+          ? ((payload as { rides: any[] }).rides ?? [])
+          : [];
+      return data.map(normalizeRequest);
+    };
     try {
       const rawDriverSession = await AsyncStorage.getItem(DRIVER_SESSION_KEY).catch(() => null);
-      let url = `${API_BASE}/rides`;
-      let headers: Record<string, string> | undefined;
+      let token: string | null = null;
       if (rawDriverSession) {
         try {
-          const parsed = JSON.parse(rawDriverSession) as {
-            authToken?: string;
-          };
+          const parsed = JSON.parse(rawDriverSession) as { authToken?: string };
           if (typeof parsed.authToken === "string" && parsed.authToken.trim().length > 0) {
-            url = `${API_BASE}/fleet-driver/v1/market-rides`;
-            headers = { Authorization: `Bearer ${parsed.authToken.trim()}` };
+            token = parsed.authToken.trim();
           }
         } catch {
-          // ignore broken session payload
+          /* ignore broken session payload */
         }
       }
-      const res = await fetch(url, { cache: "no-store", headers });
+
+      if (token) {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [marketRes, schedRes] = await Promise.all([
+          fetch(`${API_BASE}/fleet-driver/v1/market-rides`, { cache: "no-store", headers }),
+          fetch(`${API_BASE}/fleet-driver/v1/scheduled-rides`, { cache: "no-store", headers }),
+        ]);
+        if (!marketRes.ok) throw new Error("fetch failed");
+        const normalized = ridesFromPayload(await marketRes.json());
+        const scheduledNorm = schedRes.ok ? ridesFromPayload(await schedRes.json()) : [];
+        setRequests(normalized);
+        setScheduledPoolRequests(scheduledNorm);
+        setIsConnected(true);
+        if (normalized.length > lastCountRef.current) {
+          const newReqs = normalized.slice(0, normalized.length - lastCountRef.current);
+          const newest = newReqs[0];
+          if (
+            newest &&
+            (newest.status === "requested" ||
+              newest.status === "searching_driver" ||
+              newest.status === "offered" ||
+              newest.status === "pending") &&
+            lastCountRef.current > 0
+          ) {
+            setLastAddedRequestId(newest.id);
+          }
+        }
+        lastCountRef.current = normalized.length;
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/rides`, { cache: "no-store" });
       if (!res.ok) throw new Error("fetch failed");
-      const payload = await res.json();
-      const data: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.rides) ? payload.rides : [];
-      const normalized = data.map(normalizeRequest);
+      const normalized = ridesFromPayload(await res.json());
       setRequests(normalized);
+      setScheduledPoolRequests([]);
       setIsConnected(true);
       if (normalized.length > lastCountRef.current) {
         const newReqs = normalized.slice(0, normalized.length - lastCountRef.current);
         const newest = newReqs[0];
         if (
           newest &&
-          (newest.status === "requested" || newest.status === "searching_driver" || newest.status === "offered" || newest.status === "pending") &&
+          (newest.status === "requested" ||
+            newest.status === "searching_driver" ||
+            newest.status === "offered" ||
+            newest.status === "pending") &&
           lastCountRef.current > 0
         ) {
           setLastAddedRequestId(newest.id);
@@ -503,6 +545,14 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         };
         void _oc;
         void _ov;
+        const sched = req.scheduledAt;
+        const offlineStatus: RequestStatus =
+          sched != null &&
+          sched instanceof Date &&
+          Number.isFinite(sched.getTime()) &&
+          sched.getTime() > Date.now() + 30 * 60 * 1000
+            ? "scheduled"
+            : "searching_driver";
         const newReq: RideRequest = {
           ...reqSansCode,
           passengerId:
@@ -518,7 +568,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           accessCodeSummary: accessTrim ? { codeType: "general", label: "Offline (nicht geprüft)" } : null,
           id,
           createdAt: new Date(),
-          status: "requested",
+          status: offlineStatus,
           rejectedBy: [],
         };
         setRequests((prev) => [newReq, ...prev]);
@@ -655,6 +705,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         (r) =>
           r.passengerId === passengerId &&
           (r.status === "pending" ||
+            r.status === "scheduled" ||
             r.status === "requested" ||
             r.status === "searching_driver" ||
             r.status === "offered" ||
@@ -684,6 +735,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     <RideRequestContext.Provider
       value={{
         requests,
+        scheduledPoolRequests,
         pendingRequests,
         acceptedRequest,
         completedRequest,

@@ -70,6 +70,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     }
     const all = await listRides();
     const marketRows = all.filter((ride) => {
+      if (ride.status === "scheduled") return false;
       const isAssignedToDriver = ride.driverId === a.fleetDriverId;
       const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
       if (isAssignedToOtherDriver) return false;
@@ -105,6 +106,48 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         withCodes.length === 0
           ? "Aktuell kein passendes Fahrzeug verfügbar"
           : null,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
+    if (!capability?.vehicleLegalType) {
+      res.json({
+        ok: true,
+        rides: [],
+        message:
+          "Keine Rechtsart (Taxi/Mietwagen) am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen und Rechtsart setzen.",
+      });
+      return;
+    }
+    const all = await listRides();
+    const pool = all.filter((ride) => {
+      if (ride.status !== "scheduled") return false;
+      if (ride.driverId) return false;
+      if (ride.companyId && ride.companyId !== a.companyId) return false;
+      if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      return isRideCompatibleWithCapability(ride, capability);
+    });
+    const publicRows = pool.map(stripPartnerOnlyRideFields);
+    const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    res.json({
+      ok: true,
+      rides: withCodes,
+      message: withCodes.length === 0 ? "Keine Vorbestellungen im Planer" : null,
     });
   } catch (e) {
     next(e);

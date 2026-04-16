@@ -29,6 +29,7 @@ import {
   isRideCompatibleWithCapability,
 } from "../db/fleetMatchingData";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
+import { isFarFutureReservation } from "../lib/dispatchStatus";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -62,6 +63,7 @@ function cleanupCodeVerifySessions(now = Date.now()): void {
 }
 
 const ACTIVE_RIDE_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
+  "scheduled",
   "requested",
   "searching_driver",
   "offered",
@@ -99,6 +101,7 @@ function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
   if (!s) return null;
   const allowed: RideRequest["status"][] = [
     "draft",
+    "scheduled",
     "requested",
     "searching_driver",
     "offered",
@@ -127,6 +130,13 @@ function canTransitionStatus(
   if (from === to) return true;
   const map: Partial<Record<RideRequest["status"], RideRequest["status"][]>> = {
     draft: ["requested", "cancelled_by_customer", "cancelled"],
+    scheduled: [
+      "accepted",
+      "searching_driver",
+      "cancelled_by_customer",
+      "cancelled",
+      "expired",
+    ],
     requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
     searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
     offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
@@ -144,6 +154,18 @@ function canTransitionStatus(
 function ceilToTenth(amount: number): number {
   const safe = Number.isFinite(amount) ? amount : 0;
   return Math.ceil((safe + Number.EPSILON) * 10) / 10;
+}
+
+function pickScheduledAtFromBody(raw: Partial<RideRequest> & Record<string, unknown>): string | null {
+  const c = raw.scheduledAt;
+  if (typeof c === "string" && c.trim()) return c.trim();
+  const s = raw.scheduled_at;
+  if (typeof s === "string" && s.trim()) return s.trim();
+  return null;
+}
+
+function initialCustomerRideStatus(scheduledAt: string | null): RideRequest["status"] {
+  return isFarFutureReservation(scheduledAt) ? "scheduled" : "searching_driver";
 }
 
 router.get("/fare-config", async (_req, res, next) => {
@@ -440,11 +462,13 @@ router.post("/rides", async (req, res, next) => {
     const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const authorizationSource =
       parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
+    const scheduledAtNormalized = pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>);
     const newReq: RideRequest = {
       ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      status: "requested",
+      status: initialCustomerRideStatus(scheduledAtNormalized),
+      scheduledAt: scheduledAtNormalized,
       rejectedBy: [],
       driverId: null,
       rideKind,
@@ -684,8 +708,10 @@ router.post("/rides/:id/driver-cancel", async (req, res, next) => {
     const rejectedBy = driverId
       ? (existing.includes(driverId) ? existing : [...existing, driverId])
       : existing;
+    const revertStatus: RideRequest["status"] =
+      cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "searching_driver";
     const updated = await updateRide(id, {
-      status: "searching_driver",
+      status: revertStatus,
       driverId: null,
       rejectedBy,
     });

@@ -78,6 +78,7 @@ export interface RideRequest {
   rejectedBy: string[];
   status:
     | "draft"
+    | "scheduled"
     | "requested"
     | "searching_driver"
     | "offered"

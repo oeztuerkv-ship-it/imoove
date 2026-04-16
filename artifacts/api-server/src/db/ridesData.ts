@@ -16,6 +16,7 @@ import {
   normalizeAccessCodeInput,
 } from "../domain/rideAuthorization";
 import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
+import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getDb } from "./client";
 import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
 
@@ -766,7 +767,9 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
 export async function adminReleaseRide(id: string): Promise<RideRequest | null> {
   const cur = await findRide(id);
   if (!cur) return null;
-  return updateRide(id, { driverId: null, status: "pending" });
+  const nextStatus =
+    cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "pending";
+  return updateRide(id, { driverId: null, status: nextStatus });
 }
 
 export async function resetRidesDemo(seed: RideRequest[]): Promise<void> {

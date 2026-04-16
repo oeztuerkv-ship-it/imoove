@@ -490,7 +490,11 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
 }) {
   const slideAnim = useRef(new Animated.Value(300)).current;
   const prevCountRef = useRef(pendingRequests.length);
-  const instantReqs = pendingRequests.filter((r) => !r.scheduledAt);
+  const instantReqs = pendingRequests.filter(
+    (r) =>
+      r.status !== "scheduled" &&
+      !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 30 * 60 * 1000),
+  );
   const firstReq = instantReqs[0] ?? null;
 
   // Slide in the card when a new request appears
@@ -574,14 +578,14 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
 }
 
 /* ─── Tab: Bestellungen (Vorbestellungen) ─── */
-function TabBestellungen({ pendingRequests, onAccept, onReject, driverPos }: {
-  pendingRequests: RideRequest[];
+function TabBestellungen({ scheduledPool, onAccept, onReject, driverPos }: {
+  scheduledPool: RideRequest[];
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   driverPos?: { lat: number; lon: number } | null;
 }) {
   const colors = useColors();
-  const scheduled = pendingRequests.filter((r) => !!r.scheduledAt);
+  const scheduled = scheduledPool;
   if (scheduled.length === 0) {
     return (
       <View style={styles.emptyCenter}>
@@ -1528,6 +1532,7 @@ export default function DriverDashboard() {
   const { history } = useRide();
   const {
     requests,
+    scheduledPoolRequests,
     pendingRequests: allPending,
     acceptedRequest,
     addRequest,
@@ -1586,7 +1591,8 @@ export default function DriverDashboard() {
       (r) =>
         DRIVER_MARKET_STATUSES.has(r.status) &&
         !r.driverId &&
-        !r.scheduledAt &&
+        r.status !== "scheduled" &&
+        !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 30 * 60 * 1000) &&
         !prevPendingIds.current.has(r.id),
     );
     if (newReqs.length > 0) {
@@ -1634,6 +1640,12 @@ export default function DriverDashboard() {
     const ageHours = (Date.now() - createdMs) / (1000 * 60 * 60);
     // Alte, nie angenommene Pools nicht erneut beim Fahrer anzeigen.
     return ageHours <= 8;
+  });
+  const scheduledPool = scheduledPoolRequests.filter((r) => {
+    if (r.status !== "scheduled") return false;
+    if (r.driverId) return false;
+    if ((r.rejectedBy ?? []).includes(driverId)) return false;
+    return true;
   });
   const activeDriverRequest =
     requests.find(
@@ -1882,8 +1894,8 @@ export default function DriverDashboard() {
     );
   }
 
-  const sofortCount = pendingRequests.filter((r) => !r.scheduledAt).length;
-  const vorbestellungCount = pendingRequests.filter((r) => !!r.scheduledAt).length;
+  const sofortCount = pendingRequests.length;
+  const vorbestellungCount = scheduledPool.length;
   const totalPending = sofortCount + vorbestellungCount;
 
   const tabs: { id: Tab; label: string; icon: string; badge?: number }[] = [
@@ -1946,7 +1958,7 @@ export default function DriverDashboard() {
                     <Text style={styles.ordersPlusText}>Code einlösen</Text>
                   </Pressable>
                 </View>
-                {pendingRequests.length === 0 ? (
+                {pendingRequests.length === 0 && scheduledPool.length === 0 ? (
                   <View style={styles.emptyCenter}>
                     <MaterialCommunityIcons name="taxi" size={56} color="#9CA3AF" />
                     <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine Aufträge</Text>
@@ -1954,12 +1966,40 @@ export default function DriverDashboard() {
                   </View>
                 ) : (
                   <>
-                    {pendingRequests.filter((r) => !r.scheduledAt).map((req) => (
-                      <InstantCard key={req.id} req={req} driverPos={driverPos} onAccept={() => handleAccept(req.id)} onReject={() => handleReject(req.id)} />
-                    ))}
-                    {pendingRequests.filter((r) => !!r.scheduledAt).sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime()).map((req) => (
-                      <ScheduledCard key={req.id} req={req} driverPos={driverPos} onAccept={() => handleAccept(req.id)} onReject={() => handleReject(req.id)} />
-                    ))}
+                    {pendingRequests.length > 0 && (
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={[styles.ordersHeaderTitle, { color: colors.foreground, marginBottom: 8 }]}>
+                          Sofort{sofortCount > 0 ? ` (${sofortCount})` : ""}
+                        </Text>
+                        {pendingRequests.map((req) => (
+                          <InstantCard
+                            key={req.id}
+                            req={req}
+                            driverPos={driverPos}
+                            onAccept={() => handleAccept(req.id)}
+                            onReject={() => handleReject(req.id)}
+                          />
+                        ))}
+                      </View>
+                    )}
+                    {scheduledPool.length > 0 && (
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={[styles.ordersHeaderTitle, { color: colors.foreground, marginBottom: 8 }]}>
+                          Planer{vorbestellungCount > 0 ? ` (${vorbestellungCount})` : ""}
+                        </Text>
+                        {[...scheduledPool]
+                          .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+                          .map((req) => (
+                            <ScheduledCard
+                              key={req.id}
+                              req={req}
+                              driverPos={driverPos}
+                              onAccept={() => handleAccept(req.id)}
+                              onReject={() => handleReject(req.id)}
+                            />
+                          ))}
+                      </View>
+                    )}
                   </>
                 )}
               </ScrollView>

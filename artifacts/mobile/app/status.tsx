@@ -129,14 +129,25 @@ export default function StatusScreen() {
     myActiveRequests,
   } = useRideRequests();
 
+  const scheduledPassengerRide = useMemo(
+    () => myActiveRequests.find((r) => r.status === "scheduled") ?? null,
+    [myActiveRequests],
+  );
+
   /** Welche Fahrt dieser Screen begleitet (Route-Param hat Vorrang vor Context-Fallback). */
   const currentRideId = useMemo(() => {
     const fromRoute = typeof rideIdParam === "string" ? rideIdParam.trim() : "";
     if (fromRoute.length > 0) return fromRoute;
     if (acceptedRequest?.id) return acceptedRequest.id;
+    if (scheduledPassengerRide?.id) return scheduledPassengerRide.id;
     if (lastAddedRequestId) return lastAddedRequestId;
     return null;
-  }, [rideIdParam, acceptedRequest?.id, lastAddedRequestId]);
+  }, [rideIdParam, acceptedRequest?.id, scheduledPassengerRide?.id, lastAddedRequestId]);
+
+  const rideMatchingCurrentId = useMemo(
+    () => (currentRideId ? requests.find((r) => r.id === currentRideId) ?? null : null),
+    [requests, currentRideId],
+  );
 
   /**
    * Nur Abschluss **dieser** Fahrt — nicht „letzte completed Fahrt des Passagiers“.
@@ -187,13 +198,21 @@ export default function StatusScreen() {
     ? (new Date(acceptedRequest.scheduledAt).getTime() - now) <= 60 * 60 * 1000
     : false;
 
-  const rawPhase: "searching" | "accepted" | "preparing" | "arrived" | "driving" | "completed" =
+  const rawPhase:
+    | "searching"
+    | "reserved"
+    | "accepted"
+    | "preparing"
+    | "arrived"
+    | "driving"
+    | "completed" =
     completedForCurrentRide ? "completed"
     : acceptedRequest?.status === "in_progress" || acceptedRequest?.status === "passenger_onboard" ? "driving"
     : acceptedRequest?.status === "arrived" || acceptedRequest?.status === "driver_waiting" ? "arrived"
     : acceptedRequest && acceptedRequest.scheduledAt && withinPickupHour ? "preparing"
     : acceptedRequest?.status === "accepted" || acceptedRequest?.status === "driver_arriving" ? "accepted"
     : acceptedRequest ? "accepted"
+    : rideMatchingCurrentId?.status === "scheduled" ? "reserved"
     : "searching";
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
@@ -205,7 +224,7 @@ export default function StatusScreen() {
 
   // WebSocket for real-time driver GPS + HTTP fallback
   useEffect(() => {
-    if (!acceptedRequest || rawPhase === "searching" || rawPhase === "completed") return;
+    if (!acceptedRequest || rawPhase === "searching" || rawPhase === "reserved" || rawPhase === "completed") return;
     const rid = acceptedRequest.id;
 
     connectToRide(rid, (msg) => {
@@ -237,7 +256,7 @@ export default function StatusScreen() {
 
   // Send customer GPS to driver every ~4s when ride is active
   useEffect(() => {
-    if (!acceptedRequest || rawPhase === "searching" || rawPhase === "completed") return;
+    if (!acceptedRequest || rawPhase === "searching" || rawPhase === "reserved" || rawPhase === "completed") return;
     const rid = acceptedRequest.id;
     let sub: Location.LocationSubscription | null = null;
     (async () => {
@@ -352,8 +371,12 @@ export default function StatusScreen() {
   }, [completedForCurrentRide, isCompleted, completeRide]);
 
   const handleCancel = () => {
-    if (customerPhase === "searching") {
-      void submitCancel("Suche manuell durch Kunden abgebrochen");
+    if (customerPhase === "searching" || customerPhase === "reserved") {
+      void submitCancel(
+        customerPhase === "reserved"
+          ? "Vorbestellung durch Kunden abgebrochen"
+          : "Suche manuell durch Kunden abgebrochen",
+      );
       return;
     }
     setCancelModalOpen(true);
@@ -365,6 +388,7 @@ export default function StatusScreen() {
 
     const active = myActiveRequests.find((r) =>
       r.status === "pending" ||
+      r.status === "scheduled" ||
       r.status === "requested" ||
       r.status === "searching_driver" ||
       r.status === "offered" ||
@@ -431,7 +455,7 @@ export default function StatusScreen() {
   }, [customerPhase, searchWave]);
 
   useEffect(() => {
-    if (customerPhase === "searching" || customerPhase === "completed") return;
+    if (customerPhase === "searching" || customerPhase === "reserved" || customerPhase === "completed") return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       Alert.alert(
         "Fahrt aktiv",
@@ -457,6 +481,7 @@ export default function StatusScreen() {
   const estimatedFare =
     completedForCurrentRide?.estimatedFare ??
     acceptedRequest?.estimatedFare ??
+    rideMatchingCurrentId?.estimatedFare ??
     fareBreakdown?.total ??
     0;
   const rawFinalFare = completedForCurrentRide?.finalFare;
@@ -761,6 +786,101 @@ export default function StatusScreen() {
             </Pressable>
           </Pressable>
         </Modal>
+      </View>
+    );
+  }
+
+  if (customerPhase === "reserved") {
+    const st = rideMatchingCurrentId?.scheduledAt;
+    const schedLabel =
+      st instanceof Date && Number.isFinite(st.getTime())
+        ? `${st.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short" })} · ${st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
+        : "";
+
+    return (
+      <View style={styles.container}>
+        <RealMapView
+          origin={origin}
+          destination={destination}
+          polyline={route?.polyline}
+          style={styles.map}
+          driverMarker={driverMarker}
+        />
+
+        <View style={[styles.searchBottomCard, { paddingBottom: bottomPad + 16 }]}>
+          <View style={styles.searchCardInnerBorder}>
+            <View style={styles.searchAnimRow}>
+              <View style={styles.searchLoaderWrap}>
+                <View style={[styles.searchLoaderIconCenter, { justifyContent: "center", alignItems: "center" }]} pointerEvents="none">
+                  <MaterialCommunityIcons name="calendar-clock" size={28} color="#D97706" />
+                </View>
+              </View>
+              <View style={styles.searchAnimTextCol}>
+                <Text style={styles.searchCardTitle}>Vorbestellung</Text>
+                <Text style={styles.searchCardSub}>
+                  Fahrer sehen den Auftrag im Planer — es wird nicht wie eine Sofortfahrt angeklingelt.
+                  {schedLabel ? `\nAbholung: ${schedLabel}` : ""}
+                </Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}
+                onPress={() => handleCancel()}
+                hitSlop={8}
+              >
+                <Text style={styles.searchCancelBtnText}>Fahrt{"\n"}stornieren</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.searchCardDivider} />
+
+            <View style={styles.searchRouteRow}>
+              <View style={[styles.searchRouteDot, { backgroundColor: "#22C55E" }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.searchRouteLabel}>Von</Text>
+                <Text style={styles.searchRouteAddr} numberOfLines={1}>
+                  {origin?.displayName ?? "Esslingen am Neckar"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.searchRouteLine} />
+            <View style={styles.searchRouteRow}>
+              <View style={[styles.searchRouteDot, { backgroundColor: "#DC2626" }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.searchRouteLabel}>Nach</Text>
+                <Text style={styles.searchRouteAddr} numberOfLines={1}>
+                  {destination?.displayName ?? "–"}
+                </Text>
+              </View>
+            </View>
+
+            {route?.distanceKm != null && (
+              <View style={styles.searchDistanceRow}>
+                <Text style={styles.searchDistanceLabel}>Strecke</Text>
+                <Text style={styles.searchDistanceValue}>{Number(route.distanceKm).toFixed(1)} km</Text>
+              </View>
+            )}
+
+            {fareBreakdown && (
+              <View style={styles.searchPriceRow}>
+                <Text style={styles.searchPriceLabel}>Geschätzter Preis</Text>
+                <View style={styles.searchPricePill}>
+                  <Text style={styles.searchPriceValue}>{formatEuro(fareBreakdown.total)}</Text>
+                </View>
+              </View>
+            )}
+
+            {pendingBillingRequest ? (
+              <View style={styles.searchPayerBox}>
+                <Text style={styles.searchPayerTitle}>
+                  {customerPayerBlockFromRideRequest(pendingBillingRequest).title}
+                </Text>
+                <Text style={styles.searchPayerSub}>
+                  {customerPayerBlockFromRideRequest(pendingBillingRequest).subtitle}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
       </View>
     );
   }
