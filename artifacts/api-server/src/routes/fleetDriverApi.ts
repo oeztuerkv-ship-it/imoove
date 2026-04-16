@@ -6,7 +6,7 @@ import {
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
-import { isRideCompatibleWithCapability } from "../db/fleetMatchingData";
+import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
 import { listRides } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { hashPassword, verifyPassword } from "../lib/password";
@@ -57,14 +57,22 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       res.status(401).json({ error: "not_found" });
       return;
     }
-    const capability = {
-      vehicleLegalType: row.vehicle_legal_type as "taxi" | "rental_car",
-      vehicleClass: row.vehicle_class as "standard" | "xl" | "wheelchair",
-    };
+    /** Gleiche Quelle wie bei `PATCH /rides/:id/status` (Annahme): Zuweisung Fahrer↔Fahrzeug, sonst Fallback Fahrerprofil. */
+    const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
+    if (!capability?.vehicleLegalType) {
+      res.json({
+        ok: true,
+        rides: [],
+        message:
+          "Keine Rechtsart (Taxi/Mietwagen) am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen und Rechtsart setzen.",
+      });
+      return;
+    }
     const all = await listRides();
     const marketRows = all.filter((ride) => {
       if (ride.driverId) return false;
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      if (ride.companyId && ride.companyId !== a.companyId) return false;
       const active =
         ride.status === "pending" ||
         ride.status === "requested" ||
