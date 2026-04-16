@@ -521,9 +521,32 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   const cancelRequest = useCallback(
-    (id: string, finalFare?: number, cancelReason?: string) =>
-      patchStatus(id, "cancelled_by_customer", finalFare, undefined, cancelReason),
-    [patchStatus],
+    async (id: string, finalFare?: number, cancelReason?: string) => {
+      const reason =
+        typeof cancelReason === "string" && cancelReason.trim().length > 0
+          ? cancelReason.trim()
+          : "Storno durch Kunden-App";
+      // Optimistisch sofort aus "aktiv" rausnehmen, damit Such-UI direkt endet.
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: "cancelled_by_customer",
+                cancelReason: reason,
+              }
+            : r,
+        ),
+      );
+      try {
+        await patchStatus(id, "cancelled_by_customer", finalFare, undefined, reason);
+      } catch (err) {
+        // Bei Fehler wieder vom Server synchronisieren, damit kein lokaler Zombie-State bleibt.
+        await fetchAll();
+        throw err;
+      }
+    },
+    [fetchAll, patchStatus],
   );
 
   const driverCancelRequest = useCallback(

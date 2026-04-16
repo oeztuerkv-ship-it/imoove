@@ -152,6 +152,7 @@ export default function StatusScreen() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
+  const cancelFlowStartedRef = useRef(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -348,6 +349,8 @@ export default function StatusScreen() {
   };
 
   const finishCancelLocally = () => {
+    if (cancelFlowStartedRef.current) return;
+    cancelFlowStartedRef.current = true;
     setCancelModalOpen(false);
     setCancelReason("");
     setNoDriverModal(false);
@@ -377,6 +380,23 @@ export default function StatusScreen() {
       finishCancelLocally();
       return;
     }
+    const runCancelInBackground = async (finalFare?: number) => {
+      setCancelSubmitting(true);
+      // Kritisch: UI/Matching sofort beenden, API dann im Hintergrund fortsetzen.
+      finishCancelLocally();
+      try {
+        await cancelRequest(cancelId, finalFare, reason);
+        await refreshRequests();
+      } catch (err: unknown) {
+        if (shouldFinishLocallyAfterCancelError(err)) {
+          await refreshRequests();
+          return;
+        }
+        console.error("[CancelFlow] API cancel failed:", err);
+      } finally {
+        setCancelSubmitting(false);
+      }
+    };
     const isDriverArrived =
       acceptedRequest?.status === "driver_waiting" ||
       acceptedRequest?.status === "arrived" ||
@@ -393,42 +413,14 @@ export default function StatusScreen() {
             style: "destructive",
             onPress: async () => {
               if (cancelSubmitting) return;
-              setCancelSubmitting(true);
-              try {
-                await cancelRequest(cancelId, 5, reason);
-                await refreshRequests();
-                finishCancelLocally();
-              } catch (err: unknown) {
-                if (shouldFinishLocallyAfterCancelError(err)) {
-                  await refreshRequests();
-                  finishCancelLocally();
-                } else {
-                  Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
-                }
-              } finally {
-                setCancelSubmitting(false);
-              }
+              await runCancelInBackground(5);
             },
           },
         ],
       );
       return;
     }
-    setCancelSubmitting(true);
-    try {
-      await cancelRequest(cancelId, undefined, reason);
-      await refreshRequests();
-      finishCancelLocally();
-    } catch (err: unknown) {
-      if (shouldFinishLocallyAfterCancelError(err)) {
-        await refreshRequests();
-        finishCancelLocally();
-      } else {
-        Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
-      }
-    } finally {
-      setCancelSubmitting(false);
-    }
+    await runCancelInBackground(undefined);
   };
 
   useEffect(() => {
