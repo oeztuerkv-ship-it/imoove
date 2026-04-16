@@ -347,8 +347,15 @@ export default function StatusScreen() {
     setCancelModalOpen(false);
     setCancelReason("");
     setNoDriverModal(false);
-    cancelRide();
     router.replace("/");
+    requestAnimationFrame(() => {
+      cancelRide();
+    });
+  };
+
+  const shouldFinishLocallyAfterCancelError = (err: unknown): boolean => {
+    const code = err instanceof Error ? err.message : "";
+    return code === "ride_not_found" || code === "already_cancelled";
   };
 
   const submitCancel = async (reasonOverride?: string) => {
@@ -386,8 +393,13 @@ export default function StatusScreen() {
                 await cancelRequest(cancelId, 5, reason);
                 await refreshRequests();
                 finishCancelLocally();
-              } catch {
-                Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
+              } catch (err: unknown) {
+                if (shouldFinishLocallyAfterCancelError(err)) {
+                  await refreshRequests();
+                  finishCancelLocally();
+                } else {
+                  Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
+                }
               } finally {
                 setCancelSubmitting(false);
               }
@@ -402,8 +414,13 @@ export default function StatusScreen() {
       await cancelRequest(cancelId, undefined, reason);
       await refreshRequests();
       finishCancelLocally();
-    } catch {
-      Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
+    } catch (err: unknown) {
+      if (shouldFinishLocallyAfterCancelError(err)) {
+        await refreshRequests();
+        finishCancelLocally();
+      } else {
+        Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
+      }
     } finally {
       setCancelSubmitting(false);
     }

@@ -148,6 +148,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
 
 const API_BASE = getApiBaseUrl();
 const PASSENGER_ID_KEY = "@Onroda_passenger_id";
+const ENABLE_STORNO_TRACE = true;
 
 function uuid(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -260,6 +261,10 @@ function normalizeRequest(r: any): RideRequest {
     customerName: String(customerName),
     passengerId: r.passengerId ?? r.passenger_id,
     driverId: r.driverId ?? r.driver_id ?? null,
+    cancelReason:
+      (r.cancelReason ?? r.cancel_reason) != null
+        ? String(r.cancelReason ?? r.cancel_reason)
+        : null,
     status: (r.status ?? "requested") as RequestStatus,
     rejectedBy: Array.isArray(r.rejectedBy)
       ? r.rejectedBy
@@ -354,6 +359,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const patchStatus = useCallback(
     async (id: string, status: RequestStatus, finalFare?: number, driverId?: string, cancelReason?: string) => {
       if (!API_BASE) return;
+      if (ENABLE_STORNO_TRACE && status === "cancelled_by_customer") {
+        console.log(`[Storno-Trace] Initiating Cancel for ID: ${id}`);
+      }
       const normalizedCancelReason =
         status === "cancelled_by_customer"
           ? (typeof cancelReason === "string" && cancelReason.trim().length > 0
@@ -370,15 +378,23 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           ...(normalizedCancelReason ? { cancelReason: normalizedCancelReason } : {}),
         }),
       });
+      if (ENABLE_STORNO_TRACE && status === "cancelled_by_customer") {
+        console.log(`[Storno-Trace] API Status: ${res.status}`);
+      }
       if (!res.ok) {
         let errorCode = "status_update_failed";
+        let errorBody: unknown = null;
         try {
-          const body = (await res.json()) as { error?: unknown };
+          const body = (await res.clone().json()) as { error?: unknown };
+          errorBody = body;
           if (typeof body.error === "string" && body.error.trim()) {
             errorCode = body.error.trim();
           }
         } catch {
           // keep default errorCode
+        }
+        if (ENABLE_STORNO_TRACE && status === "cancelled_by_customer") {
+          console.error("[Storno-Trace] Error Body:", errorBody);
         }
         throw new Error(errorCode);
       }
