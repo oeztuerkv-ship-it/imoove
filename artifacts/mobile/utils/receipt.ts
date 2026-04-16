@@ -48,8 +48,7 @@ function buildReceiptHtml(data: ReceiptData): string {
     padding: 28px 28px 20px;
     text-align: center;
   }
-  .logo { font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-bottom: 4px; }
-  .logo span { opacity: 0.85; }
+  .logo { font-size: 26px; font-weight: 900; letter-spacing: 1.2px; margin-bottom: 4px; }
   .receipt-title { font-size: 13px; font-weight: 500; opacity: 0.9; letter-spacing: 1px; text-transform: uppercase; }
   .receipt-id { font-size: 12px; opacity: 0.75; margin-top: 4px; }
 
@@ -118,7 +117,7 @@ function buildReceiptHtml(data: ReceiptData): string {
 <body>
 <div class="receipt">
   <div class="header">
-    <div class="logo">taxi<span>24</span></div>
+    <div class="logo">ONRODA</div>
     <div class="receipt-title">Fahrtquittung</div>
     <div class="receipt-id">Nr. ${data.rideId}</div>
   </div>
@@ -184,7 +183,7 @@ function buildReceiptHtml(data: ReceiptData): string {
   </div>
 
   <div class="footer">
-    taxi24 · Esslingen am Neckar<br/>
+    ONRODA · Deutschland<br/>
     Vielen Dank für Ihre Fahrt!<br/>
     Diese Quittung gilt als steuerlicher Beleg.
   </div>

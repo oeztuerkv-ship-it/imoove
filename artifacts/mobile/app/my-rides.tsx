@@ -173,6 +173,12 @@ export default function MyRidesScreen() {
     router.push("/");
   };
 
+  const openRideDetail = (id: string) => {
+    if (!id) return;
+    // Typed routes in this repo are generated; keep navigation working even if the type union is stale.
+    router.push(`/ride-detail?id=${encodeURIComponent(id)}` as any);
+  };
+
   const groupedCompleted = useMemo(() => {
     const groups: { label: string; rides: typeof completed }[] = [];
     const seen: Record<string, number> = {};
@@ -392,7 +398,11 @@ export default function MyRidesScreen() {
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
               return (
-                <View key={ride.id} style={[styles.rideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Pressable
+                  key={ride.id}
+                  style={[styles.rideCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => openRideDetail(ride.id)}
+                >
                   {/* Static route map image */}
                   <Image
                     source={{ uri: buildStaticMapUrl(ride.origin ?? "Esslingen am Neckar", ride.destination) }}
@@ -436,7 +446,11 @@ export default function MyRidesScreen() {
                   {/* Aktionen: PDF-Quittung + Nochmal */}
                   <Pressable
                     style={styles.pdfBtn}
-                    onPress={() => handleDownloadReceipt(ride)}
+                    onPress={(ev) => {
+                      // Do not trigger card navigation.
+                      ev?.stopPropagation?.();
+                      handleDownloadReceipt(ride);
+                    }}
                   >
                     <Feather name="file-text" size={15} color="#fff" />
                     <Text style={styles.pdfBtnText}>PDF-Quittung herunterladen</Text>
@@ -446,13 +460,16 @@ export default function MyRidesScreen() {
                   <View style={styles.actionRow}>
                     <Pressable
                       style={[styles.repeatBtn, { flex: 1 }]}
-                      onPress={handleRepeatRide}
+                      onPress={(ev) => {
+                        ev?.stopPropagation?.();
+                        handleRepeatRide();
+                      }}
                     >
                       <Feather name="repeat" size={14} color="#DC2626" />
                       <Text style={[styles.actionBtnText, { color: "#DC2626" }]}>Nochmal buchen</Text>
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>

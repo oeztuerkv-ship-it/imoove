@@ -42,6 +42,10 @@ const DEMO: RideRequest[] = [];
 export const driverLocations = new Map<string, DriverLocation>();
 export const customerLocations = new Map<string, DriverLocation>();
 const customerCancelReasons = new Map<string, string>();
+const customerSupportTickets = new Map<
+  string,
+  { ticketId: string; rideId: string; category: string; message: string; source: string; createdAt: string }[]
+>();
 
 const router = Router();
 const CODE_VERIFY_TTL_MS = 5 * 60 * 1000;
@@ -198,6 +202,141 @@ router.get("/rides", async (_req, res, next) => {
     const publicRows = rows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:rideId/support", async (req, res) => {
+  const rideId = String(req.params.rideId ?? "").trim();
+  if (!rideId) {
+    res.status(400).json({ ok: false, error: "ride_id_required" });
+    return;
+  }
+  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "other";
+  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  const source = typeof req.body?.source === "string" ? req.body.source.trim() : "unknown";
+  if (message.length < 5) {
+    res.status(400).json({ ok: false, error: "message_too_short" });
+    return;
+  }
+
+  const ticketId = `cs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const entry = {
+    ticketId,
+    rideId,
+    category: category || "other",
+    message: message.slice(0, 4000),
+    source: source || "unknown",
+    createdAt: new Date().toISOString(),
+  };
+  const prev = customerSupportTickets.get(rideId) ?? [];
+  prev.unshift(entry);
+  customerSupportTickets.set(rideId, prev.slice(0, 50));
+  console.log(`[customer-support] rideId=${rideId} ticketId=${ticketId} category=${entry.category} source=${entry.source}`);
+  res.json({ ok: true, ticketId });
+});
+
+function formatEuroHtml(amount: number): string {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  return safe.toFixed(2).replace(".", ",") + " €";
+}
+
+function escapeHtml(s: string): string {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function buildReceiptHtmlFromRide(r: RideRequest): string {
+  const date = new Date(r.createdAt);
+  const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const amount = r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : Number(r.estimatedFare ?? 0);
+  const rideNr = String(r.id).slice(0, 8).toUpperCase();
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quittung #${escapeHtml(rideNr)}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #111; padding: 32px 16px; }
+    .receipt { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 2px 20px rgba(0,0,0,0.10); overflow: hidden; }
+    .header { background: #DC2626; color: #fff; padding: 26px 26px 18px; text-align: center; }
+    .logo { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; margin-bottom: 4px; }
+    .receipt-title { font-size: 12px; font-weight: 600; opacity: 0.9; letter-spacing: 1px; text-transform: uppercase; }
+    .receipt-id { font-size: 12px; opacity: 0.75; margin-top: 6px; }
+    .body { padding: 22px 26px; }
+    .row { display:flex; justify-content:space-between; gap:12px; margin-bottom: 10px; }
+    .k { color:#6b7280; font-size: 12px; font-weight: 600; }
+    .v { color:#111827; font-size: 12px; font-weight: 600; text-align:right; }
+    .route { margin-top: 14px; background:#f9fafb; border:1px solid #eef2f7; border-radius: 12px; padding: 14px; }
+    .route h3 { font-size: 12px; color:#6b7280; letter-spacing:0.08em; text-transform:uppercase; margin-bottom: 10px; }
+    .route .pt { font-size: 13px; font-weight: 600; margin-bottom: 8px; color:#111827; }
+    .muted { color:#6b7280; font-size: 12px; font-weight: 500; }
+    .total { margin-top: 14px; background:#DC2626; color:#fff; border-radius: 12px; padding: 14px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .total .lbl { font-size: 13px; font-weight: 700; opacity:0.9; }
+    .total .amt { font-size: 22px; font-weight: 900; }
+    .footer { text-align:center; padding: 16px 26px; background:#fafafa; border-top:1px solid #f0f0f0; font-size: 11px; color:#9ca3af; line-height: 1.6; }
+    @media print { body { background:#fff; padding:0; } .receipt { box-shadow:none; border-radius:0; } }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="header">
+      <div class="logo">ONRODA</div>
+      <div class="receipt-title">Fahrtquittung</div>
+      <div class="receipt-id">Nr. ${escapeHtml(rideNr)}</div>
+    </div>
+    <div class="body">
+      <div class="row"><div><div class="k">Datum</div><div class="v">${escapeHtml(dateStr)}</div></div><div><div class="k">Uhrzeit</div><div class="v">${escapeHtml(timeStr)} Uhr</div></div></div>
+      <div class="route">
+        <h3>Route</h3>
+        <div class="muted">Abfahrt</div>
+        <div class="pt">${escapeHtml(r.from ?? "—")}</div>
+        <div class="muted">Ziel</div>
+        <div class="pt">${escapeHtml(r.to ?? "—")}</div>
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="row"><div class="k">Strecke</div><div class="v">${escapeHtml(String(r.distanceKm ?? 0))} km</div></div>
+        <div class="row"><div class="k">Dauer</div><div class="v">${escapeHtml(String(r.durationMinutes ?? 0))} Min</div></div>
+        <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(r.paymentMethod ?? "—")}</div></div>
+        <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "—")}</div></div>
+      </div>
+      <div class="total"><div class="lbl">Gesamtbetrag</div><div class="amt">${formatEuroHtml(amount)}</div></div>
+    </div>
+    <div class="footer">
+      ONRODA · Deutschland<br/>
+      Vielen Dank für Ihre Fahrt!<br/>
+      Diese Quittung dient als Beleg.
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', function() { setTimeout(function() { try { window.print(); } catch(e) {} }, 250); });
+  <\/script>
+</body>
+</html>`;
+}
+
+router.get("/rides/:rideId/receipt", async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(buildReceiptHtmlFromRide(ride));
   } catch (e) {
     next(e);
   }
