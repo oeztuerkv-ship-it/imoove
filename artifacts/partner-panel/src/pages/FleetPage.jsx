@@ -237,6 +237,31 @@ export default function FleetPage() {
     }
   }
 
+  async function clearAssignment(driverId) {
+    if (!token || !canManage) return;
+    if (!driverId) return;
+    if (!window.confirm("Zuweisung für diesen Fahrer wirklich entfernen? Der Fahrer hat dann kein aktives Fahrzeug.")) {
+      return;
+    }
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/assignments/${encodeURIComponent(driverId)}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg("Zuweisung konnte nicht entfernt werden.");
+        return;
+      }
+      await loadAll();
+    } catch {
+      setMsg("Zuweisung konnte nicht entfernt werden.");
+    }
+  }
+
   async function suspendDriver(id) {
     if (!token || !canManage) return;
     if (!window.confirm("Fahrer sperren? Der Login wird sofort ungültig.")) return;
@@ -784,9 +809,21 @@ export default function FleetPage() {
                         <td>{v.nextInspectionDate || "—"}</td>
                         <td>
                           {drv ? (
-                            <>
-                              {drv.firstName} {drv.lastName}
-                            </>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span>
+                                {drv.firstName} {drv.lastName}
+                              </span>
+                              {canManage ? (
+                                <button
+                                  type="button"
+                                  className="panel-btn-secondary"
+                                  style={{ padding: "4px 8px", fontSize: 12 }}
+                                  onClick={() => clearAssignment(drv.id)}
+                                >
+                                  Zuweisung löschen
+                                </button>
+                              ) : null}
+                            </div>
                           ) : (
                             "—"
                           )}
