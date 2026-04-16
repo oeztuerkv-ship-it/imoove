@@ -2,7 +2,7 @@ import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -231,7 +231,7 @@ export default function DriverNavigationScreen() {
   const isNearPickup = distToPickup < 300;
 
   // API helpers
-  const patchStatus = async (newStatus: string, finalFare?: number) => {
+  const patchStatus = useCallback(async (newStatus: string, finalFare?: number) => {
     if (!params.rideId) return;
     const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
       method: "PATCH",
@@ -248,15 +248,15 @@ export default function DriverNavigationScreen() {
       }
       throw new Error(code);
     }
-  };
+  }, [params.rideId]);
 
-  const handleAngekommen = async () => {
+  const handleAngekommen = useCallback(async () => {
     await patchStatus("driver_waiting");
     trySpeak("Angekommen. Bitte Fahrt starten wenn der Kunde eingestiegen ist.", soundRef.current);
     setHasArrived(true);   // ← stay on screen, button changes to "Fahrt beginnen"
-  };
+  }, [patchStatus]);
 
-  const handleFahrtBeginnen = async () => {
+  const handleFahrtBeginnen = useCallback(async () => {
     try {
       await patchStatus("passenger_onboard");
       trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
@@ -286,7 +286,19 @@ export default function DriverNavigationScreen() {
       const code = e instanceof Error ? e.message : "status_update_failed";
       Alert.alert("Fahrtbeginn fehlgeschlagen", `Status konnte nicht gesetzt werden (${code}).`);
     }
-  };
+  }, [
+    patchStatus,
+    params.rideId,
+    params.customerName,
+    params.paymentMethod,
+    pickupLat,
+    pickupLon,
+    pickupName,
+    destLat,
+    destLon,
+    destName,
+    estimatedFare,
+  ]);
 
   const maxSlideX = Math.max(0, sliderWidth - START_SLIDER_HANDLE - 8);
   const resetSlide = useCallback(() => {
@@ -304,25 +316,30 @@ export default function DriverNavigationScreen() {
     }
   }, [handleFahrtBeginnen, resetSlide]);
 
-  const sliderResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => hasArrived && isPickupPhase,
-      onMoveShouldSetPanResponder: (_evt, gestureState) =>
-        Math.abs(gestureState.dx) > 4 && hasArrived && isPickupPhase,
-      onPanResponderMove: (_evt, gestureState) => {
-        const next = Math.min(Math.max(0, gestureState.dx), maxSlideX);
-        sliderX.setValue(next);
-      },
-      onPanResponderRelease: (_evt, gestureState) => {
-        if (gestureState.dx >= maxSlideX * 0.78) {
-          void startRideBySlide();
-          return;
-        }
-        resetSlide();
-      },
-      onPanResponderTerminate: resetSlide,
-    }),
-  ).current;
+  /** PanResponder muss bei neuer Track-Breite neu erstellt werden — sonst bleibt maxSlideX=0 „eingefroren“. */
+  const sliderResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => hasArrived && isPickupPhase && maxSlideX > 0,
+        onMoveShouldSetPanResponder: (_evt, gestureState) =>
+          Math.abs(gestureState.dx) > 4 && hasArrived && isPickupPhase && maxSlideX > 0,
+        onPanResponderMove: (_evt, gestureState) => {
+          const cap = Math.max(0, maxSlideX);
+          const next = Math.min(Math.max(0, gestureState.dx), cap);
+          sliderX.setValue(next);
+        },
+        onPanResponderRelease: (_evt, gestureState) => {
+          const cap = Math.max(0, maxSlideX);
+          if (cap > 0 && gestureState.dx >= cap * 0.78) {
+            void startRideBySlide();
+            return;
+          }
+          resetSlide();
+        },
+        onPanResponderTerminate: resetSlide,
+      }),
+    [hasArrived, isPickupPhase, maxSlideX, resetSlide, startRideBySlide],
+  );
 
   useEffect(() => {
     if (!params.rideId) return;
