@@ -326,6 +326,10 @@ export default function StatusScreen() {
   }, [completedRequest]);
 
   const handleCancel = () => {
+    if (customerPhase === "searching") {
+      void submitCancel("Suche manuell durch Kunden abgebrochen");
+      return;
+    }
     setCancelModalOpen(true);
   };
 
@@ -360,63 +364,27 @@ export default function StatusScreen() {
     });
   };
 
-  const shouldFinishLocallyAfterCancelError = (err: unknown): boolean => {
-    const code = err instanceof Error ? err.message : "";
-    return code === "ride_not_found" || code === "already_cancelled";
-  };
-
   const submitCancel = async (reasonOverride?: string) => {
     if (cancelSubmitting) return;
+    setCancelSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setNoDriverModal(false);
-    const reason = (reasonOverride ?? cancelReason).trim() || "Suche manuell durch Kunden abgebrochen";
+    const finalReason = (reasonOverride ?? cancelReason).trim() || "Manueller Abbruch durch Nutzer";
     const cancelId = resolveCancelableRequestId();
     console.log("!!! VERSUCHE STORNO FÜR ID:", cancelId);
-    if (!cancelId) {
-      finishCancelLocally();
-      return;
-    }
-    const runCancelInBackground = async (finalFare?: number) => {
-      setCancelSubmitting(true);
-      // Kritisch: UI/Matching sofort beenden, API dann im Hintergrund fortsetzen.
-      finishCancelLocally();
-      try {
-        await cancelRequest(cancelId, finalFare, reason);
+    try {
+      if (cancelId) {
+        await cancelRequest(cancelId, undefined, finalReason);
         await refreshRequests();
-      } catch (err: unknown) {
-        if (shouldFinishLocallyAfterCancelError(err)) {
-          await refreshRequests();
-          return;
-        }
-        console.error("[CancelFlow] API cancel failed:", err);
-      } finally {
-        setCancelSubmitting(false);
+      } else {
+        console.log("[CancelFlow] No cancel ID resolved; finishing locally");
       }
-    };
-    const isDriverArrived =
-      acceptedRequest?.status === "driver_waiting" ||
-      acceptedRequest?.status === "arrived" ||
-      acceptedRequest?.status === "passenger_onboard" ||
-      acceptedRequest?.status === "in_progress";
-    if (isDriverArrived) {
-      Alert.alert(
-        "Fahrt stornieren?",
-        "Der Fahrer ist bereits vor Ort. Bei Storno fallen 5,00 € an.",
-        [
-          { text: "Zurück", style: "cancel" },
-          {
-            text: "Trotzdem stornieren",
-            style: "destructive",
-            onPress: async () => {
-              if (cancelSubmitting) return;
-              await runCancelInBackground(5);
-            },
-          },
-        ],
-      );
-      return;
+    } catch (e) {
+      console.log("Silent Cancel Error (API):", e);
+    } finally {
+      setCancelSubmitting(false);
+      finishCancelLocally();
     }
-    await runCancelInBackground(undefined);
   };
 
   useEffect(() => {
@@ -668,16 +636,7 @@ export default function StatusScreen() {
               </View>
               <Pressable
                 style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}
-                onPress={() => {
-                  Alert.alert(
-                    "Fahrt stornieren?",
-                    "Die Suche wird beendet und du kehrst zur Startseite zurück.",
-                    [
-                      { text: "Nein", style: "cancel" },
-                      { text: "Ja, weiter", style: "destructive", onPress: () => handleCancel() },
-                    ],
-                  );
-                }}
+                onPress={() => handleCancel()}
                 hitSlop={8}
               >
                 <Text style={styles.searchCancelBtnText}>Fahrt{"\n"}stornieren</Text>
