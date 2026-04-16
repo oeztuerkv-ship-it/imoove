@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { type ServiceId } from "@/constants/services";
 import { useDriver } from "@/context/DriverContext";
 import {
   isOnrodaFixRouteEligible,
@@ -75,29 +76,33 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
 };
 
 type HomeRequestOption = {
-  id: RideServiceClass;
+  id: "taxi" | "onroda" | "xl" | "rollstuhl";
   label: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  detailType: ServiceId;
   vehicleType: VehicleType;
+  serviceClass: RideServiceClass;
 };
 
 const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
-  { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", vehicleType: "wheelchair" },
-  { id: "xl", label: "XL", icon: "van-passenger", vehicleType: "xl" },
-  { id: "taxi", label: "Taxi", icon: "car", vehicleType: "standard" },
-  { id: "mietwagen", label: "Mietwagen", icon: "car-estate", vehicleType: "standard" },
+  { id: "taxi", label: "Taxi", icon: "car", detailType: "standard", vehicleType: "standard", serviceClass: "taxi" },
+  { id: "onroda", label: "Onroda", icon: "car-side", detailType: "onroda", vehicleType: "onroda", serviceClass: "mietwagen" },
+  { id: "xl", label: "XL", icon: "van-passenger", detailType: "xl", vehicleType: "xl", serviceClass: "xl" },
+  { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", detailType: "wheelchair", vehicleType: "wheelchair", serviceClass: "rollstuhl" },
 ];
 
 function HomeServiceGrid({
   colors,
   selectedServiceClass,
+  selectedVehicle,
   compact,
   onPressService,
 }: {
   colors: { foreground: string; mutedForeground: string; primary: string; border: string };
   selectedServiceClass: RideServiceClass | null;
+  selectedVehicle: VehicleType | null;
   compact: boolean;
-  onPressService: (id: RideServiceClass) => void;
+  onPressService: (service: HomeRequestOption) => void;
 }) {
   return (
     <View style={styles.homeServiceSection}>
@@ -110,7 +115,9 @@ function HomeServiceGrid({
         contentContainerStyle={styles.homeServiceGridRow}
       >
         {HOME_REQUEST_OPTIONS.map((service) => {
-          const active = selectedServiceClass === service.id;
+          const active =
+            selectedServiceClass === service.serviceClass ||
+            (service.id === "onroda" && selectedVehicle === "onroda");
           const isWheelchair = service.id === "rollstuhl";
           const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
           return (
@@ -126,7 +133,7 @@ function HomeServiceGrid({
                   opacity: pressed ? 0.96 : 1,
                 },
               ]}
-              onPress={() => onPressService(service.id)}
+              onPress={() => onPressService(service)}
             >
               <MaterialCommunityIcons
                 name={service.icon as any}
@@ -559,9 +566,7 @@ export default function HomeScreen() {
   };
 
   const handleHomeServicePress = useCallback(
-    (id: RideServiceClass) => {
-      const service = HOME_REQUEST_OPTIONS.find((entry) => entry.id === id);
-      if (!service) return;
+    (service: HomeRequestOption) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (service.vehicleType === "onroda" && paymentMethod === "voucher") {
         setPaymentMethod(null);
@@ -575,7 +580,8 @@ export default function HomeScreen() {
         );
       }
       setSelectedVehicle(service.vehicleType);
-      setSelectedServiceClass(service.id);
+      setSelectedServiceClass(service.serviceClass);
+      router.push({ pathname: "/service-detail", params: { type: service.detailType } } as any);
     },
     [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, setSelectedServiceClass, showComboHint],
   );
@@ -831,6 +837,7 @@ export default function HomeScreen() {
                 <HomeServiceGrid
                   colors={colors}
                   selectedServiceClass={selectedServiceClass}
+                  selectedVehicle={selectedVehicle}
                   compact={isSmallScreen}
                   onPressService={handleHomeServicePress}
                 />

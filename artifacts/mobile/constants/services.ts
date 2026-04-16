@@ -22,24 +22,32 @@ export const SERVICES: ServiceDefinition[] = [
     title: "Onroda",
     vehicleType: "onroda",
     icon: "car-sports",
-    shortDescription: "Fixpreis-Garantie. Der angezeigte Fahrpreis bleibt unveraendert - volle Transparenz ohne Ueberraschungen.",
+    shortDescription: "Fixpreis mit klarer Preiszusage vor Fahrtbeginn.",
     detail: [
       {
-        title: "Kurzbeschreibung",
-        text: "Fixpreis-Garantie. Der angezeigte Fahrpreis bleibt unveraendert - volle Transparenz ohne Ueberraschungen.",
+        title: "Festpreis vor Fahrtstart",
+        text: "Der Fahrpreis wird vor Fahrtbeginn verbindlich festgelegt. So wissen Sie vorab, was die Fahrt kostet.",
+      },
+      {
+        title: "Planbar und transparent",
+        text: "Ideal fuer planbare Fahrten: keine nachtraeglichen Ueberraschungen bei Preis oder Abrechnung.",
       },
     ],
   },
   {
     id: "standard",
-    title: "Standard Taxi",
+    title: "Taxi",
     vehicleType: "standard",
     icon: "car-sports",
-    shortDescription: "Klassisches Taxi fuer den Alltag. Schnell verfuegbar und zuverlaessig ans Ziel.",
+    shortDescription: "Klassische Taxifahrt nach lokalem Tarif.",
     detail: [
       {
-        title: "Kurzbeschreibung",
-        text: "Klassisches Taxi fuer den Alltag. Schnell verfuegbar und zuverlaessig ans Ziel.",
+        title: "Schnell im Alltag",
+        text: "Die passende Option fuer kurze und mittlere Strecken im Stadtgebiet und der Region.",
+      },
+      {
+        title: "Abrechnung nach Tarif",
+        text: "Die Fahrt wird gemaess der geltenden Taxi-Tarifordnung berechnet.",
       },
     ],
   },
@@ -48,11 +56,15 @@ export const SERVICES: ServiceDefinition[] = [
     title: "XL",
     vehicleType: "xl",
     icon: "van-passenger",
-    shortDescription: "Mehr Platz fuer Gruppen und Gepaeck. Komfortabel unterwegs mit extra Raum.",
+    shortDescription: "Mehr Platz fuer Gruppen und zusaetzliches Gepaeck.",
     detail: [
       {
-        title: "Kurzbeschreibung",
-        text: "Mehr Platz fuer Gruppen und Gepaeck. Komfortabel unterwegs mit extra Raum.",
+        title: "Mehr Sitzplaetze",
+        text: "XL eignet sich fuer Gruppenfahrten mit mehr Fahrgaesten als bei Standardfahrzeugen.",
+      },
+      {
+        title: "Komfort bei Gepaeck",
+        text: "Zusatzplatz fuer Koffer, Einkaeufe oder Sporttaschen macht die Fahrt entspannter.",
       },
     ],
   },
@@ -61,11 +73,15 @@ export const SERVICES: ServiceDefinition[] = [
     title: "Rollstuhl",
     vehicleType: "wheelchair",
     icon: "wheelchair-accessibility",
-    shortDescription: "Barrierefreie Fahrzeuge mit Rampe oder Lift. Sicher und zuverlaessig ans Ziel.",
+    shortDescription: "Barrierefreie Fahrt mit passender Ausstattung.",
     detail: [
       {
-        title: "Kurzbeschreibung",
-        text: "Barrierefreie Fahrzeuge mit Rampe oder Lift. Sicher und zuverlaessig ans Ziel.",
+        title: "Barrierefreie Ausstattung",
+        text: "Fahrzeuge mit Rampe oder Lift fuer einen sicheren Ein- und Ausstieg.",
+      },
+      {
+        title: "Unterstuetzung unterwegs",
+        text: "Fahrer unterstuetzen beim Einstieg und sorgen fuer einen sicheren Transport.",
       },
     ],
   },
