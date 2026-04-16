@@ -72,9 +72,10 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     const marketRows = all.filter((ride) => {
       if (ride.driverId) return false;
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
-      // Fleet-Market ist mandantenbezogen: ohne companyId kann die Annahmeprüfung nicht valide laufen
-      // (PATCH /rides/:id/status prüft Capability nur wenn companyId vorhanden ist).
-      if (!ride.companyId || ride.companyId !== a.companyId) return false;
+      // Mandantenfilter: wenn companyId gesetzt ist, muss sie zur Fahrerfirma passen.
+      // Legacy/Test-Fahrten können ohne companyId erstellt sein; die Capability-Prüfung
+      // entscheidet dann weiterhin Taxi/Mietwagen/Klasse.
+      if (ride.companyId && ride.companyId !== a.companyId) return false;
       const active =
         ride.status === "pending" ||
         ride.status === "requested" ||

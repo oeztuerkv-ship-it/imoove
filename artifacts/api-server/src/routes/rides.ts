@@ -28,6 +28,7 @@ import {
   getFleetDriverCapability,
   isRideCompatibleWithCapability,
 } from "../db/fleetMatchingData";
+import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -508,16 +509,23 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       return;
     }
     if (nextStatus === "accepted" && driverId) {
-      if (!cur.companyId) {
+      const driverAuth = await findFleetDriverAuthRow(driverId);
+      const capabilityCompanyId = cur.companyId ?? driverAuth?.company_id ?? null;
+      if (!capabilityCompanyId) {
         res.status(409).json({
           error: "ride_not_assignable",
-          message: "Diese Fahrt ist keinem Unternehmen zugeordnet und kann nicht von Flottenfahrern angenommen werden.",
+          message: "Fahrt/Fahrer konnten keinem Unternehmen zugeordnet werden.",
         });
         return;
       }
-      const capability = cur.companyId
-        ? await getFleetDriverCapability(driverId, cur.companyId)
-        : null;
+      if (cur.companyId && driverAuth?.company_id && cur.companyId !== driverAuth.company_id) {
+        res.status(409).json({
+          error: "ride_company_mismatch",
+          message: "Diese Fahrt gehört zu einem anderen Unternehmen.",
+        });
+        return;
+      }
+      const capability = await getFleetDriverCapability(driverId, capabilityCompanyId);
       if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
         res.status(409).json({
           error: "no_matching_vehicle_available",
