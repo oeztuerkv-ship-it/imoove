@@ -864,7 +864,7 @@ export default function HomeScreen() {
                   onPressService={handleHomeServicePress}
                 />
                 <Text style={styles.homePlaceholderRedText}>
-                  Onroda - Mobilität neu gedacht über start 1
+                  Onroda
                 </Text>
               </View>
             </>
@@ -1853,8 +1853,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginHorizontal: 16,
     color: "#DC2626",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    fontSize: 32,
+    lineHeight: 36,
+    letterSpacing: 0.4,
+    fontFamily: "Inter_700Bold",
   },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
