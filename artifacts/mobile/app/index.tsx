@@ -4,11 +4,10 @@ import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -26,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { type ServiceId } from "@/constants/services";
 import { useDriver } from "@/context/DriverContext";
 import {
   isOnrodaFixRouteEligible,
@@ -74,6 +74,82 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
   wheelchair: { icon: "wheelchair-accessibility", color: "#0369A1", bg: "#E0F2FE", seats: "Rollstuhlgerecht" },
   onroda: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "Fixpreis-Garantie" },
 };
+
+type HomeRequestOption = {
+  id: "taxi" | "onroda" | "xl" | "rollstuhl";
+  label: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  detailType: ServiceId;
+  vehicleType: VehicleType;
+  serviceClass: RideServiceClass;
+};
+
+const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
+  { id: "taxi", label: "Taxi", icon: "car", detailType: "standard", vehicleType: "standard", serviceClass: "taxi" },
+  { id: "onroda", label: "Onroda", icon: "car-side", detailType: "onroda", vehicleType: "onroda", serviceClass: "mietwagen" },
+  { id: "xl", label: "XL", icon: "van-passenger", detailType: "xl", vehicleType: "xl", serviceClass: "xl" },
+  { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", detailType: "wheelchair", vehicleType: "wheelchair", serviceClass: "rollstuhl" },
+];
+
+function HomeServiceGrid({
+  colors,
+  selectedServiceClass,
+  selectedVehicle,
+  compact,
+  onPressService,
+}: {
+  colors: { foreground: string; mutedForeground: string; primary: string; border: string };
+  selectedServiceClass: RideServiceClass | null;
+  selectedVehicle: VehicleType | null;
+  compact: boolean;
+  onPressService: (service: HomeRequestOption) => void;
+}) {
+  return (
+    <View style={styles.homeServiceSection}>
+      <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
+        Dienstleistungen
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.homeServiceGridRow}
+      >
+        {HOME_REQUEST_OPTIONS.map((service) => {
+          const active =
+            selectedServiceClass === service.serviceClass ||
+            (service.id === "onroda" && selectedVehicle === "onroda");
+          const isWheelchair = service.id === "rollstuhl";
+          const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
+          return (
+            <Pressable
+              key={service.id}
+              style={({ pressed }) => [
+                styles.homeServiceCard,
+                compact ? styles.homeServiceCardCompact : null,
+                {
+                  backgroundColor: active ? "#F5F5F5" : "#FAFAFA",
+                  borderColor: active ? colors.primary : "#E5E7EB",
+                  borderWidth: active ? 2 : 1,
+                  opacity: pressed ? 0.96 : 1,
+                },
+              ]}
+              onPress={() => onPressService(service)}
+            >
+              <MaterialCommunityIcons
+                name={service.icon as any}
+                size={compact ? 26 : 30}
+                color={iconColor}
+              />
+              <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
+                {service.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
 
 function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   return (
@@ -136,8 +212,6 @@ async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
 }
 
 const TAB_HEIGHT = 56;
-
-type HomeInfoCardId = "taxi_buchen" | "onroda" | "xl" | "barrierefrei" | "reservieren";
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -203,18 +277,6 @@ export default function HomeScreen() {
 
   /* ── Search overlay state ── */
   const [isSearchActive, setIsSearchActive] = useState(false);
-
-  /* ── Home info overlay (new cards under Dienstleistungen) ── */
-  const [homeOverlayCardId, setHomeOverlayCardId] = useState<HomeInfoCardId | null>(null);
-  const overlayAnim = useRef(new Animated.Value(0)).current;
-  const overlayOpen = homeOverlayCardId != null;
-  useEffect(() => {
-    Animated.timing(overlayAnim, {
-      toValue: overlayOpen ? 1 : 0,
-      duration: overlayOpen ? 240 : 200,
-      useNativeDriver: true,
-    }).start();
-  }, [overlayAnim, overlayOpen]);
 
   /* ── Auto-open search when navigated with ?search=1 ── */
   const { search: searchParam } = useLocalSearchParams<{ search?: string }>();
@@ -503,106 +565,26 @@ export default function HomeScreen() {
     setIsEditingOrigin(false);
   };
 
-  const closeHomeOverlay = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setHomeOverlayCardId(null);
-  }, []);
-
-  const openHomeOverlay = useCallback((id: HomeInfoCardId) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setHomeOverlayCardId(id);
-  }, []);
-
-  const homeInfoCards = useMemo(() => {
-    return [
-      {
-        id: "taxi_buchen" as const,
-        title: "Taxi",
-        subtitle: "Sofort eine Fahrt starten",
-        overlayTitle: "Taxi schnell & zuverlässig",
-        overlayText:
-          "Buche deine Fahrt in wenigen Sekunden und komme sicher an dein Ziel.\nUnsere Fahrer sind schnell vor Ort und bringen dich zuverlässig von A nach B.",
-        ctaLabel: "Jetzt Taxi buchen",
-        heroBg: "#FEE2E2",
-        heroIcon: "car" as const,
-        onCtaPress: () => {
-          setHomeOverlayCardId(null);
-          setSelectedServiceClass("taxi");
-          setSelectedVehicle("standard");
-          setIsSearchActive(true);
-        },
-      },
-      {
-        id: "onroda" as const,
-        title: "Onroda",
-        subtitle: "Fixpreis vor Fahrtbeginn",
-        overlayTitle: "Onroda Fixpreis",
-        overlayText:
-          "Bei Onroda wird der Fahrpreis vor Fahrtbeginn festgelegt.\nSo hast du volle Transparenz und eine klare Preiszusage.",
-        ctaLabel: "Jetzt Onroda buchen",
-        heroBg: "#FFE4E6",
-        heroIcon: "car-side" as const,
-        onCtaPress: () => {
-          setHomeOverlayCardId(null);
-          setSelectedServiceClass("mietwagen");
-          setSelectedVehicle("onroda");
-          setIsSearchActive(true);
-        },
-      },
-      {
-        id: "xl" as const,
-        title: "XL",
-        subtitle: "Mehr Platz für Gruppen",
-        overlayTitle: "XL – mehr Platz",
-        overlayText:
-          "Perfekt für Gruppen, Familien oder mehr Gepäck.\nMehr Komfort und extra Raum – ganz einfach buchen.",
-        ctaLabel: "XL buchen",
-        heroBg: "#E0F2FE",
-        heroIcon: "van-passenger" as const,
-        onCtaPress: () => {
-          setHomeOverlayCardId(null);
-          setSelectedServiceClass("xl");
-          setSelectedVehicle("xl");
-          setIsSearchActive(true);
-        },
-      },
-      {
-        id: "barrierefrei" as const,
-        title: "Rollstuhl",
-        subtitle: "Rollstuhlgerechte Fahrzeuge verfügbar",
-        overlayTitle: "Barrierefrei unterwegs",
-        overlayText:
-          "Bestelle Fahrzeuge, die auf deine Bedürfnisse abgestimmt sind.\nUnsere barrierefreien Fahrten sorgen für einen sicheren und komfortablen Transport.",
-        ctaLabel: "Jetzt buchen",
-        heroBg: "#DBEAFE",
-        heroIcon: "wheelchair-accessibility" as const,
-        onCtaPress: () => {
-          setHomeOverlayCardId(null);
-          setSelectedServiceClass("rollstuhl");
-          setSelectedVehicle("wheelchair");
-          setIsSearchActive(true);
-        },
-      },
-      {
-        id: "reservieren" as const,
-        title: "Reservieren",
-        subtitle: "Plane deine Fahrt im Voraus",
-        overlayTitle: "Fahrten im Voraus planen",
-        overlayText:
-          "Plane deine Fahrt ganz entspannt im Voraus.\nIdeal für Termine, Flüge oder wichtige Wege – wir sind pünktlich für dich da.",
-        ctaLabel: "Fahrt planen",
-        heroBg: "#E5E7EB",
-        heroIcon: "calendar" as const,
-        onCtaPress: () => {
-          setHomeOverlayCardId(null);
-          router.push("/reserve-ride");
-        },
-      },
-    ];
-  }, [router, setSelectedServiceClass, setSelectedVehicle]);
-
-  const activeHomeInfoCard =
-    homeOverlayCardId ? homeInfoCards.find((c) => c.id === homeOverlayCardId) ?? null : null;
+  const handleHomeServicePress = useCallback(
+    (service: HomeRequestOption) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (service.vehicleType === "onroda" && paymentMethod === "voucher") {
+        setPaymentMethod(null);
+        showComboHint(FIXPREIS_VOUCHER_HINT);
+      }
+      if (service.vehicleType === "onroda" && destination) {
+        showComboHint(
+          isTripWithinStuttgartEsslingenTariffArea(origin, destination)
+            ? TARIFF_AREA_NOTICE_PRIMARY
+            : OUTSIDE_TARIFF_NOTICE_PRIMARY,
+        );
+      }
+      setSelectedVehicle(service.vehicleType);
+      setSelectedServiceClass(service.serviceClass);
+      router.push({ pathname: "/service-detail", params: { type: service.detailType } } as any);
+    },
+    [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, setSelectedServiceClass, showComboHint],
+  );
 
 
   const goToDirectCheckout = useCallback(() => {
@@ -874,32 +856,16 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.vehicleSection}>
-                <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
-                  Dienstleistungen
+                <HomeServiceGrid
+                  colors={colors}
+                  selectedServiceClass={selectedServiceClass}
+                  selectedVehicle={selectedVehicle}
+                  compact={isSmallScreen}
+                  onPressService={handleHomeServicePress}
+                />
+                <Text style={styles.homePlaceholderRedText}>
+                  Onroda - Mobilität neu gedacht über start 1
                 </Text>
-                <View style={styles.homeInfoCardsWrap}>
-                  {homeInfoCards.map((card) => (
-                    <Pressable
-                      key={card.id}
-                      style={({ pressed }) => [
-                        styles.homeInfoCard,
-                        { opacity: pressed ? 0.96 : 1 },
-                      ]}
-                      onPress={() => openHomeOverlay(card.id)}
-                    >
-                      <View style={styles.homeInfoCardRow}>
-                        <View style={[styles.homeInfoIconCircle, { backgroundColor: card.heroBg }]}>
-                          <MaterialCommunityIcons name={card.heroIcon as any} size={18} color="#111827" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.homeInfoCardTitle}>{card.title}</Text>
-                          <Text style={styles.homeInfoCardSub} numberOfLines={1}>{card.subtitle}</Text>
-                        </View>
-                        <Feather name="chevron-right" size={18} color="#9CA3AF" />
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
               </View>
             </>
           ) : (
@@ -1621,60 +1587,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── Home Info Overlay (Slide from bottom) ── */}
-      <Modal visible={overlayOpen} transparent animationType="none" onRequestClose={closeHomeOverlay}>
-        <Pressable style={styles.homeOverlayBackdrop} onPress={closeHomeOverlay}>
-          <Animated.View
-            style={[
-              styles.homeOverlaySheet,
-              {
-                paddingBottom: bottomPad + 16,
-                transform: [
-                  {
-                    translateY: overlayAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [560, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <Pressable style={styles.homeOverlayClose} onPress={closeHomeOverlay}>
-              <Feather name="x" size={20} color="#111827" />
-            </Pressable>
-
-            <View
-              style={[
-                styles.homeOverlayHero,
-                { backgroundColor: activeHomeInfoCard?.heroBg ?? "#F3F4F6" },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={(activeHomeInfoCard?.heroIcon ?? "car") as any}
-                size={44}
-                color="#111827"
-              />
-            </View>
-
-            <View style={styles.homeOverlayContent}>
-              <Text style={styles.homeOverlayTitle}>{activeHomeInfoCard?.overlayTitle ?? ""}</Text>
-              <Text style={styles.homeOverlayText}>{activeHomeInfoCard?.overlayText ?? ""}</Text>
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.homeOverlayCta,
-                { backgroundColor: "#111111", opacity: pressed ? 0.92 : 1 },
-              ]}
-              onPress={() => activeHomeInfoCard?.onCtaPress()}
-            >
-              <Text style={styles.homeOverlayCtaText}>{activeHomeInfoCard?.ctaLabel ?? "OK"}</Text>
-            </Pressable>
-          </Animated.View>
-        </Pressable>
-      </Modal>
-
       {/* ── Adresse bearbeiten Modal ── */}
       <Modal visible={!!editPreset} transparent animationType="fade" onRequestClose={() => setEditPreset(null)}>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
@@ -1937,6 +1849,13 @@ const styles = StyleSheet.create({
     lineHeight: 12,
     marginTop: 3,
   },
+  homePlaceholderRedText: {
+    marginTop: 10,
+    marginHorizontal: 16,
+    color: "#DC2626",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
   vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
@@ -2091,81 +2010,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     zIndex: 5,
   },
-
-  /* Home Erweiterung: Karten + Overlay */
-  homeInfoCardsWrap: {
-    marginTop: 10,
-    marginHorizontal: 16,
-    gap: 10,
-    paddingBottom: 10,
-  },
-  homeInfoCard: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  homeInfoCardRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  homeInfoIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homeInfoCardTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 2 },
-  homeInfoCardSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6B7280", lineHeight: 18 },
-
-  homeOverlayBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-  homeOverlaySheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 16,
-    paddingHorizontal: 18,
-    gap: 14,
-  },
-  homeOverlayClose: {
-    position: "absolute",
-    right: 12,
-    top: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 5,
-  },
-  homeOverlayHero: {
-    height: 200,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  homeOverlayContent: { gap: 8 },
-  homeOverlayTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#111827", letterSpacing: -0.2 },
-  homeOverlayText: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#4B5563", lineHeight: 21 },
-  homeOverlayCta: {
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-  },
-  homeOverlayCtaText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
   tabLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium" },
