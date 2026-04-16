@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -273,6 +274,36 @@ export default function ReserveRideScreen() {
   /** Nach Tap auf einen Vorschlag: nächster pickupQuery-Effekt-Lauf soll keine neue Suche starten (sonst öffnet die Liste sofort wieder). */
   const skipNextPickupSearchRef = useRef(false);
   const skipNextDestSearchRef = useRef(false);
+
+  // Beim Einstieg in die Reservierung: Start nach Möglichkeit auf aktuellen Standort setzen.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || cancelled) return;
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (cancelled) return;
+        const geoLoc: GeoLocation = {
+          lat: loc.coords.latitude,
+          lon: loc.coords.longitude,
+          displayName: "Aktueller Standort",
+        };
+        setOrigin(geoLoc);
+        if (step === "where") {
+          setPickupResolved(geoLoc);
+          setPickupQuery("");
+        }
+      } catch {
+        // still fallback to DEFAULT_ORIGIN if GPS fails
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [setOrigin, step]);
 
   useEffect(() => {
     AsyncStorage.getItem("@Onroda_home")
