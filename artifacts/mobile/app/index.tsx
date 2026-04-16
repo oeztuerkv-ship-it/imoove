@@ -853,37 +853,6 @@ export default function HomeScreen() {
 
                 {/* ── Erweiterung unter den 4 Cards ── */}
                 <View style={styles.homeExtraWrap}>
-                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>BELIEBTE ZIELE</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.homePopularRow}>
-                    {PRESET_DESTINATIONS.slice(0, 3).map((p) => (
-                      <Pressable
-                        key={p.id}
-                        style={({ pressed }) => [
-                          styles.homePopularTile,
-                          { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.94 : 1 },
-                        ]}
-                        onPress={() => {
-                          handleDestinationSelect(p.location);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        }}
-                      >
-                        <View style={[styles.homePopularIcon, { backgroundColor: colors.muted }]}>
-                          {p.icon === "airplane"
-                            ? <Ionicons name="airplane" size={15} color={colors.primary} />
-                            : <Ionicons name="train" size={15} color={colors.primary} />}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.homePopularTitle, { color: colors.foreground }]} numberOfLines={1}>
-                            {p.title}
-                          </Text>
-                          <Text style={[styles.homePopularSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {p.subtitle}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-
                   <Pressable
                     style={({ pressed }) => [
                       styles.homeReserveRow,
@@ -1931,26 +1900,6 @@ const styles = StyleSheet.create({
     maxWidth: 220,
   },
   homeRecentText: { fontSize: 13, fontFamily: "Inter_500Medium", flexShrink: 1 },
-  homePopularRow: { flexDirection: "row", gap: 10, paddingRight: 16, paddingTop: 6 },
-  homePopularTile: {
-    width: 240,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  homePopularIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homePopularTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  homePopularSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   homeReserveRow: {
     marginTop: 12,
     borderRadius: 16,
