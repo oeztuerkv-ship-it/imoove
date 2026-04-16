@@ -1536,6 +1536,7 @@ export default function DriverDashboard() {
     driverCancelRequest,
     cancelRequest,
     completeRequest,
+    refreshRequests,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
@@ -1699,6 +1700,14 @@ export default function DriverDashboard() {
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const code = e instanceof Error ? e.message.trim() : "";
+      if (code === "no_matching_vehicle_available") {
+        await refreshRequests?.();
+        Alert.alert(
+          "Annahme nicht möglich",
+          "Für diese Buchung ist aktuell kein passendes Fahrzeug (Taxi/Mietwagen/Klasse) zugewiesen. Bitte Fahrzeug/Rechtsart im Partner-Panel prüfen. Der Auftrag wird für dich ausgeblendet.",
+        );
+        return;
+      }
       const detail =
         code === "status_transition_invalid"
           ? "Für diesen Auftrag ist „Annehmen“ gerade nicht erlaubt (Status). Bitte runterziehen zum Aktualisieren oder kurz warten."
