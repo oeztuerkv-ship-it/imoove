@@ -369,11 +369,7 @@ export default function StatusScreen() {
     if (cancelSubmitting) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setNoDriverModal(false);
-    const reason = (reasonOverride ?? cancelReason).trim();
-    if (!reason) {
-      Alert.alert("Storno-Grund fehlt", "Bitte zuerst einen Grund angeben.");
-      return;
-    }
+    const reason = (reasonOverride ?? cancelReason).trim() || "Suche manuell durch Kunden abgebrochen";
     const cancelId = resolveCancelableRequestId();
     console.log("!!! VERSUCHE STORNO FÜR ID:", cancelId);
     if (!cancelId) {
