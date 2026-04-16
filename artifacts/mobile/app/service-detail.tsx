@@ -22,7 +22,7 @@ export default function ServiceDetailScreen() {
           style={[styles.fallbackButton, { backgroundColor: ONRODA_MARK_RED }]}
           onPress={() => router.back()}
         >
-          <Text style={styles.fallbackButtonText}>Zurueck</Text>
+          <Text style={styles.fallbackButtonText}>Zurück</Text>
         </Pressable>
       </View>
     );
@@ -61,7 +61,6 @@ export default function ServiceDetailScreen() {
                 <Text style={[styles.detailText, { color: colors.mutedForeground }]}>{item.text}</Text>
               </View>
             </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
         ))}
       </ScrollView>

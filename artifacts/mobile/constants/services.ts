@@ -30,7 +30,7 @@ export const SERVICES: ServiceDefinition[] = [
       },
       {
         title: "Planbar und transparent",
-        text: "Ideal fuer planbare Fahrten: keine nachtraeglichen Ueberraschungen bei Preis oder Abrechnung.",
+        text: "Ideal für planbare Fahrten: keine nachträglichen Überraschungen bei Preis oder Abrechnung.",
       },
     ],
   },
@@ -43,11 +43,11 @@ export const SERVICES: ServiceDefinition[] = [
     detail: [
       {
         title: "Schnell im Alltag",
-        text: "Die passende Option fuer kurze und mittlere Strecken im Stadtgebiet und der Region.",
+        text: "Die passende Option für kurze und mittlere Strecken im Stadtgebiet und der Region.",
       },
       {
         title: "Abrechnung nach Tarif",
-        text: "Die Fahrt wird gemaess der geltenden Taxi-Tarifordnung berechnet.",
+        text: "Die Fahrt wird gemäß der geltenden Taxi-Tarifordnung berechnet.",
       },
     ],
   },
@@ -56,15 +56,15 @@ export const SERVICES: ServiceDefinition[] = [
     title: "XL",
     vehicleType: "xl",
     icon: "van-passenger",
-    shortDescription: "Mehr Platz fuer Gruppen und zusaetzliches Gepaeck.",
+    shortDescription: "Mehr Platz für Gruppen und zusätzliches Gepäck.",
     detail: [
       {
-        title: "Mehr Sitzplaetze",
-        text: "XL eignet sich fuer Gruppenfahrten mit mehr Fahrgaesten als bei Standardfahrzeugen.",
+        title: "Mehr Sitzplätze",
+        text: "XL eignet sich für Gruppenfahrten mit mehr Fahrgästen als bei Standardfahrzeugen.",
       },
       {
-        title: "Komfort bei Gepaeck",
-        text: "Zusatzplatz fuer Koffer, Einkaeufe oder Sporttaschen macht die Fahrt entspannter.",
+        title: "Komfort bei Gepäck",
+        text: "Zusatzplatz für Koffer, Einkäufe oder Sporttaschen macht die Fahrt entspannter.",
       },
     ],
   },
@@ -77,11 +77,11 @@ export const SERVICES: ServiceDefinition[] = [
     detail: [
       {
         title: "Barrierefreie Ausstattung",
-        text: "Fahrzeuge mit Rampe oder Lift fuer einen sicheren Ein- und Ausstieg.",
+        text: "Fahrzeuge mit Rampe oder Lift für einen sicheren Ein- und Ausstieg.",
       },
       {
-        title: "Unterstuetzung unterwegs",
-        text: "Fahrer unterstuetzen beim Einstieg und sorgen fuer einen sicheren Transport.",
+        title: "Unterstützung unterwegs",
+        text: "Fahrer unterstützen beim Einstieg und sorgen für einen sicheren Transport.",
       },
     ],
   },

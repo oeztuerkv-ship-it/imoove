@@ -1928,13 +1928,13 @@ export default function DriverDashboard() {
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
                 <View style={styles.ordersHeaderRow}>
-                  <Text style={[styles.ordersHeaderTitle, { color: colors.foreground }]}>Offene Auftraege</Text>
+                  <Text style={[styles.ordersHeaderTitle, { color: colors.foreground }]}>Offene Aufträge</Text>
                   <Pressable
                     style={styles.ordersPlusBtn}
                     onPress={() => setShowCodeRideModal(true)}
                   >
                     <Feather name="plus" size={18} color="#fff" />
-                    <Text style={styles.ordersPlusText}>Code einloesen</Text>
+                    <Text style={styles.ordersPlusText}>Code einlösen</Text>
                   </Pressable>
                 </View>
                 {pendingRequests.length === 0 ? (
