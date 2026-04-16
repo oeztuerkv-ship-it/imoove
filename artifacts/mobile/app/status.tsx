@@ -150,6 +150,7 @@ export default function StatusScreen() {
   const [chatUnread, setChatUnread] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -326,20 +327,42 @@ export default function StatusScreen() {
     setCancelModalOpen(true);
   };
 
-  const submitCancel = async () => {
+  const resolveCancelableRequestId = () => {
+    const active = myActiveRequests.find((r) =>
+      r.status === "pending" ||
+      r.status === "requested" ||
+      r.status === "searching_driver" ||
+      r.status === "offered" ||
+      r.status === "accepted" ||
+      r.status === "driver_arriving" ||
+      r.status === "driver_waiting" ||
+      r.status === "passenger_onboard" ||
+      r.status === "arrived" ||
+      r.status === "in_progress",
+    );
+    return active?.id ?? lastAddedRequestId ?? acceptedRequest?.id ?? null;
+  };
+
+  const finishCancelLocally = () => {
+    setCancelModalOpen(false);
+    setCancelReason("");
+    setNoDriverModal(false);
+    cancelRide();
+    router.replace("/");
+  };
+
+  const submitCancel = async (reasonOverride?: string) => {
+    if (cancelSubmitting) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setNoDriverModal(false);
-    const reason = cancelReason.trim();
+    const reason = (reasonOverride ?? cancelReason).trim();
     if (!reason) {
       Alert.alert("Storno-Grund fehlt", "Bitte zuerst einen Grund angeben.");
       return;
     }
-    const cancelId = lastAddedRequestId ?? acceptedRequest?.id;
+    const cancelId = resolveCancelableRequestId();
     if (!cancelId) {
-      setCancelModalOpen(false);
-      setCancelReason("");
-      cancelRide();
-      router.replace("/");
+      finishCancelLocally();
       return;
     }
     const isDriverArrived =
@@ -356,23 +379,34 @@ export default function StatusScreen() {
           {
             text: "Trotzdem stornieren",
             style: "destructive",
-            onPress: () => {
-              void cancelRequest(cancelId, 5, reason);
-              setCancelModalOpen(false);
-              setCancelReason("");
-              cancelRide();
-              router.replace("/");
+            onPress: async () => {
+              if (cancelSubmitting) return;
+              setCancelSubmitting(true);
+              try {
+                await cancelRequest(cancelId, 5, reason);
+                await refreshRequests();
+                finishCancelLocally();
+              } catch {
+                Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
+              } finally {
+                setCancelSubmitting(false);
+              }
             },
           },
         ],
       );
       return;
     }
-    await cancelRequest(cancelId, undefined, reason);
-    setCancelModalOpen(false);
-    setCancelReason("");
-    cancelRide();
-    router.replace("/");
+    setCancelSubmitting(true);
+    try {
+      await cancelRequest(cancelId, undefined, reason);
+      await refreshRequests();
+      finishCancelLocally();
+    } catch {
+      Alert.alert("Storno fehlgeschlagen", "Die Fahrt konnte nicht storniert werden. Bitte erneut versuchen.");
+    } finally {
+      setCancelSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -703,7 +737,7 @@ export default function StatusScreen() {
                   style={[styles.noDriverBtnSecondary, { borderColor: "#D4D4D4" }]}
                   onPress={() => {
                     setNoDriverModal(false);
-                    handleCancel();
+                    void submitCancel("Kein Fahrer gefunden - Suche abgebrochen");
                   }}
                 >
                   <Text style={styles.noDriverBtnSecondaryText}>Fahrt stornieren</Text>
@@ -827,8 +861,9 @@ export default function StatusScreen() {
               <Pressable
                 style={[styles.chatSendBtn, { backgroundColor: "#DC2626", flex: 1 }]}
                 onPress={() => { void submitCancel(); }}
+                disabled={cancelSubmitting}
               >
-                <Text style={styles.chatSendBtnText}>Jetzt stornieren</Text>
+                <Text style={styles.chatSendBtnText}>{cancelSubmitting ? "Storniere..." : "Jetzt stornieren"}</Text>
               </Pressable>
             </View>
           </Pressable>
