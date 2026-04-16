@@ -1192,6 +1192,54 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Favoriten im Such-Overlay: Zuhause / Arbeit */}
+            <View style={styles.searchFavouritesRow}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.searchFavouriteChip,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: "#FFF7ED",
+                    opacity: pressed ? 0.94 : 1,
+                  },
+                ]}
+                onPress={() => {
+                  if (savedHome) {
+                    handleDestinationSelect(savedHome);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  } else {
+                    setSavingPreset("home");
+                    setIsSearchActive(true);
+                  }
+                }}
+              >
+                <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
+                <Text style={[styles.searchFavouriteText, { color: colors.foreground }]}>Zuhause</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.searchFavouriteChip,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: "#EFF6FF",
+                    opacity: pressed ? 0.94 : 1,
+                  },
+                ]}
+                onPress={() => {
+                  if (savedWork) {
+                    handleDestinationSelect(savedWork);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  } else {
+                    setSavingPreset("work");
+                    setIsSearchActive(true);
+                  }
+                }}
+              >
+                <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
+                <Text style={[styles.searchFavouriteText, { color: colors.foreground }]}>Arbeit</Text>
+              </Pressable>
+            </View>
           </View>
 
           {/* Ergebnisliste — bleibt ÜBER der Tastatur dank KeyboardAvoidingView */}
@@ -2140,6 +2188,24 @@ const styles = StyleSheet.create({
 
   /* Results list */
   resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
+  searchFavouritesRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  searchFavouriteChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  searchFavouriteText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   comboHintText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
