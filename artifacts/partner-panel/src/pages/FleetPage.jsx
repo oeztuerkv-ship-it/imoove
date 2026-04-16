@@ -67,6 +67,9 @@ const VEHICLE_LEGAL_TYPES = [
   { value: "rental_car", label: "Mietwagen (Freiverkehr / Fixpreis)" },
 ];
 
+const VEHICLE_LEGAL_HINT =
+  "Kundenbuchungen „Onroda“ außerhalb des Taxitarif-Korridors (App) nutzen Festpreis — dort passen nur Fahrzeuge mit Rechtsart „Mietwagen“. Innerhalb des Korridors gilt Taxameter; dort reicht „Taxi“. Buchungen „Taxi“ / Taxameter matchen nur Taxi-Fahrzeuge.";
+
 const VEHICLE_CLASSES = [
   { value: "standard", label: "Standard" },
   { value: "xl", label: "XL / Großraum" },
@@ -684,6 +687,18 @@ export default function FleetPage() {
                   />
                 </label>
               </div>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#64748b",
+                  lineHeight: 1.45,
+                  marginTop: 4,
+                  marginBottom: 4,
+                  maxWidth: 720,
+                }}
+              >
+                {VEHICLE_LEGAL_HINT}
+              </p>
               <button type="submit" className="panel-btn-primary" style={{ marginTop: 10 }}>
                 Fahrzeug speichern
               </button>

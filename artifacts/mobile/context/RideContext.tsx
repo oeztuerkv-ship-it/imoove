@@ -228,6 +228,37 @@ export function isOnrodaFixRouteEligible(origin: GeoLocation, destination: GeoLo
   return !isTripWithinStuttgartEsslingenTariffArea(origin, destination);
 }
 
+/**
+ * `pricing_mode` für Kundenbuchungen (Core Policy: Matching nach Modus + Rechtsart).
+ * Die Onroda-Kachel setzt `serviceClass` „mietwagen“, im Taxitarif-Korridor gilt aber Taxameter
+ * → dann `taxi_tariff`, damit Fahrzeuge mit `vehicle_legal_type = taxi` matchen.
+ * Außerhalb bleibt Onroda `fixed_price` → nur `rental_car`-Fahrzeuge.
+ */
+export function effectivePricingModeForCustomerRide(input: {
+  selectedServiceClass: RideServiceClass | null;
+  selectedVehicle: VehicleType | null;
+  origin: GeoLocation;
+  destination: GeoLocation | null;
+}): "taxi_tariff" | "fixed_price" | null {
+  const { selectedServiceClass, selectedVehicle, origin, destination } = input;
+  if (selectedServiceClass === "taxi") return "taxi_tariff";
+
+  const insideMeterCorridor =
+    destination != null &&
+    selectedVehicle === "onroda" &&
+    isTripWithinStuttgartEsslingenTariffArea(origin, destination);
+
+  if (selectedServiceClass === "mietwagen") {
+    if (insideMeterCorridor) return "taxi_tariff";
+    return "fixed_price";
+  }
+
+  if (selectedVehicle === "onroda" && insideMeterCorridor) return "taxi_tariff";
+  if (selectedVehicle === "onroda" && destination) return "fixed_price";
+
+  return null;
+}
+
 export function RideProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
   const [destination, setDestination] = useState<GeoLocation | null>(null);

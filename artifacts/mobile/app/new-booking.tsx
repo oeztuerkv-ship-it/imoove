@@ -16,7 +16,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
+import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
+import type { GeoLocation } from "@/utils/routing";
 
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
@@ -375,6 +376,22 @@ export default function NewBookingScreen() {
       ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
       : "Gast";
     const codeTrim = accessCode.trim();
+    const originGeo: GeoLocation = {
+      lat: from.lat,
+      lon: from.lon,
+      displayName: from.fullName || from.name,
+    };
+    const destGeo: GeoLocation = {
+      lat: to.lat,
+      lon: to.lon,
+      displayName: to.fullName || to.name,
+    };
+    const pricingMode = effectivePricingModeForCustomerRide({
+      selectedServiceClass: selectedVehicle === "onroda" ? "mietwagen" : null,
+      selectedVehicle,
+      origin: originGeo,
+      destination: destGeo,
+    });
     try {
       await addRequest({
         from: from.name,
@@ -393,6 +410,7 @@ export default function NewBookingScreen() {
         customerName,
         passengerId: passengerId || undefined,
         scheduledAt: scheduledAt,
+        ...(pricingMode ? { pricingMode } : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

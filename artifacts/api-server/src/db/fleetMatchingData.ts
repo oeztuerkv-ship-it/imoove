@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import { getDb } from "./client";
 import { driverVehicleAssignmentsTable, fleetDriversTable, fleetVehiclesTable } from "./schema";
@@ -75,6 +75,7 @@ export async function getFleetDriverCapability(
         eq(driverVehicleAssignmentsTable.company_id, companyId),
       ),
     )
+    .orderBy(desc(driverVehicleAssignmentsTable.assigned_at))
     .limit(1);
 
   if (assigned[0]) {

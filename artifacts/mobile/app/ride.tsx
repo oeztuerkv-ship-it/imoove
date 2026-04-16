@@ -18,7 +18,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { calculateCopayment, type PaymentMethod, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
+import {
+  calculateCopayment,
+  effectivePricingModeForCustomerRide,
+  type PaymentMethod,
+  type VehicleType,
+  VEHICLES,
+  useRide,
+} from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { rs, rf } from "@/utils/scale";
 import { useUser } from "@/context/UserContext";
@@ -203,12 +210,12 @@ export default function RideScreen() {
             selectedVehicle === "xl" ? "XL" :
             selectedVehicle === "onroda" ? "Onroda" :
             "Rollstuhl";
-          const pricingMode =
-            selectedServiceClass === "mietwagen"
-              ? "fixed_price"
-              : selectedServiceClass === "taxi"
-                ? "taxi_tariff"
-                : null;
+          const pricingMode = effectivePricingModeForCustomerRide({
+            selectedServiceClass,
+            selectedVehicle,
+            origin,
+            destination,
+          });
           const rideRequestId = await addRequest({
             from: origin.displayName.split(",")[0],
             fromFull: origin.displayName,
