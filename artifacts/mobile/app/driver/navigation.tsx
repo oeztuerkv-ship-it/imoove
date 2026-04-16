@@ -165,6 +165,7 @@ export default function DriverNavigationScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [lastCustomerMsg, setLastCustomerMsg] = useState("");
+  const [lastSentDriverMsg, setLastSentDriverMsg] = useState("");
   const [chatUnread, setChatUnread] = useState(false);
   const cancelHandledRef = useRef(false);
 
@@ -823,6 +824,7 @@ export default function DriverNavigationScreen() {
                   style={styles.cancelReasonChip}
                   onPress={() => {
                     sendRideChat(q, "driver");
+                    setLastSentDriverMsg(q);
                     setChatOpen(false);
                   }}
                 >
@@ -830,6 +832,12 @@ export default function DriverNavigationScreen() {
                 </Pressable>
               ))}
             </View>
+            {lastSentDriverMsg ? (
+              <View style={styles.chatLastSentStandalone}>
+                <Text style={styles.chatLastSentLabel}>Zuletzt gesendet</Text>
+                <Text style={styles.chatLastSentText}>{lastSentDriverMsg}</Text>
+              </View>
+            ) : null}
             <TextInput
               style={styles.cancelReasonInput}
               placeholder="Eigene Antwort"
@@ -847,6 +855,7 @@ export default function DriverNavigationScreen() {
                   const msg = chatInput.trim();
                   if (!msg) return;
                   sendRideChat(msg, "driver");
+                  setLastSentDriverMsg(msg);
                   setChatInput("");
                   setChatOpen(false);
                 }}
@@ -866,7 +875,7 @@ const styles = StyleSheet.create({
 
   /* Top card */
   topWrapper: { position: "absolute", top: 0, left: 0, right: 0 },
-  topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 14, paddingTop: 6, paddingBottom: 6 },
+  topCard: { backgroundColor: "#1B6B3A", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 11 },
   topBrandBadge: {
     position: "absolute",
     top: 6,
@@ -882,12 +891,12 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   topBrandBadgeText: { color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" },
-  topMain: { flexDirection: "row", alignItems: "center", gap: 10 },
+  topMain: { flexDirection: "row", alignItems: "center", gap: 12 },
   topText: { flex: 1 },
-  topLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
-  topStreet: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 21 },
-  topStreetDriving: { fontSize: 21, lineHeight: 25 },
-  topDist: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)", marginTop: 1 },
+  topLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.78)" },
+  topStreet: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff", lineHeight: 25 },
+  topStreetDriving: { fontSize: 24, lineHeight: 29 },
+  topDist: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.84)", marginTop: 2 },
   compassBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
@@ -1035,6 +1044,17 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontFamily: "Inter_400Regular",
   },
+  chatLastSentStandalone: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#86EFAC",
+    backgroundColor: "#F0FDF4",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
+  },
+  chatLastSentLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#166534" },
+  chatLastSentText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#14532D", lineHeight: 20 },
   cancelReasonBtns: { flexDirection: "row", gap: 10, marginTop: 2 },
   cancelReasonBtnGhost: {
     flex: 1,

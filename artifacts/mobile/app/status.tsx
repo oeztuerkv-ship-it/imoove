@@ -121,13 +121,31 @@ export default function StatusScreen() {
   const { destination, origin, fareBreakdown, route, paymentMethod, completeRide, cancelRide } = useRide();
   const { rideId: rideIdParam } = useLocalSearchParams<{ rideId?: string }>();
   const {
-    passengerCompletedRequest: completedRequest,
+    requests,
     passengerAcceptedRequest: acceptedRequest,
     lastAddedRequestId,
     cancelRequest,
     refreshRequests,
     myActiveRequests,
   } = useRideRequests();
+
+  /** Welche Fahrt dieser Screen begleitet (Route-Param hat Vorrang vor Context-Fallback). */
+  const currentRideId = useMemo(() => {
+    const fromRoute = typeof rideIdParam === "string" ? rideIdParam.trim() : "";
+    if (fromRoute.length > 0) return fromRoute;
+    if (acceptedRequest?.id) return acceptedRequest.id;
+    if (lastAddedRequestId) return lastAddedRequestId;
+    return null;
+  }, [rideIdParam, acceptedRequest?.id, lastAddedRequestId]);
+
+  /**
+   * Nur Abschluss **dieser** Fahrt — nicht „letzte completed Fahrt des Passagiers“.
+   * Sonst: neue aktive Fahrt + alte Quittung → rawPhase „completed“ und sofort Quittung-UI.
+   */
+  const completedForCurrentRide = useMemo(() => {
+    if (!currentRideId) return null;
+    return requests.find((r) => r.id === currentRideId && r.status === "completed") ?? null;
+  }, [requests, currentRideId]);
   const { driver: driverProfile } = useDriver();
 
   const driverName = driverProfile?.name ?? FALLBACK_DRIVER.name;
@@ -170,7 +188,7 @@ export default function StatusScreen() {
     : false;
 
   const rawPhase: "searching" | "accepted" | "preparing" | "arrived" | "driving" | "completed" =
-    completedRequest ? "completed"
+    completedForCurrentRide ? "completed"
     : acceptedRequest?.status === "in_progress" || acceptedRequest?.status === "passenger_onboard" ? "driving"
     : acceptedRequest?.status === "arrived" || acceptedRequest?.status === "driver_waiting" ? "arrived"
     : acceptedRequest && acceptedRequest.scheduledAt && withinPickupHour ? "preparing"
@@ -314,7 +332,11 @@ export default function StatusScreen() {
   }, []);
 
   useEffect(() => {
-    if (completedRequest && !isCompleted) {
+    setIsCompleted(false);
+  }, [currentRideId]);
+
+  useEffect(() => {
+    if (completedForCurrentRide && !isCompleted) {
       const t = setTimeout(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         completeRide();
@@ -323,7 +345,7 @@ export default function StatusScreen() {
       }, 800);
       return () => clearTimeout(t);
     }
-  }, [completedRequest]);
+  }, [completedForCurrentRide, isCompleted, completeRide]);
 
   const handleCancel = () => {
     if (customerPhase === "searching") {
@@ -427,8 +449,15 @@ export default function StatusScreen() {
     router.replace("/");
   };
 
-  const estimatedFare = fareBreakdown?.total ?? 0;
-  const driverFinalFare = completedRequest?.finalFare ?? null;
+  // Preisanzeige immer aus Ride-Daten (Server) ableiten, nicht aus lokalem Buchungs-State.
+  const estimatedFare =
+    completedForCurrentRide?.estimatedFare ??
+    acceptedRequest?.estimatedFare ??
+    fareBreakdown?.total ??
+    0;
+  const rawFinalFare = completedForCurrentRide?.finalFare;
+  const driverFinalFare =
+    rawFinalFare != null && Number.isFinite(Number(rawFinalFare)) ? Number(rawFinalFare) : null;
   const totalFare = driverFinalFare ?? estimatedFare;
   const tipAmount =
     selectedTip === -1 ? (parseFloat(customTipInput.replace(",", ".")) || 0)
@@ -462,7 +491,7 @@ export default function StatusScreen() {
               <Text style={styles.receiptTitle}>QUITTUNG</Text>
               <View style={styles.receiptDivider} />
               <View style={styles.receiptRows}>
-                {driverFinalFare ? (
+                {driverFinalFare != null ? (
                   <>
                     <View style={styles.receiptRow}>
                       <Text style={styles.receiptLabel}>Vom Fahrer bestätigt:</Text>
@@ -492,20 +521,20 @@ export default function StatusScreen() {
               <View style={styles.paymentSection}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.receiptLabel}>
-                    {completedRequest
-                      ? customerPayerBlockFromRideRequest(completedRequest).title
+                    {completedForCurrentRide
+                      ? customerPayerBlockFromRideRequest(completedForCurrentRide).title
                       : "Zahlung"}
                   </Text>
                   <Text style={styles.paymentMethod}>
-                    {completedRequest
-                      ? customerPayerBlockFromRideRequest(completedRequest).subtitle
+                    {completedForCurrentRide
+                      ? customerPayerBlockFromRideRequest(completedForCurrentRide).subtitle
                       : paymentMethod
                         ? PAYMENT_LABELS[paymentMethod]
                         : "—"}
                   </Text>
                 </View>
                 {(() => {
-                  const iconKind = receiptPaymentIconKind(completedRequest, paymentMethod);
+                  const iconKind = receiptPaymentIconKind(completedForCurrentRide, paymentMethod);
                   if (iconKind === "card") {
                     return <Feather name="credit-card" size={24} color="#374151" />;
                   }
