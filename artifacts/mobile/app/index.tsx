@@ -137,7 +137,7 @@ function HomeServiceGrid({
             >
               <MaterialCommunityIcons
                 name={service.icon as any}
-                size={compact ? 50 : 58}
+                size={compact ? 26 : 30}
                 color={iconColor}
               />
               <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
@@ -697,7 +697,7 @@ export default function HomeScreen() {
       )}
 
       {/* ── BOTTOM SHEET ── */}
-      <View style={[styles.sheet, { backgroundColor: colors.surface, maxHeight: destination ? "90%" : "84%" }]}>
+      <View style={[styles.sheet, { backgroundColor: colors.surface, maxHeight: destination ? "86%" : "66%" }]}>
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
 
         {/* Suche / Route-Anzeige */}
@@ -1723,16 +1723,16 @@ const styles = StyleSheet.create({
 
   /* ── Bottom sheet ── */
   sheet: {
-    position: "absolute", bottom: TAB_HEIGHT, left: 0, right: 0,
+    position: "absolute", bottom: TAB_HEIGHT + 12, left: 0, right: 0,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
     shadowColor: "#000", shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 16, maxHeight: "76%",
   },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 10, marginBottom: 4 },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 6, marginBottom: 2 },
   sheetScroll: { flexShrink: 1 },
 
   /* Search pill */
-  searchRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 10 },
+  searchRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6, gap: 10 },
   searchPlaceholder: {
     flex: 1, flexDirection: "row", alignItems: "center",
     gap: 10, paddingHorizontal: 12, paddingVertical: 13,
@@ -1784,12 +1784,12 @@ const styles = StyleSheet.create({
   homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
   homeServiceGridRow: { gap: 14, paddingRight: 16 },
   homeServiceCard: {
-    width: 132,
+    width: 86,
     borderRadius: 22,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 7,
     alignItems: "center",
-    minHeight: 110,
+    minHeight: 64,
     justifyContent: "center",
     shadowColor: "#000",
     shadowOpacity: 0.08,
@@ -1798,22 +1798,22 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   homeServiceCardCompact: {
-    width: 120,
-    minHeight: 96,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    width: 76,
+    minHeight: 58,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
   },
   homeServiceCardTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
-    lineHeight: 18,
-    marginTop: 7,
+    lineHeight: 14,
+    marginTop: 4,
   },
   homeServiceCardTitleCompact: {
-    fontSize: 13,
-    lineHeight: 16,
-    marginTop: 6,
+    fontSize: 10,
+    lineHeight: 12,
+    marginTop: 3,
   },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
