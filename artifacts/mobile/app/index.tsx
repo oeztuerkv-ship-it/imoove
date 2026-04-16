@@ -10,7 +10,6 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
-  LayoutAnimation,
   Modal,
   Platform,
   Pressable,
@@ -18,7 +17,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  UIManager,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -31,6 +29,7 @@ import { type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
+import { SERVICES, type ServiceId } from "@/constants/services";
 import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -64,104 +63,41 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
   onroda: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "Fixpreis-Garantie" },
 };
 
-const VEHICLE_LONG_COPY: Record<VehicleType, string[]> = {
-  onroda: [
-    "Festpreis wird vor der Buchung angezeigt und bleibt während der Fahrt unverändert.",
-    "Ideal, wenn du den Endpreis vorab kennen möchtest.",
-  ],
-  standard: [
-    "Klassisches Taxi für den Alltag – bis zu 4 Personen.",
-    "Der angezeigte Betrag ist ein Schätzpreis (Taxameter).",
-  ],
-  xl: [
-    "Mehr Platz für Gruppen und Gepäck – bis zu 6 Personen.",
-    "Höherer Tariffaktor gegenüber dem Standard-Fahrzeug.",
-  ],
-  wheelchair: [
-    "Fahrzeug mit rollstuhlgerechter Ausstattung.",
-    "Bitte wählen, wenn du eine barrierefreie Beförderung brauchst.",
-  ],
-};
-
-const HOME_SERVICE_GRID_ORDER: VehicleType[] = ["onroda", "xl", "wheelchair"];
-
-function homeServiceCardTitle(id: VehicleType): string {
-  if (id === "wheelchair") return "Rollstuhl Standard";
-  if (id === "onroda") return "Onroda";
-  if (id === "xl") return "XL";
-  return VEHICLES.find((v) => v.id === id)?.name ?? id;
-}
-
 function HomeServiceGrid({
   colors,
   selectedVehicle,
-  expandedId,
   onPressService,
 }: {
   colors: { foreground: string; mutedForeground: string; primary: string; border: string };
   selectedVehicle: VehicleType | null;
-  expandedId: VehicleType | null;
-  onPressService: (id: VehicleType) => void;
+  onPressService: (id: ServiceId) => void;
 }) {
   return (
     <View style={styles.homeServiceSection}>
       <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
         Dienstleistungen
       </Text>
-      <View style={styles.homeServiceGridRow}>
-        {HOME_SERVICE_GRID_ORDER.map((id) => {
-          const iconCfg = VEHICLE_ICON_CONFIG[id];
-          const active = selectedVehicle === id;
-          const expanded = expandedId === id;
-          const lines = VEHICLE_LONG_COPY[id];
+      <View style={styles.homeServiceGridColumn}>
+        {SERVICES.map((service) => {
+          const active = selectedVehicle === service.vehicleType;
           return (
             <Pressable
-              key={id}
+              key={service.id}
               style={({ pressed }) => [
                 styles.homeServiceCard,
                 {
-                  backgroundColor: "#EEEFF1",
-                  borderColor: active ? colors.primary : "#D1D5DB",
+                  backgroundColor: active ? "#F5F5F5" : "#FAFAFA",
+                  borderColor: active ? colors.primary : "#E5E7EB",
                   borderWidth: active ? 2 : 1,
-                  opacity: pressed ? 0.92 : 1,
+                  opacity: pressed ? 0.96 : 1,
                 },
               ]}
-              onPress={() => onPressService(id)}
+              onPress={() => onPressService(service.id)}
             >
-              <View
-                style={[
-                  styles.homeServiceIconPlate,
-                  {
-                    backgroundColor: iconCfg.bg,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.14,
-                    shadowRadius: 5,
-                    elevation: 5,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons name={iconCfg.icon as any} size={34} color={iconCfg.color} />
-              </View>
+              <MaterialCommunityIcons name={service.icon as any} size={72} color={active ? colors.primary : "#111827"} />
               <Text style={[styles.homeServiceCardTitle, { color: colors.foreground }]} numberOfLines={2}>
-                {homeServiceCardTitle(id)}
+                {service.title}
               </Text>
-              {expanded ? (
-                <View style={[styles.homeServiceDescBox, { borderTopColor: colors.border }]}>
-                  {lines.map((line, j) => (
-                    <Text
-                      key={j}
-                      style={[
-                        styles.homeServiceDescLine,
-                        { color: colors.mutedForeground },
-                        j < lines.length - 1 ? { marginBottom: 6 } : null,
-                      ]}
-                    >
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
             </Pressable>
           );
         })}
@@ -235,7 +171,7 @@ const TAB_HEIGHT = 56;
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const { height: screenHeight } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const bottomPad = isWeb ? 20 : insets.bottom;
@@ -325,7 +261,6 @@ export default function HomeScreen() {
   const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
   const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
   const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
-  const [expandedHomeServiceId, setExpandedHomeServiceId] = useState<VehicleType | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Auf der Karte mit Ziel: Sofort vs. Termin — gleicher Einstieg wie `reserve-ride`. */
@@ -346,12 +281,6 @@ export default function HomeScreen() {
   useEffect(() => {
     AsyncStorage.getItem("@Onroda_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
     AsyncStorage.getItem("@Onroda_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
   }, []);
 
   const savePreset = (type: "home" | "work", loc: GeoLocation) => {
@@ -492,10 +421,6 @@ export default function HomeScreen() {
     if (!destination) setBookingMode("immediate");
   }, [destination]);
 
-  useEffect(() => {
-    if (destination) setExpandedHomeServiceId(null);
-  }, [destination]);
-
   /* ── Suchmaske: Fokus Abholort (nach Reservierungszeit) oder Ziel (Standard) ── */
   useEffect(() => {
     if (!isSearchActive) return;
@@ -594,15 +519,16 @@ export default function HomeScreen() {
   };
 
   const handleHomeServicePress = useCallback(
-    (id: VehicleType) => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    (id: ServiceId) => {
+      const service = SERVICES.find((entry) => entry.id === id);
+      if (!service) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (id === "onroda" && paymentMethod === "voucher") {
+      if (service.vehicleType === "onroda" && paymentMethod === "voucher") {
         setPaymentMethod(null);
         showComboHint(FIXPREIS_VOUCHER_HINT);
       }
-      setSelectedVehicle(id);
-      setExpandedHomeServiceId((prev) => (prev === id ? null : id));
+      setSelectedVehicle(service.vehicleType);
+      router.push({ pathname: "/service-detail", params: { type: service.id } } as any);
     },
     [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
   );
@@ -840,7 +766,6 @@ export default function HomeScreen() {
                 <HomeServiceGrid
                   colors={colors}
                   selectedVehicle={selectedVehicle}
-                  expandedId={expandedHomeServiceId}
                   onPressService={handleHomeServicePress}
                 />
               </View>
@@ -1766,28 +1691,27 @@ const styles = StyleSheet.create({
   vehicleSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 8 },
   homeServiceSection: { marginHorizontal: 16 },
   homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
-  homeServiceGridRow: { flexDirection: "row", gap: 8, alignItems: "stretch" },
+  homeServiceGridColumn: { gap: 14 },
   homeServiceCard: {
-    flex: 1,
-    minWidth: 0,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+    borderRadius: 22,
+    paddingVertical: 22,
+    paddingHorizontal: 22,
     alignItems: "center",
-    minHeight: 124,
-    justifyContent: "flex-start",
-  },
-  homeServiceIconPlate: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    minHeight: 184,
     justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  homeServiceCardTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center", lineHeight: 15 },
-  homeServiceDescBox: { width: "100%", marginTop: 6, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
-  homeServiceDescLine: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14, textAlign: "center" },
+  homeServiceCardTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    lineHeight: 24,
+    marginTop: 10,
+  },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
   vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
