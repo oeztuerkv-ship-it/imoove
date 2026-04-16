@@ -72,7 +72,9 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     const marketRows = all.filter((ride) => {
       if (ride.driverId) return false;
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
-      if (ride.companyId && ride.companyId !== a.companyId) return false;
+      // Fleet-Market ist mandantenbezogen: ohne companyId kann die Annahmeprüfung nicht valide laufen
+      // (PATCH /rides/:id/status prüft Capability nur wenn companyId vorhanden ist).
+      if (!ride.companyId || ride.companyId !== a.companyId) return false;
       const active =
         ride.status === "pending" ||
         ride.status === "requested" ||

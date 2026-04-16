@@ -508,6 +508,13 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       return;
     }
     if (nextStatus === "accepted" && driverId) {
+      if (!cur.companyId) {
+        res.status(409).json({
+          error: "ride_not_assignable",
+          message: "Diese Fahrt ist keinem Unternehmen zugeordnet und kann nicht von Flottenfahrern angenommen werden.",
+        });
+        return;
+      }
       const capability = cur.companyId
         ? await getFleetDriverCapability(driverId, cur.companyId)
         : null;
