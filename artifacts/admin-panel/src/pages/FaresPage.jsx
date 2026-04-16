@@ -33,6 +33,38 @@ const emptyForm = () => ({
   manualFixedPriceEur: "",
 });
 
+/** Deutsche Kommas und Leerzeichen; leere Pflichtfelder sind ungültig. */
+function parseFareNumber(raw, label) {
+  const s = String(raw ?? "").trim().replace(/\s/g, "").replace(",", ".");
+  if (s === "") {
+    throw new Error(`Bitte bei „${label}“ eine Zahl eingeben.`);
+  }
+  const n = Number(s);
+  if (!Number.isFinite(n)) {
+    throw new Error(`„${label}“ ist keine gültige Zahl (Beispiel: 1 oder 1.5).`);
+  }
+  return n;
+}
+
+function buildFareAreaNumericBody(form) {
+  return {
+    baseFareEur: parseFareNumber(form.baseFareEur, "Grundpreis (Taxameter)"),
+    rateFirstKmEur: parseFareNumber(form.rateFirstKmEur, "Preis / km bis Schwelle"),
+    rateAfterKmEur: parseFareNumber(form.rateAfterKmEur, "Preis / km ab Schwelle"),
+    thresholdKm: parseFareNumber(form.thresholdKm, "Schwelle (km)"),
+    waitingPerHourEur: parseFareNumber(form.waitingPerHourEur, "Wartezeit (€ / h)"),
+    serviceFeeEur: parseFareNumber(form.serviceFeeEur, "Servicegebühr"),
+    onrodaBaseFareEur: parseFareNumber(form.onrodaBaseFareEur, "Basispreis Onroda-App"),
+    onrodaPerKmEur: parseFareNumber(form.onrodaPerKmEur, "Preis / km Onroda-App"),
+    onrodaMinFareEur: parseFareNumber(form.onrodaMinFareEur, "Mindestpreis Onroda"),
+    manualFixedPriceEur: (() => {
+      const t = String(form.manualFixedPriceEur ?? "").trim();
+      if (!t) return null;
+      return parseFareNumber(t, "Fixpreis (manuell)");
+    })(),
+  };
+}
+
 function ruleTypeLabel(value) {
   return RULE_TYPE_LABELS[value] ?? value ?? "—";
 }
@@ -59,19 +91,21 @@ export default function FaresPage() {
     loadAreas();
   }, []);
 
+  async function refreshFareData() {
+    const res = await fetch(API_URL, { headers: adminApiHeaders() });
+    if (!res.ok) {
+      throw new Error("Gebiete konnten nicht geladen werden");
+    }
+    const data = await res.json();
+    setAreas(Array.isArray(data.items) ? data.items : []);
+    setActiveProfile(data?.activeProfile ?? null);
+  }
+
   async function loadAreas() {
     try {
       setLoading(true);
       setError("");
-
-      const res = await fetch(API_URL, { headers: adminApiHeaders() });
-      if (!res.ok) {
-        throw new Error("Gebiete konnten nicht geladen werden");
-      }
-
-      const data = await res.json();
-      setAreas(Array.isArray(data.items) ? data.items : []);
-      setActiveProfile(data?.activeProfile ?? null);
+      await refreshFareData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
     } finally {
@@ -124,6 +158,11 @@ export default function FaresPage() {
         throw new Error(data?.error || `Aktualisierung fehlgeschlagen (${res.status}).`);
       }
       if (Array.isArray(data.items)) setAreas(data.items);
+      try {
+        await refreshFareData();
+      } catch {
+        /* Liste aus PATCH ist gültig; Banner ggf. nach manuellem Neuladen */
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
     }
@@ -134,6 +173,14 @@ export default function FaresPage() {
 
     if (!form.name.trim()) {
       setError("Bitte einen Gebietsnamen eingeben.");
+      return;
+    }
+
+    let nums;
+    try {
+      nums = buildFareAreaNumericBody(form);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ungültige Eingabe");
       return;
     }
 
@@ -152,23 +199,14 @@ export default function FaresPage() {
             fixedPriceAllowed: form.fixedPriceAllowed,
             status: form.status,
             isDefault: !!form.isDefault,
-            baseFareEur: Number(form.baseFareEur),
-            rateFirstKmEur: Number(form.rateFirstKmEur),
-            rateAfterKmEur: Number(form.rateAfterKmEur),
-            thresholdKm: Number(form.thresholdKm),
-            waitingPerHourEur: Number(form.waitingPerHourEur),
-            serviceFeeEur: Number(form.serviceFeeEur),
-            onrodaBaseFareEur: Number(form.onrodaBaseFareEur),
-            onrodaPerKmEur: Number(form.onrodaPerKmEur),
-            onrodaMinFareEur: Number(form.onrodaMinFareEur),
-            manualFixedPriceEur: form.manualFixedPriceEur.trim() ? Number(form.manualFixedPriceEur) : null,
+            ...nums,
           }),
         });
         const data = await res.json().catch(() => null);
         if (!res.ok) {
           throw new Error(data?.error || "Das Gebiet konnte nicht gespeichert werden.");
         }
-        if (Array.isArray(data.items)) setAreas(data.items);
+        await refreshFareData();
         cancelEdit();
         return;
       }
@@ -183,16 +221,7 @@ export default function FaresPage() {
           fixedPriceAllowed: form.fixedPriceAllowed,
           status: form.status,
           isDefault: !!form.isDefault,
-          baseFareEur: Number(form.baseFareEur),
-          rateFirstKmEur: Number(form.rateFirstKmEur),
-          rateAfterKmEur: Number(form.rateAfterKmEur),
-          thresholdKm: Number(form.thresholdKm),
-          waitingPerHourEur: Number(form.waitingPerHourEur),
-          serviceFeeEur: Number(form.serviceFeeEur),
-          onrodaBaseFareEur: Number(form.onrodaBaseFareEur),
-          onrodaPerKmEur: Number(form.onrodaPerKmEur),
-          onrodaMinFareEur: Number(form.onrodaMinFareEur),
-          manualFixedPriceEur: form.manualFixedPriceEur.trim() ? Number(form.manualFixedPriceEur) : null,
+          ...nums,
         }),
       });
 
@@ -202,6 +231,7 @@ export default function FaresPage() {
 
       const data = await res.json();
       setAreas(Array.isArray(data.items) ? data.items : []);
+      await refreshFareData();
       setForm(emptyForm());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
@@ -233,6 +263,11 @@ export default function FaresPage() {
         throw new Error(data?.error || `Löschen fehlgeschlagen (${res.status}).`);
       }
       if (Array.isArray(data.items)) setAreas(data.items);
+      try {
+        await refreshFareData();
+      } catch {
+        /* ignore */
+      }
       if (editingId === area.id) cancelEdit();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen.");
@@ -287,7 +322,19 @@ export default function FaresPage() {
         <div className="admin-panel-card__title">{editingId ? "Gebiet bearbeiten" : "Gebiet hinzufügen"}</div>
         {activeProfile ? (
           <div className="admin-info-banner" style={{ marginBottom: 12 }}>
-            Aktiver App-Tarif: <strong>{activeProfile.areaName}</strong>
+            <p style={{ margin: "0 0 8px" }}>
+              Aktiver App-Tarif (Kundenschätzung, öffentlich <code style={{ fontSize: "0.9em" }}>/fare-estimate</code>):{" "}
+              <strong>{activeProfile.areaName}</strong>
+            </p>
+            <p className="admin-fares-hint admin-fares-hint--tight" style={{ margin: "0 0 8px" }}>
+              Taxameter: Grund {Number(activeProfile.baseFareEur).toFixed(2)} € +{" "}
+              {Number(activeProfile.rateFirstKmEur).toFixed(2)} €/km bis {Number(activeProfile.thresholdKm).toFixed(1)} km,
+              danach {Number(activeProfile.rateAfterKmEur).toFixed(2)} €/km (plus Wartezeit/Service aus diesem Gebiet).
+            </p>
+            <p className="admin-fares-hint admin-fares-hint--tight" style={{ margin: 0 }}>
+              Onroda-Fix (nur wenn die App die Fahrt außerhalb des Stuttgart–Esslingen-Korridors wertet): Basis{" "}
+              {Number(activeProfile.onrodaBaseFareEur).toFixed(2)} € + {Number(activeProfile.onrodaPerKmEur).toFixed(2)} €/km.
+            </p>
           </div>
         ) : null}
 
@@ -366,13 +413,19 @@ export default function FaresPage() {
               />
               <span>Standardtarif für die Onroda-App</span>
             </label>
+            <p className="admin-fares-hint admin-fares-hint--tight" style={{ marginTop: 10 }}>
+              Genau ein aktives Gebiet sollte als Standard markiert sein: Die Kunden-App bezieht die Schätzung von diesem
+              Datensatz. Änderungen an einem anderen Gebiet ohne Standard-Häkchen wirken in der App nicht, solange es
+              nicht aktiv der Standardtarif ist.
+            </p>
           </fieldset>
 
           <fieldset className="admin-fares-fieldset">
             <legend className="admin-fares-legend">Amtlicher Taxameter — Berechnung</legend>
             <div className="admin-fares-subhead">Grundpreis &amp; Kilometer</div>
             <p className="admin-fares-hint admin-fares-hint--tight">
-              Einstiegspreis, dann Staffelung ab Erreichen der Kilometer-Schwelle.
+              Einstiegspreis, dann Staffelung ab Erreichen der Kilometer-Schwelle. Für Test mit „1 € pro km überall“:
+              Schwelle auf 0 setzen und beide Kilometerpreise (bis/ab Schwelle) auf 1 €.
             </p>
             <div className="admin-fares-grid-num admin-fares-grid-num--2">
               <div>
@@ -408,6 +461,11 @@ export default function FaresPage() {
 
           <fieldset className="admin-fares-fieldset">
             <legend className="admin-fares-legend">Onroda-App Tarif</legend>
+            <p className="admin-fares-hint admin-fares-hint--tight">
+              Gilt in der Kunden-App nur für Fahrten, die die App als außerhalb des Stuttgart–Esslingen-Tarifkorridors
+              einstuft (Fixpreis). Liegen Start und Ziel in diesem Korridor, nutzt die Schätzung trotz Auswahl „Onroda“
+              die Taxameter-Felder oben — dann greifen diese Basis-/km-Werte hier nicht.
+            </p>
             <div className="admin-fares-subhead">Basis &amp; Preis pro km</div>
             <div className="admin-fares-grid-num admin-fares-grid-num--2">
               <div>
