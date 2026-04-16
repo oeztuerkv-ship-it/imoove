@@ -15,8 +15,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useRide, type PaymentMethod, VEHICLES } from "@/context/RideContext";
-import { useRideRequests } from "@/context/RideRequestContext";
+import { useRide, type PaymentMethod, type RideHistoryEntry, type VehicleType, VEHICLES } from "@/context/RideContext";
+import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -104,6 +104,51 @@ function StatCard({ icon, value, label, color }: { icon: string; value: string; 
   );
 }
 
+function guessPaymentMethodFromRide(pm: string | undefined): PaymentMethod {
+  const s = (pm ?? "").toLowerCase();
+  if (s.includes("paypal")) return "paypal";
+  if (s.includes("kredit") || s.includes("karte")) return "card";
+  if (s.includes("kranken") || s.includes("transportschein") || s.includes("eigenanteil")) return "voucher";
+  if (s.includes("gutschein") || s.includes("freigabe") || s.includes("code")) return "access_code";
+  if (s.includes("app")) return "app";
+  return "cash";
+}
+
+function guessVehicleTypeFromRide(v: string | undefined): VehicleType {
+  const s = (v ?? "").toLowerCase();
+  if (s.includes("onroda")) return "onroda";
+  if (s.includes("xl")) return "xl";
+  if (s.includes("rollstuhl")) return "wheelchair";
+  if (s === "standard" || s === "mietwagen" || s === "taxi") return "standard";
+  return "standard";
+}
+
+function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
+  const finalN =
+    r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : null;
+  const est = Number(r.estimatedFare ?? 0);
+  const created =
+    r.createdAt instanceof Date ? r.createdAt.toISOString() : new Date(r.createdAt as string).toISOString();
+  const sched =
+    r.scheduledAt != null
+      ? (r.scheduledAt instanceof Date ? r.scheduledAt : new Date(r.scheduledAt as string)).toISOString()
+      : null;
+  return {
+    id: r.id,
+    destination: r.toFull || r.to,
+    origin: r.fromFull || r.from,
+    distanceKm: r.distanceKm,
+    totalFare: finalN ?? est,
+    estimatedFare:
+      finalN != null && est > 0 && Math.abs(est - finalN) > 0.005 ? est : undefined,
+    vehicleType: guessVehicleTypeFromRide(r.vehicle),
+    paymentMethod: guessPaymentMethodFromRide(r.paymentMethod),
+    scheduledTime: sched,
+    createdAt: created,
+    status: "completed",
+  };
+}
+
 function dateGroupLabel(date: Date): string {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -122,10 +167,43 @@ export default function MyRidesScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const { history } = useRide();
-  const { myActiveRequests, myCancelledRequests, cancelRequest } = useRideRequests();
+  const { myActiveRequests, myCancelledRequests, cancelRequest, requests, passengerId } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("alle");
 
-  const completed = history.filter((r) => r.status === "completed");
+  const serverCompleted = useMemo(() => {
+    if (!passengerId) return [] as RideRequest[];
+    return requests.filter((r) => r.passengerId === passengerId && r.status === "completed");
+  }, [requests, passengerId]);
+
+  /** Lokale History + API: Endpreis aus Server anreichern, reine Server-Fahrten ergänzen. */
+  const completed = useMemo(() => {
+    const localDone = history.filter((r) => r.status === "completed");
+    const byId = new Map<string, RideHistoryEntry>();
+    for (const h of localDone) {
+      byId.set(h.id, { ...h });
+    }
+    for (const r of serverCompleted) {
+      const finalN =
+        r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : null;
+      const est = Number(r.estimatedFare ?? 0);
+      const prev = byId.get(r.id);
+      if (prev) {
+        if (finalN != null) {
+          byId.set(r.id, {
+            ...prev,
+            totalFare: finalN,
+            estimatedFare:
+              est > 0 && Math.abs(est - finalN) > 0.005 ? est : prev.estimatedFare,
+          });
+        }
+      } else {
+        byId.set(r.id, serverCompletedToHistoryEntry(r));
+      }
+    }
+    return [...byId.values()].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [history, serverCompleted]);
   const localCancelled = history.filter((r) => r.status === "cancelled");
 
   /* Alle stornierten Fahrten: lokal gespeicherte + vom Server (vom Kunden oder Fahrer storniert) */
@@ -440,7 +518,15 @@ export default function MyRidesScreen() {
                       <Feather name="clock" size={13} color={colors.mutedForeground} />
                       <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{Math.round(ride.distanceKm * 3)} Min.</Text>
                     </View>
-                    <Text style={[styles.ridePrice, { color: colors.foreground }]}>{formatEuro(ride.totalFare)}</Text>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={[styles.ridePrice, { color: colors.foreground }]}>{formatEuro(ride.totalFare)}</Text>
+                      {ride.estimatedFare != null &&
+                      Math.abs(ride.estimatedFare - ride.totalFare) > 0.005 ? (
+                        <Text style={[styles.footerText, { color: colors.mutedForeground, fontSize: rf(11), marginTop: 2 }]}>
+                          Schätzung war {formatEuro(ride.estimatedFare)}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
 
                   {/* Aktionen: PDF-Quittung + Nochmal */}

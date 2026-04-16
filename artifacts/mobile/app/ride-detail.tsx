@@ -66,9 +66,26 @@ export default function RideDetailScreen() {
   const rideId = typeof params.id === "string" ? params.id : "";
 
   const { history } = useRide();
-  const { myActiveRequests, myCancelledRequests } = useRideRequests();
+  const { myActiveRequests, myCancelledRequests, requests } = useRideRequests();
 
   const histRide = useMemo(() => history.find((r) => r.id === rideId) ?? null, [history, rideId]);
+
+  /** Gleiche Logik wie „Meine Fahrten“: Endpreis aus API-Poll anreichern. */
+  const enrichedHistRide = useMemo(() => {
+    if (!histRide || histRide.status !== "completed") return histRide;
+    const srv = requests.find((r) => r.id === histRide.id && r.status === "completed");
+    if (!srv) return histRide;
+    const finalN =
+      srv.finalFare != null && Number.isFinite(Number(srv.finalFare)) ? Number(srv.finalFare) : null;
+    if (finalN == null) return histRide;
+    const est = Number(srv.estimatedFare ?? 0);
+    return {
+      ...histRide,
+      totalFare: finalN,
+      estimatedFare:
+        est > 0 && Math.abs(est - finalN) > 0.005 ? est : histRide.estimatedFare,
+    };
+  }, [histRide, requests]);
   const activeRide = useMemo(() => myActiveRequests.find((r) => r.id === rideId) ?? null, [myActiveRequests, rideId]);
   const cancelledRide = useMemo(() => myCancelledRequests.find((r) => r.id === rideId) ?? null, [myCancelledRequests, rideId]);
 
@@ -78,8 +95,8 @@ export default function RideDetailScreen() {
 
   const apiBase = getApiBaseUrl();
 
-  const title = histRide
-    ? histRide.status === "completed"
+  const title = enrichedHistRide
+    ? enrichedHistRide.status === "completed"
       ? "Fahrt (Abgeschlossen)"
       : "Fahrt (Storniert)"
     : activeRide
@@ -89,11 +106,11 @@ export default function RideDetailScreen() {
         : "Fahrt";
 
   async function onDownloadReceipt() {
-    if (!histRide || histRide.status !== "completed") {
+    if (!enrichedHistRide || enrichedHistRide.status !== "completed") {
       Alert.alert("Nicht verfügbar", "Eine Quittung gibt es erst nach Abschluss der Fahrt.");
       return;
     }
-    await downloadReceipt(buildReceiptFromHistory(histRide));
+    await downloadReceipt(buildReceiptFromHistory(enrichedHistRide));
   }
 
   async function openServerReceipt() {
@@ -171,21 +188,30 @@ export default function RideDetailScreen() {
           <View style={styles.row}>
             <Text style={[styles.k, { color: colors.mutedForeground }]}>Start</Text>
             <Text style={[styles.v, { color: colors.foreground }]} numberOfLines={2}>
-              {histRide?.origin || activeRide?.from || cancelledRide?.from || "—"}
+              {enrichedHistRide?.origin || activeRide?.from || cancelledRide?.from || "—"}
             </Text>
           </View>
 
           <View style={styles.row}>
             <Text style={[styles.k, { color: colors.mutedForeground }]}>Ziel</Text>
             <Text style={[styles.v, { color: colors.foreground }]} numberOfLines={2}>
-              {histRide?.destination || activeRide?.to || cancelledRide?.to || "—"}
+              {enrichedHistRide?.destination || activeRide?.to || cancelledRide?.to || "—"}
             </Text>
           </View>
 
-          {histRide?.status === "completed" ? (
-            <View style={styles.row}>
-              <Text style={[styles.k, { color: colors.mutedForeground }]}>Betrag</Text>
-              <Text style={[styles.v, { color: colors.foreground }]}>{formatEuro(histRide.totalFare)}</Text>
+          {enrichedHistRide?.status === "completed" ? (
+            <View>
+              <View style={styles.row}>
+                <Text style={[styles.k, { color: colors.mutedForeground }]}>Betrag</Text>
+                <Text style={[styles.v, { color: colors.foreground }]}>{formatEuro(enrichedHistRide.totalFare)}</Text>
+              </View>
+              {enrichedHistRide.estimatedFare != null &&
+              Math.abs(enrichedHistRide.estimatedFare - enrichedHistRide.totalFare) > 0.005 ? (
+                <View style={styles.row}>
+                  <Text style={[styles.k, { color: colors.mutedForeground }]}>Schätzung</Text>
+                  <Text style={[styles.v, { color: colors.mutedForeground }]}>{formatEuro(enrichedHistRide.estimatedFare)}</Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
 

@@ -65,13 +65,24 @@ export interface RideHistoryEntry {
   destination: string;
   origin: string;
   distanceKm: number;
+  /** Anzeige- / Abrechnungsbetrag: i. d. R. Fahrer-Endpreis, sonst Schätzung. */
   totalFare: number;
+  /** Schätzpreis zur Buchung — nur gesetzt wenn sich von `totalFare` unterscheidet (z. B. Fahrer-Endpreis). */
+  estimatedFare?: number;
   vehicleType: VehicleType;
   paymentMethod: PaymentMethod;
   scheduledTime: string | null;
   createdAt: string;
   status: "completed" | "cancelled";
 }
+
+/** Optionen beim Abschluss: Endpreis aus API + echte Ride-ID für History/Quittung. */
+export type CompleteRideOptions = {
+  finalFare?: number | null;
+  serverRideId?: string;
+  /** Schätzung (z. B. `estimatedFare` der Ride), für Anzeige „Schätzung war …“ */
+  estimatedFare?: number | null;
+};
 
 export type RideStatus = "idle" | "searching" | "active" | "completed";
 
@@ -124,7 +135,7 @@ interface RideContextValue extends RideState {
   fetchRoute: () => Promise<void>;
   startRide: () => void;
   cancelRide: () => void;
-  completeRide: () => void;
+  completeRide: (opts?: CompleteRideOptions) => void;
   resetRide: () => void;
   loadHistory: () => Promise<void>;
 }
@@ -383,26 +394,42 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
     resetRide();
   }, [destination, route, fareBreakdown, selectedVehicle, paymentMethod, scheduledTime, origin, history, saveHistory]);
 
-  const completeRide = useCallback(() => {
-    if (destination && route && fareBreakdown) {
-      const entry: RideHistoryEntry = {
-        id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-        destination: destination.displayName,
-        origin: origin.displayName,
-        distanceKm: route.distanceKm,
-        totalFare: fareBreakdown.total,
-        vehicleType: selectedVehicle!,
-        paymentMethod: paymentMethod ?? "cash",
-        scheduledTime: scheduledTime?.toISOString() ?? null,
-        createdAt: new Date().toISOString(),
-        status: "completed",
-      };
-      const updated = [entry, ...history].slice(0, 50);
-      setHistory(updated);
-      saveHistory(updated);
-    }
-    setRideStatus("completed");
-  }, [destination, route, fareBreakdown, selectedVehicle, paymentMethod, scheduledTime, origin, history, saveHistory]);
+  const completeRide = useCallback(
+    (opts?: CompleteRideOptions) => {
+      const parsedFinal =
+        opts?.finalFare != null && Number.isFinite(Number(opts.finalFare)) ? Number(opts.finalFare) : null;
+      const serverEstimate =
+        opts?.estimatedFare != null && Number.isFinite(Number(opts.estimatedFare))
+          ? Number(opts.estimatedFare)
+          : null;
+      const localEstimate = fareBreakdown?.total ?? null;
+      const estimateForHint = serverEstimate ?? localEstimate;
+      const billed = parsedFinal ?? localEstimate;
+      if (destination && route && fareBreakdown && billed != null && Number.isFinite(Number(billed))) {
+        const entry: RideHistoryEntry = {
+          id: opts?.serverRideId ?? Date.now().toString() + Math.random().toString(36).substring(2, 9),
+          destination: destination.displayName,
+          origin: origin.displayName,
+          distanceKm: route.distanceKm,
+          totalFare: billed,
+          estimatedFare:
+            parsedFinal != null && estimateForHint != null && Math.abs(estimateForHint - parsedFinal) > 0.005
+              ? estimateForHint
+              : undefined,
+          vehicleType: selectedVehicle!,
+          paymentMethod: paymentMethod ?? "cash",
+          scheduledTime: scheduledTime?.toISOString() ?? null,
+          createdAt: new Date().toISOString(),
+          status: "completed",
+        };
+        const updated = [entry, ...history.filter((h) => h.id !== entry.id)].slice(0, 50);
+        setHistory(updated);
+        saveHistory(updated);
+      }
+      setRideStatus("completed");
+    },
+    [destination, route, fareBreakdown, selectedVehicle, paymentMethod, scheduledTime, origin, history, saveHistory],
+  );
 
   const resetRide = useCallback(() => {
     setDestination(null);

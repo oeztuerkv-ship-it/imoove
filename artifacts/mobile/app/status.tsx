@@ -339,7 +339,11 @@ export default function StatusScreen() {
     if (completedForCurrentRide && !isCompleted) {
       const t = setTimeout(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        completeRide();
+        completeRide({
+          serverRideId: completedForCurrentRide.id,
+          finalFare: completedForCurrentRide.finalFare ?? null,
+          estimatedFare: completedForCurrentRide.estimatedFare ?? null,
+        });
         setIsCompleted(true);
         Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
       }, 800);
