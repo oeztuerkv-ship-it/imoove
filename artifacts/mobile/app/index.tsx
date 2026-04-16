@@ -99,6 +99,8 @@ function HomeServiceGrid({
       >
         {SERVICES.map((service) => {
           const active = selectedVehicle === service.vehicleType;
+          const isWheelchair = service.id === "wheelchair";
+          const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
           return (
             <Pressable
               key={service.id}
@@ -116,8 +118,8 @@ function HomeServiceGrid({
             >
               <MaterialCommunityIcons
                 name={service.icon as any}
-                size={compact ? 62 : 72}
-                color={active ? colors.primary : "#111827"}
+                size={compact ? 50 : 58}
+                color={iconColor}
               />
               <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
                 {service.title}
@@ -641,25 +643,6 @@ export default function HomeScreen() {
       ? Math.min(380, Math.max(260, screenHeight * 0.32 + TAB_HEIGHT))
       : Math.min(460, TAB_HEIGHT + screenHeight * 0.4),
   );
-
-  useEffect(() => {
-    if (!SHOW_TARIFF_DEBUG) return;
-    if (!destination) return;
-    console.log("[TariffDebug]", {
-      rawStartText: tariffDebug.originRaw,
-      rawDestinationText: tariffDebug.destinationRaw,
-      normalizedStart: tariffDebug.originNormalized,
-      normalizedDestination: tariffDebug.destinationNormalized,
-      finalDecision: tariffDebug.isWithinTariffArea ? "tariff_area" : "outside_tariff_area",
-    });
-  }, [
-    destination,
-    tariffDebug.destinationNormalized,
-    tariffDebug.destinationRaw,
-    tariffDebug.isWithinTariffArea,
-    tariffDebug.originNormalized,
-    tariffDebug.originRaw,
-  ]);
 
   /* ── Driver guard: while AsyncStorage loads, show nothing; when logged in, redirect ── */
   if (driverLoading) {
