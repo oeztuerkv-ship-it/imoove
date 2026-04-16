@@ -26,7 +26,7 @@ import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
-import { isOnrodaFixRouteEligible, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
+import { isOnrodaFixRouteEligible, isTripWithinStuttgartEsslingenTariffArea, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
@@ -53,7 +53,10 @@ function isPlausibleEmail(s: string): boolean {
 }
 
 const FIXPREIS_VOUCHER_HINT = "Fixpreis ist bei Transportschein nicht verfügbar";
-const FIXPREIS_GEBIET_HINT = "Kein Fixpreis moeglich, da die Fahrt ausserhalb des Pflichtfahrgebiets (Esslingen/Stuttgart) liegt.";
+const TARIFF_AREA_NOTICE_PRIMARY = "Diese Fahrt wird gemäß örtlicher Taxi-Tarifordnung berechnet.";
+const TARIFF_AREA_NOTICE_SECONDARY = "Der endgültige Fahrpreis richtet sich nach dem geltenden Taxitarif.";
+const OUTSIDE_TARIFF_NOTICE_PRIMARY = "Für diese Fahrt kann vor Fahrtbeginn ein Festpreis vereinbart werden.";
+const OUTSIDE_TARIFF_NOTICE_SECONDARY = "Der Fahrpreis wird vor Fahrtantritt verbindlich festgelegt.";
 const SEARCH_OVERLAY_BG = "#FFFFFF";
 
 const VEHICLE_CAR_ICON = "#171717";
@@ -541,13 +544,12 @@ export default function HomeScreen() {
         setPaymentMethod(null);
         showComboHint(FIXPREIS_VOUCHER_HINT);
       }
-      if (
-        service.vehicleType === "onroda" &&
-        destination &&
-        !isOnrodaFixRouteEligible(origin, destination)
-      ) {
-        Alert.alert("Fixpreis nicht verfuegbar", FIXPREIS_GEBIET_HINT);
-        return;
+      if (service.vehicleType === "onroda" && destination) {
+        showComboHint(
+          isTripWithinStuttgartEsslingenTariffArea(origin, destination)
+            ? TARIFF_AREA_NOTICE_PRIMARY
+            : OUTSIDE_TARIFF_NOTICE_PRIMARY,
+        );
       }
       setSelectedVehicle(service.vehicleType);
       router.push({ pathname: "/service-detail", params: { type: service.id } } as any);
@@ -844,9 +846,12 @@ export default function HomeScreen() {
                         },
                       ]}
                       onPress={() => {
-                        if (v.id === "onroda" && destination && !isOnrodaFixRouteEligible(origin, destination)) {
-                          Alert.alert("Fixpreis nicht verfuegbar", FIXPREIS_GEBIET_HINT);
-                          return;
+                        if (v.id === "onroda" && destination) {
+                          showComboHint(
+                            isTripWithinStuttgartEsslingenTariffArea(origin, destination)
+                              ? TARIFF_AREA_NOTICE_PRIMARY
+                              : OUTSIDE_TARIFF_NOTICE_PRIMARY,
+                          );
                         }
                         setSelectedVehicle(v.id);
                         Haptics.selectionAsync();
@@ -1023,11 +1028,13 @@ export default function HomeScreen() {
             )}
 
             {/* Start → Ziel Card */}
-            {selectedVehicle === "onroda" && fareBreakdown?.fareKind === "onroda_fix" && (
+            {selectedVehicle === "onroda" && destination && fareBreakdown && (
               <View style={styles.searchFixpreisBanner}>
                 <MaterialCommunityIcons name="tag-outline" size={17} color={ONRODA_MARK_RED} />
                 <Text style={styles.searchFixpreisBannerText}>
-                  Garantierter Festpreis für diese Route: {formatEuro(fareBreakdown.total)}
+                  {isOnrodaFixRouteEligible(origin, destination)
+                    ? `${OUTSIDE_TARIFF_NOTICE_PRIMARY} ${OUTSIDE_TARIFF_NOTICE_SECONDARY}`
+                    : `${TARIFF_AREA_NOTICE_PRIMARY} ${TARIFF_AREA_NOTICE_SECONDARY}`}
                 </Text>
               </View>
             )}

@@ -130,7 +130,6 @@ const RideContext = createContext<RideContextValue | null>(null);
 const HISTORY_KEY = "@taxi_ride_history";
 const RESET_KEY   = "@Onroda_reset_v1";
 const API_BASE = getApiBaseUrl();
-const ONRODA_FIX_AUSSERHALB_HINT = "Kein Fixpreis moeglich, da die Fahrt ausserhalb des Pflichtfahrgebiets (Esslingen/Stuttgart) liegt.";
 
 function normalizeForMatch(value: string | null | undefined): string {
   return (value ?? "")
@@ -139,19 +138,58 @@ function normalizeForMatch(value: string | null | undefined): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function isOnrodaFixAreaLocation(loc: GeoLocation): boolean {
+const ESSLINGEN_COUNTY_MUNICIPALITIES = [
+  "altbach", "aichwald", "beuren", "deizisau", "denkendorf", "dettingen unter teck",
+  "esslingen", "frickenhausen", "grossbettlingen", "hochdorf",
+  "holzmaden", "kirchheim unter teck", "koengen", "köngen",
+  "lenningen", "lichtenwald", "neuhausen auf den fildern", "neidlingen", "neckartailfingen",
+  "neckartenzlingen", "nuertingen", "oberboihingen", "ostfildern", "owen",
+  "plochingen", "reichenbach an der fils", "schlaitdorf", "unterensingen", "weilheim an der teck",
+  "wendlingen am neckar", "wolfschlugen",
+];
+
+function isStuttgart(loc: GeoLocation): boolean {
   const city = normalizeForMatch(loc.city);
-  if (city.includes("stuttgart") || city.includes("esslingen")) return true;
+  if (city.includes("stuttgart")) return true;
+  return normalizeForMatch(loc.displayName).includes("stuttgart");
+}
+
+function isLeinfeldenEchterdingen(loc: GeoLocation): boolean {
+  const city = normalizeForMatch(loc.city);
+  if (city.includes("leinfelden-echterdingen") || city.includes("leinfelden echterdingen")) return true;
   const name = normalizeForMatch(loc.displayName);
-  if (name.includes("stuttgart")) return true;
-  if (name.includes("esslingen am neckar")) return true;
-  if (name.includes("flughafen stuttgart")) return true;
+  return name.includes("leinfelden-echterdingen") || name.includes("leinfelden echterdingen");
+}
+
+function isFilderstadt(loc: GeoLocation): boolean {
+  const city = normalizeForMatch(loc.city);
+  if (city.includes("filderstadt")) return true;
+  return normalizeForMatch(loc.displayName).includes("filderstadt");
+}
+
+function isEsslingenCounty(loc: GeoLocation): boolean {
+  const city = normalizeForMatch(loc.city);
+  if (city.includes("esslingen")) return true;
+  if (ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => city.includes(municipality))) return true;
+  const name = normalizeForMatch(loc.displayName);
+  if (name.includes("esslingen")) return true;
+  return ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => name.includes(municipality));
+}
+
+export function isTripWithinStuttgartEsslingenTariffArea(origin: GeoLocation, destination: GeoLocation | null): boolean {
+  if (!destination) return false;
+  const originInCoreTariff = isStuttgart(origin) || isEsslingenCounty(origin);
+  const destinationInCoreTariff = isStuttgart(destination) || isEsslingenCounty(destination);
+  if (originInCoreTariff && destinationInCoreTariff) return true;
+
+  const originInExtensionStart = isLeinfeldenEchterdingen(origin) || isFilderstadt(origin);
+  if (originInExtensionStart && destinationInCoreTariff) return true;
+
   return false;
 }
 
 export function isOnrodaFixRouteEligible(origin: GeoLocation, destination: GeoLocation | null): boolean {
-  if (!destination) return false;
-  return isOnrodaFixAreaLocation(origin) && isOnrodaFixAreaLocation(destination);
+  return !isTripWithinStuttgartEsslingenTariffArea(origin, destination);
 }
 
 export function RideProvider({ children }: { children: React.ReactNode }) {
@@ -200,16 +238,12 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      if (selectedVehicle === "onroda" && !isOnrodaFixRouteEligible(origin, destination)) {
-        setFareBreakdown(null);
-        setRouteError(ONRODA_FIX_AUSSERHALB_HINT);
-        return;
-      }
+      const onrodaFixAllowed = selectedVehicle === "onroda" ? isOnrodaFixRouteEligible(origin, destination) : false;
       if (API_BASE) {
         try {
           const u = new URL(`${API_BASE}/fare-estimate`);
           u.searchParams.set("distanceKm", String(result.distanceKm));
-          u.searchParams.set("vehicle", selectedVehicle);
+          u.searchParams.set("vehicle", selectedVehicle === "onroda" && !onrodaFixAllowed ? "standard" : selectedVehicle);
           const res = await fetch(u.toString(), { cache: "no-store" });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data?.ok && Number.isFinite(data?.estimate?.total)) {
@@ -221,7 +255,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
               waitingCharge: 0,
               total,
               distanceKm: Math.round(result.distanceKm * 100) / 100,
-              fareKind: selectedVehicle === "onroda" ? "onroda_fix" : "taxameter",
+              fareKind: selectedVehicle === "onroda" && onrodaFixAllowed ? "onroda_fix" : "taxameter",
             });
             return;
           }
@@ -229,7 +263,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
           /* fallback auf lokale Berechnung */
         }
       }
-      if (selectedVehicle === "onroda") {
+      if (selectedVehicle === "onroda" && onrodaFixAllowed) {
         setFareBreakdown(calculateOnrodaFixFare(result.distanceKm));
         return;
       }
