@@ -675,8 +675,9 @@ export default function HomeScreen() {
           style={[
             styles.homeSheetGapFill,
             {
-              bottom: 0,
-              height: TAB_HEIGHT + Math.round(screenHeight * 0.15) + 6,
+              // Fill ONLY the gap between home sheet and the top of the tab bar.
+              bottom: TAB_HEIGHT + bottomPad,
+              height: Math.max(10, Math.round(screenHeight * 0.15) - bottomPad + 6),
               backgroundColor: "#FFFFFF",
             },
           ]}
