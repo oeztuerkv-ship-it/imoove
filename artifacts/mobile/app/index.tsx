@@ -670,21 +670,6 @@ export default function HomeScreen() {
       {profile.isLoggedIn ? (<>
 
       {!destination && (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.homeSheetGapFill,
-            {
-              // Fill ONLY the gap between home sheet and the top of the tab bar.
-              bottom: TAB_HEIGHT + bottomPad,
-              height: Math.max(10, Math.round(screenHeight * 0.15) - bottomPad + 6),
-              backgroundColor: "#FFFFFF",
-            },
-          ]}
-        />
-      )}
-
-      {!destination && (
         <View style={[styles.topRightFabs, { top: topPad + 12 }]}>
           <Pressable
             style={[styles.fab, { backgroundColor: "#fff", borderColor: colors.border }]}
@@ -718,7 +703,7 @@ export default function HomeScreen() {
           {
             backgroundColor: colors.surface,
             maxHeight: destination ? "86%" : "66%",
-            bottom: TAB_HEIGHT + Math.round(screenHeight * 0.15),
+            bottom: TAB_HEIGHT + bottomPad,
           },
         ]}
       >
@@ -2002,13 +1987,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(2),
     shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
-  },
-  homeSheetGapFill: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    backgroundColor: "#FFFFFF",
-    zIndex: 5,
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: rs(2) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
