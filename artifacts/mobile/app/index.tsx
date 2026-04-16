@@ -27,7 +27,6 @@ import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
 import {
-  getTariffAreaDebugInfo,
   isOnrodaFixRouteEligible,
   isTripWithinStuttgartEsslingenTariffArea,
   type VehicleType,
@@ -65,7 +64,6 @@ const TARIFF_AREA_NOTICE_SECONDARY = "Der endgültige Fahrpreis richtet sich nac
 const OUTSIDE_TARIFF_NOTICE_PRIMARY = "Für diese Fahrt kann vor Fahrtbeginn ein Festpreis vereinbart werden.";
 const OUTSIDE_TARIFF_NOTICE_SECONDARY = "Der Fahrpreis wird vor Fahrtantritt verbindlich festgelegt.";
 const SEARCH_OVERLAY_BG = "#FFFFFF";
-const SHOW_TARIFF_DEBUG = true;
 
 const VEHICLE_CAR_ICON = "#171717";
 
@@ -128,34 +126,6 @@ function HomeServiceGrid({
           );
         })}
       </ScrollView>
-    </View>
-  );
-}
-
-function TariffDebugBox({
-  source,
-  originName,
-  destinationName,
-  originInTariffArea,
-  destinationInTariffArea,
-  withinTariffArea,
-}: {
-  source: "Home" | "Buchung";
-  originName: string;
-  destinationName: string;
-  originInTariffArea: boolean;
-  destinationInTariffArea: boolean;
-  withinTariffArea: boolean;
-}) {
-  return (
-    <View style={styles.tariffDebugBox}>
-      <Text style={styles.tariffDebugTitle}>DEBUG TARIF-ENTSCHEIDUNG</Text>
-      <Text style={styles.tariffDebugLine}>Start: {originName || "—"}</Text>
-      <Text style={styles.tariffDebugLine}>Ziel: {destinationName || "—"}</Text>
-      <Text style={styles.tariffDebugLine}>Start im Tarifgebiet: {originInTariffArea ? "Ja" : "Nein"}</Text>
-      <Text style={styles.tariffDebugLine}>Ziel im Tarifgebiet: {destinationInTariffArea ? "Ja" : "Nein"}</Text>
-      <Text style={styles.tariffDebugLine}>Ergebnis: {withinTariffArea ? "Tarifgebiet" : "Außerhalb"}</Text>
-      <Text style={styles.tariffDebugLine}>Quelle der Entscheidung: {source}</Text>
     </View>
   );
 }
@@ -636,7 +606,6 @@ export default function HomeScreen() {
   const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
   const showDestResults = !isEditingOrigin && destResults.length > 0;
   const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
-  const tariffDebug = getTariffAreaDebugInfo(origin, destination);
   const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
   const mapEdgePaddingBottom = Math.round(
     destination
@@ -844,18 +813,6 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.vehicleSection}>
-                {SHOW_TARIFF_DEBUG && destination ? (
-                  <View style={styles.tariffDebugHomeWrap}>
-                    <TariffDebugBox
-                      source="Home"
-                      originName={origin.displayName}
-                      destinationName={tariffDebug.destinationRaw || "—"}
-                      originInTariffArea={tariffDebug.originInTariffArea}
-                      destinationInTariffArea={tariffDebug.destinationInTariffArea}
-                      withinTariffArea={tariffDebug.isWithinTariffArea}
-                    />
-                  </View>
-                ) : null}
                 <HomeServiceGrid
                   colors={colors}
                   selectedVehicle={selectedVehicle}
@@ -866,16 +823,6 @@ export default function HomeScreen() {
             </>
           ) : (
             <View style={styles.fareSection}>
-              {SHOW_TARIFF_DEBUG && destination ? (
-                <TariffDebugBox
-                  source="Buchung"
-                  originName={origin.displayName}
-                  destinationName={tariffDebug.destinationRaw || "—"}
-                  originInTariffArea={tariffDebug.originInTariffArea}
-                  destinationInTariffArea={tariffDebug.destinationInTariffArea}
-                  withinTariffArea={tariffDebug.isWithinTariffArea}
-                />
-              ) : null}
               <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>BUCHUNG</Text>
               <Text
                 style={{
@@ -924,7 +871,7 @@ export default function HomeScreen() {
                       >
                         <MaterialCommunityIcons
                           name={iconCfg.icon as any}
-                          size={22}
+                          size={24}
                           color={iconCfg.color}
                         />
                       </View>
@@ -1804,24 +1751,6 @@ const styles = StyleSheet.create({
   vehicleSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 8 },
   homeServiceSection: { marginHorizontal: 16 },
   homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
-  tariffDebugHomeWrap: { marginHorizontal: 16, marginBottom: 10 },
-  tariffDebugBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F59E0B",
-    backgroundColor: "#FFFBEB",
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    gap: 2,
-  },
-  tariffDebugTitle: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-    color: "#92400E",
-    marginBottom: 3,
-    letterSpacing: 0.4,
-  },
-  tariffDebugLine: { fontSize: 11, lineHeight: 15, fontFamily: "Inter_500Medium", color: "#78350F" },
   homeServiceGridRow: { gap: 14, paddingRight: 16 },
   homeServiceCard: {
     width: 220,
@@ -1897,25 +1826,25 @@ const styles = StyleSheet.create({
     height: 56,
   },
   vehicleRefCheck: { position: "absolute" },
-  bookingVehicleScroll: { flexDirection: "row", gap: 10, paddingVertical: 4, paddingRight: 4 },
+  bookingVehicleScroll: { flexDirection: "row", gap: 12, paddingVertical: 8, paddingRight: 8, paddingBottom: 18 },
   bookingVehicleChip: {
-    width: 100,
+    width: 112,
     flexShrink: 0,
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    gap: 7,
   },
   bookingVehicleIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    width: 58,
+    height: 58,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
-  bookingVehicleName: { fontSize: 13, fontFamily: "Inter_700Bold", textAlign: "center" },
-  bookingVehicleSub: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 13 },
+  bookingVehicleName: { fontSize: 14, fontFamily: "Inter_700Bold", textAlign: "center" },
+  bookingVehicleSub: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 14 },
   vehicleSliderExpand: {
     paddingHorizontal: 16,
     paddingBottom: 14,
@@ -1940,7 +1869,7 @@ const styles = StyleSheet.create({
   vehicleSliderDotActive: { width: 22, borderRadius: 4 },
 
   /* Fare panel */
-  fareSection: { padding: 14, gap: 12, paddingBottom: 8 },
+  fareSection: { padding: 14, gap: 12, paddingBottom: 22 },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, justifyContent: "center", paddingVertical: 16 },
   loadingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
   routeStrip: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, paddingVertical: 18 },
