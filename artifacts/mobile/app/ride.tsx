@@ -82,7 +82,6 @@ const RIDE_PAYMENT_OPTIONS: {
 ];
 
 const SERVICE_CLASS_LABELS = {
-  konzession_auto: "Konzession Auto",
   rollstuhl: "Rollstuhl",
   xl: "XL",
   taxi: "Taxi",

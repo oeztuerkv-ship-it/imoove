@@ -8,7 +8,6 @@ Für jede Fahrt MUSS ein eindeutiger `pricing_mode` gesetzt sein.
 
 * `Taxi` → `pricing_mode = taxi_tariff`
 * `Mietwagen` → `pricing_mode = fixed_price`
-* `Konzession Auto` → `pricing_mode = fixed_price`
 
 ### Regel
 
@@ -50,15 +49,17 @@ Für jede Fahrt MUSS ein eindeutiger `pricing_mode` gesetzt sein.
 
 ## 3. Produktdefinition (verbindlich)
 
-### `Konzession Auto`
+`Konzession Auto` ist entfernt und darf nicht mehr verwendet werden.
 
-* gehört zur **Mietwagen-/Festpreis-Schiene**
-* behandelt wie:
+Verbindliche Produktstruktur:
 
-  * `pricing_mode = fixed_price`
-  * `vehicle_legal_type = rental_car`
-
-Keine Mischlogik mit Taxi.
+* Produkte:
+  * `Taxi`
+  * `Mietwagen`
+* Fahrzeugklassen:
+  * `Standard`
+  * `XL`
+  * `Rollstuhl`
 
 ---
 

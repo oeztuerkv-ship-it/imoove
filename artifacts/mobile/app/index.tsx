@@ -82,7 +82,6 @@ type HomeRequestOption = {
 };
 
 const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
-  { id: "konzession_auto", label: "Konzession Auto", icon: "car-side", vehicleType: "onroda" },
   { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", vehicleType: "wheelchair" },
   { id: "xl", label: "XL", icon: "van-passenger", vehicleType: "xl" },
   { id: "taxi", label: "Taxi", icon: "car", vehicleType: "standard" },
@@ -873,7 +872,7 @@ export default function HomeScreen() {
                         } else if (v.id === "xl") {
                           setSelectedServiceClass("xl");
                         } else if (v.id === "onroda") {
-                          setSelectedServiceClass("konzession_auto");
+                          setSelectedServiceClass("mietwagen");
                         } else if (selectedServiceClass !== "mietwagen") {
                           setSelectedServiceClass("taxi");
                         }

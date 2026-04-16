@@ -12,7 +12,7 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
 
 export type VehicleType = "standard" | "xl" | "wheelchair" | "onroda";
-export type RideServiceClass = "konzession_auto" | "rollstuhl" | "xl" | "taxi" | "mietwagen";
+export type RideServiceClass = "rollstuhl" | "xl" | "taxi" | "mietwagen";
 export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app" | "access_code";
 
 export interface VehicleOption {
