@@ -1023,6 +1023,8 @@ export default function HomeScreen() {
             backgroundColor: !destination ? "#F3F4F6" : colors.surface,
             borderTopColor: !destination ? "#E5E7EB" : colors.border,
             paddingBottom: bottomPad,
+            height: TAB_HEIGHT + bottomPad,
+            paddingTop: 0,
             ...(destination
               ? null
               : {
@@ -1984,11 +1986,11 @@ const styles = StyleSheet.create({
   tabBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(2),
+    borderTopWidth: StyleSheet.hairlineWidth,
     shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
   },
-  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: rs(2) },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: 0 },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
   tabLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium" },
   tabBadge: {
