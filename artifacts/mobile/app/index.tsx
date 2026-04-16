@@ -677,6 +677,7 @@ export default function HomeScreen() {
             {
               bottom: TAB_HEIGHT + bottomPad - 2,
               height: Math.max(10, Math.round(screenHeight * 0.15) - bottomPad + 4),
+              backgroundColor: "#F3F4F6",
             },
           ]}
         />
@@ -1036,6 +1037,14 @@ export default function HomeScreen() {
             backgroundColor: !destination ? "#F3F4F6" : colors.surface,
             borderTopColor: !destination ? "#E5E7EB" : colors.border,
             paddingBottom: bottomPad,
+            ...(destination
+              ? null
+              : {
+                  shadowOpacity: 0,
+                  shadowRadius: 0,
+                  shadowOffset: { width: 0, height: 0 },
+                  elevation: 0,
+                }),
           },
         ]}
       >
