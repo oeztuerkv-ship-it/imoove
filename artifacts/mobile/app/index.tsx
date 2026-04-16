@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
+import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
 import { type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
@@ -66,10 +67,12 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
 function HomeServiceGrid({
   colors,
   selectedVehicle,
+  compact,
   onPressService,
 }: {
   colors: { foreground: string; mutedForeground: string; primary: string; border: string };
   selectedVehicle: VehicleType | null;
+  compact: boolean;
   onPressService: (id: ServiceId) => void;
 }) {
   return (
@@ -85,6 +88,7 @@ function HomeServiceGrid({
               key={service.id}
               style={({ pressed }) => [
                 styles.homeServiceCard,
+                compact && styles.homeServiceCardCompact,
                 {
                   backgroundColor: active ? "#F5F5F5" : "#FAFAFA",
                   borderColor: active ? colors.primary : "#E5E7EB",
@@ -94,8 +98,12 @@ function HomeServiceGrid({
               ]}
               onPress={() => onPressService(service.id)}
             >
-              <MaterialCommunityIcons name={service.icon as any} size={72} color={active ? colors.primary : "#111827"} />
-              <Text style={[styles.homeServiceCardTitle, { color: colors.foreground }]} numberOfLines={2}>
+              <MaterialCommunityIcons
+                name={service.icon as any}
+                size={compact ? 62 : 72}
+                color={active ? colors.primary : "#111827"}
+              />
+              <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
                 {service.title}
               </Text>
             </Pressable>
@@ -263,6 +271,7 @@ export default function HomeScreen() {
   const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mapCenterKey, setMapCenterKey] = useState(0);
   /** Auf der Karte mit Ziel: Sofort vs. Termin — gleicher Einstieg wie `reserve-ride`. */
   const [bookingMode, setBookingMode] = useState<"immediate" | "scheduled">("immediate");
   const showComboHint = useCallback((msg: string) => {
@@ -562,6 +571,7 @@ export default function HomeScreen() {
       const geoLoc = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
       setOrigin(geoLoc);
       if (isSearchActive) setOriginQuery(geoLoc.displayName.split(",")[0]);
+      if (!silent) setMapCenterKey((k) => k + 1);
       if (!silent) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
     finally { setGpsLoading(false); }
@@ -591,10 +601,29 @@ export default function HomeScreen() {
   const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
   const showDestResults = !isEditingOrigin && destResults.length > 0;
   const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
+  const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
+  const mapEdgePaddingBottom = Math.round(
+    destination
+      ? Math.min(380, Math.max(260, screenHeight * 0.32 + TAB_HEIGHT))
+      : Math.min(460, TAB_HEIGHT + screenHeight * 0.4),
+  );
 
   return (
     <View style={styles.root}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
+      {profile.isLoggedIn ? (
+        <RealMapView
+          origin={origin}
+          destination={destination}
+          polyline={route?.polyline}
+          style={StyleSheet.absoluteFill}
+          centerKey={mapCenterKey}
+          edgePaddingTop={mapEdgePaddingTop}
+          edgePaddingBottom={mapEdgePaddingBottom}
+          userLocation={userGps}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
+      )}
 
       {profile.isLoggedIn ? (<>
 
@@ -766,6 +795,7 @@ export default function HomeScreen() {
                 <HomeServiceGrid
                   colors={colors}
                   selectedVehicle={selectedVehicle}
+                  compact={isSmallScreen}
                   onPressService={handleHomeServicePress}
                 />
               </View>
@@ -1705,12 +1735,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
   },
+  homeServiceCardCompact: {
+    minHeight: 162,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+  },
   homeServiceCardTitle: {
     fontSize: 18,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     lineHeight: 24,
     marginTop: 10,
+  },
+  homeServiceCardTitleCompact: {
+    fontSize: 16,
+    lineHeight: 21,
+    marginTop: 8,
   },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
