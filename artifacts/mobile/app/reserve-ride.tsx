@@ -28,7 +28,6 @@ import {
   useRide,
 } from "@/context/RideContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
