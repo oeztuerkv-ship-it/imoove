@@ -26,7 +26,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
-import { type ServiceId } from "@/constants/services";
 import { useDriver } from "@/context/DriverContext";
 import {
   isOnrodaFixRouteEligible,
@@ -75,82 +74,6 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
   wheelchair: { icon: "wheelchair-accessibility", color: "#0369A1", bg: "#E0F2FE", seats: "Rollstuhlgerecht" },
   onroda: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "Fixpreis-Garantie" },
 };
-
-type HomeRequestOption = {
-  id: "taxi" | "onroda" | "xl" | "rollstuhl";
-  label: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  detailType: ServiceId;
-  vehicleType: VehicleType;
-  serviceClass: RideServiceClass;
-};
-
-const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
-  { id: "taxi", label: "Taxi", icon: "car", detailType: "standard", vehicleType: "standard", serviceClass: "taxi" },
-  { id: "onroda", label: "Onroda", icon: "car-side", detailType: "onroda", vehicleType: "onroda", serviceClass: "mietwagen" },
-  { id: "xl", label: "XL", icon: "van-passenger", detailType: "xl", vehicleType: "xl", serviceClass: "xl" },
-  { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", detailType: "wheelchair", vehicleType: "wheelchair", serviceClass: "rollstuhl" },
-];
-
-function HomeServiceGrid({
-  colors,
-  selectedServiceClass,
-  selectedVehicle,
-  compact,
-  onPressService,
-}: {
-  colors: { foreground: string; mutedForeground: string; primary: string; border: string };
-  selectedServiceClass: RideServiceClass | null;
-  selectedVehicle: VehicleType | null;
-  compact: boolean;
-  onPressService: (service: HomeRequestOption) => void;
-}) {
-  return (
-    <View style={styles.homeServiceSection}>
-      <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
-        Dienstleistungen
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.homeServiceGridRow}
-      >
-        {HOME_REQUEST_OPTIONS.map((service) => {
-          const active =
-            selectedServiceClass === service.serviceClass ||
-            (service.id === "onroda" && selectedVehicle === "onroda");
-          const isWheelchair = service.id === "rollstuhl";
-          const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
-          return (
-            <Pressable
-              key={service.id}
-              style={({ pressed }) => [
-                styles.homeServiceCard,
-                compact ? styles.homeServiceCardCompact : null,
-                {
-                  backgroundColor: active ? "#F5F5F5" : "#FAFAFA",
-                  borderColor: active ? colors.primary : "#E5E7EB",
-                  borderWidth: active ? 2 : 1,
-                  opacity: pressed ? 0.96 : 1,
-                },
-              ]}
-              onPress={() => onPressService(service)}
-            >
-              <MaterialCommunityIcons
-                name={service.icon as any}
-                size={compact ? 26 : 30}
-                color={iconColor}
-              />
-              <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
-                {service.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
 
 function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   return (
@@ -214,7 +137,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
 
 const TAB_HEIGHT = 56;
 
-type HomeInfoCardId = "taxi_buchen" | "reservieren" | "barrierefrei";
+type HomeInfoCardId = "taxi_buchen" | "onroda" | "xl" | "barrierefrei" | "reservieren";
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -590,32 +513,11 @@ export default function HomeScreen() {
     setHomeOverlayCardId(id);
   }, []);
 
-  const handleHomeServicePress = useCallback(
-    (service: HomeRequestOption) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (service.vehicleType === "onroda" && paymentMethod === "voucher") {
-        setPaymentMethod(null);
-        showComboHint(FIXPREIS_VOUCHER_HINT);
-      }
-      if (service.vehicleType === "onroda" && destination) {
-        showComboHint(
-          isTripWithinStuttgartEsslingenTariffArea(origin, destination)
-            ? TARIFF_AREA_NOTICE_PRIMARY
-            : OUTSIDE_TARIFF_NOTICE_PRIMARY,
-        );
-      }
-      setSelectedVehicle(service.vehicleType);
-      setSelectedServiceClass(service.serviceClass);
-      router.push({ pathname: "/service-detail", params: { type: service.detailType } } as any);
-    },
-    [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, setSelectedServiceClass, showComboHint],
-  );
-
   const homeInfoCards = useMemo(() => {
     return [
       {
         id: "taxi_buchen" as const,
-        title: "Taxi buchen",
+        title: "Taxi",
         subtitle: "Sofort eine Fahrt starten",
         overlayTitle: "Taxi schnell & zuverlässig",
         overlayText:
@@ -631,23 +533,42 @@ export default function HomeScreen() {
         },
       },
       {
-        id: "reservieren" as const,
-        title: "Reservieren",
-        subtitle: "Plane deine Fahrt im Voraus",
-        overlayTitle: "Fahrten im Voraus planen",
+        id: "onroda" as const,
+        title: "Onroda",
+        subtitle: "Fixpreis vor Fahrtbeginn",
+        overlayTitle: "Onroda Fixpreis",
         overlayText:
-          "Plane deine Fahrt ganz entspannt im Voraus.\nIdeal für Termine, Flüge oder wichtige Wege – wir sind pünktlich für dich da.",
-        ctaLabel: "Fahrt planen",
-        heroBg: "#E0F2FE",
-        heroIcon: "calendar" as const,
+          "Bei Onroda wird der Fahrpreis vor Fahrtbeginn festgelegt.\nSo hast du volle Transparenz und eine klare Preiszusage.",
+        ctaLabel: "Jetzt Onroda buchen",
+        heroBg: "#FFE4E6",
+        heroIcon: "car-side" as const,
         onCtaPress: () => {
           setHomeOverlayCardId(null);
-          router.push("/reserve-ride");
+          setSelectedServiceClass("mietwagen");
+          setSelectedVehicle("onroda");
+          setIsSearchActive(true);
+        },
+      },
+      {
+        id: "xl" as const,
+        title: "XL",
+        subtitle: "Mehr Platz für Gruppen",
+        overlayTitle: "XL – mehr Platz",
+        overlayText:
+          "Perfekt für Gruppen, Familien oder mehr Gepäck.\nMehr Komfort und extra Raum – ganz einfach buchen.",
+        ctaLabel: "XL buchen",
+        heroBg: "#E0F2FE",
+        heroIcon: "van-passenger" as const,
+        onCtaPress: () => {
+          setHomeOverlayCardId(null);
+          setSelectedServiceClass("xl");
+          setSelectedVehicle("xl");
+          setIsSearchActive(true);
         },
       },
       {
         id: "barrierefrei" as const,
-        title: "Barrierefrei",
+        title: "Rollstuhl",
         subtitle: "Rollstuhlgerechte Fahrzeuge verfügbar",
         overlayTitle: "Barrierefrei unterwegs",
         overlayText:
@@ -660,6 +581,21 @@ export default function HomeScreen() {
           setSelectedServiceClass("rollstuhl");
           setSelectedVehicle("wheelchair");
           setIsSearchActive(true);
+        },
+      },
+      {
+        id: "reservieren" as const,
+        title: "Reservieren",
+        subtitle: "Plane deine Fahrt im Voraus",
+        overlayTitle: "Fahrten im Voraus planen",
+        overlayText:
+          "Plane deine Fahrt ganz entspannt im Voraus.\nIdeal für Termine, Flüge oder wichtige Wege – wir sind pünktlich für dich da.",
+        ctaLabel: "Fahrt planen",
+        heroBg: "#E5E7EB",
+        heroIcon: "calendar" as const,
+        onCtaPress: () => {
+          setHomeOverlayCardId(null);
+          router.push("/reserve-ride");
         },
       },
     ];
@@ -938,13 +874,9 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.vehicleSection}>
-                <HomeServiceGrid
-                  colors={colors}
-                  selectedServiceClass={selectedServiceClass}
-                  selectedVehicle={selectedVehicle}
-                  compact={isSmallScreen}
-                  onPressService={handleHomeServicePress}
-                />
+                <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
+                  Dienstleistungen
+                </Text>
                 <View style={styles.homeInfoCardsWrap}>
                   {homeInfoCards.map((card) => (
                     <Pressable
