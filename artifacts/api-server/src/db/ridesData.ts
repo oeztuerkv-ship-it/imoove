@@ -22,6 +22,16 @@ import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
 
+/**
+ * Legacy-safe company filter:
+ * - current schema: rides.company_id is TEXT
+ * - legacy drift seen on servers: rides.company_id as INTEGER
+ * Cast to text avoids 500 on panel queries for ids like "co-demo-1".
+ */
+function companyIdMatchCondition(companyId: string): SQL {
+  return sql`${ridesTable.company_id}::text = ${companyId}`;
+}
+
 function makeEventId(prefix = "REV"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -208,7 +218,7 @@ export async function listRidesForCompanyFiltered(
     const filtered = applyMemoryRideFilters(list, filters);
     return filtered.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
-  const cond: SQL[] = [eq(ridesTable.company_id, companyId)];
+  const cond: SQL[] = [companyIdMatchCondition(companyId)];
   if (filters.createdFrom) cond.push(gte(ridesTable.created_at, filters.createdFrom));
   if (filters.createdTo) cond.push(lte(ridesTable.created_at, filters.createdTo));
   if (filters.rideKind) cond.push(eq(ridesTable.ride_kind, filters.rideKind));
@@ -266,7 +276,7 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
   const rows = await db
     .select()
     .from(ridesTable)
-    .where(eq(ridesTable.company_id, companyId))
+    .where(companyIdMatchCondition(companyId))
     .orderBy(desc(ridesTable.created_at));
   return rows.map(rowToRide);
 }
