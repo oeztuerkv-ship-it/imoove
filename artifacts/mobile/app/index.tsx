@@ -675,8 +675,8 @@ export default function HomeScreen() {
           style={[
             styles.homeSheetGapFill,
             {
-              bottom: TAB_HEIGHT + bottomPad,
-              height: Math.max(24, Math.round(screenHeight * 0.15) - 8),
+              bottom: TAB_HEIGHT + bottomPad - 2,
+              height: 12,
             },
           ]}
         />
