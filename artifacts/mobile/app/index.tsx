@@ -863,9 +863,6 @@ export default function HomeScreen() {
                   compact={isSmallScreen}
                   onPressService={handleHomeServicePress}
                 />
-                <Text style={styles.homePlaceholderRedText}>
-                  Onroda
-                </Text>
               </View>
             </>
           ) : (
@@ -1036,8 +1033,8 @@ export default function HomeScreen() {
         style={[
           styles.tabBar,
           {
-            backgroundColor: !destination ? "#FFFFFF" : colors.surface,
-            borderTopColor: !destination ? "#FFFFFF" : colors.border,
+            backgroundColor: !destination ? "#F3F4F6" : colors.surface,
+            borderTopColor: !destination ? "#E5E7EB" : colors.border,
             paddingBottom: bottomPad,
           },
         ]}
@@ -1849,16 +1846,6 @@ const styles = StyleSheet.create({
     lineHeight: 12,
     marginTop: 3,
   },
-  homePlaceholderRedText: {
-    marginTop: 10,
-    marginHorizontal: 16,
-    color: "#DC2626",
-    textAlign: "center",
-    fontSize: 32,
-    lineHeight: 36,
-    letterSpacing: 0.4,
-    fontFamily: "Inter_700Bold",
-  },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
   vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
@@ -2002,7 +1989,7 @@ const styles = StyleSheet.create({
   tabBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(7),
+    borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(2),
     shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
   },
@@ -2013,7 +2000,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     zIndex: 5,
   },
-  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: rs(2) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
   tabLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium" },
   tabBadge: {
