@@ -942,6 +942,13 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                           <button
                             type="button"
                             className="admin-btn-outline admin-btn-outline--compact"
+                            onClick={() => openCompanyReceiptPdf(item)}
+                          >
+                            PDF / Quittung
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-btn-outline admin-btn-outline--compact"
                             disabled={isSaving}
                             onClick={() => void toggleCompanyActive(item)}
                           >
@@ -1044,6 +1051,102 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                               <span>
                                 Radius <strong className="admin-crisp-numeric">{item.release_radius_km} km</strong>
                               </span>
+                            </div>
+
+                            <div className="admin-company-masterdata-card">
+                              <div className="admin-company-masterdata-card__head">
+                                <div>
+                                  <div className="admin-company-masterdata-card__title">Stammdaten &amp; Abrechnung</div>
+                                  <div className="admin-company-masterdata-card__meta">
+                                    Schreibgeschützt – wird zentral geführt. Für den Partner im Panel nur lesbar.
+                                  </div>
+                                </div>
+                                {item.logo_url ? (
+                                  <img
+                                    src={item.logo_url}
+                                    alt="Firmenlogo"
+                                    className="admin-company-masterdata-card__logo"
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="admin-company-masterdata-card__grid">
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Firma</span>
+                                  <span className="admin-company-masterdata-card__v">{item.name}</span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Rechtsform</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {item.legal_form || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Inhaber</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {item.owner_name || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Offizielle Anschrift</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {[item.address_line1, item.address_line2].filter(Boolean).join(", ") || "—"}
+                                    <br />
+                                    <span className="admin-company-masterdata-card__muted">
+                                      {[item.postal_code, item.city, item.country].filter(Boolean).join(" ") || ""}
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Kontakt</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {[item.email, item.phone].filter(Boolean).join(" · ") || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Steuer-ID</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {item.tax_id || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">USt-IdNr.</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {item.vat_id || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Konzession / Genehmigung</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {item.concession_number || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Rechnungsempfänger</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {item.billing_name || "—"}
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Rechnungsadresse</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    {[item.billing_address_line1, item.billing_address_line2].filter(Boolean).join(", ") || "—"}
+                                    <br />
+                                    <span className="admin-company-masterdata-card__muted">
+                                      {[item.billing_postal_code, item.billing_city, item.billing_country].filter(Boolean).join(" ") || ""}
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="admin-company-masterdata-card__row">
+                                  <span className="admin-company-masterdata-card__k">Bankverbindung</span>
+                                  <span className="admin-company-masterdata-card__v">
+                                    IBAN {item.bank_iban || "—"}
+                                    <br />
+                                    <span className="admin-company-masterdata-card__muted">
+                                      BIC {item.bank_bic || "—"}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
                             </div>
 
                             {isSaving ? <div className="admin-saving-hint">Speichert …</div> : null}
@@ -1248,6 +1351,97 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       ) : null}
     </div>
   );
+}
+
+function openCompanyReceiptPdf(item) {
+  if (typeof window === "undefined") return;
+  const win = window.open("", "_blank", "noopener,noreferrer");
+  if (!win) return;
+  const rawBase = import.meta.env.BASE_URL || "/";
+  const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+  const onrodaLogo = `${base}favicon.svg`;
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString("de-DE");
+  const address = [item.address_line1, item.address_line2].filter(Boolean).join(", ");
+  const address2 = [item.postal_code, item.city, item.country].filter(Boolean).join(" ");
+  const billingAddress = [item.billing_address_line1, item.billing_address_line2].filter(Boolean).join(", ");
+  const billingAddress2 = [item.billing_postal_code, item.billing_city, item.billing_country].filter(Boolean).join(" ");
+
+  const html = `<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Stammdaten ${item.name || ""}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; color: #111827; }
+    .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .hdr-left { max-width: 70%; }
+    .hdr-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+    .hdr-sub { font-size: 12px; color: #6b7280; margin: 0; }
+    .hdr-logo { display: flex; align-items: center; gap: 8px; }
+    .hdr-logo-onroda { font-weight: 700; letter-spacing: 0.08em; font-size: 14px; }
+    .section-title { font-size: 14px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; }
+    .table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .table th, .table td { text-align: left; padding: 4px 6px; vertical-align: top; }
+    .table th { width: 28%; color: #6b7280; font-weight: 500; }
+    .muted { color: #6b7280; font-size: 11px; }
+    .small { font-size: 11px; margin-top: 16px; color: #6b7280; }
+    @media print {
+      body { margin: 12mm; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div class="hdr-left">
+      <h1 class="hdr-title">Unternehmens-Stammdaten / Quittung</h1>
+      <p class="hdr-sub">Mandant im Onroda-System · Stand: ${dateLabel}</p>
+    </div>
+    <div class="hdr-logo">
+      <img src="${onrodaLogo}" alt="Onroda" width="32" height="30" />
+      <div>
+        <div class="hdr-logo-onroda">ONRODA</div>
+        <div class="muted">Plattform</div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="section-title">Stammdaten</h2>
+  <table class="table">
+    <tr><th>Firma</th><td>${item.name || "—"}</td></tr>
+    <tr><th>Rechtsform</th><td>${item.legal_form || "—"}</td></tr>
+    <tr><th>Inhaber</th><td>${item.owner_name || "—"}</td></tr>
+    <tr><th>Offizielle Anschrift</th><td>${address || "—"}<br /><span class="muted">${address2}</span></td></tr>
+    <tr><th>Kontakt</th><td>${[item.email, item.phone].filter(Boolean).join(" · ") || "—"}</td></tr>
+    <tr><th>Steuer-ID</th><td>${item.tax_id || "—"}</td></tr>
+    <tr><th>USt-IdNr.</th><td>${item.vat_id || "—"}</td></tr>
+    <tr><th>Konzession / Genehmigung</th><td>${item.concession_number || "—"}</td></tr>
+  </table>
+
+  <h2 class="section-title">Rechnung &amp; Bank</h2>
+  <table class="table">
+    <tr><th>Rechnungsempfänger</th><td>${item.billing_name || "—"}</td></tr>
+    <tr><th>Rechnungsadresse</th><td>${billingAddress || "—"}<br /><span class="muted">${billingAddress2}</span></td></tr>
+    <tr><th>Bankverbindung</th><td>IBAN ${item.bank_iban || "—"}<br /><span class="muted">BIC ${item.bank_bic || "—"}</span></td></tr>
+  </table>
+
+  <p class="small">
+    Hinweis: Diese Übersicht dient als Nachweis der im Onroda-System hinterlegten Stammdaten für dieses Unternehmen.
+    Änderungen erfolgen ausschließlich über die Plattform-Administration.
+  </p>
+</body>
+</html>`;
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  try {
+    win.focus();
+    win.print();
+  } catch {
+    // ignore
+  }
 }
 
 function CompanyFormBody({ form, setForm, moduleCatalog = [], mode = "create" }) {
