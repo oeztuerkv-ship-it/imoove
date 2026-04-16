@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -83,239 +83,88 @@ const VEHICLE_LONG_COPY: Record<VehicleType, string[]> = {
   ],
 };
 
-/** Beige-Slider: zweizeilige Headline wie Marketing-Karte */
-const VEHICLE_HEADLINES: Record<VehicleType, { line1: string; line2: string }> = {
-  onroda: { line1: "Festpreis sicher?", line2: "Verlass dich auf uns" },
-  standard: { line1: "Taxi gebucht?", line2: "Dein Standard-Wagen" },
-  xl: { line1: "Mehr Platz nötig?", line2: "Bis zu 6 Personen" },
-  wheelchair: { line1: "Barrierefrei unterwegs?", line2: "Wir sind für dich da" },
-};
+const HOME_SERVICE_GRID_ORDER: VehicleType[] = ["onroda", "xl", "wheelchair"];
 
-/** Karussell inkl. Info-Karte Krankenfahrten (kein Fahrzeugtyp). */
-type HomeBannerSlideId = VehicleType | "krankenfahrten";
-
-const HOME_SLIDER_ORDER: HomeBannerSlideId[] = [
-  "onroda",
-  "standard",
-  "xl",
-  "krankenfahrten",
-  "wheelchair",
-];
-
-const KRANKENFAHRTEN_LONG_COPY = [
-  "Organisiere deine Krankenfahrt mit Verordnung – zuverlässig und termintreu.",
-  "Unterlagen und Krankenschein bitte zur Fahrt bereithalten. Bei Rückfragen erreichst du uns über Hilfe & Support.",
-];
-
-function getBannerHeadlines(id: HomeBannerSlideId): { line1: string; line2: string } {
-  if (id === "krankenfahrten") {
-    return { line1: "Krankenfahrten buchen", line2: "Ärztlich verordnete Fahrten" };
-  }
-  return VEHICLE_HEADLINES[id];
+function homeServiceCardTitle(id: VehicleType): string {
+  if (id === "wheelchair") return "Rollstuhl Standard";
+  if (id === "onroda") return "Onroda";
+  if (id === "xl") return "XL";
+  return VEHICLES.find((v) => v.id === id)?.name ?? id;
 }
 
-function getBannerMeta(id: HomeBannerSlideId): string {
-  if (id === "krankenfahrten") return "Krankenfahrten · Mit ärztlicher Verordnung";
-  const v = VEHICLES.find((x) => x.id === id)!;
-  const cfg = VEHICLE_ICON_CONFIG[id];
-  return `${v.name} · ${cfg.seats}`;
-}
-
-function getBannerLongCopy(id: HomeBannerSlideId): string[] {
-  if (id === "krankenfahrten") return KRANKENFAHRTEN_LONG_COPY;
-  return VEHICLE_LONG_COPY[id];
-}
-
-const SLIDER_BEIGE = "#EDE4D3";
-const SLIDER_BEIGE_DEEP = "#E8DCC8";
-const SLIDER_CARD_GAP = 10;
-
-type VehicleSliderColors = {
-  foreground: string;
-  mutedForeground: string;
-  primary: string;
-};
-
-function BannerTrustIllustration({ slideId }: { slideId: HomeBannerSlideId }) {
-  if (slideId === "krankenfahrten") {
-    return (
-      <View style={styles.vehicleRefIllu}>
-        <MaterialCommunityIcons name="hexagon" size={72} color="#DC2626" style={styles.vehicleRefHex} />
-        <View style={styles.vehicleRefShield}>
-          <MaterialCommunityIcons name="medical-bag" size={40} color="#FFFFFF" />
-        </View>
-      </View>
-    );
-  }
-  const accent = slideId === "wheelchair" ? "#0369A1" : ONRODA_MARK_RED;
-  return (
-    <View style={styles.vehicleRefIllu}>
-      <MaterialCommunityIcons name="hexagon" size={72} color={accent} style={styles.vehicleRefHex} />
-      <View style={styles.vehicleRefShield}>
-        <MaterialCommunityIcons name="shield" size={42} color="#FFFFFF" />
-        <MaterialCommunityIcons name="check-bold" size={21} color="#1F2937" style={styles.vehicleRefCheck} />
-      </View>
-    </View>
-  );
-}
-
-function HorizontalVehicleSlider({
+function HomeServiceGrid({
   colors,
-  viewportWidth,
   selectedVehicle,
-  expandedBannerId,
-  onSlideSnap,
-  onMehrErfahren,
+  expandedId,
+  onPressService,
 }: {
-  colors: VehicleSliderColors;
-  viewportWidth: number;
+  colors: { foreground: string; mutedForeground: string; primary: string; border: string };
   selectedVehicle: VehicleType | null;
-  expandedBannerId: HomeBannerSlideId | null;
-  onSlideSnap: (id: HomeBannerSlideId) => void;
-  onMehrErfahren: (id: HomeBannerSlideId) => void;
+  expandedId: VehicleType | null;
+  onPressService: (id: VehicleType) => void;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
-  const programmaticScrollRef = useRef(false);
-  const slideW = Math.min(268, Math.max(220, viewportWidth - 36));
-  const step = slideW + SLIDER_CARD_GAP;
-  const nSlides = HOME_SLIDER_ORDER.length;
-  const [dotIndex, setDotIndex] = useState(0);
-
-  const scrollToIndex = useCallback(
-    (index: number, animated: boolean) => {
-      const clamped = Math.max(0, Math.min(nSlides - 1, index));
-      scrollRef.current?.scrollTo({ x: clamped * step, animated });
-    },
-    [step, nSlides],
-  );
-
-  useEffect(() => {
-    const endProgrammaticSoon = () => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          programmaticScrollRef.current = false;
-        });
-      });
-    };
-    if (selectedVehicle == null) {
-      setDotIndex(0);
-      programmaticScrollRef.current = true;
-      scrollRef.current?.scrollTo({ x: 0, animated: false });
-      endProgrammaticSoon();
-      return;
-    }
-    const idx = HOME_SLIDER_ORDER.indexOf(selectedVehicle);
-    if (idx < 0) return;
-    setDotIndex(idx);
-    programmaticScrollRef.current = true;
-    scrollToIndex(idx, false);
-    endProgrammaticSoon();
-  }, [selectedVehicle, scrollToIndex]);
-
-  const onScrollEnd = (e: { nativeEvent: { contentOffset: { x: number } } }) => {
-    if (programmaticScrollRef.current) return;
-    const x = e.nativeEvent.contentOffset.x;
-    const idx = Math.round(x / step);
-    const clamped = Math.max(0, Math.min(nSlides - 1, idx));
-    setDotIndex(clamped);
-    const id = HOME_SLIDER_ORDER[clamped];
-    if (id) onSlideSnap(id);
-  };
-
   return (
-    <View style={styles.vehicleSliderWrap}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={step}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        contentContainerStyle={[styles.vehicleSliderSnapContent, { paddingLeft: 0, paddingRight: 16 }]}
-        onMomentumScrollEnd={onScrollEnd}
-        onScrollEndDrag={onScrollEnd}
-      >
-        {HOME_SLIDER_ORDER.map((slideId, i) => {
-          const expanded = expandedBannerId === slideId;
-          const snapFocused = dotIndex === i;
-          const headlines = getBannerHeadlines(slideId);
-          const metaLine = getBannerMeta(slideId);
-          const longCopy = getBannerLongCopy(slideId);
-          const borderW = expanded ? 2.5 : snapFocused ? 2 : 0;
-          const borderColor = expanded ? ONRODA_MARK_RED : snapFocused ? colors.primary : "transparent";
+    <View style={styles.homeServiceSection}>
+      <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
+        Dienstleistungen
+      </Text>
+      <View style={styles.homeServiceGridRow}>
+        {HOME_SERVICE_GRID_ORDER.map((id) => {
+          const iconCfg = VEHICLE_ICON_CONFIG[id];
+          const active = selectedVehicle === id;
+          const expanded = expandedId === id;
+          const lines = VEHICLE_LONG_COPY[id];
           return (
-            <View
-              key={slideId}
-              style={[
-                styles.vehicleRefCard,
+            <Pressable
+              key={id}
+              style={({ pressed }) => [
+                styles.homeServiceCard,
                 {
-                  width: slideW,
-                  marginRight: i < nSlides - 1 ? SLIDER_CARD_GAP : 0,
-                  backgroundColor: SLIDER_BEIGE,
-                  borderWidth: borderW,
-                  borderColor,
-                  shadowOpacity: expanded ? 0.16 : snapFocused ? 0.1 : 0.06,
-                  shadowRadius: expanded ? 16 : 10,
-                  elevation: expanded ? 10 : snapFocused ? 5 : 3,
+                  backgroundColor: "#EEEFF1",
+                  borderColor: active ? colors.primary : "#D1D5DB",
+                  borderWidth: active ? 2 : 1,
+                  opacity: pressed ? 0.92 : 1,
                 },
               ]}
+              onPress={() => onPressService(id)}
             >
-              <View style={styles.vehicleRefCardInner}>
-                <View style={styles.vehicleRefLeft}>
-                  <Text style={[styles.vehicleRefLine1, { color: colors.foreground }]} numberOfLines={2}>
-                    {headlines.line1}
-                  </Text>
-                  <Text style={[styles.vehicleRefLine2, { color: colors.foreground }]} numberOfLines={2}>
-                    {headlines.line2}
-                  </Text>
-                  <Text style={[styles.vehicleRefMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
-                    {metaLine}
-                  </Text>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.vehicleRefCta,
-                      { opacity: pressed ? 0.92 : 1, backgroundColor: ONRODA_MARK_RED },
-                    ]}
-                    onPress={() => onMehrErfahren(slideId)}
-                  >
-                    <Text style={styles.vehicleRefCtaText}>Mehr erfahren</Text>
-                  </Pressable>
-                </View>
-                <BannerTrustIllustration slideId={slideId} />
+              <View
+                style={[
+                  styles.homeServiceIconPlate,
+                  {
+                    backgroundColor: iconCfg.bg,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: 0.14,
+                    shadowRadius: 5,
+                    elevation: 5,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons name={iconCfg.icon as any} size={34} color={iconCfg.color} />
               </View>
-              {expanded && (
-                <View style={[styles.vehicleSliderExpand, { borderTopColor: SLIDER_BEIGE_DEEP }]}>
-                  {longCopy.map((line, j) => (
+              <Text style={[styles.homeServiceCardTitle, { color: colors.foreground }]} numberOfLines={2}>
+                {homeServiceCardTitle(id)}
+              </Text>
+              {expanded ? (
+                <View style={[styles.homeServiceDescBox, { borderTopColor: colors.border }]}>
+                  {lines.map((line, j) => (
                     <Text
                       key={j}
                       style={[
-                        styles.vehicleSliderExpandLine,
+                        styles.homeServiceDescLine,
                         { color: colors.mutedForeground },
-                        j < longCopy.length - 1 && { marginBottom: 10 },
+                        j < lines.length - 1 ? { marginBottom: 6 } : null,
                       ]}
                     >
                       {line}
                     </Text>
                   ))}
                 </View>
-              )}
-            </View>
+              ) : null}
+            </Pressable>
           );
         })}
-      </ScrollView>
-      <View style={styles.vehicleSliderDots}>
-        {HOME_SLIDER_ORDER.map((slideId, i) => (
-          <View
-            key={slideId}
-            style={[
-              styles.vehicleSliderDot,
-              i === dotIndex
-                ? [styles.vehicleSliderDotActive, { backgroundColor: ONRODA_MARK_RED }]
-                : { backgroundColor: colors.mutedForeground, opacity: 0.28 },
-            ]}
-          />
-        ))}
       </View>
     </View>
   );
@@ -387,15 +236,6 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
-  const vehicleSliderViewportHome = screenWidth - 32;
-  const homeBannerSliderColors = useMemo(
-    (): VehicleSliderColors => ({
-      foreground: colors.foreground,
-      mutedForeground: colors.mutedForeground,
-      primary: colors.primary,
-    }),
-    [colors.foreground, colors.mutedForeground, colors.primary],
-  );
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const bottomPad = isWeb ? 20 : insets.bottom;
@@ -485,7 +325,7 @@ export default function HomeScreen() {
   const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
   const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
   const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
-  const [expandedBannerId, setExpandedBannerId] = useState<HomeBannerSlideId | null>(null);
+  const [expandedHomeServiceId, setExpandedHomeServiceId] = useState<VehicleType | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Auf der Karte mit Ziel: Sofort vs. Termin — gleicher Einstieg wie `reserve-ride`. */
@@ -653,7 +493,7 @@ export default function HomeScreen() {
   }, [destination]);
 
   useEffect(() => {
-    if (destination) setExpandedBannerId(null);
+    if (destination) setExpandedHomeServiceId(null);
   }, [destination]);
 
   /* ── Suchmaske: Fokus Abholort (nach Reservierungszeit) oder Ziel (Standard) ── */
@@ -753,31 +593,16 @@ export default function HomeScreen() {
     setIsEditingOrigin(false);
   };
 
-  const handleVehicleSlideSnap = useCallback(
-    (id: HomeBannerSlideId) => {
-      Haptics.selectionAsync();
-      if (id === "krankenfahrten") return;
+  const handleHomeServicePress = useCallback(
+    (id: VehicleType) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (id === "onroda" && paymentMethod === "voucher") {
         setPaymentMethod(null);
         showComboHint(FIXPREIS_VOUCHER_HINT);
       }
       setSelectedVehicle(id);
-    },
-    [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
-  );
-
-  const handleVehicleMehrErfahren = useCallback(
-    (id: HomeBannerSlideId) => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (id !== "krankenfahrten") {
-        if (id === "onroda" && paymentMethod === "voucher") {
-          setPaymentMethod(null);
-          showComboHint(FIXPREIS_VOUCHER_HINT);
-        }
-        setSelectedVehicle(id);
-      }
-      setExpandedBannerId((prev) => (prev === id ? null : id));
+      setExpandedHomeServiceId((prev) => (prev === id ? null : id));
     },
     [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
   );
@@ -877,12 +702,6 @@ export default function HomeScreen() {
       {/* ── BOTTOM SHEET ── */}
       <View style={[styles.sheet, { backgroundColor: colors.surface, maxHeight: destination ? "90%" : "84%" }]}>
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-
-        {!destination ? (
-          <View style={{ paddingHorizontal: 10, marginBottom: 8 }}>
-            <Text style={[styles.servicesTitle, { color: colors.foreground }]}>Dienstleistungen</Text>
-          </View>
-        ) : null}
 
         {/* Suche / Route-Anzeige */}
         {destination ? (
@@ -1018,13 +837,11 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.vehicleSection}>
-                <HorizontalVehicleSlider
-                  colors={homeBannerSliderColors}
-                  viewportWidth={vehicleSliderViewportHome}
+                <HomeServiceGrid
+                  colors={colors}
                   selectedVehicle={selectedVehicle}
-                  expandedBannerId={expandedBannerId}
-                  onSlideSnap={handleVehicleSlideSnap}
-                  onMehrErfahren={handleVehicleMehrErfahren}
+                  expandedId={expandedHomeServiceId}
+                  onPressService={handleHomeServicePress}
                 />
               </View>
             </>
@@ -1945,8 +1762,34 @@ const styles = StyleSheet.create({
   quickSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
   quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 
-  /* Fahrzeug-Slider (Beige-Karten, Snap, Punkte) */
-  vehicleSection: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
+  /* Start: Dienstleistungen-Kacheln (Onroda / XL / Rollstuhl Standard) */
+  vehicleSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 8 },
+  homeServiceSection: { marginHorizontal: 16 },
+  homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
+  homeServiceGridRow: { flexDirection: "row", gap: 8, alignItems: "stretch" },
+  homeServiceCard: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    minHeight: 124,
+    justifyContent: "flex-start",
+  },
+  homeServiceIconPlate: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  homeServiceCardTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center", lineHeight: 15 },
+  homeServiceDescBox: { width: "100%", marginTop: 6, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  homeServiceDescLine: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14, textAlign: "center" },
+
+  /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
   vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
   vehicleSliderSnapContent: {
     flexDirection: "row",
