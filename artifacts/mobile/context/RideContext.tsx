@@ -185,6 +185,37 @@ function isTariffAreaLocation(loc: GeoLocation): boolean {
   );
 }
 
+export interface TariffAreaDebugInfo {
+  originRaw: string;
+  destinationRaw: string;
+  originNormalized: string;
+  destinationNormalized: string;
+  originInTariffArea: boolean;
+  destinationInTariffArea: boolean;
+  isWithinTariffArea: boolean;
+}
+
+export function getTariffAreaDebugInfo(origin: GeoLocation, destination: GeoLocation | null): TariffAreaDebugInfo {
+  const destinationDisplay = destination?.displayName ?? "";
+  const originRaw = `${origin.displayName}${origin.city ? ` | city=${origin.city}` : ""}`;
+  const destinationRaw = destination
+    ? `${destination.displayName}${destination.city ? ` | city=${destination.city}` : ""}`
+    : "";
+  const originNormalized = normalizeForMatch(originRaw);
+  const destinationNormalized = normalizeForMatch(destinationRaw);
+  const originInTariffArea = isTariffAreaLocation(origin);
+  const destinationInTariffArea = destination ? isTariffAreaLocation(destination) : false;
+  return {
+    originRaw,
+    destinationRaw,
+    originNormalized,
+    destinationNormalized,
+    originInTariffArea,
+    destinationInTariffArea,
+    isWithinTariffArea: destination ? originInTariffArea && destinationInTariffArea : false,
+  };
+}
+
 export function isTripWithinStuttgartEsslingenTariffArea(origin: GeoLocation, destination: GeoLocation | null): boolean {
   if (!destination) return false;
   return isTariffAreaLocation(origin) && isTariffAreaLocation(destination);
