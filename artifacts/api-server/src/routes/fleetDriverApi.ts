@@ -70,18 +70,30 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     }
     const all = await listRides();
     const marketRows = all.filter((ride) => {
-      if (ride.driverId) return false;
-      if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      const isAssignedToDriver = ride.driverId === a.fleetDriverId;
+      const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
+      if (isAssignedToOtherDriver) return false;
       // Mandantenfilter: wenn companyId gesetzt ist, muss sie zur Fahrerfirma passen.
       // Legacy/Test-Fahrten können ohne companyId erstellt sein; die Capability-Prüfung
       // entscheidet dann weiterhin Taxi/Mietwagen/Klasse.
       if (ride.companyId && ride.companyId !== a.companyId) return false;
-      const active =
+      if (isAssignedToDriver) {
+        return (
+          ride.status === "accepted" ||
+          ride.status === "driver_arriving" ||
+          ride.status === "driver_waiting" ||
+          ride.status === "passenger_onboard" ||
+          ride.status === "arrived" ||
+          ride.status === "in_progress"
+        );
+      }
+      if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      const inMarket =
         ride.status === "pending" ||
         ride.status === "requested" ||
         ride.status === "searching_driver" ||
         ride.status === "offered";
-      if (!active) return false;
+      if (!inMarket) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
