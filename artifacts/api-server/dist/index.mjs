@@ -41029,6 +41029,8 @@ var init_schema2 = __esm({
       p_schein_number: text("p_schein_number").notNull().default(""),
       p_schein_expiry: date("p_schein_expiry"),
       p_schein_doc_storage_key: text("p_schein_doc_storage_key"),
+      vehicle_legal_type: text("vehicle_legal_type").notNull().default("taxi"),
+      vehicle_class: text("vehicle_class").notNull().default("standard"),
       last_login_at: timestamp("last_login_at", { withTimezone: true }),
       last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -41042,6 +41044,8 @@ var init_schema2 = __esm({
       color: text("color").notNull().default(""),
       model: text("model").notNull().default(""),
       vehicle_type: text("vehicle_type").notNull().default("sedan"),
+      vehicle_legal_type: text("vehicle_legal_type").notNull().default("taxi"),
+      vehicle_class: text("vehicle_class").notNull().default("standard"),
       taxi_order_number: text("taxi_order_number").notNull().default(""),
       next_inspection_date: date("next_inspection_date"),
       is_active: boolean("is_active").notNull().default(true),
@@ -41255,6 +41259,7 @@ var init_schema2 = __esm({
       final_fare: doublePrecision("final_fare"),
       payment_method: text("payment_method").notNull(),
       vehicle: text("vehicle").notNull(),
+      pricing_mode: text("pricing_mode"),
       rejected_by: jsonb("rejected_by").$type().notNull().default([]),
       /** standard | medical | voucher | company */
       ride_kind: text("ride_kind").notNull().default("standard"),
@@ -41827,6 +41832,7 @@ function rowToRide(r) {
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
+    pricingMode: r.pricing_mode === "taxi_tariff" || r.pricing_mode === "fixed_price" ? r.pricing_mode : null,
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
     partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null
   };
@@ -41861,6 +41867,7 @@ function rideToUpdate(r) {
     final_fare: r.finalFare ?? null,
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
+    pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
     partner_booking_meta: r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}
   };
@@ -41897,6 +41904,7 @@ function rideToInsert(r) {
     final_fare: r.finalFare ?? null,
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
+    pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
     partner_booking_meta: r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}
   };
@@ -47474,6 +47482,73 @@ async function seedAdminDefaultsIfEmpty() {
 
 // src/routes/rides.ts
 init_accessCodesData();
+
+// src/db/fleetMatchingData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function normalizeVehicleText(value) {
+  return (value ?? "").trim().toLowerCase();
+}
+function parsePricingMode(raw) {
+  if (raw !== "taxi_tariff" && raw !== "fixed_price") return null;
+  return raw;
+}
+function requiredClassForRide(vehicleText) {
+  if (vehicleText.includes("rollstuhl")) return "wheelchair";
+  if (vehicleText === "xl" || vehicleText.includes(" xl")) return "xl";
+  return null;
+}
+function inferPricingModeFromVehicle(vehicleText) {
+  if (vehicleText.includes("mietwagen") || vehicleText.includes("onroda")) return "fixed_price";
+  return "taxi_tariff";
+}
+function requiredLegalTypeForRide(ride) {
+  const vehicleText = normalizeVehicleText(ride.vehicle);
+  const pricingMode = parsePricingMode(ride.pricingMode) ?? inferPricingModeFromVehicle(vehicleText);
+  if (pricingMode === "fixed_price") return "rental_car";
+  return "taxi";
+}
+function isRideCompatibleWithCapability(ride, capability) {
+  const requiredLegalType = requiredLegalTypeForRide(ride);
+  if (!capability.vehicleLegalType || capability.vehicleLegalType !== requiredLegalType) {
+    return false;
+  }
+  const vehicleText = normalizeVehicleText(ride.vehicle);
+  const requiredClass = requiredClassForRide(vehicleText);
+  if (!requiredClass) return true;
+  return capability.vehicleClass === requiredClass;
+}
+async function getFleetDriverCapability(driverId, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const assigned = await db2.select({
+    vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
+    vehicleClass: fleetVehiclesTable.vehicle_class
+  }).from(driverVehicleAssignmentsTable).innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id)).where(
+    and(
+      eq(driverVehicleAssignmentsTable.driver_id, driverId),
+      eq(driverVehicleAssignmentsTable.company_id, companyId)
+    )
+  ).limit(1);
+  if (assigned[0]) {
+    return {
+      vehicleLegalType: assigned[0].vehicleLegalType,
+      vehicleClass: assigned[0].vehicleClass
+    };
+  }
+  const fallback = await db2.select({
+    vehicleLegalType: fleetDriversTable.vehicle_legal_type,
+    vehicleClass: fleetDriversTable.vehicle_class
+  }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).limit(1);
+  if (!fallback[0]) return null;
+  return {
+    vehicleLegalType: fallback[0].vehicleLegalType,
+    vehicleClass: fallback[0].vehicleClass
+  };
+}
+
+// src/routes/rides.ts
 var DEMO = [];
 var driverLocations = /* @__PURE__ */ new Map();
 var customerLocations = /* @__PURE__ */ new Map();
@@ -47486,6 +47561,19 @@ function cleanupCodeVerifySessions(now = Date.now()) {
     if (session.expiresAt <= now) codeVerifySessions.delete(key);
   }
 }
+var ACTIVE_RIDE_STATUSES2 = /* @__PURE__ */ new Set([
+  "requested",
+  "searching_driver",
+  "offered",
+  "accepted",
+  "driver_arriving",
+  "driver_waiting",
+  "passenger_onboard",
+  "in_progress",
+  // Legacy compatibility
+  "pending",
+  "arrived"
+]);
 function normalizeStatusInput(raw) {
   if (typeof raw !== "string") return null;
   const s = raw.trim();
@@ -47583,7 +47671,23 @@ router2.get("/fare-estimate", async (req, res, next) => {
 });
 router2.get("/rides", async (_req, res, next) => {
   try {
-    const rows = await listRides();
+    const query = _req.query;
+    const driverId = typeof query.driverId === "string" ? query.driverId.trim() : "";
+    const companyId = typeof query.companyId === "string" ? query.companyId.trim() : "";
+    let rows = await listRides();
+    if (driverId && companyId) {
+      const capability = await getFleetDriverCapability(driverId, companyId);
+      if (!capability) {
+        rows = [];
+      } else {
+        rows = rows.filter((ride) => {
+          if (ride.driverId && ride.driverId !== driverId) return false;
+          if ((ride.rejectedBy ?? []).includes(driverId)) return false;
+          if (!ACTIVE_RIDE_STATUSES2.has(ride.status)) return false;
+          return isRideCompatibleWithCapability(ride, capability);
+        });
+      }
+    }
     const publicRows = rows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
@@ -47641,6 +47745,10 @@ router2.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "authorization_source_invalid" });
       return;
     }
+    if (raw.pricingMode != null && raw.pricingMode !== "" && raw.pricingMode !== "taxi_tariff" && raw.pricingMode !== "fixed_price") {
+      res.status(400).json({ error: "pricing_mode_invalid" });
+      return;
+    }
     const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
     const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const authorizationSource = parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
@@ -47656,7 +47764,8 @@ router2.post("/rides", async (req, res, next) => {
       voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
       billingReference: parseOptionalBillingTag(raw.billingReference, 256),
       authorizationSource,
-      accessCodeId: null
+      accessCodeId: null,
+      pricingMode: raw.pricingMode === "taxi_tariff" || raw.pricingMode === "fixed_price" ? raw.pricingMode : null
     };
     const accessCodeRaw = raw.accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
@@ -47711,6 +47820,16 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
     if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
       res.status(400).json({ error: "cancel_reason_required" });
       return;
+    }
+    if (nextStatus === "accepted" && driverId) {
+      const capability = cur.companyId ? await getFleetDriverCapability(driverId, cur.companyId) : null;
+      if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
+        res.status(409).json({
+          error: "no_matching_vehicle_available",
+          message: "Aktuell kein passendes Fahrzeug verf\xFCgbar"
+        });
+        return;
+      }
     }
     const updated = await updateRide(id, {
       status: nextStatus,
@@ -54643,6 +54762,8 @@ function rowToList(r) {
     pScheinNumber: r.p_schein_number,
     pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
     pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    vehicleLegalType: r.vehicle_legal_type,
+    vehicleClass: r.vehicle_class,
     lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
     lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
     createdAt: r.created_at.toISOString(),
@@ -54723,6 +54844,8 @@ async function insertFleetDriver(input) {
     phone: input.phone.trim(),
     password_hash: input.passwordHash,
     must_change_password: input.mustChangePassword,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
     is_active: true,
     access_status: "active",
     session_version: 1
@@ -54744,6 +54867,8 @@ async function patchFleetDriverProfile(id, companyId, patch) {
     set.p_schein_expiry = raw ? raw : null;
   }
   if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
+  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
   await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
   return { ok: true };
 }
@@ -54990,6 +55115,8 @@ var fleetAuth_default = router7;
 // src/routes/fleetDriverApi.ts
 var import_express8 = __toESM(require_express2(), 1);
 init_client();
+init_accessCodesData();
+init_ridesData();
 
 // src/middleware/requireFleetDriverAuth.ts
 function bearerToken2(req) {
@@ -55056,9 +55183,46 @@ router8.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       firstName: row.first_name,
       lastName: row.last_name,
       accessStatus: row.access_status,
-      mustChangePassword: row.must_change_password
+      mustChangePassword: row.must_change_password,
+      vehicleLegalType: row.vehicle_legal_type,
+      vehicleClass: row.vehicle_class
     }
   });
+});
+router8.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    const capability = {
+      vehicleLegalType: row.vehicle_legal_type,
+      vehicleClass: row.vehicle_class
+    };
+    const all = await listRides();
+    const marketRows = all.filter((ride) => {
+      if (ride.driverId) return false;
+      if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      const active = ride.status === "pending" || ride.status === "requested" || ride.status === "searching_driver" || ride.status === "offered";
+      if (!active) return false;
+      return isRideCompatibleWithCapability(ride, capability);
+    });
+    const publicRows = marketRows.map(stripPartnerOnlyRideFields);
+    const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    res.json({
+      ok: true,
+      rides: withCodes,
+      message: withCodes.length === 0 ? "Aktuell kein passendes Fahrzeug verf\xFCgbar" : null
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 router8.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
@@ -55126,6 +55290,8 @@ function rowToVehicle(r) {
     color: r.color,
     model: r.model,
     vehicleType: r.vehicle_type,
+    vehicleLegalType: r.vehicle_legal_type,
+    vehicleClass: r.vehicle_class,
     taxiOrderNumber: r.taxi_order_number,
     nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
     isActive: r.is_active,
@@ -55169,6 +55335,8 @@ async function insertFleetVehicle(input) {
     color: (input.color ?? "").trim(),
     model: (input.model ?? "").trim(),
     vehicle_type: input.vehicleType,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
     taxi_order_number: (input.taxiOrderNumber ?? "").trim(),
     next_inspection_date: input.nextInspectionDate?.trim() || null,
     is_active: input.isActive ?? true
@@ -55186,6 +55354,8 @@ async function patchFleetVehicle(id, companyId, patch) {
   if (patch.color !== void 0) set.color = patch.color.trim();
   if (patch.model !== void 0) set.model = patch.model.trim();
   if (patch.vehicleType !== void 0) set.vehicle_type = patch.vehicleType;
+  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
   if (patch.taxiOrderNumber !== void 0) set.taxi_order_number = patch.taxiOrderNumber.trim();
   if (patch.nextInspectionDate !== void 0) {
     set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
@@ -55252,6 +55422,8 @@ async function clearDriverAssignment(driverId, companyId) {
 var router9 = (0, import_express9.Router)();
 var pkgRoot = path3.join(path3.dirname(fileURLToPath2(import.meta.url)), "..", "..");
 var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path3.join(pkgRoot, "data", "fleet-uploads");
+var ALLOWED_VEHICLE_LEGAL_TYPES = ["taxi", "rental_car"];
+var ALLOWED_VEHICLE_CLASSES = ["standard", "xl", "wheelchair"];
 function enabledPanelModules2(panelModules) {
   return resolveEffectivePanelModules(panelModules);
 }
@@ -55366,6 +55538,16 @@ router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
     const firstName = typeof b.firstName === "string" ? b.firstName : "";
     const lastName = typeof b.lastName === "string" ? b.lastName : "";
     const phone = typeof b.phone === "string" ? b.phone : "";
+    const vehicleLegalType = typeof b.vehicleLegalType === "string" ? b.vehicleLegalType : "taxi";
+    const vehicleClass = typeof b.vehicleClass === "string" ? b.vehicleClass : "standard";
+    if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType)) {
+      res.status(400).json({ error: "vehicle_legal_type_invalid" });
+      return;
+    }
+    if (!ALLOWED_VEHICLE_CLASSES.includes(vehicleClass)) {
+      res.status(400).json({ error: "vehicle_class_invalid" });
+      return;
+    }
     const initialPassword = typeof b.initialPassword === "string" && b.initialPassword.length >= 10 ? b.initialPassword : generateTemporaryPassword();
     const hash = await hashPassword(initialPassword);
     const ins = await insertFleetDriver({
@@ -55375,7 +55557,9 @@ router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
       lastName,
       phone,
       passwordHash: hash,
-      mustChangePassword: true
+      mustChangePassword: true,
+      vehicleLegalType,
+      vehicleClass
     });
     if (!ins.ok) {
       const code = ins.error;
@@ -55408,6 +55592,20 @@ router9.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, 
     if (typeof b.lastName === "string") patch.lastName = b.lastName;
     if (typeof b.phone === "string") patch.phone = b.phone;
     if (typeof b.pScheinNumber === "string") patch.pScheinNumber = b.pScheinNumber;
+    if (typeof b.vehicleLegalType === "string") {
+      if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(b.vehicleLegalType)) {
+        res.status(400).json({ error: "vehicle_legal_type_invalid" });
+        return;
+      }
+      patch.vehicleLegalType = b.vehicleLegalType;
+    }
+    if (typeof b.vehicleClass === "string") {
+      if (!ALLOWED_VEHICLE_CLASSES.includes(b.vehicleClass)) {
+        res.status(400).json({ error: "vehicle_class_invalid" });
+        return;
+      }
+      patch.vehicleClass = b.vehicleClass;
+    }
     if (b.pScheinExpiry === null || typeof b.pScheinExpiry === "string") {
       patch.pScheinExpiry = b.pScheinExpiry === null ? null : b.pScheinExpiry;
     }
@@ -55565,9 +55763,19 @@ router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
     const vehicleType = typeof b.vehicleType === "string" ? b.vehicleType : "sedan";
+    const vehicleLegalType = typeof b.vehicleLegalType === "string" ? b.vehicleLegalType : "taxi";
+    const vehicleClass = typeof b.vehicleClass === "string" ? b.vehicleClass : "standard";
     const allowed = ["sedan", "station_wagon", "van", "wheelchair"];
     if (!allowed.includes(vehicleType)) {
       res.status(400).json({ error: "invalid_vehicle_type" });
+      return;
+    }
+    if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType)) {
+      res.status(400).json({ error: "vehicle_legal_type_invalid" });
+      return;
+    }
+    if (!ALLOWED_VEHICLE_CLASSES.includes(vehicleClass)) {
+      res.status(400).json({ error: "vehicle_class_invalid" });
       return;
     }
     const ins = await insertFleetVehicle({
@@ -55577,6 +55785,8 @@ router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
       color: typeof b.color === "string" ? b.color : "",
       model: typeof b.model === "string" ? b.model : "",
       vehicleType,
+      vehicleLegalType,
+      vehicleClass,
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
       isActive: typeof b.isActive === "boolean" ? b.isActive : true
@@ -55615,6 +55825,22 @@ router9.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res,
       patch.nextInspectionDate = b.nextInspectionDate === null ? null : b.nextInspectionDate;
     }
     if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    if (typeof b.vehicleLegalType === "string") {
+      const legal = b.vehicleLegalType;
+      if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(legal)) {
+        res.status(400).json({ error: "vehicle_legal_type_invalid" });
+        return;
+      }
+      patch.vehicleLegalType = legal;
+    }
+    if (typeof b.vehicleClass === "string") {
+      const cls = b.vehicleClass;
+      if (!ALLOWED_VEHICLE_CLASSES.includes(cls)) {
+        res.status(400).json({ error: "vehicle_class_invalid" });
+        return;
+      }
+      patch.vehicleClass = cls;
+    }
     if (typeof b.vehicleType === "string") {
       const vt = b.vehicleType;
       const allowed = ["sedan", "station_wagon", "van", "wheelchair"];

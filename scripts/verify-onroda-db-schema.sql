@@ -19,6 +19,7 @@
 --   024 → ride_events (Status-Historie pro Fahrt)
 --   025 → partner_registration_requests (Unternehmensanfragen)
 --   026 → partner_registration_documents + partner_registration_timeline
+--   027 → fleet vehicle legal/class + rides.pricing_mode
 
 DO $$
 DECLARE
@@ -191,6 +192,41 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'driver_vehicle_assignments'
   ) THEN
     errs := array_append(errs, 'table driver_vehicle_assignments (Migration 022)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'vehicle_legal_type'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.vehicle_legal_type (Migration 027)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'vehicle_class'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.vehicle_class (Migration 027)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'vehicle_legal_type'
+  ) THEN
+    errs := array_append(errs, 'fleet_vehicles.vehicle_legal_type (Migration 027)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'vehicle_class'
+  ) THEN
+    errs := array_append(errs, 'fleet_vehicles.vehicle_class (Migration 027)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'pricing_mode'
+  ) THEN
+    errs := array_append(errs, 'rides.pricing_mode (Migration 027)');
   END IF;
 
   IF NOT EXISTS (

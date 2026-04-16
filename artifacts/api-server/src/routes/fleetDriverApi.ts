@@ -5,6 +5,10 @@ import {
   touchFleetDriverHeartbeat,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
+import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
+import { isRideCompatibleWithCapability } from "../db/fleetMatchingData";
+import { listRides } from "../db/ridesData";
+import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
@@ -35,8 +39,53 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       lastName: row.last_name,
       accessStatus: row.access_status,
       mustChangePassword: row.must_change_password,
+      vehicleLegalType: row.vehicle_legal_type,
+      vehicleClass: row.vehicle_class,
     },
   });
+});
+
+router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+    if (!row) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    const capability = {
+      vehicleLegalType: row.vehicle_legal_type as "taxi" | "rental_car",
+      vehicleClass: row.vehicle_class as "standard" | "xl" | "wheelchair",
+    };
+    const all = await listRides();
+    const marketRows = all.filter((ride) => {
+      if (ride.driverId) return false;
+      if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
+      const active =
+        ride.status === "pending" ||
+        ride.status === "requested" ||
+        ride.status === "searching_driver" ||
+        ride.status === "offered";
+      if (!active) return false;
+      return isRideCompatibleWithCapability(ride, capability);
+    });
+    const publicRows = marketRows.map(stripPartnerOnlyRideFields);
+    const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    res.json({
+      ok: true,
+      rides: withCodes,
+      message:
+        withCodes.length === 0
+          ? "Aktuell kein passendes Fahrzeug verfügbar"
+          : null,
+    });
+  } catch (e) {
+    next(e);
+  }
 });
 
 router.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {

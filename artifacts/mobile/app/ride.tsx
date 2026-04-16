@@ -202,6 +202,12 @@ export default function RideScreen() {
             selectedVehicle === "xl" ? "XL" :
             selectedVehicle === "onroda" ? "Onroda" :
             "Rollstuhl";
+          const pricingMode =
+            selectedServiceClass === "mietwagen"
+              ? "fixed_price"
+              : selectedServiceClass === "taxi"
+                ? "taxi_tariff"
+                : null;
           const rideRequestId = await addRequest({
             from: origin.displayName.split(",")[0],
             fromFull: origin.displayName,
@@ -216,6 +222,7 @@ export default function RideScreen() {
             estimatedFare: chargeAmount,
             paymentMethod: paymentLabel,
             vehicle: vehicleLabel,
+            ...(pricingMode ? { pricingMode } : {}),
             customerName: profile.name
               ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
               : "Gast",

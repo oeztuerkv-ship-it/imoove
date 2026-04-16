@@ -67,6 +67,10 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
+    pricingMode:
+      r.pricing_mode === "taxi_tariff" || r.pricing_mode === "fixed_price"
+        ? r.pricing_mode
+        : null,
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
     partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null,
   };
@@ -102,6 +106,7 @@ function rideToUpdate(r: RideRequest) {
     final_fare: r.finalFare ?? null,
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
+    pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
     partner_booking_meta: (r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}) as Record<
       string,
@@ -142,6 +147,7 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     final_fare: r.finalFare ?? null,
     payment_method: r.paymentMethod,
     vehicle: r.vehicle,
+    pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
     partner_booking_meta: (r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}) as Record<
       string,

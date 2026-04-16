@@ -17,6 +17,8 @@ import {
   listFleetDriversForCompany,
   patchFleetDriverProfile,
   suspendFleetDriver,
+  type FleetVehicleClass as FleetDriverVehicleClass,
+  type FleetVehicleLegalType as FleetDriverVehicleLegalType,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import {
@@ -24,6 +26,8 @@ import {
   insertFleetVehicle,
   listFleetVehiclesForCompany,
   patchFleetVehicle,
+  type FleetVehicleClass,
+  type FleetVehicleLegalType,
   type FleetVehicleType,
 } from "../db/fleetVehiclesData";
 import {
@@ -49,6 +53,8 @@ const router: IRouter = Router();
 
 const pkgRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path.join(pkgRoot, "data", "fleet-uploads");
+const ALLOWED_VEHICLE_LEGAL_TYPES: FleetVehicleLegalType[] = ["taxi", "rental_car"];
+const ALLOWED_VEHICLE_CLASSES: FleetVehicleClass[] = ["standard", "xl", "wheelchair"];
 
 function enabledPanelModules(panelModules: string[] | null) {
   return resolveEffectivePanelModules(panelModules);
@@ -178,6 +184,16 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     const firstName = typeof b.firstName === "string" ? b.firstName : "";
     const lastName = typeof b.lastName === "string" ? b.lastName : "";
     const phone = typeof b.phone === "string" ? b.phone : "";
+    const vehicleLegalType = (typeof b.vehicleLegalType === "string" ? b.vehicleLegalType : "taxi") as FleetDriverVehicleLegalType;
+    const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetDriverVehicleClass;
+    if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType as FleetVehicleLegalType)) {
+      res.status(400).json({ error: "vehicle_legal_type_invalid" });
+      return;
+    }
+    if (!ALLOWED_VEHICLE_CLASSES.includes(vehicleClass as FleetVehicleClass)) {
+      res.status(400).json({ error: "vehicle_class_invalid" });
+      return;
+    }
     const initialPassword =
       typeof b.initialPassword === "string" && b.initialPassword.length >= 10
         ? b.initialPassword
@@ -191,6 +207,8 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
       phone,
       passwordHash: hash,
       mustChangePassword: true,
+      vehicleLegalType,
+      vehicleClass,
     });
     if (!ins.ok) {
       const code = ins.error;
@@ -224,6 +242,20 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
     if (typeof b.lastName === "string") patch.lastName = b.lastName;
     if (typeof b.phone === "string") patch.phone = b.phone;
     if (typeof b.pScheinNumber === "string") patch.pScheinNumber = b.pScheinNumber;
+    if (typeof b.vehicleLegalType === "string") {
+      if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(b.vehicleLegalType as FleetVehicleLegalType)) {
+        res.status(400).json({ error: "vehicle_legal_type_invalid" });
+        return;
+      }
+      patch.vehicleLegalType = b.vehicleLegalType as FleetDriverVehicleLegalType;
+    }
+    if (typeof b.vehicleClass === "string") {
+      if (!ALLOWED_VEHICLE_CLASSES.includes(b.vehicleClass as FleetVehicleClass)) {
+        res.status(400).json({ error: "vehicle_class_invalid" });
+        return;
+      }
+      patch.vehicleClass = b.vehicleClass as FleetDriverVehicleClass;
+    }
     if (b.pScheinExpiry === null || typeof b.pScheinExpiry === "string") {
       patch.pScheinExpiry = b.pScheinExpiry === null ? null : b.pScheinExpiry;
     }
@@ -390,9 +422,19 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
     const vehicleType = (typeof b.vehicleType === "string" ? b.vehicleType : "sedan") as FleetVehicleType;
+    const vehicleLegalType = (typeof b.vehicleLegalType === "string" ? b.vehicleLegalType : "taxi") as FleetVehicleLegalType;
+    const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetVehicleClass;
     const allowed: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];
     if (!allowed.includes(vehicleType)) {
       res.status(400).json({ error: "invalid_vehicle_type" });
+      return;
+    }
+    if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType)) {
+      res.status(400).json({ error: "vehicle_legal_type_invalid" });
+      return;
+    }
+    if (!ALLOWED_VEHICLE_CLASSES.includes(vehicleClass)) {
+      res.status(400).json({ error: "vehicle_class_invalid" });
       return;
     }
     const ins = await insertFleetVehicle({
@@ -402,6 +444,8 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       color: typeof b.color === "string" ? b.color : "",
       model: typeof b.model === "string" ? b.model : "",
       vehicleType,
+      vehicleLegalType,
+      vehicleClass,
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
       isActive: typeof b.isActive === "boolean" ? b.isActive : true,
@@ -442,6 +486,22 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
         b.nextInspectionDate === null ? null : (b.nextInspectionDate as string);
     }
     if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    if (typeof b.vehicleLegalType === "string") {
+      const legal = b.vehicleLegalType as FleetVehicleLegalType;
+      if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(legal)) {
+        res.status(400).json({ error: "vehicle_legal_type_invalid" });
+        return;
+      }
+      patch.vehicleLegalType = legal;
+    }
+    if (typeof b.vehicleClass === "string") {
+      const cls = b.vehicleClass as FleetVehicleClass;
+      if (!ALLOWED_VEHICLE_CLASSES.includes(cls)) {
+        res.status(400).json({ error: "vehicle_class_invalid" });
+        return;
+      }
+      patch.vehicleClass = cls;
+    }
     if (typeof b.vehicleType === "string") {
       const vt = b.vehicleType as FleetVehicleType;
       const allowed: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];

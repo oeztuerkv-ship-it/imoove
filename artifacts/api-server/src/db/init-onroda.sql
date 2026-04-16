@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS rides (
   final_fare DOUBLE PRECISION,
   payment_method TEXT NOT NULL,
   vehicle TEXT NOT NULL,
+  pricing_mode TEXT,
   rejected_by JSONB NOT NULL DEFAULT '[]'::jsonb,
   ride_kind TEXT NOT NULL DEFAULT 'standard',
   payer_kind TEXT NOT NULL DEFAULT 'passenger',
@@ -234,11 +235,15 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   p_schein_number TEXT NOT NULL DEFAULT '',
   p_schein_expiry DATE,
   p_schein_doc_storage_key TEXT,
+  vehicle_legal_type TEXT NOT NULL DEFAULT 'taxi',
+  vehicle_class TEXT NOT NULL DEFAULT 'standard',
   last_login_at TIMESTAMPTZ,
   last_heartbeat_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended'))
+  CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended')),
+  CONSTRAINT fleet_drivers_vehicle_legal_type_chk CHECK (vehicle_legal_type IN ('taxi', 'rental_car')),
+  CONSTRAINT fleet_drivers_vehicle_class_chk CHECK (vehicle_class IN ('standard', 'xl', 'wheelchair'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS fleet_drivers_email_lower_uidx ON fleet_drivers (lower(trim(email)));
@@ -252,6 +257,8 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
   color TEXT NOT NULL DEFAULT '',
   model TEXT NOT NULL DEFAULT '',
   vehicle_type TEXT NOT NULL DEFAULT 'sedan',
+  vehicle_legal_type TEXT NOT NULL DEFAULT 'taxi',
+  vehicle_class TEXT NOT NULL DEFAULT 'standard',
   taxi_order_number TEXT NOT NULL DEFAULT '',
   next_inspection_date DATE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -259,6 +266,12 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_vehicles_type_chk CHECK (
     vehicle_type IN ('sedan', 'station_wagon', 'van', 'wheelchair')
+  ),
+  CONSTRAINT fleet_vehicles_legal_type_chk CHECK (
+    vehicle_legal_type IN ('taxi', 'rental_car')
+  ),
+  CONSTRAINT fleet_vehicles_class_chk CHECK (
+    vehicle_class IN ('standard', 'xl', 'wheelchair')
   )
 );
 

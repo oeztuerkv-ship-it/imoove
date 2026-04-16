@@ -24,6 +24,10 @@ import {
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
 import { verifyAccessCode } from "../db/accessCodesData";
+import {
+  getFleetDriverCapability,
+  isRideCompatibleWithCapability,
+} from "../db/fleetMatchingData";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -174,7 +178,23 @@ router.get("/fare-estimate", async (req, res, next) => {
 
 router.get("/rides", async (_req, res, next) => {
   try {
-    const rows = await listRides();
+    const query = _req.query as { driverId?: string; companyId?: string };
+    const driverId = typeof query.driverId === "string" ? query.driverId.trim() : "";
+    const companyId = typeof query.companyId === "string" ? query.companyId.trim() : "";
+    let rows = await listRides();
+    if (driverId && companyId) {
+      const capability = await getFleetDriverCapability(driverId, companyId);
+      if (!capability) {
+        rows = [];
+      } else {
+        rows = rows.filter((ride) => {
+          if (ride.driverId && ride.driverId !== driverId) return false;
+          if ((ride.rejectedBy ?? []).includes(driverId)) return false;
+          if (!ACTIVE_RIDE_STATUSES.has(ride.status)) return false;
+          return isRideCompatibleWithCapability(ride, capability);
+        });
+      }
+    }
     const publicRows = rows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
@@ -247,6 +267,15 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "authorization_source_invalid" });
       return;
     }
+    if (
+      raw.pricingMode != null &&
+      raw.pricingMode !== "" &&
+      raw.pricingMode !== "taxi_tariff" &&
+      raw.pricingMode !== "fixed_price"
+    ) {
+      res.status(400).json({ error: "pricing_mode_invalid" });
+      return;
+    }
     const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
     const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const authorizationSource =
@@ -264,6 +293,10 @@ router.post("/rides", async (req, res, next) => {
       billingReference: parseOptionalBillingTag(raw.billingReference, 256),
       authorizationSource,
       accessCodeId: null,
+      pricingMode:
+        raw.pricingMode === "taxi_tariff" || raw.pricingMode === "fixed_price"
+          ? raw.pricingMode
+          : null,
     };
     const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;
@@ -332,6 +365,18 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
       res.status(400).json({ error: "cancel_reason_required" });
       return;
+    }
+    if (nextStatus === "accepted" && driverId) {
+      const capability = cur.companyId
+        ? await getFleetDriverCapability(driverId, cur.companyId)
+        : null;
+      if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
+        res.status(409).json({
+          error: "no_matching_vehicle_available",
+          message: "Aktuell kein passendes Fahrzeug verfügbar",
+        });
+        return;
+      }
     }
     const updated = await updateRide(id, {
       status: nextStatus,

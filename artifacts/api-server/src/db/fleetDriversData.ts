@@ -4,6 +4,8 @@ import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
 
 export type FleetDriverAccessStatus = "active" | "suspended";
+export type FleetVehicleLegalType = "taxi" | "rental_car";
+export type FleetVehicleClass = "standard" | "xl" | "wheelchair";
 
 export interface FleetDriverAuthRow {
   id: string;
@@ -26,6 +28,8 @@ export interface FleetDriverListRow {
   pScheinNumber: string;
   pScheinExpiry: string | null;
   pScheinDocStorageKey: string | null;
+  vehicleLegalType: FleetVehicleLegalType;
+  vehicleClass: FleetVehicleClass;
   lastLoginAt: string | null;
   lastHeartbeatAt: string | null;
   createdAt: string;
@@ -46,6 +50,8 @@ function rowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow
     pScheinNumber: r.p_schein_number,
     pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
     pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    vehicleLegalType: r.vehicle_legal_type as FleetVehicleLegalType,
+    vehicleClass: r.vehicle_class as FleetVehicleClass,
     lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
     lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
     createdAt: r.created_at.toISOString(),
@@ -142,6 +148,8 @@ export async function insertFleetDriver(input: {
   phone: string;
   passwordHash: string;
   mustChangePassword: boolean;
+  vehicleLegalType?: FleetVehicleLegalType;
+  vehicleClass?: FleetVehicleClass;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
   const db = getDb();
@@ -164,6 +172,8 @@ export async function insertFleetDriver(input: {
     phone: input.phone.trim(),
     password_hash: input.passwordHash,
     must_change_password: input.mustChangePassword,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
     is_active: true,
     access_status: "active",
     session_version: 1,
@@ -181,6 +191,8 @@ export async function patchFleetDriverProfile(
     pScheinNumber: string;
     pScheinExpiry: string | null;
     pScheinDocStorageKey: string | null;
+    vehicleLegalType: FleetVehicleLegalType;
+    vehicleClass: FleetVehicleClass;
   }>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const cur = await findFleetDriverInCompany(id, companyId);
@@ -197,6 +209,8 @@ export async function patchFleetDriverProfile(
     set.p_schein_expiry = raw ? raw : null;
   }
   if (patch.pScheinDocStorageKey !== undefined) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
+  if (patch.vehicleLegalType !== undefined) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== undefined) set.vehicle_class = patch.vehicleClass;
   await db.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
   return { ok: true };
 }

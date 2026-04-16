@@ -4,6 +4,8 @@ import { getDb, isPostgresConfigured } from "./client";
 import { fleetVehiclesTable } from "./schema";
 
 export type FleetVehicleType = "sedan" | "station_wagon" | "van" | "wheelchair";
+export type FleetVehicleLegalType = "taxi" | "rental_car";
+export type FleetVehicleClass = "standard" | "xl" | "wheelchair";
 
 export interface FleetVehicleRow {
   id: string;
@@ -13,6 +15,8 @@ export interface FleetVehicleRow {
   color: string;
   model: string;
   vehicleType: FleetVehicleType;
+  vehicleLegalType: FleetVehicleLegalType;
+  vehicleClass: FleetVehicleClass;
   taxiOrderNumber: string;
   nextInspectionDate: string | null;
   isActive: boolean;
@@ -29,6 +33,8 @@ function rowToVehicle(r: typeof fleetVehiclesTable.$inferSelect): FleetVehicleRo
     color: r.color,
     model: r.model,
     vehicleType: r.vehicle_type as FleetVehicleType,
+    vehicleLegalType: r.vehicle_legal_type as FleetVehicleLegalType,
+    vehicleClass: r.vehicle_class as FleetVehicleClass,
     taxiOrderNumber: r.taxi_order_number,
     nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
     isActive: r.is_active,
@@ -78,6 +84,8 @@ export async function insertFleetVehicle(input: {
   color?: string;
   model?: string;
   vehicleType: FleetVehicleType;
+  vehicleLegalType?: FleetVehicleLegalType;
+  vehicleClass?: FleetVehicleClass;
   taxiOrderNumber?: string;
   nextInspectionDate?: string | null;
   isActive?: boolean;
@@ -96,6 +104,8 @@ export async function insertFleetVehicle(input: {
     color: (input.color ?? "").trim(),
     model: (input.model ?? "").trim(),
     vehicle_type: input.vehicleType,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
     taxi_order_number: (input.taxiOrderNumber ?? "").trim(),
     next_inspection_date: input.nextInspectionDate?.trim() || null,
     is_active: input.isActive ?? true,
@@ -112,6 +122,8 @@ export async function patchFleetVehicle(
     color: string;
     model: string;
     vehicleType: FleetVehicleType;
+    vehicleLegalType: FleetVehicleLegalType;
+    vehicleClass: FleetVehicleClass;
     taxiOrderNumber: string;
     nextInspectionDate: string | null;
     isActive: boolean;
@@ -127,6 +139,8 @@ export async function patchFleetVehicle(
   if (patch.color !== undefined) set.color = patch.color.trim();
   if (patch.model !== undefined) set.model = patch.model.trim();
   if (patch.vehicleType !== undefined) set.vehicle_type = patch.vehicleType;
+  if (patch.vehicleLegalType !== undefined) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== undefined) set.vehicle_class = patch.vehicleClass;
   if (patch.taxiOrderNumber !== undefined) set.taxi_order_number = patch.taxiOrderNumber.trim();
   if (patch.nextInspectionDate !== undefined) {
     set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;

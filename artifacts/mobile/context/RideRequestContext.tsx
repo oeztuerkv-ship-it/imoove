@@ -64,6 +64,7 @@ export interface RideRequest {
   distanceKm: number;
   durationMinutes: number;
   estimatedFare: number;
+  pricingMode?: "taxi_tariff" | "fixed_price" | null;
   finalFare?: number | null;
   paymentMethod: string;
   vehicle: string;
@@ -148,6 +149,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
 
 const API_BASE = getApiBaseUrl();
 const PASSENGER_ID_KEY = "@Onroda_passenger_id";
+const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const ENABLE_STORNO_TRACE = true;
 
 function uuid(): string {
@@ -252,6 +254,12 @@ function normalizeRequest(r: any): RideRequest {
     distanceKm: Number(r.distanceKm ?? r.distance_km ?? 0),
     durationMinutes: Number(r.durationMinutes ?? r.duration_minutes ?? 0),
     estimatedFare: Number(r.estimatedFare ?? r.estimated_fare ?? r.totalFare ?? r.total_fare ?? 0),
+    pricingMode:
+      r.pricingMode === "taxi_tariff" || r.pricing_mode === "taxi_tariff"
+        ? "taxi_tariff"
+        : r.pricingMode === "fixed_price" || r.pricing_mode === "fixed_price"
+          ? "fixed_price"
+          : null,
     finalFare:
       r.finalFare != null || r.final_fare != null
         ? Number(r.finalFare ?? r.final_fare)
@@ -325,9 +333,26 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const fetchAll = useCallback(async () => {
     if (!API_BASE) return;
     try {
-      const res = await fetch(`${API_BASE}/rides`, { cache: "no-store" });
+      const rawDriverSession = await AsyncStorage.getItem(DRIVER_SESSION_KEY).catch(() => null);
+      let url = `${API_BASE}/rides`;
+      let headers: Record<string, string> | undefined;
+      if (rawDriverSession) {
+        try {
+          const parsed = JSON.parse(rawDriverSession) as {
+            authToken?: string;
+          };
+          if (typeof parsed.authToken === "string" && parsed.authToken.trim().length > 0) {
+            url = `${API_BASE}/fleet-driver/v1/market-rides`;
+            headers = { Authorization: `Bearer ${parsed.authToken.trim()}` };
+          }
+        } catch {
+          // ignore broken session payload
+        }
+      }
+      const res = await fetch(url, { cache: "no-store", headers });
       if (!res.ok) throw new Error("fetch failed");
-      const data: any[] = await res.json();
+      const payload = await res.json();
+      const data: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.rides) ? payload.rides : [];
       const normalized = data.map(normalizeRequest);
       setRequests(normalized);
       setIsConnected(true);
