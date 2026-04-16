@@ -670,6 +670,19 @@ export default function HomeScreen() {
       {profile.isLoggedIn ? (<>
 
       {!destination && (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.homeSheetGapFill,
+            {
+              bottom: TAB_HEIGHT + bottomPad,
+              height: Math.max(24, Math.round(screenHeight * 0.15) - 8),
+            },
+          ]}
+        />
+      )}
+
+      {!destination && (
         <View style={[styles.topRightFabs, { top: topPad + 12 }]}>
           <Pressable
             style={[styles.fab, { backgroundColor: "#fff", borderColor: colors.border }]}
@@ -1797,7 +1810,7 @@ const styles = StyleSheet.create({
   quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 
   /* Start: Dienstleistungen-Kacheln (Onroda / XL / Rollstuhl Standard) */
-  vehicleSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 8 },
+  vehicleSection: { paddingHorizontal: 0, paddingTop: 18, paddingBottom: 8 },
   homeServiceSection: { marginHorizontal: 16 },
   homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
   homeServiceGridRow: { gap: 14, paddingRight: 16 },
@@ -1979,6 +1992,13 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(7),
     shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
+  },
+  homeSheetGapFill: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    zIndex: 5,
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
