@@ -62,6 +62,17 @@ const VEHICLE_TYPES = [
   { value: "wheelchair", label: "Rollstuhlgerecht" },
 ];
 
+const VEHICLE_LEGAL_TYPES = [
+  { value: "taxi", label: "Taxi (Pflichtfahrgebiet / Taxitarif)" },
+  { value: "rental_car", label: "Mietwagen (Freiverkehr / Fixpreis)" },
+];
+
+const VEHICLE_CLASSES = [
+  { value: "standard", label: "Standard" },
+  { value: "xl", label: "XL / Großraum" },
+  { value: "wheelchair", label: "Rollstuhl / barrierefrei" },
+];
+
 export default function FleetPage() {
   const { token, user } = usePanelAuth();
   const canManage = hasPerm(user?.permissions, "fleet.manage");
@@ -90,6 +101,8 @@ export default function FleetPage() {
     model: "",
     color: "",
     vehicleType: "sedan",
+    vehicleLegalType: "taxi",
+    vehicleClass: "standard",
     taxiOrderNumber: "",
     nextInspectionDate: "",
   });
@@ -193,6 +206,8 @@ export default function FleetPage() {
           model: vehicleForm.model,
           color: vehicleForm.color,
           vehicleType: vehicleForm.vehicleType,
+          vehicleLegalType: vehicleForm.vehicleLegalType,
+          vehicleClass: vehicleForm.vehicleClass,
           taxiOrderNumber: vehicleForm.taxiOrderNumber,
           nextInspectionDate: vehicleForm.nextInspectionDate || null,
         }),
@@ -208,6 +223,8 @@ export default function FleetPage() {
         model: "",
         color: "",
         vehicleType: "sedan",
+        vehicleLegalType: "taxi",
+        vehicleClass: "standard",
         taxiOrderNumber: "",
         nextInspectionDate: "",
       });
@@ -626,6 +643,32 @@ export default function FleetPage() {
                   </select>
                 </label>
                 <label className="panel-rides-form__field">
+                  <span>Rechtsart</span>
+                  <select
+                    value={vehicleForm.vehicleLegalType}
+                    onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleLegalType: ev.target.value }))}
+                  >
+                    {VEHICLE_LEGAL_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="panel-rides-form__field">
+                  <span>Fahrzeugklasse</span>
+                  <select
+                    value={vehicleForm.vehicleClass}
+                    onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleClass: ev.target.value }))}
+                  >
+                    {VEHICLE_CLASSES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="panel-rides-form__field">
                   <span>Taxi-Ordnungsnr.</span>
                   <input
                     value={vehicleForm.taxiOrderNumber}
@@ -695,6 +738,8 @@ export default function FleetPage() {
                   <th>Kennzeichen</th>
                   <th>Modell</th>
                   <th>Typ</th>
+                  <th>Rechtsart</th>
+                  <th>Klasse</th>
                   <th>Taxi-Nr.</th>
                   <th>HU</th>
                   <th>Aktueller Fahrer</th>
@@ -718,6 +763,8 @@ export default function FleetPage() {
                         <td>{v.licensePlate}</td>
                         <td>{v.model || "—"}</td>
                         <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
+                        <td>{VEHICLE_LEGAL_TYPES.find((t) => t.value === v.vehicleLegalType)?.label ?? v.vehicleLegalType}</td>
+                        <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
                         <td>{v.taxiOrderNumber || "—"}</td>
                         <td>{v.nextInspectionDate || "—"}</td>
                         <td>
