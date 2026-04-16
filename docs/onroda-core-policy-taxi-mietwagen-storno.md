@@ -128,3 +128,20 @@ Vor Release MUSS geprüft werden:
 * klare Preislogik
 * rechtssicheres Verhalten
 * sofort verständliche UX für den Nutzer
+
+---
+
+## 8. Nächster fachlicher Zielzustand (verbindliche Zielarchitektur)
+
+Die Ride-Klassifikation soll vollständig explizit und ohne Textableitung erfolgen:
+
+* `pricing_mode` immer explizit setzen
+* `vehicle_class` separat führen (`standard` | `xl` | `wheelchair`)
+* `vehicle` nur als Anzeige-/Label-Feld behandeln (keine Entscheidungslogik)
+
+Beispiele (Soll-Zustand):
+
+* XL Taxi = `pricing_mode: taxi_tariff` + `vehicle_class: xl`
+* XL Mietwagen = `pricing_mode: fixed_price` + `vehicle_class: xl`
+* Rollstuhl Taxi = `pricing_mode: taxi_tariff` + `vehicle_class: wheelchair`
+* Rollstuhl Mietwagen = `pricing_mode: fixed_price` + `vehicle_class: wheelchair`
