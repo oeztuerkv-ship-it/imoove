@@ -26,6 +26,8 @@ import {
   type VehicleOption,
   useRide,
 } from "@/context/RideContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -239,7 +241,8 @@ export default function ReserveRideScreen() {
   } = useRide();
 
   const [step, setStep] = useState<Step>("where");
-
+  const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
+  const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
   const [pickupResolved, setPickupResolved] = useState<GeoLocation | null>(null);
   const [pickupQuery, setPickupQuery] = useState("");
   const [pickupResults, setPickupResults] = useState<GeoLocation[]>([]);
@@ -270,6 +273,19 @@ export default function ReserveRideScreen() {
   /** Nach Tap auf einen Vorschlag: nächster pickupQuery-Effekt-Lauf soll keine neue Suche starten (sonst öffnet die Liste sofort wieder). */
   const skipNextPickupSearchRef = useRef(false);
   const skipNextDestSearchRef = useRef(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("@Onroda_home")
+      .then((raw) => {
+        if (raw) setSavedHome(JSON.parse(raw));
+      })
+      .catch(() => {});
+    AsyncStorage.getItem("@Onroda_work")
+      .then((raw) => {
+        if (raw) setSavedWork(JSON.parse(raw));
+      })
+      .catch(() => {});
+  }, []);
 
   /* Einmalig pro Screen-Mount: Start entweder bei Route (Home) oder bei Adresswahl. */
   const didSeedWhereStepRef = useRef(false);
@@ -734,6 +750,48 @@ export default function ReserveRideScreen() {
                   ) : null}
                 </>
               )}
+
+              {/* Favoriten: Zuhause / Arbeit auch im Reservieren-Flow */}
+              <View style={styles.whereFavouritesRow}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.whereFavouriteChip,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: "#FFF7ED",
+                      opacity: pressed ? 0.94 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (savedHome) {
+                      pickPickup(savedHome);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
+                  <Text style={[styles.whereFavouriteText, { color: colors.foreground }]}>Zuhause</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.whereFavouriteChip,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: "#EFF6FF",
+                      opacity: pressed ? 0.94 : 1,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (savedWork) {
+                      pickPickup(savedWork);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    }
+                  }}
+                >
+                  <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
+                  <Text style={[styles.whereFavouriteText, { color: colors.foreground }]}>Arbeit</Text>
+                </Pressable>
+              </View>
 
               <Text style={[styles.addressRouteLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Ziel</Text>
               {destLocked && destination ? (
@@ -1301,6 +1359,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   whereSuggestionText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
+  whereFavouritesRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  whereFavouriteChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  whereFavouriteText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   headerAbbrechen: { fontSize: 18, fontFamily: "Inter_500Medium" },
   headerTitle: {
     fontSize: 17,
