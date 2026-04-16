@@ -13,6 +13,7 @@ export interface RouteResult {
   polyline?: [number, number][];
 }
 
+/** Öffentliche Demo-Instanz — kann rate-limiten / ausfallen; App nutzt dann Fallback (Luftlinie). */
 const OSRM_BASE = "https://router.project-osrm.org";
 const PHOTON    = "https://photon.komoot.io/api";
 
@@ -112,32 +113,93 @@ export async function searchLocation(
   }
 }
 
-export async function getRoute(
-  from: GeoLocation,
-  to: GeoLocation
-): Promise<RouteResult> {
+/** Luftlinie + grobe Fahrtzeit, wenn OSRM nicht erreichbar ist (Mobilfunk, Rate-Limit, Ausfall). */
+function fallbackRouteResult(from: GeoLocation, to: GeoLocation): RouteResult {
+  const d = haversineDistance(from.lat, from.lon, to.lat, to.lon);
+  const distanceKm = Math.round(d * 100) / 100;
+  const durationMinutes = Math.max(1, Math.round((distanceKm / 32) * 60));
+  return {
+    distanceKm,
+    durationMinutes,
+    polyline: [
+      [from.lat, from.lon],
+      [to.lat, to.lon],
+    ],
+  };
+}
+
+function coordsFinite(a: GeoLocation, b: GeoLocation): boolean {
+  return (
+    Number.isFinite(a.lat) &&
+    Number.isFinite(a.lon) &&
+    Number.isFinite(b.lat) &&
+    Number.isFinite(b.lon)
+  );
+}
+
+async function tryOsrmRoute(from: GeoLocation, to: GeoLocation, withSteps: boolean): Promise<RouteResult | RouteResultWithSteps | null> {
+  if (!coordsFinite(from, to)) return null;
+  const stepQs = withSteps ? "&steps=true" : "";
   const url =
     `${OSRM_BASE}/route/v1/driving/` +
     `${from.lon},${from.lat};${to.lon},${to.lat}` +
-    `?overview=full&geometries=geojson`;
+    `?overview=full&geometries=geojson${stepQs}`;
 
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error("Routing request failed");
+  let resp: Response;
+  try {
+    resp = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "OnrodaMobile/1.0 (routing)",
+      },
+    });
+  } catch {
+    return null;
+  }
+  if (!resp.ok) return null;
 
-  const data = await resp.json();
-  if (!data.routes || data.routes.length === 0) throw new Error("No route found");
+  let data: { routes?: { distance: number; duration: number; geometry?: { coordinates?: [number, number][] }; legs?: { steps?: unknown[] }[] }[] };
+  try {
+    data = await resp.json();
+  } catch {
+    return null;
+  }
+  const route = data.routes?.[0];
+  if (!route) return null;
 
-  const route = data.routes[0];
   const polyline: [number, number][] =
     route.geometry?.coordinates?.map(
-      ([lon, lat]: [number, number]) => [lat, lon] as [number, number]
+      ([lon, lat]: [number, number]) => [lat, lon] as [number, number],
     ) ?? [];
 
-  return {
+  const base: RouteResult = {
     distanceKm: Math.round((route.distance / 1000) * 100) / 100,
     durationMinutes: Math.round(route.duration / 60),
     polyline,
   };
+
+  if (!withSteps) return base;
+
+  type OsrmStep = {
+    maneuver: { type: string; modifier?: string; location: [number, number] };
+    distance: number;
+    name?: string;
+  };
+  const rawSteps: OsrmStep[] = (route.legs?.[0]?.steps as OsrmStep[]) ?? [];
+  const steps: RouteStep[] = rawSteps.map((s) => ({
+    instruction: maneuverToGerman(s.maneuver.type, s.maneuver.modifier, s.name),
+    distanceM: Math.round(s.distance),
+    lat: s.maneuver.location[1],
+    lon: s.maneuver.location[0],
+  }));
+
+  return { ...base, steps };
+}
+
+export async function getRoute(from: GeoLocation, to: GeoLocation): Promise<RouteResult> {
+  const osrm = await tryOsrmRoute(from, to, false);
+  if (osrm && !("steps" in osrm)) return osrm as RouteResult;
+  return fallbackRouteResult(from, to);
 }
 
 // ─── Step-by-Step Routing ────────────────────────────────────────────────────
@@ -179,42 +241,28 @@ export async function getRouteWithSteps(
   from: GeoLocation,
   to: GeoLocation
 ): Promise<RouteResultWithSteps> {
-  const url =
-    `${OSRM_BASE}/route/v1/driving/` +
-    `${from.lon},${from.lat};${to.lon},${to.lat}` +
-    `?overview=full&geometries=geojson&steps=true`;
-
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error("Routing request failed");
-
-  const data = await resp.json();
-  if (!data.routes || data.routes.length === 0) throw new Error("No route found");
-
-  const route = data.routes[0];
-  const polyline: [number, number][] =
-    route.geometry?.coordinates?.map(
-      ([lon, lat]: [number, number]) => [lat, lon] as [number, number]
-    ) ?? [];
-
-  type OsrmStep = {
-    maneuver: { type: string; modifier?: string; location: [number, number] };
-    distance: number;
-    name?: string;
-  };
-  const rawSteps: OsrmStep[] = route.legs?.[0]?.steps ?? [];
-
-  const steps: RouteStep[] = rawSteps.map((s) => ({
-    instruction: maneuverToGerman(s.maneuver.type, s.maneuver.modifier, s.name),
-    distanceM: Math.round(s.distance),
-    lat: s.maneuver.location[1],
-    lon: s.maneuver.location[0],
-  }));
-
+  const osrm = await tryOsrmRoute(from, to, true);
+  if (osrm && "steps" in osrm && Array.isArray((osrm as RouteResultWithSteps).steps)) {
+    return osrm as RouteResultWithSteps;
+  }
+  const fb = fallbackRouteResult(from, to);
+  const dM = Math.round(fb.distanceKm * 1000);
   return {
-    distanceKm: Math.round((route.distance / 1000) * 100) / 100,
-    durationMinutes: Math.round(route.duration / 60),
-    polyline,
-    steps,
+    ...fb,
+    steps: [
+      {
+        instruction: maneuverToGerman("depart", undefined, undefined),
+        distanceM: Math.max(0, Math.round(dM * 0.5)),
+        lat: from.lat,
+        lon: from.lon,
+      },
+      {
+        instruction: maneuverToGerman("arrive", undefined, undefined),
+        distanceM: Math.max(0, Math.round(dM * 0.5)),
+        lat: to.lat,
+        lon: to.lon,
+      },
+    ],
   };
 }
 
