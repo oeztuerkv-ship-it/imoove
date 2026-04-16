@@ -618,13 +618,14 @@ export default function DriverNavigationScreen() {
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
         <Pressable
-          style={styles.compassBtn}
+          style={styles.navChatBtn}
+          accessibilityLabel="Chat"
           onPress={() => {
             setChatUnread(false);
             setChatOpen(true);
           }}
         >
-          <Feather name="message-circle" size={18} color="#1B6B3A" />
+          <Text style={styles.navChatBtnLabel}>Chat</Text>
           {chatUnread ? <View style={styles.navChatBadge} /> : null}
         </Pressable>
       </View>
@@ -811,40 +812,46 @@ export default function DriverNavigationScreen() {
       <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
         <Pressable style={styles.modalOverlayCenter} onPress={() => setChatOpen(false)}>
           <Pressable style={styles.cancelReasonCard} onPress={() => {}}>
-            <Text style={styles.cancelReasonTitle}>Kundenchat</Text>
-            {lastCustomerMsg ? (
-              <Text style={styles.cancelReasonLead}>Neue Nachricht vom Kunden: {lastCustomerMsg}</Text>
-            ) : (
-              <Text style={styles.cancelReasonLead}>Noch keine Nachricht vom Kunden eingegangen.</Text>
-            )}
-            <View style={styles.cancelReasonOptions}>
-              {["Ich bin gleich da", "Bin vor Ort", "Bitte kurz warten"].map((q) => (
-                <Pressable
-                  key={q}
-                  style={styles.cancelReasonChip}
-                  onPress={() => {
-                    sendRideChat(q, "driver");
-                    setLastSentDriverMsg(q);
-                    setChatOpen(false);
-                  }}
-                >
-                  <Text style={styles.cancelReasonChipText}>{q}</Text>
-                </Pressable>
-              ))}
-            </View>
-            {lastSentDriverMsg ? (
-              <View style={styles.chatLastSentStandalone}>
-                <Text style={styles.chatLastSentLabel}>Zuletzt gesendet</Text>
-                <Text style={styles.chatLastSentText}>{lastSentDriverMsg}</Text>
+            <Text style={styles.cancelReasonTitle}>Chat</Text>
+            <Text style={styles.driverChatSubtitle}>Kunde</Text>
+            <View style={styles.driverChatThreadBox}>
+              {lastCustomerMsg ? (
+                <View style={styles.driverChatBubbleIncoming}>
+                  <Text style={styles.driverChatBubbleMeta}>Kunde</Text>
+                  <Text style={styles.driverChatBubbleText}>{lastCustomerMsg}</Text>
+                </View>
+              ) : (
+                <Text style={styles.driverChatEmptyHint}>
+                  Noch keine Nachricht. Vorlage unten antippen oder selbst tippen.
+                </Text>
+              )}
+              {lastSentDriverMsg ? (
+                <View style={styles.driverChatBubbleOutgoing}>
+                  <Text style={styles.driverChatBubbleMeta}>Sie</Text>
+                  <Text style={styles.driverChatBubbleText}>{lastSentDriverMsg}</Text>
+                </View>
+              ) : null}
+              <Text style={styles.driverChatTemplatesLabel}>Vorlagen</Text>
+              <View style={styles.driverChatTemplatesWrap}>
+                {["Ich bin gleich da", "Bin vor Ort", "Bitte kurz warten"].map((q) => (
+                  <Pressable
+                    key={q}
+                    style={styles.driverChatTemplateChip}
+                    onPress={() => setChatInput(q)}
+                  >
+                    <Text style={styles.driverChatTemplateChipText}>{q}</Text>
+                  </Pressable>
+                ))}
               </View>
-            ) : null}
-            <TextInput
-              style={styles.cancelReasonInput}
-              placeholder="Eigene Antwort"
-              placeholderTextColor="#9CA3AF"
-              value={chatInput}
-              onChangeText={setChatInput}
-            />
+              <TextInput
+                style={styles.driverChatInputInThread}
+                placeholder="Nachricht tippen …"
+                placeholderTextColor="#9CA3AF"
+                value={chatInput}
+                onChangeText={setChatInput}
+                multiline
+              />
+            </View>
             <View style={styles.cancelReasonBtns}>
               <Pressable style={styles.cancelReasonBtnGhost} onPress={() => setChatOpen(false)}>
                 <Text style={styles.cancelReasonBtnGhostText}>Schließen</Text>
@@ -860,7 +867,7 @@ export default function DriverNavigationScreen() {
                   setChatOpen(false);
                 }}
               >
-                <Text style={styles.cancelReasonBtnDangerText}>Antwort senden</Text>
+                <Text style={styles.cancelReasonBtnDangerText}>Senden</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -902,6 +909,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
     position: "relative",
   },
+  navChatBtn: {
+    minWidth: 56,
+    paddingHorizontal: 10,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  navChatBtnLabel: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#1B6B3A", letterSpacing: 0.2 },
   navChatBadge: {
     position: "absolute",
     top: 3,
@@ -1044,17 +1062,65 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontFamily: "Inter_400Regular",
   },
-  chatLastSentStandalone: {
-    borderRadius: 12,
+  driverChatSubtitle: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: -6 },
+  driverChatThreadBox: {
     borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    backgroundColor: "#F9FAFB",
+    padding: 12,
+    gap: 10,
+    minHeight: 168,
+  },
+  driverChatEmptyHint: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    lineHeight: 19,
+  },
+  driverChatBubbleIncoming: {
+    alignSelf: "stretch",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 10,
+    gap: 4,
+  },
+  driverChatBubbleOutgoing: {
+    alignSelf: "stretch",
+    backgroundColor: "#DCFCE7",
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: "#86EFAC",
-    backgroundColor: "#F0FDF4",
+    padding: 10,
+    gap: 4,
+  },
+  driverChatBubbleMeta: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
+  driverChatBubbleText: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#111827", lineHeight: 20 },
+  driverChatTemplatesLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 0.4 },
+  driverChatTemplatesWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  driverChatTemplateChip: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    backgroundColor: "#fff",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  driverChatTemplateChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#374151" },
+  driverChatInputInThread: {
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 3,
+    color: "#111827",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    minHeight: 44,
+    textAlignVertical: "top",
   },
-  chatLastSentLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#166534" },
-  chatLastSentText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#14532D", lineHeight: 20 },
   cancelReasonBtns: { flexDirection: "row", gap: 10, marginTop: 2 },
   cancelReasonBtnGhost: {
     flex: 1,

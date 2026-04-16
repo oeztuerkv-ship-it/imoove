@@ -166,6 +166,29 @@ function toDate(val: string | Date | undefined | null): Date | undefined | null 
   return new Date(val as string);
 }
 
+/** Endpreis aus API (camelCase/snake_case/String) — einheitlich für Polling/Mapping. */
+function parseFinalFareFromApi(raw: Record<string, unknown>): number | null {
+  const nested =
+    raw.status_data != null && typeof raw.status_data === "object" && !Array.isArray(raw.status_data)
+      ? (raw.status_data as Record<string, unknown>)
+      : null;
+  const candidates: unknown[] = [
+    raw.finalFare,
+    raw.final_fare,
+    nested?.finalFare,
+    nested?.final_fare,
+  ];
+  for (const v of candidates) {
+    if (v == null || v === "") continue;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string") {
+      const n = Number(String(v).trim().replace(/\s/g, "").replace(",", "."));
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}
+
 function normalizeRequest(r: any): RideRequest {
   const customerName =
     r.customerName ??
@@ -260,10 +283,7 @@ function normalizeRequest(r: any): RideRequest {
         : r.pricingMode === "fixed_price" || r.pricing_mode === "fixed_price"
           ? "fixed_price"
           : null,
-    finalFare:
-      r.finalFare != null || r.final_fare != null
-        ? Number(r.finalFare ?? r.final_fare)
-        : null,
+    finalFare: parseFinalFareFromApi(r as Record<string, unknown>),
     paymentMethod,
     vehicle,
     customerName: String(customerName),

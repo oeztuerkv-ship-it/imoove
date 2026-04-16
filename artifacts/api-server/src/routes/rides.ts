@@ -75,6 +75,24 @@ const ACTIVE_RIDE_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
   "arrived",
 ]);
 
+/** PATCH-Body: finalFare / final_fare / status_data (String mit Komma erlaubt). */
+function parseOptionalFinalFareFromBody(body: unknown): number | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const b = body as Record<string, unknown>;
+  const nested =
+    b.status_data != null && typeof b.status_data === "object" && !Array.isArray(b.status_data)
+      ? (b.status_data as Record<string, unknown>)
+      : null;
+  const raw = b.finalFare ?? b.final_fare ?? nested?.finalFare ?? nested?.final_fare;
+  if (raw == null || raw === "") return undefined;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string") {
+    const n = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
 function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
   if (typeof raw !== "string") return null;
   const s = raw.trim();
@@ -483,12 +501,12 @@ router.post("/rides", async (req, res, next) => {
 router.patch("/rides/:id/status", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, finalFare, driverId, cancelReason } = req.body as {
+    const { status, driverId, cancelReason } = req.body as {
       status: unknown;
-      finalFare?: number;
       driverId?: string;
       cancelReason?: string;
     };
+    const parsedFinalFare = parseOptionalFinalFareFromBody(req.body);
     const nextStatus = normalizeStatusInput(status);
     if (!nextStatus) {
       res.status(400).json({ error: "status_invalid" });
@@ -536,7 +554,7 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     }
     const updated = await updateRide(id, {
       status: nextStatus,
-      ...(finalFare != null ? { finalFare } : {}),
+      ...(parsedFinalFare !== undefined ? { finalFare: parsedFinalFare } : {}),
       ...(driverId != null ? { driverId } : {}),
     });
     if (!updated) {

@@ -829,8 +829,12 @@ export default function StatusScreen() {
           ) : null}
         </View>
         <View style={styles.uberActions}>
-          <Pressable style={styles.uberMsgBtn} onPress={handleMessage}>
-            <Feather name="message-circle" size={20} color="#fff" />
+          <Pressable
+            style={styles.uberMsgBtn}
+            accessibilityLabel="Chat"
+            onPress={handleMessage}
+          >
+            <Text style={styles.uberChatBtnLabel}>Chat</Text>
             {chatUnread ? <View style={styles.chatBadgeDot} /> : null}
           </Pressable>
           <Pressable style={styles.uberCloseBtn} onPress={() => handleCancel()}>
@@ -873,29 +877,43 @@ export default function StatusScreen() {
       <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
         <Pressable style={styles.chatOverlay} onPress={() => setChatOpen(false)}>
           <Pressable style={styles.chatCard} onPress={() => {}}>
-            <Text style={styles.chatTitle}>Nachricht an {driverFirstName}</Text>
-            {lastDriverMsg ? <Text style={styles.chatIncoming}>Letzte Fahrer-Nachricht: {lastDriverMsg}</Text> : null}
-            <View style={styles.chatQuickRow}>
-              {["Ich bin gleich da", "Bitte kurz warten", "Wo sind Sie gerade?"].map((q) => (
-                <Pressable
-                  key={q}
-                  style={styles.chatQuickBtn}
-                  onPress={() => {
-                    sendRideChat(q, "customer");
-                    setChatOpen(false);
-                  }}
-                >
-                  <Text style={styles.chatQuickBtnText}>{q}</Text>
-                </Pressable>
-              ))}
+            <Text style={styles.chatTitle}>Chat</Text>
+            <Text style={styles.chatSubtitle}>{driverFirstName}</Text>
+            <View style={styles.chatThreadBox}>
+              {lastDriverMsg ? (
+                <View style={styles.chatBubbleIncoming}>
+                  <Text style={styles.chatBubbleMeta}>Fahrer</Text>
+                  <Text style={styles.chatBubbleText}>{lastDriverMsg}</Text>
+                </View>
+              ) : (
+                <Text style={styles.chatEmptyHint}>
+                  Noch keine Nachrichten. Vorlage unten antippen oder selbst tippen.
+                </Text>
+              )}
+              <Text style={styles.chatTemplatesLabel}>Vorlagen</Text>
+              <View style={styles.chatTemplatesWrap}>
+                {["Ich bin gleich da", "Bitte kurz warten", "Wo sind Sie gerade?"].map((q) => (
+                  <Pressable
+                    key={q}
+                    style={styles.chatTemplateChip}
+                    onPress={() => {
+                      setChatInput(q);
+                      Haptics.selectionAsync();
+                    }}
+                  >
+                    <Text style={styles.chatTemplateChipText}>{q}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                style={styles.chatInputInThread}
+                placeholder="Nachricht tippen …"
+                placeholderTextColor="#9CA3AF"
+                value={chatInput}
+                onChangeText={setChatInput}
+                multiline
+              />
             </View>
-            <TextInput
-              style={styles.chatInput}
-              placeholder="Eigene Nachricht"
-              placeholderTextColor="#9CA3AF"
-              value={chatInput}
-              onChangeText={setChatInput}
-            />
             <Pressable
               style={styles.chatSendBtn}
               onPress={() => {
@@ -955,10 +973,20 @@ const styles = StyleSheet.create({
   uberBarPayer: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: rs(5), lineHeight: rf(16) },
   uberActions: { gap: rs(8) },
   uberMsgBtn: {
-    width: rs(42), height: rs(42), borderRadius: rs(21),
+    minWidth: rs(56),
+    paddingHorizontal: rs(12),
+    height: rs(42),
+    borderRadius: rs(21),
     backgroundColor: "#374151",
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
     position: "relative",
+  },
+  uberChatBtnLabel: {
+    fontSize: rf(14),
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: 0.3,
   },
   uberCloseBtn: {
     width: rs(42), height: rs(42), borderRadius: rs(21),
@@ -1196,18 +1224,58 @@ const styles = StyleSheet.create({
     padding: rs(16),
     gap: rs(10),
   },
-  chatTitle: { fontSize: rf(17), fontFamily: "Inter_700Bold", color: "#111827" },
+  chatTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold", color: "#111827" },
+  chatSubtitle: { fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: -4 },
   chatIncoming: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#374151" },
-  chatQuickRow: { gap: rs(8) },
-  chatQuickBtn: {
+  chatThreadBox: {
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: rs(14),
+    backgroundColor: "#F9FAFB",
+    padding: rs(12),
+    gap: rs(10),
+    minHeight: rs(160),
+  },
+  chatEmptyHint: {
+    fontSize: rf(13),
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    lineHeight: rf(19),
+  },
+  chatBubbleIncoming: {
+    alignSelf: "stretch",
+    backgroundColor: "#fff",
+    borderRadius: rs(12),
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: rs(10),
+    gap: rs(4),
+  },
+  chatBubbleMeta: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#6B7280" },
+  chatBubbleText: { fontSize: rf(14), fontFamily: "Inter_400Regular", color: "#111827", lineHeight: rf(20) },
+  chatTemplatesLabel: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 0.4 },
+  chatTemplatesWrap: { flexDirection: "row", flexWrap: "wrap", gap: rs(8) },
+  chatTemplateChip: {
     borderRadius: rs(10),
     borderWidth: 1,
     borderColor: "#D1D5DB",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: rs(9),
+    backgroundColor: "#fff",
+    paddingVertical: rs(8),
     paddingHorizontal: rs(10),
   },
-  chatQuickBtnText: { fontSize: rf(13), fontFamily: "Inter_500Medium", color: "#111827" },
+  chatTemplateChipText: { fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#374151" },
+  chatInputInThread: {
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    borderRadius: rs(10),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
+    color: "#111827",
+    fontSize: rf(14),
+    fontFamily: "Inter_400Regular",
+    minHeight: rs(44),
+    textAlignVertical: "top",
+  },
   chatInput: {
     borderWidth: 1.5,
     borderColor: "#D1D5DB",
