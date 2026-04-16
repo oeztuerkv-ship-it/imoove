@@ -26,7 +26,7 @@ import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
-import { type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
+import { isOnrodaFixRouteEligible, type VehicleType, VEHICLES, useRide } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
@@ -53,6 +53,7 @@ function isPlausibleEmail(s: string): boolean {
 }
 
 const FIXPREIS_VOUCHER_HINT = "Fixpreis ist bei Transportschein nicht verfügbar";
+const FIXPREIS_GEBIET_HINT = "Kein Fixpreis moeglich, da die Fahrt ausserhalb des Pflichtfahrgebiets (Esslingen/Stuttgart) liegt.";
 const SEARCH_OVERLAY_BG = "#FFFFFF";
 
 const VEHICLE_CAR_ICON = "#171717";
@@ -80,7 +81,11 @@ function HomeServiceGrid({
       <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
         Dienstleistungen
       </Text>
-      <View style={styles.homeServiceGridColumn}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.homeServiceGridRow}
+      >
         {SERVICES.map((service) => {
           const active = selectedVehicle === service.vehicleType;
           return (
@@ -88,7 +93,7 @@ function HomeServiceGrid({
               key={service.id}
               style={({ pressed }) => [
                 styles.homeServiceCard,
-                compact && styles.homeServiceCardCompact,
+                compact ? styles.homeServiceCardCompact : null,
                 {
                   backgroundColor: active ? "#F5F5F5" : "#FAFAFA",
                   borderColor: active ? colors.primary : "#E5E7EB",
@@ -109,7 +114,7 @@ function HomeServiceGrid({
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -536,10 +541,18 @@ export default function HomeScreen() {
         setPaymentMethod(null);
         showComboHint(FIXPREIS_VOUCHER_HINT);
       }
+      if (
+        service.vehicleType === "onroda" &&
+        destination &&
+        !isOnrodaFixRouteEligible(origin, destination)
+      ) {
+        Alert.alert("Fixpreis nicht verfuegbar", FIXPREIS_GEBIET_HINT);
+        return;
+      }
       setSelectedVehicle(service.vehicleType);
       router.push({ pathname: "/service-detail", params: { type: service.id } } as any);
     },
-    [paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
+    [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
   );
 
 
@@ -831,6 +844,10 @@ export default function HomeScreen() {
                         },
                       ]}
                       onPress={() => {
+                        if (v.id === "onroda" && destination && !isOnrodaFixRouteEligible(origin, destination)) {
+                          Alert.alert("Fixpreis nicht verfuegbar", FIXPREIS_GEBIET_HINT);
+                          return;
+                        }
                         setSelectedVehicle(v.id);
                         Haptics.selectionAsync();
                       }}
@@ -1721,8 +1738,9 @@ const styles = StyleSheet.create({
   vehicleSection: { paddingHorizontal: 0, paddingTop: 10, paddingBottom: 8 },
   homeServiceSection: { marginHorizontal: 16 },
   homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
-  homeServiceGridColumn: { gap: 14 },
+  homeServiceGridRow: { gap: 14, paddingRight: 16 },
   homeServiceCard: {
+    width: 220,
     borderRadius: 22,
     paddingVertical: 22,
     paddingHorizontal: 22,
@@ -1736,6 +1754,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   homeServiceCardCompact: {
+    width: 194,
     minHeight: 162,
     paddingVertical: 18,
     paddingHorizontal: 18,

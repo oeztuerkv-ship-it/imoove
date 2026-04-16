@@ -39,6 +39,10 @@ export default function ServiceDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.shortDescriptionCard, { backgroundColor: "#F5F5F5", borderColor: colors.border }]}>
+          <Text style={[styles.shortDescriptionLabel, { color: colors.mutedForeground }]}>Kurzbeschreibung</Text>
+          <Text style={[styles.shortDescriptionText, { color: colors.foreground }]}>{service.shortDescription}</Text>
+        </View>
         {service.detail.map((item, index) => (
           <Pressable
             key={`${service.id}-${index}`}
@@ -89,6 +93,24 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   content: { paddingHorizontal: 16, paddingVertical: 18, gap: 12 },
+  shortDescriptionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  shortDescriptionLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  shortDescriptionText: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontFamily: "Inter_500Medium",
+  },
   detailCard: {
     borderRadius: 18,
     borderWidth: 1,

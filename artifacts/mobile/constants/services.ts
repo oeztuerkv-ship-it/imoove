@@ -1,6 +1,6 @@
 import { type VehicleType } from "@/context/RideContext";
 
-export type ServiceId = "standard" | "xl" | "wheelchair";
+export type ServiceId = "onroda" | "standard" | "xl" | "wheelchair";
 
 export interface ServiceDetailItem {
   title: string;
@@ -12,23 +12,34 @@ export interface ServiceDefinition {
   title: string;
   vehicleType: VehicleType;
   icon: "car-sports" | "van-passenger" | "wheelchair-accessibility";
+  shortDescription: string;
   detail: ServiceDetailItem[];
 }
 
 export const SERVICES: ServiceDefinition[] = [
   {
-    id: "standard",
+    id: "onroda",
     title: "Onroda",
     vehicleType: "onroda",
     icon: "car-sports",
+    shortDescription: "Fixpreis-Garantie. Der angezeigte Fahrpreis bleibt unveraendert - volle Transparenz ohne Ueberraschungen.",
     detail: [
       {
-        title: "Fahrzeug finden",
-        text: "Sichere dir schnell ein Standard-Taxi in deiner Naehe. Ideal fuer Alltagsfahrten, kurze Strecken und spontane Buchungen.",
+        title: "Kurzbeschreibung",
+        text: "Fixpreis-Garantie. Der angezeigte Fahrpreis bleibt unveraendert - volle Transparenz ohne Ueberraschungen.",
       },
+    ],
+  },
+  {
+    id: "standard",
+    title: "Standard Taxi",
+    vehicleType: "standard",
+    icon: "car-sports",
+    shortDescription: "Klassisches Taxi fuer den Alltag. Schnell verfuegbar und zuverlaessig ans Ziel.",
+    detail: [
       {
-        title: "Fahrt verwalten",
-        text: "Verfolge deine Fahrt in Echtzeit, aendere Details oder storniere flexibel direkt in der App.",
+        title: "Kurzbeschreibung",
+        text: "Klassisches Taxi fuer den Alltag. Schnell verfuegbar und zuverlaessig ans Ziel.",
       },
     ],
   },
@@ -37,14 +48,11 @@ export const SERVICES: ServiceDefinition[] = [
     title: "XL",
     vehicleType: "xl",
     icon: "van-passenger",
+    shortDescription: "Mehr Platz fuer Gruppen und Gepaeck. Komfortabel unterwegs mit extra Raum.",
     detail: [
       {
-        title: "Grossraumfahrzeug finden",
-        text: "Perfekt fuer Gruppen, Familien oder viel Gepaeck. Mehr Platz und Komfort bei gleicher einfacher Buchung.",
-      },
-      {
-        title: "Extras verwalten",
-        text: "Waehle Zusatzoptionen wie Kindersitze oder zusaetzliche Gepaeckhilfe.",
+        title: "Kurzbeschreibung",
+        text: "Mehr Platz fuer Gruppen und Gepaeck. Komfortabel unterwegs mit extra Raum.",
       },
     ],
   },
@@ -53,14 +61,11 @@ export const SERVICES: ServiceDefinition[] = [
     title: "Rollstuhl",
     vehicleType: "wheelchair",
     icon: "wheelchair-accessibility",
+    shortDescription: "Barrierefreie Fahrzeuge mit Rampe oder Lift. Sicher und zuverlaessig ans Ziel.",
     detail: [
       {
-        title: "Barrierefreie Fahrt",
-        text: "Fahrzeuge mit Rampe oder Lift fuer Rollstuhlfahrer. Sicherer und komfortabler Transport.",
-      },
-      {
-        title: "Unterstuetzung buchen",
-        text: "Fahrer helfen beim Ein- und Ausstieg und sichern den Rollstuhl fachgerecht.",
+        title: "Kurzbeschreibung",
+        text: "Barrierefreie Fahrzeuge mit Rampe oder Lift. Sicher und zuverlaessig ans Ziel.",
       },
     ],
   },

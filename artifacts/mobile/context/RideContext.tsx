@@ -130,6 +130,29 @@ const RideContext = createContext<RideContextValue | null>(null);
 const HISTORY_KEY = "@taxi_ride_history";
 const RESET_KEY   = "@Onroda_reset_v1";
 const API_BASE = getApiBaseUrl();
+const ONRODA_FIX_AUSSERHALB_HINT = "Kein Fixpreis moeglich, da die Fahrt ausserhalb des Pflichtfahrgebiets (Esslingen/Stuttgart) liegt.";
+
+function normalizeForMatch(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isOnrodaFixAreaLocation(loc: GeoLocation): boolean {
+  const city = normalizeForMatch(loc.city);
+  if (city.includes("stuttgart") || city.includes("esslingen")) return true;
+  const name = normalizeForMatch(loc.displayName);
+  if (name.includes("stuttgart")) return true;
+  if (name.includes("esslingen am neckar")) return true;
+  if (name.includes("flughafen stuttgart")) return true;
+  return false;
+}
+
+export function isOnrodaFixRouteEligible(origin: GeoLocation, destination: GeoLocation | null): boolean {
+  if (!destination) return false;
+  return isOnrodaFixAreaLocation(origin) && isOnrodaFixAreaLocation(destination);
+}
 
 export function RideProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
@@ -175,6 +198,11 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
       setRoute(result);
       if (!selectedVehicle) {
         setFareBreakdown(null);
+        return;
+      }
+      if (selectedVehicle === "onroda" && !isOnrodaFixRouteEligible(origin, destination)) {
+        setFareBreakdown(null);
+        setRouteError(ONRODA_FIX_AUSSERHALB_HINT);
         return;
       }
       if (API_BASE) {
