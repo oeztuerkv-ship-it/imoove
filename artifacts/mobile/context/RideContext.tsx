@@ -176,16 +176,18 @@ function isEsslingenCounty(loc: GeoLocation): boolean {
   return ESSLINGEN_COUNTY_MUNICIPALITIES.some((municipality) => name.includes(municipality));
 }
 
+function isTariffAreaLocation(loc: GeoLocation): boolean {
+  return (
+    isStuttgart(loc) ||
+    isEsslingenCounty(loc) ||
+    isLeinfeldenEchterdingen(loc) ||
+    isFilderstadt(loc)
+  );
+}
+
 export function isTripWithinStuttgartEsslingenTariffArea(origin: GeoLocation, destination: GeoLocation | null): boolean {
   if (!destination) return false;
-  const originInCoreTariff = isStuttgart(origin) || isEsslingenCounty(origin);
-  const destinationInCoreTariff = isStuttgart(destination) || isEsslingenCounty(destination);
-  if (originInCoreTariff && destinationInCoreTariff) return true;
-
-  const originInExtensionStart = isLeinfeldenEchterdingen(origin) || isFilderstadt(origin);
-  if (originInExtensionStart && destinationInCoreTariff) return true;
-
-  return false;
+  return isTariffAreaLocation(origin) && isTariffAreaLocation(destination);
 }
 
 export function isOnrodaFixRouteEligible(origin: GeoLocation, destination: GeoLocation | null): boolean {
