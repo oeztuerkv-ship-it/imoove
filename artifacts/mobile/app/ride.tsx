@@ -81,6 +81,14 @@ const RIDE_PAYMENT_OPTIONS: {
   { id: "access_code", label: "Gutschein / Code", isAccessCode: true },
 ];
 
+const SERVICE_CLASS_LABELS = {
+  konzession_auto: "Konzession Auto",
+  rollstuhl: "Rollstuhl",
+  xl: "XL",
+  taxi: "Taxi",
+  mietwagen: "Mietwagen",
+} as const;
+
 export default function RideScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -94,6 +102,7 @@ export default function RideScreen() {
     route,
     fareBreakdown,
     selectedVehicle,
+    selectedServiceClass,
     paymentMethod,
     isExempted,
     scheduledTime,
@@ -188,6 +197,7 @@ export default function RideScreen() {
               ? (isExempted ? "Krankenkasse (Befreit: 0,00 €)" : `Krankenkasse (Eigenanteil: ${formatEuro(copayment)})`)
               : "Bar";
           const vehicleLabel =
+            selectedServiceClass ? SERVICE_CLASS_LABELS[selectedServiceClass] :
             selectedVehicle === "standard" ? "Standard" :
             selectedVehicle === "xl" ? "XL" :
             selectedVehicle === "onroda" ? "Onroda" :

@@ -29,6 +29,7 @@ import { useDriver } from "@/context/DriverContext";
 import {
   isOnrodaFixRouteEligible,
   isTripWithinStuttgartEsslingenTariffArea,
+  type RideServiceClass,
   type VehicleType,
   VEHICLES,
   useRide,
@@ -36,7 +37,6 @@ import {
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
-import { SERVICES, type ServiceId } from "@/constants/services";
 import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
@@ -74,16 +74,31 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
   onroda: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "Fixpreis-Garantie" },
 };
 
+type HomeRequestOption = {
+  id: RideServiceClass;
+  label: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  vehicleType: VehicleType;
+};
+
+const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
+  { id: "konzession_auto", label: "Konzession Auto", icon: "car-side", vehicleType: "onroda" },
+  { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", vehicleType: "wheelchair" },
+  { id: "xl", label: "XL", icon: "van-passenger", vehicleType: "xl" },
+  { id: "taxi", label: "Taxi", icon: "car", vehicleType: "standard" },
+  { id: "mietwagen", label: "Mietwagen", icon: "car-estate", vehicleType: "standard" },
+];
+
 function HomeServiceGrid({
   colors,
-  selectedVehicle,
+  selectedServiceClass,
   compact,
   onPressService,
 }: {
   colors: { foreground: string; mutedForeground: string; primary: string; border: string };
-  selectedVehicle: VehicleType | null;
+  selectedServiceClass: RideServiceClass | null;
   compact: boolean;
-  onPressService: (id: ServiceId) => void;
+  onPressService: (id: RideServiceClass) => void;
 }) {
   return (
     <View style={styles.homeServiceSection}>
@@ -95,9 +110,9 @@ function HomeServiceGrid({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.homeServiceGridRow}
       >
-        {SERVICES.map((service) => {
-          const active = selectedVehicle === service.vehicleType;
-          const isWheelchair = service.id === "wheelchair";
+        {HOME_REQUEST_OPTIONS.map((service) => {
+          const active = selectedServiceClass === service.id;
+          const isWheelchair = service.id === "rollstuhl";
           const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
           return (
             <Pressable
@@ -120,7 +135,7 @@ function HomeServiceGrid({
                 color={iconColor}
               />
               <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
-                {service.title}
+                {service.label}
               </Text>
             </Pressable>
           );
@@ -219,7 +234,8 @@ export default function HomeScreen() {
   const {
     origin, destination, selectedVehicle, paymentMethod,
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
-    setOrigin, setDestination, setSelectedVehicle, setPaymentMethod,
+    selectedServiceClass,
+    setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
     setScheduledTime, fetchRoute, resetRide, history,
   } = useRide();
 
@@ -544,8 +560,8 @@ export default function HomeScreen() {
   };
 
   const handleHomeServicePress = useCallback(
-    (id: ServiceId) => {
-      const service = SERVICES.find((entry) => entry.id === id);
+    (id: RideServiceClass) => {
+      const service = HOME_REQUEST_OPTIONS.find((entry) => entry.id === id);
       if (!service) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (service.vehicleType === "onroda" && paymentMethod === "voucher") {
@@ -560,9 +576,9 @@ export default function HomeScreen() {
         );
       }
       setSelectedVehicle(service.vehicleType);
-      router.push({ pathname: "/service-detail", params: { type: service.id } } as any);
+      setSelectedServiceClass(service.id);
     },
-    [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, showComboHint],
+    [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, setSelectedServiceClass, showComboHint],
   );
 
 
@@ -815,7 +831,7 @@ export default function HomeScreen() {
               <View style={styles.vehicleSection}>
                 <HomeServiceGrid
                   colors={colors}
-                  selectedVehicle={selectedVehicle}
+                  selectedServiceClass={selectedServiceClass}
                   compact={isSmallScreen}
                   onPressService={handleHomeServicePress}
                 />
@@ -852,6 +868,15 @@ export default function HomeScreen() {
                         },
                       ]}
                       onPress={() => {
+                        if (v.id === "wheelchair") {
+                          setSelectedServiceClass("rollstuhl");
+                        } else if (v.id === "xl") {
+                          setSelectedServiceClass("xl");
+                        } else if (v.id === "onroda") {
+                          setSelectedServiceClass("konzession_auto");
+                        } else if (selectedServiceClass !== "mietwagen") {
+                          setSelectedServiceClass("taxi");
+                        }
                         if (v.id === "onroda" && destination) {
                           showComboHint(
                             isTripWithinStuttgartEsslingenTariffArea(origin, destination)

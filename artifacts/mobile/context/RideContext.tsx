@@ -12,6 +12,7 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
 
 export type VehicleType = "standard" | "xl" | "wheelchair" | "onroda";
+export type RideServiceClass = "konzession_auto" | "rollstuhl" | "xl" | "taxi" | "mietwagen";
 export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app" | "access_code";
 
 export interface VehicleOption {
@@ -85,6 +86,7 @@ interface RideState {
   origin: GeoLocation;
   destination: GeoLocation | null;
   selectedVehicle: VehicleType | null;
+  selectedServiceClass: RideServiceClass | null;
   paymentMethod: PaymentMethod | null;
   isExempted: boolean;
   scheduledTime: Date | null;
@@ -115,6 +117,7 @@ interface RideContextValue extends RideState {
   setOrigin: (loc: GeoLocation) => void;
   setDestination: (loc: GeoLocation | null) => void;
   setSelectedVehicle: (v: VehicleType | null) => void;
+  setSelectedServiceClass: (value: RideServiceClass | null) => void;
   setPaymentMethod: (m: PaymentMethod | null) => void;
   setIsExempted: (v: boolean) => void;
   setScheduledTime: (t: Date | null) => void;
@@ -229,6 +232,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
   const [destination, setDestination] = useState<GeoLocation | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
+  const [selectedServiceClass, setSelectedServiceClass] = useState<RideServiceClass | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [isExempted, setIsExempted] = useState(false);
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
@@ -379,13 +383,14 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
     setRouteError(null);
     setPaymentMethod(null);
     setSelectedVehicle(null);
+    setSelectedServiceClass(null);
   }, []);
 
   return (
     <RideContext.Provider value={{
-      origin, destination, selectedVehicle, paymentMethod, isExempted, scheduledTime,
+      origin, destination, selectedVehicle, selectedServiceClass, paymentMethod, isExempted, scheduledTime,
       route, fareBreakdown, finalFare, rideStatus, isLoadingRoute, routeError, history,
-      setOrigin, setDestination, setSelectedVehicle, setPaymentMethod, setIsExempted, setScheduledTime,
+      setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime,
       fetchRoute, startRide, cancelRide, completeRide, resetRide, loadHistory,
     }}>
       {children}
