@@ -677,7 +677,7 @@ export default function HomeScreen() {
             {
               bottom: 0,
               height: TAB_HEIGHT + Math.round(screenHeight * 0.15) + 6,
-              backgroundColor: "#F3F4F6",
+              backgroundColor: "#FFFFFF",
             },
           ]}
         />
