@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Alert,
   Animated,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -111,6 +112,7 @@ export default function RideScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
   const btnScale = useRef(new Animated.Value(1)).current;
+  const rideScrollRef = useRef<ScrollView>(null);
 
   const [noTokenVisible, setNoTokenVisible] = useState(false);
   const [preAuthLoading, setPreAuthLoading] = useState(false);
@@ -273,7 +275,11 @@ export default function RideScreen() {
   const payerBlock = customerPayerBlockFromBooking(paymentMethod, isExempted);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? topPad + 8 : 0}
+    >
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <Pressable
           onPress={handleBack}
@@ -286,7 +292,9 @@ export default function RideScreen() {
       </View>
 
       <ScrollView
+        ref={rideScrollRef}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 130 }]}
       >
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -417,6 +425,11 @@ export default function RideScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
               autoComplete="off"
+              onFocus={() => {
+                setTimeout(() => {
+                  rideScrollRef.current?.scrollToEnd({ animated: true });
+                }, 120);
+              }}
               style={{
                 borderWidth: 1.5,
                 borderColor: "#86EFAC",
@@ -567,7 +580,7 @@ export default function RideScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
