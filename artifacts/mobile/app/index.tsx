@@ -669,18 +669,6 @@ export default function HomeScreen() {
 
       {profile.isLoggedIn ? (<>
 
-      {/*
-        Home-only White Mask:
-        keeps current sheet top position, but visually extends white area down to the screen bottom
-        so the bottom navigation is no longer visible in the services entry state.
-      */}
-      {!destination && (
-        <View
-          pointerEvents="none"
-          style={[styles.homeBottomMask, { height: TAB_HEIGHT + bottomPad + 40 }]}
-        />
-      )}
-
       {!destination && (
         <View style={[styles.topRightFabs, { top: topPad + 12 }]}>
           <Pressable
@@ -1028,7 +1016,16 @@ export default function HomeScreen() {
       </View>
 
       {/* ── BOTTOM TAB BAR ── */}
-      <View style={[styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: bottomPad }]}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: !destination ? "#FFFFFF" : colors.surface,
+            borderTopColor: !destination ? "#FFFFFF" : colors.border,
+            paddingBottom: bottomPad,
+          },
+        ]}
+      >
         {[
           { icon: "home" as const, label: "Start", active: true, badge: 0, onPress: () => {} },
           { icon: "calendar" as const, label: "Fahrten", active: false, badge: ridesBadge, onPress: () => router.replace("/my-rides") },
@@ -1982,14 +1979,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(7),
     shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
-  },
-  homeBottomMask: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#FFFFFF",
-    zIndex: 22,
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
   tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
