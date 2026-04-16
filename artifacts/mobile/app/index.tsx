@@ -697,7 +697,16 @@ export default function HomeScreen() {
       )}
 
       {/* ── BOTTOM SHEET ── */}
-      <View style={[styles.sheet, { backgroundColor: colors.surface, maxHeight: destination ? "86%" : "66%" }]}>
+      <View
+        style={[
+          styles.sheet,
+          {
+            backgroundColor: colors.surface,
+            maxHeight: destination ? "86%" : "66%",
+            bottom: TAB_HEIGHT + Math.round(screenHeight * 0.15),
+          },
+        ]}
+      >
         <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
 
         {/* Suche / Route-Anzeige */}
