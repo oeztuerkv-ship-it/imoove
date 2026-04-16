@@ -631,24 +631,6 @@ export default function HomeScreen() {
   useEffect(() => { handleGpsLocate(true); }, []);
 
   const recentDest = history[0];
-
-  /* ── Driver guard: while AsyncStorage loads, show nothing; when logged in, redirect ── */
-  if (driverLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: "#fff", justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#DC2626" />
-      </View>
-    );
-  }
-  /* Nur auf dem fokussierten Home-Screen umleiten — sonst stört <Redirect> andere Routen (z. B. Modals). */
-  if (isDriverLoggedIn && isHomeFocused) {
-    return <Redirect href={driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard"} />;
-  }
-  if (isDriverLoggedIn && !isHomeFocused) {
-    return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
-  }
-
-  /* ── Results to show in overlay ── */
   const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
   const showDestResults = !isEditingOrigin && destResults.length > 0;
   const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
@@ -678,6 +660,22 @@ export default function HomeScreen() {
     tariffDebug.originNormalized,
     tariffDebug.originRaw,
   ]);
+
+  /* ── Driver guard: while AsyncStorage loads, show nothing; when logged in, redirect ── */
+  if (driverLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#fff", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#DC2626" />
+      </View>
+    );
+  }
+  /* Nur auf dem fokussierten Home-Screen umleiten — sonst stört <Redirect> andere Routen (z. B. Modals). */
+  if (isDriverLoggedIn && isHomeFocused) {
+    return <Redirect href={driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard"} />;
+  }
+  if (isDriverLoggedIn && !isHomeFocused) {
+    return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
+  }
 
   return (
     <View style={styles.root}>
