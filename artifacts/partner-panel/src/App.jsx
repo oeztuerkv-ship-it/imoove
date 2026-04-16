@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePanelAuth } from "./context/PanelAuthContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import PanelShell from "./layout/PanelShell.jsx";
@@ -13,6 +13,8 @@ export default function App() {
     () => filterNavItems(user?.panelModules, user?.permissions),
     [user?.panelModules, user?.permissions],
   );
+
+  const hasFleetRedirectRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -55,9 +57,13 @@ export default function App() {
   useEffect(() => {
     if (!user || user.mustChangePassword) return;
     if (user.companyKind !== "taxi") return;
+    if (hasFleetRedirectRef.current) return;
     if (active === "fleet") return;
     if (!navItems.some((i) => i.key === "fleet")) return;
-    queueMicrotask(() => setActive("fleet"));
+    queueMicrotask(() => {
+      setActive("fleet");
+      hasFleetRedirectRef.current = true;
+    });
   }, [user, active, navItems]);
 
   if (booting) {
