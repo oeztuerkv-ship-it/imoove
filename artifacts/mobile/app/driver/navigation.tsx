@@ -233,11 +233,21 @@ export default function DriverNavigationScreen() {
   // API helpers
   const patchStatus = async (newStatus: string, finalFare?: number) => {
     if (!params.rideId) return;
-    await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
+    const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus, ...(finalFare != null ? { finalFare } : {}) }),
-    }).catch(() => {});
+    });
+    if (!res.ok) {
+      let code = "status_update_failed";
+      try {
+        const body = (await res.json()) as { error?: string };
+        if (typeof body?.error === "string" && body.error) code = body.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(code);
+    }
   };
 
   const handleAngekommen = async () => {
@@ -247,30 +257,35 @@ export default function DriverNavigationScreen() {
   };
 
   const handleFahrtBeginnen = async () => {
-    await patchStatus("passenger_onboard");
-    trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
-    router.replace({
-      pathname: "/driver/navigation" as "/driver/navigation",
-      params: {
-        rideId: params.rideId,
-        phase: "driving",
-        fromLat: String(pickupLat),
-        fromLon: String(pickupLon),
-        fromName: pickupName,
-        toLat: String(destLat),
-        toLon: String(destLon),
-        toName: destName,
-        customerName: params.customerName,
-        pickupLat: String(pickupLat),
-        pickupLon: String(pickupLon),
-        pickupName,
-        destLat: String(destLat),
-        destLon: String(destLon),
-        destName,
-        estimatedFare: String(estimatedFare),
-        paymentMethod: params.paymentMethod ?? "",
-      },
-    });
+    try {
+      await patchStatus("passenger_onboard");
+      trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
+      router.replace({
+        pathname: "/driver/navigation" as "/driver/navigation",
+        params: {
+          rideId: params.rideId,
+          phase: "driving",
+          fromLat: String(pickupLat),
+          fromLon: String(pickupLon),
+          fromName: pickupName,
+          toLat: String(destLat),
+          toLon: String(destLon),
+          toName: destName,
+          customerName: params.customerName,
+          pickupLat: String(pickupLat),
+          pickupLon: String(pickupLon),
+          pickupName,
+          destLat: String(destLat),
+          destLon: String(destLon),
+          destName,
+          estimatedFare: String(estimatedFare),
+          paymentMethod: params.paymentMethod ?? "",
+        },
+      });
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "status_update_failed";
+      Alert.alert("Fahrtbeginn fehlgeschlagen", `Status konnte nicht gesetzt werden (${code}).`);
+    }
   };
 
   const maxSlideX = Math.max(0, sliderWidth - START_SLIDER_HANDLE - 8);
@@ -282,8 +297,11 @@ export default function DriverNavigationScreen() {
   const startRideBySlide = useCallback(async () => {
     if (hasTriggeredSlide.current) return;
     hasTriggeredSlide.current = true;
-    await handleFahrtBeginnen();
-    resetSlide();
+    try {
+      await handleFahrtBeginnen();
+    } finally {
+      resetSlide();
+    }
   }, [handleFahrtBeginnen, resetSlide]);
 
   const sliderResponder = useRef(
@@ -353,10 +371,15 @@ export default function DriverNavigationScreen() {
   const handleConfirmFare = async () => {
     const parsed = parseFloat(fareInput.replace(",", "."));
     const fare   = isNaN(parsed) ? estimatedFare : parsed;
-    await patchStatus("completed", fare);
-    setShowFareModal(false);
-    trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
-    router.back();
+    try {
+      await patchStatus("completed", fare);
+      setShowFareModal(false);
+      trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
+      router.back();
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "status_update_failed";
+      Alert.alert("Abschluss fehlgeschlagen", `Endpreis konnte nicht gespeichert werden (${code}).`);
+    }
   };
 
   // GPS tracking
@@ -464,23 +487,17 @@ export default function DriverNavigationScreen() {
     } else {
       // Step 2: "Fahrt beginnen" via slide-right control
       actionBtn = (
-        <View style={styles.slideStartWrap}>
-          <View
-            style={styles.slideStartTrack}
-            onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
+        <View
+          style={styles.slideStartTrack}
+          onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
+          {...sliderResponder.panHandlers}
+        >
+          <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
+          <Animated.View
+            style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
           >
-            <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
-            <Animated.View
-              {...sliderResponder.panHandlers}
-              style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
-            >
-              <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
-            </Animated.View>
-          </View>
-          <Pressable style={styles.slideStartFallbackBtn} onPress={() => { void handleFahrtBeginnen(); }}>
-            <Feather name="play" size={16} color="#16A34A" />
-            <Text style={styles.slideStartFallbackText}>Wenn Ziehen nicht geht: Tippen zum Start</Text>
-          </Pressable>
+            <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
+          </Animated.View>
         </View>
       );
     }
@@ -917,9 +934,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#86EFAC",
   },
-  slideStartWrap: {
-    gap: 8,
-  },
   slideStartHint: {
     fontSize: 14,
     color: "rgba(255,255,255,0.92)",
@@ -939,22 +953,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#DCFCE7",
-  },
-  slideStartFallbackBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1,
-    borderColor: "#86EFAC",
-    borderRadius: 12,
-    paddingVertical: 10,
-  },
-  slideStartFallbackText: {
-    color: "#166534",
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
   },
 
   /* Fare Modal */
