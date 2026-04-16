@@ -464,17 +464,23 @@ export default function DriverNavigationScreen() {
     } else {
       // Step 2: "Fahrt beginnen" via slide-right control
       actionBtn = (
-        <View
-          style={styles.slideStartTrack}
-          onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
-        >
-          <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
-          <Animated.View
-            {...sliderResponder.panHandlers}
-            style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
+        <View style={styles.slideStartWrap}>
+          <View
+            style={styles.slideStartTrack}
+            onLayout={(ev) => setSliderWidth(ev.nativeEvent.layout.width)}
           >
-            <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
-          </Animated.View>
+            <Text style={styles.slideStartHint}>Nach rechts ziehen, um Fahrt zu beginnen</Text>
+            <Animated.View
+              {...sliderResponder.panHandlers}
+              style={[styles.slideStartHandle, { transform: [{ translateX: sliderX }] }]}
+            >
+              <MaterialCommunityIcons name="car-arrow-right" size={24} color="#fff" />
+            </Animated.View>
+          </View>
+          <Pressable style={styles.slideStartFallbackBtn} onPress={() => { void handleFahrtBeginnen(); }}>
+            <Feather name="play" size={16} color="#16A34A" />
+            <Text style={styles.slideStartFallbackText}>Wenn Ziehen nicht geht: Tippen zum Start</Text>
+          </Pressable>
         </View>
       );
     }
@@ -911,6 +917,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#86EFAC",
   },
+  slideStartWrap: {
+    gap: 8,
+  },
   slideStartHint: {
     fontSize: 14,
     color: "rgba(255,255,255,0.92)",
@@ -930,6 +939,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#DCFCE7",
+  },
+  slideStartFallbackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#86EFAC",
+    borderRadius: 12,
+    paddingVertical: 10,
+  },
+  slideStartFallbackText: {
+    color: "#166534",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
   },
 
   /* Fare Modal */

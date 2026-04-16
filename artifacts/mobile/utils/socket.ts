@@ -15,6 +15,7 @@ let _ws: WebSocket | null = null;
 let _rideId: string | null = null;
 let _onMessage: ((msg: Record<string, unknown>) => void) | null = null;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let _pendingMessages: string[] = [];
 
 function _connect() {
   try {
@@ -25,6 +26,13 @@ function _connect() {
       if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
       if (_rideId) {
         socket.send(JSON.stringify({ type: "join", rideId: _rideId }));
+      }
+      if (_pendingMessages.length > 0) {
+        const queued = _pendingMessages;
+        _pendingMessages = [];
+        queued.forEach((msg) => {
+          try { socket.send(msg); } catch { /* ignore */ }
+        });
       }
     };
 
@@ -73,9 +81,15 @@ export function sendCustomerLocation(lat: number, lon: number) {
 export function sendRideChat(text: string, sender: "customer" | "driver") {
   const trimmed = text.trim();
   if (!trimmed) return;
-  if (_ws?.readyState === WebSocket.OPEN && _rideId) {
-    _ws.send(JSON.stringify({ type: "chat:ride", rideId: _rideId, text: trimmed, sender }));
+  if (!_rideId) return;
+  const payload = JSON.stringify({ type: "chat:ride", rideId: _rideId, text: trimmed, sender });
+  if (_ws?.readyState === WebSocket.OPEN) {
+    _ws.send(payload);
+    return;
   }
+  // Fallback: queue message and ensure reconnect, so chat does not silently disappear.
+  _pendingMessages.push(payload);
+  if (!_ws) _connect();
 }
 
 /** Disconnect and clean up. */
@@ -85,4 +99,5 @@ export function disconnectSocket() {
   _ws = null;
   _rideId = null;
   _onMessage = null;
+  _pendingMessages = [];
 }
