@@ -850,6 +850,136 @@ export default function HomeScreen() {
                   compact={isSmallScreen}
                   onPressService={handleHomeServicePress}
                 />
+
+                {/* ── Erweiterung unter den 4 Cards ── */}
+                <View style={styles.homeExtraWrap}>
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>FAVORITEN</Text>
+                  <View style={styles.homeChipRow}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.homeChip,
+                        { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.94 : 1 },
+                      ]}
+                      onPress={() => {
+                        if (savedHome) {
+                          setDestination(savedHome);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        } else {
+                          setSavingPreset("home");
+                          setIsSearchActive(true);
+                        }
+                      }}
+                    >
+                      <Feather name="home" size={14} color={colors.primary} />
+                      <Text style={[styles.homeChipText, { color: colors.foreground }]}>Zuhause</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.homeChip,
+                        { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.94 : 1 },
+                      ]}
+                      onPress={() => {
+                        if (savedWork) {
+                          setDestination(savedWork);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        } else {
+                          setSavingPreset("work");
+                          setIsSearchActive(true);
+                        }
+                      }}
+                    >
+                      <Feather name="briefcase" size={14} color={colors.primary} />
+                      <Text style={[styles.homeChipText, { color: colors.foreground }]}>Arbeit</Text>
+                    </Pressable>
+                  </View>
+
+                  {history.length > 0 && (
+                    <>
+                      <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 10 }]}>ZULETZT</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.homeRecentRow}>
+                        {history.slice(0, 3).map((h) => (
+                          <Pressable
+                            key={h.id}
+                            style={({ pressed }) => [
+                              styles.homeRecentChip,
+                              { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.94 : 1 },
+                            ]}
+                            onPress={() => {
+                              const q = (h.destination ?? "").split(",")[0]?.trim();
+                              if (q) {
+                                setIsEditingOrigin(false);
+                                setIsSearchActive(true);
+                                setDestQuery(q);
+                                handleDestQueryChange(q);
+                              } else {
+                                setIsSearchActive(true);
+                              }
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }}
+                          >
+                            <Ionicons name="time-outline" size={14} color={colors.mutedForeground} />
+                            <Text style={[styles.homeRecentText, { color: colors.foreground }]} numberOfLines={1}>
+                              {(h.destination ?? "").split(",")[0] || "Ziel"}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </>
+                  )}
+
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 10 }]}>BELIEBTE ZIELE</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.homePopularRow}>
+                    {PRESET_DESTINATIONS.slice(0, 3).map((p) => (
+                      <Pressable
+                        key={p.id}
+                        style={({ pressed }) => [
+                          styles.homePopularTile,
+                          { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.94 : 1 },
+                        ]}
+                        onPress={() => {
+                          handleDestinationSelect(p.location);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        }}
+                      >
+                        <View style={[styles.homePopularIcon, { backgroundColor: colors.muted }]}>
+                          {p.icon === "airplane"
+                            ? <Ionicons name="airplane" size={15} color={colors.primary} />
+                            : <Ionicons name="train" size={15} color={colors.primary} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.homePopularTitle, { color: colors.foreground }]} numberOfLines={1}>
+                            {p.title}
+                          </Text>
+                          <Text style={[styles.homePopularSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {p.subtitle}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.homeReserveRow,
+                      { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.96 : 1 },
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push("/reserve-ride");
+                    }}
+                  >
+                    <View style={[styles.homeReserveIcon, { backgroundColor: "#F3F4F6" }]}>
+                      <Feather name="calendar" size={16} color={colors.foreground} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.homeReserveTitle, { color: colors.foreground }]}>Reservieren</Text>
+                      <Text style={[styles.homeReserveSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        Plane deine Fahrt im Voraus
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                  </Pressable>
+                </View>
               </View>
             </>
           ) : (
@@ -1843,6 +1973,77 @@ const styles = StyleSheet.create({
     lineHeight: 12,
     marginTop: 3,
   },
+
+  /* Home Erweiterung unter den 4 Cards */
+  homeExtraWrap: {
+    marginTop: 12,
+    marginHorizontal: 16,
+    paddingBottom: 6,
+  },
+  homeChipRow: { flexDirection: "row", gap: 10 },
+  homeChip: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  homeChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  homeRecentRow: { flexDirection: "row", gap: 10, paddingRight: 16, paddingTop: 6 },
+  homeRecentChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    maxWidth: 220,
+  },
+  homeRecentText: { fontSize: 13, fontFamily: "Inter_500Medium", flexShrink: 1 },
+  homePopularRow: { flexDirection: "row", gap: 10, paddingRight: 16, paddingTop: 6 },
+  homePopularTile: {
+    width: 240,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  homePopularIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homePopularTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  homePopularSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  homeReserveRow: {
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  homeReserveIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  homeReserveTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  homeReserveSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
 
   /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
   vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
