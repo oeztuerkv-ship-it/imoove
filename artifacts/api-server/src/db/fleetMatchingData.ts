@@ -33,6 +33,8 @@ function inferPricingModeFromVehicle(vehicleText: string): PricingMode {
 }
 
 function requiredLegalTypeForRide(ride: RideRequest): VehicleLegalType {
+  // IMPORTANT: Follow Onroda Core Policy
+  // docs/onroda-core-policy-taxi-mietwagen-storno.md
   const vehicleText = normalizeVehicleText(ride.vehicle);
   const pricingMode = parsePricingMode(ride.pricingMode) ?? inferPricingModeFromVehicle(vehicleText);
   if (pricingMode === "fixed_price") return "rental_car";

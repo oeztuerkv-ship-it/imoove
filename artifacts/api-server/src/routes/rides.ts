@@ -273,6 +273,8 @@ router.post("/rides", async (req, res, next) => {
       raw.pricingMode !== "taxi_tariff" &&
       raw.pricingMode !== "fixed_price"
     ) {
+      // IMPORTANT: Follow Onroda Core Policy
+      // docs/onroda-core-policy-taxi-mietwagen-storno.md
       res.status(400).json({ error: "pricing_mode_invalid" });
       return;
     }

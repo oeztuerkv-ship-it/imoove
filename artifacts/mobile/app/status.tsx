@@ -365,6 +365,8 @@ export default function StatusScreen() {
   };
 
   const submitCancel = async (reasonOverride?: string) => {
+    // IMPORTANT: Follow Onroda Core Policy
+    // docs/onroda-core-policy-taxi-mietwagen-storno.md
     if (cancelSubmitting) return;
     setCancelSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);

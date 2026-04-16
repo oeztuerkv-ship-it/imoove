@@ -20,6 +20,10 @@
 - [ ] Rolle(n), Routen und Schutzmechanismus sind konsistent zueinander.
 - [ ] Partner-Pfade sind nicht global; Admin-Pfade erzwingen Admin-Auth.
 - [ ] Kunden- und Fahrer-Daten sind nicht über Partner- oder Admin-Endpunkte „nebenbei“ sichtbar.
+- [ ] Core Policy eingehalten (Taxi/Mietwagen/Matching)
+- [ ] pricing_mode korrekt gesetzt
+- [ ] keine Vermischung von taxi / rental_car
+- [ ] Storno-Flow unverändert (kein Blocking, sofortiger UI-Abbruch)
 
 ## Panel-UX (nur bei Admin- oder Partner-UI/Copy)
 

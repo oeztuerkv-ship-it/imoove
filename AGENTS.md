@@ -37,6 +37,18 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 
 **Dauerhafte UX-Linie (verbindlich):** Admin wirkt immer wie **Operator- / Plattform-Konsole** (global, alle Mandanten, Control-Chrome). Partner wirkt immer wie **eigenes Unternehmens-Panel** (Ihr/Mein, nur eigener Mandant, Arbeitsplatz-Chrome). Neue Seiten und Features müssen diese Trennung in **Sprache, Navigation, Einstieg und Farbwelt** fortsetzen — **keine** gemeinsamen Panel-Komponenten und kein „Vereinheitlichen“ der beiden Oberflächen. Details: **`imoove-panel-ux-separation.mdc`**.
 
+## Core Policy (verbindlich)
+
+Siehe:
+`docs/onroda-core-policy-taxi-mietwagen-storno.md`
+
+Diese Regeln sind verbindlich für:
+- Pricing (taxi vs fixed_price)
+- Matching (vehicle_legal_type)
+- Storno-Flow (UX + Backend)
+
+Abweichungen sind nicht erlaubt ohne Anpassung der Policy.
+
 ## Deploy-Checkliste (Kurz)
 
 **Standard (verbindlich):** Auf dem Zielserver:
