@@ -1,163 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONRODA - The fast, safe and reliable taxi app</title>
+    <title>ONRODA - Deine schnelle und sichere Taxi-App</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
         .onroda-red { color: #e30613; }
         .bg-onroda-red { background-color: #e30613; }
+        .hero-gradient { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1549194388-2469d59ec69c?q=80&w=1500'); background-size: cover; background-position: center; }
     </style>
 </head>
 <body class="p-0 m-0">
 
-    <header class="bg-white py-4 px-8 flex justify-between items-center shadow-sm">
-        <div class="flex items-center space-x-12">
+    <header class="bg-white py-4 px-6 md:px-12 flex justify-between items-center shadow-sm sticky top-0 z-50">
+        <div class="flex items-center space-x-10">
             <h1 class="text-3xl font-black italic tracking-tighter onroda-red">ONRODA</h1>
-            <nav class="hidden md:flex space-x-6 text-gray-700 font-medium">
-                <a href="#">Passengers</a>
-                <a href="#">Drivers</a>
-                <a href="#">Business trips</a>
-                <a href="#">Partnership inquiries</a>
+            <nav class="hidden lg:flex space-x-8 text-gray-700 font-semibold">
+                <a href="#" class="hover:text-onroda-red transition">Fahrgäste</a>
+                <a href="#" class="hover:text-onroda-red transition">Fahrer*innen</a>
+                <a href="#" class="hover:text-onroda-red transition">Geschäftsreisen</a>
             </nav>
         </div>
-        <button class="border-2 border-gray-800 px-5 py-1 rounded-lg font-bold hover:bg-gray-800 hover:text-white transition">Partner login</button>
+        <div class="flex items-center space-x-4">
+            <a href="#" class="hidden md:block text-sm font-bold text-gray-600 hover:text-onroda-red">Partnerschaft anfragen</a>
+            <button class="border-2 border-gray-900 px-5 py-1.5 rounded-lg font-bold hover:bg-gray-900 hover:text-white transition">Partner-Login</button>
+        </div>
     </header>
 
-    <main class="max-w-[1400px] mx-auto bg-white shadow-2xl mt-4 mb-10 overflow-hidden rounded-lg">
-        <div class="flex flex-col md:flex-row">
+    <section class="hero-gradient h-[500px] flex items-center justify-center text-center text-white px-4">
+        <div class="max-w-3xl">
+            <h2 class="text-4xl md:text-6xl font-black mb-6 leading-tight uppercase tracking-tight">Die schnelle, sichere und zuverlässige Taxi-App</h2>
+            <p class="text-lg md:text-xl mb-10 text-gray-200">Auf dem Weg zur Arbeit, zum Flughafen oder zur Verabredung? Dann buche jetzt mit ONRODA, deiner zuverlässigen Wahl in L.-Echterdingen.</p>
+            <div class="flex flex-col md:flex-row justify-center gap-4">
+                <button class="bg-onroda-red hover:bg-red-700 px-8 py-4 rounded-full font-bold text-lg transition shadow-lg">Für Fahrgäste</button>
+                <button class="bg-white text-black hover:bg-gray-200 px-8 py-4 rounded-full font-bold text-lg transition shadow-lg">Für Unternehmen / Partner</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-6xl mx-auto px-6 py-16">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                <div class="text-onroda-red text-3xl mb-4">📍</div>
+                <h3 class="font-black text-2xl mb-3 uppercase">Fahrt buchen</h3>
+                <p class="text-gray-500 mb-6">Start und Ziel eingeben, Fahrzeug wählen (Taxi / XL / Rollstuhl / Onroda) und direkt anfragen.</p>
+                <button class="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition">Jetzt anfragen</button>
+            </div>
             
-            <div class="w-full md:w-3/5 border-r border-gray-100">
-                
-                <div class="relative bg-black h-[400px] flex items-center px-12 text-white">
-                    <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1549194388-2469d59ec69c?q=80&w=1500')] bg-cover bg-center"></div>
-                    <div class="relative z-10 max-w-lg">
-                        <h2 class="text-5xl font-bold leading-tight mb-4">The fast, safe, and<br>reliable taxi app</h2>
-                        <p class="text-gray-300 mb-8">On your way to work, the airport, or a meeting? Then book now with ONRODA, your reliable choice in L.-Echterdingen.</p>
-                        <div class="flex space-x-4">
-                            <button class="bg-onroda-red px-6 py-2 rounded-full font-bold">For passengers</button>
-                            <button class="bg-white text-black px-6 py-2 rounded-full font-bold">For companies / partners</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                        <h3 class="font-bold text-xl mb-2">Book a ride</h3>
-                        <p class="text-gray-500 text-sm mb-4">Enter start and destination, choose vehicle (taxi / XL / wheelchair / Onroda), and request directly.</p>
-                        <button class="w-full bg-black text-white py-2 rounded-md font-bold">Request directly</button>
-                    </div>
-                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                        <h3 class="font-bold text-xl mb-2">Reserve</h3>
-                        <p class="text-gray-500 text-sm">Plan your trips in advance, ideal for appointments, airports, and pickups with time windows.</p>
-                    </div>
-                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                        <h3 class="font-bold text-xl mb-2">My rides & receipt</h3>
-                        <p class="text-gray-500 text-sm">View of your history and status with downloadable PDF receipts.</p>
-                    </div>
-                    <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                        <h3 class="font-bold text-xl mb-2">Support in the app</h3>
-                        <p class="text-gray-500 text-sm">Report issues directly related to the ride (price, route, driver, forgotten item) - with reference number.</p>
-                    </div>
-                </div>
-
-                <div class="mx-10 mb-10 bg-gray-100 p-3 rounded text-center text-xs text-gray-500 border border-gray-200">
-                    The customer app is currently under construction. For early access and support: info@onroda.de
-                </div>
-
-                <div class="px-10 pb-12 grid grid-cols-3 gap-6 text-sm">
-                    <div>
-                        <span class="text-red-600 block text-2xl mb-1">🚑</span>
-                        <h4 class="font-bold">Medical trips</h4>
-                        <p class="text-gray-500 text-xs">Reliable transportation to medical appointments in L.-Echterdingen.</p>
-                    </div>
-                    <div>
-                        <span class="text-red-600 block text-2xl mb-1">🚗</span>
-                        <h4 class="font-bold">Premium taxi</h4>
-                        <p class="text-gray-500 text-xs">High quality standards for demanding passengers.</p>
-                    </div>
-                    <div>
-                        <span class="text-red-600 block text-2xl mb-1">🌐</span>
-                        <h4 class="font-bold">Digitalization of the future</h4>
-                        <p class="text-gray-500 text-xs">Onroda uses state-of-the-art algorithms to connect partners efficiently.</p>
-                    </div>
-                </div>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                <div class="text-onroda-red text-3xl mb-4">📅</div>
+                <h3 class="font-black text-2xl mb-3 uppercase">Reservieren</h3>
+                <p class="text-gray-500">Fahrten im Voraus planen – ideal für Termine, Flughafen und Abholungen mit Zeitfenster.</p>
             </div>
 
-            <div class="w-full md:w-2/5 p-12 bg-white">
-                <div class="text-center mb-10">
-                    <h2 class="text-3xl font-bold mb-2">For companies / partners</h2>
-                    <p class="text-gray-500 mb-6">New partners required, please send an inquiry.</p>
-                    <button class="bg-black text-white px-8 py-3 rounded-full font-bold text-sm">Existing partners now to log in directly</button>
-                </div>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                <div class="text-onroda-red text-3xl mb-4">📄</div>
+                <h3 class="font-black text-2xl mb-3 uppercase">Meine Fahrten & Quittung</h3>
+                <p class="text-gray-500">Verlauf einsehen, Status prüfen und Belege/Quittungen als PDF speichern.</p>
+            </div>
 
-                <form class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Type of company</label>
-                        <select class="w-full border p-3 rounded-md bg-gray-50 text-sm"><option>Type of company</option></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Company name</label>
-                        <input type="text" class="w-full border p-3 rounded-md bg-gray-50">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Contact person first name</label>
-                            <input type="text" class="w-full border p-3 rounded-md bg-gray-50">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Contact person last name</label>
-                            <input type="text" class="w-full border p-3 rounded-md bg-gray-50">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Business email</label>
-                            <input type="email" class="w-full border p-3 rounded-md bg-gray-50">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 mb-1">Business phone number</label>
-                            <input type="text" class="w-full border p-3 rounded-md bg-gray-50">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1">Address</label>
-                        <input type="text" class="w-full border p-3 rounded-md bg-gray-50">
-                    </div>
-                    <div class="grid grid-cols-3 gap-4">
-                        <input type="text" placeholder="Postal code" class="border p-3 rounded-md bg-gray-50">
-                        <input type="text" placeholder="City" class="border p-3 rounded-md bg-gray-50">
-                        <select class="border p-3 rounded-md bg-gray-50"><option>Country</option></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 mb-1 text-sm font-bold">Submit inquiry</label>
-                        <textarea class="w-full border p-3 rounded-md bg-gray-50 h-24" placeholder="Notes"></textarea>
-                    </div>
-                    <button class="w-full bg-black text-white py-4 rounded-md font-bold uppercase tracking-widest">Submit inquiry</button>
-                </form>
+            <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                <div class="text-onroda-red text-3xl mb-4">💬</div>
+                <h3 class="font-black text-2xl mb-3 uppercase">Support in der App</h3>
+                <p class="text-gray-500">Probleme direkt zur Fahrt melden (Preis, Route, Fahrer, Gegenstand vergessen) – mit Referenznummer.</p>
             </div>
         </div>
 
-        <footer class="bg-white border-t border-gray-100 p-12 grid grid-cols-1 md:grid-cols-3 gap-12 text-sm">
-            <div>
-                <h5 class="font-bold mb-4">Passengers</h5>
-                <ul class="text-gray-500 space-y-2"><li>Taxi</li><li>Business profile</li><li>Pre-order</li></ul>
-            </div>
-            <div>
-                <h5 class="font-bold mb-4">Drivers</h5>
-                <ul class="text-gray-500 space-y-2"><li>Rental car</li><li>Accept rides</li><li>Safety</li></ul>
-            </div>
-            <div>
-                <h5 class="font-bold mb-4">Need help?</h5>
-                <p class="text-gray-500">Vedat Öztürk<br>Oberdorfstr. 53<br>70771 Leinfelden-Echterdingen<br>info@onroda.de</p>
-            </div>
-        </footer>
-        <div class="bg-white text-center pb-6 text-xs text-gray-400">
-            © 2026 ONRODA. All rights reserved. | Imprint | Data protection
+        <div class="mt-12 bg-gray-50 p-4 rounded-xl text-center text-sm text-gray-500 border border-dashed border-gray-300">
+            Die Kunden-App ist aktuell im Aufbau. Für Early-Access und Support: <strong>info@onroda.de</strong>
         </div>
-    </main>
+    </section>
 
-</body>
-</html>
+    <section class="bg-gray-50 py-16 border-t border-b border-gray-200">
+        <div class="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div class="text-center">
+                <div class="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+                    <span class="text-3xl">🚑</span>
+                </div>
+                <h4 class="font-black text-lg mb-3 uppercase">Krankenfahrten</h4>
+                <p class="text-gray-500 text-sm leading-relaxed">Zuverlässige und empathische Beförderung zu medizinischen Terminen in L.-Echterdingen.</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+                    <span class="text-3xl">⭐</span>
+                </div>
+                <h4 class="font-black text-lg mb-3 uppercase">Premium Taxi</h4>
+                <p class="text-gray-500 text-sm leading-relaxed">Höchster Standard für anspruchsvolle Fahrgäste. Pünktlichkeit ist unsere Leidenschaft.</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+                    <span class="text-3xl">🚀</span>
+                </div>
+                <h4 class="font-black text-lg mb-3 uppercase">Digitalisierung</h4>
+                <p class="text-gray-500 text-sm leading-relaxed">Onroda setzt auf modernste Algorithmen zur effizienten Vernetzung von Partnern.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="partner" class="max-w-4xl mx-auto px-6 py-20">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-black mb-4 uppercase">Für Unternehmen / Partner</h2>
+            <p class="text-gray-500 mb-8">Neue Partner: Anfrage senden. Bestehende Partner: <a href="#" class="text-onroda-red font-bold">direkt zum Login</a>.</p>
+        </div>
+
+        <form class="bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-100 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Art des Unternehmens *</label>
+                    <select class="w-full border-2 border-gray-100 p-4 rounded-xl bg-gray-50 focus:border-onroda-red outline-none transition">
+                        <option>Taxiunternehmen</option>
+                        <option>Mietwagenbetrieb</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Unternehmensname *</label>
+                    <input type="text" class="w-full border-2 border-gray-100 p-4 rounded-xl bg-gray-50 focus:border-onroda-red outline-none transition">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md
