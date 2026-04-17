@@ -1,290 +1,155 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONRODA | Die schnelle, sichere und zuverlässige Taxi-App</title>
-    <link rel="stylesheet" href="/onroda-brand.css">
-    <style>
-        /* Layout-spezifisch — Farben/Typo über onroda-brand.css */
-        nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 5%; background: white; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--onroda-border-subtle); }
-        .logo { font-size: 1.5rem; font-weight: 800; color: var(--onroda-red); letter-spacing: 1px; }
-        .nav-links a { color: var(--onroda-text-dark); text-decoration: none; margin-left: 20px; font-weight: 500; font-size: 0.9rem; }
-        .nav-links .nav-cta-request {
-            background: var(--onroda-red);
-            color: #fff;
-            padding: 8px 14px;
-            border-radius: 999px;
-            font-weight: 700;
-        }
-        .nav-links .nav-cta-login {
-            border: 1px solid var(--onroda-border-outline);
-            padding: 8px 14px;
-            border-radius: 999px;
-            font-weight: 700;
-        }
-        
-        .hero { padding: 80px 5% 40px; display: flex; flex-wrap: wrap; align-items: center; }
-        .hero-text { flex: 1; min-width: 300px; padding-right: 20px; }
-        .hero-text h1 { font-size: 3.5rem; line-height: 1.1; margin-bottom: 20px; color: var(--onroda-red); font-weight: 800; }
-        .hero-text p { font-size: 1.2rem; color: var(--onroda-text-grey); margin-bottom: 30px; max-width: 500px; }
-        
-        .cta-group { display: flex; gap: 15px; }
-        .btn-red { background: var(--onroda-red); color: white; padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
-        .btn-outline { border: 1px solid var(--onroda-border-outline); color: var(--onroda-text-dark); padding: 12px 25px; border-radius: 25px; text-decoration: none; font-weight: bold; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONRODA – Taxi App</title>
 
-        .section { padding: 40px 5%; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: var(--onroda-bg-card); padding: 30px; border-radius: 15px; }
-        .card h3 { font-size: 1.5rem; margin-top: 0; color: var(--onroda-red); }
-        .card p { color: var(--onroda-text-grey); font-size: 0.95rem; }
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  color: #111;
+}
 
-        footer { background: var(--onroda-bg-footer); color: white; padding: 60px 5% 20px; margin-top: 60px; }
-        .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; }
-        .footer-col h4 { color: var(--onroda-red); margin-bottom: 20px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
-        .footer-col ul { list-style: none; padding: 0; margin: 0; }
-        .footer-col li { margin-bottom: 10px; color: #ccc; font-size: 0.9rem; }
-        
-        .help-box { background: white; color: black; padding: 40px; border-radius: 10px; }
-        .help-box h3 { font-size: 1.8rem; margin-top: 0; }
+header {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 40px;
+  background: white;
+  align-items: center;
+}
 
-        .copyright { border-top: 1px solid #333; margin-top: 40px; padding-top: 20px; font-size: 0.8rem; color: #666; text-align: left; }
-        .partner-section { background: var(--onroda-bg-card); border: 1px solid var(--onroda-border); border-radius: 16px; padding: 24px; }
-        .partner-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-        .partner-field { display: flex; flex-direction: column; gap: 6px; }
-        .partner-field label { font-size: 0.85rem; color: var(--onroda-text-grey); font-weight: 600; }
-        .partner-field input, .partner-field select, .partner-field textarea {
-            border: 1px solid var(--onroda-border-outline);
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 0.95rem;
-            font-family: inherit;
-        }
-        .partner-field--full { grid-column: 1 / -1; }
-        .partner-note { font-size: 0.9rem; color: var(--onroda-text-grey); margin-top: 8px; }
-        .partner-msg { margin-top: 10px; font-size: 0.9rem; font-weight: 700; }
-        @media (max-width: 760px) {
-            .partner-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+.logo {
+  font-weight: bold;
+  font-size: 28px;
+  color: red;
+}
+
+nav a {
+  margin: 0 10px;
+  text-decoration: none;
+  color: #333;
+}
+
+.hero {
+  display: flex;
+  padding: 60px;
+  background: white;
+}
+
+.hero-left {
+  flex: 1;
+}
+
+.hero-left h1 {
+  font-size: 40px;
+}
+
+.hero-left p {
+  font-size: 18px;
+}
+
+.btn {
+  padding: 12px 20px;
+  background: red;
+  color: white;
+  border: none;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 40px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.section {
+  padding: 40px;
+}
+
+footer {
+  background: black;
+  color: white;
+  padding: 40px;
+}
+</style>
 </head>
+
 <body>
 
-    <nav>
-        <div class="logo">ONRODA</div>
-        <div class="nav-links">
-            <a href="#">Fahrgäste</a>
-            <a href="#">Fahrer*innen</a>
-            <a href="#">Geschäftsreisen</a>
-            <a href="/partnerschaft#partner-anfrage" class="nav-cta-request">Partnerschaft anfragen</a>
-            <a href="/partners/" class="nav-cta-login">Partner-Login</a>
-        </div>
-    </nav>
+<header>
+<div class="logo">ONRODA</div>
+<nav>
+<a href="#">Fahrgäste</a>
+<a href="#">Fahrer*innen</a>
+<a href="#">Geschäftsreisen</a>
+<a href="#">Partnerschaft anfragen</a>
+<a href="#">Partner-Login</a>
+</nav>
+</header>
 
-    <header class="hero">
-        <div class="hero-text">
-            <h1>Die schnelle, sichere und zuverlässige Taxi-App</h1>
-            <p>Auf dem Weg zur Arbeit, zum Flughafen oder zur Verabredung? Dann buche jetzt mit ONRODA, deiner zuverlässigen Wahl in L.-Echterdingen.</p>
-            <div class="cta-group">
-                <a href="#fahrgaeste" class="btn-red">Für Fahrgäste</a>
-                <a href="/partnerschaft#partner-anfrage" class="btn-outline">Für Unternehmen / Partner</a>
-            </div>
-        </div>
-    </header>
+<section class="hero">
+<div class="hero-left">
+<h1>Die schnelle, sichere und zuverlässige Taxi-App</h1>
+<p>
+Auf dem Weg zur Arbeit, zum Flughafen oder zur Verabredung?  
+Dann buche jetzt mit ONRODA.
+</p>
+<button class="btn">Für Fahrgäste</button>
+<button class="btn">Für Unternehmen</button>
+</div>
+</section>
 
-    <section class="section" id="fahrgaeste">
-        <div class="grid">
-            <div class="card">
-                <h3>Fahrt buchen</h3>
-                <p>Start und Ziel eingeben, Fahrzeug wählen (Taxi / XL / Rollstuhl / Onroda) und direkt anfragen.</p>
-            </div>
-            <div class="card">
-                <h3>Reservieren</h3>
-                <p>Fahrten im Voraus planen – ideal für Termine, Flughafen und Abholungen mit Zeitfenster.</p>
-            </div>
-            <div class="card">
-                <h3>Meine Fahrten &amp; Quittung</h3>
-                <p>Verlauf einsehen, Status prüfen und Belege/Quittungen als PDF speichern.</p>
-            </div>
-            <div class="card">
-                <h3>Support in der App</h3>
-                <p>Probleme direkt zur Fahrt melden (Preis, Route, Fahrer, Gegenstand vergessen) – mit Referenznummer.</p>
-            </div>
-        </div>
-        <p class="partner-note" style="margin-top:14px;">
-            Die Kunden-App ist aktuell im Aufbau. Für Early-Access und Support: <strong>info@onroda.de</strong>
-        </p>
-    </section>
+<section class="cards">
+<div class="card">
+<h3>Fahrt buchen</h3>
+<p>Start und Ziel eingeben und direkt anfragen.</p>
+</div>
 
-    <section class="section">
-        <div class="grid">
-            <div class="card">
-                <h3>Krankenfahrten</h3>
-                <p>Zuverlässige und empathische Beförderung zu medizinischen Terminen in L.-Echterdingen. Wir kümmern uns um den sicheren Weg.</p>
-            </div>
-            <div class="card">
-                <h3>Premium Taxi</h3>
-                <p>Höchster Standard für anspruchsvolle Fahrgäste. Pünktlichkeit ist unsere Leidenschaft.</p>
-            </div>
-            <div class="card">
-                <h3>Digitalisierung der Zukunft</h3>
-                <p>Onroda setzt auf modernste Algorithmen. Wir vernetzen Flottenpartner und Fahrgäste effizienter als je zuvor.</p>
-            </div>
-        </div>
-    </section>
+<div class="card">
+<h3>Reservieren</h3>
+<p>Fahrten im Voraus planen.</p>
+</div>
 
-    <section class="section" id="partner-anfrage">
-        <div class="partner-section">
-            <h2 style="margin-top:0;color:var(--onroda-red);">Für Unternehmen / Partner</h2>
-            <p class="partner-note">
-                <strong>Neue Partner:</strong> Anfrage senden.<br>
-                <strong>Bestehende Partner:</strong> direkt ins Partner-Login.
-            </p>
-            <form id="partner-request-form">
-                <div class="partner-grid">
-                    <div class="partner-field">
-                        <label for="partnerType">Art des Unternehmens *</label>
-                        <select id="partnerType" required>
-                            <option value="taxi">Taxiunternehmen</option>
-                            <option value="hotel">Hotel</option>
-                            <option value="insurance">Krankenkasse</option>
-                            <option value="medical">Arztpraxis / Klinik</option>
-                            <option value="care">Pflegeheim / soziale Einrichtung</option>
-                            <option value="business">Firmenkunde / Geschäftskunde</option>
-                            <option value="voucher_partner">Gutscheinpartner</option>
-                            <option value="other">Sonstiger Partner</option>
-                        </select>
-                    </div>
-                    <div class="partner-field">
-                        <label for="companyName">Unternehmensname *</label>
-                        <input id="companyName" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="contactFirstName">Ansprechpartner Vorname *</label>
-                        <input id="contactFirstName" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="contactLastName">Ansprechpartner Nachname *</label>
-                        <input id="contactLastName" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="email">Geschäftliche E-Mail *</label>
-                        <input id="email" type="email" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="phone">Geschäftliche Telefonnummer *</label>
-                        <input id="phone" required />
-                    </div>
-                    <div class="partner-field partner-field--full">
-                        <label for="addressLine1">Adresse *</label>
-                        <input id="addressLine1" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="postalCode">PLZ *</label>
-                        <input id="postalCode" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="city">Stadt *</label>
-                        <input id="city" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="country">Land *</label>
-                        <input id="country" value="Deutschland" required />
-                    </div>
-                    <div class="partner-field">
-                        <label for="desiredRegion">Einsatzbereich / Region</label>
-                        <input id="desiredRegion" />
-                    </div>
-                    <div class="partner-field partner-field--full">
-                        <label for="notes">Hinweise</label>
-                        <textarea id="notes" rows="3"></textarea>
-                    </div>
-                </div>
-                <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                    <button type="submit" class="btn-red" style="border:none;cursor:pointer;">Partnerschaft anfragen</button>
-                    <a href="/partners/" class="btn-outline">Bestehender Partner? Zum Login</a>
-                </div>
-                <p id="partner-request-msg" class="partner-msg" aria-live="polite"></p>
-            </form>
-        </div>
-    </section>
+<div class="card">
+<h3>Meine Fahrten</h3>
+<p>Verlauf und Quittung einsehen.</p>
+</div>
 
-    <footer>
-        <div class="footer-grid">
-            <div class="footer-col">
-                <h4>Fahrgäste</h4>
-                <ul>
-                    <li>Taxi</li>
-                    <li>Business-Profil</li>
-                    <li>Vorbestellung</li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h4>Fahrer*innen</h4>
-                <ul>
-                    <li>Mietwagen</li>
-                    <li>Fahrten annehmen</li>
-                    <li>Sicherheit</li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <div class="help-box">
-                    <h3>Brauchst du Hilfe?</h3>
-                    <p><strong>Kontakt:</strong><br>
-                    Vedat Öztürk<br>
-                    Oberdorfstr. 53<br>
-                    70771 Leinfelden-Echterdingen<br><br>
-                    info@onroda.de</p>
-                </div>
-            </div>
-        </div>
-        <div class="copyright">
-            © 2026 ONRODA. Alle Rechte vorbehalten. | Impressum | Datenschutz
-        </div>
-    </footer>
+<div class="card">
+<h3>Support</h3>
+<p>Probleme direkt melden.</p>
+</div>
+</section>
 
-<script>
-(() => {
-  const form = document.getElementById("partner-request-form");
-  const msg = document.getElementById("partner-request-msg");
-  if (!form || !msg) return;
-  form.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    msg.textContent = "Anfrage wird gesendet …";
-    const body = {
-      partnerType: document.getElementById("partnerType")?.value || "other",
-      companyName: document.getElementById("companyName")?.value?.trim() || "",
-      contactFirstName: document.getElementById("contactFirstName")?.value?.trim() || "",
-      contactLastName: document.getElementById("contactLastName")?.value?.trim() || "",
-      email: document.getElementById("email")?.value?.trim() || "",
-      phone: document.getElementById("phone")?.value?.trim() || "",
-      addressLine1: document.getElementById("addressLine1")?.value?.trim() || "",
-      postalCode: document.getElementById("postalCode")?.value?.trim() || "",
-      city: document.getElementById("city")?.value?.trim() || "",
-      country: document.getElementById("country")?.value?.trim() || "",
-      desiredRegion: document.getElementById("desiredRegion")?.value?.trim() || "",
-      notes: document.getElementById("notes")?.value?.trim() || "",
-    };
-    try {
-      const res = await fetch("/api/panel-auth/registration-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        msg.textContent = "Anfrage konnte nicht gesendet werden. Bitte prüfe deine Angaben.";
-        return;
-      }
-      msg.textContent = `Anfrage erfolgreich gesendet. Referenz: ${data.request?.id ?? "n/a"}`;
-      form.reset();
-      const country = document.getElementById("country");
-      if (country) country.value = "Deutschland";
-    } catch {
-      msg.textContent = "Netzwerkfehler. Bitte später erneut versuchen.";
-    }
-  });
-})();
-</script>
+<section class="section">
+<h2>Krankenfahrten</h2>
+<p>Zuverlässige Beförderung zu medizinischen Terminen.</p>
+</section>
+
+<section class="section">
+<h2>Premium Taxi</h2>
+<p>Höchster Standard für anspruchsvolle Fahrgäste.</p>
+</section>
+
+<section class="section">
+<h2>Digitalisierung</h2>
+<p>Moderne Plattform für Fahrer und Kunden.</p>
+</section>
+
+<footer>
+<p>© 2026 ONRODA</p>
+</footer>
+
 </body>
 </html>
