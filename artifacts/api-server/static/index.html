@@ -3,148 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONRODA | Stuttgart - Deine Taxi & Business App</title>
+    <title>ONRODA | Stuttgart & Region – Dein Taxi- & Business-Netzwerk</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #000; color: white; margin: 0; }
         .on-red { color: #e30613; }
-        /* Logo Styling: Nur ON ist rot */
-        .logo-font { font-weight: 900; font-style: italic; letter-spacing: -2px; }
-        .hero-gradient { 
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1511110758040-3e833fb54845?q=80&w=1500'); 
+        .bg-on-red { background-color: #e30613; }
+        .logo-font { font-weight: 900; font-style: italic; letter-spacing: -1.5px; }
+        .hero-bg { 
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1449960232335-d8f914a22113?q=80&w=1500'); 
             background-size: cover; background-position: center; 
         }
     </style>
 </head>
 <body class="overflow-x-hidden">
 
-    <header class="bg-black py-5 px-6 md:px-16 flex justify-between items-center sticky top-0 z-50 border-b border-gray-900">
+    <header class="bg-black py-5 px-6 md:px-16 flex justify-between items-center sticky top-0 z-50 border-b border-zinc-900">
         <div class="logo-font text-3xl"><span class="on-red">ON</span>RODA</div>
         
         <nav class="hidden lg:flex space-x-8 uppercase font-black text-[11px] tracking-widest">
             <a href="#" class="hover:text-red-600 transition">Fahrgäste</a>
             <a href="#" class="hover:text-red-600 transition">Fahrer*innen</a>
-            <a href="#" class="hover:text-red-600 transition">Hotels & Business</a>
-            <a href="#" class="hover:text-red-600 transition">Gutscheine</a>
+            <a href="#partner" class="on-red italic">Hotels & Business</a>
+            <a href="#gutscheine" class="hover:text-red-600 transition">Gutscheine</a>
         </nav>
 
-        <button class="bg-white text-black px-6 py-2 rounded-full font-black text-[11px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition">
+        <button class="bg-white text-black px-6 py-2 rounded-full font-black text-[11px] uppercase tracking-widest hover:bg-on-red hover:text-white transition">
             Partner Login
         </button>
     </header>
 
-    <section class="hero-gradient min-h-[70vh] flex items-center px-6 md:px-16">
+    <section class="hero-bg min-h-[60vh] flex items-center px-6 md:px-16">
         <div class="max-w-4xl">
             <h2 class="text-5xl md:text-8xl font-black uppercase italic leading-none mb-6">
-                Schnell. Sicher.<br><span class="on-red">Stuttgart.</span>
+                Stuttgart.<br><span class="on-red">Regional.</span> Direkt.
             </h2>
-            <p class="text-xl md:text-2xl font-medium mb-10 text-gray-300 max-w-2xl">
-                Die neue Generation der Mobilität in Stuttgart. Taxis, Business-Transfers und Partner-Lösungen in einer App.
+            <p class="text-xl md:text-2xl font-medium mb-10 text-gray-300 max-w-2xl leading-relaxed">
+                Mobilität neu gedacht für Stuttgart & die Region. Taxis auf Knopfdruck, exklusive Hotel-Anbindungen und digitale Gutschein-Systeme.
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
-                <button class="bg-on-red text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-sm shadow-2xl">App herunterladen</button>
-                <button class="bg-transparent border-2 border-white text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-white hover:text-black transition">Jetzt Vorbestellen</button>
+                <button class="bg-on-red text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-sm shadow-2xl hover:scale-105 transition-transform">App Store</button>
+                <button class="bg-zinc-800 text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-on-red transition">Google Play</button>
             </div>
         </div>
     </section>
 
-    <footer class="bg-black text-white px-6 md:px-16 py-20 border-t border-gray-900">
-        
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-24 gap-8">
-            <div class="logo-font text-5xl leading-none"><span class="on-red">ON</span>RODA</div>
-            
-            <div class="flex flex-wrap gap-4">
-                <div class="bg-zinc-900 border border-zinc-800 px-6 py-3 rounded-xl flex items-center gap-3 cursor-pointer hover:border-red-600 transition">
-                    <span class="text-3xl"></span>
-                    <div class="text-[10px] leading-tight uppercase font-bold text-gray-400 text-left">Laden im<br><span class="text-lg text-white font-black">App Store</span></div>
-                </div>
-                <div class="bg-zinc-900 border border-zinc-800 px-6 py-3 rounded-xl flex items-center gap-3 cursor-pointer hover:border-red-600 transition">
-                    <span class="text-2xl text-red-600">▶</span>
-                    <div class="text-[10px] leading-tight uppercase font-bold text-gray-400 text-left">JETZT BEI<br><span class="text-lg text-white font-black">Google Play</span></div>
-                </div>
-            </div>
-        </div>
-
+    <section class="bg-black py-20 px-6 md:px-16 border-t border-zinc-900">
         <div class="flex flex-col lg:flex-row gap-16">
             
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-12 flex-grow uppercase font-black text-[12px] tracking-[0.15em]">
-                <div>
-                    <h5 class="mb-10 text-gray-600 text-[14px]">Fahrgäste</h5>
-                    <ul class="space-y-6">
-                        <li><a href="#" class="hover:text-red-600 transition">Taxi buchen</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Flughafen</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Festpreise</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Vorbestellung</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h5 class="mb-10 text-gray-600 text-[14px]">Business</h5>
-                    <ul class="space-y-6">
-                        <li><a href="#" class="hover:text-red-600 transition text-red-500 italic">Hotel-Portal</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Firmen-Account</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Gutscheine</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Rechnungen</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h5 class="mb-10 text-gray-600 text-[14px]">Partner</h5>
-                    <ul class="space-y-6">
-                        <li><a href="#" class="hover:text-red-600 transition">Fahrer werden</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Mietwagen</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Sicherheit</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h5 class="mb-10 text-gray-600 text-[14px]">Über Uns</h5>
-                    <ul class="space-y-6">
-                        <li><a href="#" class="hover:text-red-600 transition">Kontakt</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Impressum</a></li>
-                        <li><a href="#" class="hover:text-red-600 transition">Karriere</a></li>
-                    </ul>
+            <div class="flex-grow">
+                <h3 class="text-gray-500 font-black uppercase tracking-widest text-xs mb-4 italic">Vorteile Fahrgäste</h3>
+                <h4 class="text-4xl md:text-5xl font-black uppercase mb-12 italic leading-tight text-white">Dein Weg in <span class="on-red">Stuttgart</span></h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div class="space-y-4">
+                        <div class="text-3xl">📍</div>
+                        <h5 class="text-lg font-black uppercase tracking-tight">Echtzeit-Buchung</h5>
+                        <p class="text-gray-400 text-sm leading-relaxed">Sofortige Vermittlung an den nächsten verfügbaren Partner in Stuttgart und Umgebung.</p>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="text-3xl">🕒</div>
+                        <h5 class="text-lg font-black uppercase tracking-tight">Vorbestellung</h5>
+                        <p class="text-gray-400 text-sm leading-relaxed">Planungssicherheit für Flughafen-Transfers oder wichtige Business-Termine.</p>
+                    </div>
+                    <div id="gutscheine" class="space-y-4 border-l-2 border-red-600 pl-6">
+                        <div class="text-3xl">🎟️</div>
+                        <h5 class="text-lg font-black uppercase tracking-tight">Gutschein-Logik</h5>
+                        <p class="text-gray-400 text-sm leading-relaxed">Nutze exklusive Rabatt-Codes von unseren lokalen Partnern für deine nächste Fahrt.</p>
+                    </div>
+                    <div class="space-y-4 border-l-2 border-red-600 pl-6">
+                        <div class="text-3xl">🛡️</div>
+                        <h5 class="text-lg font-black uppercase tracking-tight">Sicherheit</h5>
+                        <p class="text-gray-400 text-sm leading-relaxed">Nur geprüfte Fahrer*innen und volle Transparenz über Route und Preis.</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white text-black p-10 md:p-14 rounded-[2rem] lg:w-[400px] shadow-[0_20px_50px_rgba(227,6,19,0.2)]">
-                <h2 class="text-4xl font-black mb-10 leading-[1.1] tracking-tighter">Brauchst du Hilfe?</h2>
+            <div id="partner" class="bg-white text-black p-10 md:p-14 rounded-[2.5rem] lg:w-[450px] shadow-[0_20px_60px_rgba(227,6,19,0.3)] shrink-0">
+                <h2 class="text-4xl font-black mb-8 leading-[1.1] tracking-tighter">Werde Partner</h2>
                 
-                <div class="grid grid-cols-1 gap-10 text-sm mb-12">
+                <div class="space-y-10 text-sm mb-12">
                     <div>
-                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-4 italic">Business & Partner</h6>
-                        <ul class="space-y-4 font-bold text-lg">
-                            <li class="flex items-center gap-3">🏨 <span class="text-sm">Hotel-Buchungen</span></li>
-                            <li class="flex items-center gap-3">🎟️ <span class="text-sm">Gutschein-System</span></li>
-                            <li class="flex items-center gap-3">💼 <span class="text-sm">Firmen-Rechnung</span></li>
-                        </ul>
+                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-3 italic">Hotel & Gastronomie</h6>
+                        <p class="font-bold text-lg mb-2">🏨 Hotel-Buchungstool</p>
+                        <p class="text-gray-500 leading-relaxed text-xs">Bestellen Sie Taxis für Ihre Gäste direkt über unser Partner-Portal. Keine Telefonate mehr nötig.</p>
                     </div>
+
                     <div>
-                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-4">Support</h6>
-                        <ul class="space-y-4 font-bold text-red-600 underline">
-                            <li>Fahrer-Support</li>
-                            <li>Kunden-Hilfe</li>
-                        </ul>
+                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-3 italic">Marketing</h6>
+                        <p class="font-bold text-lg mb-2">🎟️ Gutschein-System</p>
+                        <p class="text-gray-500 leading-relaxed text-xs">Erstellen Sie eigene Rabatt-Codes als Kunden-Präsent oder Mitarbeiter-Benefit.</p>
+                    </div>
+
+                    <div>
+                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-3 italic">Business</h6>
+                        <p class="font-bold text-lg mb-2">💼 Sammelrechnung</p>
+                        <p class="text-gray-500 leading-relaxed text-xs">Volle Kostenkontrolle für Firmen. Eine monatliche Rechnung statt hunderte Einzelbelege.</p>
                     </div>
                 </div>
 
-                <div class="pt-8 border-t border-gray-100">
-                    <h6 class="font-black uppercase text-[10px] text-gray-400 mb-2 tracking-widest">Hier findest du uns</h6>
-                    <p class="font-black text-sm">Vedat Öztürk<br>70771 Stuttgart / L.-E.</p>
-                </div>
+                <button class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-on-red transition-all shadow-xl text-sm">
+                    Jetzt Kontakt aufnehmen
+                </button>
                 
-                <div class="mt-8 text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
-                    Cookie Settings: <span class="underline cursor-pointer">Einwilligungspräferenzen</span>
-                </div>
+                <p class="mt-8 text-[10px] text-center text-gray-400 font-bold uppercase">
+                    Support: <a href="mailto:info@onroda.de" class="text-black underline">info@onroda.de</a>
+                </p>
             </div>
+
         </div>
+    </section>
 
-        <div class="mt-32 pt-10 border-t border-gray-900 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-gray-600">
-            <div class="flex gap-8">
-                <span>© 2026 ONRODA</span>
-                <a href="#" class="hover:text-white transition">Datenschutz</a>
-                <a href="#" class="hover:text-white transition">AGB</a>
-                <a href="#" class="hover:text-white transition">Cookies</a>
+    <footer class="bg-zinc-950 text-white px-6 md:px-16 py-12 border-t border-zinc-900">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-10">
+            <div class="logo-font text-3xl"><span class="on-red">ON</span>RODA</div>
+            
+            <div class="flex gap-8 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                <a href="#" class="hover:text-white">Impressum</a>
+                <a href="#" class="hover:text-white">Datenschutz</a>
+                <a href="#" class="hover:text-white">AGB</a>
             </div>
-            <div class="on-red italic">Made for Stuttgart</div>
+            
+            <div class="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">
+                © 2026 ONRODA • Made for Stuttgart & Region
+            </div>
         </div>
     </footer>
 
