@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="/onroda-brand.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Kein niedriges opsz (9–40): wirkt auf Desktop-Browsern oft zu klein; nur wght/italic. -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -21,10 +20,8 @@
       --hp-icon-bg: #fde8ec;
       --font-serif: "Libre Baskerville", Georgia, serif;
       --font-sans: "DM Sans", system-ui, sans-serif;
-      /* Fluid shell: vw-gestütztes Padding, hohe Deckenbreite für große Monitore */
       --hp-page-max: min(1920px, 98vw);
       --hp-page-pad-x: clamp(1rem, 4vw, 4rem);
-      /* Hero / Top-Navigation: volle Viewport-Breite, großzügige Außenränder */
       --hp-hero-pad-x: clamp(1rem, 6vw, 6.5rem);
     }
 
@@ -54,7 +51,6 @@
       box-sizing: border-box;
     }
 
-    /* Header + Hero-Text: full-width (kein „Insel“-Container), dominanter erste Screen */
     .hp-header-inner,
     .hp-hero-content {
       width: 100%;
@@ -70,10 +66,9 @@
       z-index: 10;
     }
 
-    /* Hero: Text links, dezentes Service-Motiv rechts (weiße Karte, kein Vollflächen-Hintergrund) */
     .hp-hero-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       gap: clamp(1rem, 3vw, 2.75rem);
       align-items: start;
     }
@@ -83,35 +78,12 @@
     .hp-hero-copy .hp-hero-lead {
       max-width: min(48ch, 100%);
     }
-    .hp-hero-media {
-      margin: 0;
-      background: #fff;
-      border-radius: clamp(10px, 1vw, 14px);
-      padding: clamp(4px, 0.5vw, 7px);
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
-      width: clamp(112px, 14vw, 200px);
-      flex-shrink: 0;
-    }
-    .hp-hero-media img {
-      display: block;
-      width: 100%;
-      height: auto;
-      border-radius: clamp(6px, 0.6vw, 10px);
-    }
-    @media (max-width: 720px) {
-      .hp-hero-layout {
-        grid-template-columns: 1fr;
-        gap: 1.25rem;
-      }
-      .hp-hero-media {
-        width: clamp(96px, 38vw, 160px);
-        justify-self: end;
-        order: -1;
-      }
-    }
 
     /* —— Top bar (Partner) —— */
     .hp-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
       background: #0a0a0a;
       color: rgba(255, 255, 255, 0.88);
       font-size: clamp(0.8125rem, 0.18vw + 0.75rem, 0.9375rem);
@@ -137,18 +109,15 @@
 
     /* —— Header (über Hero) —— */
     .hp-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
+      position: relative;
       z-index: 20;
-      padding: 18px 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 100%);
+      padding: 22px 0 0;
+      background: #fff;
     }
     .hp-header-inner {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       gap: 20px;
     }
     .hp-logo {
@@ -157,24 +126,11 @@
       font-size: clamp(1.45rem, 0.85vw + 1rem, 2rem);
       letter-spacing: 0.02em;
       text-decoration: none;
-      color: #fff;
+      color: var(--onroda-text-dark);
     }
     .hp-logo span.on { color: var(--onroda-red); }
-    .hp-logo span.roda { color: #fff; }
-    .hp-nav {
-      display: flex;
-      align-items: center;
-      gap: 8px 22px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .hp-nav a {
-      color: rgba(255, 255, 255, 0.92);
-      text-decoration: none;
-      font-weight: 500;
-      font-size: clamp(0.875rem, 0.22vw + 0.8rem, 1.0625rem);
-    }
-    .hp-nav a:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+    .hp-logo span.roda { color: var(--onroda-text-dark); }
+
     .hp-btn-login {
       background: var(--onroda-red);
       color: #fff !important;
@@ -189,110 +145,20 @@
     .hp-hero {
       position: relative;
       width: 100%;
-      min-height: min(100vh, 1100px);
-      padding: clamp(5.5rem, 12vw, 10rem) 0 clamp(4.5rem, 11vw, 8rem);
-      color: var(--hp-hero-text);
+      min-height: auto;
+      padding: clamp(3.5rem, 8vw, 6rem) 0 clamp(4rem, 9vw, 7rem);
+      color: var(--onroda-text-dark);
       overflow: hidden;
-    }
-    .hp-hero-bg {
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 120% 80% at 70% 100%, rgba(213, 0, 28, 0.18), transparent 55%),
-        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06), transparent 40%),
-        linear-gradient(165deg, var(--hp-night) 0%, var(--hp-night-mid) 45%, #1f1830 100%);
-      z-index: 0;
-    }
-    /* stilisierte „Stadt“ */
-    .hp-hero-city {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 42%;
-      z-index: 1;
-      pointer-events: none;
-    }
-    .hp-building {
-      position: absolute;
-      bottom: 0;
-      background: linear-gradient(180deg, rgba(213,0,28,0.35), rgba(40,35,55,0.95));
-      border-radius: 4px 4px 0 0;
-    }
-    .hp-b1 { left: 5%; width: 8%; height: 35%; opacity: 0.85; }
-    .hp-b2 { left: 14%; width: 10%; height: 52%; }
-    .hp-b3 { left: 26%; width: 7%; height: 28%; opacity: 0.75; }
-    .hp-b4 { left: 34%; width: 12%; height: 62%; background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(30,25,45,0.95)); }
-    .hp-b5 { left: 48%; width: 9%; height: 40%; }
-    .hp-b6 { left: 58%; width: 11%; height: 55%; }
-    .hp-b7 { left: 71%; width: 8%; height: 32%; opacity: 0.8; }
-    .hp-b8 { left: 81%; width: 10%; height: 48%; }
-    .hp-b9 { right: 3%; width: 7%; height: 36%; opacity: 0.7; }
-    .hp-clock {
-      position: absolute;
-      bottom: 18%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(140px, 22vw);
-      height: min(140px, 22vw);
-      border-radius: 50%;
-      border: 4px solid rgba(255,255,255,0.25);
-      background: rgba(0,0,0,0.2);
-      z-index: 2;
-    }
-    .hp-clock::before {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 4px;
-      height: 32%;
-      background: rgba(255,255,255,0.9);
-      transform-origin: bottom center;
-      transform: translate(-50%, -100%) rotate(52deg);
-      border-radius: 2px;
-    }
-    .hp-clock::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 3px;
-      height: 24%;
-      background: var(--onroda-red);
-      transform-origin: bottom center;
-      transform: translate(-50%, -100%) rotate(-28deg);
-      border-radius: 2px;
-    }
-    .hp-taxi {
-      position: absolute;
-      bottom: 8%;
-      left: 42%;
-      width: 56px;
-      height: 28px;
-      background: #f5c542;
-      border-radius: 6px 8px 4px 4px;
-      z-index: 3;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.2);
-    }
-    .hp-people {
-      position: absolute;
-      bottom: 6%;
-      left: 22%;
-      right: 22%;
-      height: 80px;
-      z-index: 3;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' fill='none'%3E%3Ccircle cx='40' cy='35' r='10' fill='rgba(255,255,255,0.5)'/%3E%3Crect x='32' y='45' width='16' height='14' rx='2' fill='rgba(255,255,255,0.35)'/%3E%3Ccircle cx='120' cy='32' r='9' fill='rgba(255,255,255,0.45)'/%3E%3Cpath d='M105 46 L135 46 L130 58 L110 58 Z' fill='rgba(255,255,255,0.25)'/%3E%3Ccircle cx='200' cy='38' r='8' fill='rgba(255,255,255,0.4)'/%3E%3Crect x='188' y='46' width='28' height='12' rx='6' fill='rgba(213,0,28,0.5)'/%3E%3Ccircle cx='290' cy='34' r='7' fill='rgba(255,255,255,0.45)'/%3E%3Crect x='282' y='42' width='20' height='16' rx='2' fill='rgba(255,255,255,0.2)'/%3E%3C/svg%3E") center bottom / contain no-repeat;
-      opacity: 0.9;
+      background: #fff;
     }
 
     .hp-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: var(--hp-muted-on-dark);
+      background: rgba(213, 0, 28, 0.06);
+      border: 1px solid rgba(213, 0, 28, 0.12);
+      color: var(--onroda-text-grey);
       padding: clamp(0.45rem, 0.9vw, 0.6rem) clamp(0.75rem, 1.5vw, 1.05rem);
       border-radius: 999px;
       font-size: clamp(0.75rem, 0.2vw + 0.72rem, 0.875rem);
@@ -312,6 +178,7 @@
       line-height: 1.12;
       margin: 0 0 clamp(1rem, 2vw, 1.5rem);
       max-width: min(36ch, 96vw);
+      color: var(--onroda-text-dark);
     }
     .hp-hero h1 em {
       font-style: normal;
@@ -319,7 +186,7 @@
     }
     .hp-hero-lead {
       font-size: clamp(1.02rem, 0.55vw + 0.85rem, 1.4rem);
-      color: var(--hp-muted-on-dark);
+      color: var(--onroda-text-grey);
       max-width: min(62ch, 95vw);
       margin: 0 0 clamp(1.25rem, 3vw, 2rem);
     }
@@ -348,18 +215,18 @@
     .hp-btn-ghost {
       display: inline-flex;
       align-items: center;
-      color: #fff;
+      color: var(--onroda-text-dark);
       font-weight: 600;
       padding: clamp(0.75rem, 1vw, 1rem) clamp(1.25rem, 2vw, 2rem);
       border-radius: 12px;
       text-decoration: none;
-      border: 2px solid rgba(255,255,255,0.45);
+      border: 2px solid rgba(0,0,0,0.15);
       background: transparent;
       font-size: clamp(0.9375rem, 0.2vw + 0.88rem, 1.0625rem);
       font-family: inherit;
       cursor: pointer;
     }
-    .hp-btn-ghost:hover { background: rgba(255,255,255,0.08); }
+    .hp-btn-ghost:hover { background: rgba(0,0,0,0.03); }
 
     /* —— Sections allgemein —— */
     .hp-section {
@@ -568,6 +435,38 @@
       margin-top: 8px;
     }
 
+    .hp-partner-types {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 18px;
+    }
+    .hp-partner-types input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .hp-type-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid #d8d8dd;
+      background: #fff;
+      color: var(--onroda-text-dark);
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.18s ease;
+      user-select: none;
+    }
+    .hp-partner-types input:checked + .hp-type-chip {
+      background: rgba(213, 0, 28, 0.08);
+      border-color: var(--onroda-red);
+      color: var(--onroda-red);
+    }
+
     .hp-voucher-card {
       background: #fff;
       border-radius: 18px;
@@ -592,6 +491,50 @@
       justify-content: space-between;
       gap: clamp(1rem, 2.5vw, 2rem);
       margin-bottom: clamp(1.25rem, 3vw, 2rem);
+    }
+
+    .hp-store-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 28px;
+    }
+    .hp-store-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--hp-card-border);
+      background: #fff;
+      color: var(--onroda-text-dark);
+      text-decoration: none;
+      min-width: 220px;
+      justify-content: center;
+      font-weight: 600;
+    }
+    .hp-store-link:hover {
+      box-shadow: 0 12px 32px rgba(0,0,0,0.06);
+    }
+    .hp-store-link svg {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .hp-store-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+      text-align: left;
+    }
+    .hp-store-copy small {
+      font-size: 0.74rem;
+      font-weight: 500;
+      opacity: 0.72;
+    }
+    .hp-store-copy span {
+      font-size: 0.98rem;
     }
 
     /* —— Split full-bleed row (rechts bis Viewport, große Screens) —— */
@@ -716,30 +659,8 @@
     <header class="hp-header">
       <div class="hp-header-inner">
         <a class="hp-logo" href="/"><span class="on">ON</span><span class="roda">RODA</span></a>
-        <nav class="hp-nav" aria-label="Hauptnavigation">
-          <a href="#manifest">Warum wir</a>
-          <a href="#fahrer">Fahrer</a>
-          <a href="#partner">Partner</a>
-          <a href="#unternehmen">Gutscheine</a>
-          <a class="hp-btn-login" href="https://panel.onroda.de/">Login</a>
-        </nav>
       </div>
     </header>
-    <div class="hp-hero-bg" aria-hidden="true"></div>
-    <div class="hp-hero-city" aria-hidden="true">
-      <span class="hp-building hp-b1"></span>
-      <span class="hp-building hp-b2"></span>
-      <span class="hp-building hp-b3"></span>
-      <span class="hp-building hp-b4"></span>
-      <span class="hp-building hp-b5"></span>
-      <span class="hp-building hp-b6"></span>
-      <span class="hp-building hp-b7"></span>
-      <span class="hp-building hp-b8"></span>
-      <span class="hp-building hp-b9"></span>
-      <div class="hp-clock" aria-hidden="true"></div>
-      <div class="hp-taxi" aria-hidden="true"></div>
-      <div class="hp-people" aria-hidden="true"></div>
-    </div>
     <div class="hp-hero-content">
       <div class="hp-hero-layout">
         <div class="hp-hero-copy">
@@ -753,16 +674,6 @@
             <a class="hp-btn-ghost" href="#services">Mehr erfahren</a>
           </div>
         </div>
-        <figure class="hp-hero-media">
-          <img
-            src="/onroda-hero-services-collage.png"
-            width="1024"
-            height="558"
-            alt="Illustration: ONRODA-Leistungen – Hotel-Gutscheine, medizinische Fahrten, Geschäftskunden, Familie und Mobilität in Stuttgart."
-            loading="eager"
-            decoding="async"
-          />
-        </figure>
       </div>
     </div>
   </section>
@@ -910,6 +821,35 @@
           <p class="hint">Füllen Sie das Formular aus – wir melden uns bei Ihnen.</p>
           <form id="partner-form" action="#" method="post">
             <div class="hp-field">
+              <label>Worum handelt es sich?</label>
+              <div class="hp-partner-types">
+                <label>
+                  <input type="checkbox" name="partnerType" value="Hotel" />
+                  <span class="hp-type-chip">Hotel</span>
+                </label>
+                <label>
+                  <input type="checkbox" name="partnerType" value="Arztpraxis / Klinik" />
+                  <span class="hp-type-chip">Arzt / Klinik</span>
+                </label>
+                <label>
+                  <input type="checkbox" name="partnerType" value="Unternehmen" />
+                  <span class="hp-type-chip">Unternehmen</span>
+                </label>
+                <label>
+                  <input type="checkbox" name="partnerType" value="Veranstalter" />
+                  <span class="hp-type-chip">Veranstalter</span>
+                </label>
+                <label>
+                  <input type="checkbox" name="partnerType" value="Versicherung / Krankenkasse" />
+                  <span class="hp-type-chip">Versicherung</span>
+                </label>
+                <label>
+                  <input type="checkbox" name="partnerType" value="Taxiunternehmen" />
+                  <span class="hp-type-chip">Taxiunternehmen</span>
+                </label>
+              </div>
+            </div>
+            <div class="hp-field">
               <label for="co">Firmenname</label>
               <input id="co" type="text" placeholder="Ihr Unternehmen" required autocomplete="organization" />
             </div>
@@ -987,6 +927,31 @@
       <h2 style="font-family:var(--font-serif);margin:0 0 12px;">Bereit für die nächste Fahrt?</h2>
       <p class="hp-sub" style="margin-bottom:22px;">Laden Sie die ONRODA-App – buchen und live verfolgen.</p>
       <p style="color:var(--onroda-text-grey);font-size:0.9rem;">Links zu App Stores können hier ergänzt werden, sobald die finalen Store-URLs feststehen.</p>
+
+      <div class="hp-store-links">
+        <a class="hp-store-link" href="#" aria-label="Im Apple App Store laden">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M16.37 12.25c.02 2.2 1.94 2.94 1.96 2.95-.02.05-.31 1.06-1.02 2.1-.61.9-1.25 1.8-2.24 1.82-.97.02-1.28-.58-2.39-.58-1.12 0-1.46.56-2.37.6-.95.04-1.68-.96-2.29-1.85-1.24-1.8-2.18-5.08-.91-7.28.63-1.09 1.77-1.78 3.01-1.8.94-.02 1.83.63 2.39.63.56 0 1.62-.78 2.73-.67.47.02 1.8.19 2.65 1.43-.07.04-1.58.92-1.56 2.65ZM14.61 5.82c.51-.62.85-1.49.76-2.35-.73.03-1.62.49-2.15 1.11-.47.54-.88 1.42-.77 2.25.81.06 1.64-.41 2.16-1.01Z"/>
+          </svg>
+          <span class="hp-store-copy">
+            <small>Download im</small>
+            <span>Apple App Store</span>
+          </span>
+        </a>
+
+        <a class="hp-store-link" href="#" aria-label="Bei Google Play laden">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 3.8c0-.53.57-.85 1.02-.57l10.66 6.5-2.6 2.6L3.36 4.6A.93.93 0 0 1 3 3.8Z" fill="#34A853"/>
+            <path d="M15.89 10.46 18.85 8.7c.88-.52 1.43-.1 1.43.93v4.74c0 1.03-.55 1.45-1.43.93l-2.96-1.76-2.34-1.39 2.34-1.39Z" fill="#FBBC04"/>
+            <path d="m3.36 19.4 8.72-7.73 2.6 2.6-10.66 6.5A.67.67 0 0 1 3 20.2c0-.28.13-.55.36-.8Z" fill="#EA4335"/>
+            <path d="m14.68 14.27-2.6-2.6 2.6-2.6 1.21.72 2.96 1.76-2.96 1.76-1.21.72Z" fill="#4285F4"/>
+          </svg>
+          <span class="hp-store-copy">
+            <small>Jetzt bei</small>
+            <span>Google Play</span>
+          </span>
+        </a>
+      </div>
     </div>
   </section>
 
@@ -999,7 +964,7 @@
         </div>
         <div>
           <strong>Kontakt</strong>
-          <p style="margin:8px 0 0;"><a href="mailto:kontakt@onroda.de">kontakt@onroda.de</a></p>
+          <p style="margin:8px 0 0;"><a href="mailto:onroda@mail.de">onroda@mail.de</a></p>
         </div>
         <div>
           <strong>Portal</strong>
@@ -1017,7 +982,17 @@
       var nm = document.getElementById("nm").value.trim();
       var em = document.getElementById("em").value.trim();
       var ph = document.getElementById("ph").value.trim();
-      var body = ["Partneranfrage ONRODA", "Firma: " + co, "Ansprechpartner: " + nm, "E-Mail: " + em, "Telefon: " + ph].join("\n");
+      var selectedTypes = Array.from(document.querySelectorAll('input[name="partnerType"]:checked')).map(function (el) {
+        return el.value;
+      });
+      var body = [
+        "Partneranfrage ONRODA",
+        "Bereich: " + (selectedTypes.length ? selectedTypes.join(", ") : "-"),
+        "Firma: " + co,
+        "Ansprechpartner: " + nm,
+        "E-Mail: " + em,
+        "Telefon: " + ph
+      ].join("\n");
       window.location.href =
         "mailto:onroda@mail.de?subject=" +
         encodeURIComponent("ONRODA Partneranfrage") +
