@@ -26,10 +26,9 @@
       --hp-footer-soft: rgba(255, 255, 255, 0.56);
       --font-serif: "Libre Baskerville", Georgia, serif;
       --font-sans: "DM Sans", system-ui, sans-serif;
-
-      --hp-page-max: min(1920px, 98vw);
-      --hp-page-pad-x: clamp(1rem, 4vw, 4rem);
-      --hp-hero-pad-x: clamp(1rem, 6vw, 6.5rem);
+      --hp-page-max: min(1600px, 96vw);
+      --hp-page-pad-x: clamp(1rem, 3vw, 2.5rem);
+      --hp-hero-pad-x: clamp(1rem, 4vw, 3rem);
     }
 
     *,
@@ -48,14 +47,14 @@
     body {
       margin: 0;
       font-family: var(--font-sans);
-      font-size: clamp(1rem, 0.28vw + 0.92rem, 1.125rem);
+      font-size: 1rem;
       color: var(--onroda-text-dark);
       background: #fff;
       line-height: 1.55;
     }
 
     .hp-wrap {
-      width: min(98%, var(--hp-page-max));
+      width: min(96%, var(--hp-page-max));
       max-width: 100%;
       margin-left: auto;
       margin-right: auto;
@@ -84,8 +83,8 @@
       z-index: 1000;
       background: #0a0a0a;
       color: rgba(255, 255, 255, 0.88);
-      font-size: clamp(0.8125rem, 0.18vw + 0.75rem, 0.9375rem);
-      padding: clamp(0.5rem, 1.2vw, 0.75rem) 0;
+      font-size: 0.875rem;
+      padding: 0.6rem 0;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     }
 
@@ -142,10 +141,10 @@
       color: #fff;
       text-decoration: none;
       font-weight: 600;
-      padding: clamp(0.5rem, 0.8vw, 0.65rem) clamp(0.8rem, 1.5vw, 1.1rem);
+      padding: 0.55rem 0.95rem;
       border-radius: 10px;
       background: var(--onroda-red);
-      font-size: clamp(0.75rem, 0.15vw + 0.72rem, 0.875rem);
+      font-size: 0.875rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -158,21 +157,21 @@
     .hp-header {
       position: relative;
       z-index: 20;
-      padding: 22px 0 0;
+      padding: 12px 0 0;
       background: #fff;
     }
 
     .hp-header-inner {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      gap: 20px;
+      justify-content: space-between;
+      gap: 18px;
     }
 
     .hp-logo {
       font-family: var(--font-serif);
       font-weight: 700;
-      font-size: clamp(1.45rem, 0.85vw + 1rem, 2rem);
+      font-size: 1.7rem;
       letter-spacing: 0.02em;
       text-decoration: none;
       color: var(--onroda-text-dark);
@@ -188,11 +187,30 @@
       color: var(--onroda-text-dark);
     }
 
+    .hp-header-nav {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .hp-header-nav a {
+      color: var(--onroda-text-dark);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .hp-header-nav a:hover {
+      color: var(--onroda-red);
+    }
+
     .hp-hero {
       position: relative;
       width: 100%;
       min-height: auto;
-      padding: clamp(3.5rem, 8vw, 6rem) 0 clamp(4rem, 9vw, 7rem);
+      padding: 2.75rem 0 4.5rem;
       color: var(--onroda-text-dark);
       overflow: hidden;
       background: #fff;
@@ -201,7 +219,7 @@
     .hp-hero-layout {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      gap: clamp(1rem, 3vw, 2.75rem);
+      gap: 1.5rem;
       align-items: start;
     }
 
@@ -210,7 +228,7 @@
     }
 
     .hp-hero-copy .hp-hero-lead {
-      max-width: min(48ch, 100%);
+      max-width: 44ch;
     }
 
     .hp-pill {
@@ -220,11 +238,11 @@
       background: rgba(213, 0, 28, 0.06);
       border: 1px solid rgba(213, 0, 28, 0.12);
       color: var(--onroda-text-grey);
-      padding: clamp(0.45rem, 0.9vw, 0.6rem) clamp(0.75rem, 1.5vw, 1.05rem);
+      padding: 0.45rem 0.85rem;
       border-radius: 999px;
-      font-size: clamp(0.75rem, 0.2vw + 0.72rem, 0.875rem);
+      font-size: 0.8rem;
       font-weight: 500;
-      margin-bottom: clamp(1rem, 2.5vw, 1.5rem);
+      margin-bottom: 1rem;
     }
 
     .hp-pill i {
@@ -236,11 +254,11 @@
 
     .hp-hero h1 {
       font-family: var(--font-serif);
-      font-size: clamp(2.1rem, 2.8vw + 1.1rem, 4.5rem);
+      font-size: 3rem;
       font-weight: 700;
       line-height: 1.12;
-      margin: 0 0 clamp(1rem, 2vw, 1.5rem);
-      max-width: min(36ch, 96vw);
+      margin: 0 0 1rem;
+      max-width: 15ch;
       color: var(--onroda-text-dark);
     }
 
@@ -250,16 +268,16 @@
     }
 
     .hp-hero-lead {
-      font-size: clamp(1.02rem, 0.55vw + 0.85rem, 1.4rem);
+      font-size: 1.05rem;
       color: var(--onroda-text-grey);
-      max-width: min(62ch, 95vw);
-      margin: 0 0 clamp(1.25rem, 3vw, 2rem);
+      max-width: 58ch;
+      margin: 0 0 1.5rem;
     }
 
     .hp-hero-cta {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
+      gap: 12px;
       align-items: center;
     }
 
@@ -270,12 +288,12 @@
       background: var(--onroda-red);
       color: #fff;
       font-weight: 600;
-      padding: clamp(0.75rem, 1vw, 1rem) clamp(1.25rem, 2vw, 2rem);
+      padding: 0.85rem 1.4rem;
       border-radius: 12px;
       text-decoration: none;
       border: none;
       cursor: pointer;
-      font-size: clamp(0.9375rem, 0.2vw + 0.88rem, 1.0625rem);
+      font-size: 0.98rem;
       font-family: inherit;
     }
 
@@ -288,12 +306,12 @@
       align-items: center;
       color: var(--onroda-text-dark);
       font-weight: 600;
-      padding: clamp(0.75rem, 1vw, 1rem) clamp(1.25rem, 2vw, 2rem);
+      padding: 0.85rem 1.4rem;
       border-radius: 12px;
       text-decoration: none;
       border: 2px solid rgba(0, 0, 0, 0.15);
       background: transparent;
-      font-size: clamp(0.9375rem, 0.2vw + 0.88rem, 1.0625rem);
+      font-size: 0.98rem;
       font-family: inherit;
       cursor: pointer;
     }
@@ -303,7 +321,7 @@
     }
 
     .hp-section {
-      padding: clamp(3rem, 8vw, 8.5rem) 0;
+      padding: 4.5rem 0;
     }
 
     .hp-section--muted {
@@ -312,20 +330,20 @@
 
     .hp-section-head {
       text-align: center;
-      max-width: min(48rem, 100%);
-      margin: 0 auto clamp(2rem, 5vw, 3.25rem);
+      max-width: 48rem;
+      margin: 0 auto 2.5rem;
     }
 
     .hp-prose-center {
       margin: 0 auto;
       text-align: center;
-      max-width: min(42rem, 100%);
+      max-width: 42rem;
     }
 
     .hp-kicker {
       color: var(--onroda-red);
       font-weight: 700;
-      font-size: clamp(0.6875rem, 0.12vw + 0.65rem, 0.8125rem);
+      font-size: 0.78rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       margin: 0 0 10px;
@@ -333,28 +351,28 @@
 
     .hp-section h2 {
       font-family: var(--font-serif);
-      font-size: clamp(1.65rem, 1.5vw + 1rem, 3rem);
+      font-size: 2.25rem;
       margin: 0 0 12px;
       line-height: 1.2;
     }
 
     .hp-section .hp-sub {
       color: var(--onroda-text-grey);
-      font-size: clamp(0.95rem, 0.35vw + 0.88rem, 1.2rem);
+      font-size: 1rem;
       margin: 0;
     }
 
     .hp-grid-4 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
-      gap: clamp(1.1rem, 2.5vw, 2rem);
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+      gap: 1.4rem;
     }
 
     .hp-card {
       background: #fff;
       border: 1px solid var(--hp-card-border);
       border-radius: 16px;
-      padding: 26px 22px;
+      padding: 24px 20px;
       transition: box-shadow 0.2s;
     }
 
@@ -371,24 +389,24 @@
       align-items: center;
       justify-content: center;
       margin-bottom: 16px;
-      font-size: 1.35rem;
+      font-size: 1.25rem;
     }
 
     .hp-card h3 {
       margin: 0 0 10px;
-      font-size: clamp(1.02rem, 0.25vw + 0.95rem, 1.2rem);
+      font-size: 1.1rem;
     }
 
     .hp-card p {
       margin: 0;
       color: var(--onroda-text-grey);
-      font-size: clamp(0.9rem, 0.2vw + 0.85rem, 1.05rem);
+      font-size: 0.97rem;
     }
 
     .hp-grid-2 {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: clamp(1rem, 2vw, 1.75rem);
+      gap: 1.4rem;
     }
 
     .hp-manifest-card {
@@ -399,7 +417,7 @@
       background: #fff;
       border: 1px solid var(--hp-card-border);
       border-radius: 16px;
-      padding: 26px 24px;
+      padding: 24px 22px;
     }
 
     .hp-num {
@@ -412,26 +430,26 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
+      font-size: 1rem;
       flex-shrink: 0;
     }
 
     .hp-manifest-card h3 {
       margin: 0 0 8px;
-      font-size: clamp(1.02rem, 0.25vw + 0.95rem, 1.15rem);
+      font-size: 1.08rem;
     }
 
     .hp-manifest-card p {
       margin: 0 0 12px;
       color: var(--onroda-text-grey);
-      font-size: clamp(0.9rem, 0.2vw + 0.85rem, 1.02rem);
+      font-size: 0.97rem;
     }
 
     .hp-link {
       color: var(--onroda-red);
       font-weight: 600;
       text-decoration: none;
-      font-size: clamp(0.9rem, 0.18vw + 0.84rem, 1rem);
+      font-size: 0.97rem;
     }
 
     .hp-link:hover {
@@ -447,12 +465,12 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       flex-shrink: 0;
     }
 
     .hp-lead {
-      font-size: clamp(1rem, 0.35vw + 0.9rem, 1.15rem);
+      font-size: 1rem;
       line-height: 1.58;
     }
 
@@ -484,12 +502,12 @@
 
     .hp-mini h4 {
       margin: 0 0 6px;
-      font-size: clamp(0.95rem, 0.2vw + 0.88rem, 1.05rem);
+      font-size: 1rem;
     }
 
     .hp-mini p {
       margin: 0;
-      font-size: clamp(0.85rem, 0.18vw + 0.8rem, 0.95rem);
+      font-size: 0.94rem;
       color: var(--onroda-text-grey);
     }
 
@@ -504,7 +522,7 @@
       display: flex;
       gap: 10px;
       align-items: flex-start;
-      font-size: clamp(0.875rem, 0.2vw + 0.82rem, 0.975rem);
+      font-size: 0.96rem;
       color: var(--onroda-text-grey);
     }
 
@@ -520,40 +538,54 @@
 
     .hp-split-bleed {
       display: grid;
-      gap: clamp(1.25rem, 3vw, 2.5rem);
+      gap: 2rem;
     }
 
     .hp-form-card {
       background: #f3f3f5;
       border-radius: 18px;
-      padding: 28px 24px;
+      padding: 26px 22px;
       border: 1px solid var(--hp-card-border);
     }
 
     .hp-form-card h3 {
-      margin: 0 0 6px;
-      font-size: 1.25rem;
+      margin: 0 0 8px;
+      font-size: 1.2rem;
     }
 
     .hp-form-card .hint {
-      margin: 0 0 22px;
+      margin: 0 0 20px;
       color: var(--onroda-text-grey);
-      font-size: 0.9rem;
+      font-size: 0.92rem;
+    }
+
+    .hp-about-card {
+      background: #fff;
+      border: 1px solid var(--hp-card-border);
+      border-radius: 16px;
+      padding: 22px 20px;
+      max-width: 480px;
+    }
+
+    .hp-about-card p {
+      margin: 0;
+      color: var(--onroda-text-grey);
+      font-size: 0.97rem;
     }
 
     .hp-partner-shell {
       display: grid;
-      grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.45fr);
-      gap: clamp(1.25rem, 3vw, 2rem);
+      grid-template-columns: minmax(260px, 0.95fr) minmax(340px, 1.25fr);
+      gap: 2.25rem;
       align-items: start;
     }
 
     .hp-partner-side {
-      padding: clamp(0.25rem, 0.5vw, 0.5rem) 0;
+      padding: 0.25rem 0;
     }
 
     .hp-partner-login-inline {
-      margin-top: clamp(1rem, 2vw, 1.5rem);
+      margin-top: 1.25rem;
       color: var(--onroda-red);
       font-weight: 700;
       text-decoration: none;
@@ -596,7 +628,7 @@
       border: 1px solid #d8d8dd;
       border-radius: 10px;
       font-family: inherit;
-      font-size: 1rem;
+      font-size: 0.98rem;
       background: #fff;
       color: var(--onroda-text-dark);
       resize: vertical;
@@ -668,7 +700,7 @@
     .hp-voucher-card {
       background: #fff;
       border-radius: 18px;
-      padding: 26px;
+      padding: 24px;
       border: 1px solid var(--hp-card-border);
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.06);
     }
@@ -686,7 +718,7 @@
     .hp-download-band {
       background: var(--hp-footer-bg);
       color: #fff;
-      padding: clamp(2.75rem, 5vw, 4.25rem) 0;
+      padding: 3.5rem 0;
     }
 
     .hp-download-band-inner {
@@ -702,7 +734,7 @@
       gap: 12px;
       margin-bottom: 18px;
       font-weight: 700;
-      font-size: clamp(1rem, 0.4vw + 0.9rem, 1.2rem);
+      font-size: 1rem;
     }
 
     .hp-download-icon {
@@ -741,7 +773,7 @@
     .hp-download-band h2 {
       margin: 0 0 14px;
       font-family: var(--font-serif);
-      font-size: clamp(1.9rem, 1.8vw + 1.2rem, 3.25rem);
+      font-size: 2.5rem;
       line-height: 1.15;
       color: #fff;
     }
@@ -750,7 +782,7 @@
       margin: 0;
       max-width: 34rem;
       color: var(--hp-footer-muted);
-      font-size: clamp(1rem, 0.3vw + 0.92rem, 1.2rem);
+      font-size: 1.02rem;
     }
 
     .hp-store-links {
@@ -806,14 +838,14 @@
     .hp-footer {
       background: var(--hp-footer-bg);
       color: #fff;
-      padding: clamp(2.75rem, 5vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem);
+      padding: 3.5rem 0 2.5rem;
       border-top: 1px solid rgba(255, 255, 255, 0.02);
     }
 
     .hp-footer-main {
       display: grid;
       grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(160px, 0.72fr));
-      gap: clamp(1.75rem, 4vw, 4rem);
+      gap: 2.5rem;
       align-items: start;
     }
 
@@ -823,7 +855,7 @@
 
     .hp-footer-logo {
       font-family: var(--font-serif);
-      font-size: clamp(1.55rem, 0.9vw + 1rem, 2rem);
+      font-size: 1.8rem;
       font-weight: 700;
       text-decoration: none;
       display: inline-flex;
@@ -843,7 +875,7 @@
     .hp-footer-text {
       color: var(--hp-footer-muted);
       margin: 0 0 22px;
-      font-size: clamp(0.95rem, 0.2vw + 0.9rem, 1.05rem);
+      font-size: 0.98rem;
     }
 
     .hp-footer-contact-title {
@@ -873,7 +905,7 @@
 
     .hp-footer-col h4 {
       margin: 0 0 18px;
-      font-size: 1.05rem;
+      font-size: 1.02rem;
       font-weight: 700;
       color: #fff;
     }
@@ -897,8 +929,8 @@
     }
 
     .hp-footer-bottom {
-      margin-top: clamp(2rem, 4vw, 3rem);
-      padding-top: clamp(1.25rem, 2.5vw, 1.75rem);
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
       border-top: 1px solid var(--hp-footer-line);
       display: flex;
       align-items: center;
@@ -957,53 +989,41 @@
       }
 
       .hp-split-bleed__text {
-        padding: clamp(2.5rem, 8vw, 4rem) 0;
+        padding: 0;
       }
 
       .hp-split-bleed__aside {
-        padding: 0 0 clamp(2.5rem, 8vw, 4rem);
+        padding: 0;
+      }
+
+      .hp-header-inner {
+        justify-content: space-between;
+      }
+
+      .hp-header-nav {
+        gap: 12px;
       }
     }
 
     @media (min-width: 900px) {
       .hp-split-bleed {
-        grid-template-columns: minmax(0, 1fr) minmax(300px, min(48vw, 760px));
+        grid-template-columns: minmax(0, 1fr);
         width: 100vw;
         margin-left: calc(50% - 50vw);
         align-items: stretch;
-        column-gap: clamp(1.5rem, 3.5vw, 3.5rem);
       }
 
       .hp-split-bleed__text {
         padding:
-          clamp(3rem, 8vw, 8.5rem)
-          clamp(1rem, 2.5vw, 2rem)
-          clamp(3rem, 8vw, 8.5rem)
+          0
+          max(var(--hp-page-pad-x), calc((100vw - min(var(--hp-page-max), 95vw)) / 2))
+          0
           max(var(--hp-page-pad-x), calc((100vw - min(var(--hp-page-max), 95vw)) / 2));
-        max-width: min(52rem, 100%);
-        justify-self: end;
         width: 100%;
       }
 
       .hp-split-bleed__aside {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding:
-          clamp(3rem, 8vw, 8.5rem)
-          max(var(--hp-page-pad-x), calc((100vw - min(var(--hp-page-max), 95vw)) / 2))
-          clamp(3rem, 8vw, 8.5rem)
-          max(var(--hp-page-pad-x), calc((100vw - min(var(--hp-page-max), 95vw)) / 2));
-      }
-
-      .hp-split-bleed__aside--tone {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, #f6f6f8 55%, #ececf0 100%);
-        border-radius: clamp(16px, 1.5vw, 28px) 0 0 clamp(16px, 1.5vw, 28px);
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
-      }
-
-      .hp-section--muted .hp-split-bleed__aside--tone {
-        background: linear-gradient(135deg, #ffffff 0%, #f3f3f6 50%, #ebebef 100%);
+        display: none;
       }
     }
 
@@ -1014,6 +1034,11 @@
       .hp-loc-grid,
       .hp-footer-main {
         grid-template-columns: 1fr;
+      }
+
+      .hp-header-nav {
+        width: 100%;
+        justify-content: flex-start;
       }
 
       .hp-submit-row {
@@ -1030,70 +1055,18 @@
       .hp-topbar-actions {
         align-items: flex-start;
       }
-    }
 
-    @media (min-width: 768px) {
-      .hp-section-head {
-        margin-bottom: 52px;
+      .hp-hero h1 {
+        font-size: 2.35rem;
       }
 
-      .hp-card {
-        padding: clamp(1.5rem, 2.5vw, 2rem) clamp(1.25rem, 2vw, 1.75rem);
-        border-radius: clamp(14px, 1vw, 18px);
+      .hp-section h2,
+      .hp-download-band h2 {
+        font-size: 1.9rem;
       }
 
-      .hp-manifest-card {
-        padding: clamp(1.5rem, 2.5vw, 2rem) clamp(1.35rem, 2vw, 1.75rem);
-      }
-
-      .hp-mini {
-        padding: clamp(1.1rem, 1.8vw, 1.35rem);
-      }
-
-      .hp-form-card {
-        padding: clamp(1.75rem, 3vw, 2.25rem) clamp(1.5rem, 2.5vw, 2rem);
-      }
-
-      .hp-voucher-card {
-        padding: clamp(1.5rem, 2.5vw, 2rem);
-      }
-    }
-
-    @media (min-width: 1024px) {
-      .hp-hero-cta {
-        gap: clamp(0.875rem, 1.5vw, 1.25rem);
-      }
-
-      .hp-card-icon {
-        width: clamp(48px, 4vw, 58px);
-        height: clamp(48px, 4vw, 58px);
-        font-size: clamp(1.25rem, 1.2vw, 1.55rem);
-      }
-
-      .hp-manifest-card {
-        gap: clamp(1rem, 1.5vw, 1.35rem);
-        border-radius: clamp(14px, 1vw, 18px);
-      }
-
-      .hp-num {
-        width: clamp(42px, 3.5vw, 48px);
-        height: clamp(42px, 3.5vw, 48px);
-        font-size: clamp(1.05rem, 0.8vw, 1.2rem);
-      }
-
-      .hp-icon-manifest {
-        width: clamp(44px, 3.5vw, 56px);
-        height: clamp(44px, 3.5vw, 56px);
-        font-size: clamp(1.2rem, 1vw, 1.5rem);
-      }
-
-      .hp-mini-cards {
-        gap: clamp(0.875rem, 1.5vw, 1.15rem);
-      }
-
-      .hp-mini-icon {
-        width: clamp(44px, 3vw, 52px);
-        height: clamp(44px, 3vw, 52px);
+      .hp-footer-main {
+        gap: 2rem;
       }
     }
   </style>
@@ -1106,9 +1079,9 @@
         <a class="hp-topbar-mail" href="mailto:onroda@mail.de">onroda@mail.de</a>
       </div>
       <div class="hp-topbar-actions">
-        <a class="hp-topbar-link" href="mailto:onroda@mail.de">Kontakt</a>
         <a class="hp-topbar-link" href="/datenschutz">Datenschutz</a>
         <a class="hp-topbar-link" href="/impressum">Impressum</a>
+        <a class="hp-topbar-link" href="/agb">AGB</a>
         <a class="hp-topbar-btn" href="https://panel.onroda.de/" rel="noopener noreferrer">Partner-Login</a>
       </div>
     </div>
@@ -1118,6 +1091,11 @@
     <header class="hp-header">
       <div class="hp-header-inner">
         <a class="hp-logo" href="/"><span class="on">ON</span><span class="roda">RODA</span></a>
+        <nav class="hp-header-nav" aria-label="Header Navigation">
+          <a href="#about">Über ONRODA</a>
+          <a href="#partner">Partner</a>
+          <a href="#services">Leistungen</a>
+        </nav>
       </div>
     </header>
 
@@ -1139,7 +1117,28 @@
     </div>
   </section>
 
-  <section class="hp-section hp-section--muted" id="services">
+  <section class="hp-section hp-section--muted" id="about">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <p class="hp-kicker">Über ONRODA</p>
+        <h2>Was wir wollen</h2>
+        <p class="hp-sub">
+          ONRODA steht für Digitalisierung, klare Abläufe und moderne Mobilität in Stuttgart und der Region.
+        </p>
+      </div>
+
+      <div class="hp-about-card">
+        <p>
+          Wir wollen Mobilität einfacher, strukturierter und verlässlicher machen – für Fahrgäste,
+          Unternehmen, Hotels, medizinische Einrichtungen und Partnerbetriebe. ONRODA verbindet lokale
+          Präsenz mit digitaler Steuerung, damit Buchung, Betreuung, Abrechnung und Zusammenarbeit
+          moderner und effizienter ablaufen.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section" id="services">
     <div class="hp-wrap">
       <div class="hp-section-head">
         <p class="hp-kicker">Leistungen</p>
@@ -1248,34 +1247,6 @@
           Mehr über ONRODA Care <span aria-hidden="true">→</span>
         </a>
       </div>
-
-      <aside class="hp-split-bleed__aside hp-split-bleed__aside--tone">
-        <div class="hp-mini-cards">
-          <div class="hp-mini">
-            <div class="hp-mini-icon">👤</div>
-            <div>
-              <h4>Vertrauensvolle Begleitung</h4>
-              <p>Geschulte Fahrerinnen und Fahrer, Pünktlichkeit und ein respektvoller Umgang – besonders bei medizinischen Fahrten.</p>
-            </div>
-          </div>
-
-          <div class="hp-mini">
-            <div class="hp-mini-icon">📦</div>
-            <div>
-              <h4>Unterstützung, die ankommt</h4>
-              <p>Abholung vor der Haustür und Hilfe beim Einsteigen, wenn Sie es wünschen.</p>
-            </div>
-          </div>
-
-          <div class="hp-mini">
-            <div class="hp-mini-icon">📆</div>
-            <div>
-              <h4>Planungssicherheit</h4>
-              <p>Zuverlässige Zeiten für Therapie- und Folgetermine.</p>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
   </section>
 
@@ -1332,7 +1303,7 @@
 
           <div class="hp-form-card">
             <h3>Neue Partner: Anfrage senden</h3>
-            <p class="hint">Bestehende Partner gelangen direkt über den Login ins Partner-Portal.</p>
+            <p class="hint">Die Anfrage wird an <strong>onroda@mail.de</strong> vorbereitet.</p>
 
             <form id="partner-form" action="#" method="post">
               <div class="hp-partner-form-grid">
@@ -1407,6 +1378,11 @@
                 </div>
 
                 <div class="hp-field">
+                  <label for="customerEmail">E-Mail für Rückmeldung *</label>
+                  <input id="customerEmail" type="email" required autocomplete="email" />
+                </div>
+
+                <div class="hp-field">
                   <label for="businessPhone">Geschäftliche Telefonnummer *</label>
                   <input id="businessPhone" type="tel" required autocomplete="tel" />
                 </div>
@@ -1459,7 +1435,7 @@
         </div>
       </div>
 
-      <aside class="hp-split-bleed__aside hp-split-bleed__aside--tone" style="display:none;"></aside>
+      <aside class="hp-split-bleed__aside"></aside>
     </div>
   </section>
 
@@ -1502,21 +1478,6 @@
           Jetzt Partner werden und Fahrten digital organisieren <span aria-hidden="true">→</span>
         </a>
       </div>
-
-      <aside class="hp-split-bleed__aside hp-split-bleed__aside--tone">
-        <div class="hp-voucher-card" id="gutscheine">
-          <h3 style="margin-top:0;font-family:var(--font-serif);">Unsere smarte Gutschein-Logik</h3>
-          <p style="color:var(--onroda-text-grey);margin:0 0 8px;">
-            Schluss mit verlorenen Papier-Gutscheinen und komplizierter Abrechnung.
-          </p>
-          <ol>
-            <li><strong style="color:var(--onroda-text-dark);">Digitale Codes</strong> – exklusive Codes im Partner-Portal anlegen.</li>
-            <li><strong style="color:var(--onroda-text-dark);">Einfaches Tracking</strong> – Nutzung nachvollziehbar in Echtzeit.</li>
-            <li><strong style="color:var(--onroda-text-dark);">Volle Transparenz</strong> – Sammelrechnungen monatlich übersichtlich.</li>
-          </ol>
-          <a class="hp-link" href="https://panel.onroda.de/">Mehr erfahren →</a>
-        </div>
-      </aside>
     </div>
   </section>
 
@@ -1631,9 +1592,9 @@
           <h4>Support</h4>
           <ul class="hp-footer-nav">
             <li><a href="mailto:onroda@mail.de">Kontakt</a></li>
-            <li><a href="mailto:onroda@mail.de?subject=ONRODA%20Hilfe">Hilfe-Center</a></li>
             <li><a href="/impressum">Impressum</a></li>
             <li><a href="/datenschutz">Datenschutz</a></li>
+            <li><a href="/agb">AGB</a></li>
           </ul>
         </div>
       </div>
@@ -1650,6 +1611,11 @@
   </footer>
 
   <script>
+    window.history.scrollRestoration = "manual";
+    window.addEventListener("load", function () {
+      window.scrollTo(0, 0);
+    });
+
     document.getElementById("y").textContent = new Date().getFullYear();
 
     document.getElementById("partner-form").addEventListener("submit", function (e) {
@@ -1663,6 +1629,7 @@
       var firstName = document.getElementById("firstName").value.trim();
       var lastName = document.getElementById("lastName").value.trim();
       var businessEmail = document.getElementById("businessEmail").value.trim();
+      var customerEmail = document.getElementById("customerEmail").value.trim();
       var businessPhone = document.getElementById("businessPhone").value.trim();
       var address = document.getElementById("address").value.trim();
       var postalCode = document.getElementById("postalCode").value.trim();
@@ -1680,6 +1647,7 @@
         "Ansprechpartner Vorname: " + firstName,
         "Ansprechpartner Nachname: " + lastName,
         "Geschäftliche E-Mail: " + businessEmail,
+        "E-Mail für Rückmeldung: " + customerEmail,
         "Geschäftliche Telefonnummer: " + businessPhone,
         "Adresse: " + address,
         "PLZ: " + postalCode,
