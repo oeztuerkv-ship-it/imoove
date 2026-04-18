@@ -21,9 +21,11 @@
       --hp-icon-bg: #fde8ec;
       --font-serif: "Libre Baskerville", Georgia, serif;
       --font-sans: "DM Sans", system-ui, sans-serif;
-      /* Page shell: % width on small viewports, generous cap on 27"+ desktops */
-      --hp-page-max: min(1920px, 96vw);
-      --hp-page-pad-x: clamp(1rem, 3vw, 3rem);
+      /* Fluid shell: vw-gestütztes Padding, hohe Deckenbreite für große Monitore */
+      --hp-page-max: min(1920px, 98vw);
+      --hp-page-pad-x: clamp(1rem, 4vw, 4rem);
+      /* Hero / Top-Navigation: volle Viewport-Breite, großzügige Außenränder */
+      --hp-hero-pad-x: clamp(1rem, 6vw, 6.5rem);
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -42,16 +44,30 @@
       line-height: 1.55;
     }
 
-    .hp-wrap,
-    .hp-header-inner,
-    .hp-hero-content {
-      width: min(95%, var(--hp-page-max));
+    .hp-wrap {
+      width: min(98%, var(--hp-page-max));
       max-width: 100%;
       margin-left: auto;
       margin-right: auto;
       padding-left: var(--hp-page-pad-x);
       padding-right: var(--hp-page-pad-x);
       box-sizing: border-box;
+    }
+
+    /* Header + Hero-Text: full-width (kein „Insel“-Container), dominanter erste Screen */
+    .hp-header-inner,
+    .hp-hero-content {
+      width: 100%;
+      max-width: none;
+      margin-left: 0;
+      margin-right: 0;
+      padding-left: var(--hp-hero-pad-x);
+      padding-right: var(--hp-hero-pad-x);
+      box-sizing: border-box;
+    }
+    .hp-hero-content {
+      position: relative;
+      z-index: 10;
     }
 
     /* —— Top bar (Partner) —— */
@@ -132,8 +148,9 @@
     /* —— Hero —— */
     .hp-hero {
       position: relative;
-      min-height: min(92vh, 920px);
-      padding: clamp(5.5rem, 12vw, 9rem) 0 clamp(4rem, 10vw, 7.5rem);
+      width: 100%;
+      min-height: min(100vh, 1100px);
+      padding: clamp(5.5rem, 12vw, 10rem) 0 clamp(4.5rem, 11vw, 8rem);
       color: var(--hp-hero-text);
       overflow: hidden;
     }
@@ -229,10 +246,6 @@
       opacity: 0.9;
     }
 
-    .hp-hero-content {
-      position: relative;
-      z-index: 10;
-    }
     .hp-pill {
       display: inline-flex;
       align-items: center;
@@ -254,20 +267,20 @@
     }
     .hp-hero h1 {
       font-family: var(--font-serif);
-      font-size: clamp(2rem, 1.15vw + 1.65rem, 4.25rem);
+      font-size: clamp(2.1rem, 2.8vw + 1.1rem, 4.5rem);
       font-weight: 700;
       line-height: 1.12;
-      margin: 0 0 20px;
-      max-width: min(22ch, 100%);
+      margin: 0 0 clamp(1rem, 2vw, 1.5rem);
+      max-width: min(36ch, 96vw);
     }
     .hp-hero h1 em {
       font-style: normal;
       color: var(--onroda-red);
     }
     .hp-hero-lead {
-      font-size: clamp(1rem, 0.45vw + 0.88rem, 1.3rem);
+      font-size: clamp(1.02rem, 0.55vw + 0.85rem, 1.4rem);
       color: var(--hp-muted-on-dark);
-      max-width: min(58ch, 100%);
+      max-width: min(62ch, 95vw);
       margin: 0 0 clamp(1.25rem, 3vw, 2rem);
     }
     .hp-hero-cta {
@@ -346,8 +359,8 @@
     /* —— Service cards (fluid columns) —— */
     .hp-grid-4 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-      gap: clamp(1rem, 2.2vw, 1.75rem);
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+      gap: clamp(1.1rem, 2.5vw, 2rem);
     }
 
     .hp-card {
