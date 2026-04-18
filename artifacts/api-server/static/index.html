@@ -21,9 +21,9 @@
       --hp-icon-bg: #fde8ec;
       --font-serif: "Libre Baskerville", Georgia, serif;
       --font-sans: "DM Sans", system-ui, sans-serif;
-      /* Fluid page shell: grows with viewport, higher cap on large monitors */
-      --hp-shell-max: min(1120px, calc(100vw - 32px));
-      --hp-shell-pad: 22px;
+      /* Page shell: % width on small viewports, generous cap on 27"+ desktops */
+      --hp-page-max: min(1920px, 96vw);
+      --hp-page-pad-x: clamp(1rem, 3vw, 3rem);
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -36,7 +36,7 @@
     body {
       margin: 0;
       font-family: var(--font-sans);
-      font-size: 1.0625rem;
+      font-size: clamp(1rem, 0.28vw + 0.92rem, 1.125rem);
       color: var(--onroda-text-dark);
       background: #fff;
       line-height: 1.55;
@@ -45,12 +45,12 @@
     .hp-wrap,
     .hp-header-inner,
     .hp-hero-content {
-      width: 100%;
-      max-width: var(--hp-shell-max);
+      width: min(95%, var(--hp-page-max));
+      max-width: 100%;
       margin-left: auto;
       margin-right: auto;
-      padding-left: var(--hp-shell-pad);
-      padding-right: var(--hp-shell-pad);
+      padding-left: var(--hp-page-pad-x);
+      padding-right: var(--hp-page-pad-x);
       box-sizing: border-box;
     }
 
@@ -58,8 +58,8 @@
     .hp-topbar {
       background: #0a0a0a;
       color: rgba(255, 255, 255, 0.88);
-      font-size: 0.875rem;
-      padding: 10px 0;
+      font-size: clamp(0.8125rem, 0.18vw + 0.75rem, 0.9375rem);
+      padding: clamp(0.5rem, 1.2vw, 0.75rem) 0;
     }
     .hp-topbar .hp-wrap {
       display: flex;
@@ -72,10 +72,10 @@
       color: #fff;
       text-decoration: none;
       font-weight: 600;
-      padding: 8px 16px;
+      padding: clamp(0.5rem, 0.8vw, 0.65rem) clamp(0.75rem, 1.5vw, 1.1rem);
       border-radius: 8px;
       background: var(--onroda-red);
-      font-size: 0.8125rem;
+      font-size: clamp(0.75rem, 0.15vw + 0.72rem, 0.875rem);
     }
     .hp-topbar a:hover { filter: brightness(1.08); }
 
@@ -98,7 +98,7 @@
     .hp-logo {
       font-family: var(--font-serif);
       font-weight: 700;
-      font-size: 1.65rem;
+      font-size: clamp(1.45rem, 0.85vw + 1rem, 2rem);
       letter-spacing: 0.02em;
       text-decoration: none;
       color: #fff;
@@ -116,7 +116,7 @@
       color: rgba(255, 255, 255, 0.92);
       text-decoration: none;
       font-weight: 500;
-      font-size: 0.9375rem;
+      font-size: clamp(0.875rem, 0.22vw + 0.8rem, 1.0625rem);
     }
     .hp-nav a:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
     .hp-btn-login {
@@ -132,8 +132,8 @@
     /* —— Hero —— */
     .hp-hero {
       position: relative;
-      min-height: 92vh;
-      padding: 120px 0 100px;
+      min-height: min(92vh, 920px);
+      padding: clamp(5.5rem, 12vw, 9rem) 0 clamp(4rem, 10vw, 7.5rem);
       color: var(--hp-hero-text);
       overflow: hidden;
     }
@@ -240,11 +240,11 @@
       background: rgba(255,255,255,0.12);
       border: 1px solid rgba(255,255,255,0.2);
       color: var(--hp-muted-on-dark);
-      padding: 8px 16px;
+      padding: clamp(0.45rem, 0.9vw, 0.6rem) clamp(0.75rem, 1.5vw, 1.05rem);
       border-radius: 999px;
-      font-size: 0.8125rem;
+      font-size: clamp(0.75rem, 0.2vw + 0.72rem, 0.875rem);
       font-weight: 500;
-      margin-bottom: 22px;
+      margin-bottom: clamp(1rem, 2.5vw, 1.5rem);
     }
     .hp-pill i {
       width: 8px;
@@ -254,21 +254,21 @@
     }
     .hp-hero h1 {
       font-family: var(--font-serif);
-      font-size: clamp(2.1rem, 5vw, 3.35rem);
+      font-size: clamp(2rem, 1.15vw + 1.65rem, 4.25rem);
       font-weight: 700;
       line-height: 1.12;
       margin: 0 0 20px;
-      max-width: 18ch;
+      max-width: min(22ch, 100%);
     }
     .hp-hero h1 em {
       font-style: normal;
       color: var(--onroda-red);
     }
     .hp-hero-lead {
-      font-size: 1.0625rem;
+      font-size: clamp(1rem, 0.45vw + 0.88rem, 1.3rem);
       color: var(--hp-muted-on-dark);
-      max-width: 52ch;
-      margin: 0 0 32px;
+      max-width: min(58ch, 100%);
+      margin: 0 0 clamp(1.25rem, 3vw, 2rem);
     }
     .hp-hero-cta {
       display: flex;
@@ -283,12 +283,12 @@
       background: var(--onroda-red);
       color: #fff;
       font-weight: 600;
-      padding: 14px 26px;
+      padding: clamp(0.75rem, 1vw, 1rem) clamp(1.25rem, 2vw, 2rem);
       border-radius: 12px;
       text-decoration: none;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: clamp(0.9375rem, 0.2vw + 0.88rem, 1.0625rem);
       font-family: inherit;
     }
     .hp-btn-primary:hover { filter: brightness(1.06); }
@@ -297,12 +297,12 @@
       align-items: center;
       color: #fff;
       font-weight: 600;
-      padding: 14px 26px;
+      padding: clamp(0.75rem, 1vw, 1rem) clamp(1.25rem, 2vw, 2rem);
       border-radius: 12px;
       text-decoration: none;
       border: 2px solid rgba(255,255,255,0.45);
       background: transparent;
-      font-size: 1rem;
+      font-size: clamp(0.9375rem, 0.2vw + 0.88rem, 1.0625rem);
       font-family: inherit;
       cursor: pointer;
     }
@@ -310,13 +310,13 @@
 
     /* —— Sections allgemein —— */
     .hp-section {
-      padding: 72px 0;
+      padding: clamp(3rem, 8vw, 8.5rem) 0;
     }
     .hp-section--muted { background: var(--hp-section-bg); }
     .hp-section-head {
       text-align: center;
-      max-width: min(640px, 100%);
-      margin: 0 auto 48px;
+      max-width: min(48rem, 100%);
+      margin: 0 auto clamp(2rem, 5vw, 3.25rem);
     }
     .hp-prose-center {
       margin: 0 auto;
@@ -326,31 +326,29 @@
     .hp-kicker {
       color: var(--onroda-red);
       font-weight: 700;
-      font-size: 0.75rem;
+      font-size: clamp(0.6875rem, 0.12vw + 0.65rem, 0.8125rem);
       letter-spacing: 0.12em;
       text-transform: uppercase;
       margin: 0 0 10px;
     }
     .hp-section h2 {
       font-family: var(--font-serif);
-      font-size: clamp(1.75rem, 3.5vw, 2.35rem);
+      font-size: clamp(1.65rem, 1.5vw + 1rem, 3rem);
       margin: 0 0 12px;
       line-height: 1.2;
     }
     .hp-section .hp-sub {
       color: var(--onroda-text-grey);
-      font-size: 1.05rem;
+      font-size: clamp(0.95rem, 0.35vw + 0.88rem, 1.2rem);
       margin: 0;
     }
 
-    /* —— Service cards —— */
+    /* —— Service cards (fluid columns) —— */
     .hp-grid-4 {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+      gap: clamp(1rem, 2.2vw, 1.75rem);
     }
-    @media (max-width: 960px) { .hp-grid-4 { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 520px) { .hp-grid-4 { grid-template-columns: 1fr; } }
 
     .hp-card {
       background: #fff;
@@ -371,17 +369,18 @@
       margin-bottom: 16px;
       font-size: 1.35rem;
     }
-    .hp-card h3 { margin: 0 0 10px; font-size: 1.1rem; }
-    .hp-card p { margin: 0; color: var(--onroda-text-grey); font-size: 0.9375rem; }
+    .hp-card h3 { margin: 0 0 10px; font-size: clamp(1.02rem, 0.25vw + 0.95rem, 1.2rem); }
+    .hp-card p { margin: 0; color: var(--onroda-text-grey); font-size: clamp(0.9rem, 0.2vw + 0.85rem, 1.05rem); }
 
     /* —— Manifest 2x2 —— */
     .hp-grid-2 {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 22px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(1rem, 2vw, 1.75rem);
     }
-    @media (max-width: 720px) { .hp-grid-2 { grid-template-columns: 1fr; } }
-
+    @media (max-width: 640px) {
+      .hp-grid-2 { grid-template-columns: 1fr; }
+    }
     .hp-manifest-card {
       display: grid;
       grid-template-columns: auto 1fr;
@@ -405,13 +404,13 @@
       font-size: 1.1rem;
       flex-shrink: 0;
     }
-    .hp-manifest-card h3 { margin: 0 0 8px; font-size: 1.1rem; }
-    .hp-manifest-card p { margin: 0 0 12px; color: var(--onroda-text-grey); font-size: 0.9375rem; }
+    .hp-manifest-card h3 { margin: 0 0 8px; font-size: clamp(1.02rem, 0.25vw + 0.95rem, 1.15rem); }
+    .hp-manifest-card p { margin: 0 0 12px; color: var(--onroda-text-grey); font-size: clamp(0.9rem, 0.2vw + 0.85rem, 1.02rem); }
     .hp-link {
       color: var(--onroda-red);
       font-weight: 600;
       text-decoration: none;
-      font-size: 0.9375rem;
+      font-size: clamp(0.9rem, 0.18vw + 0.84rem, 1rem);
     }
     .hp-link:hover { text-decoration: underline; }
 
@@ -439,9 +438,13 @@
 
     .hp-split h2 {
       font-family: var(--font-serif);
-      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      font-size: clamp(1.55rem, 1.1vw + 1.1rem, 2.65rem);
       margin: 0 0 14px;
       line-height: 1.2;
+    }
+    .hp-lead {
+      font-size: clamp(1rem, 0.35vw + 0.9rem, 1.15rem);
+      line-height: 1.58;
     }
     .hp-split .hp-lead { color: var(--onroda-text-grey); margin: 0 0 22px; }
     .hp-mini-cards { display: flex; flex-direction: column; gap: 14px; }
@@ -463,8 +466,8 @@
       align-items: center;
       justify-content: center;
     }
-    .hp-mini h4 { margin: 0 0 6px; font-size: 1rem; }
-    .hp-mini p { margin: 0; font-size: 0.875rem; color: var(--onroda-text-grey); }
+    .hp-mini h4 { margin: 0 0 6px; font-size: clamp(0.95rem, 0.2vw + 0.88rem, 1.05rem); }
+    .hp-mini p { margin: 0; font-size: clamp(0.85rem, 0.18vw + 0.8rem, 0.95rem); color: var(--onroda-text-grey); }
 
     .hp-benefits {
       display: grid;
@@ -477,7 +480,7 @@
       display: flex;
       gap: 10px;
       align-items: flex-start;
-      font-size: 0.9rem;
+      font-size: clamp(0.875rem, 0.2vw + 0.82rem, 0.975rem);
       color: var(--onroda-text-grey);
     }
     .hp-benefit strong { color: var(--onroda-text-dark); display: block; margin-bottom: 2px; }
@@ -526,191 +529,124 @@
     .hp-footer {
       background: var(--onroda-bg-footer);
       color: rgba(255,255,255,0.85);
-      padding: 48px 0 32px;
-      font-size: 0.9rem;
+      padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(2rem, 4vw, 3rem);
+      font-size: clamp(0.875rem, 0.2vw + 0.8rem, 1rem);
     }
     .hp-footer a { color: #fff; }
     .hp-footer-grid {
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      gap: 24px;
-      margin-bottom: 28px;
+      gap: clamp(1rem, 2.5vw, 2rem);
+      margin-bottom: clamp(1.25rem, 3vw, 2rem);
     }
 
-    /* —— Tablet: etwas luftiger (Mobile unverändert darunter) —— */
+    /* —— Split full-bleed row (rechts bis Viewport, große Screens) —— */
+    .hp-split-bleed-host {
+      overflow-x: clip;
+    }
+    .hp-split-bleed {
+      display: grid;
+      gap: clamp(1.25rem, 3vw, 2.5rem);
+    }
+    @media (max-width: 899px) {
+      .hp-split-bleed {
+        grid-template-columns: 1fr;
+        padding: 0 var(--hp-page-pad-x);
+      }
+      .hp-split-bleed__text {
+        padding: clamp(2.5rem, 8vw, 4rem) 0;
+      }
+      .hp-split-bleed__aside {
+        padding: 0 0 clamp(2.5rem, 8vw, 4rem);
+      }
+    }
+    @media (min-width: 900px) {
+      .hp-split-bleed {
+        grid-template-columns: minmax(0, 1fr) minmax(300px, min(46vw, 700px));
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        align-items: stretch;
+        column-gap: clamp(1.5rem, 3.5vw, 3.5rem);
+      }
+      .hp-split-bleed__text {
+        padding: clamp(3rem, 8vw, 8.5rem) clamp(1rem, 2.5vw, 2rem) clamp(3rem, 8vw, 8.5rem)
+          max(
+            var(--hp-page-pad-x),
+            calc((100vw - min(var(--hp-page-max), 95vw)) / 2)
+          );
+        max-width: min(52rem, 100%);
+        justify-self: end;
+        width: 100%;
+      }
+      .hp-split-bleed__aside {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(3rem, 8vw, 8.5rem)
+          max(var(--hp-page-pad-x), calc((100vw - min(var(--hp-page-max), 95vw)) / 2))
+          clamp(3rem, 8vw, 8.5rem)
+          max(var(--hp-page-pad-x), calc((100vw - min(var(--hp-page-max), 95vw)) / 2));
+      }
+      .hp-split-bleed__aside--tone {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, #f6f6f8 55%, #ececf0 100%);
+        border-radius: clamp(16px, 1.5vw, 28px) 0 0 clamp(16px, 1.5vw, 28px);
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+      }
+      .hp-section--muted .hp-split-bleed__aside--tone {
+        background: linear-gradient(135deg, #ffffff 0%, #f3f3f6 50%, #ebebef 100%);
+      }
+    }
+
+    /* —— Tablet / Desktop: Karten & Formular etwas großzügiger —— */
     @media (min-width: 768px) {
-      :root {
-        --hp-shell-max: min(1240px, calc(100vw - 48px));
-        --hp-shell-pad: 28px;
-      }
-      .hp-section { padding: 88px 0; }
       .hp-section-head { margin-bottom: 52px; }
-      .hp-grid-4 { gap: 22px; }
-      .hp-grid-2 { gap: 24px; }
-      .hp-card { padding: 28px 24px; }
-      .hp-manifest-card { padding: 28px 26px; }
-      .hp-split { gap: 56px; }
-      .hp-mini { padding: 20px; }
-      .hp-form-card { padding: 32px 28px; }
-      .hp-voucher-card { padding: 28px; }
-      .hp-hero { padding-top: 128px; padding-bottom: 110px; }
+      .hp-card {
+        padding: clamp(1.5rem, 2.5vw, 2rem) clamp(1.25rem, 2vw, 1.75rem);
+        border-radius: clamp(14px, 1vw, 18px);
+      }
+      .hp-manifest-card { padding: clamp(1.5rem, 2.5vw, 2rem) clamp(1.35rem, 2vw, 1.75rem); }
+      .hp-mini { padding: clamp(1.1rem, 1.8vw, 1.35rem); }
+      .hp-form-card { padding: clamp(1.75rem, 3vw, 2.25rem) clamp(1.5rem, 2.5vw, 2rem); }
+      .hp-voucher-card { padding: clamp(1.5rem, 2.5vw, 2rem); }
     }
 
-    /* —— Desktop: Typo, Buttons, Karten, Abstände hochskalieren —— */
     @media (min-width: 1024px) {
-      :root {
-        --hp-shell-max: min(1520px, calc(100vw - 72px));
-        --hp-shell-pad: 36px;
+      .hp-btn-login {
+        padding: clamp(0.55rem, 0.6vw, 0.7rem) clamp(1rem, 1.5vw, 1.35rem);
+        font-size: clamp(0.875rem, 0.2vw + 0.82rem, 1rem);
       }
-      body { font-size: 1.125rem; }
-      .hp-topbar { font-size: 0.9375rem; padding: 12px 0; }
-      .hp-topbar a { padding: 10px 20px; font-size: 0.875rem; }
-      .hp-logo { font-size: 1.85rem; }
-      .hp-nav a { font-size: 1rem; }
-      .hp-btn-login { padding: 11px 22px; font-size: 0.9375rem; }
-      .hp-hero { padding-top: 140px; padding-bottom: 120px; min-height: 88vh; }
-      .hp-pill { font-size: 0.875rem; padding: 10px 18px; margin-bottom: 26px; }
-      .hp-hero h1 {
-        font-size: clamp(2.5rem, 4vw, 3.85rem);
-        margin-bottom: 24px;
-        max-width: min(32ch, 100%);
-      }
-      .hp-hero-lead {
-        font-size: 1.1875rem;
-        margin-bottom: 36px;
-        max-width: 48rem;
-      }
-      .hp-hero-cta { gap: 18px; }
-      .hp-btn-primary,
-      .hp-btn-ghost {
-        padding: 16px 32px;
-        font-size: 1.0625rem;
-        border-radius: 14px;
-      }
-      .hp-section { padding: 100px 0; }
-      .hp-section-head { max-width: min(780px, 100%); margin-bottom: 56px; }
-      .hp-kicker { font-size: 0.8125rem; margin-bottom: 12px; }
-      .hp-section h2 { font-size: clamp(2rem, 2.6vw, 2.85rem); margin-bottom: 14px; }
-      .hp-section .hp-sub { font-size: 1.125rem; }
-      .hp-grid-4 { gap: 26px; }
-      .hp-card {
-        padding: 32px 26px;
-        border-radius: 18px;
-      }
+      .hp-hero-cta { gap: clamp(0.875rem, 1.5vw, 1.25rem); }
       .hp-card-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 14px;
-        margin-bottom: 18px;
-        font-size: 1.5rem;
+        width: clamp(48px, 4vw, 58px);
+        height: clamp(48px, 4vw, 58px);
+        font-size: clamp(1.25rem, 1.2vw, 1.55rem);
       }
-      .hp-card h3 { font-size: 1.2rem; margin-bottom: 12px; }
-      .hp-card p { font-size: 1rem; line-height: 1.55; }
-      .hp-grid-2 { gap: 28px; }
       .hp-manifest-card {
-        padding: 32px 28px;
-        gap: 20px;
-        border-radius: 18px;
+        gap: clamp(1rem, 1.5vw, 1.35rem);
+        border-radius: clamp(14px, 1vw, 18px);
       }
       .hp-num {
-        width: 46px;
-        height: 46px;
-        font-size: 1.2rem;
+        width: clamp(42px, 3.5vw, 48px);
+        height: clamp(42px, 3.5vw, 48px);
+        font-size: clamp(1.05rem, 0.8vw, 1.2rem);
       }
-      .hp-manifest-card h3 { font-size: 1.2rem; margin-bottom: 10px; }
-      .hp-manifest-card p { font-size: 1rem; margin-bottom: 14px; line-height: 1.55; }
-      .hp-link { font-size: 1rem; }
       .hp-icon-manifest {
-        width: 52px;
-        height: 52px;
-        font-size: 1.45rem;
-        margin-bottom: 12px;
-        border-radius: 12px;
+        width: clamp(44px, 3.5vw, 56px);
+        height: clamp(44px, 3.5vw, 56px);
+        font-size: clamp(1.2rem, 1vw, 1.5rem);
       }
-      .hp-split { gap: 72px; }
-      .hp-split h2 { font-size: clamp(1.9rem, 2.2vw, 2.45rem); margin-bottom: 16px; }
-      .hp-split .hp-lead { margin-bottom: 26px; }
-      .hp-mini-cards { gap: 16px; }
-      .hp-mini { padding: 22px; border-radius: 16px; gap: 16px; }
-      .hp-mini-icon { width: 50px; height: 50px; border-radius: 12px; }
-      .hp-mini h4 { font-size: 1.0625rem; margin-bottom: 8px; }
-      .hp-mini p { font-size: 0.9375rem; line-height: 1.55; }
-      .hp-benefits { gap: 16px; margin-top: 24px; }
-      .hp-benefit { font-size: 0.975rem; gap: 12px; }
-      .hp-form-card {
-        padding: 36px 32px;
-        border-radius: 20px;
+      .hp-mini-cards { gap: clamp(0.875rem, 1.5vw, 1.15rem); }
+      .hp-mini-icon {
+        width: clamp(44px, 3vw, 52px);
+        height: clamp(44px, 3vw, 52px);
       }
-      .hp-form-card h3 { font-size: 1.4rem; margin-bottom: 8px; }
-      .hp-form-card .hint { font-size: 0.9375rem; margin-bottom: 26px; }
-      .hp-field label { font-size: 0.875rem; margin-bottom: 8px; }
-      .hp-field input { padding: 14px 16px; font-size: 1.0625rem; border-radius: 12px; }
-      .hp-voucher-card {
-        padding: 32px;
-        border-radius: 20px;
+      .hp-form-card h3 { font-size: clamp(1.2rem, 0.8vw + 1rem, 1.45rem); }
+      .hp-field input {
+        padding: clamp(0.75rem, 1vw, 0.9rem) clamp(0.85rem, 1.2vw, 1.05rem);
+        font-size: clamp(0.95rem, 0.25vw + 0.9rem, 1.05rem);
       }
-      .hp-voucher-card h3 { font-size: 1.35rem; }
-      .hp-voucher-card ol { font-size: 1rem; }
-      .hp-footer { padding: 56px 0 40px; font-size: 1rem; }
-      .hp-footer-grid { gap: 32px; margin-bottom: 32px; }
-    }
-
-    /* —— Große Screens: noch etwas mehr Raum & Größe —— */
-    @media (min-width: 1280px) {
-      :root {
-        --hp-shell-max: min(1680px, calc(100vw - 96px));
-        --hp-shell-pad: 44px;
-      }
-      .hp-section { padding: 120px 0; }
-      .hp-section-head { max-width: min(880px, 100%); margin-bottom: 64px; }
-      .hp-hero h1 {
-        font-size: clamp(2.85rem, 3.2vw, 4.25rem);
-        max-width: min(38ch, 100%);
-      }
-      .hp-hero-lead { font-size: 1.25rem; max-width: 50rem; }
-      .hp-section h2 { font-size: clamp(2.15rem, 2.4vw, 3rem); }
-      .hp-grid-4 { gap: 30px; }
-      .hp-card { padding: 36px 30px; }
-      .hp-grid-2 { gap: 32px; }
-      .hp-manifest-card { padding: 36px 32px; }
-      .hp-icon-manifest {
-        width: 56px;
-        height: 56px;
-        font-size: 1.55rem;
-      }
-      .hp-split { gap: 88px; }
-      .hp-btn-primary,
-      .hp-btn-ghost {
-        padding: 18px 36px;
-        font-size: 1.125rem;
-      }
-    }
-
-    @media (min-width: 1440px) {
-      :root {
-        --hp-shell-max: min(1740px, calc(100vw - 112px));
-        --hp-shell-pad: 48px;
-      }
-      .hp-section { padding: 128px 0; }
-      .hp-hero h1 {
-        font-size: clamp(3rem, 3vw, 4.5rem);
-        max-width: min(42ch, 100%);
-      }
-    }
-
-    @media (min-width: 1536px) {
-      :root {
-        --hp-shell-max: min(1800px, calc(100vw - 128px));
-        --hp-shell-pad: 52px;
-      }
-    }
-
-    @media (min-width: 1920px) {
-      :root {
-        --hp-shell-max: min(1860px, calc(100vw - 160px));
-        --hp-shell-pad: 56px;
-      }
+      .hp-voucher-card h3 { font-size: clamp(1.2rem, 0.6vw + 1.05rem, 1.4rem); }
     }
   </style>
 </head>
@@ -847,9 +783,9 @@
     </div>
   </section>
 
-  <section class="hp-section hp-section--muted" id="care">
-    <div class="hp-wrap hp-split">
-      <div>
+  <section class="hp-section hp-section--muted hp-split-bleed-host" id="care">
+    <div class="hp-split-bleed">
+      <div class="hp-split-bleed__text">
         <p class="hp-kicker">♥ ONRODA Care &amp; Alltag</p>
         <h2>Mobilität mit Herz: ONRODA für Ihren Alltag.</h2>
         <p class="hp-lead" style="color:var(--onroda-red);font-weight:600;">Sicher, persönlich und verlässlich – für Krankenfahrten und mehr.</p>
@@ -858,35 +794,37 @@
         </p>
         <a class="hp-btn-primary" href="#jetzt-buchen" style="display:inline-flex;">Mehr über ONRODA Care <span aria-hidden="true">→</span></a>
       </div>
-      <div class="hp-mini-cards">
-        <div class="hp-mini">
-          <div class="hp-mini-icon">👤</div>
-          <div>
-            <h4>Vertrauensvolle Begleitung</h4>
-            <p>Geschulte Fahrerinnen und Fahrer, Pünktlichkeit und ein respektvoller Umgang – besonders bei medizinischen Fahrten.</p>
+      <aside class="hp-split-bleed__aside hp-split-bleed__aside--tone">
+        <div class="hp-mini-cards">
+          <div class="hp-mini">
+            <div class="hp-mini-icon">👤</div>
+            <div>
+              <h4>Vertrauensvolle Begleitung</h4>
+              <p>Geschulte Fahrerinnen und Fahrer, Pünktlichkeit und ein respektvoller Umgang – besonders bei medizinischen Fahrten.</p>
+            </div>
+          </div>
+          <div class="hp-mini">
+            <div class="hp-mini-icon">📦</div>
+            <div>
+              <h4>Unterstützung, die ankommt</h4>
+              <p>Abholung vor der Haustür und Hilfe beim Einsteigen, wenn Sie es wünschen.</p>
+            </div>
+          </div>
+          <div class="hp-mini">
+            <div class="hp-mini-icon">📆</div>
+            <div>
+              <h4>Planungssicherheit</h4>
+              <p>Zuverlässige Zeiten für Therapie- und Folgetermine.</p>
+            </div>
           </div>
         </div>
-        <div class="hp-mini">
-          <div class="hp-mini-icon">📦</div>
-          <div>
-            <h4>Unterstützung, die ankommt</h4>
-            <p>Abholung vor der Haustür und Hilfe beim Einsteigen, wenn Sie es wünschen.</p>
-          </div>
-        </div>
-        <div class="hp-mini">
-          <div class="hp-mini-icon">📆</div>
-          <div>
-            <h4>Planungssicherheit</h4>
-            <p>Zuverlässige Zeiten für Therapie- und Folgetermine.</p>
-          </div>
-        </div>
-      </div>
+      </aside>
     </div>
   </section>
 
-  <section class="hp-section" id="partner">
-    <div class="hp-wrap hp-split">
-      <div>
+  <section class="hp-section hp-split-bleed-host" id="partner">
+    <div class="hp-split-bleed">
+      <div class="hp-split-bleed__text">
         <p class="hp-kicker">Für Unternehmer</p>
         <h2>Werden Sie ONRODA Partner</h2>
         <p class="hp-lead">
@@ -899,38 +837,40 @@
           <div class="hp-benefit"><span aria-hidden="true">👥</span><div><strong>Netzwerk</strong>Teil eines wachsenden Ökosystems.</div></div>
         </div>
       </div>
-      <div class="hp-form-card">
-        <h3>Jetzt registrieren</h3>
-        <p class="hint">Füllen Sie das Formular aus – wir melden uns bei Ihnen.</p>
-        <form id="partner-form" action="#" method="post">
-          <div class="hp-field">
-            <label for="co">Firmenname</label>
-            <input id="co" type="text" placeholder="Ihr Unternehmen" required autocomplete="organization" />
-          </div>
-          <p style="font-size:0.8rem;color:var(--onroda-text-muted);margin:-6px 0 12px;">
-            Die Anfrage öffnet Ihr E-Mail-Programm. Alternativ: <a href="https://panel.onroda.de/">direkt zum Partner-Portal</a>.
-          </p>
-          <div class="hp-field">
-            <label for="nm">Ansprechpartner</label>
-            <input id="nm" type="text" placeholder="Name" autocomplete="name" />
-          </div>
-          <div class="hp-field">
-            <label for="em">E-Mail</label>
-            <input id="em" type="email" placeholder="name@firma.de" autocomplete="email" />
-          </div>
-          <div class="hp-field">
-            <label for="ph">Telefon</label>
-            <input id="ph" type="tel" placeholder="+49 …" autocomplete="tel" />
-          </div>
-          <button type="submit" class="hp-btn-primary">Anfrage senden</button>
-        </form>
-      </div>
+      <aside class="hp-split-bleed__aside hp-split-bleed__aside--tone">
+        <div class="hp-form-card">
+          <h3>Jetzt registrieren</h3>
+          <p class="hint">Füllen Sie das Formular aus – wir melden uns bei Ihnen.</p>
+          <form id="partner-form" action="#" method="post">
+            <div class="hp-field">
+              <label for="co">Firmenname</label>
+              <input id="co" type="text" placeholder="Ihr Unternehmen" required autocomplete="organization" />
+            </div>
+            <p style="font-size:0.8rem;color:var(--onroda-text-muted);margin:-6px 0 12px;">
+              Die Anfrage öffnet Ihr E-Mail-Programm. Alternativ: <a href="https://panel.onroda.de/">direkt zum Partner-Portal</a>.
+            </p>
+            <div class="hp-field">
+              <label for="nm">Ansprechpartner</label>
+              <input id="nm" type="text" placeholder="Name" autocomplete="name" />
+            </div>
+            <div class="hp-field">
+              <label for="em">E-Mail</label>
+              <input id="em" type="email" placeholder="name@firma.de" autocomplete="email" />
+            </div>
+            <div class="hp-field">
+              <label for="ph">Telefon</label>
+              <input id="ph" type="tel" placeholder="+49 …" autocomplete="tel" />
+            </div>
+            <button type="submit" class="hp-btn-primary">Anfrage senden</button>
+          </form>
+        </div>
+      </aside>
     </div>
   </section>
 
-  <section class="hp-section hp-section--muted" id="unternehmen">
-    <div class="hp-wrap hp-split">
-      <div>
+  <section class="hp-section hp-section--muted hp-split-bleed-host" id="unternehmen">
+    <div class="hp-split-bleed">
+      <div class="hp-split-bleed__text">
         <p class="hp-kicker">Für Unternehmen &amp; Hotels</p>
         <h2>Mobilität neu gedacht: Schluss mit dem Hin-und-Her.</h2>
         <p class="hp-lead">
@@ -943,18 +883,20 @@
         </ul>
         <a class="hp-btn-primary" href="https://panel.onroda.de/">Jetzt Partner werden und Fahrten digital organisieren <span aria-hidden="true">→</span></a>
       </div>
-      <div class="hp-voucher-card" id="gutscheine">
-        <h3 style="margin-top:0;font-family:var(--font-serif);">Unsere smarte Gutschein-Logik</h3>
-        <p style="color:var(--onroda-text-grey);margin:0 0 8px;">
-          Schluss mit verlorenen Papier-Gutscheinen und komplizierter Abrechnung.
-        </p>
-        <ol>
-          <li><strong style="color:var(--onroda-text-dark);">Digitale Codes</strong> – exklusive Codes im Partner-Portal anlegen.</li>
-          <li><strong style="color:var(--onroda-text-dark);">Einfaches Tracking</strong> – Nutzung nachvollziehbar in Echtzeit.</li>
-          <li><strong style="color:var(--onroda-text-dark);">Volle Transparenz</strong> – Sammelrechnungen monatlich übersichtlich.</li>
-        </ol>
-        <a class="hp-link" href="https://panel.onroda.de/">Mehr erfahren →</a>
-      </div>
+      <aside class="hp-split-bleed__aside hp-split-bleed__aside--tone">
+        <div class="hp-voucher-card" id="gutscheine">
+          <h3 style="margin-top:0;font-family:var(--font-serif);">Unsere smarte Gutschein-Logik</h3>
+          <p style="color:var(--onroda-text-grey);margin:0 0 8px;">
+            Schluss mit verlorenen Papier-Gutscheinen und komplizierter Abrechnung.
+          </p>
+          <ol>
+            <li><strong style="color:var(--onroda-text-dark);">Digitale Codes</strong> – exklusive Codes im Partner-Portal anlegen.</li>
+            <li><strong style="color:var(--onroda-text-dark);">Einfaches Tracking</strong> – Nutzung nachvollziehbar in Echtzeit.</li>
+            <li><strong style="color:var(--onroda-text-dark);">Volle Transparenz</strong> – Sammelrechnungen monatlich übersichtlich.</li>
+          </ol>
+          <a class="hp-link" href="https://panel.onroda.de/">Mehr erfahren →</a>
+        </div>
+      </aside>
     </div>
   </section>
 
