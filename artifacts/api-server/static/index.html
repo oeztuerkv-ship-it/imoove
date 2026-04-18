@@ -1,167 +1,111 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ONRODA – Digitale Mobilität für Stuttgart</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
-  
-  <style>
-    :root {
-      --bg-white: #ffffff;
-      --text-dark: #1a1528;
-      --onroda-red: #d5001c;
-      --hp-card-border: #ececec;
-      --hp-icon-bg: #fde8ec;
-      --font-serif: "Libre Baskerville", serif;
-      --font-sans: "DM Sans", system-ui, sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONRODA – Digitale Mobilität für Kardelen</title>
+    <style>
+        :root {
+            --red: #d5001c;
+            --dark: #1a1528;
+            --white: #ffffff;
+            --grey: #f4f4f4;
+        }
 
-    *, *::before, *::after { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--white); color: var(--dark); line-height: 1.6; }
 
-    body {
-      margin: 0;
-      font-family: var(--font-sans);
-      background-color: var(--bg-white);
-      color: var(--text-dark);
-      line-height: 1.6;
-    }
+        /* Header Sticky */
+        header { position: sticky; top: 0; background: var(--white); padding: 20px 0; border-bottom: 1px solid #eee; z-index: 1000; display: flex; justify-content: space-between; align-items: center; padding: 20px 5%; }
+        .logo { font-weight: bold; font-size: 1.5rem; }
+        nav a { margin-left: 20px; text-decoration: none; color: var(--dark); font-weight: 500; }
+        .btn-login { background: var(--red); color: white !important; padding: 8px 15px; border-radius: 5px; }
 
-    /* --- Sticky Header --- */
-    .hp-header {
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      padding: 1.5rem 0;
-      border-bottom: 1px solid var(--hp-card-border);
-    }
+        /* General Sections */
+        section { padding: 80px 5%; max-width: 1200px; margin: auto; }
+        h2 { font-size: 2.5rem; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-top: 30px; }
+        .card { padding: 30px; border: 1px solid #ddd; border-radius: 10px; }
 
-    .hp-header-inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+        /* Hero */
+        .hero { text-align: center; padding-top: 100px; padding-bottom: 100px; }
+        .hero h1 { font-size: 4rem; }
+        .hero-btns { margin-top: 30px; }
+        .btn-main { background: var(--red); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; }
 
-    .hp-logo {
-      font-family: var(--font-serif);
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      text-decoration: none;
-    }
-
-    .hp-nav a {
-      color: var(--text-dark);
-      text-decoration: none;
-      font-weight: 500;
-      margin-left: 30px;
-      font-size: 1rem;
-    }
-
-    .hp-btn-login {
-      background: var(--onroda-red);
-      color: #fff !important;
-      padding: 10px 20px;
-      border-radius: 8px;
-    }
-
-    /* --- Hero Section --- */
-    .hp-hero {
-      padding: 80px 40px;
-      max-width: 1400px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1.2fr;
-      gap: 60px;
-      align-items: center;
-    }
-
-    .hp-hero-h1 {
-      font-family: var(--font-serif);
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      margin: 0 0 20px;
-      line-height: 1.1;
-    }
-
-    .hp-hero-lead {
-      font-size: 1.25rem;
-      color: #555;
-      margin-bottom: 40px;
-      max-width: 500px;
-    }
-
-    .hp-btn-primary {
-      background: var(--onroda-red);
-      color: white;
-      padding: 16px 32px;
-      border-radius: 12px;
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .hp-hero-media img {
-      width: 100%;
-      height: auto;
-      border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    }
-
-    /* --- Sections --- */
-    .hp-section { padding: 80px 40px; max-width: 1400px; margin: 0 auto; }
-    
-    .hp-grid-4 {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 30px;
-    }
-
-    .hp-card {
-      padding: 30px;
-      border: 1px solid var(--hp-card-border);
-      border-radius: 20px;
-    }
-
-    @media (max-width: 900px) {
-      .hp-hero { grid-template-columns: 1fr; padding: 40px 20px; }
-      .hp-header-inner { padding: 0 20px; }
-    }
-  </style>
+        /* Footer */
+        footer { background: var(--dark); color: white; padding: 50px 5%; text-align: center; }
+    </style>
 </head>
 <body>
 
-  <header class="hp-header">
-    <div class="hp-header-inner">
-      <a class="hp-logo" href="/"><span style="color:var(--onroda-red);">ON</span>RODA</a>
-      <nav class="hp-nav">
-        <a href="#manifest">Warum wir</a>
+<header>
+    <div class="logo">ONRODA</div>
+    <nav>
+        <a href="#leistungen">Warum wir</a>
         <a href="#fahrer">Fahrer</a>
         <a href="#partner">Partner</a>
-        <a href="#unternehmen">Gutscheine</a>
-        <a class="hp-btn-login" href="https://panel.onroda.de/">Login</a>
-      </nav>
-    </div>
-  </header>
+        <a href="#gutscheine">Gutscheine</a>
+        <a href="#" class="btn-login">Login</a>
+    </nav>
+</header>
 
-  <section class="hp-hero">
-    <div class="hp-hero-copy">
-      <h1 class="hp-hero-h1">Die <span style="color:var(--onroda-red);">Zukunft</span> der Mobilität</h1>
-      <p class="hp-hero-lead">ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität.</p>
-      <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt buchen →</a>
+<section class="hero">
+    <h1>Die Zukunft der Mobilität</h1>
+    <p>ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität.</p>
+    <div class="hero-btns">
+        <a href="#" class="btn-main">Jetzt buchen →</a>
     </div>
-    <figure class="hp-hero-media">
-      <img src="DEIN_BILD_DATEINAME.png" alt="ONRODA Mobilität">
-    </figure>
-  </section>
+</section>
 
-  <script>
-    // Dein bestehendes Script...
-  </script>
+<section id="leistungen">
+    <h2>Unsere Services</h2>
+    <p>Modernste Technologie für Ihre Mobilität in Stuttgart</p>
+    <div class="grid">
+        <div class="card">⏱ Echtzeit-Buchung<br><p>Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live.</p></div>
+        <div class="card">📅 Vorbestellung<br><p>Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.</p></div>
+        <div class="card">🧾 Digitale Quittungen<br><p>Alle Belege automatisch per E-Mail. Perfekt für Ihre Buchhaltung.</p></div>
+        <div class="card">🎁 Gutscheine<br><p>Verschenken Sie Mobilität. Ideal für Geschäftspartner und Freunde.</p></div>
+    </div>
+</section>
+
+<section id="manifest">
+    <h2>Das ONRODA Manifest</h2>
+    <p>Mobilität neu gedacht. Stuttgart und die Region bewegen.</p>
+    <div class="grid">
+        <div class="card">📍 Innovation aus der Region<br><p>Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise.</p></div>
+        <div class="card">⚡ Effizienz durch Digitalisierung<br><p>Bei ONRODA gibt es kein Hin-und-Her. Alles läuft digital und reibungslos.</p></div>
+        <div class="card">🤝 Mobilität als Service-Baustein<br><p>Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter.</p></div>
+        <div class="card">🛡 Verlässlichkeit ist unser Standard<br><p>Wir versprechen nicht nur Mobilität, wir liefern sie.</p></div>
+    </div>
+</section>
+
+<section id="care">
+    <h2>ONRODA Care & Alltag</h2>
+    <p>Mobilität mit Herz: Sicher, persönlich und verlässlich – für Krankenfahrten und mehr.</p>
+    <div class="grid">
+        <div class="card">👤 Vertrauensvolle Begleitung</div>
+        <div class="card">📦 Unterstützung, die ankommt</div>
+        <div class="card">📆 Planungssicherheit</div>
+    </div>
+</section>
+
+<section id="partner">
+    <h2>Werden Sie ONRODA Partner</h2>
+    <p>Taxibetriebe und Mobilitätsanbieter in Stuttgart: Registrieren Sie sich für unsere digitale Plattform.</p>
+    <div class="card" style="margin-top:20px;">
+        <form>
+            <input type="text" placeholder="Firmenname" style="width:100%; padding:10px; margin-bottom:10px;"><br>
+            <input type="text" placeholder="Ansprechpartner" style="width:100%; padding:10px; margin-bottom:10px;"><br>
+            <button class="btn-main">Jetzt registrieren</button>
+        </form>
+    </div>
+</section>
+
+<footer>
+    <p>ONRODA – Digitale Mobilität für Stuttgart und die Region.</p>
+    <p>© 2026 ONRODA</p>
+</footer>
+
 </body>
 </html>
