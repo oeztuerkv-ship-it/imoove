@@ -1,135 +1,811 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONRODA | Stuttgart & Region – Dein Taxi- & Business-Netzwerk</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #000; color: white; margin: 0; }
-        .on-red { color: #e30613; }
-        .bg-on-red { background-color: #e30613; }
-        .logo-font { font-weight: 900; font-style: italic; letter-spacing: -1.5px; }
-        .hero-bg { 
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1449960232335-d8f914a22113?q=80&w=1500'); 
-            background-size: cover; background-position: center; 
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONRODA – Digitale Mobilität für Stuttgart</title>
+  <meta name="description" content="ONRODA verbindet Fahrgäste, Fahrer und Unternehmen – für moderne, strukturierte Mobilität in Stuttgart und der Region." />
+  <link rel="stylesheet" href="/onroda-brand.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Libre+Baskerville:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --hp-night: #1a1528;
+      --hp-night-mid: #2a2238;
+      --hp-hero-text: #ffffff;
+      --hp-muted-on-dark: rgba(255, 255, 255, 0.78);
+      --hp-section-bg: #fafafa;
+      --hp-card-border: #ececec;
+      --hp-icon-bg: #fde8ec;
+      --font-serif: "Libre Baskerville", Georgia, serif;
+      --font-sans: "DM Sans", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      color: var(--onroda-text-dark);
+      background: #fff;
+      line-height: 1.55;
+    }
+
+    .hp-wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px; }
+
+    /* —— Top bar (Partner) —— */
+    .hp-topbar {
+      background: #0a0a0a;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.875rem;
+      padding: 10px 0;
+    }
+    .hp-topbar .hp-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hp-topbar a {
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--onroda-red);
+      font-size: 0.8125rem;
+    }
+    .hp-topbar a:hover { filter: brightness(1.08); }
+
+    /* —— Header (über Hero) —— */
+    .hp-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      padding: 18px 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 100%);
+    }
+    .hp-header-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .hp-logo {
+      font-family: var(--font-serif);
+      font-weight: 700;
+      font-size: 1.65rem;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      color: #fff;
+    }
+    .hp-logo span.on { color: var(--onroda-red); }
+    .hp-logo span.roda { color: #fff; }
+    .hp-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px 22px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .hp-nav a {
+      color: rgba(255, 255, 255, 0.92);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9375rem;
+    }
+    .hp-nav a:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+    .hp-btn-login {
+      background: var(--onroda-red);
+      color: #fff !important;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+    .hp-btn-login:hover { filter: brightness(1.06); }
+
+    /* —— Hero —— */
+    .hp-hero {
+      position: relative;
+      min-height: 92vh;
+      padding: 120px 0 100px;
+      color: var(--hp-hero-text);
+      overflow: hidden;
+    }
+    .hp-hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 120% 80% at 70% 100%, rgba(213, 0, 28, 0.18), transparent 55%),
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06), transparent 40%),
+        linear-gradient(165deg, var(--hp-night) 0%, var(--hp-night-mid) 45%, #1f1830 100%);
+      z-index: 0;
+    }
+    /* stilisierte „Stadt“ */
+    .hp-hero-city {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 42%;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .hp-building {
+      position: absolute;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(213,0,28,0.35), rgba(40,35,55,0.95));
+      border-radius: 4px 4px 0 0;
+    }
+    .hp-b1 { left: 5%; width: 8%; height: 35%; opacity: 0.85; }
+    .hp-b2 { left: 14%; width: 10%; height: 52%; }
+    .hp-b3 { left: 26%; width: 7%; height: 28%; opacity: 0.75; }
+    .hp-b4 { left: 34%; width: 12%; height: 62%; background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(30,25,45,0.95)); }
+    .hp-b5 { left: 48%; width: 9%; height: 40%; }
+    .hp-b6 { left: 58%; width: 11%; height: 55%; }
+    .hp-b7 { left: 71%; width: 8%; height: 32%; opacity: 0.8; }
+    .hp-b8 { left: 81%; width: 10%; height: 48%; }
+    .hp-b9 { right: 3%; width: 7%; height: 36%; opacity: 0.7; }
+    .hp-clock {
+      position: absolute;
+      bottom: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(140px, 22vw);
+      height: min(140px, 22vw);
+      border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.2);
+      z-index: 2;
+    }
+    .hp-clock::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 4px;
+      height: 32%;
+      background: rgba(255,255,255,0.9);
+      transform-origin: bottom center;
+      transform: translate(-50%, -100%) rotate(52deg);
+      border-radius: 2px;
+    }
+    .hp-clock::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 3px;
+      height: 24%;
+      background: var(--onroda-red);
+      transform-origin: bottom center;
+      transform: translate(-50%, -100%) rotate(-28deg);
+      border-radius: 2px;
+    }
+    .hp-taxi {
+      position: absolute;
+      bottom: 8%;
+      left: 42%;
+      width: 56px;
+      height: 28px;
+      background: #f5c542;
+      border-radius: 6px 8px 4px 4px;
+      z-index: 3;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+    }
+    .hp-people {
+      position: absolute;
+      bottom: 6%;
+      left: 22%;
+      right: 22%;
+      height: 80px;
+      z-index: 3;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 60' fill='none'%3E%3Ccircle cx='40' cy='35' r='10' fill='rgba(255,255,255,0.5)'/%3E%3Crect x='32' y='45' width='16' height='14' rx='2' fill='rgba(255,255,255,0.35)'/%3E%3Ccircle cx='120' cy='32' r='9' fill='rgba(255,255,255,0.45)'/%3E%3Cpath d='M105 46 L135 46 L130 58 L110 58 Z' fill='rgba(255,255,255,0.25)'/%3E%3Ccircle cx='200' cy='38' r='8' fill='rgba(255,255,255,0.4)'/%3E%3Crect x='188' y='46' width='28' height='12' rx='6' fill='rgba(213,0,28,0.5)'/%3E%3Ccircle cx='290' cy='34' r='7' fill='rgba(255,255,255,0.45)'/%3E%3Crect x='282' y='42' width='20' height='16' rx='2' fill='rgba(255,255,255,0.2)'/%3E%3C/svg%3E") center bottom / contain no-repeat;
+      opacity: 0.9;
+    }
+
+    .hp-hero-content {
+      position: relative;
+      z-index: 10;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 22px;
+    }
+    .hp-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: var(--hp-muted-on-dark);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      margin-bottom: 22px;
+    }
+    .hp-pill i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--onroda-red);
+    }
+    .hp-hero h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(2.1rem, 5vw, 3.35rem);
+      font-weight: 700;
+      line-height: 1.12;
+      margin: 0 0 20px;
+      max-width: 18ch;
+    }
+    .hp-hero h1 em {
+      font-style: normal;
+      color: var(--onroda-red);
+    }
+    .hp-hero-lead {
+      font-size: 1.0625rem;
+      color: var(--hp-muted-on-dark);
+      max-width: 52ch;
+      margin: 0 0 32px;
+    }
+    .hp-hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+    }
+    .hp-btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--onroda-red);
+      color: #fff;
+      font-weight: 600;
+      padding: 14px 26px;
+      border-radius: 12px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    .hp-btn-primary:hover { filter: brightness(1.06); }
+    .hp-btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      color: #fff;
+      font-weight: 600;
+      padding: 14px 26px;
+      border-radius: 12px;
+      text-decoration: none;
+      border: 2px solid rgba(255,255,255,0.45);
+      background: transparent;
+      font-size: 1rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .hp-btn-ghost:hover { background: rgba(255,255,255,0.08); }
+
+    /* —— Sections allgemein —— */
+    .hp-section {
+      padding: 72px 0;
+    }
+    .hp-section--muted { background: var(--hp-section-bg); }
+    .hp-section-head {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 48px;
+    }
+    .hp-kicker {
+      color: var(--onroda-red);
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+    .hp-section h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.75rem, 3.5vw, 2.35rem);
+      margin: 0 0 12px;
+      line-height: 1.2;
+    }
+    .hp-section .hp-sub {
+      color: var(--onroda-text-grey);
+      font-size: 1.05rem;
+      margin: 0;
+    }
+
+    /* —— Service cards —— */
+    .hp-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 960px) { .hp-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .hp-grid-4 { grid-template-columns: 1fr; } }
+
+    .hp-card {
+      background: #fff;
+      border: 1px solid var(--hp-card-border);
+      border-radius: 16px;
+      padding: 26px 22px;
+      transition: box-shadow 0.2s;
+    }
+    .hp-card:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+    .hp-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--hp-icon-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      font-size: 1.35rem;
+    }
+    .hp-card h3 { margin: 0 0 10px; font-size: 1.1rem; }
+    .hp-card p { margin: 0; color: var(--onroda-text-grey); font-size: 0.9375rem; }
+
+    /* —— Manifest 2x2 —— */
+    .hp-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 22px;
+    }
+    @media (max-width: 720px) { .hp-grid-2 { grid-template-columns: 1fr; } }
+
+    .hp-manifest-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      align-items: start;
+      background: #fff;
+      border: 1px solid var(--hp-card-border);
+      border-radius: 16px;
+      padding: 26px 24px;
+    }
+    .hp-num {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--onroda-red);
+      color: #fff;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .hp-manifest-card h3 { margin: 0 0 8px; font-size: 1.1rem; }
+    .hp-manifest-card p { margin: 0 0 12px; color: var(--onroda-text-grey); font-size: 0.9375rem; }
+    .hp-link {
+      color: var(--onroda-red);
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 0.9375rem;
+    }
+    .hp-link:hover { text-decoration: underline; }
+
+    /* —— Split sections —— */
+    .hp-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .hp-split { grid-template-columns: 1fr; } }
+
+    .hp-split h2 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      margin: 0 0 14px;
+      line-height: 1.2;
+    }
+    .hp-split .hp-lead { color: var(--onroda-text-grey); margin: 0 0 22px; }
+    .hp-mini-cards { display: flex; flex-direction: column; gap: 14px; }
+    .hp-mini {
+      display: flex;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--hp-card-border);
+      border-radius: 14px;
+      background: #fff;
+    }
+    .hp-mini-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--hp-icon-bg);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hp-mini h4 { margin: 0 0 6px; font-size: 1rem; }
+    .hp-mini p { margin: 0; font-size: 0.875rem; color: var(--onroda-text-grey); }
+
+    .hp-benefits {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 20px;
+    }
+    @media (max-width: 520px) { .hp-benefits { grid-template-columns: 1fr; } }
+    .hp-benefit {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 0.9rem;
+      color: var(--onroda-text-grey);
+    }
+    .hp-benefit strong { color: var(--onroda-text-dark); display: block; margin-bottom: 2px; }
+
+    /* —— Form card —— */
+    .hp-form-card {
+      background: #f3f3f5;
+      border-radius: 18px;
+      padding: 28px 24px;
+      border: 1px solid var(--hp-card-border);
+    }
+    .hp-form-card h3 { margin: 0 0 6px; font-size: 1.25rem; }
+    .hp-form-card .hint { margin: 0 0 22px; color: var(--onroda-text-grey); font-size: 0.9rem; }
+    .hp-field { margin-bottom: 14px; }
+    .hp-field label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--onroda-text-grey); }
+    .hp-field input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    .hp-field input:focus {
+      outline: none;
+      border-color: var(--onroda-red);
+      box-shadow: var(--onroda-shadow-focus-ring);
+    }
+    .hp-form-card .hp-btn-primary {
+      width: 100%;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .hp-voucher-card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 26px;
+      border: 1px solid var(--hp-card-border);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.06);
+    }
+    .hp-voucher-card ol { margin: 16px 0 0; padding-left: 1.2rem; color: var(--onroda-text-grey); }
+    .hp-voucher-card li { margin-bottom: 10px; }
+
+    /* —— Footer —— */
+    .hp-footer {
+      background: var(--onroda-bg-footer);
+      color: rgba(255,255,255,0.85);
+      padding: 48px 0 32px;
+      font-size: 0.9rem;
+    }
+    .hp-footer a { color: #fff; }
+    .hp-footer-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+  </style>
 </head>
-<body class="overflow-x-hidden">
+<body>
 
-    <header class="bg-black py-5 px-6 md:px-16 flex justify-between items-center sticky top-0 z-50 border-b border-zinc-900">
-        <div class="logo-font text-3xl"><span class="on-red">ON</span>RODA</div>
-        
-        <nav class="hidden lg:flex space-x-8 uppercase font-black text-[11px] tracking-widest">
-            <a href="#" class="hover:text-red-600 transition">Fahrgäste</a>
-            <a href="#" class="hover:text-red-600 transition">Fahrer*innen</a>
-            <a href="#partner" class="on-red italic">Hotels & Business</a>
-            <a href="#gutscheine" class="hover:text-red-600 transition">Gutscheine</a>
+  <div class="hp-topbar">
+    <div class="hp-wrap" style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+      <span>Bereits Partner? Melden Sie sich in Ihrem Partner-Portal an.</span>
+      <a href="https://panel.onroda.de/" rel="noopener noreferrer">Partner-Login</a>
+    </div>
+  </div>
+
+  <section class="hp-hero" id="top">
+    <header class="hp-header">
+      <div class="hp-header-inner">
+        <a class="hp-logo" href="/"><span class="on">ON</span><span class="roda">RODA</span></a>
+        <nav class="hp-nav" aria-label="Hauptnavigation">
+          <a href="#manifest">Warum wir</a>
+          <a href="#fahrer">Fahrer</a>
+          <a href="#partner">Partner</a>
+          <a href="#unternehmen">Gutscheine</a>
+          <a class="hp-btn-login" href="https://panel.onroda.de/">Login</a>
         </nav>
-
-        <button class="bg-white text-black px-6 py-2 rounded-full font-black text-[11px] uppercase tracking-widest hover:bg-on-red hover:text-white transition">
-            Partner Login
-        </button>
+      </div>
     </header>
+    <div class="hp-hero-bg" aria-hidden="true"></div>
+    <div class="hp-hero-city" aria-hidden="true">
+      <span class="hp-building hp-b1"></span>
+      <span class="hp-building hp-b2"></span>
+      <span class="hp-building hp-b3"></span>
+      <span class="hp-building hp-b4"></span>
+      <span class="hp-building hp-b5"></span>
+      <span class="hp-building hp-b6"></span>
+      <span class="hp-building hp-b7"></span>
+      <span class="hp-building hp-b8"></span>
+      <span class="hp-building hp-b9"></span>
+      <div class="hp-clock" aria-hidden="true"></div>
+      <div class="hp-taxi" aria-hidden="true"></div>
+      <div class="hp-people" aria-hidden="true"></div>
+    </div>
+    <div class="hp-hero-content">
+      <p class="hp-pill"><i></i> Digitale Mobilität für Stuttgart</p>
+      <h1>Die <em>Zukunft</em> der Mobilität</h1>
+      <p class="hp-hero-lead">
+        ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität.
+      </p>
+      <div class="hp-hero-cta">
+        <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt buchen <span aria-hidden="true">→</span></a>
+        <a class="hp-btn-ghost" href="#services">Mehr erfahren</a>
+      </div>
+    </div>
+  </section>
 
-    <section class="hero-bg min-h-[60vh] flex items-center px-6 md:px-16">
-        <div class="max-w-4xl">
-            <h2 class="text-5xl md:text-8xl font-black uppercase italic leading-none mb-6">
-                Stuttgart.<br><span class="on-red">Regional.</span> Direkt.
-            </h2>
-            <p class="text-xl md:text-2xl font-medium mb-10 text-gray-300 max-w-2xl leading-relaxed">
-                Mobilität neu gedacht für Stuttgart & die Region. Taxis auf Knopfdruck, exklusive Hotel-Anbindungen und digitale Gutschein-Systeme.
-            </p>
-            <div class="flex flex-col sm:flex-row gap-4">
-                <button class="bg-on-red text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-sm shadow-2xl hover:scale-105 transition-transform">App Store</button>
-                <button class="bg-zinc-800 text-white px-10 py-5 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-on-red transition">Google Play</button>
-            </div>
+  <section class="hp-section hp-section--muted" id="services">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <p class="hp-kicker">Leistungen</p>
+        <h2>Unsere Services</h2>
+        <p class="hp-sub">Modernste Technologie für Ihre Mobilität in Stuttgart</p>
+      </div>
+      <div class="hp-grid-4">
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">⏱</div>
+          <h3>Echtzeit-Buchung</h3>
+          <p>Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live auf der Karte.</p>
+        </article>
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">📅</div>
+          <h3>Vorbestellung</h3>
+          <p>Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.</p>
+        </article>
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">🧾</div>
+          <h3>Digitale Quittungen</h3>
+          <p>Alle Belege automatisch per E-Mail. Perfekt für Ihre Buchhaltung.</p>
+        </article>
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">🎁</div>
+          <h3>Gutscheine</h3>
+          <p>Verschenken Sie Mobilität. Ideal für Geschäftspartner und Freunde.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section" id="manifest">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <p class="hp-kicker">Das ONRODA Manifest</p>
+        <h2>Mobilität neu gedacht.</h2>
+        <p class="hp-sub" style="color:var(--onroda-red);font-weight:600;">Stuttgart und die Region bewegen.</p>
+        <p class="hp-sub" style="margin-top:16px;max-width:56ch;margin-left:auto;margin-right:auto;">
+          ONRODA ist unsere Antwort auf die Anforderungen an moderne Mobilität in Stuttgart und der Region. Wir bringen lokale Präsenz und digitale Intelligenz zusammen, um Wege effizienter, transparenter und verlässlicher zu gestalten.
+        </p>
+      </div>
+      <div class="hp-grid-2">
+        <article class="hp-manifest-card">
+          <span class="hp-num">1</span>
+          <div>
+            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">📍</div>
+            <h3>Innovation aus der Region</h3>
+            <p>Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise, gepaart mit modernster Technik.</p>
+            <a class="hp-link" href="#manifest">Mehr erfahren →</a>
+          </div>
+        </article>
+        <article class="hp-manifest-card">
+          <span class="hp-num">2</span>
+          <div>
+            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">⚡</div>
+            <h3>Effizienz durch Digitalisierung</h3>
+            <p>Bei ONRODA gibt es kein Hin-und-Her. Wir haben Prozesse radikal entschlackt. Alles läuft digital, direkt und reibungslos.</p>
+            <a class="hp-link" href="#services">Mehr erfahren →</a>
+          </div>
+        </article>
+        <article class="hp-manifest-card">
+          <span class="hp-num">3</span>
+          <div>
+            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">🤝</div>
+            <h3>Mobilität als Service-Baustein</h3>
+            <p>Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter. ONRODA integriert Mobilität als qualitativen Mehrwert.</p>
+            <a class="hp-link" href="#partner">Mehr erfahren →</a>
+          </div>
+        </article>
+        <article class="hp-manifest-card">
+          <span class="hp-num">4</span>
+          <div>
+            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">🛡</div>
+            <h3>Verlässlichkeit ist unser Standard</h3>
+            <p>Wir versprechen nicht nur Mobilität, wir liefern sie. Ein Maximum an Planungssicherheit für Sie und Ihre Partner.</p>
+            <a class="hp-link" href="#care">Mehr erfahren →</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted" id="care">
+    <div class="hp-wrap hp-split">
+      <div>
+        <p class="hp-kicker">♥ ONRODA Care &amp; Alltag</p>
+        <h2>Mobilität mit Herz: ONRODA für Ihren Alltag.</h2>
+        <p class="hp-lead" style="color:var(--onroda-red);font-weight:600;">Sicher, persönlich und verlässlich – für Krankenfahrten und mehr.</p>
+        <p class="hp-lead">
+          Wir begleiten Sie zu Arztterminen, Physiotherapie oder bei Alltagsfahrten – diskret, pünktlich und mit dem nötigen Respekt vor Ihrer Situation.
+        </p>
+        <a class="hp-btn-primary" href="#jetzt-buchen" style="display:inline-flex;">Mehr über ONRODA Care <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="hp-mini-cards">
+        <div class="hp-mini">
+          <div class="hp-mini-icon">👤</div>
+          <div>
+            <h4>Vertrauensvolle Begleitung</h4>
+            <p>Geschulte Fahrerinnen und Fahrer, Pünktlichkeit und ein respektvoller Umgang – besonders bei medizinischen Fahrten.</p>
+          </div>
         </div>
-    </section>
-
-    <section class="bg-black py-20 px-6 md:px-16 border-t border-zinc-900">
-        <div class="flex flex-col lg:flex-row gap-16">
-            
-            <div class="flex-grow">
-                <h3 class="text-gray-500 font-black uppercase tracking-widest text-xs mb-4 italic">Vorteile Fahrgäste</h3>
-                <h4 class="text-4xl md:text-5xl font-black uppercase mb-12 italic leading-tight text-white">Dein Weg in <span class="on-red">Stuttgart</span></h4>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div class="space-y-4">
-                        <div class="text-3xl">📍</div>
-                        <h5 class="text-lg font-black uppercase tracking-tight">Echtzeit-Buchung</h5>
-                        <p class="text-gray-400 text-sm leading-relaxed">Sofortige Vermittlung an den nächsten verfügbaren Partner in Stuttgart und Umgebung.</p>
-                    </div>
-                    <div class="space-y-4">
-                        <div class="text-3xl">🕒</div>
-                        <h5 class="text-lg font-black uppercase tracking-tight">Vorbestellung</h5>
-                        <p class="text-gray-400 text-sm leading-relaxed">Planungssicherheit für Flughafen-Transfers oder wichtige Business-Termine.</p>
-                    </div>
-                    <div id="gutscheine" class="space-y-4 border-l-2 border-red-600 pl-6">
-                        <div class="text-3xl">🎟️</div>
-                        <h5 class="text-lg font-black uppercase tracking-tight">Gutschein-Logik</h5>
-                        <p class="text-gray-400 text-sm leading-relaxed">Nutze exklusive Rabatt-Codes von unseren lokalen Partnern für deine nächste Fahrt.</p>
-                    </div>
-                    <div class="space-y-4 border-l-2 border-red-600 pl-6">
-                        <div class="text-3xl">🛡️</div>
-                        <h5 class="text-lg font-black uppercase tracking-tight">Sicherheit</h5>
-                        <p class="text-gray-400 text-sm leading-relaxed">Nur geprüfte Fahrer*innen und volle Transparenz über Route und Preis.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="partner" class="bg-white text-black p-10 md:p-14 rounded-[2.5rem] lg:w-[450px] shadow-[0_20px_60px_rgba(227,6,19,0.3)] shrink-0">
-                <h2 class="text-4xl font-black mb-8 leading-[1.1] tracking-tighter">Werde Partner</h2>
-                
-                <div class="space-y-10 text-sm mb-12">
-                    <div>
-                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-3 italic">Hotel & Gastronomie</h6>
-                        <p class="font-bold text-lg mb-2">🏨 Hotel-Buchungstool</p>
-                        <p class="text-gray-500 leading-relaxed text-xs">Bestellen Sie Taxis für Ihre Gäste direkt über unser Partner-Portal. Keine Telefonate mehr nötig.</p>
-                    </div>
-
-                    <div>
-                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-3 italic">Marketing</h6>
-                        <p class="font-bold text-lg mb-2">🎟️ Gutschein-System</p>
-                        <p class="text-gray-500 leading-relaxed text-xs">Erstellen Sie eigene Rabatt-Codes als Kunden-Präsent oder Mitarbeiter-Benefit.</p>
-                    </div>
-
-                    <div>
-                        <h6 class="font-black uppercase text-[10px] text-gray-400 tracking-widest mb-3 italic">Business</h6>
-                        <p class="font-bold text-lg mb-2">💼 Sammelrechnung</p>
-                        <p class="text-gray-500 leading-relaxed text-xs">Volle Kostenkontrolle für Firmen. Eine monatliche Rechnung statt hunderte Einzelbelege.</p>
-                    </div>
-                </div>
-
-                <button class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-on-red transition-all shadow-xl text-sm">
-                    Jetzt Kontakt aufnehmen
-                </button>
-                
-                <p class="mt-8 text-[10px] text-center text-gray-400 font-bold uppercase">
-                    Support: <a href="mailto:info@onroda.de" class="text-black underline">info@onroda.de</a>
-                </p>
-            </div>
-
+        <div class="hp-mini">
+          <div class="hp-mini-icon">📦</div>
+          <div>
+            <h4>Unterstützung, die ankommt</h4>
+            <p>Abholung vor der Haustür und Hilfe beim Einsteigen, wenn Sie es wünschen.</p>
+          </div>
         </div>
-    </section>
-
-    <footer class="bg-zinc-950 text-white px-6 md:px-16 py-12 border-t border-zinc-900">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-10">
-            <div class="logo-font text-3xl"><span class="on-red">ON</span>RODA</div>
-            
-            <div class="flex gap-8 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                <a href="#" class="hover:text-white">Impressum</a>
-                <a href="#" class="hover:text-white">Datenschutz</a>
-                <a href="#" class="hover:text-white">AGB</a>
-            </div>
-            
-            <div class="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">
-                © 2026 ONRODA • Made for Stuttgart & Region
-            </div>
+        <div class="hp-mini">
+          <div class="hp-mini-icon">📆</div>
+          <div>
+            <h4>Planungssicherheit</h4>
+            <p>Zuverlässige Zeiten für Therapie- und Folgetermine.</p>
+          </div>
         </div>
-    </footer>
+      </div>
+    </div>
+  </section>
 
+  <section class="hp-section" id="partner">
+    <div class="hp-wrap hp-split">
+      <div>
+        <p class="hp-kicker">Für Unternehmer</p>
+        <h2>Werden Sie ONRODA Partner</h2>
+        <p class="hp-lead">
+          Taxibetriebe und Mobilitätsanbieter in der Region Stuttgart: Registrieren Sie sich für unsere digitale Plattform und erreichen Sie neue Fahrgäste.
+        </p>
+        <div class="hp-benefits">
+          <div class="hp-benefit"><span aria-hidden="true">📈</span><div><strong>Wachstumspotenzial</strong>Neue Kundengruppen über die App.</div></div>
+          <div class="hp-benefit"><span aria-hidden="true">🎧</span><div><strong>Persönlicher Support</strong>Fester Ansprechpartner für Ihren Betrieb.</div></div>
+          <div class="hp-benefit"><span aria-hidden="true">📱</span><div><strong>Digitale Tools</strong>Moderne Fahrer-App und Übersicht.</div></div>
+          <div class="hp-benefit"><span aria-hidden="true">👥</span><div><strong>Netzwerk</strong>Teil eines wachsenden Ökosystems.</div></div>
+        </div>
+      </div>
+      <div class="hp-form-card">
+        <h3>Jetzt registrieren</h3>
+        <p class="hint">Füllen Sie das Formular aus – wir melden uns bei Ihnen.</p>
+        <form id="partner-form" action="#" method="post">
+          <div class="hp-field">
+            <label for="co">Firmenname</label>
+            <input id="co" type="text" placeholder="Ihr Unternehmen" required autocomplete="organization" />
+          </div>
+          <p style="font-size:0.8rem;color:var(--onroda-text-muted);margin:-6px 0 12px;">
+            Die Anfrage öffnet Ihr E-Mail-Programm. Alternativ: <a href="https://panel.onroda.de/">direkt zum Partner-Portal</a>.
+          </p>
+          <div class="hp-field">
+            <label for="nm">Ansprechpartner</label>
+            <input id="nm" type="text" placeholder="Name" autocomplete="name" />
+          </div>
+          <div class="hp-field">
+            <label for="em">E-Mail</label>
+            <input id="em" type="email" placeholder="name@firma.de" autocomplete="email" />
+          </div>
+          <div class="hp-field">
+            <label for="ph">Telefon</label>
+            <input id="ph" type="tel" placeholder="+49 …" autocomplete="tel" />
+          </div>
+          <button type="submit" class="hp-btn-primary">Anfrage senden</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted" id="unternehmen">
+    <div class="hp-wrap hp-split">
+      <div>
+        <p class="hp-kicker">Für Unternehmen &amp; Hotels</p>
+        <h2>Mobilität neu gedacht: Schluss mit dem Hin-und-Her.</h2>
+        <p class="hp-lead">
+          Unternehmen in Stuttgart und der Region vertrauen auf ONRODA – digitale Effizienz mit persönlichem Service.
+        </p>
+        <ul style="list-style:none;padding:0;margin:0 0 24px;">
+          <li class="hp-benefit" style="margin-bottom:12px;"><span>✓</span><div><strong>Kein Papierkram mehr</strong>Von der Buchung bis zur Abrechnung – durchgängig digital.</div></li>
+          <li class="hp-benefit" style="margin-bottom:12px;"><span>✓</span><div><strong>Direkte Abwicklung</strong>Keine Callcenter-Schleifen, keine Wartezeiten.</div></li>
+          <li class="hp-benefit"><span>✓</span><div><strong>Zeit sparen</strong>Weniger administrativer Aufwand für Ihr Team.</div></li>
+        </ul>
+        <a class="hp-btn-primary" href="https://panel.onroda.de/">Jetzt Partner werden und Fahrten digital organisieren <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="hp-voucher-card" id="gutscheine">
+        <h3 style="margin-top:0;font-family:var(--font-serif);">Unsere smarte Gutschein-Logik</h3>
+        <p style="color:var(--onroda-text-grey);margin:0 0 8px;">
+          Schluss mit verlorenen Papier-Gutscheinen und komplizierter Abrechnung.
+        </p>
+        <ol>
+          <li><strong style="color:var(--onroda-text-dark);">Digitale Codes</strong> – exklusive Codes im Partner-Portal anlegen.</li>
+          <li><strong style="color:var(--onroda-text-dark);">Einfaches Tracking</strong> – Nutzung nachvollziehbar in Echtzeit.</li>
+          <li><strong style="color:var(--onroda-text-dark);">Volle Transparenz</strong> – Sammelrechnungen monatlich übersichtlich.</li>
+        </ol>
+        <a class="hp-link" href="https://panel.onroda.de/">Mehr erfahren →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section" id="fahrer">
+    <div class="hp-wrap" style="text-align:center;max-width:720px;margin:0 auto;">
+      <p class="hp-kicker">Fahrerinnen &amp; Fahrer</p>
+      <h2>Fahren Sie mit ONRODA</h2>
+      <p class="hp-sub">
+        Werden Sie Teil des Netzwerks – flexible Einsätze, digitale Auftragsannahme und faire Abläufe. Details und Einstieg besprechen wir gern persönlich.
+      </p>
+      <p style="margin-top:22px;">
+        <a class="hp-btn-primary" href="#top">Zur App / Buchung</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted" id="jetzt-buchen">
+    <div class="hp-wrap" style="text-align:center;">
+      <h2 style="font-family:var(--font-serif);margin:0 0 12px;">Bereit für die nächste Fahrt?</h2>
+      <p class="hp-sub" style="margin-bottom:22px;">Laden Sie die ONRODA-App – buchen und live verfolgen.</p>
+      <p style="color:var(--onroda-text-grey);font-size:0.9rem;">Links zu App Stores können hier ergänzt werden, sobald die finalen Store-URLs feststehen.</p>
+    </div>
+  </section>
+
+  <footer class="hp-footer">
+    <div class="hp-wrap">
+      <div class="hp-footer-grid">
+        <div>
+          <strong style="font-family:var(--font-serif);font-size:1.2rem;"><span style="color:var(--onroda-red);">ON</span>RODA</strong>
+          <p style="margin:8px 0 0;max-width:280px;">Digitale Mobilität für Stuttgart und die Region.</p>
+        </div>
+        <div>
+          <strong>Kontakt</strong>
+          <p style="margin:8px 0 0;"><a href="mailto:kontakt@onroda.de">kontakt@onroda.de</a></p>
+        </div>
+        <div>
+          <strong>Portal</strong>
+          <p style="margin:8px 0 0;"><a href="https://panel.onroda.de/">Partner-Panel</a></p>
+        </div>
+      </div>
+      <p style="margin:0;opacity:0.7;">© <span id="y"></span> ONRODA</p>
+    </div>
+  </footer>
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+    document.getElementById("partner-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var co = document.getElementById("co").value.trim();
+      var nm = document.getElementById("nm").value.trim();
+      var em = document.getElementById("em").value.trim();
+      var ph = document.getElementById("ph").value.trim();
+      var body = ["Partneranfrage ONRODA", "Firma: " + co, "Ansprechpartner: " + nm, "E-Mail: " + em, "Telefon: " + ph].join("\n");
+      window.location.href =
+        "mailto:kontakt@onroda.de?subject=" +
+        encodeURIComponent("ONRODA Partneranfrage") +
+        "&body=" +
+        encodeURIComponent(body);
+    });
+  </script>
 </body>
 </html>
