@@ -1,108 +1,95 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONRODA – Digitale Mobilität für Stuttgart</title>
-    <style>
-        :root { --red: #d5001c; --dark: #1a1528; --white: #ffffff; --light-grey: #fdfdfd; --border: #ececec; }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: 'DM Sans', sans-serif; background: var(--white); color: var(--dark); line-height: 1.6; }
-
-        /* Sticky Header */
-        header { position: sticky; top: 0; background: var(--white); z-index: 1000; padding: 20px 5%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .logo { font-weight: 700; font-size: 1.6rem; text-decoration: none; color: var(--dark); }
-        nav a { margin-left: 25px; text-decoration: none; color: var(--dark); font-weight: 500; font-size: 0.95rem; }
-        .btn-login { background: var(--red); color: white !important; padding: 10px 20px; border-radius: 8px; font-weight: 600; }
-
-        /* Hero */
-        .hero { padding: 80px 5%; max-width: 1200px; margin: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
-        .hero h1 { font-family: serif; font-size: 3.5rem; line-height: 1.1; margin-bottom: 20px; }
-        .hero p { font-size: 1.2rem; color: #555; margin-bottom: 30px; }
-        .hero img { width: 100%; border-radius: 20px; }
-        .btn-main { background: var(--red); color: white; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; }
-
-        /* Sections */
-        .section { padding: 80px 5%; max-width: 1200px; margin: auto; }
-        .bg-grey { background: var(--light-grey); }
-        h2 { font-family: serif; font-size: 2.5rem; margin-bottom: 40px; text-align: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; }
-        .card { padding: 30px; border: 1px solid var(--border); border-radius: 15px; background: white; }
-        .card h3 { margin-bottom: 10px; }
-
-        /* Footer */
-        footer { background: var(--dark); color: white; padding: 50px 5%; text-align: center; }
-        
-        @media (max-width: 768px) { .hero { grid-template-columns: 1fr; } }
-    </style>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>ONRODA – Die Zukunft der Mobilität in Stuttgart</title>
+    <meta name="description" content="ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System."/>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-white text-gray-900 antialiased">
 
-<header>
-    <a href="#top" class="logo"><span style="color:var(--red)">ON</span>RODA</a>
-    <nav>
-        <a href="#services">Warum wir</a>
-        <a href="#fahrer">Fahrer</a>
-        <a href="#partner">Partner</a>
-        <a href="#gutscheine">Gutscheine</a>
-        <a href="https://panel.onroda.de/" class="btn-login">Login</a>
+    <nav class="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div class="max-w-6xl mx-auto flex justify-between items-center px-6 py-4">
+            <a href="/" class="text-2xl font-bold text-red-600">ONRODA</a>
+            <div class="hidden md:flex space-x-8 font-semibold">
+                <a href="#services" class="hover:text-red-600 transition">Warum wir</a>
+                <a href="#fahrer" class="hover:text-red-600 transition">Fahrer</a>
+                <a href="#partner" class="hover:text-red-600 transition">Partner</a>
+                <a href="#gutscheine" class="hover:text-red-600 transition">Gutscheine</a>
+            </div>
+            <a href="https://panel.onroda.de/" class="bg-red-600 px-6 py-2 rounded-lg text-white font-semibold hover:bg-red-700 transition">Login</a>
+        </div>
     </nav>
-</header>
 
-<section class="hero" id="top">
-    <div>
-        <h1>Die <span style="color:var(--red)">Zukunft</span> der Mobilität</h1>
-        <p>ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität.</p>
-        <a href="#jetzt-buchen" class="btn-main">Jetzt buchen →</a>
-    </div>
-    <img src="onroda-hero.png" alt="ONRODA Service">
-</section>
+    <main>
+        <section class="py-20 px-6">
+            <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h1 class="text-5xl font-bold mb-6 leading-tight">Die <span class="text-red-600">Zukunft</span> der Mobilität</h1>
+                    <p class="text-xl text-gray-600 mb-8">ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität in Stuttgart.</p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="#jetzt-buchen" class="bg-red-600 text-white px-8 py-4 rounded-lg font-bold text-center hover:bg-red-700">Jetzt buchen →</a>
+                        <div class="flex gap-4">
+                            <a href="https://apps.apple.com/"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store" class="h-12"></a>
+                            <a href="https://play.google.com/"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" class="h-12"></a>
+                        </div>
+                    </div>
+                </div>
+                <img src="onroda-hero.png" alt="ONRODA Service Übersicht" class="rounded-2xl shadow-xl">
+            </div>
+        </section>
 
-<section class="section bg-grey" id="services">
-    <h2>Unsere Services</h2>
-    <div class="grid">
-        <div class="card"><h3>⏱ Echtzeit-Buchung</h3><p>Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live auf der Karte.</p></div>
-        <div class="card"><h3>📅 Vorbestellung</h3><p>Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.</p></div>
-        <div class="card"><h3>🧾 Digitale Quittungen</h3><p>Alle Belege automatisch per E-Mail. Perfekt für Ihre Buchhaltung.</p></div>
-        <div class="card"><h3>🎁 Gutscheine</h3><p>Verschenken Sie Mobilität. Ideal für Geschäftspartner und Freunde.</p></div>
-    </div>
-</section>
+        <section id="services" class="py-20 bg-gray-50">
+            <div class="max-w-6xl mx-auto px-6">
+                <h2 class="text-4xl font-bold text-center mb-16">Unsere Services</h2>
+                <div class="grid md:grid-cols-4 gap-8">
+                    <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"><h3>⏱ Echtzeit-Buchung</h3><p class="text-gray-600 mt-2">Buchen Sie in Sekunden. Live-Verfolgung.</p></div>
+                    <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"><h3>📅 Vorbestellung</h3><p class="text-gray-600 mt-2">Planen Sie Flughafen oder Termine.</p></div>
+                    <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"><h3>🧾 Digitale Belege</h3><p class="text-gray-600 mt-2">Automatisch & professionell.</p></div>
+                    <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm"><h3>🎁 Gutscheine</h3><p class="text-gray-600 mt-2">Mobilität direkt verschenken.</p></div>
+                </div>
+            </div>
+        </section>
 
-<section class="section" id="manifest">
-    <h2>Das ONRODA Manifest</h2>
-    <div class="grid">
-        <div class="card"><h3>📍 Innovation aus der Region</h3><p>Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise.</p></div>
-        <div class="card"><h3>⚡ Effizienz</h3><p>Bei ONRODA gibt es kein Hin-und-Her. Alles läuft digital und reibungslos.</p></div>
-        <div class="card"><h3>🤝 Partnerschaft</h3><p>Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter.</p></div>
-        <div class="card"><h3>🛡 Verlässlichkeit</h3><p>Wir versprechen nicht nur Mobilität, wir liefern sie.</p></div>
-    </div>
-</section>
+        <section id="manifest" class="py-20">
+            <div class="max-w-6xl mx-auto px-6">
+                <h2 class="text-4xl font-bold text-center mb-16">Das ONRODA Manifest</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="border p-8 rounded-2xl"><h3>📍 Innovation aus der Region</h3><p>Wir kennen Stuttgart. Lokale Expertise mit Technik.</p></div>
+                    <div class="border p-8 rounded-2xl"><h3>⚡ Effizienz durch Digitalisierung</h3><p>Radikal entschlackte Prozesse für Sie.</p></div>
+                </div>
+            </div>
+        </section>
 
-<section class="section bg-grey" id="care">
-    <h2>ONRODA Care & Alltag</h2>
-    <p style="text-align:center">Sicher, persönlich und verlässlich – für Krankenfahrten und mehr.</p>
-    <div class="grid">
-        <div class="card">👤 Vertrauensvolle Begleitung</div>
-        <div class="card">📦 Unterstützung, die ankommt</div>
-        <div class="card">📆 Planungssicherheit für Folgetermine</div>
-    </div>
-</section>
+        <section id="care" class="py-20 bg-red-50">
+            <div class="max-w-6xl mx-auto px-6 text-center">
+                <h2 class="text-4xl font-bold mb-8">ONRODA Care & Alltag</h2>
+                <p class="text-lg text-gray-700 max-w-2xl mx-auto">Sicher, persönlich und verlässlich – für Krankenfahrten und mehr. Wir begleiten Sie zu Arztterminen und bei Alltagsfahrten.</p>
+            </div>
+        </section>
 
-<section class="section" id="partner">
-    <h2>Werden Sie ONRODA Partner</h2>
-    <div class="card">
-        <form action="mailto:kontakt@onroda.de" method="post" enctype="text/plain">
-            <input type="text" name="Firma" placeholder="Firmenname" style="width:100%; padding:10px; margin-bottom:10px;"><br>
-            <input type="text" name="Name" placeholder="Ansprechpartner" style="width:100%; padding:10px; margin-bottom:10px;"><br>
-            <button type="submit" class="btn-main">Anfrage senden</button>
-        </form>
-    </div>
-</section>
+        <section id="partner" class="py-20">
+            <div class="max-w-2xl mx-auto px-6">
+                <h2 class="text-4xl font-bold mb-8">Partner werden</h2>
+                <form action="mailto:kontakt@onroda.de" method="post" enctype="text/plain" class="space-y-4">
+                    <input type="text" name="Firma" placeholder="Firmenname" class="w-full p-4 border rounded-lg" required>
+                    <input type="text" name="Name" placeholder="Ansprechpartner" class="w-full p-4 border rounded-lg" required>
+                    <input type="email" name="Email" placeholder="E-Mail" class="w-full p-4 border rounded-lg" required>
+                    <button type="submit" class="w-full bg-red-600 text-white p-4 rounded-lg font-bold">Jetzt Partner-Anfrage senden</button>
+                </form>
+            </div>
+        </section>
+    </main>
 
-<footer>
-    <p><strong>ONRODA</strong><br>Vedat Öztürk<br>Oberdorfstr 53, 70771 Leinfelden-Echterdingen</p>
-    <p>© 2026 ONRODA – Alle Rechte vorbehalten</p>
-</footer>
+    <footer class="bg-gray-900 text-white py-12 px-6">
+        <div class="max-w-6xl mx-auto text-center">
+            <p class="text-lg font-bold">ONRODA</p>
+            <p>Vedat Öztürk</p>
+            <p>Oberdorfstr 53, 70771 Leinfelden-Echterdingen</p>
+            <p class="mt-8 text-gray-500">© 2026 ONRODA – Alle Rechte vorbehalten.</p>
+        </div>
+    </footer>
 
 </body>
 </html>
