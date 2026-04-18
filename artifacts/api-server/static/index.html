@@ -70,6 +70,46 @@
       z-index: 10;
     }
 
+    /* Hero: Text links, dezentes Service-Motiv rechts (weiße Karte, kein Vollflächen-Hintergrund) */
+    .hp-hero-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: clamp(1rem, 3vw, 2.75rem);
+      align-items: start;
+    }
+    .hp-hero-copy {
+      min-width: 0;
+    }
+    .hp-hero-copy .hp-hero-lead {
+      max-width: min(48ch, 100%);
+    }
+    .hp-hero-media {
+      margin: 0;
+      background: #fff;
+      border-radius: clamp(10px, 1vw, 14px);
+      padding: clamp(4px, 0.5vw, 7px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+      width: clamp(112px, 14vw, 200px);
+      flex-shrink: 0;
+    }
+    .hp-hero-media img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: clamp(6px, 0.6vw, 10px);
+    }
+    @media (max-width: 720px) {
+      .hp-hero-layout {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+      }
+      .hp-hero-media {
+        width: clamp(96px, 38vw, 160px);
+        justify-self: end;
+        order: -1;
+      }
+    }
+
     /* —— Top bar (Partner) —— */
     .hp-topbar {
       background: #0a0a0a;
@@ -701,14 +741,28 @@
       <div class="hp-people" aria-hidden="true"></div>
     </div>
     <div class="hp-hero-content">
-      <p class="hp-pill"><i></i> Digitale Mobilität für Stuttgart</p>
-      <h1>Die <em>Zukunft</em> der Mobilität</h1>
-      <p class="hp-hero-lead">
-        ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität.
-      </p>
-      <div class="hp-hero-cta">
-        <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt buchen <span aria-hidden="true">→</span></a>
-        <a class="hp-btn-ghost" href="#services">Mehr erfahren</a>
+      <div class="hp-hero-layout">
+        <div class="hp-hero-copy">
+          <p class="hp-pill"><i></i> Digitale Mobilität für Stuttgart</p>
+          <h1>Die <em>Zukunft</em> der Mobilität</h1>
+          <p class="hp-hero-lead">
+            ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für eine moderne und strukturierte Mobilität.
+          </p>
+          <div class="hp-hero-cta">
+            <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt buchen <span aria-hidden="true">→</span></a>
+            <a class="hp-btn-ghost" href="#services">Mehr erfahren</a>
+          </div>
+        </div>
+        <figure class="hp-hero-media">
+          <img
+            src="/onroda-hero-services-collage.png"
+            width="1024"
+            height="558"
+            alt="Illustration: ONRODA-Leistungen – Hotel-Gutscheine, medizinische Fahrten, Geschäftskunden, Familie und Mobilität in Stuttgart."
+            loading="eager"
+            decoding="async"
+          />
+        </figure>
       </div>
     </div>
   </section>
