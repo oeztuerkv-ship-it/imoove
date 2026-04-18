@@ -403,6 +403,19 @@
     }
     .hp-link:hover { text-decoration: underline; }
 
+    .hp-icon-manifest {
+      width: 40px;
+      height: 40px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: var(--hp-icon-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15rem;
+      flex-shrink: 0;
+    }
+
     /* —— Split sections —— */
     .hp-split {
       display: grid;
@@ -512,6 +525,170 @@
       gap: 24px;
       margin-bottom: 28px;
     }
+
+    /* —— Tablet: etwas luftiger (Mobile unverändert darunter) —— */
+    @media (min-width: 768px) {
+      .hp-wrap,
+      .hp-header-inner,
+      .hp-hero-content {
+        max-width: 1200px;
+        padding-left: 28px;
+        padding-right: 28px;
+      }
+      .hp-section { padding: 88px 0; }
+      .hp-section-head { margin-bottom: 52px; }
+      .hp-grid-4 { gap: 22px; }
+      .hp-grid-2 { gap: 24px; }
+      .hp-card { padding: 28px 24px; }
+      .hp-manifest-card { padding: 28px 26px; }
+      .hp-split { gap: 56px; }
+      .hp-mini { padding: 20px; }
+      .hp-form-card { padding: 32px 28px; }
+      .hp-voucher-card { padding: 28px; }
+      .hp-hero { padding-top: 128px; padding-bottom: 110px; }
+    }
+
+    /* —— Desktop: Typo, Buttons, Karten, Abstände hochskalieren —— */
+    @media (min-width: 1024px) {
+      body { font-size: 1.125rem; }
+      .hp-wrap,
+      .hp-header-inner,
+      .hp-hero-content {
+        max-width: 1280px;
+        padding-left: 36px;
+        padding-right: 36px;
+      }
+      .hp-topbar { font-size: 0.9375rem; padding: 12px 0; }
+      .hp-topbar a { padding: 10px 20px; font-size: 0.875rem; }
+      .hp-logo { font-size: 1.85rem; }
+      .hp-nav a { font-size: 1rem; }
+      .hp-btn-login { padding: 11px 22px; font-size: 0.9375rem; }
+      .hp-hero { padding-top: 140px; padding-bottom: 120px; min-height: 88vh; }
+      .hp-pill { font-size: 0.875rem; padding: 10px 18px; margin-bottom: 26px; }
+      .hp-hero h1 {
+        font-size: clamp(2.5rem, 4vw, 3.85rem);
+        margin-bottom: 24px;
+      }
+      .hp-hero-lead {
+        font-size: 1.1875rem;
+        margin-bottom: 36px;
+        max-width: 48rem;
+      }
+      .hp-hero-cta { gap: 18px; }
+      .hp-btn-primary,
+      .hp-btn-ghost {
+        padding: 16px 32px;
+        font-size: 1.0625rem;
+        border-radius: 14px;
+      }
+      .hp-section { padding: 100px 0; }
+      .hp-section-head { max-width: 680px; margin-bottom: 56px; }
+      .hp-kicker { font-size: 0.8125rem; margin-bottom: 12px; }
+      .hp-section h2 { font-size: clamp(2rem, 2.6vw, 2.85rem); margin-bottom: 14px; }
+      .hp-section .hp-sub { font-size: 1.125rem; }
+      .hp-grid-4 { gap: 26px; }
+      .hp-card {
+        padding: 32px 26px;
+        border-radius: 18px;
+      }
+      .hp-card-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        margin-bottom: 18px;
+        font-size: 1.5rem;
+      }
+      .hp-card h3 { font-size: 1.2rem; margin-bottom: 12px; }
+      .hp-card p { font-size: 1rem; line-height: 1.55; }
+      .hp-grid-2 { gap: 28px; }
+      .hp-manifest-card {
+        padding: 32px 28px;
+        gap: 20px;
+        border-radius: 18px;
+      }
+      .hp-num {
+        width: 46px;
+        height: 46px;
+        font-size: 1.2rem;
+      }
+      .hp-manifest-card h3 { font-size: 1.2rem; margin-bottom: 10px; }
+      .hp-manifest-card p { font-size: 1rem; margin-bottom: 14px; line-height: 1.55; }
+      .hp-link { font-size: 1rem; }
+      .hp-icon-manifest {
+        width: 52px;
+        height: 52px;
+        font-size: 1.45rem;
+        margin-bottom: 12px;
+        border-radius: 12px;
+      }
+      .hp-split { gap: 72px; }
+      .hp-split h2 { font-size: clamp(1.9rem, 2.2vw, 2.45rem); margin-bottom: 16px; }
+      .hp-split .hp-lead { margin-bottom: 26px; }
+      .hp-mini-cards { gap: 16px; }
+      .hp-mini { padding: 22px; border-radius: 16px; gap: 16px; }
+      .hp-mini-icon { width: 50px; height: 50px; border-radius: 12px; }
+      .hp-mini h4 { font-size: 1.0625rem; margin-bottom: 8px; }
+      .hp-mini p { font-size: 0.9375rem; line-height: 1.55; }
+      .hp-benefits { gap: 16px; margin-top: 24px; }
+      .hp-benefit { font-size: 0.975rem; gap: 12px; }
+      .hp-form-card {
+        padding: 36px 32px;
+        border-radius: 20px;
+      }
+      .hp-form-card h3 { font-size: 1.4rem; margin-bottom: 8px; }
+      .hp-form-card .hint { font-size: 0.9375rem; margin-bottom: 26px; }
+      .hp-field label { font-size: 0.875rem; margin-bottom: 8px; }
+      .hp-field input { padding: 14px 16px; font-size: 1.0625rem; border-radius: 12px; }
+      .hp-voucher-card {
+        padding: 32px;
+        border-radius: 20px;
+      }
+      .hp-voucher-card h3 { font-size: 1.35rem; }
+      .hp-voucher-card ol { font-size: 1rem; }
+      .hp-footer { padding: 56px 0 40px; font-size: 1rem; }
+      .hp-footer-grid { gap: 32px; margin-bottom: 32px; }
+    }
+
+    /* —— Große Screens: noch etwas mehr Raum & Größe —— */
+    @media (min-width: 1280px) {
+      .hp-wrap,
+      .hp-header-inner,
+      .hp-hero-content {
+        max-width: 1360px;
+        padding-left: 40px;
+        padding-right: 40px;
+      }
+      .hp-section { padding: 120px 0; }
+      .hp-section-head { max-width: 760px; margin-bottom: 64px; }
+      .hp-hero h1 { font-size: clamp(2.85rem, 3.2vw, 4.25rem); }
+      .hp-hero-lead { font-size: 1.25rem; max-width: 50rem; }
+      .hp-section h2 { font-size: clamp(2.15rem, 2.4vw, 3rem); }
+      .hp-grid-4 { gap: 30px; }
+      .hp-card { padding: 36px 30px; }
+      .hp-grid-2 { gap: 32px; }
+      .hp-manifest-card { padding: 36px 32px; }
+      .hp-icon-manifest {
+        width: 56px;
+        height: 56px;
+        font-size: 1.55rem;
+      }
+      .hp-split { gap: 88px; }
+      .hp-btn-primary,
+      .hp-btn-ghost {
+        padding: 18px 36px;
+        font-size: 1.125rem;
+      }
+    }
+
+    @media (min-width: 1440px) {
+      .hp-wrap,
+      .hp-header-inner,
+      .hp-hero-content {
+        max-width: 1400px;
+      }
+      .hp-section { padding: 128px 0; }
+      .hp-hero h1 { font-size: clamp(3rem, 3vw, 4.5rem); }
+    }
   </style>
 </head>
 <body>
@@ -610,7 +787,7 @@
         <article class="hp-manifest-card">
           <span class="hp-num">1</span>
           <div>
-            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">📍</div>
+            <div class="hp-icon-manifest" aria-hidden="true">📍</div>
             <h3>Innovation aus der Region</h3>
             <p>Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise, gepaart mit modernster Technik.</p>
             <a class="hp-link" href="#manifest">Mehr erfahren →</a>
@@ -619,7 +796,7 @@
         <article class="hp-manifest-card">
           <span class="hp-num">2</span>
           <div>
-            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">⚡</div>
+            <div class="hp-icon-manifest" aria-hidden="true">⚡</div>
             <h3>Effizienz durch Digitalisierung</h3>
             <p>Bei ONRODA gibt es kein Hin-und-Her. Wir haben Prozesse radikal entschlackt. Alles läuft digital, direkt und reibungslos.</p>
             <a class="hp-link" href="#services">Mehr erfahren →</a>
@@ -628,7 +805,7 @@
         <article class="hp-manifest-card">
           <span class="hp-num">3</span>
           <div>
-            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">🤝</div>
+            <div class="hp-icon-manifest" aria-hidden="true">🤝</div>
             <h3>Mobilität als Service-Baustein</h3>
             <p>Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter. ONRODA integriert Mobilität als qualitativen Mehrwert.</p>
             <a class="hp-link" href="#partner">Mehr erfahren →</a>
@@ -637,7 +814,7 @@
         <article class="hp-manifest-card">
           <span class="hp-num">4</span>
           <div>
-            <div class="hp-mini-icon" style="margin-bottom:10px;width:40px;height:40px;">🛡</div>
+            <div class="hp-icon-manifest" aria-hidden="true">🛡</div>
             <h3>Verlässlichkeit ist unser Standard</h3>
             <p>Wir versprechen nicht nur Mobilität, wir liefern sie. Ein Maximum an Planungssicherheit für Sie und Ihre Partner.</p>
             <a class="hp-link" href="#care">Mehr erfahren →</a>
