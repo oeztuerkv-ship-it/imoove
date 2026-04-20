@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
-import { hasPanelModule } from "../lib/panelNavigation.js";
+import { canAccessPartnerCompanyPage, hasPanelModule } from "../lib/panelNavigation.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -148,7 +148,7 @@ export default function OverviewPage() {
               erlaubt).
             </li>
           ) : null}
-          {hasPanelModule(user?.panelModules, "company_profile") ? (
+          {canAccessPartnerCompanyPage(user?.panelModules) ? (
             <li>
               <strong>Meine Firma</strong> — Stammdaten und Kontakt.
             </li>

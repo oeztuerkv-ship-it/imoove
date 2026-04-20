@@ -19,14 +19,30 @@ export const PANEL_NAV_ITEMS = [
   { key: "settings", moduleId: "company_profile", label: "Einstellungen", icon: "⚙", requiredPermission: "self.change_password" },
 ];
 
-/** @param {string[]|undefined|null} panelModules — effektive Liste von /panel/v1/me */
+/**
+ * Sichtbarkeit gemäß Mandanten-Whitelist (`panel_modules`).
+ * Ausnahme **Meine Firma** (`profile`): `GET /panel/v1/company` ist laut API mit Modul
+ * `overview` *oder* `company_profile` erlaubt — daher nicht nur an `company_profile` koppeln,
+ * sonst fehlt der Navigationspunkt bei vielen Taxibetrieben ohne explizites Profil-Modul.
+ * @param {string[]|undefined|null} panelModules — effektive Liste von /panel/v1/me
+ */
 export function filterNavItems(panelModules, permissions) {
   const permSet = new Set(Array.isArray(permissions) ? permissions : []);
   const hasPerm = (item) => !item.requiredPermission || permSet.has(item.requiredPermission);
-  if (!Array.isArray(panelModules)) return PANEL_NAV_ITEMS.filter(hasPerm);
+
+  function passesModuleGate(item) {
+    if (!Array.isArray(panelModules)) return true;
+    if (panelModules.length === 0) return false;
+    const set = new Set(panelModules);
+    if (item.key === "profile") {
+      return set.has("company_profile") || set.has("overview");
+    }
+    return set.has(item.moduleId);
+  }
+
+  if (!Array.isArray(panelModules)) return PANEL_NAV_ITEMS.filter((item) => hasPerm(item));
   if (panelModules.length === 0) return [];
-  const set = new Set(panelModules);
-  return PANEL_NAV_ITEMS.filter((item) => set.has(item.moduleId) && hasPerm(item));
+  return PANEL_NAV_ITEMS.filter((item) => passesModuleGate(item) && hasPerm(item));
 }
 
 /** Erste sichtbare Seite für initiales Routing */
@@ -40,4 +56,12 @@ export function hasPanelModule(panelModules, moduleId) {
   if (!Array.isArray(panelModules)) return true;
   if (panelModules.length === 0) return false;
   return panelModules.includes(moduleId);
+}
+
+/** GET /panel/v1/company ist mit `overview` oder `company_profile` erlaubt — gleiche Logik wie Nav „Meine Firma“. */
+export function canAccessPartnerCompanyPage(panelModules) {
+  if (!Array.isArray(panelModules)) return true;
+  if (panelModules.length === 0) return false;
+  const set = new Set(panelModules);
+  return set.has("company_profile") || set.has("overview");
 }
