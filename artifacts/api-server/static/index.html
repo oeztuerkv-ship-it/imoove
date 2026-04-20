@@ -68,7 +68,11 @@
     <div class="hp-hero-content">
       <div class="hp-hero-layout">
         <div class="hp-hero-copy">
-          <h1>Digitale Mobilität für Fahrgäste, Unternehmen und Partnerbetriebe</h1>
+          <h1>
+            Digitale Mobilität<br />
+            für Fahrgäste, Unternehmen<br />
+            und Partnerbetriebe
+          </h1>
           <p class="hp-hero-lead">
             ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System –
             für einfache Buchung und strukturierte Abläufe.
@@ -407,36 +411,22 @@
     </div>
   </section>
 
-  <section class="hp-section hp-section--muted" id="jetzt-buchen">
-    <div class="hp-wrap" style="text-align:center;">
-      <h2 style="font-family:var(--font-serif);margin:0 0 12px;">Bereit für die nächste Fahrt?</h2>
-      <p class="hp-sub" style="margin-bottom:12px;">Laden Sie die ONRODA-App – buchen und live verfolgen.</p>
-      <p style="color:var(--onroda-text-grey);font-size:0.95rem;margin:0;">
-        Apple App Store und Google Play können direkt hier verlinkt werden.
-      </p>
+  <section class="hp-section hp-section--muted hp-jetzt-buchen" id="jetzt-buchen">
+    <div class="hp-wrap hp-jetzt-buchen-inner">
+      <h2 class="hp-jetzt-buchen-title">Bereit für die nächste Fahrt?</h2>
+      <p class="hp-sub hp-jetzt-buchen-lead">Laden Sie die ONRODA-App – buchen und live verfolgen.</p>
     </div>
   </section>
 
-  <section class="hp-download-band">
-    <div class="hp-wrap">
-      <div class="hp-download-band-inner">
-        <div>
-          <div class="hp-download-eyebrow">
-            <strong><span class="on">ON</span><span class="roda">RODA</span> App</strong>
-          </div>
-
-          <h2>Jetzt die App herunterladen</h2>
-          <p>Buchen Sie Ihre Fahrt in Sekunden. Verfügbar für iOS und Android.</p>
-        </div>
-
-        <div class="hp-download-stores-row">
-          <span class="hp-download-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <rect x="7" y="2.75" width="10" height="18.5" rx="2.4" stroke="currentColor" stroke-width="1.9"/>
-              <circle cx="12" cy="17.8" r="0.9" fill="currentColor"/>
-            </svg>
-          </span>
-          <div class="hp-store-links">
+  <section
+    class="hp-download-band app-download-section"
+    id="app-download"
+    aria-labelledby="app-download-heading"
+  >
+    <div class="hp-wrap hp-download-wrap">
+      <h2 id="app-download-heading" class="visually-hidden">Jetzt herunterladen</h2>
+      <div class="hp-download-stores-row">
+        <div class="hp-store-links">
           <a class="hp-store-link" href="#" aria-label="Im Apple App Store laden">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M16.37 12.25c.02 2.2 1.94 2.94 1.96 2.95-.02.05-.31 1.06-1.02 2.1-.61.9-1.25 1.8-2.24 1.82-.97.02-1.28-.58-2.39-.58-1.12 0-1.46.56-2.37.6-.95.04-1.68-.96-2.29-1.85-1.24-1.8-2.18-5.08-.91-7.28.63-1.09 1.77-1.78 3.01-1.8.94-.02 1.83.63 2.39.63.56 0 1.62-.78 2.73-.67.47.02 1.8.19 2.65 1.43-.07.04-1.58.92-1.56 2.65ZM14.61 5.82c.51-.62.85-1.49.76-2.35-.73.03-1.62.49-2.15 1.11-.47.54-.88 1.42-.77 2.25.81.06 1.64-.41 2.16-1.01Z"/>
@@ -459,7 +449,6 @@
               <span>Google Play</span>
             </span>
           </a>
-          </div>
         </div>
       </div>
     </div>
@@ -482,7 +471,7 @@
           <h4>Services</h4>
           <ul class="hp-footer-nav">
             <li><a href="#jetzt-buchen">Jetzt buchen</a></li>
-            <li><a href="#jetzt-buchen">App herunterladen</a></li>
+            <li><a href="#app-download">App herunterladen</a></li>
             <li><a href="#services">Leistungen</a></li>
             <li><a href="#care">Servicebereiche</a></li>
           </ul>
