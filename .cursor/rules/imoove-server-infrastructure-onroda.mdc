@@ -42,7 +42,9 @@ Probleme wirken oft wie „Code kaputt“, sind aber oft **Mischzustände**:
 
 ## SSL
 
-- Zertifikate müssen zu den **tatsächlich** genutzten Hostnamen passen (z. B. **admin** + **api** separat sauber mit Certbot/Deploy-Stand).
+- Zertifikate müssen zu den **tatsächlich** genutzten Hostnamen passen (z. B. **admin** + **api** + **panel** jeweils im **SAN** des ausgelieferten Zerts, nicht nur CN).
+- **Symptom:** `curl https://api.onroda.de/…` oder Browser-Fetch schlägt mit Zertifikatfehler fehl („no alternative certificate subject name matches target host name **api.onroda.de**“) → der **`server_name api.onroda.de`**-Block nutzt ein **falsches** `ssl_certificate` (z. B. nur Marketing/Admin-Zert) oder der **443-`default_server`** liefert das falsche Zertifikat.
+- **Repo-Referenz:** `artifacts/deploy/nginx-onroda.example.conf` (explizite `ssl_certificate`-Zeilen pro Host + Certbot-Hinweis).
 
 ## Wenn der Server-Stand „kaputt driftet“ (nur mit Absprache / nach Backup)
 
