@@ -6,9 +6,20 @@
       window.scrollTo(0, 0);
     });
 
-    document.getElementById("y").textContent = new Date().getFullYear();
+    document.addEventListener("click", function (e) {
+      var details = document.querySelector(".hp-topbar-about");
+      if (!details) return;
+      if (!details.contains(e.target)) {
+        details.removeAttribute("open");
+      }
+    });
 
-    document.getElementById("partner-form").addEventListener("submit", function (e) {
+    var yEl = document.getElementById("y");
+    if (yEl) yEl.textContent = new Date().getFullYear();
+
+    var partnerForm = document.getElementById("partner-form");
+    if (partnerForm) {
+      partnerForm.addEventListener("submit", function (e) {
       e.preventDefault();
 
       var companyType = document.getElementById("companyType").value.trim();
@@ -48,4 +59,5 @@
         encodeURIComponent("ONRODA Partneranfrage") +
         "&body=" +
         encodeURIComponent(body);
-    });
+      });
+    }

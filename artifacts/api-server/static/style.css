@@ -240,7 +240,7 @@
       font-weight: 700;
       line-height: 1.12;
       margin: 0 0 1rem;
-      max-width: 16ch;
+      max-width: min(42ch, 100%);
       color: var(--onroda-text-dark);
     }
 
@@ -890,6 +890,14 @@
       .hp-download-band-inner {
         grid-template-columns: 1fr;
         align-items: start;
+      }
+
+      .hp-download-stores-row {
+        justify-content: flex-start;
+      }
+
+      .hp-download-stores-row .hp-store-links {
+        flex-wrap: wrap;
       }
 
       .hp-store-links {
