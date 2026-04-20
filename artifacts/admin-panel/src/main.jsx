@@ -6,6 +6,7 @@ import "./index.css";
 import "./admin-shell.css";
 import "./admin-ui.css";
 import "./admin-dashboard.css";
+import "./admin-finance.css";
 import App from "./App.jsx";
 
 createRoot(document.getElementById("root")).render(

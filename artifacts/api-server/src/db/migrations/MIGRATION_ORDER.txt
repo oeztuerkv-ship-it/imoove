@@ -38,6 +38,8 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Ride-Event-Historie                  → 024_ride_events_status_history.sql
   Unternehmensanfragen                 → 025_partner_registration_requests.sql
   Anfrage-Dokumente + Timeline         → 026_partner_registration_docs_timeline.sql
+  Financial Core (Konten/Snapshots/Rechnungen/Payments/Audit) → 028_financial_core_tables.sql
+  EPIC 2 Ride-Financial Locking/Status/Correction-Felder       → 029_ride_financials_epic2_locking_and_statuses.sql
 
 Nach Migrationen Schema prüfen:
 

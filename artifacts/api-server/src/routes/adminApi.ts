@@ -21,6 +21,23 @@ import {
   updateAdminCompany,
   updateFareArea,
 } from "../db/adminData";
+import {
+  countFinancialAuditAdmin,
+  countInvoicesAdmin,
+  countPaymentsAdmin,
+  countRideFinancialsAdmin,
+  countSettlementsAdmin,
+  findInvoiceAdmin,
+  findSettlementAdmin,
+  getAdminFinanceSummary,
+  getFinanceEligibilitySummaryForRide,
+  getRideFinancialDetailAdmin,
+  listFinancialAuditAdmin,
+  listInvoicesAdmin,
+  listPaymentsAdmin,
+  listRideFinancialsAdmin,
+  listSettlementsAdmin,
+} from "../db/adminFinanceData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog } from "../db/panelAuditData";
 import {
@@ -116,6 +133,20 @@ function parseIsoDateParam(v: unknown, endOfDay: boolean): Date | undefined {
     d.setHours(23, 59, 59, 999);
   }
   return d;
+}
+
+function parseBooleanParam(v: unknown): boolean | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") return true;
+  if (s === "0" || s === "false" || s === "no") return false;
+  return undefined;
+}
+
+function parsePagination(req: Request): { page: number; pageSize: number; offset: number } {
+  const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
+  const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
+  return { page, pageSize, offset: (page - 1) * pageSize };
 }
 
 function parseAdminRideListQuery(req: Request): { ok: true; query: AdminRideListQuery } | { ok: false; error: string } {
@@ -636,6 +667,207 @@ adminJson.get("/dashboard/overview", async (req, res, next) => {
       partnerDay,
       recentCompleted,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/summary", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, unknown>;
+    const dateFrom = parseStatsRevenueBound(q.date_from);
+    const dateTo = parseStatsRevenueBound(q.date_to);
+    const summary = await getAdminFinanceSummary({ dateFrom, dateTo });
+    res.json({
+      ok: true,
+      dateFrom: dateFrom?.toISOString() ?? null,
+      dateTo: dateTo?.toISOString() ?? null,
+      summary,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/ride-financials", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const { page, pageSize, offset } = parsePagination(req);
+    const filters = {
+      dateFrom: parseIsoDateParam(q.date_from, false),
+      dateTo: parseIsoDateParam(q.date_to, true),
+      payerType: q.payer_type,
+      billingStatus: q.billing_status,
+      settlementStatus: q.settlement_status,
+      partnerCompanyId: q.partner_company_id,
+      serviceProviderCompanyId: q.service_provider_company_id,
+      locked: parseBooleanParam(q.locked),
+      hasInvoice: parseBooleanParam(q.has_invoice),
+      search: q.search,
+    };
+    const [total, items] = await Promise.all([
+      countRideFinancialsAdmin(filters),
+      listRideFinancialsAdmin({ filters, limit: pageSize, offset }),
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/ride-financials/:rideId", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const detail = await getRideFinancialDetailAdmin(req.params.rideId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const eligibility = await getFinanceEligibilitySummaryForRide(req.params.rideId);
+    res.json({
+      ok: true,
+      snapshot: detail,
+      invoiceLinkage: detail.invoice_links,
+      settlementLinkage: detail.settlement_links,
+      auditEntries: detail.audit_entries,
+      eligibility,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/invoices", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const filters = {
+      companyId: q.company_id,
+      status: q.status,
+      type: q.invoice_type,
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countInvoicesAdmin(filters),
+      listInvoicesAdmin({ filters, limit: pageSize, offset }),
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/invoices/:invoiceId", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const item = await findInvoiceAdmin(req.params.invoiceId);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/settlements", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const filters = {
+      companyId: q.company_id,
+      status: q.status,
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countSettlementsAdmin(filters),
+      listSettlementsAdmin({ filters, limit: pageSize, offset }),
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/settlements/:settlementId", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const item = await findSettlementAdmin(req.params.settlementId);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/payments", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const filters = {
+      targetType: q.target_type,
+      status: q.status,
+      companyId: q.company_id,
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countPaymentsAdmin(filters),
+      listPaymentsAdmin({ filters, limit: pageSize, offset }),
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/finance/audit", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query as Record<string, string | undefined>;
+    const filters = {
+      entityType: q.entity_type,
+      action: q.action,
+      entityId: q.entity_id,
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countFinancialAuditAdmin(filters),
+      listFinancialAuditAdmin({ filters, limit: pageSize, offset }),
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
   } catch (e) {
     next(e);
   }

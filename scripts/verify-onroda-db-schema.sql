@@ -20,6 +20,7 @@
 --   025 → partner_registration_requests (Unternehmensanfragen)
 --   026 → partner_registration_documents + partner_registration_timeline
 --   027 → fleet vehicle legal/class + rides.pricing_mode
+--   028 → financial core tables (billing_accounts, ride_financials, invoices, settlements, payments, audit)
 
 DO $$
 DECLARE
@@ -276,6 +277,97 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'partner_registration_timeline'
   ) THEN
     errs := array_append(errs, 'table partner_registration_timeline (Migration 026)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'billing_accounts'
+  ) THEN
+    errs := array_append(errs, 'table billing_accounts (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_financials'
+  ) THEN
+    errs := array_append(errs, 'table ride_financials (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'calculation_version'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.calculation_version (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'calculation_rule_set'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.calculation_rule_set (Migration 029)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'calculation_metadata_json'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.calculation_metadata_json (Migration 029)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'lock_reason'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.lock_reason (Migration 029)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_financials' AND column_name = 'correction_count'
+  ) THEN
+    errs := array_append(errs, 'ride_financials.correction_count (Migration 029)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'invoices'
+  ) THEN
+    errs := array_append(errs, 'table invoices (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'invoices' AND column_name = 'invoice_number'
+  ) THEN
+    errs := array_append(errs, 'invoices.invoice_number (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'invoice_items'
+  ) THEN
+    errs := array_append(errs, 'table invoice_items (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'settlements'
+  ) THEN
+    errs := array_append(errs, 'table settlements (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'payments'
+  ) THEN
+    errs := array_append(errs, 'table payments (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'financial_audit_log'
+  ) THEN
+    errs := array_append(errs, 'table financial_audit_log (Migration 028)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

@@ -1,0 +1,30 @@
+.finance-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.finance-kpi-card {
+  border: 1px solid var(--onroda-border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--onroda-surface-card, #fff);
+}
+
+.finance-kpi-card__label {
+  color: var(--onroda-text-subtle);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.finance-kpi-card__value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--onroda-text-strong);
+}
+
+.finance-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}

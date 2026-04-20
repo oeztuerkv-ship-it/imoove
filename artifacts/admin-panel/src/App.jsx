@@ -18,6 +18,10 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 import AdminUsersPage from "./pages/AdminUsersPage.jsx";
 import AdminPasswordResetPage from "./pages/AdminPasswordResetPage.jsx";
 import AdminPlaceholderPage from "./pages/AdminPlaceholderPage.jsx";
+import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
+import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
+import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
+import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -78,6 +82,22 @@ const PAGE_META = {
     subtitle: "Vereinfachte Sicht auf eigene Hotel-Buchungen.",
     placeholder: true,
     bullets: ["Nur eigene Fahrten (Mandanten-Scope)", "CSV-Export über „Fahrten“ möglich"],
+  },
+  "finance-dashboard": {
+    title: "Finanzen · Dashboard",
+    subtitle: "KPI-Summary für Umsatz, Forderungen, Rechnungen und Provision",
+  },
+  "finance-ride-financials": {
+    title: "Finanzen · Ride Financials",
+    subtitle: "Finanz-Snapshots je Fahrt mit Filter, Pagination und Detail",
+  },
+  "finance-invoices": {
+    title: "Finanzen · Invoices",
+    subtitle: "Rechnungslisten und Rechnungsdetail (read only)",
+  },
+  "finance-audit": {
+    title: "Finanzen · Audit",
+    subtitle: "Finance-Audit-Log mit Filter und Verlauf",
   },
   "docs-hub": {
     title: "Dokumente / PDF",
@@ -372,6 +392,14 @@ export default function App() {
         return <FaresPage />;
       case "access-codes":
         return <AccessCodesPage />;
+      case "finance-dashboard":
+        return <FinanceDashboardPage />;
+      case "finance-ride-financials":
+        return <FinanceRideFinancialsPage />;
+      case "finance-invoices":
+        return <FinanceInvoicesPage />;
+      case "finance-audit":
+        return <FinanceAuditPage />;
       case "settings":
         return <SettingsPage />;
       case "users-admin":

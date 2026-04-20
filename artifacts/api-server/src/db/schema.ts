@@ -395,6 +395,156 @@ export const rideEventsTable = pgTable("ride_events", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Abrechnungskonto pro Unternehmen/Rolle (Partner, Betreiber, Zahler, Leistungserbringer). */
+export const billingAccountsTable = pgTable("billing_accounts", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "cascade",
+  }),
+  account_role: text("account_role").notNull().default("partner"),
+  account_name: text("account_name").notNull().default(""),
+  billing_email: text("billing_email").notNull().default(""),
+  billing_address_json: jsonb("billing_address_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  payment_terms_days: integer("payment_terms_days").notNull().default(14),
+  settlement_interval: text("settlement_interval").notNull().default("monthly"),
+  payment_method: text("payment_method").notNull().default("bank_transfer"),
+  metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  is_active: boolean("is_active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Finanz-Snapshot pro Fahrt (kaufmännische Wahrheit, nicht live aus rides berechnet). */
+export const rideFinancialsTable = pgTable("ride_financials", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  payer_type: text("payer_type").notNull(),
+  billing_mode: text("billing_mode").notNull(),
+  service_provider_company_id: text("service_provider_company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  partner_company_id: text("partner_company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  billing_reference: text("billing_reference").notNull().default(""),
+  gross_amount: doublePrecision("gross_amount").notNull().default(0),
+  net_amount: doublePrecision("net_amount").notNull().default(0),
+  vat_rate: doublePrecision("vat_rate").notNull().default(0),
+  vat_amount: doublePrecision("vat_amount").notNull().default(0),
+  commission_type: text("commission_type").notNull().default("percentage"),
+  commission_value: doublePrecision("commission_value").notNull().default(0),
+  commission_amount: doublePrecision("commission_amount").notNull().default(0),
+  operator_payout_amount: doublePrecision("operator_payout_amount").notNull().default(0),
+  billing_status: text("billing_status").notNull().default("unbilled"),
+  settlement_status: text("settlement_status").notNull().default("open"),
+  calculated_at: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+  calculation_version: text("calculation_version").notNull().default("v1"),
+  calculation_rule_set: text("calculation_rule_set"),
+  calculation_metadata_json: jsonb("calculation_metadata_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  locked_at: timestamp("locked_at", { withTimezone: true }),
+  lock_reason: text("lock_reason"),
+  correction_count: integer("correction_count").notNull().default(0),
+  last_correction_at: timestamp("last_correction_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const invoicesTable = pgTable("invoices", {
+  id: text("id").primaryKey(),
+  invoice_number: text("invoice_number").notNull(),
+  company_id: text("company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  invoice_type: text("invoice_type").notNull(),
+  billing_period_start: date("billing_period_start").notNull(),
+  billing_period_end: date("billing_period_end").notNull(),
+  subtotal_net: doublePrecision("subtotal_net").notNull().default(0),
+  vat_total: doublePrecision("vat_total").notNull().default(0),
+  total_gross: doublePrecision("total_gross").notNull().default(0),
+  issue_date: date("issue_date").notNull(),
+  due_date: date("due_date"),
+  status: text("status").notNull().default("draft"),
+  pdf_storage_key: text("pdf_storage_key").notNull().default(""),
+  metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const invoiceItemsTable = pgTable("invoice_items", {
+  id: text("id").primaryKey(),
+  invoice_id: text("invoice_id")
+    .notNull()
+    .references(() => invoicesTable.id, { onDelete: "cascade" }),
+  ride_id: text("ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+  item_type: text("item_type").notNull(),
+  description: text("description").notNull().default(""),
+  quantity: doublePrecision("quantity").notNull().default(1),
+  unit_net: doublePrecision("unit_net").notNull().default(0),
+  vat_rate: doublePrecision("vat_rate").notNull().default(0),
+  line_net: doublePrecision("line_net").notNull().default(0),
+  line_vat: doublePrecision("line_vat").notNull().default(0),
+  line_gross: doublePrecision("line_gross").notNull().default(0),
+  metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const settlementsTable = pgTable("settlements", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  settlement_number: text("settlement_number").notNull(),
+  period_start: date("period_start").notNull(),
+  period_end: date("period_end").notNull(),
+  gross_revenue: doublePrecision("gross_revenue").notNull().default(0),
+  platform_commission: doublePrecision("platform_commission").notNull().default(0),
+  adjustments: doublePrecision("adjustments").notNull().default(0),
+  payout_amount: doublePrecision("payout_amount").notNull().default(0),
+  status: text("status").notNull().default("draft"),
+  paid_at: timestamp("paid_at", { withTimezone: true }),
+  payment_reference: text("payment_reference").notNull().default(""),
+  metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const paymentsTable = pgTable("payments", {
+  id: text("id").primaryKey(),
+  target_type: text("target_type").notNull(),
+  target_id: text("target_id").notNull(),
+  company_id: text("company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  payment_method: text("payment_method").notNull().default("bank_transfer"),
+  amount: doublePrecision("amount").notNull().default(0),
+  paid_at: timestamp("paid_at", { withTimezone: true }),
+  reference: text("reference").notNull().default(""),
+  status: text("status").notNull().default("pending"),
+  metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const financialAuditLogTable = pgTable("financial_audit_log", {
+  id: text("id").primaryKey(),
+  entity_type: text("entity_type").notNull(),
+  entity_id: text("entity_id").notNull(),
+  action: text("action").notNull(),
+  old_value_json: jsonb("old_value_json").$type<Record<string, unknown>>().notNull().default({}),
+  new_value_json: jsonb("new_value_json").$type<Record<string, unknown>>().notNull().default({}),
+  actor_type: text("actor_type").notNull().default("system"),
+  actor_id: text("actor_id"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Medizinische Serienfahrten: Kopfdatensatz; Fahrten tragen seriesId in partner_booking_meta. */
 export const partnerRideSeriesTable = pgTable("partner_ride_series", {
   id: text("id").primaryKey(),

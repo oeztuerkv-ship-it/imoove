@@ -16,6 +16,7 @@ import {
   resetRidesDemo,
   updateRide,
 } from "../db/ridesData";
+import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
   DEFAULT_AUTHORIZATION_SOURCE,
   normalizeAccessCodeInput,
@@ -573,6 +574,16 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     }
     if (nextStatus === "cancelled_by_customer") {
       customerCancelReasons.set(id, cancelReasonClean);
+    }
+    if (nextStatus === "completed") {
+      const finance = await upsertRideFinancialSnapshot({
+        ride: updated,
+        reason: "ride_completed_status_transition",
+      });
+      if (!finance.ok) {
+        res.status(500).json({ error: finance.error });
+        return;
+      }
     }
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);

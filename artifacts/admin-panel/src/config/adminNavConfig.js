@@ -17,6 +17,10 @@ export const ADMIN_PAGE_ROLES = {
   "billing-open": ["admin", "service", "taxi", "insurance"],
   "billing-cycles": ["admin", "service", "taxi", "insurance"],
   "billing-hotel": ["admin", "service", "hotel"],
+  "finance-dashboard": ["admin", "service", "taxi", "insurance"],
+  "finance-ride-financials": ["admin", "service", "taxi", "insurance"],
+  "finance-invoices": ["admin", "service", "taxi", "insurance"],
+  "finance-audit": ["admin", "service", "taxi", "insurance"],
 
   "docs-hub": ["admin", "service", "taxi", "insurance", "hotel"],
 
@@ -89,6 +93,18 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "billing-open", label: "Offene Zahlungen", icon: "wallet", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "billing-cycles", label: "Wochen- / Monatsabrechnung", icon: "chart", roles: ["admin", "service", "taxi", "insurance"] },
       { pageKey: "billing-hotel", label: "Übersicht Buchungen (Hotel)", icon: "building", roles: ["admin", "service", "hotel"] },
+    ],
+  },
+  {
+    id: "finance",
+    label: "Finanzen",
+    icon: "wallet",
+    roles: ["admin", "service", "taxi", "insurance"],
+    items: [
+      { pageKey: "finance-audit", label: "Audit", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "finance-dashboard", label: "Dashboard", icon: "chart", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "finance-invoices", label: "Invoices", icon: "document", roles: ["admin", "service", "taxi", "insurance"] },
+      { pageKey: "finance-ride-financials", label: "Ride Financials", icon: "rides", roles: ["admin", "service", "taxi", "insurance"] },
     ],
   },
   {
