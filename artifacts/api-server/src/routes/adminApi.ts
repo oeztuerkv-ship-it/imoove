@@ -97,6 +97,7 @@ import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
+import { logger } from "../lib/logger";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
 import {
@@ -211,7 +212,20 @@ router.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok = await authenticateAdminCredentials(username, password);
+  const loginAudit = process.env.ADMIN_AUTH_LOGIN_AUDIT === "1";
   if (!ok.ok) {
+    if (loginAudit) {
+      logger.warn(
+        {
+          event: "admin.auth.login",
+          outcome: "fail",
+          username: username || "(empty)",
+          clientIp: req.ip,
+          reason: ok.error,
+        },
+        "admin password login failed",
+      );
+    }
     if (ok.error === "bootstrap_persist_failed") {
       res.status(503).json({ error: "auth_bootstrap_persist_failed" });
       return;
@@ -222,6 +236,19 @@ router.post("/admin/auth/login", async (req, res) => {
   const token = await signAdminSessionJwt({ username, role: ok.role });
   const row = await findActiveAdminAuthUserByUsername(username);
   const scopeCompanyId = row?.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null;
+  if (loginAudit) {
+    logger.info(
+      {
+        event: "admin.auth.login",
+        outcome: "ok",
+        username,
+        clientIp: req.ip,
+        role: ok.role,
+        source: ok.source,
+      },
+      "admin password login ok",
+    );
+  }
   res.json({
     ok: true,
     token,

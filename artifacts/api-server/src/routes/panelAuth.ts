@@ -15,6 +15,7 @@ import {
   isPartnerType,
   patchPartnerRegistrationRequest,
 } from "../db/partnerRegistrationRequestsData";
+import { logger } from "../lib/logger";
 import { rateLimitPanelLogin } from "../lib/panelLoginRateLimit";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { verifyPassword } from "../lib/password";
@@ -60,13 +61,39 @@ router.post("/panel-auth/login", async (req, res) => {
   if (!row && username.includes("@")) {
     row = await findActivePanelUserByEmailNormalized(username);
   }
+  const loginAudit = process.env.PANEL_AUTH_LOGIN_AUDIT === "1";
+
   if (!row || !isPanelRoleString(row.role)) {
+    if (loginAudit) {
+      logger.warn(
+        {
+          event: "panel.auth.login",
+          outcome: "fail",
+          username: username || "(empty)",
+          clientIp: req.ip,
+          reason: "no_active_panel_user_or_role",
+        },
+        "panel password login failed",
+      );
+    }
     res.status(401).json({ error: "invalid_credentials" });
     return;
   }
 
   const ok = await verifyPassword(password, row.password_hash);
   if (!ok) {
+    if (loginAudit) {
+      logger.warn(
+        {
+          event: "panel.auth.login",
+          outcome: "fail",
+          username,
+          clientIp: req.ip,
+          reason: "password_mismatch",
+        },
+        "panel password login failed",
+      );
+    }
     res.status(401).json({ error: "invalid_credentials" });
     return;
   }
@@ -84,6 +111,20 @@ router.post("/panel-auth/login", async (req, res) => {
     console.error("[panel-auth/login] signPanelJwt:", e);
     res.status(500).json({ error: "token_sign_failed" });
     return;
+  }
+
+  if (loginAudit) {
+    logger.info(
+      {
+        event: "panel.auth.login",
+        outcome: "ok",
+        username: row.username,
+        panelUserId: row.id,
+        companyId: row.company_id,
+        clientIp: req.ip,
+      },
+      "panel password login ok",
+    );
   }
 
   res.json({
