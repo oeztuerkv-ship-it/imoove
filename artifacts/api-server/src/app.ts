@@ -26,6 +26,9 @@ function resolveStaticRoot(): string {
 /**
  * Gebautes Admin-Panel (Vite, base `/partners/`).
  * Standard: `artifacts/admin-panel/dist` (API-Build löscht `dist/`, daher nicht unter api-server/dist/public).
+ *
+ * Hinweis: `/partners/` bleibt als technischer Pfad für den Admin-Build erhalten,
+ * wird aber nur noch auf dem Admin-Host ausgeliefert.
  */
 function resolvePublicRoot(): string {
   const fromEnv = process.env["ADMIN_STATIC_ROOT"];
@@ -53,10 +56,16 @@ function isPanelBrowserHost(h: string): boolean {
   return h === "panel.onroda.de";
 }
 
+function isAdminBrowserHost(h: string): boolean {
+  return h === "admin.onroda.de";
+}
+
 /* Hinter Nginx/Ingress: korrektes req.protocol / Host für OAuth-Redirects */
 app.set("trust proxy", 1);
 
 function hostname(req: express.Request): string {
+  const fromTrust = (req.hostname ?? "").toLowerCase();
+  if (fromTrust) return fromTrust;
   return (req.get("host") ?? "").split(":")[0]?.toLowerCase() ?? "";
 }
 
@@ -158,10 +167,32 @@ app.use("/api", router);
 app.use(router);
 app.use(adminRouter);
 
-/* Admin-Panel (Vite-Build mit base `/partners/` → admin-panel/dist). */
+/* Partner-Host: /partners* vor Admin-Static — darf niemals die Admin-SPA treffen. */
+app.use((req, res, next) => {
+  if (!isPanelBrowserHost(hostname(req))) {
+    return next();
+  }
+  if (req.path === "/partners" || req.path.startsWith("/partners/")) {
+    return res.redirect(302, "/");
+  }
+  return next();
+});
+
+/* Admin-Panel (Vite-Build mit base `/partners/` → admin-panel/dist), nur auf admin.onroda.de. */
 const adminPublicRoot = resolvePublicRoot();
-app.use("/partners", express.static(adminPublicRoot));
 app.use("/partners", (req, res, next) => {
+  if (!isAdminBrowserHost(hostname(req))) {
+    return next();
+  }
+  express.static(adminPublicRoot)(req, res, (err) => {
+    if (err) return next(err);
+    return next();
+  });
+});
+app.use("/partners", (req, res, next) => {
+  if (!isAdminBrowserHost(hostname(req))) {
+    return next();
+  }
   if (req.method !== "GET" && req.method !== "HEAD") {
     return next();
   }
@@ -223,7 +254,7 @@ app.get("/", (req, res, next) => {
       health: "/api/healthz",
       healthV1: "/api/v1/health",
       admin: "/admin",
-      adminPanel: "/partners/",
+      adminPanel: "https://admin.onroda.de/partners/",
       partnerPanel: "https://panel.onroda.de/",
       partnerAuth: {
         googlePanelStart: "/api/auth/panel-login",
@@ -245,8 +276,10 @@ app.get("/", (req, res, next) => {
       if (err) next(err);
     });
   }
-  /* z. B. admin.onroda.de: Root auf gebaute App unter /partners/ */
-  return res.redirect(302, "/partners/");
+  if (isAdminBrowserHost(host)) {
+    return res.redirect(302, "/partners/");
+  }
+  return next();
 });
 
 export default app;

@@ -66,7 +66,7 @@ function panelOAuthDefaultReturnUrl(): string {
 }
 
 /**
- * Verhindert offene Redirects: nur Panel-/Admin-Host oder explizite Zusatz-Origins.
+ * Verhindert offene Redirects: nur Panel-Host oder explizite Zusatz-Origins.
  */
 function isAllowedPanelReturnUrl(urlStr: string): boolean {
   try {
@@ -75,7 +75,7 @@ function isAllowedPanelReturnUrl(urlStr: string): boolean {
     if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") {
       return u.protocol === "http:" || u.protocol === "https:";
     }
-    if (host === "panel.onroda.de" || host === "admin.onroda.de") {
+    if (host === "panel.onroda.de") {
       return u.protocol === "https:";
     }
     const extra = (process.env.PANEL_ALLOWED_RETURN_ORIGINS ?? "")
@@ -218,7 +218,7 @@ router.get("/auth/panel-login", (req, res) => {
     res.status(400).json({
       error: "invalid_return_url",
       hint:
-        "returnUrl must use https://panel.onroda.de, https://admin.onroda.de, localhost, or a host listed in PANEL_ALLOWED_RETURN_ORIGINS.",
+        "returnUrl must use https://panel.onroda.de, localhost, or a host listed in PANEL_ALLOWED_RETURN_ORIGINS.",
     });
     return;
   }
