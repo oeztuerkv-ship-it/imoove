@@ -41,6 +41,7 @@ import {
 } from "../db/accessCodesData";
 import {
   findRide,
+  getPanelCompanyOverviewMetrics,
   insertRideWithOptionalAccessCode,
   insertRidesWithSharedAccessCode,
   listRidesForCompany,
@@ -523,6 +524,19 @@ router.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   res.json({ ok: true, company });
 });
 
+router.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "overview")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const metrics = await getPanelCompanyOverviewMetrics(ctx.claims.companyId);
+    res.json({ ok: true, metrics });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
@@ -538,10 +552,32 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const supportEmail = str("supportEmail");
     const logoUrl = str("logoUrl");
     const openingHours = str("openingHours");
+    const name = str("name");
+    const contactName = str("contactName");
+    const email = str("email");
+    const phone = str("phone");
+    const addressLine1 = str("addressLine1");
+    const addressLine2 = str("addressLine2");
+    const postalCode = str("postalCode");
+    const city = str("city");
+    const country = str("country");
+    const legalForm = str("legalForm");
+    const ownerName = str("ownerName");
     if (dispoPhone !== undefined) patch.dispoPhone = dispoPhone;
     if (supportEmail !== undefined) patch.supportEmail = supportEmail;
     if (logoUrl !== undefined) patch.logoUrl = logoUrl;
     if (openingHours !== undefined) patch.openingHours = openingHours;
+    if (name !== undefined) patch.name = name;
+    if (contactName !== undefined) patch.contactName = contactName;
+    if (email !== undefined) patch.email = email;
+    if (phone !== undefined) patch.phone = phone;
+    if (addressLine1 !== undefined) patch.addressLine1 = addressLine1;
+    if (addressLine2 !== undefined) patch.addressLine2 = addressLine2;
+    if (postalCode !== undefined) patch.postalCode = postalCode;
+    if (city !== undefined) patch.city = city;
+    if (country !== undefined) patch.country = country;
+    if (legalForm !== undefined) patch.legalForm = legalForm;
+    if (ownerName !== undefined) patch.ownerName = ownerName;
 
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {

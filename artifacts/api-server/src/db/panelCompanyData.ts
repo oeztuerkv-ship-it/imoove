@@ -53,18 +53,35 @@ export type PanelCompanyProfilePatch = Partial<{
   supportEmail: string;
   logoUrl: string;
   openingHours: string;
+  /** Nur setzbar, wenn das DB-Feld bisher leer ist (Self-Service bei Ersteinrichtung). */
+  name: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  legalForm: string;
+  ownerName: string;
 }>;
 
 const MAX = {
   short: 120,
   line: 500,
   url: 2048,
+  name: 200,
 } as const;
 
 function clip(s: string, max: number): string {
   const t = s.trim();
   if (t.length <= max) return t;
   return t.slice(0, max);
+}
+
+function isDbEmpty(v: string | null | undefined): boolean {
+  return !String(v ?? "").trim();
 }
 
 function costCenterFromFarePermissions(fp: unknown): string {
@@ -187,6 +204,56 @@ export async function patchPanelCompanyProfile(
   }
   if (patch.openingHours !== undefined) {
     set.opening_hours = clip(patch.openingHours, MAX.line);
+  }
+
+  if (patch.name !== undefined && isDbEmpty(r0.name)) {
+    const v = clip(patch.name, MAX.name);
+    if (v) set.name = v;
+  }
+  if (patch.contactName !== undefined && isDbEmpty(r0.contact_name)) {
+    const v = clip(patch.contactName, MAX.short);
+    if (v) set.contact_name = v;
+  }
+  if (patch.email !== undefined && isDbEmpty(r0.email)) {
+    const e = clip(patch.email, MAX.short);
+    if (e) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+        return { ok: false, error: "email_invalid" };
+      }
+      set.email = e;
+    }
+  }
+  if (patch.phone !== undefined && isDbEmpty(r0.phone)) {
+    const v = clip(patch.phone, MAX.short);
+    if (v) set.phone = v;
+  }
+  if (patch.addressLine1 !== undefined && isDbEmpty(r0.address_line1)) {
+    const v = clip(patch.addressLine1, MAX.line);
+    if (v) set.address_line1 = v;
+  }
+  if (patch.addressLine2 !== undefined && isDbEmpty(r0.address_line2)) {
+    const v = clip(patch.addressLine2, MAX.line);
+    if (v) set.address_line2 = v;
+  }
+  if (patch.postalCode !== undefined && isDbEmpty(r0.postal_code)) {
+    const v = clip(patch.postalCode, MAX.short);
+    if (v) set.postal_code = v;
+  }
+  if (patch.city !== undefined && isDbEmpty(r0.city)) {
+    const v = clip(patch.city, MAX.short);
+    if (v) set.city = v;
+  }
+  if (patch.country !== undefined && isDbEmpty(r0.country)) {
+    const v = clip(patch.country, MAX.short);
+    if (v) set.country = v;
+  }
+  if (patch.legalForm !== undefined && isDbEmpty(r0.legal_form)) {
+    const v = clip(patch.legalForm, MAX.short);
+    if (v) set.legal_form = v;
+  }
+  if (patch.ownerName !== undefined && isDbEmpty(r0.owner_name)) {
+    const v = clip(patch.ownerName, MAX.short);
+    if (v) set.owner_name = v;
   }
 
   if (Object.keys(set).length === 0) {

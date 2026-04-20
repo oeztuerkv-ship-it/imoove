@@ -7,6 +7,14 @@ function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
 }
 
+function formatEur(n) {
+  return new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 2,
+  }).format(Number(n) || 0);
+}
+
 export default function OverviewPage() {
   const { user, token } = usePanelAuth();
   const [company, setCompany] = useState(null);
@@ -16,6 +24,7 @@ export default function OverviewPage() {
   const [pwMsg, setPwMsg] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
   const [fleetDash, setFleetDash] = useState(null);
+  const [rideMetrics, setRideMetrics] = useState(null);
 
   useEffect(() => {
     if (!token) return;
@@ -62,6 +71,26 @@ export default function OverviewPage() {
       cancelled = true;
     };
   }, [token, user?.panelModules]);
+
+  useEffect(() => {
+    if (!token || !hasPerm(user?.permissions, "rides.read")) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/overview/metrics`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled || !res.ok || !data?.ok) return;
+        setRideMetrics(data.metrics ?? null);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.permissions]);
 
   async function onChangePassword(e) {
     e.preventDefault();
@@ -111,6 +140,54 @@ export default function OverviewPage() {
         </p>
       </div>
       {companyErr ? <p className="panel-page__warn">{companyErr}</p> : null}
+      {rideMetrics ? (
+        <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
+          <h3 className="panel-card__title">Kennzahlen Fahrten</h3>
+          <p className="panel-page__muted panel-page__muted--tight">
+            Umsatz nur aus <strong>abgeschlossenen</strong> Fahrten (Endpreis oder Schätzpreis). Kalendertag und Monat
+            nach Ortszeit {rideMetrics.zone}. Woche: <strong>letzte 7 Tage</strong> (rollierend).
+          </p>
+          <div className="panel-fleet-dash" style={{ flexWrap: "wrap" }}>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{formatEur(rideMetrics.today.revenue)}</span>
+              <span className="panel-fleet-dash__lbl">Umsatz heute</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.today.completedRides}</span>
+              <span className="panel-fleet-dash__lbl">Abgeschlossen heute</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{formatEur(rideMetrics.week.revenue)}</span>
+              <span className="panel-fleet-dash__lbl">Umsatz 7 Tage</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.week.completedRides}</span>
+              <span className="panel-fleet-dash__lbl">Abgeschlossen 7 Tage</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{formatEur(rideMetrics.month.revenue)}</span>
+              <span className="panel-fleet-dash__lbl">Umsatz Monat</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.month.completedRides}</span>
+              <span className="panel-fleet-dash__lbl">Abgeschlossen Monat</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.openRides}</span>
+              <span className="panel-fleet-dash__lbl">Nicht abgeschlossen</span>
+            </div>
+          </div>
+          <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 10 }}>
+            <strong>Ausgaben / Kosten</strong> werden im Partner-Panel noch nicht gegen Fahrten verbucht — dafür nutzen
+            Sie Ihre Buchhaltung oder spätere Erweiterungen.
+          </p>
+          {hasPanelModule(user?.panelModules, "billing") ? (
+            <p className="panel-page__lead" style={{ marginTop: 8 }}>
+              Details und Export: <strong>Abrechnung</strong> in der Seitenleiste.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {fleetDash ? (
         <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
           <h3 className="panel-card__title">Flotte — Kurzüberblick</h3>

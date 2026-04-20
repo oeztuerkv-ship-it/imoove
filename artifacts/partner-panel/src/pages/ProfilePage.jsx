@@ -15,6 +15,44 @@ function emptyOperativeForm() {
   };
 }
 
+function emptyBasicsForm() {
+  return {
+    name: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    addressLine1: "",
+    addressLine2: "",
+    postalCode: "",
+    city: "",
+    country: "",
+    legalForm: "",
+    ownerName: "",
+  };
+}
+
+function isEmptyField(v) {
+  return v == null || String(v).trim() === "";
+}
+
+/** Felder, die der Partner nur ergänzen darf, wenn sie in der DB noch leer sind. */
+function basicsGaps(company) {
+  if (!company) return [];
+  const keys = [];
+  if (isEmptyField(company.name)) keys.push("name");
+  if (isEmptyField(company.contactName)) keys.push("contactName");
+  if (isEmptyField(company.email)) keys.push("email");
+  if (isEmptyField(company.phone)) keys.push("phone");
+  if (isEmptyField(company.addressLine1)) keys.push("addressLine1");
+  if (isEmptyField(company.addressLine2)) keys.push("addressLine2");
+  if (isEmptyField(company.postalCode)) keys.push("postalCode");
+  if (isEmptyField(company.city)) keys.push("city");
+  if (isEmptyField(company.country)) keys.push("country");
+  if (isEmptyField(company.legalForm)) keys.push("legalForm");
+  if (isEmptyField(company.ownerName)) keys.push("ownerName");
+  return keys;
+}
+
 function companyKindLabel(kind) {
   switch (kind) {
     case "taxi":
@@ -57,11 +95,14 @@ export default function ProfilePage() {
   const canEditOperative = hasPerm(user?.permissions, "company.update");
 
   const [form, setForm] = useState(emptyOperativeForm);
+  const [basicsForm, setBasicsForm] = useState(emptyBasicsForm);
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingBasics, setSavingBasics] = useState(false);
   const [err, setErr] = useState("");
   const [okMsg, setOkMsg] = useState("");
+  const [basicsMsg, setBasicsMsg] = useState("");
 
   const loadCompany = useCallback(async () => {
     if (!token) return;
@@ -87,6 +128,7 @@ export default function ProfilePage() {
         logoUrl: c.logoUrl ?? "",
         openingHours: c.openingHours ?? "",
       });
+      setBasicsForm(emptyBasicsForm());
     } catch {
       setErr("Firmendaten konnten nicht geladen werden.");
       setCompany(null);
@@ -146,6 +188,48 @@ export default function ProfilePage() {
     }
   }
 
+  const gaps = basicsGaps(company);
+
+  async function onSaveBasics(e) {
+    e.preventDefault();
+    if (!token || !canEditOperative || gaps.length === 0) return;
+    setErr("");
+    setBasicsMsg("");
+    setSavingBasics(true);
+    const body = {};
+    for (const k of gaps) {
+      body[k] = basicsForm[k] ?? "";
+    }
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/company`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        const code = data?.error;
+        if (code === "email_invalid") setErr("Geschäftliche E-Mail ist ungültig.");
+        else if (code === "no_changes") setErr("Keine ausfüllbaren Änderungen (Felder sind schon gesetzt oder leer gelassen).");
+        else setErr("Speichern ist fehlgeschlagen.");
+        return;
+      }
+      setBasicsMsg("Leere Stammdaten wurden übernommen.");
+      if (data.company) {
+        setCompany(data.company);
+        setBasicsForm(emptyBasicsForm());
+      }
+      await refreshUser();
+    } catch {
+      setErr("Speichern ist fehlgeschlagen.");
+    } finally {
+      setSavingBasics(false);
+    }
+  }
+
   const billingStreet = [company?.billingAddressLine1, company?.billingAddressLine2].filter(Boolean).join(", ");
 
   return (
@@ -172,6 +256,134 @@ export default function ProfilePage() {
       {loading ? <p className="panel-page__lead">Firmendaten werden geladen …</p> : null}
       {err ? <p className="panel-page__warn">{err}</p> : null}
       {okMsg ? <p className="panel-page__ok">{okMsg}</p> : null}
+
+      {!loading && company && canEditOperative && gaps.length > 0 ? (
+        <div className="panel-card panel-card--wide">
+          <h3 className="panel-card__title">Leere Stammdaten ergänzen</h3>
+          <p className="panel-page__muted panel-page__muted--tight">
+            Felder, die in Ihrer Mandantenakte noch leer sind, können Sie hier selbst eintragen. Sobald ein Wert gesetzt
+            ist, bleibt die Änderung bei der ONRODA-Administration (Pflicht- und Vertragsdaten).
+          </p>
+          {basicsMsg ? <p className="panel-page__ok">{basicsMsg}</p> : null}
+          <form className="panel-rides-form" onSubmit={onSaveBasics}>
+            <div className="panel-rides-form__grid">
+              {gaps.includes("name") ? (
+                <label className="panel-rides-form__field panel-rides-form__field--2">
+                  <span>Firmenname</span>
+                  <input
+                    value={basicsForm.name}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, name: ev.target.value }))}
+                    autoComplete="organization"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("contactName") ? (
+                <label className="panel-rides-form__field">
+                  <span>Ansprechpartner</span>
+                  <input
+                    value={basicsForm.contactName}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, contactName: ev.target.value }))}
+                    autoComplete="name"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("email") ? (
+                <label className="panel-rides-form__field">
+                  <span>Geschäftliche E-Mail</span>
+                  <input
+                    type="email"
+                    value={basicsForm.email}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, email: ev.target.value }))}
+                    autoComplete="email"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("phone") ? (
+                <label className="panel-rides-form__field">
+                  <span>Telefon</span>
+                  <input
+                    value={basicsForm.phone}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, phone: ev.target.value }))}
+                    autoComplete="tel"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("legalForm") ? (
+                <label className="panel-rides-form__field">
+                  <span>Rechtsform</span>
+                  <input
+                    value={basicsForm.legalForm}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, legalForm: ev.target.value }))}
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("ownerName") ? (
+                <label className="panel-rides-form__field">
+                  <span>Inhaber / Geschäftsführung</span>
+                  <input
+                    value={basicsForm.ownerName}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, ownerName: ev.target.value }))}
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("addressLine1") ? (
+                <label className="panel-rides-form__field panel-rides-form__field--2">
+                  <span>Straße + Hausnummer</span>
+                  <input
+                    value={basicsForm.addressLine1}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, addressLine1: ev.target.value }))}
+                    autoComplete="street-address"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("addressLine2") ? (
+                <label className="panel-rides-form__field panel-rides-form__field--2">
+                  <span>Adresszusatz</span>
+                  <input
+                    value={basicsForm.addressLine2}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, addressLine2: ev.target.value }))}
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("postalCode") ? (
+                <label className="panel-rides-form__field">
+                  <span>PLZ</span>
+                  <input
+                    value={basicsForm.postalCode}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, postalCode: ev.target.value }))}
+                    autoComplete="postal-code"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("city") ? (
+                <label className="panel-rides-form__field">
+                  <span>Stadt</span>
+                  <input
+                    value={basicsForm.city}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, city: ev.target.value }))}
+                    autoComplete="address-level2"
+                  />
+                </label>
+              ) : null}
+              {gaps.includes("country") ? (
+                <label className="panel-rides-form__field">
+                  <span>Land</span>
+                  <input
+                    value={basicsForm.country}
+                    onChange={(ev) => setBasicsForm((f) => ({ ...f, country: ev.target.value }))}
+                    autoComplete="country-name"
+                  />
+                </label>
+              ) : null}
+            </div>
+            <div className="panel-profile-actions">
+              <button type="submit" className="panel-btn-primary" disabled={savingBasics}>
+                {savingBasics ? "Speichern …" : "Leere Felder speichern"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       {!loading && company ? (
         <div className="panel-card panel-card--wide panel-card--readonly-master">

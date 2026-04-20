@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
@@ -734,6 +734,132 @@ export function adminPreviousDayBounds(bounds: AdminDayBounds): AdminDayBounds {
   const start = addDaysUtc(bounds.start, -1);
   const end = addDaysUtc(bounds.end, -1);
   return { start, end };
+}
+
+const PANEL_OVERVIEW_TERMINAL_STATUSES: RideRequest["status"][] = [
+  "completed",
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+  "rejected",
+];
+
+function panelOverviewRideRevenue(r: RideRequest): number {
+  const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
+  return Number.isFinite(a) ? a : 0;
+}
+
+export type PanelCompanyOverviewMetrics = {
+  /** Kalendertag / Monat: Mitternacht Europe/Berlin. Woche: rollierend 7×24h ab jetzt (DB-Zeit). */
+  zone: "Europe/Berlin";
+  weekScope: "rolling_7d";
+  today: { completedRides: number; revenue: number };
+  week: { completedRides: number; revenue: number };
+  month: { completedRides: number; revenue: number };
+  openRides: number;
+};
+
+/** Partner-Übersicht: nur Mandantenfahrten, kein globaler Admin-Scope. */
+export async function getPanelCompanyOverviewMetrics(companyId: string): Promise<PanelCompanyOverviewMetrics> {
+  const db = getDb();
+  if (!db) {
+    const list = memoryRides.filter((r) => r.companyId && String(r.companyId) === companyId);
+    const now = Date.now();
+    const u = new Date();
+    const dayStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
+    const dayEnd = dayStart + 24 * 3600 * 1000;
+    const weekStart = now - 7 * 24 * 3600 * 1000;
+    const monthStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), 1);
+    const monthEnd = Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1);
+    const inCreated = (r: RideRequest, a: number, b: number) => {
+      const t = new Date(r.createdAt).getTime();
+      return t >= a && t < b;
+    };
+    const completedIn = (a: number, b: number) =>
+      list.filter((r) => r.status === "completed" && inCreated(r, a, b));
+    const todayRides = completedIn(dayStart, dayEnd);
+    const weekRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= weekStart);
+    const monthRides = completedIn(monthStart, monthEnd);
+    const openRides = list.filter((r) => !PANEL_OVERVIEW_TERMINAL_STATUSES.includes(r.status)).length;
+    return {
+      zone: "Europe/Berlin",
+      weekScope: "rolling_7d",
+      today: {
+        completedRides: todayRides.length,
+        revenue: todayRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+      },
+      week: {
+        completedRides: weekRides.length,
+        revenue: weekRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+      },
+      month: {
+        completedRides: monthRides.length,
+        revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+      },
+      openRides,
+    };
+  }
+
+  const berlinTodayStart = sql`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
+  const berlinTodayEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  const weekRollingStart = sql`(now() - interval '7 days')`;
+
+  const baseCompleted = and(companyIdMatchCondition(companyId), eq(ridesTable.status, "completed"));
+
+  const [todayRow] = await db
+    .select({
+      completedRides: sql<number>`count(*)::int`,
+      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    })
+    .from(ridesTable)
+    .where(
+      and(baseCompleted, gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd)),
+    );
+
+  const [weekRow] = await db
+    .select({
+      completedRides: sql<number>`count(*)::int`,
+      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    })
+    .from(ridesTable)
+    .where(and(baseCompleted, gte(ridesTable.created_at, weekRollingStart)));
+
+  const [monthRow] = await db
+    .select({
+      completedRides: sql<number>`count(*)::int`,
+      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    })
+    .from(ridesTable)
+    .where(
+      and(baseCompleted, gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd)),
+    );
+
+  const [openRow] = await db
+    .select({ openRides: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)));
+
+  return {
+    zone: "Europe/Berlin",
+    weekScope: "rolling_7d",
+    today: {
+      completedRides: Number(todayRow?.completedRides ?? 0),
+      revenue: Number(todayRow?.revenue ?? 0),
+    },
+    week: {
+      completedRides: Number(weekRow?.completedRides ?? 0),
+      revenue: Number(weekRow?.revenue ?? 0),
+    },
+    month: {
+      completedRides: Number(monthRow?.completedRides ?? 0),
+      revenue: Number(monthRow?.revenue ?? 0),
+    },
+    openRides: Number(openRow?.openRides ?? 0),
+  };
 }
 
 export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {
