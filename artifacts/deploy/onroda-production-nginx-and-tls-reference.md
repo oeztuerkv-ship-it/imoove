@@ -7,6 +7,34 @@ Diese Datei hält den **bestätigt funktionierenden Live-Stand** fest (Routing, 
 
 ---
 
+## Drei Ebenen (verbindliches Modell)
+
+| Ebene | Was es ist | Typische Prüfung |
+|--------|------------|------------------|
+| **Git** | Commits auf `origin/main` | `git log`, `git pull` |
+| **Repo-Static / Build** | Dateien unter z. B. `artifacts/api-server/static/` nach Pull auf dem Server | `ls`, `grep` in `index.html` |
+| **Live-Auslieferung** | Was Nginx unter `root` (z. B. **`/var/www/onroda`**) wirklich ausliefert | `curl https://onroda.de/`, ggf. Datei-Datum unter `/var/www/…` |
+
+**Learning:** `git pull` allein aktualisiert **nicht** automatisch `/var/www/onroda`, wenn die Marketing-Domain dort statisch ausliegt. Dann bleibt online eine **alte** `index.html`, obwohl Git aktuell ist.
+
+### Verbindlicher Ablauf: Homepage- / Marketing-Änderungen live
+
+1. **`git pull`** (Repo auf dem Server auf den gewünschten Stand).
+2. **Static aus dem Repo nach `/var/www/onroda` synchronisieren** (kanonische Quelle: **`…/artifacts/api-server/static/`**), z. B.:
+
+   ```bash
+   rsync -a --delete /root/imoove/artifacts/api-server/static/ /var/www/onroda/
+   ```
+
+   (Pfade an euren Server anpassen; `--delete` nur nutzen, wenn ihr bewusst alte Artefakte entfernen wollt.)
+
+3. **`sudo nginx -t`** (und bei OK `reload` nur wenn ihr Nginx geändert habt).
+4. **Live-Check:** `curl -sI https://onroda.de/` (und bei Bedarf Body/Titel prüfen).
+
+Ohne Schritt **2** ist Live **nicht** gleich Git.
+
+---
+
 ## 1. Aktive Nginx-Konfiguration (Produktion)
 
 - **Wirksam ist nur, was unter `sites-enabled` symlinkt** — nicht nur Dateien in `sites-available`.

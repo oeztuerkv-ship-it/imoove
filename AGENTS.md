@@ -79,6 +79,8 @@ Ablauf im Skript: `git pull` → `CI=true pnpm install --frozen-lockfile` → AP
 
 **Live-Pfad der Panel-Assets:** Die API liest standardmäßig die gebauten Ordner `artifacts/admin-panel/dist` und `artifacts/partner-panel/dist` relativ zum API-`dist` (siehe `artifacts/api-server/src/app.ts`). Es ist **kein** separates PM2-Frontend nötig, solange Nginx auf **eine** Node-Instanz (Port **3000**) proxyt und keine veralteten Kopien unter `/var/www/…` ausliefert. Wenn eure Nginx-Konfiguration doch auf statische Verzeichnisse zeigt, nach dem Build `ONRODA_RSYNC_*` setzen oder die Pfade anpassen.
 
+**Marketing (`onroda.de`) unter `/var/www/…`:** `git pull` allein reicht **nicht** — nach Pull **`artifacts/api-server/static/`** explizit ins Nginx-`root` synchronisieren, dann `nginx -t` und `curl` prüfen. Ablauf und Drei-Ebenen-Modell (Git / Static im Repo / Live-Dateien): **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`**.
+
 Deploy **ohne** dieses Skript ist **kein** unterstützter Ablauf mehr — bitte nicht wieder einführen.
 
 ## Automatische Repo-Prüfung
