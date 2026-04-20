@@ -104,4 +104,6 @@ PANEL_API="${ROOT}/artifacts/api-server/src/routes/panelApi.ts"
 grep -q '/panel/v1/rides' "$PANEL_API" || err "panelApi.ts: /panel/v1/rides muss existieren"
 grep -q '/panel/v1/access-codes' "$PANEL_API" || err "panelApi.ts: /panel/v1/access-codes muss existieren"
 
+bash "${ROOT}/scripts/verify-onroda-nginx-example-invariants.sh"
+
 echo "verify-onroda-repo-invariants: OK"

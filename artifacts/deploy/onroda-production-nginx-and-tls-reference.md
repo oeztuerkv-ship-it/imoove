@@ -124,3 +124,24 @@ curl -sI https://admin.onroda.de/
 5. `panel.onroda.de`: Redirect `/partners` → `/` noch gesetzt?
 6. **`onroda.de`:** Nginx-`root` + **tatsächlicher Dateiinhalt** (z. B. `/var/www/onroda` ↔ Sync aus `/root/imoove/artifacts/api-server/static/`) — keine verwaisten Expo-Builds.
 7. `nginx -t` und reload nur nach grünem Test.
+
+---
+
+## Verbindlich nach Marketing-Sync (`/var/www/onroda` o. ä.)
+
+**Marketing-Dateien (`index.html`, CSS, Bilder) und Nginx sind zwei Schichten.** Nur weil der Static-Inhalt aus dem Repo aktualisiert wurde, darf **`sites-enabled/final-try`** nicht „nebenbei“ verändert oder durch eine vereinfachte Konfig ersetzt werden.
+
+**Invariante:** `admin.onroda.de`, `panel.onroda.de` und `api.onroda.de` müssen **immer** per **`proxy_pass`** auf **dieselbe** Node-Instanz (typisch **`127.0.0.1:3000`**) zeigen — **niemals** nur `root` wie bei der Marketing-Domain.
+
+**Sofort-Checks nach jedem Eingriff an Static oder Nginx** (auf dem Server, ohne `-k`):
+
+```bash
+curl -sI https://admin.onroda.de/ | head -3
+curl -sI https://admin.onroda.de/partners/ | head -5
+curl -sI https://panel.onroda.de/ | head -5
+curl -sI https://api.onroda.de/api/healthz | head -3
+```
+
+- Wenn **`admin`** oder **`panel`** plötzlich **dieselben Header/Content-Typen** wie **`onroda.de`** liefern oder klar **Marketing-HTML** sind → **Nginx liefert Static statt Proxy** → sofort `final-try` korrigieren, nicht im Repo nach einem App-Bug suchen.
+
+**Im Git-Repo** prüft CI/lokal: `bash scripts/verify-onroda-repo-invariants.sh` (inkl. **`scripts/verify-onroda-nginx-example-invariants.sh`** für das Beispiel-`nginx-onroda.example.conf`). Änderungen am Beispiel, die diese Regeln brechen, fallen damit vor dem Merge auf `main` auf.
