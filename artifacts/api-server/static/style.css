@@ -695,9 +695,9 @@
       gap: 12px;
       padding: 14px 18px;
       border-radius: 14px;
-      border: 1px solid rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(0, 0, 0, 0.12);
       background: #fff;
-      color: #101010;
+      color: #000;
       text-decoration: none;
       min-width: 190px;
       justify-content: center;
@@ -708,12 +708,15 @@
     .hp-store-link:hover {
       transform: translateY(-1px);
       box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+      color: #000;
+      background: #fff;
     }
 
     .hp-store-link svg {
       width: 24px;
       height: 24px;
       flex-shrink: 0;
+      color: #000;
     }
 
     .hp-store-copy {
@@ -721,16 +724,18 @@
       flex-direction: column;
       line-height: 1.2;
       text-align: left;
+      color: #000;
     }
 
     .hp-store-copy small {
       font-size: 0.74rem;
-      font-weight: 500;
-      opacity: 0.72;
+      font-weight: 600;
+      color: #000;
     }
 
     .hp-store-copy span {
       font-size: 0.98rem;
+      color: #000;
     }
 
     .hp-footer {
