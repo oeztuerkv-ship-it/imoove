@@ -155,6 +155,15 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   }, []);
 
   useEffect(() => {
+    if (!showCreateModal && !showEditModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showCreateModal, showEditModal]);
+
+  useEffect(() => {
     if (!showEditModal || !editingCompanyId) {
       setPanelUsersList([]);
       return;

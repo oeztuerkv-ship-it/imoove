@@ -839,6 +839,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
 }
 
@@ -1737,7 +1738,35 @@
 
 .admin-modal--company-workspace {
   max-width: min(1180px, 100%);
-  max-height: min(92vh, 960px);
+  max-height: min(90vh, 960px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-modal--company-workspace > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-modal--company-workspace .admin-modal__header {
+  flex-shrink: 0;
+}
+
+.admin-modal--company-workspace .admin-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-modal--company-workspace .admin-modal__footer-actions {
+  flex-shrink: 0;
 }
 
 .admin-modal--company-workspace .admin-modal__title-wrap {

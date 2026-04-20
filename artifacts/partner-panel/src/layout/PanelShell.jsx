@@ -34,7 +34,7 @@ const PAGES = {
     subtitle: "Abgeschlossen, storniert, abgelehnt",
     component: <PartnerRidesListPage variant="history" />,
   },
-  profile: { title: "Meine Firma & Zugang", subtitle: "Stammdaten und Anmeldedaten", component: <ProfilePage /> },
+  profile: { title: "Meine Firma", subtitle: "Stammdaten (Anzeige) und operative Erreichbarkeit", component: <ProfilePage /> },
   team: { title: "Meine Mitarbeiter", subtitle: "Zugänge und Rollen in Ihrem Unternehmen", component: <TeamPage /> },
   "access-codes": {
     title: "Meine Freigabe-Codes",

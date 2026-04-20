@@ -534,18 +534,14 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     const str = (k: string) => (typeof body[k] === "string" ? body[k] : undefined);
 
     const patch: PanelCompanyProfilePatch = {};
-    const cn = str("contactName");
     const dispoPhone = str("dispoPhone");
     const supportEmail = str("supportEmail");
     const logoUrl = str("logoUrl");
     const openingHours = str("openingHours");
-    const businessNotes = str("businessNotes");
-    if (cn !== undefined) patch.contactName = cn;
     if (dispoPhone !== undefined) patch.dispoPhone = dispoPhone;
     if (supportEmail !== undefined) patch.supportEmail = supportEmail;
     if (logoUrl !== undefined) patch.logoUrl = logoUrl;
     if (openingHours !== undefined) patch.openingHours = openingHours;
-    if (businessNotes !== undefined) patch.businessNotes = businessNotes;
 
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {

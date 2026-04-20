@@ -38,6 +38,8 @@ export interface PanelCompanyPublic {
   billingCountry: string;
   bankIban: string;
   bankBic: string;
+  /** Optional Kostenstelle aus `fare_permissions` (Schlüssel cost_center / costCenter / kostenstelle), sonst leer. */
+  costCenter: string;
   verificationStatus: string;
   complianceStatus: string;
   contractStatus: string;
@@ -47,12 +49,10 @@ export interface PanelCompanyPublic {
 }
 
 export type PanelCompanyProfilePatch = Partial<{
-  contactName: string;
   dispoPhone: string;
   supportEmail: string;
   logoUrl: string;
   openingHours: string;
-  businessNotes: string;
 }>;
 
 const MAX = {
@@ -65,6 +65,17 @@ function clip(s: string, max: number): string {
   const t = s.trim();
   if (t.length <= max) return t;
   return t.slice(0, max);
+}
+
+function costCenterFromFarePermissions(fp: unknown): string {
+  if (!fp || typeof fp !== "object" || Array.isArray(fp)) return "";
+  const o = fp as Record<string, unknown>;
+  for (const k of ["cost_center", "costCenter", "kostenstelle", "Kostenstelle"]) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  }
+  return "";
 }
 
 function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelCompanyPublic {
@@ -108,6 +119,7 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     billingCountry: r.billing_country ?? "",
     bankIban: r.bank_iban ?? "",
     bankBic: r.bank_bic ?? "",
+    costCenter: costCenterFromFarePermissions(r.fare_permissions),
     verificationStatus: r.verification_status ?? "pending",
     complianceStatus: r.compliance_status ?? "pending",
     contractStatus: r.contract_status ?? "inactive",
@@ -160,9 +172,6 @@ export async function patchPanelCompanyProfile(
 
   const set: Partial<typeof adminCompaniesTable.$inferInsert> = {};
 
-  if (patch.contactName !== undefined) {
-    set.contact_name = clip(patch.contactName, MAX.short);
-  }
   if (patch.supportEmail !== undefined) {
     const e = clip(patch.supportEmail, MAX.short);
     if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
@@ -178,9 +187,6 @@ export async function patchPanelCompanyProfile(
   }
   if (patch.openingHours !== undefined) {
     set.opening_hours = clip(patch.openingHours, MAX.line);
-  }
-  if (patch.businessNotes !== undefined) {
-    set.business_notes = clip(patch.businessNotes, MAX.line);
   }
 
   if (Object.keys(set).length === 0) {
