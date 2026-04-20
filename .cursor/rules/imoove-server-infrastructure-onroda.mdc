@@ -39,7 +39,7 @@ Probleme wirken oft wie „Code kaputt“, sind aber oft **Mischzustände**:
 
 - In **`sites-enabled`** nur **aktive** Konfiguration — **keine** `.bak`, `.backup`, alte Test-Snippets (Nginx lädt alles mit).
 - Nach Änderungen: Syntax prüfen, dann reload — und Warnungen zu doppelten `server_name` ernst nehmen (meist doppelte/verwaiste Dateien).
-- **Produktions-Referenz (Routing/TLS/Domain-Trennung, Marketing-Root auf Platte):** `artifacts/deploy/onroda-production-nginx-and-tls-reference.md` — aktiv z. B. **`/etc/nginx/sites-enabled/final-try`** (nicht nur `sites-available`); Marketing ggf. **`/var/www/onroda`** aus Repo-**`artifacts/api-server/static/`** synchron halten (Nginx allein reicht nicht bei falschem Dateiinhalt).
+- **Produktions-Referenz (Routing/TLS/Domain-Trennung, Marketing-Root auf Platte):** `artifacts/deploy/onroda-production-nginx-and-tls-reference.md` — aktiv z. B. **`/etc/nginx/sites-enabled/final-try`** (nicht nur `sites-available`); Marketing ggf. **`/var/www/onroda`** aus Repo-**`artifacts/api-server/static/`** per **`rsync`** nach **`git pull`** synchron halten (Git ≠ Live-Static). **Panel/Admin** getrennt prüfen: Zertifikat/SAN, Nginx-`proxy_pass` → **3000**, nicht Marketing-`root`.
 
 ## SSL
 

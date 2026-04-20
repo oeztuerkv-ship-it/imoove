@@ -15,23 +15,35 @@ Diese Datei hält den **bestätigt funktionierenden Live-Stand** fest (Routing, 
 | **Repo-Static / Build** | Dateien unter z. B. `artifacts/api-server/static/` nach Pull auf dem Server | `ls`, `grep` in `index.html` |
 | **Live-Auslieferung** | Was Nginx unter `root` (z. B. **`/var/www/onroda`**) wirklich ausliefert | `curl https://onroda.de/`, ggf. Datei-Datum unter `/var/www/…` |
 
-**Learning:** `git pull` allein aktualisiert **nicht** automatisch `/var/www/onroda`, wenn die Marketing-Domain dort statisch ausliegt. Dann bleibt online eine **alte** `index.html`, obwohl Git aktuell ist.
+**Learning (Homepage):** `origin/main` kann stimmen, live sieht man trotzdem die **alte** Homepage, wenn `onroda.de` statisch aus **`/var/www/onroda`** kommt und dort **kein** `rsync` aus dem Repo-`static/` gelaufen ist. Erst die Synchronisation macht die Git-Änderung für Nutzer sichtbar.
 
-### Verbindlicher Ablauf: Homepage- / Marketing-Änderungen live
+**Learning (Panel):** `panel.onroda.de` kann durch **Zertifikat** (SAN), **Nginx** (falscher Block / kein `proxy_pass`) und **Port-/Upstream-Verwechslungen** unabhängig von Marketing kaputt gehen — immer **getrennt** von Schritt 1–4 prüfen.
 
-1. **`git pull`** (Repo auf dem Server auf den gewünschten Stand).
-2. **Static aus dem Repo nach `/var/www/onroda` synchronisieren** (kanonische Quelle: **`…/artifacts/api-server/static/`**), z. B.:
+### Verbindlicher Ablauf: jede Marketing-/Homepage-Änderung live
+
+1. **`git pull`**
+2. **`rsync`** von **`artifacts/api-server/static/`** nach **`/var/www/onroda`** (Pfade an den Server anpassen), z. B.:
 
    ```bash
    rsync -a --delete /root/imoove/artifacts/api-server/static/ /var/www/onroda/
    ```
 
-   (Pfade an euren Server anpassen; `--delete` nur nutzen, wenn ihr bewusst alte Artefakte entfernen wollt.)
+   (`--delete` nur, wenn ihr alte Dateien im Ziel bewusst entfernen wollt.)
 
-3. **`sudo nginx -t`** (und bei OK `reload` nur wenn ihr Nginx geändert habt).
-4. **Live-Check:** `curl -sI https://onroda.de/` (und bei Bedarf Body/Titel prüfen).
+3. **`sudo nginx -t`** (bei Konfig-Änderungen danach `reload`)
+4. **Live-Check:** `curl -sI https://onroda.de/` (optional Body/Titel prüfen)
 
-Ohne Schritt **2** ist Live **nicht** gleich Git.
+Ohne Schritt **2** bleibt Live-Static hinter Git zurück.
+
+### Panel / Admin (immer getrennt vom Marketing-Ablauf prüfen)
+
+Nach **Panel- oder Admin-Änderungen** (Build, Nginx, TLS) **nicht** nur Schritt 1–4 oben — zusätzlich mindestens:
+
+- **TLS / SNI:** `openssl s_client -connect api.onroda.de:443 -servername api.onroda.de` (SAN enthält `api.onroda.de`); analog bei Bedarf für `panel` / `admin`.
+- **Nginx:** `admin.onroda.de` / `panel.onroda.de` / `api.onroda.de` jeweils **`proxy_pass`** auf **Node (typisch `127.0.0.1:3000`)**, kein Marketing-`root` für diese Hosts.
+- **Kurz-HTTP:** z. B. `curl -sI https://panel.onroda.de/`, `curl -sI https://admin.onroda.de/partners/`, `curl -sI https://api.onroda.de/api/healthz`
+
+Details und Postmortem-Hinweise: weiter unten in dieser Datei und in **`.cursor/rules/imoove-server-infrastructure-onroda.mdc`**.
 
 ---
 
