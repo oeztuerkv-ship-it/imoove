@@ -39,12 +39,13 @@ Probleme wirken oft wie „Code kaputt“, sind aber oft **Mischzustände**:
 
 - In **`sites-enabled`** nur **aktive** Konfiguration — **keine** `.bak`, `.backup`, alte Test-Snippets (Nginx lädt alles mit).
 - Nach Änderungen: Syntax prüfen, dann reload — und Warnungen zu doppelten `server_name` ernst nehmen (meist doppelte/verwaiste Dateien).
+- **Produktions-Referenz (Routing/TLS/Domain-Trennung, verifizierter Stand):** `artifacts/deploy/onroda-production-nginx-and-tls-reference.md` — aktiv z. B. **`/etc/nginx/sites-enabled/final-try`** (nicht nur `sites-available`).
 
 ## SSL
 
 - Zertifikate müssen zu den **tatsächlich** genutzten Hostnamen passen (z. B. **admin** + **api** + **panel** jeweils im **SAN** des ausgelieferten Zerts, nicht nur CN).
 - **Symptom:** `curl https://api.onroda.de/…` oder Browser-Fetch schlägt mit Zertifikatfehler fehl („no alternative certificate subject name matches target host name **api.onroda.de**“) → der **`server_name api.onroda.de`**-Block nutzt ein **falsches** `ssl_certificate` (z. B. nur Marketing/Admin-Zert) oder der **443-`default_server`** liefert das falsche Zertifikat.
-- **Repo-Referenz:** `artifacts/deploy/nginx-onroda.example.conf` (explizite `ssl_certificate`-Zeilen pro Host + Certbot-Hinweis).
+- **Repo-Referenz:** `artifacts/deploy/nginx-onroda.example.conf` (explizite `ssl_certificate`-Zeilen pro Host + Certbot-Hinweis); Live-Pfade und Checkliste: **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** (z. B. Multi-SAN-Zert unter `/etc/letsencrypt/live/onroda.de-0001/…` nach Certbot).
 
 ## Wenn der Server-Stand „kaputt driftet“ (nur mit Absprache / nach Backup)
 
