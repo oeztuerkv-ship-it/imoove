@@ -78,10 +78,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
-    pricingMode:
-      r.pricing_mode === "taxi_tariff" || r.pricing_mode === "fixed_price"
-        ? r.pricing_mode
-        : null,
+    pricingMode: r.pricing_mode === "taxi_tariff" ? "taxi_tariff" : null,
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
     partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null,
   };

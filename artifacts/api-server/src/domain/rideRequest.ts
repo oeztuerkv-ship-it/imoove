@@ -71,7 +71,7 @@ export interface RideRequest {
   finalFare?: number | null;
   paymentMethod: string;
   vehicle: string;
-  pricingMode?: "taxi_tariff" | "fixed_price" | null;
+  pricingMode?: "taxi_tariff" | null;
   customerName: string;
   passengerId?: string;
   driverId?: string | null;

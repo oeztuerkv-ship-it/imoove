@@ -5,7 +5,7 @@ import { driverVehicleAssignmentsTable, fleetDriversTable, fleetVehiclesTable } 
 
 export type VehicleLegalType = "taxi" | "rental_car";
 export type VehicleClass = "standard" | "xl" | "wheelchair";
-export type PricingMode = "taxi_tariff" | "fixed_price";
+export type PricingMode = "taxi_tariff";
 
 export interface DriverRideCapability {
   vehicleLegalType: VehicleLegalType | null;
@@ -17,7 +17,7 @@ function normalizeVehicleText(value: string | null | undefined): string {
 }
 
 function parsePricingMode(raw: unknown): PricingMode | null {
-  if (raw !== "taxi_tariff" && raw !== "fixed_price") return null;
+  if (raw !== "taxi_tariff") return null;
   return raw;
 }
 
@@ -27,17 +27,13 @@ function requiredClassForRide(vehicleText: string): VehicleClass | null {
   return null;
 }
 
-function inferPricingModeFromVehicle(vehicleText: string): PricingMode {
-  if (vehicleText.includes("mietwagen") || vehicleText.includes("onroda")) return "fixed_price";
+function inferPricingModeFromVehicle(_vehicleText: string): PricingMode {
   return "taxi_tariff";
 }
 
 function requiredLegalTypeForRide(ride: RideRequest): VehicleLegalType {
-  // IMPORTANT: Follow Onroda Core Policy
-  // docs/onroda-core-policy-taxi-mietwagen-storno.md
   const vehicleText = normalizeVehicleText(ride.vehicle);
-  const pricingMode = parsePricingMode(ride.pricingMode) ?? inferPricingModeFromVehicle(vehicleText);
-  if (pricingMode === "fixed_price") return "rental_car";
+  const _pricingMode = parsePricingMode(ride.pricingMode) ?? inferPricingModeFromVehicle(vehicleText);
   return "taxi";
 }
 
@@ -46,7 +42,8 @@ export function isRideCompatibleWithCapability(
   capability: DriverRideCapability,
 ): boolean {
   const requiredLegalType = requiredLegalTypeForRide(ride);
-  if (!capability.vehicleLegalType || capability.vehicleLegalType !== requiredLegalType) {
+  const normalizedLegalType = capability.vehicleLegalType === "rental_car" ? "taxi" : capability.vehicleLegalType;
+  if (!normalizedLegalType || normalizedLegalType !== requiredLegalType) {
     return false;
   }
   const vehicleText = normalizeVehicleText(ride.vehicle);

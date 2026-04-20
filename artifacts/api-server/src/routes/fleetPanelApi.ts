@@ -53,7 +53,7 @@ const router: IRouter = Router();
 
 const pkgRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path.join(pkgRoot, "data", "fleet-uploads");
-const ALLOWED_VEHICLE_LEGAL_TYPES: FleetVehicleLegalType[] = ["taxi", "rental_car"];
+const ALLOWED_VEHICLE_LEGAL_TYPES: FleetVehicleLegalType[] = ["taxi"];
 const ALLOWED_VEHICLE_CLASSES: FleetVehicleClass[] = ["standard", "xl", "wheelchair"];
 
 function enabledPanelModules(panelModules: string[] | null) {
@@ -184,7 +184,7 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     const firstName = typeof b.firstName === "string" ? b.firstName : "";
     const lastName = typeof b.lastName === "string" ? b.lastName : "";
     const phone = typeof b.phone === "string" ? b.phone : "";
-    const vehicleLegalType = (typeof b.vehicleLegalType === "string" ? b.vehicleLegalType : "taxi") as FleetDriverVehicleLegalType;
+    const vehicleLegalType = "taxi" as FleetDriverVehicleLegalType;
     const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetDriverVehicleClass;
     if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType as FleetVehicleLegalType)) {
       res.status(400).json({ error: "vehicle_legal_type_invalid" });
@@ -243,11 +243,7 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
     if (typeof b.phone === "string") patch.phone = b.phone;
     if (typeof b.pScheinNumber === "string") patch.pScheinNumber = b.pScheinNumber;
     if (typeof b.vehicleLegalType === "string") {
-      if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(b.vehicleLegalType as FleetVehicleLegalType)) {
-        res.status(400).json({ error: "vehicle_legal_type_invalid" });
-        return;
-      }
-      patch.vehicleLegalType = b.vehicleLegalType as FleetDriverVehicleLegalType;
+      patch.vehicleLegalType = "taxi" as FleetDriverVehicleLegalType;
     }
     if (typeof b.vehicleClass === "string") {
       if (!ALLOWED_VEHICLE_CLASSES.includes(b.vehicleClass as FleetVehicleClass)) {
@@ -422,7 +418,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
     const vehicleType = (typeof b.vehicleType === "string" ? b.vehicleType : "sedan") as FleetVehicleType;
-    const vehicleLegalType = (typeof b.vehicleLegalType === "string" ? b.vehicleLegalType : "taxi") as FleetVehicleLegalType;
+    const vehicleLegalType = "taxi" as FleetVehicleLegalType;
     const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetVehicleClass;
     const allowed: FleetVehicleType[] = ["sedan", "station_wagon", "van", "wheelchair"];
     if (!allowed.includes(vehicleType)) {
@@ -487,12 +483,7 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
     }
     if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
     if (typeof b.vehicleLegalType === "string") {
-      const legal = b.vehicleLegalType as FleetVehicleLegalType;
-      if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(legal)) {
-        res.status(400).json({ error: "vehicle_legal_type_invalid" });
-        return;
-      }
-      patch.vehicleLegalType = legal;
+      patch.vehicleLegalType = "taxi" as FleetVehicleLegalType;
     }
     if (typeof b.vehicleClass === "string") {
       const cls = b.vehicleClass as FleetVehicleClass;

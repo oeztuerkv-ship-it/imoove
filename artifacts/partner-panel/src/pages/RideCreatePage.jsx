@@ -354,7 +354,6 @@ export default function RideCreatePage() {
                   <option value="standard">Standard</option>
                   <option value="xl">XL / Van</option>
                   <option value="wheelchair">Rollstuhl</option>
-                  <option value="onroda">Onroda Fixpreis</option>
                 </select>
               </label>
               <label className="panel-rides-form__field">

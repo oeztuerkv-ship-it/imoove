@@ -7,12 +7,12 @@ import React, {
   useState,
 } from "react";
 
-import { calculateFare, calculateOnrodaFixFare, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
+import { calculateFare, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
 
-export type VehicleType = "standard" | "xl" | "wheelchair" | "onroda";
-export type RideServiceClass = "rollstuhl" | "xl" | "taxi" | "mietwagen";
+export type VehicleType = "standard" | "xl" | "wheelchair";
+export type RideServiceClass = "rollstuhl" | "xl" | "taxi";
 export type PaymentMethod = "cash" | "paypal" | "card" | "voucher" | "app" | "access_code";
 
 export interface VehicleOption {
@@ -26,14 +26,6 @@ export interface VehicleOption {
 
 /** Karussell-Reihenfolge: Onroda zuerst, dann Taxi-Klassen. */
 export const VEHICLES: VehicleOption[] = [
-  {
-    id: "onroda",
-    name: "Onroda",
-    description: "Fixpreis-Garantie",
-    multiplier: 1.0,
-    minSeats: 4,
-    icon: "car-side",
-  },
   {
     id: "standard",
     name: "Standard",
@@ -239,35 +231,14 @@ export function isOnrodaFixRouteEligible(origin: GeoLocation, destination: GeoLo
   return !isTripWithinStuttgartEsslingenTariffArea(origin, destination);
 }
 
-/**
- * `pricing_mode` für Kundenbuchungen (Core Policy: Matching nach Modus + Rechtsart).
- * Die Onroda-Kachel setzt `serviceClass` „mietwagen“, im Taxitarif-Korridor gilt aber Taxameter
- * → dann `taxi_tariff`, damit Fahrzeuge mit `vehicle_legal_type = taxi` matchen.
- * Außerhalb bleibt Onroda `fixed_price` → nur `rental_car`-Fahrzeuge.
- */
-export function effectivePricingModeForCustomerRide(input: {
+/** pricing_mode für Kundenbuchungen: Onroda nutzt nur noch Taxi-Schätzpreis. */
+export function effectivePricingModeForCustomerRide(_input: {
   selectedServiceClass: RideServiceClass | null;
   selectedVehicle: VehicleType | null;
   origin: GeoLocation;
   destination: GeoLocation | null;
-}): "taxi_tariff" | "fixed_price" | null {
-  const { selectedServiceClass, selectedVehicle, origin, destination } = input;
-  if (selectedServiceClass === "taxi") return "taxi_tariff";
-
-  const insideMeterCorridor =
-    destination != null &&
-    selectedVehicle === "onroda" &&
-    isTripWithinStuttgartEsslingenTariffArea(origin, destination);
-
-  if (selectedServiceClass === "mietwagen") {
-    if (insideMeterCorridor) return "taxi_tariff";
-    return "fixed_price";
-  }
-
-  if (selectedVehicle === "onroda" && insideMeterCorridor) return "taxi_tariff";
-  if (selectedVehicle === "onroda" && destination) return "fixed_price";
-
-  return null;
+}): "taxi_tariff" {
+  return "taxi_tariff";
 }
 
 export function RideProvider({ children }: { children: React.ReactNode }) {
@@ -317,12 +288,12 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      const onrodaFixAllowed = selectedVehicle === "onroda" ? isOnrodaFixRouteEligible(origin, destination) : false;
+      const onrodaFixAllowed = false;
       if (API_BASE) {
         try {
           const u = new URL(`${API_BASE}/fare-estimate`);
           u.searchParams.set("distanceKm", String(result.distanceKm));
-          u.searchParams.set("vehicle", selectedVehicle === "onroda" && !onrodaFixAllowed ? "standard" : selectedVehicle);
+          u.searchParams.set("vehicle", selectedVehicle);
           const res = await fetch(u.toString(), { cache: "no-store" });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data?.ok && Number.isFinite(data?.estimate?.total)) {
@@ -334,17 +305,13 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
               waitingCharge: 0,
               total,
               distanceKm: Math.round(result.distanceKm * 100) / 100,
-              fareKind: selectedVehicle === "onroda" && onrodaFixAllowed ? "onroda_fix" : "taxameter",
+              fareKind: "taxameter",
             });
             return;
           }
         } catch {
           /* fallback auf lokale Berechnung */
         }
-      }
-      if (selectedVehicle === "onroda" && onrodaFixAllowed) {
-        setFareBreakdown(calculateOnrodaFixFare(result.distanceKm));
-        return;
       }
       const vehicle = VEHICLES.find((v) => v.id === selectedVehicle);
       if (!vehicle) {

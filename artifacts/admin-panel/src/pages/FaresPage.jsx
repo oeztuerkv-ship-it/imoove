@@ -6,7 +6,6 @@ const API_URL = `${API_BASE}/admin/fare-areas`;
 
 const RULE_TYPE_LABELS = {
   official_metered_tariff: "Amtliches Taxameter-Tarif",
-  official_fixed_price: "Amtlicher Festpreis",
   tariff_corridor: "Preiskorridor",
   free_price_outside_area: "Freie Preiswahl außerhalb",
   health_contract_rate: "Vertragstarif (Gesundheit)",
@@ -60,7 +59,7 @@ function buildFareAreaNumericBody(form) {
     manualFixedPriceEur: (() => {
       const t = String(form.manualFixedPriceEur ?? "").trim();
       if (!t) return null;
-      return parseFareNumber(t, "Fixpreis (manuell)");
+      return parseFareNumber(t, "Optionaler Zusatzpreis (manuell)");
     })(),
   };
 }
@@ -288,7 +287,6 @@ export default function FaresPage() {
     (a) =>
       a.ruleType === "free_price_outside_area" ||
       a.ruleType === "special_manual_rule" ||
-      a.ruleType === "official_fixed_price" ||
       a.ruleType === "tariff_corridor",
   ).length;
 
@@ -393,7 +391,7 @@ export default function FaresPage() {
                 </select>
               </div>
               <div>
-                <label className="admin-field-label">Festpreis im Gebiet</label>
+                <label className="admin-field-label">Zusatzpreis-Regel im Gebiet</label>
                 <select
                   className="admin-select"
                   value={form.fixedPriceAllowed}
@@ -463,7 +461,7 @@ export default function FaresPage() {
             <legend className="admin-fares-legend">Onroda-App Tarif</legend>
             <p className="admin-fares-hint admin-fares-hint--tight">
               Gilt in der Kunden-App nur für Fahrten, die die App als außerhalb des Stuttgart–Esslingen-Tarifkorridors
-              einstuft (Fixpreis). Liegen Start und Ziel in diesem Korridor, nutzt die Schätzung trotz Auswahl „Onroda“
+              einstuft (Taxischätzung). Liegen Start und Ziel im Korridor, nutzt die Schätzung regulär den Taxitarif
               die Taxameter-Felder oben — dann greifen diese Basis-/km-Werte hier nicht.
             </p>
             <div className="admin-fares-subhead">Basis &amp; Preis pro km</div>
@@ -485,7 +483,7 @@ export default function FaresPage() {
           </fieldset>
 
           <fieldset className="admin-fares-fieldset admin-fares-fieldset--fix">
-            <legend className="admin-fares-legend">Fixpreis (manuell)</legend>
+            <legend className="admin-fares-legend">Optionaler Zusatzpreis (manuell)</legend>
             <p className="admin-fares-hint">
               Optionaler fester Betrag — eigenständig zur Kilometer-Staffel; leer lassen, wenn nicht genutzt.
             </p>
@@ -526,7 +524,7 @@ export default function FaresPage() {
                 <div>Gebiet</div>
                 <div>Regeltyp</div>
                 <div>Tarif</div>
-                <div>Fixpreis</div>
+                <div>Zusatzpreis</div>
                 <div>Status</div>
                 <div>Aktionen</div>
               </div>

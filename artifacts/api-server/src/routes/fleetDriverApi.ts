@@ -64,7 +64,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         ok: true,
         rides: [],
         message:
-          "Keine Rechtsart (Taxi/Mietwagen) am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen und Rechtsart setzen.",
+          "Keine Taxi-Rechtsart am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen.",
       });
       return;
     }
@@ -76,7 +76,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       if (isAssignedToOtherDriver) return false;
       // Mandantenfilter: wenn companyId gesetzt ist, muss sie zur Fahrerfirma passen.
       // Legacy/Test-Fahrten können ohne companyId erstellt sein; die Capability-Prüfung
-      // entscheidet dann weiterhin Taxi/Mietwagen/Klasse.
+      // entscheidet dann weiterhin nach Taxi-Klasse.
       if (ride.companyId && ride.companyId !== a.companyId) return false;
       if (isAssignedToDriver) {
         return (
@@ -130,7 +130,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
         ok: true,
         rides: [],
         message:
-          "Keine Rechtsart (Taxi/Mietwagen) am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen und Rechtsart setzen.",
+          "Keine Taxi-Rechtsart am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen.",
       });
       return;
     }

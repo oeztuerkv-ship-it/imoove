@@ -28,8 +28,6 @@ import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { type ServiceId } from "@/constants/services";
 import { useDriver } from "@/context/DriverContext";
 import {
-  isOnrodaFixRouteEligible,
-  isTripWithinStuttgartEsslingenTariffArea,
   type RideServiceClass,
   type VehicleType,
   VEHICLES,
@@ -59,11 +57,6 @@ function isPlausibleEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
-const FIXPREIS_VOUCHER_HINT = "Fixpreis ist bei Transportschein nicht verfügbar";
-const TARIFF_AREA_NOTICE_PRIMARY = "Diese Fahrt wird gemäß örtlicher Taxi-Tarifordnung berechnet.";
-const TARIFF_AREA_NOTICE_SECONDARY = "Der endgültige Fahrpreis richtet sich nach dem geltenden Taxitarif.";
-const OUTSIDE_TARIFF_NOTICE_PRIMARY = "Für diese Fahrt kann vor Fahrtbeginn ein Festpreis vereinbart werden.";
-const OUTSIDE_TARIFF_NOTICE_SECONDARY = "Der Fahrpreis wird vor Fahrtantritt verbindlich festgelegt.";
 const SEARCH_OVERLAY_BG = "#FFFFFF";
 
 const VEHICLE_CAR_ICON = "#171717";
@@ -72,11 +65,10 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
   standard: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "4 Personen" },
   xl: { icon: "van-passenger", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "bis zu 6 Personen" },
   wheelchair: { icon: "wheelchair-accessibility", color: "#0369A1", bg: "#E0F2FE", seats: "Rollstuhlgerecht" },
-  onroda: { icon: "car-side", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "Fixpreis-Garantie" },
 };
 
 type HomeRequestOption = {
-  id: "taxi" | "onroda" | "xl" | "rollstuhl";
+  id: "taxi" | "xl" | "rollstuhl";
   label: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   detailType: ServiceId;
@@ -86,7 +78,6 @@ type HomeRequestOption = {
 
 const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
   { id: "taxi", label: "Taxi", icon: "car", detailType: "standard", vehicleType: "standard", serviceClass: "taxi" },
-  { id: "onroda", label: "Onroda", icon: "car-side", detailType: "onroda", vehicleType: "onroda", serviceClass: "mietwagen" },
   { id: "xl", label: "XL", icon: "van-passenger", detailType: "xl", vehicleType: "xl", serviceClass: "xl" },
   { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", detailType: "wheelchair", vehicleType: "wheelchair", serviceClass: "rollstuhl" },
 ];
@@ -117,7 +108,7 @@ function HomeServiceGrid({
         {HOME_REQUEST_OPTIONS.map((service) => {
           const active =
             selectedServiceClass === service.serviceClass ||
-            (service.id === "onroda" && selectedVehicle === "onroda");
+            false;
           const isWheelchair = service.id === "rollstuhl";
           const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
           return (
@@ -454,7 +445,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (destination && !selectedVehicle) {
-      setSelectedVehicle("onroda");
+      setSelectedVehicle("standard");
     }
   }, [destination, selectedVehicle, setSelectedVehicle]);
 
@@ -568,17 +559,6 @@ export default function HomeScreen() {
   const handleHomeServicePress = useCallback(
     (service: HomeRequestOption) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (service.vehicleType === "onroda" && paymentMethod === "voucher") {
-        setPaymentMethod(null);
-        showComboHint(FIXPREIS_VOUCHER_HINT);
-      }
-      if (service.vehicleType === "onroda" && destination) {
-        showComboHint(
-          isTripWithinStuttgartEsslingenTariffArea(origin, destination)
-            ? TARIFF_AREA_NOTICE_PRIMARY
-            : OUTSIDE_TARIFF_NOTICE_PRIMARY,
-        );
-      }
       setSelectedVehicle(service.vehicleType);
       setSelectedServiceClass(service.serviceClass);
       router.push({ pathname: "/service-detail", params: { type: service.detailType } } as any);
@@ -912,17 +892,8 @@ export default function HomeScreen() {
                           setSelectedServiceClass("rollstuhl");
                         } else if (v.id === "xl") {
                           setSelectedServiceClass("xl");
-                        } else if (v.id === "onroda") {
-                          setSelectedServiceClass("mietwagen");
-                        } else if (selectedServiceClass !== "mietwagen") {
+                        } else {
                           setSelectedServiceClass("taxi");
-                        }
-                        if (v.id === "onroda" && destination) {
-                          showComboHint(
-                            isTripWithinStuttgartEsslingenTariffArea(origin, destination)
-                              ? TARIFF_AREA_NOTICE_PRIMARY
-                              : OUTSIDE_TARIFF_NOTICE_PRIMARY,
-                          );
                         }
                         setSelectedVehicle(v.id);
                         Haptics.selectionAsync();
@@ -1118,16 +1089,6 @@ export default function HomeScreen() {
             )}
 
             {/* Start → Ziel Card */}
-            {selectedVehicle === "onroda" && destination && fareBreakdown && (
-              <View style={styles.searchFixpreisBanner}>
-                <MaterialCommunityIcons name="tag-outline" size={17} color={ONRODA_MARK_RED} />
-                <Text style={styles.searchFixpreisBannerText}>
-                  {isOnrodaFixRouteEligible(origin, destination)
-                    ? `${OUTSIDE_TARIFF_NOTICE_PRIMARY} ${OUTSIDE_TARIFF_NOTICE_SECONDARY}`
-                    : `${TARIFF_AREA_NOTICE_PRIMARY} ${TARIFF_AREA_NOTICE_SECONDARY}`}
-                </Text>
-              </View>
-            )}
 
             <View style={[styles.twoFieldCard, { backgroundColor: SEARCH_OVERLAY_BG, borderColor: "#E5E7EB" }]}>
               {/* Punkte + Linie links */}

@@ -116,10 +116,10 @@ function guessPaymentMethodFromRide(pm: string | undefined): PaymentMethod {
 
 function guessVehicleTypeFromRide(v: string | undefined): VehicleType {
   const s = (v ?? "").toLowerCase();
-  if (s.includes("onroda")) return "onroda";
+  if (s.includes("onroda")) return "standard";
   if (s.includes("xl")) return "xl";
   if (s.includes("rollstuhl")) return "wheelchair";
-  if (s === "standard" || s === "mietwagen" || s === "taxi") return "standard";
+  if (s === "standard" || s === "taxi") return "standard";
   return "standard";
 }
 

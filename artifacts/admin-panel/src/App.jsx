@@ -87,7 +87,7 @@ const PAGE_META = {
   },
   fares: {
     title: "Tarife & Gebiete",
-    subtitle: "Preisregeln, Zonen, Zuschläge und Fixpreise",
+    subtitle: "Preisregeln, Zonen und Zuschläge",
   },
   "health-overview": {
     title: "Krankenfahrten — Übersicht",

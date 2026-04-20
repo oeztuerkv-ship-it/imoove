@@ -1,6 +1,6 @@
 import { type VehicleType } from "@/context/RideContext";
 
-export type ServiceId = "onroda" | "standard" | "xl" | "wheelchair";
+export type ServiceId = "standard" | "xl" | "wheelchair";
 
 export interface ServiceDetailItem {
   title: string;
@@ -17,23 +17,6 @@ export interface ServiceDefinition {
 }
 
 export const SERVICES: ServiceDefinition[] = [
-  {
-    id: "onroda",
-    title: "Onroda",
-    vehicleType: "onroda",
-    icon: "car-sports",
-    shortDescription: "Fixpreis mit klarer Preiszusage vor Fahrtbeginn.",
-    detail: [
-      {
-        title: "Festpreis vor Fahrtstart",
-        text: "Der Fahrpreis wird vor Fahrtbeginn verbindlich festgelegt. So wissen Sie vorab, was die Fahrt kostet.",
-      },
-      {
-        title: "Planbar und transparent",
-        text: "Ideal für planbare Fahrten: keine nachträglichen Überraschungen bei Preis oder Abrechnung.",
-      },
-    ],
-  },
   {
     id: "standard",
     title: "Taxi",

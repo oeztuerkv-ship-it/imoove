@@ -62,11 +62,11 @@ function accessCodeBookingErrorMessage(code: string): string {
   return code;
 }
 
-/** Gleiche Logik wie auf dem Booking-Screen (Fixpreis vs. Taxi). */
+/** CTA-Label für sofortige oder geplante Taxi-Buchung. */
 function rideConfirmCtaLabel(vehicle: VehicleType | null, hasScheduledTime: boolean): string {
   if (!vehicle) return hasScheduledTime ? "Reservieren" : "Jetzt buchen";
-  if (hasScheduledTime) return vehicle === "onroda" ? "Fixpreis reservieren" : "Reservieren";
-  return vehicle === "onroda" ? "Fixpreis buchen" : "Jetzt buchen";
+  if (hasScheduledTime) return "Reservieren";
+  return "Jetzt buchen";
 }
 
 /* Zahlungsmethoden, die einen hinterlegten Token benötigen */
@@ -93,7 +93,6 @@ const SERVICE_CLASS_LABELS = {
   rollstuhl: "Rollstuhl",
   xl: "XL",
   taxi: "Taxi",
-  mietwagen: "Mietwagen",
 } as const;
 
 export default function RideScreen() {
@@ -155,10 +154,6 @@ export default function RideScreen() {
 
   const handleOrder = async () => {
     if (!fareBreakdown || !paymentMethod) return;
-    if (selectedVehicle === "onroda" && paymentMethod === "voucher") {
-      Alert.alert("Nicht möglich", "Fixpreis ist bei Transportschein nicht verfügbar.");
-      return;
-    }
     if (paymentMethod === "access_code" && !accessCodeInput.trim()) {
       Alert.alert("Code fehlt", "Bitte geben Sie den Gutschein- oder Freigabe-Code ein.");
       return;
@@ -208,7 +203,6 @@ export default function RideScreen() {
             selectedServiceClass ? SERVICE_CLASS_LABELS[selectedServiceClass] :
             selectedVehicle === "standard" ? "Standard" :
             selectedVehicle === "xl" ? "XL" :
-            selectedVehicle === "onroda" ? "Onroda" :
             "Rollstuhl";
           const pricingMode = effectivePricingModeForCustomerRide({
             selectedServiceClass,
@@ -374,7 +368,7 @@ export default function RideScreen() {
           <View style={styles.paymentGrid}>
             {RIDE_PAYMENT_OPTIONS.map((opt) => {
               const isSelected = paymentMethod === opt.id;
-              const voucherBlockedByOnroda = opt.isVoucher && selectedVehicle === "onroda";
+              const voucherBlockedByOnroda = false;
               return (
                 <Pressable
                   key={opt.id}
@@ -389,8 +383,6 @@ export default function RideScreen() {
                   ]}
                   onPress={() => {
                     if (voucherBlockedByOnroda) {
-                      Alert.alert("Nicht möglich", "Fixpreis ist bei Transportschein nicht verfügbar.");
-                      return;
                     }
                     if (opt.id !== "voucher") setIsExempted(false);
                     if (opt.id !== "access_code") setAccessCodeInput("");
@@ -514,13 +506,6 @@ export default function RideScreen() {
               <Text style={[styles.bottomLabel, { color: "#15803D" }]}>Abrechnung</Text>
               <Text style={[styles.bottomPrice, { fontSize: rf(14), color: "#166534" }]}>
                 über Code
-              </Text>
-            </View>
-          ) : fareBreakdown?.fareKind === "onroda_fix" ? (
-            <View style={[styles.priceBox, { borderColor: ONRODA_MARK_RED + "66", backgroundColor: ONRODA_MARK_RED + "12" }]}>
-              <Text style={[styles.bottomLabel, { color: ONRODA_MARK_RED }]}>Garantierter Festpreis</Text>
-              <Text style={[styles.bottomPrice, { color: ONRODA_MARK_RED }]}>
-                {formatEuro(fareBreakdown.total)}
               </Text>
             </View>
           ) : (

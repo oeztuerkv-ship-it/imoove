@@ -13,7 +13,7 @@ import {
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import { calculateFare, calculateOnrodaFixFare, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
+import { calculateFare, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -49,9 +49,7 @@ function VehicleCard({
 
   const price = distanceKm
     ? formatEuro(
-        vehicle.id === "onroda"
-          ? calculateOnrodaFixFare(distanceKm).total
-          : ceilToTenth(calculateFare(distanceKm).total * vehicle.multiplier),
+        ceilToTenth(calculateFare(distanceKm).total * vehicle.multiplier),
       )
     : null;
 

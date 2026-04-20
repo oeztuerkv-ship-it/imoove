@@ -63,12 +63,11 @@ const VEHICLE_TYPES = [
 ];
 
 const VEHICLE_LEGAL_TYPES = [
-  { value: "taxi", label: "Taxi (Pflichtfahrgebiet / Taxitarif)" },
-  { value: "rental_car", label: "Mietwagen (Freiverkehr / Fixpreis)" },
+  { value: "taxi", label: "Taxi" },
 ];
 
 const VEHICLE_LEGAL_HINT =
-  "Kundenbuchungen „Onroda“ außerhalb des Taxitarif-Korridors (App) nutzen Festpreis — dort passen nur Fahrzeuge mit Rechtsart „Mietwagen“. Innerhalb des Korridors gilt Taxameter; dort reicht „Taxi“. Buchungen „Taxi“ / Taxameter matchen nur Taxi-Fahrzeuge.";
+  "Onroda arbeitet nur mit Taxi-Schätzpreis. Alle Fahrzeuge werden als Taxi geführt; die Zuordnung erfolgt weiterhin über Fahrzeugklasse (Standard, XL, Rollstuhl).";
 
 const VEHICLE_CLASSES = [
   { value: "standard", label: "Standard" },
@@ -209,7 +208,7 @@ export default function FleetPage() {
           model: vehicleForm.model,
           color: vehicleForm.color,
           vehicleType: vehicleForm.vehicleType,
-          vehicleLegalType: vehicleForm.vehicleLegalType,
+          vehicleLegalType: "taxi",
           vehicleClass: vehicleForm.vehicleClass,
           taxiOrderNumber: vehicleForm.taxiOrderNumber,
           nextInspectionDate: vehicleForm.nextInspectionDate || null,
@@ -671,19 +670,6 @@ export default function FleetPage() {
                   </select>
                 </label>
                 <label className="panel-rides-form__field">
-                  <span>Rechtsart</span>
-                  <select
-                    value={vehicleForm.vehicleLegalType}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleLegalType: ev.target.value }))}
-                  >
-                    {VEHICLE_LEGAL_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="panel-rides-form__field">
                   <span>Fahrzeugklasse</span>
                   <select
                     value={vehicleForm.vehicleClass}
@@ -778,7 +764,6 @@ export default function FleetPage() {
                   <th>Kennzeichen</th>
                   <th>Modell</th>
                   <th>Typ</th>
-                  <th>Rechtsart</th>
                   <th>Klasse</th>
                   <th>Taxi-Nr.</th>
                   <th>HU</th>
@@ -803,7 +788,6 @@ export default function FleetPage() {
                         <td>{v.licensePlate}</td>
                         <td>{v.model || "—"}</td>
                         <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
-                        <td>{VEHICLE_LEGAL_TYPES.find((t) => t.value === v.vehicleLegalType)?.label ?? v.vehicleLegalType}</td>
                         <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
                         <td>{v.taxiOrderNumber || "—"}</td>
                         <td>{v.nextInspectionDate || "—"}</td>

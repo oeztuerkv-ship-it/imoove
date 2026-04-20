@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { VEHICLES, useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
-import { calculateFare, calculateOnrodaFixFare, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
+import { calculateFare, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -31,7 +31,7 @@ export default function RideSelectScreen() {
 
   useEffect(() => {
     if (!destination) return;
-    if (!selectedVehicle) setSelectedVehicle("onroda");
+    if (!selectedVehicle) setSelectedVehicle("standard");
     void fetchRoute();
   }, [destination, selectedVehicle, setSelectedVehicle, fetchRoute]);
 
@@ -41,10 +41,7 @@ export default function RideSelectScreen() {
     const baseTaxi = calculateFare(km).total;
     return new Map(
       VEHICLES.map((v) => {
-        const total =
-          v.id === "onroda"
-            ? calculateOnrodaFixFare(km).total
-            : ceilToTenth(baseTaxi * v.multiplier);
+        const total = ceilToTenth(baseTaxi * v.multiplier);
         return [v.id, formatEuro(total)];
       }),
     );

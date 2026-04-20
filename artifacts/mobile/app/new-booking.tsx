@@ -370,7 +370,6 @@ export default function NewBookingScreen() {
     const vehicleLabel =
       selectedVehicle === "standard" ? "Standard" :
       selectedVehicle === "xl" ? "XL" :
-      selectedVehicle === "onroda" ? "Onroda" :
       "Rollstuhl";
     const customerName = profile?.name
       ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
@@ -387,7 +386,7 @@ export default function NewBookingScreen() {
       displayName: to.fullName || to.name,
     };
     const pricingMode = effectivePricingModeForCustomerRide({
-      selectedServiceClass: selectedVehicle === "onroda" ? "mietwagen" : null,
+      selectedServiceClass: "taxi",
       selectedVehicle,
       origin: originGeo,
       destination: destGeo,

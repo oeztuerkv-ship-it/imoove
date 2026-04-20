@@ -1,4 +1,4 @@
-# ONRODA – CORE POLICY (Taxi / Mietwagen / Storno)
+# ONRODA – CORE POLICY (Taxi-Schätzpreis / Storno)
 
 ## 1. Pricing Mode (verbindlich)
 
@@ -7,7 +7,6 @@ Für jede Fahrt MUSS ein eindeutiger `pricing_mode` gesetzt sein.
 ### Zuordnung
 
 * `Taxi` → `pricing_mode = taxi_tariff`
-* `Mietwagen` → `pricing_mode = fixed_price`
 
 ### Regel
 
@@ -24,13 +23,6 @@ Für jede Fahrt MUSS ein eindeutiger `pricing_mode` gesetzt sein.
 * nur Fahrzeuge mit:
 
   * `vehicle_legal_type = taxi`
-
-### Mietwagen / Festpreis
-
-* `pricing_mode = fixed_price`
-* nur Fahrzeuge mit:
-
-  * `vehicle_legal_type = rental_car`
 
 ### Fahrzeugklassen zusätzlich
 
@@ -55,7 +47,6 @@ Verbindliche Produktstruktur:
 
 * Produkte:
   * `Taxi`
-  * `Mietwagen`
 * Fahrzeugklassen:
   * `Standard`
   * `XL`
@@ -113,7 +104,6 @@ NICHT:
 Vor Release MUSS geprüft werden:
 
 * Taxi-Fahrt → nur Taxi-Fahrer sehen sie
-* Mietwagen-Fahrt → nur Mietwagen sehen sie
 * XL → nur XL-Fahrzeuge
 * Rollstuhl → nur Wheelchair-Fahrzeuge
 * falsche Annahme → wird mit 409 geblockt
@@ -124,8 +114,7 @@ Vor Release MUSS geprüft werden:
 
 ## 7. Ziel
 
-* keine Vermischung von Taxi und Mietwagen
-* klare Preislogik
+* klare Taxi-Preislogik
 * rechtssicheres Verhalten
 * sofort verständliche UX für den Nutzer
 
@@ -142,6 +131,4 @@ Die Ride-Klassifikation soll vollständig explizit und ohne Textableitung erfolg
 Beispiele (Soll-Zustand):
 
 * XL Taxi = `pricing_mode: taxi_tariff` + `vehicle_class: xl`
-* XL Mietwagen = `pricing_mode: fixed_price` + `vehicle_class: xl`
 * Rollstuhl Taxi = `pricing_mode: taxi_tariff` + `vehicle_class: wheelchair`
-* Rollstuhl Mietwagen = `pricing_mode: fixed_price` + `vehicle_class: wheelchair`

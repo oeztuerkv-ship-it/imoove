@@ -195,15 +195,7 @@ router.get("/fare-estimate", async (req, res, next) => {
     const taxiTotal = ceilToTenth(profile.baseFareEur + distanceCharge + waitingCharge + profile.serviceFeeEur);
     const multipliers: Record<string, number> = { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 };
     const adjustedTaxi = ceilToTenth(taxiTotal * (multipliers[vehicle] ?? 1));
-    const onrodaDistancePart = ceilToTenth(distanceKm * profile.onrodaPerKmEur);
-    const onrodaTotal = Math.max(
-      profile.onrodaMinFareEur,
-      Math.ceil((profile.onrodaBaseFareEur + onrodaDistancePart - Number.EPSILON)),
-    );
-    const estimate =
-      vehicle === "onroda"
-        ? (profile.manualFixedPriceEur != null ? profile.manualFixedPriceEur : onrodaTotal)
-        : adjustedTaxi;
+    const estimate = adjustedTaxi;
     res.json({
       ok: true,
       profile,
@@ -213,7 +205,7 @@ router.get("/fare-estimate", async (req, res, next) => {
         vehicle,
         total: estimate,
         taxiTotal: adjustedTaxi,
-        onrodaTotal,
+        onrodaTotal: adjustedTaxi,
       },
     });
   } catch (e) {
@@ -450,11 +442,8 @@ router.post("/rides", async (req, res, next) => {
     if (
       raw.pricingMode != null &&
       raw.pricingMode !== "" &&
-      raw.pricingMode !== "taxi_tariff" &&
-      raw.pricingMode !== "fixed_price"
+      raw.pricingMode !== "taxi_tariff"
     ) {
-      // IMPORTANT: Follow Onroda Core Policy
-      // docs/onroda-core-policy-taxi-mietwagen-storno.md
       res.status(400).json({ error: "pricing_mode_invalid" });
       return;
     }
@@ -477,10 +466,7 @@ router.post("/rides", async (req, res, next) => {
       billingReference: parseOptionalBillingTag(raw.billingReference, 256),
       authorizationSource,
       accessCodeId: null,
-      pricingMode:
-        raw.pricingMode === "taxi_tariff" || raw.pricingMode === "fixed_price"
-          ? raw.pricingMode
-          : null,
+      pricingMode: "taxi_tariff",
     };
     const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;

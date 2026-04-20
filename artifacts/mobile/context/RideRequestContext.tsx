@@ -65,7 +65,7 @@ export interface RideRequest {
   distanceKm: number;
   durationMinutes: number;
   estimatedFare: number;
-  pricingMode?: "taxi_tariff" | "fixed_price" | null;
+  pricingMode?: "taxi_tariff" | null;
   finalFare?: number | null;
   paymentMethod: string;
   vehicle: string;
@@ -284,9 +284,7 @@ function normalizeRequest(r: any): RideRequest {
     pricingMode:
       r.pricingMode === "taxi_tariff" || r.pricing_mode === "taxi_tariff"
         ? "taxi_tariff"
-        : r.pricingMode === "fixed_price" || r.pricing_mode === "fixed_price"
-          ? "fixed_price"
-          : null,
+        : null,
     finalFare: parseFinalFareFromApi(r as Record<string, unknown>),
     paymentMethod,
     vehicle,
