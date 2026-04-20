@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import CompanyWorkspaceForm from "../components/CompanyWorkspaceForm.jsx";
 import { PanelModuleIcon } from "../components/PanelModuleIcons.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
@@ -35,6 +36,8 @@ function emptyCompanyForm() {
     customer_category: "hotel",
     patient_data_required: false,
     name: "",
+    legal_form: "",
+    owner_name: "",
     contact_name: "",
     email: "",
     phone: "",
@@ -44,6 +47,15 @@ function emptyCompanyForm() {
     city: "",
     country: "",
     vat_id: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    business_notes: "",
     is_active: true,
     is_priority_company: false,
     priority_for_live_rides: false,
@@ -54,15 +66,20 @@ function emptyCompanyForm() {
   };
 }
 
+const COMPANY_KIND_EDIT = new Set(["taxi", "general", "voucher_client", "insurer", "hotel", "corporate"]);
+
 function formFromItem(item) {
+  const ck = item.company_kind && COMPANY_KIND_EDIT.has(item.company_kind) ? item.company_kind : "general";
   return {
     company_type: "service_provider",
-    company_kind: item.company_kind === "taxi" ? "taxi" : "general",
+    company_kind: ck,
     tax_id: item.tax_id ?? "",
     concession_number: item.concession_number ?? "",
     customer_category: "hotel",
     patient_data_required: false,
     name: item.name ?? "",
+    legal_form: item.legal_form ?? "",
+    owner_name: item.owner_name ?? "",
     contact_name: item.contact_name ?? "",
     email: item.email ?? "",
     phone: item.phone ?? "",
@@ -72,6 +89,15 @@ function formFromItem(item) {
     city: item.city ?? "",
     country: item.country ?? "",
     vat_id: item.vat_id ?? "",
+    billing_name: item.billing_name ?? "",
+    billing_address_line1: item.billing_address_line1 ?? "",
+    billing_address_line2: item.billing_address_line2 ?? "",
+    billing_postal_code: item.billing_postal_code ?? "",
+    billing_city: item.billing_city ?? "",
+    billing_country: item.billing_country ?? "",
+    bank_iban: item.bank_iban ?? "",
+    bank_bic: item.bank_bic ?? "",
+    business_notes: item.business_notes ?? "",
     is_active: !!item.is_active,
     is_priority_company: !!item.is_priority_company,
     priority_for_live_rides: !!item.priority_for_live_rides,
@@ -108,6 +134,14 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   const [companyForm, setCompanyForm] = useState(emptyCompanyForm);
   const [formModalSaving, setFormModalSaving] = useState(false);
   const [formModalError, setFormModalError] = useState("");
+  const [workspaceModuleDraft, setWorkspaceModuleDraft] = useState([]);
+  const [panelUsersList, setPanelUsersList] = useState([]);
+  const [panelUsersLoading, setPanelUsersLoading] = useState(false);
+  const [selectedPanelUserId, setSelectedPanelUserId] = useState("");
+  const [passwordNew, setPasswordNew] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [regStatusFilter, setRegStatusFilter] = useState("all");
   const [registrationRequests, setRegistrationRequests] = useState([]);
   const [registrationLoading, setRegistrationLoading] = useState(false);
@@ -119,6 +153,46 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  useEffect(() => {
+    if (!showEditModal || !editingCompanyId) {
+      setPanelUsersList([]);
+      return;
+    }
+    setPanelUsersList([]);
+    setSelectedPanelUserId("");
+    let cancelled = false;
+    setPanelUsersLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`${COMPANIES_URL}/${encodeURIComponent(editingCompanyId)}/panel-users`, {
+          headers: adminApiHeaders(),
+        });
+        const data = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (res.ok && data?.ok && Array.isArray(data.users)) {
+          setPanelUsersList(data.users);
+          const firstActive = data.users.find((u) => u.isActive);
+          setSelectedPanelUserId(firstActive?.id ?? "");
+        } else {
+          setPanelUsersList([]);
+        }
+      } catch {
+        if (!cancelled) setPanelUsersList([]);
+      } finally {
+        if (!cancelled) setPanelUsersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showEditModal, editingCompanyId]);
+
+  useEffect(() => {
+    if (!showCreateModal) return;
+    if (moduleCatalog.length === 0) return;
+    setWorkspaceModuleDraft((prev) => (prev.length > 0 ? prev : moduleCatalog.map((m) => m.id)));
+  }, [showCreateModal, moduleCatalog]);
 
   useEffect(() => {
     if (mainTab !== "requests") return;
@@ -278,6 +352,7 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   function openCreateCompany() {
     setCompanyForm(emptyCompanyForm());
     setFormModalError("");
+    setWorkspaceModuleDraft(moduleCatalog.map((m) => m.id));
     setShowCreateModal(true);
   }
 
@@ -285,6 +360,12 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     setEditingCompanyId(item.id);
     setCompanyForm(formFromItem(item));
     setFormModalError("");
+    setWorkspaceModuleDraft(
+      item.panel_modules == null ? moduleCatalog.map((c) => c.id) : [...item.panel_modules],
+    );
+    setPasswordNew("");
+    setPasswordConfirm("");
+    setPasswordMessage("");
     setShowEditModal(true);
   }
 
@@ -293,14 +374,74 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     setShowEditModal(false);
     setEditingCompanyId(null);
     setFormModalError("");
+    setWorkspaceModuleDraft([]);
+    setPanelUsersList([]);
+    setPanelUsersLoading(false);
+    setSelectedPanelUserId("");
+    setPasswordNew("");
+    setPasswordConfirm("");
+    setPasswordMessage("");
+  }
+
+  function toggleWorkspaceModule(modId, checked) {
+    setWorkspaceModuleDraft((prev) => {
+      const set = new Set(prev);
+      if (checked) set.add(modId);
+      else set.delete(modId);
+      return [...set];
+    });
+  }
+
+  async function submitPanelPassword() {
+    if (!editingCompanyId || !selectedPanelUserId) {
+      setPasswordMessage("Bitte einen Panel-Benutzer wählen.");
+      return;
+    }
+    if (passwordNew.length < 10) {
+      setPasswordMessage("Neues Passwort: mindestens 10 Zeichen.");
+      return;
+    }
+    if (passwordNew !== passwordConfirm) {
+      setPasswordMessage("Passwörter stimmen nicht überein.");
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordMessage("");
+    try {
+      const res = await fetch(
+        `${COMPANIES_URL}/${encodeURIComponent(editingCompanyId)}/panel-users/${encodeURIComponent(selectedPanelUserId)}/reset-password`,
+        {
+          method: "POST",
+          headers: adminApiHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ newPassword: passwordNew }),
+        },
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || data?.hint || `HTTP ${res.status}`);
+      }
+      setPasswordMessage("Passwort wurde gesetzt.");
+      setPasswordNew("");
+      setPasswordConfirm("");
+    } catch (e) {
+      setPasswordMessage(e?.message || "Passwort konnte nicht gesetzt werden.");
+    } finally {
+      setPasswordBusy(false);
+    }
   }
 
   function buildCompanyPayload() {
     const pt = Number(companyForm.priority_price_threshold);
     const ts = Number(companyForm.priority_timeout_seconds);
     const rk = Number(companyForm.release_radius_km);
+    const ck =
+      companyForm.company_kind && COMPANY_KIND_EDIT.has(companyForm.company_kind)
+        ? companyForm.company_kind
+        : "general";
     return {
       name: companyForm.name.trim(),
+      legal_form: companyForm.legal_form.trim(),
+      owner_name: companyForm.owner_name.trim(),
       contact_name: companyForm.contact_name.trim(),
       email: companyForm.email.trim(),
       phone: companyForm.phone.trim(),
@@ -310,9 +451,18 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       city: companyForm.city.trim(),
       country: companyForm.country.trim(),
       vat_id: companyForm.vat_id.trim(),
-      company_kind: companyForm.company_kind === "taxi" ? "taxi" : "general",
+      company_kind: ck,
       tax_id: companyForm.tax_id.trim(),
       concession_number: companyForm.concession_number.trim(),
+      billing_name: companyForm.billing_name.trim(),
+      billing_address_line1: companyForm.billing_address_line1.trim(),
+      billing_address_line2: companyForm.billing_address_line2.trim(),
+      billing_postal_code: companyForm.billing_postal_code.trim(),
+      billing_city: companyForm.billing_city.trim(),
+      billing_country: companyForm.billing_country.trim(),
+      bank_iban: companyForm.bank_iban.trim(),
+      bank_bic: companyForm.bank_bic.trim(),
+      business_notes: companyForm.business_notes.trim(),
       is_active: companyForm.is_active,
       is_priority_company: companyForm.is_priority_company,
       priority_for_live_rides: companyForm.priority_for_live_rides,
@@ -343,23 +493,25 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       }
       const created = data.item;
       const moduleSet = new Set(moduleCatalog.map((m) => m.id));
-      let modulePreset = null;
-      if (companyForm.company_type === "client") {
-        modulePreset = ["overview", "rides_create", "rides_list", "billing", "access_codes"];
-        if (companyForm.customer_category === "hotel") modulePreset.push("hotel_mode");
-        if (companyForm.customer_category === "insurance") {
-          modulePreset.push("recurring", "medical-round");
+      const allIds = moduleCatalog.map((c) => c.id);
+      let finalRow = created;
+      if (workspaceModuleDraft.length > 0 && allIds.length > 0) {
+        const normalized = [...new Set(workspaceModuleDraft.filter((id) => moduleSet.has(id)))];
+        if (normalized.length > 0) {
+          const body =
+            normalized.length >= allIds.length ? { panel_modules: null } : { panel_modules: normalized };
+          const modRes = await fetch(`${COMPANIES_URL}/${encodeURIComponent(created.id)}/panel-modules`, {
+            method: "PATCH",
+            headers: adminApiHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify(body),
+          }).catch(() => null);
+          const modData = await modRes?.json().catch(() => null);
+          if (modRes?.ok && modData?.ok && modData.item) {
+            finalRow = modData.item;
+          }
         }
       }
-      if (Array.isArray(modulePreset) && modulePreset.length > 0) {
-        const normalized = [...new Set(modulePreset.filter((id) => moduleSet.has(id)))];
-        await fetch(`${COMPANIES_URL}/${encodeURIComponent(created.id)}/panel-modules`, {
-          method: "PATCH",
-          headers: adminApiHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ panel_modules: normalized }),
-        }).catch(() => null);
-      }
-      setItems((prev) => [data.item, ...prev]);
+      setItems((prev) => [finalRow, ...prev]);
       closeCompanyModals();
     } catch (err) {
       console.error(err);
@@ -388,7 +540,26 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       if (!res.ok || !data?.ok || !data.item) {
         throw new Error(data?.error || `HTTP ${res.status}`);
       }
-      setItems((prev) => prev.map((row) => (row.id === editingCompanyId ? data.item : row)));
+      let merged = data.item;
+      const allIds = moduleCatalog.map((c) => c.id);
+      if (allIds.length > 0) {
+        if (workspaceModuleDraft.length === 0) {
+          throw new Error("Mindestens ein Panel-Modul muss aktiv bleiben.");
+        }
+        const modBody =
+          workspaceModuleDraft.length >= allIds.length ? { panel_modules: null } : { panel_modules: workspaceModuleDraft };
+        const modRes = await fetch(`${COMPANIES_URL}/${encodeURIComponent(editingCompanyId)}/panel-modules`, {
+          method: "PATCH",
+          headers: adminApiHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(modBody),
+        });
+        const modData = await modRes.json().catch(() => null);
+        if (!modRes.ok || !modData?.ok || !modData.item) {
+          throw new Error(modData?.error || `Module: HTTP ${modRes.status}`);
+        }
+        merged = modData.item;
+      }
+      setItems((prev) => prev.map((row) => (row.id === editingCompanyId ? merged : row)));
       closeCompanyModals();
     } catch (err) {
       console.error(err);
@@ -1053,101 +1224,10 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
                               </span>
                             </div>
 
-                            <div className="admin-company-masterdata-card">
-                              <div className="admin-company-masterdata-card__head">
-                                <div>
-                                  <div className="admin-company-masterdata-card__title">Stammdaten &amp; Abrechnung</div>
-                                  <div className="admin-company-masterdata-card__meta">
-                                    Schreibgeschützt – wird zentral geführt. Für den Partner im Panel nur lesbar.
-                                  </div>
-                                </div>
-                                {item.logo_url ? (
-                                  <img
-                                    src={item.logo_url}
-                                    alt="Firmenlogo"
-                                    className="admin-company-masterdata-card__logo"
-                                  />
-                                ) : null}
-                              </div>
-                              <div className="admin-company-masterdata-card__grid">
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Firma</span>
-                                  <span className="admin-company-masterdata-card__v">{item.name}</span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Rechtsform</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {item.legal_form || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Inhaber</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {item.owner_name || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Offizielle Anschrift</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {[item.address_line1, item.address_line2].filter(Boolean).join(", ") || "—"}
-                                    <br />
-                                    <span className="admin-company-masterdata-card__muted">
-                                      {[item.postal_code, item.city, item.country].filter(Boolean).join(" ") || ""}
-                                    </span>
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Kontakt</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {[item.email, item.phone].filter(Boolean).join(" · ") || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Steuer-ID</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {item.tax_id || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">USt-IdNr.</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {item.vat_id || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Konzession / Genehmigung</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {item.concession_number || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Rechnungsempfänger</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {item.billing_name || "—"}
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Rechnungsadresse</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    {[item.billing_address_line1, item.billing_address_line2].filter(Boolean).join(", ") || "—"}
-                                    <br />
-                                    <span className="admin-company-masterdata-card__muted">
-                                      {[item.billing_postal_code, item.billing_city, item.billing_country].filter(Boolean).join(" ") || ""}
-                                    </span>
-                                  </span>
-                                </div>
-                                <div className="admin-company-masterdata-card__row">
-                                  <span className="admin-company-masterdata-card__k">Bankverbindung</span>
-                                  <span className="admin-company-masterdata-card__v">
-                                    IBAN {item.bank_iban || "—"}
-                                    <br />
-                                    <span className="admin-company-masterdata-card__muted">
-                                      BIC {item.bank_bic || "—"}
-                                    </span>
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                            <p className="admin-cws-inline-info" style={{ marginTop: 10 }}>
+                              Stammdaten, Abrechnung und Portal-Module bearbeiten Sie über{" "}
+                              <strong>Stammdaten</strong> im Modal — zentral editierbar.
+                            </p>
 
                             {isSaving ? <div className="admin-saving-hint">Speichert …</div> : null}
 
@@ -1287,29 +1367,53 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       {showCreateModal ? (
         <div className="admin-modal-backdrop" role="presentation" onClick={closeCompanyModals}>
           <div
-            className="admin-modal"
+            className="admin-modal admin-modal--company-workspace"
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-company-create-title"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="admin-modal__header">
-              <h2 id="admin-company-create-title" className="admin-modal__title">
-                Neues Unternehmen
-              </h2>
+              <div className="admin-modal__title-wrap">
+                <h2 id="admin-company-create-title" className="admin-modal__title">
+                  Neues Unternehmen
+                </h2>
+                <p className="admin-modal__title-meta">Mandant anlegen · Stammdaten, Abrechnung und Portal-Module</p>
+              </div>
               <button type="button" className="admin-modal__close" onClick={closeCompanyModals} aria-label="Schließen">
                 ×
               </button>
             </div>
-            <form className="admin-modal__body" onSubmit={saveCreateCompany}>
-              {formModalError ? <div className="admin-error-banner">{formModalError}</div> : null}
-              <CompanyFormBody form={companyForm} setForm={setCompanyForm} moduleCatalog={moduleCatalog} mode="create" />
-              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-                <button type="submit" className="admin-btn-refresh" disabled={formModalSaving}>
-                  {formModalSaving ? "Speichert …" : "Anlegen"}
-                </button>
+            <form onSubmit={saveCreateCompany}>
+              <div className="admin-modal__body">
+                {formModalError ? <div className="admin-error-banner">{formModalError}</div> : null}
+                <CompanyWorkspaceForm
+                  form={companyForm}
+                  setForm={setCompanyForm}
+                  moduleCatalogAz={moduleCatalogAz}
+                  moduleCatalog={moduleCatalog}
+                  moduleDraft={workspaceModuleDraft}
+                  onToggleModule={toggleWorkspaceModule}
+                  showPasswordCard={false}
+                  panelUsers={[]}
+                  panelUsersLoading={false}
+                  selectedPanelUserId=""
+                  setSelectedPanelUserId={() => {}}
+                  passwordNew=""
+                  setPasswordNew={() => {}}
+                  passwordConfirm=""
+                  setPasswordConfirm={() => {}}
+                  passwordBusy={false}
+                  passwordMessage=""
+                  onSubmitPanelPassword={() => {}}
+                />
+              </div>
+              <div className="admin-modal__footer-actions">
                 <button type="button" className="admin-page-btn" onClick={closeCompanyModals} disabled={formModalSaving}>
                   Abbrechen
+                </button>
+                <button type="submit" className="admin-btn-refresh" disabled={formModalSaving}>
+                  {formModalSaving ? "Speichert …" : "Anlegen"}
                 </button>
               </div>
             </form>
@@ -1320,29 +1424,68 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       {showEditModal ? (
         <div className="admin-modal-backdrop" role="presentation" onClick={closeCompanyModals}>
           <div
-            className="admin-modal"
+            className="admin-modal admin-modal--company-workspace"
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-company-edit-title"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="admin-modal__header">
-              <h2 id="admin-company-edit-title" className="admin-modal__title">
-                Unternehmen bearbeiten
-              </h2>
-              <button type="button" className="admin-modal__close" onClick={closeCompanyModals} aria-label="Schließen">
-                ×
-              </button>
-            </div>
-            <form className="admin-modal__body" onSubmit={saveEditCompany}>
-              {formModalError ? <div className="admin-error-banner">{formModalError}</div> : null}
-              <CompanyFormBody form={companyForm} setForm={setCompanyForm} moduleCatalog={moduleCatalog} mode="edit" />
-              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-                <button type="submit" className="admin-btn-refresh" disabled={formModalSaving}>
-                  {formModalSaving ? "Speichert …" : "Speichern"}
+              <div className="admin-modal__title-wrap">
+                <h2 id="admin-company-edit-title" className="admin-modal__title">
+                  Unternehmensprofil bearbeiten
+                </h2>
+                <p className="admin-modal__title-meta">{editingCompanyId}</p>
+              </div>
+              <div className="admin-modal__header-actions">
+                <span
+                  className={`admin-pill${companyForm.is_active ? " admin-pill--success" : " admin-pill--muted"}`}
+                  title="Wird mit „Speichern“ übernommen"
+                >
+                  {companyForm.is_active ? "Aktiv" : "Inaktiv"}
+                </span>
+                <button
+                  type="button"
+                  className="admin-page-btn admin-page-btn--compact"
+                  onClick={() => setCompanyForm((f) => ({ ...f, is_active: !f.is_active }))}
+                >
+                  {companyForm.is_active ? "Deaktivieren" : "Aktivieren"}
                 </button>
+                <button type="button" className="admin-modal__close" onClick={closeCompanyModals} aria-label="Schließen">
+                  ×
+                </button>
+              </div>
+            </div>
+            <form onSubmit={saveEditCompany}>
+              <div className="admin-modal__body">
+                {formModalError ? <div className="admin-error-banner">{formModalError}</div> : null}
+                <CompanyWorkspaceForm
+                  form={companyForm}
+                  setForm={setCompanyForm}
+                  moduleCatalogAz={moduleCatalogAz}
+                  moduleCatalog={moduleCatalog}
+                  moduleDraft={workspaceModuleDraft}
+                  onToggleModule={toggleWorkspaceModule}
+                  showPasswordCard
+                  panelUsers={panelUsersList}
+                  panelUsersLoading={panelUsersLoading}
+                  selectedPanelUserId={selectedPanelUserId}
+                  setSelectedPanelUserId={setSelectedPanelUserId}
+                  passwordNew={passwordNew}
+                  setPasswordNew={setPasswordNew}
+                  passwordConfirm={passwordConfirm}
+                  setPasswordConfirm={setPasswordConfirm}
+                  passwordBusy={passwordBusy}
+                  passwordMessage={passwordMessage}
+                  onSubmitPanelPassword={submitPanelPassword}
+                />
+              </div>
+              <div className="admin-modal__footer-actions">
                 <button type="button" className="admin-page-btn" onClick={closeCompanyModals} disabled={formModalSaving}>
                   Abbrechen
+                </button>
+                <button type="submit" className="admin-btn-refresh" disabled={formModalSaving}>
+                  {formModalSaving ? "Speichert …" : "Speichern"}
                 </button>
               </div>
             </form>
@@ -1442,188 +1585,6 @@ function openCompanyReceiptPdf(item) {
   } catch {
     // ignore
   }
-}
-
-function CompanyFormBody({ form, setForm, moduleCatalog = [], mode = "create" }) {
-  const ch = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
-  const chk = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.checked }));
-  const isClient = form.company_type === "client";
-  const supportsHotelModule = moduleCatalog.some((m) => m.id === "hotel_mode");
-
-  function onTypeChange(nextType) {
-    setForm((p) => ({
-      ...p,
-      company_type: nextType,
-      ...(nextType === "client" ? { is_priority_company: false, priority_for_live_rides: false, priority_for_reservations: false } : {}),
-    }));
-  }
-
-  return (
-    <div className="admin-fields-grid">
-      <div className="admin-filter-item" style={{ gridColumn: "1 / -1" }}>
-        <label className="admin-field-label">Typ</label>
-        <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <label className="admin-switch-row" style={{ gap: 8 }}>
-            <input
-              type="radio"
-              name="companyType"
-              checked={form.company_type === "service_provider"}
-              onChange={() => onTypeChange("service_provider")}
-            />
-            <span className="admin-switch-row__label">Service-Erbringer (Taxi)</span>
-          </label>
-          <label className="admin-switch-row" style={{ gap: 8 }}>
-            <input
-              type="radio"
-              name="companyType"
-              checked={form.company_type === "client"}
-              onChange={() => onTypeChange("client")}
-            />
-            <span className="admin-switch-row__label">Auftraggeber (B2B/Gutschein)</span>
-          </label>
-        </div>
-      </div>
-      <div className="admin-filter-item" style={{ gridColumn: "1 / -1" }}>
-        <label className="admin-field-label">Mandanten-Art (Plattform)</label>
-        <select
-          className="admin-input"
-          value={form.company_kind}
-          onChange={(e) => setForm((p) => ({ ...p, company_kind: e.target.value }))}
-        >
-          <option value="general">Allgemein</option>
-          <option value="taxi">Taxi-Unternehmer (Flotte / Fahrer-Logins)</option>
-          <option value="voucher_client">Gutscheinkunde</option>
-          <option value="insurer">Krankenkasse / Versicherer</option>
-          <option value="hotel">Hotel</option>
-          <option value="corporate">Firmenkunde / Corporate</option>
-        </select>
-      </div>
-      {form.company_kind === "taxi" ? (
-        <div className="admin-filter-item">
-          <label className="admin-field-label">Steuer-ID</label>
-          <input className="admin-input" value={form.tax_id} onChange={ch("tax_id")} />
-        </div>
-      ) : null}
-      {form.company_kind === "taxi" ? (
-        <div className="admin-filter-item">
-          <label className="admin-field-label">Konzessionsnummer</label>
-          <input className="admin-input" value={form.concession_number} onChange={ch("concession_number")} />
-        </div>
-      ) : null}
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Name *</label>
-        <input className="admin-input" value={form.name} onChange={ch("name")} required />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Ansprechpartner</label>
-        <input className="admin-input" value={form.contact_name} onChange={ch("contact_name")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">E-Mail</label>
-        <input className="admin-input" type="email" value={form.email} onChange={ch("email")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Telefon</label>
-        <input className="admin-input" value={form.phone} onChange={ch("phone")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Adresse Zeile 1</label>
-        <input className="admin-input" value={form.address_line1} onChange={ch("address_line1")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Adresse Zeile 2</label>
-        <input className="admin-input" value={form.address_line2} onChange={ch("address_line2")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">PLZ</label>
-        <input className="admin-input" value={form.postal_code} onChange={ch("postal_code")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Ort</label>
-        <input className="admin-input" value={form.city} onChange={ch("city")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">Land</label>
-        <input className="admin-input" value={form.country} onChange={ch("country")} />
-      </div>
-      <div className="admin-filter-item">
-        <label className="admin-field-label">USt-IdNr.</label>
-        <input className="admin-input" value={form.vat_id} onChange={ch("vat_id")} />
-      </div>
-      {isClient ? (
-        <>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Kunden-Kategorie</label>
-            <select className="admin-select" value={form.customer_category} onChange={ch("customer_category")}>
-              <option value="hotel">Hotel</option>
-              <option value="insurance">Krankenkasse</option>
-              <option value="company">Firma</option>
-            </select>
-          </div>
-          {form.customer_category === "hotel" ? (
-            <div className="admin-filter-item" style={{ gridColumn: "1 / -1" }}>
-              <div className="admin-info-banner">
-                Hotel gewählt: Modul „Hotelmodus / Zimmernummer-Erfassung“ wird nach dem Anlegen automatisch aktiviert.
-                {supportsHotelModule ? "" : " (Modul-Katalog derzeit nicht verfügbar)."}
-              </div>
-            </div>
-          ) : null}
-          {form.customer_category === "insurance" ? (
-            <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-              <span className="admin-switch-row__label">
-                Patientendaten-Vorgaben aktivieren
-                <span className="admin-entity-card__meta" style={{ display: "block" }}>
-                  Hinweis für Team: Patientenreferenz und medizinische Angaben bei Buchung verpflichtend erfassen.
-                </span>
-              </span>
-              <input type="checkbox" checked={!!form.patient_data_required} onChange={chk("patient_data_required")} />
-            </label>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Preisgrenze Priorität (€)</label>
-            <input className="admin-input" value={form.priority_price_threshold} onChange={ch("priority_price_threshold")} />
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Timeout (Sek.)</label>
-            <input className="admin-input" value={form.priority_timeout_seconds} onChange={ch("priority_timeout_seconds")} />
-          </div>
-          <div className="admin-filter-item">
-            <label className="admin-field-label">Freigabe-Radius km</label>
-            <input className="admin-input" value={form.release_radius_km} onChange={ch("release_radius_km")} />
-          </div>
-        </>
-      )}
-      <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-        <span className="admin-switch-row__label">Aktiv (Panel-Login erlaubt)</span>
-        <input type="checkbox" checked={form.is_active} onChange={chk("is_active")} />
-      </label>
-      {isClient ? null : (
-        <>
-          <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-            <span className="admin-switch-row__label">PRIO-Unternehmen</span>
-            <input type="checkbox" checked={form.is_priority_company} onChange={chk("is_priority_company")} />
-          </label>
-          <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-            <span className="admin-switch-row__label">Sofortfahrten priorisieren</span>
-            <input type="checkbox" checked={form.priority_for_live_rides} onChange={chk("priority_for_live_rides")} />
-          </label>
-          <label className="admin-switch-row" style={{ gridColumn: "1 / -1" }}>
-            <span className="admin-switch-row__label">Reservierungen priorisieren</span>
-            <input type="checkbox" checked={form.priority_for_reservations} onChange={chk("priority_for_reservations")} />
-          </label>
-        </>
-      )}
-      {mode === "create" && isClient ? (
-        <div className="admin-entity-card__meta" style={{ gridColumn: "1 / -1" }}>
-          Für Auftraggeber blenden wir Technikfelder (Preisgrenze, Timeout, Radius) aus — Fokus auf Name, Adresse und
-          Abrechnungsart.
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 function regStatusLabel(s) {
