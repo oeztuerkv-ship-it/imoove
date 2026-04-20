@@ -82,25 +82,40 @@ async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal 
   }
 }
 
+/** Nur für Server-Logs (ADMIN_AUTH_LOGIN_AUDIT); nie an den Client senden. */
+export type AdminAuthFailureDetail =
+  | "empty_identity"
+  | "admin_password_rejected_db"
+  | "admin_password_rejected_env"
+  | "admin_identity_unknown";
+
+export type AuthenticateAdminCredentialsResult =
+  | { ok: true; role: AdminRole; source: "db" | "env_bootstrap" }
+  | { ok: false; error: "invalid_credentials"; detail?: AdminAuthFailureDetail }
+  | { ok: false; error: "bootstrap_persist_failed" };
+
 export async function authenticateAdminCredentials(
   username: string,
   password: string,
-): Promise<
-  | { ok: true; role: AdminRole; source: "db" | "env_bootstrap" }
-  | { ok: false; error: "invalid_credentials" | "bootstrap_persist_failed" }
-> {
+): Promise<AuthenticateAdminCredentialsResult> {
   const u = username.trim();
   const p = password;
-  if (!u || !p) return { ok: false, error: "invalid_credentials" };
+  if (!u || !p) return { ok: false, error: "invalid_credentials", detail: "empty_identity" };
   const dbUser = await findActiveAdminAuthUserByIdentity(u);
   if (dbUser) {
-    const ok = await verifyPassword(p, dbUser.passwordHash);
-    if (!ok) return { ok: false, error: "invalid_credentials" };
+    const pwOk = await verifyPassword(p, dbUser.passwordHash);
+    if (!pwOk) return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_db" };
     return { ok: true, role: dbUser.role, source: "db" };
   }
   const users = readConfiguredUsers();
   const hit = users.find((x) => x.username === u && x.password === p);
-  if (!hit) return { ok: false, error: "invalid_credentials" };
+  if (!hit) {
+    const envUsernameMatch = users.find((x) => x.username === u);
+    if (envUsernameMatch) {
+      return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_env" };
+    }
+    return { ok: false, error: "invalid_credentials", detail: "admin_identity_unknown" };
+  }
   if (!isPostgresConfigured()) {
     return { ok: false, error: "bootstrap_persist_failed" };
   }

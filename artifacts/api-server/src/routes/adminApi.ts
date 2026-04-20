@@ -215,6 +215,7 @@ router.post("/admin/auth/login", async (req, res) => {
   const loginAudit = process.env.ADMIN_AUTH_LOGIN_AUDIT === "1";
   if (!ok.ok) {
     if (loginAudit) {
+      const detail = !ok.ok && ok.error === "invalid_credentials" ? ok.detail : undefined;
       logger.warn(
         {
           event: "admin.auth.login",
@@ -222,6 +223,7 @@ router.post("/admin/auth/login", async (req, res) => {
           username: username || "(empty)",
           clientIp: req.ip,
           reason: ok.error,
+          detail,
         },
         "admin password login failed",
       );
