@@ -3,7 +3,7 @@ import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 
 export default function LoginPage() {
   const { login, error } = usePanelAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [showResetForm, setShowResetForm] = useState(false);
@@ -13,7 +13,7 @@ export default function LoginPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(username, password);
     } finally {
       setSubmitting(false);
     }
@@ -29,15 +29,16 @@ export default function LoginPage() {
         <h1 className="partner-login__title">Unternehmens-Login</h1>
         <form className="partner-login__form" onSubmit={onSubmit}>
           <label className="partner-login__label">
-            E-Mail-Adresse
+            E-Mail oder Benutzername
             <input
               className="partner-login__input"
-              name="email"
+              name="username"
               autoComplete="username"
-              type="email"
+              type="text"
+              inputMode="email"
               placeholder="name@unternehmen.de"
-              value={email}
-              onChange={(ev) => setEmail(ev.target.value)}
+              value={username}
+              onChange={(ev) => setUsername(ev.target.value)}
               required
             />
           </label>

@@ -95,10 +95,13 @@ export function PanelAuthProvider({ children }) {
 
   const login = useCallback(async (username, password) => {
     setError("");
+    const u = typeof username === "string" ? username.trim() : "";
+    const p = typeof password === "string" ? password : "";
     const res = await fetch(`${API_BASE}/panel-auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      /* API erwartet exakt die Keys username + password (Wert darf E-Mail sein). */
+      body: JSON.stringify({ username: u, password: p }),
     });
     let data = {};
     try {
@@ -107,7 +110,9 @@ export function PanelAuthProvider({ children }) {
       data = {};
     }
     if (!res.ok) {
-      if (data?.error === "rate_limited") {
+      if (data?.error === "username_and_password_required") {
+        setError("Bitte Benutzername oder E-Mail und Passwort eingeben.");
+      } else if (data?.error === "rate_limited") {
         setError("Zu viele Anmeldeversuche. Bitte kurz warten und erneut versuchen.");
       } else if (data?.error === "invalid_credentials") {
         setError("Benutzername oder Passwort ist ungültig.");
