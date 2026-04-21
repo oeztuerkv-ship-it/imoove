@@ -30,6 +30,23 @@ export function canMutateAdminCompanies(role: AdminRole): boolean {
   return role === "admin" || role === "service";
 }
 
+/**
+ * Taxi-Disposition in der Operator-Konsole: darf bestehende **Taxi-Mandanten** pflegen
+ * (Stammdaten, Module, Priorität, Panel-Benutzer), nicht jedoch globale Anlage/Partner-Anfragen.
+ * Mit gesetztem `scopeCompanyId` am Admin-Zugang nur dieser eine Mandant.
+ */
+export function canMutateScopedTaxiAdminCompany(
+  role: AdminRole,
+  scopeCompanyId: string | null | undefined,
+  company: { id: string; company_kind: string },
+): boolean {
+  if (role !== "taxi") return false;
+  if (String(company.company_kind ?? "").trim() !== "taxi") return false;
+  const scope = scopeCompanyId?.trim();
+  if (scope) return scope === company.id;
+  return true;
+}
+
 export function canMutateAdminFareAreas(role: AdminRole): boolean {
   return role === "admin" || role === "taxi";
 }

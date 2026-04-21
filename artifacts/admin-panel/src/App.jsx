@@ -415,6 +415,7 @@ export default function App() {
       case "companies":
         return (
           <CompaniesPage
+            adminRole={userRole}
             initialOpenCompanyId={companiesInitialOpenId}
             onInitialOpenCompanyConsumed={() => setCompaniesInitialOpenId(null)}
           />

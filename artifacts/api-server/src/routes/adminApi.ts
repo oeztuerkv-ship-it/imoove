@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { Router, type IRouter, type Request } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
 import { getPartnerRegistrationPolicy } from "../domain/partnerRegistrationPolicies";
@@ -112,6 +112,7 @@ import {
   canAdminReleaseRide,
   canMutateAdminCompanies,
   canMutateAdminFareAreas,
+  canMutateScopedTaxiAdminCompany,
   canReadAdminCompaniesList,
   mergeAdminRideListQueryForPrincipal,
   parseAdminRole,
@@ -119,6 +120,19 @@ import {
 } from "../lib/adminConsoleRoles";
 
 export type { AdminAccessCodeRow, AdminDashboardStats, CompanyRow, FareAreaRow } from "./adminApi.types";
+
+async function requireCompanyRowForMutation(req: Request, res: Response, companyId: string) {
+  const company = await findCompanyById(companyId);
+  if (!company) {
+    res.status(404).json({ error: "company_not_found" });
+    return null;
+  }
+  const role = adminConsoleRole(req);
+  if (canMutateAdminCompanies(role)) return company;
+  if (canMutateScopedTaxiAdminCompany(role, req.adminAuth?.scopeCompanyId, company)) return company;
+  res.status(403).json({ error: "forbidden" });
+  return null;
+}
 
 function parseStatsRevenueBound(v: unknown): Date | undefined {
   if (typeof v !== "string") return undefined;
@@ -996,10 +1010,8 @@ adminJson.post("/companies", async (req, res, next) => {
 
 adminJson.patch("/companies/:companyId", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
+    const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!allowed) return;
     const body = req.body as AdminCompanyUpdateBody;
     const item = await updateAdminCompany(req.params.companyId, body);
     if (!item) {
@@ -1581,15 +1593,8 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
 
 adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
-    const company = await findCompanyById(req.params.companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!company) return;
     const users = await listPanelUsersInCompany(req.params.companyId);
     res.json({ ok: true, users });
   } catch (e) {
@@ -1599,16 +1604,9 @@ adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
 
 adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId } = req.params;
-    const company = await findCompanyById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     if (!company.is_active) {
       res.status(400).json({ error: "company_inactive" });
       return;
@@ -1671,16 +1669,9 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
 
 adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId, userId } = req.params;
-    const company = await findCompanyById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     const target = await findPanelUserInCompany(userId, companyId);
     if (!target) {
       res.status(404).json({ error: "not_found" });
@@ -1753,16 +1744,9 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
 
 adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId, userId } = req.params;
-    const company = await findCompanyById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     const target = await findPanelUserInCompany(userId, companyId);
     if (!target || !target.is_active) {
       res.status(404).json({ error: "not_found" });
@@ -1865,11 +1849,8 @@ adminJson.patch("/rides/:id/release", async (req, res, next) => {
 
 adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId } = req.params;
+    if ((await requireCompanyRowForMutation(req, res, companyId)) == null) return;
     const body = req.body as Record<string, unknown>;
     if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
       res.status(400).json({ error: "panel_modules_required", hint: "null = alle Module, sonst string[]" });
@@ -1903,11 +1884,8 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
 
 adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId } = req.params;
+    if ((await requireCompanyRowForMutation(req, res, companyId)) == null) return;
     const body = req.body as Partial<{
       is_priority_company: boolean;
       priority_for_live_rides: boolean;

@@ -117,7 +117,8 @@ function formFromItem(item) {
   };
 }
 
-export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompanyConsumed }) {
+export default function CompaniesPage({ adminRole = "admin", initialOpenCompanyId, onInitialOpenCompanyConsumed }) {
+  const canCreateCompany = adminRole === "admin" || adminRole === "service";
   const companyIntentHandled = useRef(null);
   const [mainTab, setMainTab] = useState("companies");
   const [items, setItems] = useState([]);
@@ -1056,9 +1057,11 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
             <div className="admin-filter-item">
               <label className="admin-field-label">&nbsp;</label>
               <div className="admin-filter-actions">
-                <button type="button" className="admin-btn-refresh" onClick={openCreateCompany}>
-                  + Neues Unternehmen
-                </button>
+                {canCreateCompany ? (
+                  <button type="button" className="admin-btn-refresh" onClick={openCreateCompany}>
+                    + Neues Unternehmen
+                  </button>
+                ) : null}
                 <button type="button" className="admin-page-btn" onClick={loadCompanies}>
                   Neu laden
                 </button>
