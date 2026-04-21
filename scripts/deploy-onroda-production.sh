@@ -4,6 +4,7 @@
 #   2) pnpm install --frozen-lockfile (Workspace-Root, CI=true)
 #   3) Builds: API + admin-panel + partner-panel
 #   4) SQL-Migrationen (Tracker onroda_deploy_migrations) + Schema-Verifikation
+#   4b) Partner-Freigabe-DB-Prüfung (verify-onroda-partner-approve-db-prereqs.mjs: 031/032 u. a.)
 #   5) optional rsync (Panel-Dists + Marketing-Static api-server/static/)
 #   6) pm2 restart (ONRODA_PM2_APPS)
 #   7) optional nginx reload
@@ -49,7 +50,7 @@ Optionen:
                             GEFÄHRLICH: kann „applied“ ohne echtes Schema erzeugen.
                             Nur mit ONRODA_CONFIRM_SEED_MIGRATION_TRACKER=1 (siehe onroda-deploy.example.env).
   --list-migrations      Pending / angewendete Migrationen anzeigen
-  --verify-schema        Nur DB-Schema gegen scripts/verify-onroda-db-schema.sql prüfen (Exit ≠0 bei Mismatch)
+  --verify-schema        Nur DB-Schema (verify-onroda-db-schema.sql) + Partner-Freigabe-DB-Prüfung (Exit ≠0 bei Mismatch)
 
 Umgebung (Auswahl):
   DATABASE_URL              PostgreSQL (sonst aus artifacts/api-server/.env)
@@ -67,6 +68,7 @@ Umgebung (Auswahl):
   ONRODA_HEALTHCHECK_RETRIES Anzahl Versuche pro URL (Default: 8)
   ONRODA_HEALTHCHECK_RETRY_DELAY_SECONDS Pause zwischen Versuchen (Default: 2)
   ONRODA_SKIP_HEALTHCHECKS  Wenn 1: Schritt 8 überspringen (nur Notfall)
+  ONRODA_SKIP_PARTNER_APPROVE_DB_VERIFY  Wenn 1: Partner-Freigabe-DB-Prüfung (4b) überspringen — nur Notfall
 
 EOF
 }
@@ -209,6 +211,28 @@ verify_schema_against_repo() {
   fi
   log "Prüfe DB-Schema gegen Migrations-Erwartung (verify-onroda-db-schema.sql)…"
   bash "${ROOT}/scripts/verify-onroda-db-schema.sh"
+}
+
+# Zusätzlich zu verify-onroda-db-schema.sql: CHECK company_kind (medical) u. ä., die im SQL-Verify nicht abgebildet sind.
+verify_partner_approve_db_prereqs() {
+  if [[ "${ONRODA_SKIP_PARTNER_APPROVE_DB_VERIFY:-0}" == "1" ]]; then
+    log "Partner-Freigabe-DB-Prüfung übersprungen (ONRODA_SKIP_PARTNER_APPROVE_DB_VERIFY=1)."
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] node \"${ROOT}/scripts/verify-onroda-partner-approve-db-prereqs.mjs\""
+    return 0
+  fi
+  ensure_database_url
+  command -v node >/dev/null 2>&1 || {
+    echo "[deploy-onroda] node nicht im PATH (für verify-onroda-partner-approve-db-prereqs.mjs)" >&2
+    exit 1
+  }
+  log "Prüfe DB für Partner-Registrierung → Freigabe (Spalte partner_panel_profile_locked, company_kind inkl. medical)…"
+  if ! node "${ROOT}/scripts/verify-onroda-partner-approve-db-prereqs.mjs"; then
+    echo "[deploy-onroda] ABORT: Partner-Freigabe-DB-Voraussetzungen nicht erfüllt (Migrationen 031/032 o. ä.)." >&2
+    exit 1
+  fi
 }
 
 apply_migrations() {
@@ -487,6 +511,7 @@ if [[ "$ONLY_MIGRATIONS" -eq 1 ]]; then
   fi
   apply_migrations
   verify_schema_against_repo
+  verify_partner_approve_db_prereqs
   log "Nur Migrationen: fertig."
   exit 0
 fi
@@ -504,6 +529,7 @@ else
 fi
 
 verify_schema_against_repo
+verify_partner_approve_db_prereqs
 
 do_optional_rsync
 do_pm2
@@ -511,5 +537,5 @@ do_optional_nginx
 do_optional_marketing_status_verify
 do_health_checks
 
-log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema → rsync → PM2 → Nginx → Health)."
+log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema + Partner-Freigabe-DB → rsync → PM2 → Nginx → Health)."
 log "Hinweis: Freigabe-Mails brauchen PARTNER_REGISTRATION_SMTP_URL + PARTNER_REGISTRATION_MAIL_FROM in artifacts/api-server/.env (PM2 --update-env)."
