@@ -3,11 +3,7 @@ import { readFile } from "node:fs/promises";
 import { Router, type IRouter, type Request } from "express";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
-import {
-  buildTaxiFarePermissionsFromRegistration,
-  TAXI_ONBOARDING_PANEL_MODULES,
-  taxiRegistrationIncompleteForApprove,
-} from "../domain/taxiPartnerOnboarding";
+import { getPartnerRegistrationPolicy } from "../domain/partnerRegistrationPolicies";
 import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
 import {
   addFareArea,
@@ -1467,12 +1463,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       verification_status: "verified",
       compliance_status: "compliant",
       is_active: true,
-      ...(isTaxi
-        ? {
-            panel_modules: [...TAXI_ONBOARDING_PANEL_MODULES],
-            fare_permissions: buildTaxiFarePermissionsFromRegistration(reqRow.usesVouchers),
-          }
-        : {}),
+      ...companyExtras,
     });
     if ("error" in createdCompany) {
       res.status(400).json({ error: createdCompany.error });

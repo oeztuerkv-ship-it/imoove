@@ -26,6 +26,7 @@ import {
   toPublicPartnerRegistrationDocuments,
   toPublicPartnerRegistrationSnapshot,
 } from "../lib/partnerRegistrationPublicDto";
+import { getPartnerRegistrationPolicy } from "../domain/partnerRegistrationPolicies";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { verifyPassword } from "../lib/password";
 import { isPanelJwtConfigured, signPanelJwt, type PanelRole } from "../lib/panelJwt";
@@ -213,36 +214,23 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     return;
   }
 
+  const registrationPolicy = getPartnerRegistrationPolicy(partnerTypeRaw);
+  if (!registrationPolicy) {
+    res.status(400).json({ error: "partner_type_invalid" });
+    return;
+  }
+  const publicPolicyError = registrationPolicy.validatePublicRegistration(body);
+  if (publicPolicyError) {
+    res.status(400).json({ error: "partner_registration_incomplete", hint: publicPolicyError });
+    return;
+  }
+
   const taxId = str("taxId");
   const vatId = str("vatId");
   const concessionNumber = str("concessionNumber");
   const ownerName = str("ownerName");
   const addressLine2 = str("addressLine2");
   const dispoPhone = str("dispoPhone");
-
-  if (partnerTypeRaw === "taxi") {
-    if (!concessionNumber) {
-      res.status(400).json({
-        error: "taxi_concession_required",
-        hint: "Für Taxiunternehmen ist die Konzessionsnummer Pflicht.",
-      });
-      return;
-    }
-    if (!taxId || !vatId) {
-      res.status(400).json({
-        error: "taxi_tax_vat_required",
-        hint: "Für Taxiunternehmen sind Steuernummer und USt-IdNr. Pflicht.",
-      });
-      return;
-    }
-    if (!ownerName) {
-      res.status(400).json({
-        error: "taxi_owner_required",
-        hint: "Für Taxiunternehmen ist der Name des Inhabers / der inhabenden Person Pflicht.",
-      });
-      return;
-    }
-  }
 
   const rlEmail = rateLimitPartnerRegistrationEmail(email);
   if (!rlEmail.ok) {
