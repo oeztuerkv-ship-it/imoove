@@ -1,0 +1,36 @@
+---
+description: Pflicht-Git- und Repo-Checks vor jeder Fertigmeldung („fertig“, „gepusht“, „live-tauglich“).
+alwaysApply: true
+---
+
+# Vor Fertigmeldung: Git & erwartete Dateien (Pflicht)
+
+**Keine „eigentlich fertig“-Meldung**, ohne die folgenden Punkte ausdrücklich erledigt oder verneint (wenn z. B. absichtlich nur Doku).
+
+## 1. Arbeitsbaum
+
+- **`git status`** muss für den gemeinten Umfang **sauber** sein: keine vergessenen **`??`** bei **neuen** relevanten Dateien (Assets, Skripte, Migrationen, neue Routen).
+- Alles Nötige ist **`git add`** + im letzten Commit enthalten.
+
+## 2. Letzter Commit
+
+- **`git show --name-only HEAD`** (oder der genannte Commit) muss die **erwarteten Pfade** listen — z. B. neue Static-Dateien unter `artifacts/api-server/static/`, nicht nur geänderte Nachbarn.
+- Kurz **bestätigen**, dass der Stand auf **`main`** (bzw. der genannte Branch) liegt und bei Push-Zielen **`origin/main`** mitgedacht wird.
+
+## 3. Schneller Plausibilitäts-Check (Repo)
+
+Für Marketing-Static u. ä. nach Bedarf:
+
+```bash
+find artifacts/api-server/static -maxdepth 1 -type f | sort
+```
+
+Wenn eine **explizit neue** Datei (z. B. `partner-status.html`) dort nach Pull auf dem Server fehlen würde: zuerst **Tracken/Commit/Push** prüfen — **nicht** bei Nginx oder SMTP debuggen.
+
+## 4. Deploy vs. „nur lokal“
+
+- **Gepusht** allein = Remote hat den Stand; **Live** = zusätzlich Server-`git pull`, ggf. **rsync** Static, Nginx, API-Restart laut Runbook (`AGENTS.md`, `imoove-git-deployment-workflow.mdc`).
+
+## Für Agents
+
+Vor Abschlussantworten wie „fertig“, „implementiert“, „kann live“: obenstehende Checks **wirklich ausführen** (Terminal) oder klar sagen, was **bewusst** offen bleibt (z. B. nur Entwurf ohne Commit).

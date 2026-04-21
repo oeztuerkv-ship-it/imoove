@@ -8,8 +8,19 @@ Ziel: **keine stillen Abweichungen** zwischen **Code**, **PostgreSQL-Schema** un
 - **Produktionsserver:** dort wird **nicht entwickelt** und **nicht committed**; **keine manuellen** Deploy-Abweichungen (kein eigenes Pull+Build+Restart-Puzzle statt des Skripts).
 - **Einziger Weg live:** lokal **commit + push `main`** → auf dem Server **`cd /root/imoove && ./scripts/deploy-onroda-production.sh`** (Repo-Pfad bei euch wie vereinbart).
 
+## Vor „fertig“ / Fertigmeldung (Mensch & Agent)
+
+Keine Abschlussmeldung ohne diese Basis (Details: **`.cursor/rules/imoove-pre-completion-git-checklist.mdc`**):
+
+1. **`git status`** sauber für den behaupteten Umfang — insbesondere **keine neuen relevanten Dateien als `??`** (z. B. unter `artifacts/api-server/static/`).
+2. **`git show --name-only HEAD`** enthält die **erwarteten Pfade**; bei Push: kurz bestätigen, dass **`main`** / **`origin/main`** den Stand hat.
+3. **Server nach `git pull`:** bei Marketing-Static schnell z. B.  
+   `find artifacts/api-server/static -maxdepth 1 -type f | sort`  
+   — fehlt eine angekündigte Datei dort, **erst** Repo/Commit klären, nicht Nginx oder SMTP.
+
 ## Pflichtlektüre (Cursor Rules, immer aktiv)
 
+- `.cursor/rules/imoove-pre-completion-git-checklist.mdc` — **vor jeder Fertigmeldung:** sauberes `git status`, keine relevanten `??`, `git show --name-only HEAD`, erwartete Dateien auf `main` / Push
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
 - `.cursor/rules/imoove-server-infrastructure-onroda.mdc` — Domains, Port 3000, Nginx, **Panel-Postmortem** (scrypt `maxmem`, `rides.company_id` TEXT, serverseitiger API-Build)
 - **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** — produktiver Nginx-/TLS-/Domain-Referenzstand (z. B. `sites-enabled/final-try`, `api.onroda.de`-SAN, Panel-`/partners`-Redirect)
