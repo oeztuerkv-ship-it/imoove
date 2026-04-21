@@ -15,6 +15,34 @@ function formatEur(n) {
   }).format(Number(n) || 0);
 }
 
+function formatPct(rate) {
+  if (rate == null || Number.isNaN(rate)) return "—";
+  return new Intl.NumberFormat("de-DE", { style: "percent", maximumFractionDigits: 1 }).format(rate);
+}
+
+function formatKm(km) {
+  if (km == null || Number.isNaN(km)) return "—";
+  return `${new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 }).format(km)} km`;
+}
+
+function companyKindLabel(kind) {
+  switch (kind) {
+    case "taxi":
+      return "Taxi / Flotte";
+    case "insurer":
+      return "Krankenkasse / Versicherer";
+    case "hotel":
+      return "Hotel";
+    case "corporate":
+      return "Corporate / Firma";
+    case "voucher_client":
+      return "Gutschein / Voucher";
+    case "general":
+    default:
+      return "Allgemein";
+  }
+}
+
 export default function OverviewPage() {
   const { user, token } = usePanelAuth();
   const [company, setCompany] = useState(null);
@@ -142,15 +170,34 @@ export default function OverviewPage() {
       {companyErr ? <p className="panel-page__warn">{companyErr}</p> : null}
       {rideMetrics ? (
         <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-          <h3 className="panel-card__title">Kennzahlen Fahrten</h3>
+          <h3 className="panel-card__title">
+            {rideMetrics.presentation === "taxi_betrieb"
+              ? "Kennzahlen Betrieb (Taxi)"
+              : "Kennzahlen Leistungen (Fahrten)"}
+          </h3>
           <p className="panel-page__muted panel-page__muted--tight">
-            Umsatz nur aus <strong>abgeschlossenen</strong> Fahrten (Endpreis oder Schätzpreis). Kalendertag und Monat
-            nach Ortszeit {rideMetrics.zone}. Woche: <strong>letzte 7 Tage</strong> (rollierend).
+            Mandant: <strong>{companyKindLabel(rideMetrics.companyKind)}</strong>
+            {rideMetrics.presentation === "taxi_betrieb" ? (
+              <>
+                {" "}
+                — Betriebseinnahmen aus <strong>abgeschlossenen</strong> Fahrten (End- oder Schätzpreis). Kalendertag
+                und Monat: <strong>{rideMetrics.zone}</strong>. Woche: <strong>letzte 7 Tage</strong> (rollierend).
+              </>
+            ) : (
+              <>
+                {" "}
+                — Angezeigte Beträge sind <strong>gebuchtes Fahrtvolumen</strong> (Kosten-/Leistungsnachweis), nicht der
+                Taxi-Betriebsumsatz eines Fahrzeuginhabers. Kalendertag und Monat: <strong>{rideMetrics.zone}</strong>.
+                Woche: <strong>letzte 7 Tage</strong> (rollierend).
+              </>
+            )}
           </p>
           <div className="panel-fleet-dash" style={{ flexWrap: "wrap" }}>
             <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{formatEur(rideMetrics.today.revenue)}</span>
-              <span className="panel-fleet-dash__lbl">Umsatz heute</span>
+              <span className="panel-fleet-dash__lbl">
+                {rideMetrics.presentation === "taxi_betrieb" ? "Umsatz heute" : "Volumen heute"}
+              </span>
             </div>
             <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{rideMetrics.today.completedRides}</span>
@@ -158,7 +205,9 @@ export default function OverviewPage() {
             </div>
             <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{formatEur(rideMetrics.week.revenue)}</span>
-              <span className="panel-fleet-dash__lbl">Umsatz 7 Tage</span>
+              <span className="panel-fleet-dash__lbl">
+                {rideMetrics.presentation === "taxi_betrieb" ? "Umsatz 7 Tage" : "Volumen 7 Tage"}
+              </span>
             </div>
             <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{rideMetrics.week.completedRides}</span>
@@ -166,7 +215,9 @@ export default function OverviewPage() {
             </div>
             <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{formatEur(rideMetrics.month.revenue)}</span>
-              <span className="panel-fleet-dash__lbl">Umsatz Monat</span>
+              <span className="panel-fleet-dash__lbl">
+                {rideMetrics.presentation === "taxi_betrieb" ? "Umsatz Monat" : "Volumen Monat"}
+              </span>
             </div>
             <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{rideMetrics.month.completedRides}</span>
@@ -177,10 +228,63 @@ export default function OverviewPage() {
               <span className="panel-fleet-dash__lbl">Nicht abgeschlossen</span>
             </div>
           </div>
-          <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 10 }}>
-            <strong>Ausgaben / Kosten</strong> werden im Partner-Panel noch nicht gegen Fahrten verbucht — dafür nutzen
-            Sie Ihre Buchhaltung oder spätere Erweiterungen.
+          <h4 className="panel-card__title" style={{ marginTop: 18, fontSize: "1rem" }}>
+            Planung &amp; Qualität (Monat {rideMetrics.zone})
+          </h4>
+          <div className="panel-fleet-dash" style={{ flexWrap: "wrap" }}>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{formatPct(rideMetrics.monthDecided?.cancelRate)}</span>
+              <span className="panel-fleet-dash__lbl">Stornoquote</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.monthDecided?.cancelledRides ?? 0}</span>
+              <span className="panel-fleet-dash__lbl">Stornos (Monat)</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.scheduled?.todayCount ?? 0}</span>
+              <span className="panel-fleet-dash__lbl">Geplant heute</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">{rideMetrics.scheduled?.tomorrowCount ?? 0}</span>
+              <span className="panel-fleet-dash__lbl">Geplant morgen</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">
+                {rideMetrics.monthCompletedQuality?.avgFare != null
+                  ? formatEur(rideMetrics.monthCompletedQuality.avgFare)
+                  : "—"}
+              </span>
+              <span className="panel-fleet-dash__lbl">Ø Preis (abgeschlossen)</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">
+                {formatKm(rideMetrics.monthCompletedQuality?.avgDistanceKm)}
+              </span>
+              <span className="panel-fleet-dash__lbl">Ø Entfernung</span>
+            </div>
+            <div className="panel-fleet-dash__kpi">
+              <span className="panel-fleet-dash__num">
+                {rideMetrics.monthCompletedQuality?.completedWithAccessCode ?? 0}
+              </span>
+              <span className="panel-fleet-dash__lbl">Code-Fahrten (Monat)</span>
+            </div>
+          </div>
+          <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 12 }}>
+            Stornoquote = Stornos ÷ (abgeschlossen + Stornos) im Kalendermonat. „Geplant“ zählt Fahrten mit gesetztem
+            Abholtermin im Kalendertag.
           </p>
+          {rideMetrics.presentation === "taxi_betrieb" ? (
+            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 10 }}>
+              <strong>Betriebsausgaben</strong> (Tank, Personal, Versicherung, …) werden hier <strong>nicht</strong>{" "}
+              verbucht — dafür nutzen Sie Ihre Buchhaltung. Einnahmen oben = Fahrtabschlüsse Ihres Mandanten.
+            </p>
+          ) : (
+            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 10 }}>
+              <strong>Ausgaben / interne Kosten</strong> (Sachkosten, Controlling, Kostenträger) führen Sie außerhalb
+              dieses Panels — hier sehen Sie das <strong>gebuchte Fahrtvolumen</strong> zur Nachverfolgung (z. B. Hotel,
+              Krankenkasse, Firmenkunde).
+            </p>
+          )}
           {hasPanelModule(user?.panelModules, "billing") ? (
             <p className="panel-page__lead" style={{ marginTop: 8 }}>
               Details und Export: <strong>Abrechnung</strong> in der Seitenleiste.

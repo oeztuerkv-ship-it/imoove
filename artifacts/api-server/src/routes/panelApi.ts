@@ -14,6 +14,7 @@ import { findActivePanelUserById, findActivePanelUserProfileById } from "../db/p
 import {
   getPanelCompanyById,
   patchPanelCompanyProfile,
+  type PanelCompanyKind,
   type PanelCompanyProfilePatch,
 } from "../db/panelCompanyData";
 import {
@@ -530,7 +531,9 @@ router.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next
     if (!ctx) return;
     if (!denyUnlessPanelModule(res, ctx.profile, "overview")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
-    const metrics = await getPanelCompanyOverviewMetrics(ctx.claims.companyId);
+    const company = await getPanelCompanyById(ctx.claims.companyId);
+    const companyKind: PanelCompanyKind = company?.companyKind ?? ctx.profile.companyKind;
+    const metrics = await getPanelCompanyOverviewMetrics(ctx.claims.companyId, companyKind);
     res.json({ ok: true, metrics });
   } catch (e) {
     next(e);

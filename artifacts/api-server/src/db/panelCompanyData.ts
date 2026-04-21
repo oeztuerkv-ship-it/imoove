@@ -2,6 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable } from "./schema";
 
+/** Mandanten-Typ (Panel / Governance); z. B. Taxi vs. Leistungspartner (Hotel, Kasse, …). */
+export type PanelCompanyKind = "general" | "taxi" | "voucher_client" | "insurer" | "hotel" | "corporate";
+
 /** Öffentliche Firmendaten fürs Partner-Panel (keine internen PRIO-Steuerfelder). */
 export interface PanelCompanyPublic {
   id: string;
@@ -17,7 +20,7 @@ export interface PanelCompanyPublic {
   vatId: string;
   isActive: boolean;
   /** Mandanten-Typ: Governance steuert Module, Preise, Flows. */
-  companyKind: "general" | "taxi" | "voucher_client" | "insurer" | "hotel" | "corporate";
+  companyKind: PanelCompanyKind;
   taxId: string;
   concessionNumber: string;
   hasComplianceGewerbe: boolean;

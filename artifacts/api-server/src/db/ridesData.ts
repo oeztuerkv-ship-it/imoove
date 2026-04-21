@@ -1,4 +1,21 @@
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
+import type { PanelCompanyKind } from "./panelCompanyData";
 import type { RideRequest } from "../domain/rideRequest";
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
@@ -746,12 +763,30 @@ const PANEL_OVERVIEW_TERMINAL_STATUSES: RideRequest["status"][] = [
   "rejected",
 ];
 
+/** Explizite Stornos (ohne expired/rejected) — Zähler für Stornoquote. */
+const PANEL_OVERVIEW_CANCELLED_STATUSES: RideRequest["status"][] = [
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+];
+
 function panelOverviewRideRevenue(r: RideRequest): number {
   const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
   return Number.isFinite(a) ? a : 0;
 }
 
+function panelOverviewPresentation(kind: PanelCompanyKind): "taxi_betrieb" | "leistungspartner" {
+  return kind === "taxi" ? "taxi_betrieb" : "leistungspartner";
+}
+
 export type PanelCompanyOverviewMetrics = {
+  companyKind: PanelCompanyKind;
+  /**
+   * `taxi_betrieb`: klassische Taxi-Unternehmer-KPIs (Betriebseinnahmen).
+   * `leistungspartner`: Hotel / Krankenkasse / Corporate / Gutschein — Fahrtwerte als Leistungs-/Kostenvolumen, nicht als Taxi-Umsatz.
+   */
+  presentation: "taxi_betrieb" | "leistungspartner";
   /** Kalendertag / Monat: Mitternacht Europe/Berlin. Woche: rollierend 7×24h ab jetzt (DB-Zeit). */
   zone: "Europe/Berlin";
   weekScope: "rolling_7d";
@@ -759,10 +794,39 @@ export type PanelCompanyOverviewMetrics = {
   week: { completedRides: number; revenue: number };
   month: { completedRides: number; revenue: number };
   openRides: number;
+  /** Kalendermonat Europe/Berlin, nach `created_at`. */
+  monthDecided: {
+    completedRides: number;
+    cancelledRides: number;
+    /** Anteil Stornos unter (abgeschlossen + storniert), null wenn kein Entscheidungsfall. */
+    cancelRate: number | null;
+  };
+  /** Fahrten mit gesetztem `scheduled_at` im Berlin-Kalenderfenster (alle Status). */
+  scheduled: { todayCount: number; tomorrowCount: number };
+  /** Nur abgeschlossene Fahrten im Berlin-Monat. */
+  monthCompletedQuality: {
+    avgFare: number | null;
+    avgDistanceKm: number | null;
+    completedWithAccessCode: number;
+  };
 };
 
-/** Partner-Übersicht: nur Mandantenfahrten, kein globaler Admin-Scope. */
-export async function getPanelCompanyOverviewMetrics(companyId: string): Promise<PanelCompanyOverviewMetrics> {
+function monthWindowBerlin(companyId: string): SQL {
+  const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  return and(
+    companyIdMatchCondition(companyId),
+    gte(ridesTable.created_at, berlinMonthStart),
+    lt(ridesTable.created_at, berlinMonthEnd),
+  ) as SQL;
+}
+
+/** Partner-Übersicht: nur Mandantenfahrten, kein globaler Admin-Scope. `companyKind` steuert KPI-Bedeutung (Taxi vs. Leistungspartner). */
+export async function getPanelCompanyOverviewMetrics(
+  companyId: string,
+  companyKind: PanelCompanyKind,
+): Promise<PanelCompanyOverviewMetrics> {
+  const presentation = panelOverviewPresentation(companyKind);
   const db = getDb();
   if (!db) {
     const list = memoryRides.filter((r) => r.companyId && String(r.companyId) === companyId);
@@ -773,6 +837,8 @@ export async function getPanelCompanyOverviewMetrics(companyId: string): Promise
     const weekStart = now - 7 * 24 * 3600 * 1000;
     const monthStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), 1);
     const monthEnd = Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1);
+    const tomorrowStart = dayEnd;
+    const tomorrowEnd = tomorrowStart + 24 * 3600 * 1000;
     const inCreated = (r: RideRequest, a: number, b: number) => {
       const t = new Date(r.createdAt).getTime();
       return t >= a && t < b;
@@ -783,7 +849,36 @@ export async function getPanelCompanyOverviewMetrics(companyId: string): Promise
     const weekRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= weekStart);
     const monthRides = completedIn(monthStart, monthEnd);
     const openRides = list.filter((r) => !PANEL_OVERVIEW_TERMINAL_STATUSES.includes(r.status)).length;
+
+    const monthList = list.filter((r) => inCreated(r, monthStart, monthEnd));
+    const compM = monthList.filter((r) => r.status === "completed").length;
+    const cancM = monthList.filter((r) => PANEL_OVERVIEW_CANCELLED_STATUSES.includes(r.status)).length;
+    const denom = compM + cancM;
+    const cancelRate = denom > 0 ? cancM / denom : null;
+
+    const schedIn = (a: number, b: number) =>
+      list.filter((r) => {
+        if (!r.scheduledAt) return false;
+        const t = new Date(r.scheduledAt).getTime();
+        return t >= a && t < b;
+      });
+    const scheduledTodayCount = schedIn(dayStart, dayEnd).length;
+    const scheduledTomorrowCount = schedIn(tomorrowStart, tomorrowEnd).length;
+
+    const completedMonth = monthList.filter((r) => r.status === "completed");
+    let avgFare: number | null = null;
+    let avgKm: number | null = null;
+    if (completedMonth.length > 0) {
+      avgFare =
+        completedMonth.reduce((s, r) => s + panelOverviewRideRevenue(r), 0) / completedMonth.length;
+      const kmSum = completedMonth.reduce((s, r) => s + (Number.isFinite(r.distanceKm) ? r.distanceKm : 0), 0);
+      avgKm = kmSum / completedMonth.length;
+    }
+    const completedWithAccessCode = completedMonth.filter((r) => Boolean(r.accessCodeId)).length;
+
     return {
+      companyKind,
+      presentation,
       zone: "Europe/Berlin",
       weekScope: "rolling_7d",
       today: {
@@ -799,11 +894,20 @@ export async function getPanelCompanyOverviewMetrics(companyId: string): Promise
         revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
       },
       openRides,
+      monthDecided: { completedRides: compM, cancelledRides: cancM, cancelRate },
+      scheduled: { todayCount: scheduledTodayCount, tomorrowCount: scheduledTomorrowCount },
+      monthCompletedQuality: {
+        avgFare,
+        avgDistanceKm: avgKm,
+        completedWithAccessCode,
+      },
     };
   }
 
   const berlinTodayStart = sql`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
   const berlinTodayEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinTomorrowStart = berlinTodayEnd;
+  const berlinTomorrowEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '2 day') AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
   const weekRollingStart = sql`(now() - interval '7 days')`;
@@ -843,7 +947,65 @@ export async function getPanelCompanyOverviewMetrics(companyId: string): Promise
     .from(ridesTable)
     .where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)));
 
+  const mw = monthWindowBerlin(companyId);
+
+  const [compDec] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(and(mw, eq(ridesTable.status, "completed")));
+
+  const [cancDec] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(and(mw, inArray(ridesTable.status, PANEL_OVERVIEW_CANCELLED_STATUSES)));
+
+  const compN = Number(compDec?.n ?? 0);
+  const cancN = Number(cancDec?.n ?? 0);
+  const decDenom = compN + cancN;
+  const cancelRate = decDenom > 0 ? cancN / decDenom : null;
+
+  const [stToday] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(
+      and(
+        companyIdMatchCondition(companyId),
+        isNotNull(ridesTable.scheduled_at),
+        gte(ridesTable.scheduled_at, berlinTodayStart),
+        lt(ridesTable.scheduled_at, berlinTodayEnd),
+      ),
+    );
+
+  const [stTomorrow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(ridesTable)
+    .where(
+      and(
+        companyIdMatchCondition(companyId),
+        isNotNull(ridesTable.scheduled_at),
+        gte(ridesTable.scheduled_at, berlinTomorrowStart),
+        lt(ridesTable.scheduled_at, berlinTomorrowEnd),
+      ),
+    );
+
+  const [qualRow] = await db
+    .select({
+      avgFare: sql<string>`coalesce(avg(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+      avgKm: sql<string>`coalesce(avg(${ridesTable.distance_km}), 0)`,
+      withCode: sql<number>`count(*) FILTER (WHERE ${ridesTable.access_code_id} IS NOT NULL)::int`,
+    })
+    .from(ridesTable)
+    .where(and(mw, eq(ridesTable.status, "completed")));
+
+  const completedMonthN = Number(monthRow?.completedRides ?? 0);
+  const avgFare =
+    completedMonthN > 0 ? Number(qualRow?.avgFare ?? 0) : null;
+  const avgDistanceKm =
+    completedMonthN > 0 ? Number(qualRow?.avgKm ?? 0) : null;
+
   return {
+    companyKind,
+    presentation,
     zone: "Europe/Berlin",
     weekScope: "rolling_7d",
     today: {
@@ -859,6 +1021,20 @@ export async function getPanelCompanyOverviewMetrics(companyId: string): Promise
       revenue: Number(monthRow?.revenue ?? 0),
     },
     openRides: Number(openRow?.openRides ?? 0),
+    monthDecided: {
+      completedRides: compN,
+      cancelledRides: cancN,
+      cancelRate,
+    },
+    scheduled: {
+      todayCount: Number(stToday?.n ?? 0),
+      tomorrowCount: Number(stTomorrow?.n ?? 0),
+    },
+    monthCompletedQuality: {
+      avgFare,
+      avgDistanceKm,
+      completedWithAccessCode: Number(qualRow?.withCode ?? 0),
+    },
   };
 }
 
