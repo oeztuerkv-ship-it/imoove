@@ -4,10 +4,11 @@
 #   2) pnpm install --frozen-lockfile (Workspace-Root, CI=true)
 #   3) Builds: API + admin-panel + partner-panel
 #   4) SQL-Migrationen (Tracker onroda_deploy_migrations) + Schema-Verifikation
-#   5) optional rsync static → Zielpfade
+#   5) optional rsync (Panel-Dists + Marketing-Static api-server/static/)
 #   6) pm2 restart (ONRODA_PM2_APPS)
 #   7) optional nginx reload
-#   8) HTTP-Health-Checks (curl)
+#   8) optional öffentliche Marketing-Status-URL (curl + grep)
+#   9) HTTP-Health-Checks (curl)
 #
 # Voraussetzung: Repo-Root (imoove), pnpm, psql, pm2, curl;
 # DATABASE_URL: Umgebung oder artifacts/api-server/.env
@@ -56,7 +57,10 @@ Umgebung (Auswahl):
   ONRODA_PM2_APPS           Leerzeichen-getrennt, Default: onroda-api
   ONRODA_RSYNC_ADMIN_DIST_TO    Optional: rsync admin-panel/dist/ dorthin (--delete)
   ONRODA_RSYNC_PARTNER_DIST_TO  Optional: rsync partner-panel/dist/
+  ONRODA_RSYNC_MARKETING_STATIC_TO  Optional: rsync artifacts/api-server/static/ → Nginx-Webroot (ohne --delete)
   ONRODA_RELOAD_NGINX       Wenn 1: nginx -t && systemctl reload nginx
+  ONRODA_MARKETING_STATUS_VERIFY_URL  Optional: öffentliche URL z. B. https://www.onroda.de/partner/anfrage-status (curl: muss Status-HTML sein, nicht Startseite)
+  ONRODA_MARKETING_STATUS_VERIFY_TIMEOUT  Sekunden für curl (Default: 25)
   ONRODA_HEALTHCHECK_URLS   Leerzeichen-getrennte GET-URLs (Default: http://127.0.0.1:<PORT>/api/healthz, PORT aus api-server/.env oder 3000)
   ONRODA_HEALTHCHECK_TIMEOUT Sekunden für curl (Default: 20)
   ONRODA_HEALTHCHECK_INITIAL_WAIT_SECONDS  Wartezeit direkt nach PM2-Restart vor erstem Check (Default: 3)
@@ -381,6 +385,17 @@ do_optional_rsync() {
       rsync -a --delete "${PARTNER_DIR}/dist/" "${ONRODA_RSYNC_PARTNER_DIST_TO}/"
     fi
   fi
+  if [[ -n "${ONRODA_RSYNC_MARKETING_STATIC_TO:-}" ]]; then
+    log "rsync api-server/static (Marketing) → ${ONRODA_RSYNC_MARKETING_STATIC_TO}"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] rsync -a \"${API_DIR}/static/\" \"${ONRODA_RSYNC_MARKETING_STATIC_TO}/\""
+    else
+      rsync -a "${API_DIR}/static/" "${ONRODA_RSYNC_MARKETING_STATIC_TO}/"
+      if [[ -x "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh" ]]; then
+        LIVE_MARKETING_ROOT="${ONRODA_RSYNC_MARKETING_STATIC_TO}" bash "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh"
+      fi
+    fi
+  fi
 }
 
 do_optional_nginx() {
@@ -392,6 +407,33 @@ do_optional_nginx() {
       nginx -t && systemctl reload nginx
     fi
   fi
+}
+
+# Öffentliche Partner-Statusseite: muss echten Status-HTML liefern (nicht Startseite durch try_files).
+do_optional_marketing_status_verify() {
+  [[ -z "${ONRODA_MARKETING_STATUS_VERIFY_URL:-}" ]] && return 0
+  local url="${ONRODA_MARKETING_STATUS_VERIFY_URL}"
+  local t="${ONRODA_MARKETING_STATUS_VERIFY_TIMEOUT:-25}"
+  log "Prüfe Marketing-Status-URL (Partner-Außenkette): ${url}"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] curl Status-URL + grep (kein Homepage-Titel)"
+    return 0
+  fi
+  command -v curl >/dev/null 2>&1 || { log "curl fehlt — ONRODA_MARKETING_STATUS_VERIFY_URL übersprungen"; return 0; }
+  local body
+  body="$(curl -fsS --max-time "$t" "$url")" || {
+    echo "[deploy-onroda] FEHLER: curl für Marketing-Status-URL fehlgeschlagen: $url" >&2
+    exit 1
+  }
+  if ! grep -qF "Status Ihrer Partneranfrage" <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: Antwort enthält nicht die Statusseite (erwartet 'Status Ihrer Partneranfrage'). Nginx location=/partner/anfrage-status + rsync prüfen." >&2
+    exit 1
+  fi
+  if grep -qF "Digitale Mobilität für Stuttgart" <<<"$body"; then
+    echo "[deploy-onroda] FEHLER: Unter der Status-URL wird vermutlich die Startpage ausgeliefert (Homepage-Titel gefunden). Nginx alias für /partner/anfrage-status setzen." >&2
+    exit 1
+  fi
+  log "Marketing-Status-URL: OK (Inhalt plausibel)."
 }
 
 # --- main ---
@@ -466,6 +508,8 @@ verify_schema_against_repo
 do_optional_rsync
 do_pm2
 do_optional_nginx
+do_optional_marketing_status_verify
 do_health_checks
 
-log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema → PM2 → Health)."
+log "Deploy fertig (Git → pnpm → Builds → Migrationen + Schema → rsync → PM2 → Nginx → Health)."
+log "Hinweis: Freigabe-Mails brauchen PARTNER_REGISTRATION_SMTP_URL + PARTNER_REGISTRATION_MAIL_FROM in artifacts/api-server/.env (PM2 --update-env)."

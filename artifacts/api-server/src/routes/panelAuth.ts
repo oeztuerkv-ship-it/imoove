@@ -17,6 +17,15 @@ import {
 } from "../db/partnerRegistrationRequestsData";
 import { logger } from "../lib/logger";
 import { rateLimitPanelLogin } from "../lib/panelLoginRateLimit";
+import {
+  rateLimitPartnerRegistrationEmail,
+  rateLimitPartnerRegistrationIp,
+  rateLimitPartnerRegistrationPublicLookup,
+} from "../lib/partnerRegistrationPublicRateLimit";
+import {
+  toPublicPartnerRegistrationDocuments,
+  toPublicPartnerRegistrationSnapshot,
+} from "../lib/partnerRegistrationPublicDto";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { verifyPassword } from "../lib/password";
 import { isPanelJwtConfigured, signPanelJwt, type PanelRole } from "../lib/panelJwt";
@@ -149,12 +158,29 @@ router.post("/panel-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
 
+const PENDING_PUBLIC_REGISTRATION = new Set(["open", "in_review", "documents_required"]);
+
 router.post("/panel-auth/registration-request", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rlIp = rateLimitPartnerRegistrationIp(ip);
+  if (!rlIp.ok) {
+    res.setHeader("Retry-After", String(rlIp.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rlIp.retryAfterSec });
+    return;
+  }
+
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
   }
+
   const body = (req.body ?? {}) as Record<string, unknown>;
+  const hpVal = typeof body.hp_company_website === "string" ? body.hp_company_website.trim() : "";
+  if (hpVal.length > 0) {
+    res.status(400).json({ error: "invalid_request" });
+    return;
+  }
+
   const str = (k: string) => (typeof body[k] === "string" ? body[k].trim() : "");
   const companyName = str("companyName");
   const legalForm = str("legalForm");
@@ -186,6 +212,45 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     res.status(400).json({ error: "partner_type_invalid" });
     return;
   }
+
+  const rlEmail = rateLimitPartnerRegistrationEmail(email);
+  if (!rlEmail.ok) {
+    res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
+    res.status(429).json({ error: "rate_limited_email", retryAfterSec: rlEmail.retryAfterSec });
+    return;
+  }
+
+  const existingPanel = await findActivePanelUserByEmailNormalized(email);
+  if (existingPanel) {
+    res.status(409).json({
+      error: "already_panel_user",
+      hint: "Für diese E-Mail existiert bereits ein Zugang zum Partner-Portal. Bitte dort anmelden oder den Support kontaktieren.",
+    });
+    return;
+  }
+
+  const latest = await findLatestPartnerRegistrationRequestByEmail(email);
+  if (latest) {
+    if (PENDING_PUBLIC_REGISTRATION.has(latest.registrationStatus)) {
+      res.status(409).json({
+        error: "duplicate_pending",
+        request: {
+          id: latest.id,
+          registrationStatus: latest.registrationStatus,
+          createdAt: latest.createdAt,
+        },
+      });
+      return;
+    }
+    if (latest.registrationStatus === "approved") {
+      res.status(409).json({
+        error: "duplicate_approved",
+        hint: "Zu dieser E-Mail liegt bereits eine freigegebene Anfrage vor. Bitte nutzen Sie das Partner-Portal oder kontaktieren Sie uns.",
+      });
+      return;
+    }
+  }
+
   const usesVouchers = body.usesVouchers === true;
   const requestedUsage =
     body.requestedUsage && typeof body.requestedUsage === "object" && !Array.isArray(body.requestedUsage)
@@ -220,28 +285,52 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     res.status(503).json({ error: "create_failed" });
     return;
   }
+  logger.info(
+    { event: "partner.registration.submitted", requestId: created.id, email, clientIp: ip },
+    "partner registration request created",
+  );
   res.status(201).json({ ok: true, request: created });
 });
 
 router.get("/panel-auth/registration-request-status", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPartnerRegistrationPublicLookup(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
   }
   const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-  if (!email) {
-    res.status(400).json({ error: "email_required" });
+  const requestId =
+    typeof req.query.requestId === "string"
+      ? req.query.requestId.trim()
+      : typeof req.query.id === "string"
+        ? req.query.id.trim()
+        : "";
+  if (!email || !requestId) {
+    res.status(400).json({ error: "email_and_requestId_required" });
     return;
   }
-  const row = await findLatestPartnerRegistrationRequestByEmail(email);
-  if (!row) {
+  const row = await findPartnerRegistrationRequestById(requestId);
+  if (!row || (row.email ?? "").toLowerCase() !== email) {
     res.status(404).json({ error: "not_found" });
     return;
   }
-  res.json({ ok: true, request: row });
+  res.json({ ok: true, request: toPublicPartnerRegistrationSnapshot(row) });
 });
 
 router.get("/panel-auth/registration-request/:id", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPartnerRegistrationPublicLookup(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -258,10 +347,15 @@ router.get("/panel-auth/registration-request/:id", async (req, res) => {
     return;
   }
   if ((detail.request.email ?? "").toLowerCase() !== email) {
-    res.status(403).json({ error: "forbidden" });
+    res.status(404).json({ error: "not_found" });
     return;
   }
-  res.json({ ok: true, ...detail });
+  res.json({
+    ok: true,
+    request: toPublicPartnerRegistrationSnapshot(detail.request),
+    documents: toPublicPartnerRegistrationDocuments(detail.documents),
+    timeline: detail.timeline,
+  });
 });
 
 router.post("/panel-auth/registration-request/:id/messages", async (req, res) => {

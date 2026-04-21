@@ -8,6 +8,7 @@ const COMPANIES_URL = `${API_BASE}/admin/companies`;
 const REG_REQUESTS_URL = `${API_BASE}/admin/company-registration-requests`;
 const AZ_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const REG_STATUS_TABS = [
+  { value: "pending_queue", label: "Zu erledigen" },
   { value: "all", label: "Alle" },
   { value: "open", label: "Offen" },
   { value: "in_review", label: "In Bearbeitung" },
@@ -142,13 +143,14 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
-  const [regStatusFilter, setRegStatusFilter] = useState("all");
+  const [regStatusFilter, setRegStatusFilter] = useState("pending_queue");
   const [registrationRequests, setRegistrationRequests] = useState([]);
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [registrationError, setRegistrationError] = useState("");
   const [registrationDetail, setRegistrationDetail] = useState(null);
   const [registrationDetailLoading, setRegistrationDetailLoading] = useState(false);
   const [registrationActionBusy, setRegistrationActionBusy] = useState(false);
+  const [ownerOnboardingResult, setOwnerOnboardingResult] = useState(null);
 
   useEffect(() => {
     loadCompanies();
@@ -257,7 +259,11 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     setRegistrationError("");
     try {
       const qs =
-        status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+        status === "pending_queue"
+          ? "?pending=1"
+          : status && status !== "all"
+            ? `?status=${encodeURIComponent(status)}`
+            : "";
       const res = await fetch(`${REG_REQUESTS_URL}${qs}`, { headers: adminApiHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json().catch(() => null);
@@ -271,6 +277,8 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   }
 
   async function patchRegistrationRequest(id, patch) {
+    const reloadDetailAfter =
+      registrationDetail && (registrationDetail.request?.id === id || registrationDetail.id === id);
     setRegistrationActionBusy(true);
     setRegistrationError("");
     try {
@@ -282,7 +290,19 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok || !data.item) throw new Error(data?.error || `HTTP ${res.status}`);
       setRegistrationRequests((prev) => prev.map((r) => (r.id === id ? data.item : r)));
-      setRegistrationDetail((prev) => (prev?.id === id ? data.item : prev));
+      if (reloadDetailAfter) {
+        await loadRegistrationDetail(id);
+      } else {
+        setRegistrationDetail((prev) => {
+          if (!prev) return prev;
+          const prevId = prev.request?.id ?? prev.id;
+          if (prevId !== id) return prev;
+          if (prev.request && typeof prev.request === "object") {
+            return { ...prev, request: { ...prev.request, ...data.item } };
+          }
+          return { request: data.item, documents: [], timeline: [] };
+        });
+      }
       return data.item;
     } catch (e) {
       console.error(e);
@@ -300,15 +320,30 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
       const res = await fetch(`${REG_REQUESTS_URL}/${encodeURIComponent(id)}/approve`, {
         method: "POST",
         headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ createOwnerUser: true }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       if (data.request) {
         setRegistrationRequests((prev) => prev.map((r) => (r.id === id ? data.request : r)));
-        await loadRegistrationDetail(id);
+        const hadDetailOpen =
+          registrationDetail &&
+          (registrationDetail.request?.id === id || registrationDetail.id === id);
+        if (hadDetailOpen) {
+          await loadRegistrationDetail(id);
+        }
       }
       if (data.company) {
         setItems((prev) => [data.company, ...prev]);
+      }
+      if (data.ownerOnboarding?.initialPassword) {
+        setOwnerOnboardingResult({
+          ...data.ownerOnboarding,
+          companyId: data.company?.id ?? "",
+          requestId: id,
+        });
+      } else if (data.ownerProvisioningWarning) {
+        window.alert(data.ownerProvisioningWarning);
       }
     } catch (e) {
       console.error(e);
@@ -316,6 +351,36 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
     } finally {
       setRegistrationActionBusy(false);
     }
+  }
+
+  async function rejectRegistrationRequest(id) {
+    if (typeof window === "undefined") return;
+    const note = window.prompt(
+      "Ablehnen: optionaler interner Vermerk (wird an der Anfrage gespeichert). „Abbrechen“ = keine Änderung.",
+    );
+    if (note === null) return;
+    await patchRegistrationRequest(id, {
+      status: "rejected",
+      ...(note.trim() ? { adminNote: note.trim() } : {}),
+    });
+  }
+
+  async function requestFollowUpOnRegistration(id) {
+    if (typeof window === "undefined") return;
+    const note = window.prompt(
+      "Rückfrage: Welche Unterlagen oder Angaben fehlen? (Kurz beschreiben; „Abbrechen“ = keine Änderung.)",
+    );
+    if (note === null) return;
+    const trimmed = note.trim();
+    if (!trimmed) {
+      window.alert("Bitte einen kurzen Text eingeben oder Abbrechen wählen.");
+      return;
+    }
+    await patchRegistrationRequest(id, {
+      status: "documents_required",
+      complianceStatus: "missing_documents",
+      missingDocumentsNote: trimmed,
+    });
   }
 
   async function loadRegistrationDetail(id) {
@@ -1360,14 +1425,9 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
           actionBusy={registrationActionBusy}
           onReload={() => loadRegistrationRequests(regStatusFilter)}
           onSetStatus={(id, status) => patchRegistrationRequest(id, { status })}
-          onSetDocsMissing={(id) =>
-            patchRegistrationRequest(id, {
-              status: "documents_required",
-              complianceStatus: "missing_documents",
-            })
-          }
+          onRequestFollowUp={requestFollowUpOnRegistration}
           onApprove={approveRegistrationRequest}
-          onReject={(id) => patchRegistrationRequest(id, { status: "rejected" })}
+          onReject={rejectRegistrationRequest}
           onInReview={(id) => patchRegistrationRequest(id, { status: "in_review" })}
           onSendAdminMessage={sendAdminMessageToRequest}
         />
@@ -1501,6 +1561,83 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
           </div>
         </div>
       ) : null}
+
+      {ownerOnboardingResult ? (
+        <div className="admin-modal-backdrop" role="presentation" onClick={() => setOwnerOnboardingResult(null)}>
+          <div
+            className="admin-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-owner-onboarding-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal__header">
+              <h2 id="admin-owner-onboarding-title" className="admin-modal__title">
+                Partner-Portal: Erstzugang (Owner)
+              </h2>
+              <button
+                type="button"
+                className="admin-modal__close"
+                onClick={() => setOwnerOnboardingResult(null)}
+                aria-label="Schließen"
+              >
+                ×
+              </button>
+            </div>
+            <div className="admin-modal__body">
+              <p className="admin-table-sub">
+                Einmalpasswort sicher übermitteln (z. B. getrennt vom Benutzernamen). Nach erstem Login muss das Passwort
+                geändert werden.
+              </p>
+              <dl className="admin-detail-grid">
+                <div>
+                  <dt>Unternehmen</dt>
+                  <dd>
+                    <code>{ownerOnboardingResult.companyId}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Benutzername</dt>
+                  <dd>
+                    <code>{ownerOnboardingResult.username}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>E-Mail (Login)</dt>
+                  <dd>{ownerOnboardingResult.email}</dd>
+                </div>
+                <div>
+                  <dt>Einmalpasswort</dt>
+                  <dd>
+                    <code style={{ wordBreak: "break-all" }}>{ownerOnboardingResult.initialPassword}</code>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <div className="admin-modal__footer-actions">
+              <button
+                type="button"
+                className="admin-page-btn"
+                onClick={() => {
+                  const blob = [
+                    `Unternehmen (Mandant): ${ownerOnboardingResult.companyId}`,
+                    `Panel: ${COMPANY_DASHBOARD_URL}`,
+                    `Benutzername: ${ownerOnboardingResult.username}`,
+                    `E-Mail: ${ownerOnboardingResult.email}`,
+                    `Einmalpasswort: ${ownerOnboardingResult.initialPassword}`,
+                  ].join("\n");
+                  void navigator.clipboard?.writeText(blob).catch(() => {});
+                }}
+              >
+                Alles kopieren
+              </button>
+              <button type="button" className="admin-btn-refresh" onClick={() => setOwnerOnboardingResult(null)}>
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1628,7 +1765,7 @@ function RegistrationRequestsSection({
   actionBusy,
   onReload,
   onSetStatus,
-  onSetDocsMissing,
+  onRequestFollowUp,
   onApprove,
   onReject,
   onInReview,
@@ -1664,7 +1801,11 @@ function RegistrationRequestsSection({
       {loading ? (
         <div className="admin-info-banner">Unternehmensanfragen werden geladen …</div>
       ) : items.length === 0 ? (
-        <div className="admin-info-banner">Keine Anfragen in diesem Status.</div>
+        <div className="admin-info-banner">
+          {statusFilter === "pending_queue"
+            ? "Keine Anfragen in der Warteschlange (offen, in Bearbeitung oder Rückfrage)."
+            : "Keine Anfragen in diesem Status."}
+        </div>
       ) : (
         <div className="admin-companies-table-wrap">
           <table className="admin-companies-table">
@@ -1714,9 +1855,9 @@ function RegistrationRequestsSection({
                         type="button"
                         className="admin-btn-outline admin-btn-outline--compact"
                         disabled={actionBusy}
-                        onClick={() => onSetDocsMissing(r.id)}
+                        onClick={() => onRequestFollowUp(r.id)}
                       >
-                        Unterlagen fehlen
+                        Rückfrage / Unterlagen
                       </button>
                       <button
                         type="button"
@@ -1884,7 +2025,8 @@ function RegistrationRequestsSection({
                 </button>
               </div>
               <p className="admin-table-sub" style={{ marginTop: 14 }}>
-                Hinweis: Stammdaten bleiben gesperrt (`masterDataLocked=true`) und werden nur über Admin-Freigabe übernommen.
+                Hinweis: Öffentliche Anfrage-Stammdaten werden bei Freigabe in den Mandanten übernommen; Panel-Login gibt
+                es erst nach Freigabe.
               </p>
               <div className="admin-toolbar-row" style={{ marginTop: 14 }}>
                 <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onSetStatus(request.id, "open")}>
@@ -1893,8 +2035,8 @@ function RegistrationRequestsSection({
                 <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onInReview(request.id)}>
                   In Bearbeitung
                 </button>
-                <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onSetDocsMissing(request.id)}>
-                  Dokumente nachfordern
+                <button type="button" className="admin-btn-outline" disabled={actionBusy} onClick={() => onRequestFollowUp(request.id)}>
+                  Rückfrage / Unterlagen nachfordern
                 </button>
                 <button type="button" className="admin-btn-refresh" disabled={actionBusy} onClick={() => onApprove(request.id)}>
                   Freigeben & Unternehmen anlegen

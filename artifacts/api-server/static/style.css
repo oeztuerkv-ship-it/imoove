@@ -568,6 +568,52 @@
       font-size: 0.92rem;
     }
 
+    .hp-honeypot {
+      position: absolute;
+      left: -10000px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    .hp-form-status {
+      min-height: 1.25em;
+      margin: 0;
+      font-size: 0.92rem;
+      color: var(--onroda-text-grey);
+      white-space: pre-wrap;
+    }
+
+    .hp-form-status--success {
+      color: #0d6832;
+      font-weight: 600;
+    }
+
+    .hp-form-status--error {
+      color: #b42318;
+      font-weight: 600;
+    }
+
+    .hp-checkbox {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 0.92rem;
+      color: var(--onroda-text-dark);
+      line-height: 1.45;
+    }
+
+    .hp-checkbox input {
+      width: auto;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .hp-checkbox a {
+      color: var(--onroda-red);
+      font-weight: 600;
+    }
+
     .hp-partner-shell {
       display: grid;
       grid-template-columns: minmax(260px, 0.95fr) minmax(340px, 1.25fr);

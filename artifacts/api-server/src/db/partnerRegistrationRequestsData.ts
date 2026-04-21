@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   partnerRegistrationDocumentsTable,
@@ -238,6 +238,20 @@ export async function listPartnerRegistrationRequestsAdmin(status?: Registration
   return rows.map(mapRow);
 }
 
+/** Offene Bearbeitung: noch nicht final entschieden (Freigabe / Ablehnung). */
+const PENDING_REGISTRATION_STATUSES: RegistrationStatus[] = ["open", "in_review", "documents_required"];
+
+export async function listPartnerRegistrationPendingQueueAdmin() {
+  const db = getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(partnerRegistrationRequestsTable)
+    .where(inArray(partnerRegistrationRequestsTable.registration_status, PENDING_REGISTRATION_STATUSES))
+    .orderBy(desc(partnerRegistrationRequestsTable.created_at));
+  return rows.map(mapRow);
+}
+
 export async function findPartnerRegistrationRequestById(id: string) {
   const db = getDb();
   if (!db) return null;
@@ -302,13 +316,21 @@ export async function patchPartnerRegistrationRequest(id: string, patch: Partner
   return findPartnerRegistrationRequestById(id);
 }
 
+export type AttachCompanyToRegistrationRequestOpts = {
+  reviewedByAdminUserId?: string | null;
+  /** Anzeige in Timeline (z. B. Admin-Login-Name), nicht zwingend DB-UUID. */
+  eventActorLabel?: string;
+};
+
 export async function attachCompanyToPartnerRegistrationRequest(
   id: string,
   companyId: string,
-  adminUserId: string | null,
+  opts: AttachCompanyToRegistrationRequestOpts = {},
 ) {
   const db = getDb();
   if (!db) return null;
+  const adminUserId = opts.reviewedByAdminUserId ?? null;
+  const eventActorLabel = opts.eventActorLabel ?? "admin";
   await db
     .update(partnerRegistrationRequestsTable)
     .set({
@@ -330,7 +352,7 @@ export async function attachCompanyToPartnerRegistrationRequest(
   await addPartnerRegistrationTimelineEvent({
     requestId: id,
     actorType: "admin",
-    actorLabel: adminUserId ?? "admin",
+    actorLabel: eventActorLabel,
     eventType: "approved_company_created",
     message: "Anfrage freigegeben und Unternehmen angelegt.",
     payload: { companyId },

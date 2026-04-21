@@ -62,6 +62,7 @@ import {
   getPartnerRegistrationDetailAdmin,
   isPartnerType,
   isRegistrationStatus,
+  listPartnerRegistrationPendingQueueAdmin,
   listPartnerRegistrationRequestsAdmin,
   patchPartnerRegistrationRequest,
   resolvePartnerRegistrationStorageAbsolutePath,
@@ -97,6 +98,7 @@ import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
+import { sendPartnerRegistrationApprovedEmail } from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
@@ -200,6 +202,28 @@ function partnerTypeToCompanyKind(partnerType: string): "taxi" | "hotel" | "insu
     default:
       return "general";
   }
+}
+
+function sanitizePreferredPanelUsernameBase(raw: string): string {
+  const trimmed = raw.trim().toLowerCase();
+  const local = trimmed.includes("@") ? (trimmed.split("@")[0] ?? trimmed) : trimmed;
+  let s = local.replace(/[^a-z0-9._-]+/g, "_").replace(/_+/g, "_");
+  s = s.replace(/^\.+|\.+$/g, "").replace(/^[_-]+|[_-]+$/g, "");
+  if (s.length < 3) {
+    s = `partner${randomBytes(3).toString("hex")}`;
+  }
+  return s.slice(0, 36);
+}
+
+async function allocateUniquePanelUsername(preferred: string): Promise<string> {
+  const base = sanitizePreferredPanelUsernameBase(preferred || "partner");
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const candidate = attempt === 0 ? base : `${base}-${randomBytes(2).toString("hex")}`;
+    if (!(await panelUsernameTaken(candidate.toLowerCase()))) {
+      return candidate;
+    }
+  }
+  throw new Error("panel_username_exhausted");
 }
 
 function hashResetToken(token: string): string {
@@ -1038,6 +1062,13 @@ adminJson.get("/company-registration-requests", async (req, res, next) => {
       res.status(503).json({ error: "database_not_configured" });
       return;
     }
+    const pendingRaw = typeof req.query?.pending === "string" ? req.query.pending.trim() : "";
+    const pendingQueue = pendingRaw === "1" || pendingRaw.toLowerCase() === "true";
+    if (pendingQueue) {
+      const items = await listPartnerRegistrationPendingQueueAdmin();
+      res.json({ ok: true, items, pendingQueue: true });
+      return;
+    }
     const statusRaw = typeof req.query?.status === "string" ? req.query.status.trim() : "";
     if (statusRaw && !isRegistrationStatus(statusRaw)) {
       res.status(400).json({ error: "status_invalid" });
@@ -1294,12 +1325,111 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       res.status(400).json({ error: createdCompany.error });
       return;
     }
-    const updatedReq = await attachCompanyToPartnerRegistrationRequest(
-      reqRow.id,
-      createdCompany.id,
-      null,
-    );
-    res.status(201).json({ ok: true, company: createdCompany, request: updatedReq });
+    const actorLabel = req.adminAuth?.username ?? "admin";
+    let reviewerId: string | null = null;
+    if (req.adminAuth?.username) {
+      const authRow = await findActiveAdminAuthUserByUsername(req.adminAuth.username);
+      reviewerId = authRow?.id ?? null;
+    }
+    const updatedReq = await attachCompanyToPartnerRegistrationRequest(reqRow.id, createdCompany.id, {
+      reviewedByAdminUserId: reviewerId,
+      eventActorLabel: actorLabel,
+    });
+    if (!updatedReq) {
+      res.status(409).json({
+        error: "attach_failed",
+        hint: "Anfrage konnte nicht verknüpft werden (z. B. Stammdaten nicht gesperrt). Das Unternehmen wurde bereits angelegt.",
+        companyId: createdCompany.id,
+      });
+      return;
+    }
+
+    const approveBody = (req.body ?? {}) as { createOwnerUser?: unknown; ownerUsername?: unknown };
+    const createOwnerUser = approveBody.createOwnerUser !== false;
+    let ownerOnboarding:
+      | { username: string; email: string; initialPassword: string; mustChangePassword: true }
+      | undefined;
+    let ownerProvisioningWarning: string | undefined;
+
+    if (createOwnerUser) {
+      const ownerUsernameHint =
+        typeof approveBody.ownerUsername === "string" && approveBody.ownerUsername.trim()
+          ? approveBody.ownerUsername.trim()
+          : reqRow.email;
+      try {
+        const username = await allocateUniquePanelUsername(ownerUsernameHint);
+        const ownerEmail = reqRow.email.trim();
+        const generatedPassword = generateTemporaryPassword();
+        const pwHash = await hashPassword(generatedPassword);
+        const createdUser = await insertPanelUser({
+          companyId: createdCompany.id,
+          username,
+          email: ownerEmail,
+          role: "owner",
+          passwordHash: pwHash,
+          mustChangePassword: true,
+        });
+        if (!createdUser) {
+          ownerProvisioningWarning =
+            "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
+        } else {
+          await insertPanelAuditLog({
+            id: randomUUID(),
+            companyId: createdCompany.id,
+            actorPanelUserId: null,
+            action: "admin.panel_user.created",
+            subjectType: "panel_user",
+            subjectId: createdUser.id,
+            meta: { username, role: "owner", source: "registration_request_approve" },
+          });
+          await addPartnerRegistrationTimelineEvent({
+            requestId: reqRow.id,
+            actorType: "admin",
+            actorLabel,
+            eventType: "panel_owner_provisioned",
+            message: "Erstzugang Partner-Panel (Owner) angelegt.",
+            payload: { panelUserId: createdUser.id, username },
+          });
+          ownerOnboarding = {
+            username,
+            email: ownerEmail,
+            initialPassword: generatedPassword,
+            mustChangePassword: true,
+          };
+          logger.info(
+            {
+              event: "admin.partner_registration.owner_provisioned",
+              requestId: reqRow.id,
+              companyId: createdCompany.id,
+              panelUserId: createdUser.id,
+              username,
+            },
+            "panel owner provisioned from registration approve",
+          );
+        }
+      } catch (err) {
+        ownerProvisioningWarning =
+          err instanceof Error ? err.message : "owner_provisioning_failed";
+        logger.warn({ err, requestId: reqRow.id }, "panel owner provisioning failed after approve");
+      }
+    }
+
+    res.status(201).json({
+      ok: true,
+      company: createdCompany,
+      request: updatedReq,
+      ...(ownerOnboarding ? { ownerOnboarding } : {}),
+      ...(ownerProvisioningWarning ? { ownerProvisioningWarning } : {}),
+    });
+
+    void sendPartnerRegistrationApprovedEmail({
+      to: reqRow.email,
+      companyName: reqRow.companyName,
+      ownerUsername: ownerOnboarding?.username,
+      ownerInitialPassword: ownerOnboarding?.initialPassword,
+    }).catch((err) => {
+      logger.warn({ err, requestId: reqRow.id }, "partner approval mail async failed");
+    });
   } catch (e) {
     next(e);
   }

@@ -59,7 +59,7 @@ Abweichungen sind nicht erlaubt ohne Anpassung der Policy.
 cd /root/imoove && ./scripts/deploy-onroda-production.sh
 ```
 
-Voraussetzungen: `pnpm`, `npm`, `psql`, `pm2`; `DATABASE_URL` in `artifacts/api-server/.env` (oder in der Shell). Optional: `scripts/onroda-deploy.env` aus `scripts/onroda-deploy.example.env` anlegen (PM2-Namen, rsync-Ziele, Nginx-Reload).
+Voraussetzungen: `pnpm`, `npm`, `psql`, `pm2`; `DATABASE_URL` in `artifacts/api-server/.env` (oder in der Shell). Optional: `scripts/onroda-deploy.env` aus `scripts/onroda-deploy.example.env` anlegen (PM2-Namen, rsync-Ziele inkl. **`ONRODA_RSYNC_MARKETING_STATIC_TO`**, Nginx-Reload, **`ONRODA_MARKETING_STATUS_VERIFY_URL`** für Live-Check der Partner-Statusseite). Freigabe-Mails: **`PARTNER_REGISTRATION_SMTP_URL`** + **`PARTNER_REGISTRATION_MAIL_FROM`** in der API-`.env`.
 
 - **Erste Nutzung auf einer DB, die schon manuell alle Migrationen hatte:** Tracker füllen **nur bewusst** — der Seed führt **kein** SQL aus; ohne echte Objekte entstehen 500er. Nur mit Bestätigung:
 
@@ -79,7 +79,7 @@ Ablauf im Skript: `git pull` → `CI=true pnpm install --frozen-lockfile` → AP
 
 **Live-Pfad der Panel-Assets:** Die API liest standardmäßig die gebauten Ordner `artifacts/admin-panel/dist` und `artifacts/partner-panel/dist` relativ zum API-`dist` (siehe `artifacts/api-server/src/app.ts`). Es ist **kein** separates PM2-Frontend nötig, solange Nginx auf **eine** Node-Instanz (Port **3000**) proxyt und keine veralteten Kopien unter `/var/www/…` ausliefert. Wenn eure Nginx-Konfiguration doch auf statische Verzeichnisse zeigt, nach dem Build `ONRODA_RSYNC_*` setzen oder die Pfade anpassen.
 
-**Marketing (`onroda.de`) unter `/var/www/…`:** `git pull` allein reicht **nicht** — nach Pull **`artifacts/api-server/static/`** explizit ins Nginx-`root` synchronisieren (`rsync`), dann `nginx -t` und `curl https://onroda.de/`. **Panel/Admin** dagegen immer **getrennt** prüfen (Domain, Zertifikat/SAN, Nginx-`proxy_pass` → Port **3000**, nicht Marketing-`root`). Ablauf und Ebenen: **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`**.
+**Marketing (`onroda.de`) unter `/var/www/…`:** `git pull` allein reicht **nicht** — nach Pull **`artifacts/api-server/static/`** explizit ins Nginx-`root` synchronisieren (`rsync`), dann `nginx -t` und `curl https://onroda.de/`. **Partner-Anfrage-Status** (`/partner/anfrage-status` → `partner-status.html`): eigener Nginx-`location` + Live-`curl`-Prüfung, sonst liefert `try_files` fälschlich die Startseite — siehe **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** § 2c und `./scripts/verify-onroda-marketing-partner-status-repo.sh`. **Panel/Admin** dagegen immer **getrennt** prüfen (Domain, Zertifikat/SAN, Nginx-`proxy_pass` → Port **3000**, nicht Marketing-`root`).
 
 Deploy **ohne** dieses Skript ist **kein** unterstützter Ablauf mehr — bitte nicht wieder einführen.
 

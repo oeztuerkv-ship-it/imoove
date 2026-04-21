@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Öffentliche API (Partneranfrage). Für lokale Tests z. B. http://127.0.0.1:3000/api setzen. -->
+  <meta name="onroda-public-api-base" content="https://api.onroda.de/api" />
   <title>ONRODA – Digitale Mobilität für Stuttgart</title>
   <meta
     name="description"
@@ -310,22 +312,38 @@
 
           <div class="hp-form-card">
             <h3>Partneranfrage</h3>
-            <p class="hint">Die Anfrage wird an <strong>onroda@mail.de</strong> vorbereitet.</p>
+            <p class="hint">
+              Ihre Angaben werden verschlüsselt über unsere API an ONRODA übermittelt und in der Bearbeitung
+              vorgemerkt. Es entsteht <strong>noch kein</strong> Zugang zum Partner-Portal — die Freigabe erfolgt nach
+              Prüfung durch uns. Den Status Ihrer Anfrage können Sie jederzeit unter
+              <a href="/partner/anfrage-status">Partner-Anfrage: Status</a> prüfen (E-Mail + Referenz-ID).
+            </p>
 
-            <form id="partner-form" action="#" method="post">
+            <form id="partner-form" action="#" method="post" novalidate>
               <div class="hp-partner-form-grid">
+                <!-- Honeypot: nicht ausfüllen (Spam-Schutz). -->
+                <div class="hp-field hp-field--full hp-honeypot" aria-hidden="true">
+                  <label for="partner-hp-company-website">Firmenwebsite</label>
+                  <input
+                    type="text"
+                    id="partner-hp-company-website"
+                    name="hp_company_website"
+                    tabindex="-1"
+                    autocomplete="off"
+                  />
+                </div>
+
                 <div class="hp-field hp-field--full">
                   <label for="companyType">Art des Unternehmens *</label>
                   <select id="companyType" required>
                     <option value="">Bitte wählen</option>
-                    <option>Taxiunternehmen</option>
-                    <option>Hotel</option>
-                    <option>Arztpraxis</option>
-                    <option>Klinik</option>
-                    <option>Unternehmen</option>
-                    <option>Versicherung / Krankenkasse</option>
-                    <option>Veranstalter</option>
-                    <option>Sonstiges</option>
+                    <option value="taxi">Taxiunternehmen</option>
+                    <option value="hotel">Hotel</option>
+                    <option value="medical">Arztpraxis / Klinik</option>
+                    <option value="business">Unternehmen</option>
+                    <option value="insurance">Versicherung / Krankenkasse</option>
+                    <option value="business">Veranstalter</option>
+                    <option value="other">Sonstiges</option>
                   </select>
                 </div>
 
@@ -379,10 +397,10 @@
                     <div class="hp-field">
                       <label for="country">Land *</label>
                       <select id="country" required autocomplete="country-name">
-                        <option>Deutschland</option>
-                        <option>Österreich</option>
-                        <option>Schweiz</option>
-                        <option>Sonstiges</option>
+                        <option value="Deutschland">Deutschland</option>
+                        <option value="Österreich">Österreich</option>
+                        <option value="Schweiz">Schweiz</option>
+                        <option value="Sonstiges">Sonstiges</option>
                       </select>
                     </div>
                   </div>
@@ -398,8 +416,20 @@
                   <textarea id="notes" placeholder="Zusätzliche Informationen"></textarea>
                 </div>
 
+                <div class="hp-field hp-field--full">
+                  <label class="hp-checkbox">
+                    <input type="checkbox" id="privacyAccept" required />
+                    <span
+                      >Ich habe die <a href="/datenschutz" target="_blank" rel="noopener noreferrer">Datenschutzhinweise</a>
+                      zur Kenntnis genommen. *</span
+                    >
+                  </label>
+                </div>
+
+                <div id="partner-form-message" class="hp-form-status" role="status" aria-live="polite"></div>
+
                 <div class="hp-field hp-field--full hp-submit-row">
-                  <button type="submit" class="hp-btn-primary">Anfrage senden</button>
+                  <button type="submit" class="hp-btn-primary" id="partner-form-submit">Anfrage senden</button>
                 </div>
               </div>
             </form>
@@ -481,6 +511,7 @@
           <h4>Partner</h4>
           <ul class="hp-footer-nav">
             <li><a href="#partner">Partner werden</a></li>
+            <li><a href="/partner/anfrage-status">Partner-Anfrage: Status</a></li>
             <li><a href="https://panel.onroda.de/">Partner-Login</a></li>
             <li><a href="#unternehmen">Firmenkunden</a></li>
             <li><a href="#unternehmen">Hotels</a></li>

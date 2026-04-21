@@ -105,5 +105,6 @@ grep -q '/panel/v1/rides' "$PANEL_API" || err "panelApi.ts: /panel/v1/rides muss
 grep -q '/panel/v1/access-codes' "$PANEL_API" || err "panelApi.ts: /panel/v1/access-codes muss existieren"
 
 bash "${ROOT}/scripts/verify-onroda-nginx-example-invariants.sh"
+bash "${ROOT}/scripts/verify-onroda-marketing-partner-status-repo.sh"
 
 echo "verify-onroda-repo-invariants: OK"

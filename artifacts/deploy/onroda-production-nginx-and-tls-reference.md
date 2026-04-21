@@ -90,6 +90,67 @@ Ohne saubere Trennung pro Host drohen falsche Zertifikate (SNI), falsche `proxy_
 
 - `https://onroda.de/` → **200**, Titel/Copy der echten Homepage (z. B. *ONRODA – Digitale Mobilität für Stuttgart*), keine Expo-Startseite.
 
+### 2c. Partner-Anfrage: Statusseite (`/partner/anfrage-status`) — **Live-Pflicht** (nicht nur `git push`)
+
+**Problem:** Steht im Marketing-`server`-Block typisch `try_files $uri $uri/ /index.html;`, liefert **`/partner/anfrage-status` fälschlich die Startseite** — die URL existiert nicht als Datei mit diesem Pfadnamen; die echte Datei heißt **`partner-status.html`** im Webroot.
+
+**Pflicht-Ablauf (Reihenfolge):**
+
+1. **Repo auf dem Server:** `git pull` (Stand mit `artifacts/api-server/static/partner-status.html`).
+2. **Static auf den echten Marketing-Webroot** (Beispiel **`/var/www/onroda`** — Pfad bei euch anpassen):
+
+   ```bash
+   rsync -a /root/imoove/artifacts/api-server/static/ /var/www/onroda/
+   ```
+
+3. **Nginx:** Im `server`-Block für **`onroda.de` / `www.onroda.de`** (vor `location /` mit `try_files`) **explizite** Locations setzen — `alias` auf den **gleichen** Webroot wie `root`:
+
+   ```nginx
+   # Webroot = z. B. /var/www/onroda — an root angleichen
+   location = /partner/anfrage-status {
+       alias /var/www/onroda/partner-status.html;
+       default_type text/html;
+   }
+   location = /partner-status {
+       alias /var/www/onroda/partner-status.html;
+       default_type text/html;
+   }
+   ```
+
+   Referenz im Repo: `artifacts/deploy/nginx-onroda.example.conf` (Marketing-`server`).
+
+4. **`sudo nginx -t`** → bei Erfolg **`sudo systemctl reload nginx`** (oder euer Reload-Kommando).
+
+5. **Live-Verifikation (Zwang):** Es muss **HTML der Statusseite** kommen, **nicht** der Homepage-Titel:
+
+   ```bash
+   curl -fsS "https://www.onroda.de/partner/anfrage-status" | grep -qF "Status Ihrer Partneranfrage" \
+     && echo "OK: Statusseite" || { echo "FEHLER: vermutlich Startseite oder 404"; exit 1; }
+
+   curl -fsS "https://www.onroda.de/partner/anfrage-status" | grep -qF "Digitale Mobilität für Stuttgart" \
+     && { echo "FEHLER: Homepage-Inhalt unter Status-URL"; exit 1; } || true
+   ```
+
+6. **Optional nach rsync auf dem Server:** Repo-Skript mit Webroot prüfen:
+
+   ```bash
+   LIVE_MARKETING_ROOT=/var/www/onroda /root/imoove/scripts/verify-onroda-marketing-partner-status-repo.sh
+   ```
+
+**Automatisierung im Deploy-Skript:** In `scripts/onroda-deploy.env` können **`ONRODA_RSYNC_MARKETING_STATIC_TO`**, **`ONRODA_RELOAD_NGINX=1`** und **`ONRODA_MARKETING_STATUS_VERIFY_URL`** (z. B. `https://www.onroda.de/partner/anfrage-status`) gesetzt werden — `deploy-onroda-production.sh` führt dann rsync, optional Reload und den **curl-Pflichtcheck** aus (bricht bei falscher Auslieferung ab). Freigabe-Mail: **`PARTNER_REGISTRATION_SMTP_URL`** + **`PARTNER_REGISTRATION_MAIL_FROM`** in **`artifacts/api-server/.env`**.
+
+**API / App:** Zusätzlich liefert `artifacts/api-server/src/app.ts` die Status-HTML für `onroda.de`/`www`, **wenn** der Request beim Node-Prozess ankommt. In der üblichen Produktion (Marketing **nur** Nginx-`root`) ist **Nginx + rsync** maßgeblich — ohne Schritte 2–5 bleibt die Kette für Antragstellende kaputt.
+
+**E2E (einmal manuell nach Livegang):**
+
+1. Auf `onroda.de` Partnerformular absenden → **Referenz-ID** notieren.  
+2. **`/partner/anfrage-status`** mit E-Mail + Referenz → Status sichtbar.  
+3. Im Admin freigeben.  
+4. Auf der API-Maschine **`PARTNER_REGISTRATION_SMTP_URL`** + **`PARTNER_REGISTRATION_MAIL_FROM`** gesetzt → **Freigabe-Mail** prüfen (Postfach + Spam).  
+5. Partner-Portal mit Zugangsdaten aus Mail/Admin-Modal testen.
+
+Siehe auch **`artifacts/api-server/.env.example`** (SMTP- und Link-Variablen).
+
 ---
 
 ## 3. Partner-Host: `/partners` darf niemals Admin sein

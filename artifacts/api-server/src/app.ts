@@ -241,6 +241,17 @@ app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   return next();
 });
 
+/* Öffentliche Partner-Anfrage: Status (E-Mail + Referenz), nur Marketing-Host. */
+app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
+  const host = hostname(req);
+  if (host === "onroda.de" || host === "www.onroda.de") {
+    return res.sendFile(path.join(staticRoot, "partner-status.html"), (err) => {
+      if (err) next(err);
+    });
+  }
+  return next();
+});
+
 app.get("/", (req, res, next) => {
   const host = hostname(req);
   if (host === "onroda.de" || host === "www.onroda.de") {
