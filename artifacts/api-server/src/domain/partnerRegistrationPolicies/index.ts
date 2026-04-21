@@ -1,3 +1,12 @@
+/**
+ * **Eine Policy pro `partner_type`** — keine gemischte Logik zwischen Typen
+ * (Taxi, Hotel, insurer, medical/care jeweils eigene Datei/Instanz).
+ *
+ * Pipeline: öffentliches Formular → `getPartnerRegistrationPolicy` → Admin-Freigabe → Mandant.
+ *
+ * **Ausroll-Reihenfolge (Produkt):** zuerst Taxi live vollständig testen, danach typweise
+ * Hotel, dann insurer, dann medical/care — jeweils nur in der jeweiligen Policy erweitern.
+ */
 import type { PartnerType } from "../../db/partnerRegistrationRequestsData";
 import { isPartnerType } from "../../db/partnerRegistrationRequestsData";
 import type { PartnerRegistrationPolicy } from "./types";
