@@ -2100,6 +2100,16 @@ function RegistrationRequestsSection({
               </div>
 
               <h3 className="admin-reg-subtitle">Stammdaten prüfen und korrigieren</h3>
+              {!masterLocked ? (
+                <div className="admin-info-banner" role="status">
+                  <strong>Vor der Freigabe:</strong> Leere oder fehlerhafte Felder können Sie hier ergänzen und mit
+                  „Stammdaten &amp; Typ speichern“ übernehmen — beliebig oft, bis die Anfrage vollständig ist.
+                  <br />
+                  <strong>Nach der Freigabe</strong> (Verknüpfung mit einem Mandanten) ist diese Maske für Stammdaten
+                  gesperrt; Korrekturen dann im Unternehmensprofil oder nach Rückfrage per E-Mail / dokumentiertem
+                  Änderungswunsch des Partners.
+                </div>
+              ) : null}
               {(editDraft?.partnerType === "taxi" || request.partnerType === "taxi") ? (
                 <div className="admin-info-banner" role="status">
                   <strong>Taxi-Unternehmen</strong> — vor der Freigabe müssen Konzession, Steuernummer, USt-IdNr. und
