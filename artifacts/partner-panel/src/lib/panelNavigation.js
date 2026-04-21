@@ -34,7 +34,7 @@ export function filterNavItems(panelModules, permissions) {
     if (!Array.isArray(panelModules)) return true;
     if (panelModules.length === 0) return false;
     const set = new Set(panelModules);
-    if (item.key === "profile") {
+    if (item.key === "profile" || item.key === "settings") {
       return set.has("company_profile") || set.has("overview");
     }
     return set.has(item.moduleId);

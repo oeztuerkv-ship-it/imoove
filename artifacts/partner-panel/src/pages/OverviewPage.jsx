@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
-import { canAccessPartnerCompanyPage, hasPanelModule } from "../lib/panelNavigation.js";
+import { hasPanelModule } from "../lib/panelNavigation.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -43,42 +43,87 @@ function companyKindLabel(kind) {
   }
 }
 
+function formatShortDt(iso) {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+}
+
+function statusDe(s) {
+  const m = {
+    draft: "Entwurf",
+    scheduled: "Geplant",
+    requested: "Angefragt",
+    searching_driver: "Suche",
+    offered: "Angebot",
+    pending: "Wartet",
+    accepted: "Angenommen",
+    driver_arriving: "Anfahrt",
+    driver_waiting: "Wartet",
+    passenger_onboard: "Einsteigen",
+    arrived: "Vor Ort",
+    in_progress: "Fahrt",
+    completed: "Fertig",
+    cancelled: "Storno",
+    cancelled_by_customer: "Storno Kunde",
+    cancelled_by_driver: "Storno Fahrer",
+    cancelled_by_system: "Storno System",
+    expired: "Abgelaufen",
+    rejected: "Abgelehnt",
+  };
+  return m[s] ?? s ?? "—";
+}
+
+const TERMINAL_STATUSES = new Set([
+  "completed",
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system",
+  "expired",
+  "rejected",
+]);
+
+function isOpenRide(status) {
+  return !TERMINAL_STATUSES.has(status);
+}
+
+function startOfLocalDay(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function isLocalCalendarDay(iso, refDayStart) {
+  if (!iso) return false;
+  const t = new Date(iso);
+  const end = new Date(refDayStart.getTime() + 86400000);
+  return t >= refDayStart && t < end;
+}
+
+function fareCell(ride) {
+  const v = ride.finalFare != null ? ride.finalFare : ride.estimatedFare;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return formatEur(n);
+}
+
+function KpiCard({ hero, value, label }) {
+  return (
+    <div className={`panel-kpi-card${hero ? " panel-kpi-card--hero" : ""}`}>
+      <div className="panel-kpi-card__value">{value}</div>
+      <div className="panel-kpi-card__label">{label}</div>
+    </div>
+  );
+}
+
 export default function OverviewPage() {
   const { user, token } = usePanelAuth();
-  const [company, setCompany] = useState(null);
-  const [companyErr, setCompanyErr] = useState("");
-  const [pwCur, setPwCur] = useState("");
-  const [pwNew, setPwNew] = useState("");
-  const [pwMsg, setPwMsg] = useState("");
-  const [pwBusy, setPwBusy] = useState(false);
   const [fleetDash, setFleetDash] = useState(null);
   const [rideMetrics, setRideMetrics] = useState(null);
-
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-    void (async () => {
-      setCompanyErr("");
-      try {
-        const res = await fetch(`${API_BASE}/panel/v1/company`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        if (!res.ok || !data?.ok) {
-          setCompanyErr("Firmendaten konnten nicht geladen werden.");
-          setCompany(null);
-          return;
-        }
-        setCompany(data.company ?? null);
-      } catch {
-        if (!cancelled) setCompanyErr("Firmendaten konnten nicht geladen werden.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  const [rides, setRides] = useState([]);
+  const [ridesErr, setRidesErr] = useState("");
 
   useEffect(() => {
     if (!token || !hasPanelModule(user?.panelModules, "taxi_fleet")) return;
@@ -120,284 +165,236 @@ export default function OverviewPage() {
     };
   }, [token, user?.permissions]);
 
-  async function onChangePassword(e) {
-    e.preventDefault();
-    if (!token || !hasPerm(user?.permissions, "self.change_password")) return;
-    setPwMsg("");
-    setPwBusy(true);
-    try {
-      const res = await fetch(`${API_BASE}/panel/v1/me/change-password`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ currentPassword: pwCur, newPassword: pwNew }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        if (data?.error === "invalid_current_password") setPwMsg("Aktuelles Passwort ist falsch.");
-        else setPwMsg("Passwort konnte nicht geändert werden.");
-        return;
-      }
-      setPwMsg("Passwort wurde geändert.");
-      setPwCur("");
-      setPwNew("");
-    } catch {
-      setPwMsg("Passwort konnte nicht geändert werden.");
-    } finally {
-      setPwBusy(false);
+  useEffect(() => {
+    if (!token || !hasPanelModule(user?.panelModules, "rides_list") || !hasPerm(user?.permissions, "rides.read")) {
+      return;
     }
-  }
+    let cancelled = false;
+    void (async () => {
+      setRidesErr("");
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !data?.ok) {
+          setRidesErr("Fahrten konnten nicht geladen werden.");
+          setRides([]);
+          return;
+        }
+        const list = Array.isArray(data.rides) ? data.rides : [];
+        setRides(list.slice(0, 200));
+      } catch {
+        if (!cancelled) {
+          setRidesErr("Fahrten konnten nicht geladen werden.");
+          setRides([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.panelModules, user?.permissions]);
+
+  const moneyWord = rideMetrics?.presentation === "taxi_betrieb" ? "Umsatz" : "Volumen";
+
+  const rideSlices = useMemo(() => {
+    const list = rides.slice();
+    const byCreated = (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    list.sort(byCreated);
+    const last = list.slice(0, 8);
+    const open = list.filter((r) => isOpenRide(r.status)).slice(0, 12);
+    const today0 = startOfLocalDay(new Date());
+    const planned = list
+      .filter((r) => r.scheduledAt && isLocalCalendarDay(r.scheduledAt, today0))
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+      .slice(0, 12);
+    return { last, open, planned };
+  }, [rides]);
 
   return (
-    <div className="panel-page panel-page--overview">
-      <div className="panel-overview-hero">
-        <p className="panel-overview-hero__eyebrow">Ihr Unternehmensbereich</p>
-        <h2 className="panel-overview-hero__title">
+    <div className="panel-page panel-page--overview panel-dash">
+      <div className="panel-dash-hero">
+        <div className="panel-dash-hero__top">
+          <p className="panel-dash-hero__eyebrow">Unternehmer · Onroda</p>
+          <span className="panel-dash-hero__badge">{companyKindLabel(user?.companyKind ?? "general")}</span>
+        </div>
+        <h2 className="panel-dash-hero__title">
           Guten Tag{user?.username ? `, ${user.username}` : ""}
           {user?.companyName ? (
             <>
-              <span className="panel-overview-hero__break" />
-              <span className="panel-overview-hero__company">{user.companyName}</span>
+              <span className="panel-dash-hero__company"> · {user.companyName}</span>
             </>
           ) : null}
         </h2>
-        <p className="panel-overview-hero__lead">
-          Fahrten, Codes und Stammdaten für {user?.companyName ? "Ihr Unternehmen" : "Ihr Team"}.
-        </p>
+        <p className="panel-dash-hero__sub">Cockpit — Kennzahlen und operative Übersicht.</p>
       </div>
-      {companyErr ? <p className="panel-page__warn">{companyErr}</p> : null}
+
       {rideMetrics ? (
-        <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-          <h3 className="panel-card__title">
-            {rideMetrics.presentation === "taxi_betrieb"
-              ? "Kennzahlen Betrieb (Taxi)"
-              : "Kennzahlen Leistungen (Fahrten)"}
-          </h3>
-          <p className="panel-page__muted panel-page__muted--tight">
-            Mandant: <strong>{companyKindLabel(rideMetrics.companyKind)}</strong>
-            {rideMetrics.presentation === "taxi_betrieb" ? (
-              <>
-                {" "}
-                — Betriebseinnahmen aus <strong>abgeschlossenen</strong> Fahrten (End- oder Schätzpreis). Kalendertag
-                und Monat: <strong>{rideMetrics.zone}</strong>. Woche: <strong>letzte 7 Tage</strong> (rollierend).
-              </>
-            ) : (
-              <>
-                {" "}
-                — Angezeigte Beträge sind <strong>gebuchtes Fahrtvolumen</strong> (Kosten-/Leistungsnachweis), nicht der
-                Taxi-Betriebsumsatz eines Fahrzeuginhabers. Kalendertag und Monat: <strong>{rideMetrics.zone}</strong>.
-                Woche: <strong>letzte 7 Tage</strong> (rollierend).
-              </>
-            )}
-          </p>
-          <div className="panel-fleet-dash" style={{ flexWrap: "wrap" }}>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{formatEur(rideMetrics.today.revenue)}</span>
-              <span className="panel-fleet-dash__lbl">
-                {rideMetrics.presentation === "taxi_betrieb" ? "Umsatz heute" : "Volumen heute"}
-              </span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.today.completedRides}</span>
-              <span className="panel-fleet-dash__lbl">Abgeschlossen heute</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{formatEur(rideMetrics.week.revenue)}</span>
-              <span className="panel-fleet-dash__lbl">
-                {rideMetrics.presentation === "taxi_betrieb" ? "Umsatz 7 Tage" : "Volumen 7 Tage"}
-              </span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.week.completedRides}</span>
-              <span className="panel-fleet-dash__lbl">Abgeschlossen 7 Tage</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{formatEur(rideMetrics.month.revenue)}</span>
-              <span className="panel-fleet-dash__lbl">
-                {rideMetrics.presentation === "taxi_betrieb" ? "Umsatz Monat" : "Volumen Monat"}
-              </span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.month.completedRides}</span>
-              <span className="panel-fleet-dash__lbl">Abgeschlossen Monat</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.openRides}</span>
-              <span className="panel-fleet-dash__lbl">Nicht abgeschlossen</span>
-            </div>
+        <>
+          <div className="panel-kpi-grid panel-kpi-grid--tier1">
+            <KpiCard
+              hero
+              value={formatEur(rideMetrics.today.revenue)}
+              label={`${moneyWord} heute`}
+            />
+            <KpiCard hero value={String(rideMetrics.today.completedRides)} label="Abgeschlossen heute" />
+            <KpiCard hero value={formatEur(rideMetrics.week.revenue)} label={`${moneyWord} 7 Tage`} />
+            <KpiCard hero value={formatEur(rideMetrics.month.revenue)} label={`${moneyWord} Monat`} />
           </div>
-          <h4 className="panel-card__title" style={{ marginTop: 18, fontSize: "1rem" }}>
-            Planung &amp; Qualität (Monat {rideMetrics.zone})
-          </h4>
-          <div className="panel-fleet-dash" style={{ flexWrap: "wrap" }}>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{formatPct(rideMetrics.monthDecided?.cancelRate)}</span>
-              <span className="panel-fleet-dash__lbl">Stornoquote</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.monthDecided?.cancelledRides ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Stornos (Monat)</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.scheduled?.todayCount ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Geplant heute</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{rideMetrics.scheduled?.tomorrowCount ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Geplant morgen</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">
-                {rideMetrics.monthCompletedQuality?.avgFare != null
+
+          <p className="panel-kpi-tier-label">Status &amp; Planung</p>
+          <div className="panel-kpi-grid panel-kpi-grid--tier2">
+            <KpiCard value={String(rideMetrics.openRides)} label="Nicht abgeschlossen" />
+            <KpiCard value={String(rideMetrics.scheduled?.todayCount ?? 0)} label="Geplant heute" />
+            <KpiCard value={String(rideMetrics.scheduled?.tomorrowCount ?? 0)} label="Geplant morgen" />
+            <KpiCard value={String(rideMetrics.monthDecided?.cancelledRides ?? 0)} label="Stornos Monat" />
+          </div>
+
+          <p className="panel-kpi-tier-label">Qualität</p>
+          <div className="panel-kpi-grid panel-kpi-grid--tier3">
+            <KpiCard value={formatPct(rideMetrics.monthDecided?.cancelRate)} label="Stornoquote" />
+            <KpiCard
+              value={
+                rideMetrics.monthCompletedQuality?.avgFare != null
                   ? formatEur(rideMetrics.monthCompletedQuality.avgFare)
-                  : "—"}
-              </span>
-              <span className="panel-fleet-dash__lbl">Ø Preis (abgeschlossen)</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">
-                {formatKm(rideMetrics.monthCompletedQuality?.avgDistanceKm)}
-              </span>
-              <span className="panel-fleet-dash__lbl">Ø Entfernung</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">
-                {rideMetrics.monthCompletedQuality?.completedWithAccessCode ?? 0}
-              </span>
-              <span className="panel-fleet-dash__lbl">Code-Fahrten (Monat)</span>
-            </div>
+                  : "—"
+              }
+              label="Ø Preis"
+            />
+            <KpiCard value={formatKm(rideMetrics.monthCompletedQuality?.avgDistanceKm)} label="Ø Entfernung" />
+            <KpiCard
+              value={String(rideMetrics.monthCompletedQuality?.completedWithAccessCode ?? 0)}
+              label="Code-Fahrten Monat"
+            />
           </div>
-          <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 12 }}>
-            Stornoquote = Stornos ÷ (abgeschlossen + Stornos) im Kalendermonat. „Geplant“ zählt Fahrten mit gesetztem
-            Abholtermin im Kalendertag.
-          </p>
-          {rideMetrics.presentation === "taxi_betrieb" ? (
-            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 10 }}>
-              <strong>Betriebsausgaben</strong> (Tank, Personal, Versicherung, …) werden hier <strong>nicht</strong>{" "}
-              verbucht — dafür nutzen Sie Ihre Buchhaltung. Einnahmen oben = Fahrtabschlüsse Ihres Mandanten.
-            </p>
-          ) : (
-            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 10 }}>
-              <strong>Ausgaben / interne Kosten</strong> (Sachkosten, Controlling, Kostenträger) führen Sie außerhalb
-              dieses Panels — hier sehen Sie das <strong>gebuchte Fahrtvolumen</strong> zur Nachverfolgung (z. B. Hotel,
-              Krankenkasse, Firmenkunde).
-            </p>
-          )}
-          {hasPanelModule(user?.panelModules, "billing") ? (
-            <p className="panel-page__lead" style={{ marginTop: 8 }}>
-              Details und Export: <strong>Abrechnung</strong> in der Seitenleiste.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {fleetDash ? (
-        <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-          <h3 className="panel-card__title">Flotte — Kurzüberblick</h3>
-          <div className="panel-fleet-dash">
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{fleetDash.driversOnline ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Fahrer online</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{fleetDash.driversTotal ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Fahrer gesamt</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{fleetDash.vehiclesActive ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Aktive Fahrzeuge</span>
-            </div>
-          </div>
-          <p className="panel-page__lead" style={{ marginTop: 10 }}>
-            Details finden Sie unter <strong>Flotte &amp; Fahrer</strong> in der Seitenleiste.
-          </p>
-        </div>
-      ) : null}
-      <div className="panel-card panel-card--hint panel-card--wide">
-        <h3 className="panel-card__title">Was Sie hier tun können</h3>
-        <ul className="panel-hint-list">
-          {hasPanelModule(user?.panelModules, "rides_list") ? (
-            <li>
-              <strong>Meine Fahrten</strong> und <strong>Mein Verlauf</strong> — aktuelle und abgeschlossene Aufträge
-              Ihres Unternehmens, inklusive Export.
-            </li>
-          ) : null}
-          {hasPanelModule(user?.panelModules, "rides_create") ? (
-            <li>
-              <strong>Neue Fahrt anlegen</strong> — Aufträge für Ihr Unternehmen erfassen (sofern Ihre Rolle das
-              erlaubt).
-            </li>
-          ) : null}
-          {canAccessPartnerCompanyPage(user?.panelModules) ? (
-            <li>
-              <strong>Meine Firma</strong> — Stammdaten und Kontakt.
-            </li>
-          ) : null}
-          {hasPanelModule(user?.panelModules, "team") ? (
-            <li>
-              <strong>Mitarbeiter</strong> — Zugänge für Ihr Team verwalten (Rollen, Passwörter, Aktivierung).
-            </li>
-          ) : null}
-          {hasPanelModule(user?.panelModules, "access_codes") ? (
-            <li>
-              <strong>Freigabe-Codes</strong> — digitale Kostenübernahme für Gäste und Kunden, wenn für Sie
-              freigeschaltet.
-            </li>
-          ) : null}
-        </ul>
-      </div>
 
-      {hasPerm(user?.permissions, "self.change_password") ? (
-        <div className="panel-card panel-card--wide">
-          <h3 className="panel-card__title">Mein Passwort ändern</h3>
-          <form className="panel-rides-form" onSubmit={onChangePassword}>
-            <div className="panel-rides-form__grid">
-              <label className="panel-rides-form__field">
-                <span>Aktuelles Passwort</span>
-                <input
-                  type="password"
-                  value={pwCur}
-                  onChange={(ev) => setPwCur(ev.target.value)}
-                  autoComplete="current-password"
-                  required
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Neues Passwort (min. 10 Zeichen)</span>
-                <input
-                  type="password"
-                  value={pwNew}
-                  onChange={(ev) => setPwNew(ev.target.value)}
-                  autoComplete="new-password"
-                  required
-                  minLength={10}
-                />
-              </label>
+          <p className="panel-dash-footnote">
+            {rideMetrics.presentation === "taxi_betrieb"
+              ? `${moneyWord}: abgeschlossene Fahrten · ${rideMetrics.zone} · Woche rollierend 7 Tage.`
+              : `${moneyWord}: gebuchtes Fahrtvolumen (Leistungsnachweis) · ${rideMetrics.zone}.`}
+          </p>
+
+          {user?.companyKind === "taxi" && fleetDash ? (
+            <div className="panel-dash-fleet-strip">
+              <KpiCard value={String(fleetDash.driversOnline ?? 0)} label="Fahrer online" />
+              <KpiCard value={String(fleetDash.driversTotal ?? 0)} label="Fahrer gesamt" />
+              <KpiCard value={String(fleetDash.vehiclesActive ?? 0)} label="Aktive Fahrzeuge" />
             </div>
-            {pwMsg ? (
-              <p className={pwMsg.includes("geändert") ? "panel-page__ok" : "panel-page__warn"}>{pwMsg}</p>
-            ) : null}
-            <button type="submit" className="panel-btn-primary" disabled={pwBusy}>
-              {pwBusy ? "Speichern …" : "Passwort speichern"}
-            </button>
-          </form>
-        </div>
+          ) : null}
+        </>
       ) : null}
 
-      {company ? (
-        <div className="panel-card">
-          <h3 className="panel-card__title">Meine Firmendaten</h3>
-          <p className="panel-card__row">
-            <span className="panel-card__k">Name</span> {company.name}
-          </p>
-          <p className="panel-card__row">
-            <span className="panel-card__k">E-Mail</span> {company.email || "—"}
-          </p>
-          <p className="panel-card__row">
-            <span className="panel-card__k">Telefon</span> {company.phone || "—"}
-          </p>
-        </div>
+      {hasPanelModule(user?.panelModules, "rides_list") && hasPerm(user?.permissions, "rides.read") ? (
+        <>
+          <section className="panel-dash-section">
+            <div className="panel-dash-section__head">
+              <h3 className="panel-dash-section__title">Letzte Fahrten</h3>
+              <p className="panel-dash-section__hint">Seitenleiste: Meine Fahrten</p>
+            </div>
+            {ridesErr ? <p className="panel-page__warn">{ridesErr}</p> : null}
+            <div className="panel-dash-table-wrap">
+              {rideSlices.last.length === 0 ? (
+                <p className="panel-dash-empty">Keine Fahrten geladen.</p>
+              ) : (
+                <table className="panel-dash-table">
+                  <thead>
+                    <tr>
+                      <th>Zeit</th>
+                      <th>Route</th>
+                      <th>Status</th>
+                      <th>Betrag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rideSlices.last.map((r) => (
+                      <tr key={r.id}>
+                        <td>{formatShortDt(r.createdAt)}</td>
+                        <td>
+                          <span className="panel-dash-table__muted">{r.from ?? "—"}</span> → {r.to ?? "—"}
+                        </td>
+                        <td>{statusDe(r.status)}</td>
+                        <td>{fareCell(r)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+
+          <section className="panel-dash-section">
+            <div className="panel-dash-section__head">
+              <h3 className="panel-dash-section__title">Offene Fahrten</h3>
+              <p className="panel-dash-section__hint">Nicht abgeschlossen / nicht storniert</p>
+            </div>
+            <div className="panel-dash-table-wrap">
+              {rideSlices.open.length === 0 ? (
+                <p className="panel-dash-empty">Keine offenen Fahrten.</p>
+              ) : (
+                <table className="panel-dash-table">
+                  <thead>
+                    <tr>
+                      <th>Zeit</th>
+                      <th>Kunde / Strecke</th>
+                      <th>Status</th>
+                      <th>Betrag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rideSlices.open.map((r) => (
+                      <tr key={r.id}>
+                        <td>{formatShortDt(r.createdAt)}</td>
+                        <td>
+                          {r.customerName ? <>{r.customerName} · </> : null}
+                          <span className="panel-dash-table__muted">{r.from ?? "—"}</span>
+                        </td>
+                        <td>{statusDe(r.status)}</td>
+                        <td>{fareCell(r)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+
+          <section className="panel-dash-section">
+            <div className="panel-dash-section__head">
+              <h3 className="panel-dash-section__title">Heute geplant</h3>
+              <p className="panel-dash-section__hint">Mit Abholtermin heute (lokal)</p>
+            </div>
+            <div className="panel-dash-table-wrap">
+              {rideSlices.planned.length === 0 ? (
+                <p className="panel-dash-empty">Keine geplanten Fahrten für heute.</p>
+              ) : (
+                <table className="panel-dash-table">
+                  <thead>
+                    <tr>
+                      <th>Abholung</th>
+                      <th>Route</th>
+                      <th>Status</th>
+                      <th>Betrag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rideSlices.planned.map((r) => (
+                      <tr key={r.id}>
+                        <td>{formatShortDt(r.scheduledAt)}</td>
+                        <td>
+                          <span className="panel-dash-table__muted">{r.from ?? "—"}</span> → {r.to ?? "—"}
+                        </td>
+                        <td>{statusDe(r.status)}</td>
+                        <td>{fareCell(r)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+        </>
       ) : null}
     </div>
   );

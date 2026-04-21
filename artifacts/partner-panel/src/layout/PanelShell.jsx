@@ -73,7 +73,7 @@ const PAGES = {
   },
   settings: {
     title: "Einstellungen",
-    subtitle: "Persönliche Sicherheit und Konto",
+    subtitle: "Kontrollzentrum: Sicherheit, Konto, Unternehmen, Betrieb",
     component: <SettingsPage />,
   },
 };
