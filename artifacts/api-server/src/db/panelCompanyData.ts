@@ -56,6 +56,8 @@ export interface PanelCompanyPublic {
   isBlocked: boolean;
   maxDrivers: number;
   maxVehicles: number;
+  /** Basis-Stammdaten im Panel abgeschlossen — Änderungen nur per Change-Request. */
+  profileLocked: boolean;
 }
 
 export type PanelCompanyProfilePatch = Partial<{
@@ -93,6 +95,37 @@ function clip(s: string, max: number): string {
 function isDbEmpty(v: string | null | undefined): boolean {
   return !String(v ?? "").trim();
 }
+
+/** Gleiche Lückenlogik wie Partner-UI `basicsGaps` — wenn leer, fehlt noch etwas zum Self-Service-Abschluss. */
+function partnerBasicsPanelCompleteFromRow(r: typeof adminCompaniesTable.$inferSelect): boolean {
+  return (
+    !isDbEmpty(r.name) &&
+    !isDbEmpty(r.contact_name) &&
+    !isDbEmpty(r.email) &&
+    !isDbEmpty(r.phone) &&
+    !isDbEmpty(r.address_line1) &&
+    !isDbEmpty(r.address_line2) &&
+    !isDbEmpty(r.postal_code) &&
+    !isDbEmpty(r.city) &&
+    !isDbEmpty(r.country) &&
+    !isDbEmpty(r.legal_form) &&
+    !isDbEmpty(r.owner_name)
+  );
+}
+
+const BASICS_PATCH_KEYS: (keyof PanelCompanyProfilePatch)[] = [
+  "name",
+  "contactName",
+  "email",
+  "phone",
+  "addressLine1",
+  "addressLine2",
+  "postalCode",
+  "city",
+  "country",
+  "legalForm",
+  "ownerName",
+];
 
 function costCenterFromFarePermissions(fp: unknown): string {
   if (!fp || typeof fp !== "object" || Array.isArray(fp)) return "";
@@ -154,6 +187,7 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     isBlocked: Boolean(r.is_blocked),
     maxDrivers: r.max_drivers ?? 100,
     maxVehicles: r.max_vehicles ?? 100,
+    profileLocked: Boolean(r.partner_panel_profile_locked),
   };
 }
 
@@ -196,6 +230,13 @@ export async function patchPanelCompanyProfile(
   const keys = Object.keys(patch).filter((k) => patch[k as keyof PanelCompanyProfilePatch] !== undefined);
   if (keys.length === 0) {
     return { ok: false, error: "no_changes" };
+  }
+
+  const patchTouchesBasics = keys.some((k) =>
+    BASICS_PATCH_KEYS.includes(k as keyof PanelCompanyProfilePatch),
+  );
+  if (r0.partner_panel_profile_locked && patchTouchesBasics) {
+    return { ok: false, error: "partner_basics_locked" };
   }
 
   const set: Partial<typeof adminCompaniesTable.$inferInsert> = {};
@@ -277,6 +318,18 @@ export async function patchPanelCompanyProfile(
   const r1 = again[0];
   if (!r1) {
     return { ok: false, error: "company_not_found" };
+  }
+  if (!r0.partner_panel_profile_locked && partnerBasicsPanelCompleteFromRow(r1)) {
+    await db
+      .update(adminCompaniesTable)
+      .set({ partner_panel_profile_locked: true })
+      .where(eq(adminCompaniesTable.id, companyId));
+    const lockedRow = await db.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+    const r2 = lockedRow[0];
+    if (!r2) {
+      return { ok: false, error: "company_not_found" };
+    }
+    return { ok: true, company: rowToPanelPublic(r2) };
   }
   return { ok: true, company: rowToPanelPublic(r1) };
 }

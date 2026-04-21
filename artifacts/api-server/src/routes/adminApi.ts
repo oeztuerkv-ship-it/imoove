@@ -1438,21 +1438,17 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       res.status(400).json({ error: "partner_type_invalid" });
       return;
     }
-    const taxiIncompleteReason = taxiRegistrationIncompleteForApprove({
-      partnerType: reqRow.partnerType,
-      concessionNumber: reqRow.concessionNumber,
-      taxId: reqRow.taxId,
-      vatId: reqRow.vatId,
-      ownerName: reqRow.ownerName,
-    });
-    if (taxiIncompleteReason) {
+    const policy = getPartnerRegistrationPolicy(reqRow.partnerType);
+    const approveIncomplete = policy?.approveIncompleteReason(reqRow) ?? null;
+    if (approveIncomplete) {
+      const isTaxi = reqRow.partnerType === "taxi";
       res.status(400).json({
-        error: "taxi_registration_incomplete",
-        hint: `Taxi-Unternehmen unvollständig: ${taxiIncompleteReason}`,
+        error: isTaxi ? "taxi_registration_incomplete" : "registration_incomplete",
+        hint: approveIncomplete,
       });
       return;
     }
-    const isTaxi = reqRow.partnerType === "taxi";
+    const companyExtras = policy?.buildCompanyApproveExtras(reqRow) ?? {};
     const createdCompany = await insertAdminCompany({
       name: reqRow.companyName,
       legal_form: reqRow.legalForm,
@@ -1475,6 +1471,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       verification_status: "verified",
       compliance_status: "compliant",
       is_active: true,
+      partner_panel_profile_locked: true,
       ...companyExtras,
     });
     if ("error" in createdCompany) {

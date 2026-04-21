@@ -70,6 +70,7 @@ const seedCompanies: CompanyRow[] = [
       "billing",
       "taxi_fleet",
     ],
+    partner_panel_profile_locked: false,
   },
   {
     id: "co-demo-2",
@@ -120,6 +121,7 @@ const seedCompanies: CompanyRow[] = [
     priority_timeout_seconds: 120,
     release_radius_km: 8,
     panel_modules: null,
+    partner_panel_profile_locked: false,
   },
 ];
 
@@ -531,6 +533,7 @@ export type AdminCompanyUpdateBody = Partial<{
   fare_permissions: Record<string, unknown>;
   insurer_permissions: Record<string, unknown>;
   area_assignments: string[];
+  partner_panel_profile_locked: boolean;
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;
@@ -601,6 +604,7 @@ function companyRowToDbValues(c: CompanyRow) {
     priority_timeout_seconds: c.priority_timeout_seconds,
     release_radius_km: c.release_radius_km,
     panel_modules: c.panel_modules ?? null,
+    partner_panel_profile_locked: c.partner_panel_profile_locked,
   };
 }
 
@@ -703,6 +707,9 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
       next.panel_modules = normalized && normalized.length > 0 ? normalized : null;
     }
   }
+  if (typeof body.partner_panel_profile_locked === "boolean") {
+    next.partner_panel_profile_locked = body.partner_panel_profile_locked;
+  }
   return next;
 }
 
@@ -762,6 +769,7 @@ export async function insertAdminCompany(
     priority_timeout_seconds: 90,
     release_radius_km: 10,
     panel_modules: null,
+    partner_panel_profile_locked: false,
   };
   const next = applyAdminCompanyPatch(base, body);
 

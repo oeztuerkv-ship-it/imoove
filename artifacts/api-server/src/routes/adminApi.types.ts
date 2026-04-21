@@ -54,6 +54,8 @@ export interface CompanyRow {
    * Nur gültige IDs; Reihenfolge ohne Bedeutung.
    */
   panel_modules: string[] | null;
+  /** Partner-Panel: Basis-Stammdaten per Self-Service abgeschlossen — nur noch Change-Requests. */
+  partner_panel_profile_locked: boolean;
 }
 
 export interface FareAreaRow {

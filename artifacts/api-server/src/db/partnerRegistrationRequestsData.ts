@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   partnerRegistrationDocumentsTable,
@@ -450,7 +450,7 @@ export async function attachCompanyToPartnerRegistrationRequest(
   if (!db) return null;
   const adminUserId = opts.reviewedByAdminUserId ?? null;
   const eventActorLabel = opts.eventActorLabel ?? "admin";
-  await db
+  const updated = await db
     .update(partnerRegistrationRequestsTable)
     .set({
       linked_company_id: companyId,
@@ -463,11 +463,12 @@ export async function attachCompanyToPartnerRegistrationRequest(
       updated_at: sql`NOW()`,
     })
     .where(
-      and(
-        eq(partnerRegistrationRequestsTable.id, id),
-        eq(partnerRegistrationRequestsTable.master_data_locked, true),
-      ),
-    );
+      and(eq(partnerRegistrationRequestsTable.id, id), isNull(partnerRegistrationRequestsTable.linked_company_id)),
+    )
+    .returning({ id: partnerRegistrationRequestsTable.id });
+  if (!updated[0]) {
+    return null;
+  }
   await addPartnerRegistrationTimelineEvent({
     requestId: id,
     actorType: "admin",

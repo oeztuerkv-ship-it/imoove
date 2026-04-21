@@ -597,6 +597,13 @@ router.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
         res.status(400).json({ error: code });
         return;
       }
+      if (code === "partner_basics_locked") {
+        res.status(403).json({
+          error: code,
+          hint: "Stammdaten sind abgeschlossen. Weitere Änderungen nur über eine Anfrage zur Freigabe durch die Plattform-Administration (Menüpunkt Änderungsanfragen / Support).",
+        });
+        return;
+      }
       res.status(503).json({ error: code });
       return;
     }

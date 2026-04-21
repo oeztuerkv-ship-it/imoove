@@ -61,6 +61,11 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   fare_permissions: jsonb("fare_permissions").$type<Record<string, unknown>>().notNull().default({}),
   insurer_permissions: jsonb("insurer_permissions").$type<Record<string, unknown>>().notNull().default({}),
   area_assignments: jsonb("area_assignments").$type<string[]>().notNull().default([]),
+  /**
+   * Nach vollständig ausgefüllten Basis-Stammdaten im Partner-Panel: keine Self-Service-PATCHes mehr
+   * für diese Felder — nur noch `company_change_requests`.
+   */
+  partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false),
 });
 
 /** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */

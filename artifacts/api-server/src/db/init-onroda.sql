@@ -315,7 +315,8 @@ ALTER TABLE admin_companies
   ADD COLUMN IF NOT EXISTS max_vehicles INTEGER NOT NULL DEFAULT 100,
   ADD COLUMN IF NOT EXISTS fare_permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS insurer_permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS area_assignments JSONB NOT NULL DEFAULT '[]'::jsonb;
+  ADD COLUMN IF NOT EXISTS area_assignments JSONB NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS partner_panel_profile_locked BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS company_change_requests (
   id TEXT PRIMARY KEY,

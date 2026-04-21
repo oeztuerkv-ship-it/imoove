@@ -214,7 +214,9 @@ export default function ProfilePage() {
         const code = data?.error;
         if (code === "email_invalid") setErr("Geschäftliche E-Mail ist ungültig.");
         else if (code === "no_changes") setErr("Keine ausfüllbaren Änderungen (Felder sind schon gesetzt oder leer gelassen).");
-        else setErr("Speichern ist fehlgeschlagen.");
+        else if (code === "partner_basics_locked") {
+          setErr("Stammdaten sind gesperrt — bitte Änderung bei der Administration beantragen.");
+        } else setErr("Speichern ist fehlgeschlagen.");
         return;
       }
       setBasicsMsg("Leere Stammdaten wurden übernommen.");
@@ -240,6 +242,17 @@ export default function ProfilePage() {
         ONRODA-Administration.
       </p>
 
+      {!loading && company?.profileLocked ? (
+        <div className="panel-card panel-card--wide panel-card--hint">
+          <h3 className="panel-card__title">Stammdaten-Änderungen</h3>
+          <p className="panel-page__muted panel-page__muted--tight">
+            Ihre Basis-Stammdaten sind vollständig erfasst und für das Partner-Panel gesperrt. Korrekturen oder Ergänzungen
+            beantragen Sie bitte schriftlich (E-Mail an Ihre Ansprechperson bei ONRODA oder über den von der Administration
+            genannten Kanal) — nach Freigabe werden die Daten zentral angepasst.
+          </p>
+        </div>
+      ) : null}
+
       <div className="panel-card panel-card--wide">
         <h3 className="panel-card__title">Ihr Zugang</h3>
         <p className="panel-card__row">
@@ -257,12 +270,13 @@ export default function ProfilePage() {
       {err ? <p className="panel-page__warn">{err}</p> : null}
       {okMsg ? <p className="panel-page__ok">{okMsg}</p> : null}
 
-      {!loading && company && canEditOperative && gaps.length > 0 ? (
+      {!loading && company && canEditOperative && !company.profileLocked && gaps.length > 0 ? (
         <div className="panel-card panel-card--wide">
           <h3 className="panel-card__title">Leere Stammdaten ergänzen</h3>
           <p className="panel-page__muted panel-page__muted--tight">
-            Felder, die in Ihrer Mandantenakte noch leer sind, können Sie hier selbst eintragen. Sobald ein Wert gesetzt
-            ist, bleibt die Änderung bei der ONRODA-Administration (Pflicht- und Vertragsdaten).
+            Felder, die in Ihrer Mandantenakte noch leer sind, können Sie hier selbst eintragen. Sobald alle Basis-Felder
+            ausgefüllt und gespeichert sind, sperrt das System die Stammdaten — weitere Korrekturen laufen nur noch über die
+            ONRODA-Administration.
           </p>
           {basicsMsg ? <p className="panel-page__ok">{basicsMsg}</p> : null}
           <form className="panel-rides-form" onSubmit={onSaveBasics}>
@@ -389,7 +403,8 @@ export default function ProfilePage() {
         <div className="panel-card panel-card--wide panel-card--readonly-master">
           <h3 className="panel-card__title">Stammdaten (nur Anzeige)</h3>
           <p className="panel-page__muted panel-page__muted--tight">
-            Diese Angaben stammen aus der von der Plattform gepflegten Mandantenakte und sind im Partner-Panel nicht editierbar.
+            Diese Angaben stammen aus der von der Plattform gepflegten Mandantenakte und sind im Partner-Panel nicht editierbar
+            {company.profileLocked ? " (Stammdaten nach Erstvollständigung gesperrt)." : "."}
           </p>
 
           <RoSection title="Basisdaten">

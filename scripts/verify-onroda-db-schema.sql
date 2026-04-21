@@ -245,6 +245,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'partner_panel_profile_locked'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.partner_panel_profile_locked (Migration 031)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'company_change_requests'
   ) THEN
