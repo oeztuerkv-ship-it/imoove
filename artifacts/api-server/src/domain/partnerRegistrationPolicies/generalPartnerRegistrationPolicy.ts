@@ -1,6 +1,14 @@
 import type { PartnerType } from "../../db/partnerRegistrationRequestsData";
 import type { PartnerRegistrationPolicy } from "./types";
 
+/**
+ * Registrierungs-Policies ohne eigenes Modul:
+ *
+ * - **Unternehmen / Business** (`business`): Mitarbeiterfahrten, Geschäftskunden, Sammelabrechnung, Kostenstelle/Referenz.
+ * - **Gutschein / Vertriebspartner** (`voucher_partner`): Codes/Budgets/Kontingente, Marketing — nicht primär taxi/hotel/insurer.
+ * - **Sonstiges** (`other`): Catch-all; Admin prüft/einsortiert, kein harter automatisierter Spezial-Flow.
+ */
+
 function makeGeneralPolicy(id: PartnerType, labelDe: string, plan: readonly string[]): PartnerRegistrationPolicy {
   return {
     id,

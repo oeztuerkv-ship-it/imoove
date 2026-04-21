@@ -1,8 +1,12 @@
 import type { PartnerRegistrationPolicy } from "./types";
 
 /**
- * Medical / Krankenfahrt-Leistungspartner (`medical` / `care` → `company_kind` medical).
- * Nicht mit Krankenkasse (`insurance` / insurer) vermischen.
+ * Partner-Typ **Medical / Gesundheits-Partner** (`medical` / `care` → `company_kind` medical).
+ *
+ * Fachlich: medizinische Fahrten/Transportlogik, Serienfahrten, Hin-/Rückfahrten, medizinische Referenzen —
+ * **Leistungspartner**, nicht Kostenträger (`insurance` / insurer).
+ *
+ * Nicht mit Krankenkasse vermischen.
  */
 export const medicalPartnerRegistrationPolicy: PartnerRegistrationPolicy = {
   id: "medical",

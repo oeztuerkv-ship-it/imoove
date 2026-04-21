@@ -9,6 +9,13 @@ function str(body: Record<string, unknown>, k: string): string {
   return typeof body[k] === "string" ? body[k].trim() : "";
 }
 
+/**
+ * Partner-Typ **Taxi / Mobilitätspartner** (`partner_type` taxi).
+ *
+ * Produktlich: Taxiunternehmen, Mietwagen, Fahrdienste, Rollstuhl-/Spezialfahrdienste — Konzession/Inhaber/Steuer,
+ * Flotte/Fahrer/Fahrzeuge, operative Auftragsabwicklung, Live-Betrieb.
+ * Aktuell ein gemeinsamer `partner_type` „taxi“; feinere Unterarten später ggf. über Zusatzfelder, nicht insurer/medical.
+ */
 export const taxiPartnerRegistrationPolicy: PartnerRegistrationPolicy = {
   id: "taxi",
   labelDe: "Taxiunternehmen",

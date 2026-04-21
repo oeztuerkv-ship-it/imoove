@@ -1,7 +1,12 @@
 import type { PartnerRegistrationPolicy } from "./types";
 
 /**
- * Hotel — Zielbild (noch nicht verschärft): eigene Pflichten, Freigabe-Check, Defaults.
+ * Partner-Typ **Hotel / Gastgewerbe** (`partner_type` hotel).
+ *
+ * Fachlich: Gastfahrten, Rechnung ans Hotel/Haus, Buchung für Gäste, Concierge/Rezeption/Zimmerbezug —
+ * nicht Krankenkassen-Workflows, nicht operative Taxi-/Flottenlogik.
+ *
+ * Zielbild (noch nicht verschärft): eigene Pflichten, Freigabe-Check, Defaults.
  * Nächster Schritt: Felder ergänzen (z. B. Rechnungsart), dann validatePublic + approveIncomplete befüllen.
  */
 export const hotelPartnerRegistrationPolicy: PartnerRegistrationPolicy = {

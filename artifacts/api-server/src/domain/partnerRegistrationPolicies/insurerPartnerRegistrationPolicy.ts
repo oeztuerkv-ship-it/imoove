@@ -1,8 +1,12 @@
 import type { PartnerRegistrationPolicy } from "./types";
 
 /**
- * Krankenkasse / Versicherer (`partner_type` insurance → `company_kind` insurer).
- * Strikt getrennt von Medical — keine gemeinsame Approve-Logik mit medical.
+ * Partner-Typ **Krankenkasse / Kostenträger** (`partner_type` insurance → `company_kind` insurer).
+ *
+ * Fachlich: payer/insurance, Kostenübernahme, Referenz/Fallnummer/Kostenstelle, Abrechnung/Nachvollziehbarkeit —
+ * keine normalen Hotel- oder Taxi-Standard-Workflows.
+ *
+ * Strikt getrennt von Medical (Leistungspartner) — keine gemeinsame Approve-Logik mit medical/care.
  */
 export const insurerPartnerRegistrationPolicy: PartnerRegistrationPolicy = {
   id: "insurance",
