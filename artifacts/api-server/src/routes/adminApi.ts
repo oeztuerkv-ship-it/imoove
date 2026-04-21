@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import { Router, type IRouter, type Request } from "express";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
+import {
+  buildTaxiFarePermissionsFromRegistration,
+  TAXI_ONBOARDING_PANEL_MODULES,
+  taxiRegistrationIncompleteForApprove,
+} from "../domain/taxiPartnerOnboarding";
 import { parsePayerKind, parseRideKind } from "../domain/rideBillingProfile";
 import {
   addFareArea,
@@ -1148,6 +1153,9 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
       b.email !== undefined ||
       b.phone !== undefined ||
       b.addressLine1 !== undefined ||
+      b.addressLine2 !== undefined ||
+      b.ownerName !== undefined ||
+      b.dispoPhone !== undefined ||
       b.postalCode !== undefined ||
       b.city !== undefined ||
       b.country !== undefined ||
@@ -1212,6 +1220,12 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
     if (phone !== undefined) patchBody.phone = phone;
     const addressLine1 = strField("addressLine1");
     if (addressLine1 !== undefined) patchBody.addressLine1 = addressLine1;
+    const addressLine2 = strField("addressLine2");
+    if (addressLine2 !== undefined) patchBody.addressLine2 = addressLine2;
+    const ownerName = strField("ownerName");
+    if (ownerName !== undefined) patchBody.ownerName = ownerName;
+    const dispoPhone = strField("dispoPhone");
+    if (dispoPhone !== undefined) patchBody.dispoPhone = dispoPhone;
     const postalCode = strField("postalCode");
     if (postalCode !== undefined) patchBody.postalCode = postalCode;
     const city = strField("city");
@@ -1416,6 +1430,21 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       res.status(400).json({ error: "partner_type_invalid" });
       return;
     }
+    const taxiIncompleteReason = taxiRegistrationIncompleteForApprove({
+      partnerType: reqRow.partnerType,
+      concessionNumber: reqRow.concessionNumber,
+      taxId: reqRow.taxId,
+      vatId: reqRow.vatId,
+      ownerName: reqRow.ownerName,
+    });
+    if (taxiIncompleteReason) {
+      res.status(400).json({
+        error: "taxi_registration_incomplete",
+        hint: `Taxi-Unternehmen unvollständig: ${taxiIncompleteReason}`,
+      });
+      return;
+    }
+    const isTaxi = reqRow.partnerType === "taxi";
     const createdCompany = await insertAdminCompany({
       name: reqRow.companyName,
       legal_form: reqRow.legalForm,
@@ -1424,17 +1453,26 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       email: reqRow.email,
       phone: reqRow.phone,
       address_line1: reqRow.addressLine1,
+      address_line2: reqRow.addressLine2 ?? "",
       postal_code: reqRow.postalCode,
       city: reqRow.city,
       country: reqRow.country,
       tax_id: reqRow.taxId,
       vat_id: reqRow.vatId,
       concession_number: reqRow.concessionNumber,
+      owner_name: reqRow.ownerName ?? "",
+      dispo_phone: reqRow.dispoPhone ?? "",
       business_notes: reqRow.notes,
       contract_status: "active",
       verification_status: "verified",
       compliance_status: "compliant",
       is_active: true,
+      ...(isTaxi
+        ? {
+            panel_modules: [...TAXI_ONBOARDING_PANEL_MODULES],
+            fare_permissions: buildTaxiFarePermissionsFromRegistration(reqRow.usesVouchers),
+          }
+        : {}),
     });
     if ("error" in createdCompany) {
       res.status(400).json({ error: createdCompany.error });

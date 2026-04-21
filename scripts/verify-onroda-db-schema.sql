@@ -280,6 +280,27 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'partner_registration_requests' AND column_name = 'owner_name'
+  ) THEN
+    errs := array_append(errs, 'partner_registration_requests.owner_name (Migration 030)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'partner_registration_requests' AND column_name = 'address_line2'
+  ) THEN
+    errs := array_append(errs, 'partner_registration_requests.address_line2 (Migration 030)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'partner_registration_requests' AND column_name = 'dispo_phone'
+  ) THEN
+    errs := array_append(errs, 'partner_registration_requests.dispo_phone (Migration 030)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'billing_accounts'
   ) THEN

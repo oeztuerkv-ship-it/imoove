@@ -40,6 +40,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Anfrage-Dokumente + Timeline         → 026_partner_registration_docs_timeline.sql
   Financial Core (Konten/Snapshots/Rechnungen/Payments/Audit) → 028_financial_core_tables.sql
   EPIC 2 Ride-Financial Locking/Status/Correction-Felder       → 029_ride_financials_epic2_locking_and_statuses.sql
+  Partneranfrage Taxi-Stammdaten (Inhaber, Adresse 2, Dispo) → 030_partner_registration_taxi_onboarding.sql
 
 Nach Migrationen Schema prüfen:
 

@@ -411,6 +411,46 @@
                   <input id="region" type="text" placeholder="z. B. Stuttgart, Flughafen, Region" />
                 </div>
 
+                <div id="partner-taxi-fields" class="hp-field hp-field--full" hidden>
+                  <p class="hint">
+                    <strong>Taxiunternehmen:</strong> Die folgenden Angaben sind für die Genehmigung als
+                    Taxibetrieb <strong>Pflicht</strong> (Konzession, Steuern, Inhaber).
+                  </p>
+                  <div class="hp-partner-form-grid">
+                    <div class="hp-field hp-field--full">
+                      <label for="ownerName">Inhaber / inhabende Person *</label>
+                      <input id="ownerName" type="text" autocomplete="name" />
+                    </div>
+                    <div class="hp-field">
+                      <label for="concessionNumber">Konzessionsnummer *</label>
+                      <input id="concessionNumber" type="text" autocomplete="off" />
+                    </div>
+                    <div class="hp-field">
+                      <label for="taxId">Steuernummer *</label>
+                      <input id="taxId" type="text" autocomplete="off" />
+                    </div>
+                    <div class="hp-field">
+                      <label for="vatId">USt-IdNr. *</label>
+                      <input id="vatId" type="text" autocomplete="off" />
+                    </div>
+                    <div class="hp-field hp-field--full">
+                      <label for="addressLine2">Adresszusatz (optional)</label>
+                      <input id="addressLine2" type="text" autocomplete="address-line2" />
+                    </div>
+                    <div class="hp-field">
+                      <label for="dispoPhone">Dispo-Telefon (optional)</label>
+                      <input id="dispoPhone" type="tel" autocomplete="tel" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="hp-field hp-field--full">
+                  <label class="hp-checkbox">
+                    <input type="checkbox" id="usesVouchers" />
+                    <span>Wir planen Gutscheine oder Budget-Codes für Fahrgäste / Auftraggeber einzusetzen.</span>
+                  </label>
+                </div>
+
                 <div class="hp-field">
                   <label for="notes">Hinweise</label>
                   <textarea id="notes" placeholder="Zusätzliche Informationen"></textarea>

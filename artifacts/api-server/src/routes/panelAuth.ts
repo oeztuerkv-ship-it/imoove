@@ -213,6 +213,37 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     return;
   }
 
+  const taxId = str("taxId");
+  const vatId = str("vatId");
+  const concessionNumber = str("concessionNumber");
+  const ownerName = str("ownerName");
+  const addressLine2 = str("addressLine2");
+  const dispoPhone = str("dispoPhone");
+
+  if (partnerTypeRaw === "taxi") {
+    if (!concessionNumber) {
+      res.status(400).json({
+        error: "taxi_concession_required",
+        hint: "Für Taxiunternehmen ist die Konzessionsnummer Pflicht.",
+      });
+      return;
+    }
+    if (!taxId || !vatId) {
+      res.status(400).json({
+        error: "taxi_tax_vat_required",
+        hint: "Für Taxiunternehmen sind Steuernummer und USt-IdNr. Pflicht.",
+      });
+      return;
+    }
+    if (!ownerName) {
+      res.status(400).json({
+        error: "taxi_owner_required",
+        hint: "Für Taxiunternehmen ist der Name des Inhabers / der inhabenden Person Pflicht.",
+      });
+      return;
+    }
+  }
+
   const rlEmail = rateLimitPartnerRegistrationEmail(email);
   if (!rlEmail.ok) {
     res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
@@ -251,7 +282,7 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     }
   }
 
-  const usesVouchers = body.usesVouchers === true;
+  const usesVouchers = typeof body.usesVouchers === "boolean" ? body.usesVouchers : false;
   const requestedUsage =
     body.requestedUsage && typeof body.requestedUsage === "object" && !Array.isArray(body.requestedUsage)
       ? (body.requestedUsage as Record<string, unknown>)
@@ -270,12 +301,15 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     email,
     phone,
     addressLine1,
+    addressLine2,
+    ownerName,
+    dispoPhone,
     postalCode,
     city,
     country,
-    taxId: str("taxId"),
-    vatId: str("vatId"),
-    concessionNumber: str("concessionNumber"),
+    taxId,
+    vatId,
+    concessionNumber,
     desiredRegion: str("desiredRegion"),
     requestedUsage,
     documentsMeta,

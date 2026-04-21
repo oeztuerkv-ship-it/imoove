@@ -29,6 +29,28 @@
       return "https://api.onroda.de/api";
     }
 
+    function syncPartnerTaxiSection() {
+      var wrap = document.getElementById("partner-taxi-fields");
+      var ct = document.getElementById("companyType");
+      if (!wrap || !ct) return;
+      if (ct.value === "taxi") {
+        wrap.removeAttribute("hidden");
+      } else {
+        wrap.setAttribute("hidden", "hidden");
+      }
+    }
+
+    var companyTypeForTaxi = document.getElementById("companyType");
+    if (companyTypeForTaxi) {
+      companyTypeForTaxi.addEventListener("change", syncPartnerTaxiSection);
+      syncPartnerTaxiSection();
+    }
+
+    function fieldTrim(id) {
+      var el = document.getElementById(id);
+      return el ? String(el.value || "").trim() : "";
+    }
+
     var partnerForm = document.getElementById("partner-form");
     if (partnerForm) {
       partnerForm.addEventListener("submit", function (e) {
@@ -80,6 +102,31 @@
           return;
         }
 
+        var usesVouchersEl = document.getElementById("usesVouchers");
+        var usesVouchers = !!(usesVouchersEl && usesVouchersEl.checked);
+
+        var ownerName = fieldTrim("ownerName");
+        var concessionNumber = fieldTrim("concessionNumber");
+        var taxId = fieldTrim("taxId");
+        var vatId = fieldTrim("vatId");
+        var addressLine2 = fieldTrim("addressLine2");
+        var dispoPhone = fieldTrim("dispoPhone");
+
+        if (partnerType === "taxi") {
+          if (!concessionNumber) {
+            setMessage("Bitte die Konzessionsnummer angeben (Pflicht für Taxiunternehmen).", "error");
+            return;
+          }
+          if (!taxId || !vatId) {
+            setMessage("Bitte Steuernummer und USt-IdNr. angeben (Pflicht für Taxiunternehmen).", "error");
+            return;
+          }
+          if (!ownerName) {
+            setMessage("Bitte den Inhaber / die inhabende Person angeben (Pflicht für Taxiunternehmen).", "error");
+            return;
+          }
+        }
+
         var notesParts = [];
         if (notes) notesParts.push(notes);
         if (customerEmail && customerEmail.toLowerCase() !== businessEmail.toLowerCase()) {
@@ -92,18 +139,21 @@
           companyName: companyName,
           legalForm: companyTypeLabel || partnerType,
           partnerType: partnerType,
-          usesVouchers: false,
+          usesVouchers: usesVouchers,
           contactFirstName: firstName,
           contactLastName: lastName,
           email: businessEmail,
           phone: businessPhone,
           addressLine1: address,
+          addressLine2: addressLine2,
+          ownerName: ownerName,
+          dispoPhone: dispoPhone,
           postalCode: postalCode,
           city: city,
           country: country,
-          taxId: "",
-          vatId: "",
-          concessionNumber: "",
+          taxId: taxId,
+          vatId: vatId,
+          concessionNumber: concessionNumber,
           desiredRegion: region,
           requestedUsage: {},
           documentsMeta: {},
@@ -147,6 +197,7 @@
               );
               partnerForm.reset();
               if (privacy) privacy.checked = false;
+              syncPartnerTaxiSection();
               return;
             }
             if (res.status === 429) {
@@ -183,6 +234,10 @@
             }
             if (res.status === 400 && data.error === "partner_type_invalid") {
               setMessage("Ungültige Auswahl bei der Art des Unternehmens.", "error");
+              return;
+            }
+            if (res.status === 400 && data.hint) {
+              setMessage(data.hint, "error");
               return;
             }
             setMessage("Die Anfrage konnte nicht gesendet werden. Bitte später erneut versuchen oder uns per E-Mail kontaktieren.", "error");

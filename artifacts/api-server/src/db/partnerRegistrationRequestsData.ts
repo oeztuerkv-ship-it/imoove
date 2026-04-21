@@ -41,6 +41,12 @@ export type PartnerRegistrationInsert = {
   email: string;
   phone: string;
   addressLine1: string;
+  /** Zweite Adresszeile (optional, bei Taxi empfohlen). */
+  addressLine2?: string;
+  /** Inhaber / inhabende Person (Taxi-Pflicht über öffentliches Formular). */
+  ownerName?: string;
+  /** Dispo-Telefon (optional). */
+  dispoPhone?: string;
   postalCode: string;
   city: string;
   country: string;
@@ -85,6 +91,9 @@ export type PartnerRegistrationAdminPatch = {
   email?: string;
   phone?: string;
   addressLine1?: string;
+  addressLine2?: string;
+  ownerName?: string;
+  dispoPhone?: string;
   postalCode?: string;
   city?: string;
   country?: string;
@@ -232,6 +241,9 @@ export async function createPartnerRegistrationRequest(input: PartnerRegistratio
     email: input.email,
     phone: input.phone,
     address_line1: input.addressLine1,
+    address_line2: input.addressLine2 ?? "",
+    owner_name: input.ownerName ?? "",
+    dispo_phone: input.dispoPhone ?? "",
     postal_code: input.postalCode,
     city: input.city,
     country: input.country,
@@ -319,6 +331,9 @@ function collectMasterDataPatchKeys(patch: PartnerRegistrationAdminPatch): strin
   if (patch.email !== undefined) keys.push("email");
   if (patch.phone !== undefined) keys.push("phone");
   if (patch.addressLine1 !== undefined) keys.push("addressLine1");
+  if (patch.addressLine2 !== undefined) keys.push("addressLine2");
+  if (patch.ownerName !== undefined) keys.push("ownerName");
+  if (patch.dispoPhone !== undefined) keys.push("dispoPhone");
   if (patch.postalCode !== undefined) keys.push("postalCode");
   if (patch.city !== undefined) keys.push("city");
   if (patch.country !== undefined) keys.push("country");
@@ -361,6 +376,9 @@ export async function patchPartnerRegistrationRequest(id: string, patch: Partner
   }
   if (patch.phone !== undefined) set.phone = clipAdminReg(patch.phone, ADMIN_REG_STRING_MAX.short);
   if (patch.addressLine1 !== undefined) set.address_line1 = clipAdminReg(patch.addressLine1, ADMIN_REG_STRING_MAX.line);
+  if (patch.addressLine2 !== undefined) set.address_line2 = clipAdminReg(patch.addressLine2, ADMIN_REG_STRING_MAX.line);
+  if (patch.ownerName !== undefined) set.owner_name = clipAdminReg(patch.ownerName, ADMIN_REG_STRING_MAX.name);
+  if (patch.dispoPhone !== undefined) set.dispo_phone = clipAdminReg(patch.dispoPhone, ADMIN_REG_STRING_MAX.short);
   if (patch.postalCode !== undefined) set.postal_code = clipAdminReg(patch.postalCode, ADMIN_REG_STRING_MAX.short);
   if (patch.city !== undefined) set.city = clipAdminReg(patch.city, ADMIN_REG_STRING_MAX.short);
   if (patch.country !== undefined) set.country = clipAdminReg(patch.country, ADMIN_REG_STRING_MAX.short);

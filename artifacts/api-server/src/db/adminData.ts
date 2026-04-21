@@ -538,6 +538,8 @@ export type AdminCompanyUpdateBody = Partial<{
   priority_price_threshold: number;
   priority_timeout_seconds: number;
   release_radius_km: number;
+  /** Explizite Panel-Modul-Whitelist; `null` = alle (Legacy). */
+  panel_modules?: string[] | null;
 }>;
 
 export async function findCompanyById(companyId: string): Promise<CompanyRow | null> {
@@ -692,6 +694,14 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   }
   if (typeof body.release_radius_km === "number" && Number.isFinite(body.release_radius_km)) {
     next.release_radius_km = Math.max(0, body.release_radius_km);
+  }
+  if (body.panel_modules !== undefined) {
+    if (body.panel_modules === null) {
+      next.panel_modules = null;
+    } else if (Array.isArray(body.panel_modules)) {
+      const normalized = normalizeStoredPanelModules(body.panel_modules);
+      next.panel_modules = normalized && normalized.length > 0 ? normalized : null;
+    }
   }
   return next;
 }

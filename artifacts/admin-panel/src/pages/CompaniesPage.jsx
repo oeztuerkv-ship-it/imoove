@@ -338,7 +338,12 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
         body: JSON.stringify({ createOwnerUser: true }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      if (!res.ok || !data?.ok) {
+        const msg = data?.hint || data?.error || `HTTP ${res.status}`;
+        setRegistrationError(msg);
+        if (typeof window !== "undefined") window.alert(msg);
+        return;
+      }
       if (data.request) {
         setRegistrationRequests((prev) => prev.map((r) => (r.id === id ? data.request : r)));
         const hadDetailOpen =
@@ -1831,6 +1836,9 @@ function registrationDraftFromRequest(request) {
     email: request.email ?? "",
     phone: request.phone ?? "",
     addressLine1: request.addressLine1 ?? "",
+    addressLine2: request.addressLine2 ?? "",
+    ownerName: request.ownerName ?? "",
+    dispoPhone: request.dispoPhone ?? "",
     postalCode: request.postalCode ?? "",
     city: request.city ?? "",
     country: request.country ?? "",
@@ -1915,6 +1923,9 @@ function RegistrationRequestsSection({
       email: editDraft.email.trim().toLowerCase(),
       phone: editDraft.phone.trim(),
       addressLine1: editDraft.addressLine1.trim(),
+      addressLine2: editDraft.addressLine2.trim(),
+      ownerName: editDraft.ownerName.trim(),
+      dispoPhone: editDraft.dispoPhone.trim(),
       postalCode: editDraft.postalCode.trim(),
       city: editDraft.city.trim(),
       country: editDraft.country.trim(),
@@ -1932,6 +1943,20 @@ function RegistrationRequestsSection({
     if (!payload.email) {
       window.alert("E-Mail ist Pflicht.");
       return;
+    }
+    if (editDraft.partnerType === "taxi") {
+      if (!payload.concessionNumber) {
+        window.alert("Taxi: Konzessionsnummer ist Pflicht.");
+        return;
+      }
+      if (!payload.taxId.trim() || !payload.vatId.trim()) {
+        window.alert("Taxi: Steuernummer und USt-IdNr. sind Pflicht.");
+        return;
+      }
+      if (!payload.ownerName) {
+        window.alert("Taxi: Inhaber ist Pflicht.");
+        return;
+      }
     }
     await onPatchRequest(request.id, payload);
   }
@@ -2075,6 +2100,13 @@ function RegistrationRequestsSection({
               </div>
 
               <h3 className="admin-reg-subtitle">Stammdaten prüfen und korrigieren</h3>
+              {(editDraft?.partnerType === "taxi" || request.partnerType === "taxi") ? (
+                <div className="admin-info-banner" role="status">
+                  <strong>Taxi-Unternehmen</strong> — vor der Freigabe müssen Konzession, Steuernummer, USt-IdNr. und
+                  Inhaber vollständig sein (Freigabe wird sonst abgelehnt). Gutschein-Nutzung steuert die
+                  Mandanten-Voreinstellung bei der Anlage.
+                </div>
+              ) : null}
               {masterLocked ? (
                 <p className="admin-table-sub">
                   Diese Anfrage ist freigegeben und mit <code>{request.linkedCompanyId}</code> verknüpft. Änderungen am
@@ -2180,6 +2212,35 @@ function RegistrationRequestsSection({
                       value={editDraft.addressLine1}
                       onChange={(e) => setEditDraft((d) => ({ ...d, addressLine1: e.target.value }))}
                     />
+                  </div>
+                  <div className="admin-reg-form-row">
+                    <label className="admin-field-label">Adresse (Zeile 2, optional)</label>
+                    <input
+                      className="admin-input"
+                      disabled={masterLocked || actionBusy}
+                      value={editDraft.addressLine2}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, addressLine2: e.target.value }))}
+                    />
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--2col">
+                    <div>
+                      <label className="admin-field-label">Inhaber / inhabende Person</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.ownerName}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, ownerName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Dispo-Telefon (optional)</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.dispoPhone}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, dispoPhone: e.target.value }))}
+                      />
+                    </div>
                   </div>
                   <div className="admin-reg-form-row admin-reg-form-row--3col">
                     <div>
