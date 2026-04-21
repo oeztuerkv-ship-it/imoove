@@ -340,7 +340,8 @@ export default function CompaniesPage({ adminRole = "admin", initialOpenCompanyI
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        const msg = data?.hint || data?.error || `HTTP ${res.status}`;
+        const parts = [data?.hint, data?.error && data?.hint ? `(${data.error})` : data?.error].filter(Boolean);
+        const msg = parts.length ? parts.join("\n\n") : `HTTP ${res.status}`;
         setRegistrationError(msg);
         if (typeof window !== "undefined") window.alert(msg);
         return;

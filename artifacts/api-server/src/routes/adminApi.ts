@@ -999,7 +999,22 @@ adminJson.post("/companies", async (req, res, next) => {
     const { name: _drop, ...rest } = b;
     const result = await insertAdminCompany({ name, ...rest });
     if ("error" in result) {
-      res.status(400).json({ error: result.error });
+      const e = result.error;
+      if (e === "db_insert_admin_company_failed" && "hint" in result && result.hint) {
+        res.status(503).json({ error: e, hint: result.hint });
+        return;
+      }
+      if (e.startsWith("db_schema_")) {
+        res.status(503).json({
+          error: e,
+          hint:
+            e === "db_schema_partner_panel_profile_locked"
+              ? "Migration 031 (partner_panel_profile_locked) einspielen."
+              : "Migration 032 (company_kind medical) einspielen.",
+        });
+        return;
+      }
+      res.status(400).json({ error: e });
       return;
     }
     res.status(201).json({ ok: true, item: result });
@@ -1476,6 +1491,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
     });
     if ("error" in createdCompany) {
       const e = createdCompany.error;
+      const extraHint = "hint" in createdCompany && typeof createdCompany.hint === "string" ? createdCompany.hint : "";
       if (e === "db_schema_partner_panel_profile_locked") {
         res.status(503).json({
           error: e,
@@ -1487,6 +1503,19 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
         res.status(503).json({
           error: e,
           hint: "Datenbank-Constraint für company_kind veraltet. Migration 032 (medical) einspielen.",
+        });
+        return;
+      }
+      if (e === "db_insert_admin_company_failed") {
+        res.status(503).json({
+          error: e,
+          hint: [
+            "INSERT in admin_companies ist fehlgeschlagen (Schema/Constraint/Migration).",
+            "Auf dem Server: ./scripts/deploy-onroda-production.sh (inkl. Migrationen 031 + 032) oder fehlende SQL-Migrationen manuell per psql einspielen.",
+            extraHint ? `Postgres: ${extraHint}` : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
         });
         return;
       }

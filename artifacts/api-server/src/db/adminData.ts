@@ -9,7 +9,39 @@ import {
   ridesTable,
 } from "./schema";
 import { normalizeStoredPanelModules } from "../domain/panelModules";
+import { logger } from "../lib/logger";
 import type { AdminDashboardStats, CompanyRow, FareAreaRow } from "../routes/adminApi.types";
+
+/** Drizzle/`pg` kapseln Postgres oft in `cause` — für erkennbare Schema-Fehler (Migrationen). */
+function flattenPgError(err: unknown): string {
+  const parts: string[] = [];
+  const seen = new Set<unknown>();
+  let cur: unknown = err;
+  for (let depth = 0; depth < 10 && cur != null && !seen.has(cur); depth++) {
+    seen.add(cur);
+    if (cur instanceof Error) {
+      parts.push(cur.message);
+      cur = (cur as Error & { cause?: unknown }).cause;
+      continue;
+    }
+    if (typeof cur === "object") {
+      const o = cur as Record<string, unknown>;
+      for (const k of ["message", "detail", "constraint", "column", "table", "schema"]) {
+        const v = o[k];
+        if (typeof v === "string" && v.trim()) parts.push(v.trim());
+      }
+      if (typeof o.code === "string" && o.code.trim()) parts.push(`code=${o.code.trim()}`);
+      cur = o.cause;
+      continue;
+    }
+    if (typeof cur === "string") {
+      parts.push(cur);
+      break;
+    }
+    break;
+  }
+  return parts.join(" | ");
+}
 
 const seedCompanies: CompanyRow[] = [
   {
@@ -715,7 +747,7 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
 
 export async function insertAdminCompany(
   body: { name: string } & AdminCompanyUpdateBody,
-): Promise<CompanyRow | { error: string }> {
+): Promise<CompanyRow | { error: string; hint?: string }> {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return { error: "name_required" };
 
@@ -781,14 +813,23 @@ export async function insertAdminCompany(
   try {
     await db.insert(adminCompaniesTable).values(companyRowToDbValues(next));
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("partner_panel_profile_locked")) {
+    const flat = flattenPgError(err);
+    logger.error({ err, flat }, "insertAdminCompany failed");
+    const low = flat.toLowerCase();
+    if (low.includes("partner_panel_profile_locked") || (low.includes("42703") && low.includes("partner_panel"))) {
       return { error: "db_schema_partner_panel_profile_locked" };
     }
-    if (msg.includes("admin_companies_company_kind_chk")) {
+    if (
+      low.includes("admin_companies_company_kind_chk") ||
+      (low.includes("23514") && low.includes("company_kind")) ||
+      (low.includes("check constraint") && low.includes("company_kind"))
+    ) {
       return { error: "db_schema_company_kind_constraint" };
     }
-    throw err;
+    return {
+      error: "db_insert_admin_company_failed",
+      hint: flat.slice(0, 2000) || "Unbekannter Datenbankfehler beim Anlegen des Mandanten.",
+    };
   }
   return next;
 }
