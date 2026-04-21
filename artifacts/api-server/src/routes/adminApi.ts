@@ -1475,7 +1475,22 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       ...companyExtras,
     });
     if ("error" in createdCompany) {
-      res.status(400).json({ error: createdCompany.error });
+      const e = createdCompany.error;
+      if (e === "db_schema_partner_panel_profile_locked") {
+        res.status(503).json({
+          error: e,
+          hint: "Datenbank-Migration 031 (partner_panel_profile_locked) fehlt oder wurde nicht eingespielt. Bitte Deploy-Skript mit Migrationen ausführen.",
+        });
+        return;
+      }
+      if (e === "db_schema_company_kind_constraint") {
+        res.status(503).json({
+          error: e,
+          hint: "Datenbank-Constraint für company_kind veraltet. Migration 032 (medical) einspielen.",
+        });
+        return;
+      }
+      res.status(400).json({ error: e });
       return;
     }
     const actorLabel = req.adminAuth?.username ?? "admin";

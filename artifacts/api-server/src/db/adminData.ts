@@ -778,7 +778,18 @@ export async function insertAdminCompany(
     memCompanies = [...memCompanies, next];
     return next;
   }
-  await db.insert(adminCompaniesTable).values(companyRowToDbValues(next));
+  try {
+    await db.insert(adminCompaniesTable).values(companyRowToDbValues(next));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("partner_panel_profile_locked")) {
+      return { error: "db_schema_partner_panel_profile_locked" };
+    }
+    if (msg.includes("admin_companies_company_kind_chk")) {
+      return { error: "db_schema_company_kind_constraint" };
+    }
+    throw err;
+  }
   return next;
 }
 
