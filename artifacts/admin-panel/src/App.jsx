@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminApiAuthBanner from "./components/AdminApiAuthBanner.jsx";
 import Sidebar from "./components/Sidebar";
 import {
@@ -230,26 +230,65 @@ export default function App() {
   const current = PAGE_META[active] || PAGE_META.dashboard;
   const userRole = authUser?.role ?? "admin";
 
+  const onLogout = useCallback(() => {
+    setAdminSessionToken("");
+    setAuthUser(null);
+    setActive("dashboard");
+  }, []);
+
+  /** Inaktivität: `document`+capture und `wheel`, damit Scroll in Shell-`overflow:auto` zählt; Tab-Wechsel per visibility. */
   useEffect(() => {
-    if (!authUser) return;
-    let timer = window.setTimeout(() => {
+    if (!authUser) return undefined;
+    const evOpts = { capture: true, passive: true };
+    let lastActivity = Date.now();
+    let timer = 0;
+    let didLogout = false;
+
+    const runLogout = () => {
+      if (didLogout) return;
+      didLogout = true;
       onLogout();
       window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
-    }, INACTIVITY_MS);
-    const reset = () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        onLogout();
-        window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
-      }, INACTIVITY_MS);
     };
-    const events = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart"];
-    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+
+    const schedule = () => {
+      if (timer) window.clearTimeout(timer);
+      if (document.visibilityState === "hidden") {
+        timer = 0;
+        return;
+      }
+      const elapsed = Date.now() - lastActivity;
+      if (elapsed >= INACTIVITY_MS) {
+        runLogout();
+        return;
+      }
+      timer = window.setTimeout(runLogout, INACTIVITY_MS - elapsed);
+    };
+
+    const bump = () => {
+      lastActivity = Date.now();
+      schedule();
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        if (timer) window.clearTimeout(timer);
+        timer = 0;
+        return;
+      }
+      schedule();
+    };
+
+    bump();
+    const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
+    events.forEach((e) => document.addEventListener(e, bump, evOpts));
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.clearTimeout(timer);
-      events.forEach((e) => window.removeEventListener(e, reset));
+      if (timer) window.clearTimeout(timer);
+      events.forEach((e) => document.removeEventListener(e, bump, evOpts));
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [authUser]);
+  }, [authUser, onLogout]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -340,12 +379,6 @@ export default function App() {
     } finally {
       setForgotBusy(false);
     }
-  }
-
-  function onLogout() {
-    setAdminSessionToken("");
-    setAuthUser(null);
-    setActive("dashboard");
   }
 
   function renderPage() {
