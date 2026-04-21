@@ -619,7 +619,7 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
   if (typeof body.company_kind === "string") {
     const k = body.company_kind.trim();
-    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate"].includes(k)) {
+    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate", "medical"].includes(k)) {
       next.company_kind = k;
     }
   }

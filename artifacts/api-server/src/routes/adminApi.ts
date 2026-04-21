@@ -64,6 +64,7 @@ import {
   isRegistrationStatus,
   listPartnerRegistrationPendingQueueAdmin,
   listPartnerRegistrationRequestsAdmin,
+  type PartnerRegistrationAdminPatch,
   patchPartnerRegistrationRequest,
   resolvePartnerRegistrationStorageAbsolutePath,
 } from "../db/partnerRegistrationRequestsData";
@@ -187,7 +188,9 @@ function adminConsoleRole(req: Request): AdminRole {
   return req.adminAuth?.role ?? "admin";
 }
 
-function partnerTypeToCompanyKind(partnerType: string): "taxi" | "hotel" | "insurer" | "corporate" | "voucher_client" | "general" {
+function partnerTypeToCompanyKind(
+  partnerType: string,
+): "taxi" | "hotel" | "insurer" | "corporate" | "voucher_client" | "general" | "medical" {
   switch (partnerType) {
     case "taxi":
       return "taxi";
@@ -195,6 +198,9 @@ function partnerTypeToCompanyKind(partnerType: string): "taxi" | "hotel" | "insu
       return "hotel";
     case "insurance":
       return "insurer";
+    case "medical":
+    case "care":
+      return "medical";
     case "business":
       return "corporate";
     case "voucher_partner":
@@ -1093,6 +1099,12 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
       res.status(503).json({ error: "database_not_configured" });
       return;
     }
+    const existing = await findPartnerRegistrationRequestById(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+
     const b = (req.body ?? {}) as Record<string, unknown>;
     const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
     const verificationRaw = typeof b.verificationStatus === "string" ? b.verificationStatus.trim() : "";
@@ -1124,7 +1136,38 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
       contractRaw === "terminated"
         ? contractRaw
         : undefined;
-    const item = await patchPartnerRegistrationRequest(req.params.id, {
+
+    const strField = (k: string) => (typeof b[k] === "string" ? (b[k] as string) : undefined);
+    const masterAttempted =
+      b.partnerType !== undefined ||
+      b.companyName !== undefined ||
+      b.legalForm !== undefined ||
+      b.usesVouchers !== undefined ||
+      b.contactFirstName !== undefined ||
+      b.contactLastName !== undefined ||
+      b.email !== undefined ||
+      b.phone !== undefined ||
+      b.addressLine1 !== undefined ||
+      b.postalCode !== undefined ||
+      b.city !== undefined ||
+      b.country !== undefined ||
+      b.taxId !== undefined ||
+      b.vatId !== undefined ||
+      b.concessionNumber !== undefined ||
+      b.desiredRegion !== undefined ||
+      b.notes !== undefined ||
+      b.requestedUsage !== undefined;
+
+    if (existing.linkedCompanyId && masterAttempted) {
+      res.status(409).json({
+        error: "registration_locked",
+        hint:
+          "Die Anfrage ist mit einem Mandanten verknüpft. Stammdaten und Anfrage-Typ können hier nicht mehr geändert werden — bitte im Unternehmensprofil anpassen.",
+      });
+      return;
+    }
+
+    const patchBody: PartnerRegistrationAdminPatch = {
       ...(statusRaw ? { status: statusRaw } : {}),
       ...(verificationStatus ? { verificationStatus } : {}),
       ...(complianceStatus ? { complianceStatus } : {}),
@@ -1133,8 +1176,80 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
         ? { missingDocumentsNote: b.missingDocumentsNote.trim() }
         : {}),
       ...(typeof b.adminNote === "string" ? { adminNote: b.adminNote.trim() } : {}),
-      reviewedByAdminUserId: null,
-    });
+    };
+
+    if (b.partnerType !== undefined) {
+      const pt = typeof b.partnerType === "string" ? b.partnerType.trim() : "";
+      if (!isPartnerType(pt)) {
+        res.status(400).json({ error: "partner_type_invalid" });
+        return;
+      }
+      patchBody.partnerType = pt;
+    }
+    if (b.companyName !== undefined) {
+      if (typeof b.companyName !== "string") {
+        res.status(400).json({ error: "company_name_invalid" });
+        return;
+      }
+      patchBody.companyName = b.companyName;
+    }
+    if (b.legalForm !== undefined && typeof b.legalForm === "string") patchBody.legalForm = b.legalForm;
+    if (typeof b.usesVouchers === "boolean") patchBody.usesVouchers = b.usesVouchers;
+    if (b.contactFirstName !== undefined && typeof b.contactFirstName === "string") {
+      patchBody.contactFirstName = b.contactFirstName;
+    }
+    if (b.contactLastName !== undefined && typeof b.contactLastName === "string") {
+      patchBody.contactLastName = b.contactLastName;
+    }
+    if (b.email !== undefined) {
+      if (typeof b.email !== "string") {
+        res.status(400).json({ error: "email_invalid" });
+        return;
+      }
+      patchBody.email = b.email;
+    }
+    const phone = strField("phone");
+    if (phone !== undefined) patchBody.phone = phone;
+    const addressLine1 = strField("addressLine1");
+    if (addressLine1 !== undefined) patchBody.addressLine1 = addressLine1;
+    const postalCode = strField("postalCode");
+    if (postalCode !== undefined) patchBody.postalCode = postalCode;
+    const city = strField("city");
+    if (city !== undefined) patchBody.city = city;
+    const country = strField("country");
+    if (country !== undefined) patchBody.country = country;
+    const taxId = strField("taxId");
+    if (taxId !== undefined) patchBody.taxId = taxId;
+    const vatId = strField("vatId");
+    if (vatId !== undefined) patchBody.vatId = vatId;
+    const concessionNumber = strField("concessionNumber");
+    if (concessionNumber !== undefined) patchBody.concessionNumber = concessionNumber;
+    const desiredRegion = strField("desiredRegion");
+    if (desiredRegion !== undefined) patchBody.desiredRegion = desiredRegion;
+    const notes = strField("notes");
+    if (notes !== undefined) patchBody.notes = notes;
+
+    if (b.requestedUsage !== undefined) {
+      if (b.requestedUsage === null) {
+        patchBody.requestedUsage = {};
+      } else if (typeof b.requestedUsage === "object" && !Array.isArray(b.requestedUsage)) {
+        patchBody.requestedUsage = b.requestedUsage as Record<string, unknown>;
+      } else {
+        res.status(400).json({ error: "requested_usage_invalid" });
+        return;
+      }
+    }
+
+    if (patchBody.companyName !== undefined && !String(patchBody.companyName).trim()) {
+      res.status(400).json({ error: "company_name_empty" });
+      return;
+    }
+    if (patchBody.email !== undefined && !String(patchBody.email).trim()) {
+      res.status(400).json({ error: "email_empty" });
+      return;
+    }
+
+    const item = await patchPartnerRegistrationRequest(req.params.id, patchBody);
     if (!item) {
       res.status(404).json({ error: "not_found" });
       return;

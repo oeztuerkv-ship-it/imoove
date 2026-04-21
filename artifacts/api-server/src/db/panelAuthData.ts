@@ -126,7 +126,7 @@ export interface PanelUserProfileRow {
   companyId: string;
   companyName: string;
   /** Mandanten-Typ (`taxi` = Flotten-Modul möglich). */
-  companyKind: "general" | "taxi" | "voucher_client" | "insurer" | "hotel" | "corporate";
+  companyKind: "general" | "taxi" | "voucher_client" | "insurer" | "hotel" | "corporate" | "medical";
   username: string;
   email: string;
   role: string;
@@ -179,7 +179,8 @@ export async function findActivePanelUserProfileById(id: string): Promise<PanelU
       r.companyKindRaw === "voucher_client" ||
       r.companyKindRaw === "insurer" ||
       r.companyKindRaw === "hotel" ||
-      r.companyKindRaw === "corporate"
+      r.companyKindRaw === "corporate" ||
+      r.companyKindRaw === "medical"
         ? r.companyKindRaw
         : "general",
     username: r.username,

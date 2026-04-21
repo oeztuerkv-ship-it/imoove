@@ -53,6 +53,20 @@ export type PartnerRegistrationInsert = {
   notes: string;
 };
 
+const ADMIN_REG_STRING_MAX = {
+  name: 200,
+  short: 120,
+  line: 500,
+  email: 254,
+  region: 200,
+} as const;
+
+function clipAdminReg(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max);
+}
+
 export type PartnerRegistrationAdminPatch = {
   status?: RegistrationStatus;
   verificationStatus?: "pending" | "in_review" | "verified" | "rejected";
@@ -61,6 +75,25 @@ export type PartnerRegistrationAdminPatch = {
   missingDocumentsNote?: string;
   adminNote?: string;
   reviewedByAdminUserId?: string | null;
+  /** Anfrage-Typ (steuert u. a. `company_kind` bei Freigabe). */
+  partnerType?: PartnerType;
+  companyName?: string;
+  legalForm?: string;
+  usesVouchers?: boolean;
+  contactFirstName?: string;
+  contactLastName?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  postalCode?: string;
+  city?: string;
+  country?: string;
+  taxId?: string;
+  vatId?: string;
+  concessionNumber?: string;
+  desiredRegion?: string;
+  notes?: string;
+  requestedUsage?: Record<string, unknown> | null;
 };
 
 type TimelineEventInsert = {
@@ -275,6 +308,29 @@ export async function findLatestPartnerRegistrationRequestByEmail(email: string)
   return rows[0] ? mapRow(rows[0]) : null;
 }
 
+function collectMasterDataPatchKeys(patch: PartnerRegistrationAdminPatch): string[] {
+  const keys: string[] = [];
+  if (patch.partnerType !== undefined) keys.push("partnerType");
+  if (patch.companyName !== undefined) keys.push("companyName");
+  if (patch.legalForm !== undefined) keys.push("legalForm");
+  if (patch.usesVouchers !== undefined) keys.push("usesVouchers");
+  if (patch.contactFirstName !== undefined) keys.push("contactFirstName");
+  if (patch.contactLastName !== undefined) keys.push("contactLastName");
+  if (patch.email !== undefined) keys.push("email");
+  if (patch.phone !== undefined) keys.push("phone");
+  if (patch.addressLine1 !== undefined) keys.push("addressLine1");
+  if (patch.postalCode !== undefined) keys.push("postalCode");
+  if (patch.city !== undefined) keys.push("city");
+  if (patch.country !== undefined) keys.push("country");
+  if (patch.taxId !== undefined) keys.push("taxId");
+  if (patch.vatId !== undefined) keys.push("vatId");
+  if (patch.concessionNumber !== undefined) keys.push("concessionNumber");
+  if (patch.desiredRegion !== undefined) keys.push("desiredRegion");
+  if (patch.notes !== undefined) keys.push("notes");
+  if (patch.requestedUsage !== undefined) keys.push("requestedUsage");
+  return keys;
+}
+
 export async function patchPartnerRegistrationRequest(id: string, patch: PartnerRegistrationAdminPatch) {
   const db = getDb();
   if (!db) return null;
@@ -289,6 +345,41 @@ export async function patchPartnerRegistrationRequest(id: string, patch: Partner
   if (patch.adminNote !== undefined) set.admin_note = patch.adminNote;
   if (patch.reviewedByAdminUserId !== undefined) set.reviewed_by_admin_user_id = patch.reviewedByAdminUserId;
   if (patch.status || patch.reviewedByAdminUserId !== undefined) set.reviewed_at = sql`NOW()`;
+
+  if (patch.partnerType !== undefined) set.partner_type = patch.partnerType;
+  if (patch.companyName !== undefined) set.company_name = clipAdminReg(patch.companyName, ADMIN_REG_STRING_MAX.name);
+  if (patch.legalForm !== undefined) set.legal_form = clipAdminReg(patch.legalForm, ADMIN_REG_STRING_MAX.short);
+  if (patch.usesVouchers !== undefined) set.uses_vouchers = patch.usesVouchers;
+  if (patch.contactFirstName !== undefined) {
+    set.contact_first_name = clipAdminReg(patch.contactFirstName, ADMIN_REG_STRING_MAX.short);
+  }
+  if (patch.contactLastName !== undefined) {
+    set.contact_last_name = clipAdminReg(patch.contactLastName, ADMIN_REG_STRING_MAX.short);
+  }
+  if (patch.email !== undefined) {
+    set.email = clipAdminReg(patch.email.toLowerCase(), ADMIN_REG_STRING_MAX.email);
+  }
+  if (patch.phone !== undefined) set.phone = clipAdminReg(patch.phone, ADMIN_REG_STRING_MAX.short);
+  if (patch.addressLine1 !== undefined) set.address_line1 = clipAdminReg(patch.addressLine1, ADMIN_REG_STRING_MAX.line);
+  if (patch.postalCode !== undefined) set.postal_code = clipAdminReg(patch.postalCode, ADMIN_REG_STRING_MAX.short);
+  if (patch.city !== undefined) set.city = clipAdminReg(patch.city, ADMIN_REG_STRING_MAX.short);
+  if (patch.country !== undefined) set.country = clipAdminReg(patch.country, ADMIN_REG_STRING_MAX.short);
+  if (patch.taxId !== undefined) set.tax_id = clipAdminReg(patch.taxId, ADMIN_REG_STRING_MAX.short);
+  if (patch.vatId !== undefined) set.vat_id = clipAdminReg(patch.vatId, ADMIN_REG_STRING_MAX.short);
+  if (patch.concessionNumber !== undefined) {
+    set.concession_number = clipAdminReg(patch.concessionNumber, ADMIN_REG_STRING_MAX.short);
+  }
+  if (patch.desiredRegion !== undefined) {
+    set.desired_region = clipAdminReg(patch.desiredRegion, ADMIN_REG_STRING_MAX.region);
+  }
+  if (patch.notes !== undefined) set.notes = clipAdminReg(patch.notes, ADMIN_REG_STRING_MAX.line);
+  if (patch.requestedUsage !== undefined) {
+    set.requested_usage = patch.requestedUsage && typeof patch.requestedUsage === "object" ? patch.requestedUsage : {};
+  }
+
+  const masterKeys = collectMasterDataPatchKeys(patch);
+  const hasMasterPatch = masterKeys.length > 0;
+
   await db.update(partnerRegistrationRequestsTable).set(set).where(eq(partnerRegistrationRequestsTable.id, id));
   if (
     patch.status ||
@@ -311,6 +402,16 @@ export async function patchPartnerRegistrationRequest(id: string, patch: Partner
         contractStatus: patch.contractStatus ?? null,
         missingDocumentsNote: patch.missingDocumentsNote ?? null,
       },
+    });
+  }
+  if (hasMasterPatch) {
+    await addPartnerRegistrationTimelineEvent({
+      requestId: id,
+      actorType: "admin",
+      actorLabel: patch.reviewedByAdminUserId ?? "admin",
+      eventType: "admin_master_data_update",
+      message: "Stammdaten oder Anfrage-Typ durch die Plattform-Administration angepasst.",
+      payload: { fields: masterKeys },
     });
   }
   return findPartnerRegistrationRequestById(id);

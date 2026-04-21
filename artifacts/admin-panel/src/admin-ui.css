@@ -2039,3 +2039,119 @@
   display: flex;
   justify-content: flex-start;
 }
+
+/* Partner-Registrierung: Anfrage-Typ (Operator-Konsole) */
+.admin-reg-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--onroda-border);
+  background: color-mix(in srgb, var(--onroda-surface-elevated) 88%, #fff);
+  color: var(--onroda-text-dark);
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.admin-reg-type-badge--taxi {
+  border-color: color-mix(in srgb, var(--onroda-admin-accent) 45%, var(--onroda-border));
+  background: color-mix(in srgb, var(--onroda-admin-accent) 14%, #fff);
+}
+
+.admin-reg-type-badge--hotel {
+  border-color: color-mix(in srgb, #0d9488 40%, var(--onroda-border));
+  background: color-mix(in srgb, #0d9488 12%, #fff);
+}
+
+.admin-reg-type-badge--insurance {
+  border-color: color-mix(in srgb, #6366f1 45%, var(--onroda-border));
+  background: color-mix(in srgb, #6366f1 14%, #fff);
+}
+
+.admin-reg-type-badge--medical,
+.admin-reg-type-badge--care {
+  border-color: color-mix(in srgb, #7c3aed 45%, var(--onroda-border));
+  background: color-mix(in srgb, #7c3aed 12%, #fff);
+}
+
+.admin-reg-type-badge--business {
+  border-color: color-mix(in srgb, #b45309 40%, var(--onroda-border));
+  background: color-mix(in srgb, #f59e0b 14%, #fff);
+}
+
+.admin-reg-type-badge--voucher_partner {
+  border-color: color-mix(in srgb, #db2777 40%, var(--onroda-border));
+  background: color-mix(in srgb, #db2777 10%, #fff);
+}
+
+.admin-reg-type-badge--other {
+  opacity: 0.92;
+}
+
+.admin-reg-detail-head {
+  margin-bottom: 12px;
+}
+
+.admin-reg-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-reg-detail-hint {
+  margin: 8px 0 0;
+  max-width: 52rem;
+}
+
+.admin-reg-subtitle {
+  margin: 18px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--onroda-text-dark);
+}
+
+.admin-reg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.admin-reg-form--locked {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.admin-reg-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-reg-form-row--2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.admin-reg-form-row--3col {
+  display: grid;
+  grid-template-columns: 0.9fr 1.2fr 0.9fr;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .admin-reg-form-row--2col,
+  .admin-reg-form-row--3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-reg-json {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
+}

@@ -3,7 +3,14 @@ import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable } from "./schema";
 
 /** Mandanten-Typ (Panel / Governance); z. B. Taxi vs. Leistungspartner (Hotel, Kasse, …). */
-export type PanelCompanyKind = "general" | "taxi" | "voucher_client" | "insurer" | "hotel" | "corporate";
+export type PanelCompanyKind =
+  | "general"
+  | "taxi"
+  | "voucher_client"
+  | "insurer"
+  | "hotel"
+  | "corporate"
+  | "medical";
 
 /** Öffentliche Firmendaten fürs Partner-Panel (keine internen PRIO-Steuerfelder). */
 export interface PanelCompanyPublic {
@@ -117,7 +124,8 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
       r.company_kind === "voucher_client" ||
       r.company_kind === "insurer" ||
       r.company_kind === "hotel" ||
-      r.company_kind === "corporate"
+      r.company_kind === "corporate" ||
+      r.company_kind === "medical"
         ? r.company_kind
         : "general",
     taxId: r.tax_id ?? "",

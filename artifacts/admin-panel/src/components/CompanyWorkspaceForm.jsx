@@ -177,6 +177,7 @@ export default function CompanyWorkspaceForm({
                   <option value="taxi">Taxi / Flotte</option>
                   <option value="voucher_client">Gutscheinkunde</option>
                   <option value="insurer">Krankenkasse / Versicherer</option>
+                  <option value="medical">Medical / Krankenfahrt (ohne Krankenkasse)</option>
                   <option value="hotel">Hotel</option>
                   <option value="corporate">Firmenkunde / Corporate</option>
                 </select>

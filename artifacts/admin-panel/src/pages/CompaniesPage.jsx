@@ -67,7 +67,15 @@ function emptyCompanyForm() {
   };
 }
 
-const COMPANY_KIND_EDIT = new Set(["taxi", "general", "voucher_client", "insurer", "hotel", "corporate"]);
+const COMPANY_KIND_EDIT = new Set([
+  "taxi",
+  "general",
+  "voucher_client",
+  "insurer",
+  "hotel",
+  "corporate",
+  "medical",
+]);
 
 function formFromItem(item) {
   const ck = item.company_kind && COMPANY_KIND_EDIT.has(item.company_kind) ? item.company_kind : "general";
@@ -288,7 +296,14 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
         body: JSON.stringify(patch),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.ok || !data.item) throw new Error(data?.error || `HTTP ${res.status}`);
+      if (!res.ok || !data?.ok) {
+        setRegistrationError(data?.hint || data?.error || `HTTP ${res.status}`);
+        return null;
+      }
+      if (!data.item) {
+        setRegistrationError(data?.hint || data?.error || "Ungültige Antwort");
+        return null;
+      }
       setRegistrationRequests((prev) => prev.map((r) => (r.id === id ? data.item : r)));
       if (reloadDetailAfter) {
         await loadRegistrationDetail(id);
@@ -1424,6 +1439,7 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
           onCloseDetail={() => setRegistrationDetail(null)}
           actionBusy={registrationActionBusy}
           onReload={() => loadRegistrationRequests(regStatusFilter)}
+          onPatchRequest={patchRegistrationRequest}
           onSetStatus={(id, status) => patchRegistrationRequest(id, { status })}
           onRequestFollowUp={requestFollowUpOnRegistration}
           onApprove={approveRegistrationRequest}
@@ -1752,6 +1768,81 @@ function regStatusLabel(s) {
   }
 }
 
+const REG_PARTNER_TYPES = [
+  ["taxi", "Taxi"],
+  ["hotel", "Hotel"],
+  ["insurance", "Krankenkasse / Versicherer"],
+  ["medical", "Medical / Krankenfahrt"],
+  ["care", "Pflege & Leistungspartner"],
+  ["business", "Unternehmen"],
+  ["voucher_partner", "Gutscheinpartner"],
+  ["other", "Sonstiges"],
+];
+
+function partnerTypeSelectLabel(value) {
+  const row = REG_PARTNER_TYPES.find((x) => x[0] === value);
+  return row ? row[1] : value ?? "—";
+}
+
+function companyKindAtApproveHint(partnerType) {
+  switch (partnerType) {
+    case "taxi":
+      return "Nach Freigabe: Mandanten-Typ Taxi / Flotte — Taximeter- und Konzessionslogik wie klassische Betriebe.";
+    case "hotel":
+      return "Nach Freigabe: Mandanten-Typ Hotel — Hotel-/Zimmerbuchungskontext im Partner-Panel.";
+    case "insurance":
+      return "Nach Freigabe: Mandanten-Typ Krankenkasse / Versicherer (insurer) — getrennt von Medical.";
+    case "medical":
+    case "care":
+      return "Nach Freigabe: Mandanten-Typ Medical (medical) — Krankenfahrt / Leistungspartner, nicht Krankenkasse.";
+    case "business":
+      return "Nach Freigabe: Mandanten-Typ Firmenkunde (corporate).";
+    case "voucher_partner":
+      return "Nach Freigabe: Mandanten-Typ Gutscheinkunde (voucher_client).";
+    default:
+      return "Nach Freigabe: Mandanten-Typ allgemein (general), sofern nicht manuell im Unternehmensprofil geändert.";
+  }
+}
+
+function PartnerTypeBadge({ partnerType }) {
+  const key = partnerType && String(partnerType).trim() ? String(partnerType).trim() : "other";
+  return (
+    <span className={`admin-reg-type-badge admin-reg-type-badge--${key}`} title={key}>
+      {partnerTypeSelectLabel(key)}
+    </span>
+  );
+}
+
+function registrationDraftFromRequest(request) {
+  if (!request) return null;
+  let usageText = "{}";
+  try {
+    usageText = JSON.stringify(request.requestedUsage ?? {}, null, 2);
+  } catch {
+    usageText = "{}";
+  }
+  return {
+    partnerType: request.partnerType ?? "other",
+    companyName: request.companyName ?? "",
+    legalForm: request.legalForm ?? "",
+    usesVouchers: !!request.usesVouchers,
+    contactFirstName: request.contactFirstName ?? "",
+    contactLastName: request.contactLastName ?? "",
+    email: request.email ?? "",
+    phone: request.phone ?? "",
+    addressLine1: request.addressLine1 ?? "",
+    postalCode: request.postalCode ?? "",
+    city: request.city ?? "",
+    country: request.country ?? "",
+    taxId: request.taxId ?? "",
+    vatId: request.vatId ?? "",
+    concessionNumber: request.concessionNumber ?? "",
+    desiredRegion: request.desiredRegion ?? "",
+    notes: request.notes ?? "",
+    requestedUsageText: usageText,
+  };
+}
+
 function RegistrationRequestsSection({
   items,
   loading,
@@ -1764,6 +1855,7 @@ function RegistrationRequestsSection({
   onCloseDetail,
   actionBusy,
   onReload,
+  onPatchRequest,
   onSetStatus,
   onRequestFollowUp,
   onApprove,
@@ -1773,9 +1865,77 @@ function RegistrationRequestsSection({
 }) {
   const [adminMessage, setAdminMessage] = useState("");
   const [adminUploadFile, setAdminUploadFile] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
   const request = detail?.request ?? detail ?? null;
   const docs = Array.isArray(detail?.documents) ? detail.documents : [];
   const timeline = Array.isArray(detail?.timeline) ? detail.timeline : [];
+  const masterLocked = Boolean(request?.linkedCompanyId);
+  const wasDetailLoading = useRef(false);
+  const lastHydratedRequestId = useRef("");
+
+  useEffect(() => {
+    if (!request) {
+      setEditDraft(null);
+      wasDetailLoading.current = detailLoading;
+      lastHydratedRequestId.current = "";
+      return;
+    }
+    const finishedDetailFetch = wasDetailLoading.current && !detailLoading;
+    wasDetailLoading.current = detailLoading;
+    if (detailLoading) return;
+    const switchedRequest = lastHydratedRequestId.current !== request.id;
+    if (finishedDetailFetch || switchedRequest || !editDraft) {
+      setEditDraft(registrationDraftFromRequest(request));
+      lastHydratedRequestId.current = request.id;
+    }
+  }, [request, detailLoading, editDraft]);
+
+  async function saveRegistrationMaster() {
+    if (!request || !editDraft || masterLocked) return;
+    let requestedUsage = {};
+    try {
+      requestedUsage = editDraft.requestedUsageText.trim()
+        ? JSON.parse(editDraft.requestedUsageText)
+        : {};
+      if (typeof requestedUsage !== "object" || requestedUsage === null || Array.isArray(requestedUsage)) {
+        window.alert("„Nutzung / Kontext“ muss ein JSON-Objekt sein.");
+        return;
+      }
+    } catch {
+      window.alert("„Nutzung / Kontext“: ungültiges JSON.");
+      return;
+    }
+    const payload = {
+      partnerType: editDraft.partnerType,
+      companyName: editDraft.companyName.trim(),
+      legalForm: editDraft.legalForm.trim(),
+      usesVouchers: editDraft.usesVouchers,
+      contactFirstName: editDraft.contactFirstName.trim(),
+      contactLastName: editDraft.contactLastName.trim(),
+      email: editDraft.email.trim().toLowerCase(),
+      phone: editDraft.phone.trim(),
+      addressLine1: editDraft.addressLine1.trim(),
+      postalCode: editDraft.postalCode.trim(),
+      city: editDraft.city.trim(),
+      country: editDraft.country.trim(),
+      taxId: editDraft.taxId.trim(),
+      vatId: editDraft.vatId.trim(),
+      concessionNumber: editDraft.concessionNumber.trim(),
+      desiredRegion: editDraft.desiredRegion.trim(),
+      notes: editDraft.notes.trim(),
+      requestedUsage,
+    };
+    if (!payload.companyName) {
+      window.alert("Firmenname ist Pflicht.");
+      return;
+    }
+    if (!payload.email) {
+      window.alert("E-Mail ist Pflicht.");
+      return;
+    }
+    await onPatchRequest(request.id, payload);
+  }
+
   return (
     <>
       <div className="admin-filter-card">
@@ -1827,7 +1987,9 @@ function RegistrationRequestsSection({
                     <div className="admin-companies-table__name">{r.companyName}</div>
                     <div className="admin-companies-table__id">{r.id}</div>
                   </td>
-                  <td>{r.partnerType}</td>
+                  <td>
+                    <PartnerTypeBadge partnerType={r.partnerType} />
+                  </td>
                   <td>
                     <span className="admin-status-pill admin-status-pill--active">{regStatusLabel(r.registrationStatus)}</span>
                   </td>
@@ -1895,22 +2057,258 @@ function RegistrationRequestsSection({
             </div>
             <div className="admin-modal__body">
               {detailLoading ? <div className="admin-info-banner">Lade Details …</div> : null}
+              <div className="admin-reg-detail-head">
+                <div className="admin-reg-detail-badges">
+                  <PartnerTypeBadge partnerType={request.partnerType} />
+                  <span className="admin-status-pill admin-status-pill--active">
+                    {regStatusLabel(request.registrationStatus)}
+                  </span>
+                  {masterLocked ? (
+                    <span className="admin-pill admin-pill--warn" title="Stammdaten nur noch im Mandantenprofil">
+                      Mit Mandant verknüpft
+                    </span>
+                  ) : null}
+                </div>
+                <p className="admin-table-sub admin-reg-detail-hint">
+                  {companyKindAtApproveHint(editDraft?.partnerType ?? request.partnerType)}
+                </p>
+              </div>
+
+              <h3 className="admin-reg-subtitle">Stammdaten prüfen und korrigieren</h3>
+              {masterLocked ? (
+                <p className="admin-table-sub">
+                  Diese Anfrage ist freigegeben und mit <code>{request.linkedCompanyId}</code> verknüpft. Änderungen am
+                  Anfrage-Typ und zu den übernommenen Stammdaten erfolgen im Unternehmensprofil (Tab „Unternehmen“).
+                </p>
+              ) : null}
+
+              {editDraft ? (
+                <div className={`admin-reg-form${masterLocked ? " admin-reg-form--locked" : ""}`}>
+                  <div className="admin-reg-form-row">
+                    <label className="admin-field-label">Anfrage-Art / Typ</label>
+                    <select
+                      className="admin-select"
+                      disabled={masterLocked || actionBusy}
+                      value={editDraft.partnerType}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, partnerType: e.target.value }))}
+                    >
+                      {REG_PARTNER_TYPES.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--2col">
+                    <div>
+                      <label className="admin-field-label">Firmenname</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.companyName}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, companyName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Rechtsform</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.legalForm}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, legalForm: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="admin-reg-form-row">
+                    <label className="admin-field-label">
+                      <input
+                        type="checkbox"
+                        disabled={masterLocked || actionBusy}
+                        checked={editDraft.usesVouchers}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, usesVouchers: e.target.checked }))}
+                      />{" "}
+                      Nutzt Gutscheine / Budget-Codes
+                    </label>
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--2col">
+                    <div>
+                      <label className="admin-field-label">Vorname Ansprechpartner</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.contactFirstName}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, contactFirstName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Nachname</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.contactLastName}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, contactLastName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--2col">
+                    <div>
+                      <label className="admin-field-label">E-Mail</label>
+                      <input
+                        className="admin-input"
+                        type="email"
+                        autoComplete="off"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.email}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, email: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Telefon</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.phone}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="admin-reg-form-row">
+                    <label className="admin-field-label">Adresse (Zeile 1)</label>
+                    <input
+                      className="admin-input"
+                      disabled={masterLocked || actionBusy}
+                      value={editDraft.addressLine1}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, addressLine1: e.target.value }))}
+                    />
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--3col">
+                    <div>
+                      <label className="admin-field-label">PLZ</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.postalCode}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, postalCode: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Ort</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.city}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, city: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Land</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.country}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, country: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--2col">
+                    <div>
+                      <label className="admin-field-label">Steuer-ID</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.taxId}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, taxId: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">USt-IdNr.</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.vatId}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, vatId: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="admin-reg-form-row admin-reg-form-row--2col">
+                    <div>
+                      <label className="admin-field-label">Konzession / Genehmigung</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.concessionNumber}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, concessionNumber: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="admin-field-label">Gewünschte Region</label>
+                      <input
+                        className="admin-input"
+                        disabled={masterLocked || actionBusy}
+                        value={editDraft.desiredRegion}
+                        onChange={(e) => setEditDraft((d) => ({ ...d, desiredRegion: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="admin-reg-form-row">
+                    <label className="admin-field-label">Hinweise / Bemerkung (Antrag)</label>
+                    <textarea
+                      className="admin-input admin-textarea"
+                      rows={3}
+                      disabled={masterLocked || actionBusy}
+                      value={editDraft.notes}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, notes: e.target.value }))}
+                    />
+                  </div>
+                  <div className="admin-reg-form-row">
+                    <label className="admin-field-label">Nutzung / Kontext (JSON)</label>
+                    <textarea
+                      className="admin-input admin-textarea admin-reg-json"
+                      rows={5}
+                      disabled={masterLocked || actionBusy}
+                      value={editDraft.requestedUsageText}
+                      onChange={(e) => setEditDraft((d) => ({ ...d, requestedUsageText: e.target.value }))}
+                    />
+                  </div>
+                  <div className="admin-toolbar-row">
+                    <button
+                      type="button"
+                      className="admin-btn-refresh"
+                      disabled={masterLocked || actionBusy || detailLoading}
+                      onClick={() => void saveRegistrationMaster()}
+                    >
+                      Stammdaten &amp; Typ speichern
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-page-btn"
+                      disabled={masterLocked || actionBusy || detailLoading}
+                      onClick={() => setEditDraft(registrationDraftFromRequest(request))}
+                    >
+                      Zurücksetzen
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <h3 className="admin-reg-subtitle">Prüfstatus</h3>
               <dl className="admin-detail-grid">
-                <div><dt>Status</dt><dd>{regStatusLabel(request.registrationStatus)}</dd></div>
-                <div><dt>Partner-Typ</dt><dd>{request.partnerType}</dd></div>
-                <div><dt>Gutscheine</dt><dd>{request.usesVouchers ? "Ja" : "Nein"}</dd></div>
-                <div><dt>Verifizierung</dt><dd>{request.verificationStatus}</dd></div>
-                <div><dt>Compliance</dt><dd>{request.complianceStatus}</dd></div>
-                <div><dt>Vertrag</dt><dd>{request.contractStatus}</dd></div>
-                <div><dt>Kontakt</dt><dd>{`${request.contactFirstName} ${request.contactLastName}`.trim()}</dd></div>
-                <div><dt>E-Mail</dt><dd>{request.email}</dd></div>
-                <div><dt>Telefon</dt><dd>{request.phone}</dd></div>
-                <div><dt>Adresse</dt><dd>{[request.addressLine1, request.postalCode, request.city, request.country].filter(Boolean).join(", ")}</dd></div>
-                <div><dt>Tax ID</dt><dd>{request.taxId || "—"}</dd></div>
-                <div><dt>USt-ID</dt><dd>{request.vatId || "—"}</dd></div>
-                <div><dt>Konzession</dt><dd>{request.concessionNumber || "—"}</dd></div>
-                <div><dt>Region</dt><dd>{request.desiredRegion || "—"}</dd></div>
-                <div><dt>Linked Company</dt><dd>{request.linkedCompanyId || "—"}</dd></div>
+                <div>
+                  <dt>Verifizierung</dt>
+                  <dd>{request.verificationStatus}</dd>
+                </div>
+                <div>
+                  <dt>Compliance</dt>
+                  <dd>{request.complianceStatus}</dd>
+                </div>
+                <div>
+                  <dt>Vertrag</dt>
+                  <dd>{request.contractStatus}</dd>
+                </div>
+                <div>
+                  <dt>Mandanten-ID (nach Freigabe)</dt>
+                  <dd>{request.linkedCompanyId || "—"}</dd>
+                </div>
               </dl>
               <h3 style={{ marginTop: 16 }}>Dokumente</h3>
               {docs.length === 0 ? (
