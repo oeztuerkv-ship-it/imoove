@@ -77,6 +77,11 @@ function statusClass(ok) {
   return ok ? "panel-pill panel-pill--ok" : "panel-pill panel-pill--warn";
 }
 
+function asSafeList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item) => item && typeof item === "object");
+}
+
 async function fetchJsonWithTimeout(url, options = {}) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -193,12 +198,10 @@ export default function FleetPage() {
         }
         return;
       }
-      setDrivers(Array.isArray(driversReq.data.drivers) ? driversReq.data.drivers : []);
-      setVehicles(vehiclesReq.ok && vehiclesReq.data?.ok && Array.isArray(vehiclesReq.data.vehicles) ? vehiclesReq.data.vehicles : []);
+      setDrivers(asSafeList(driversReq.data.drivers));
+      setVehicles(vehiclesReq.ok && vehiclesReq.data?.ok ? asSafeList(vehiclesReq.data.vehicles) : []);
       setAssignments(
-        assignmentsReq.ok && assignmentsReq.data?.ok && Array.isArray(assignmentsReq.data.assignments)
-          ? assignmentsReq.data.assignments
-          : [],
+        assignmentsReq.ok && assignmentsReq.data?.ok ? asSafeList(assignmentsReq.data.assignments) : [],
       );
       setDash(dashReq.ok && dashReq.data?.ok ? dashReq.data : null);
       setCompany(companyReq.ok && companyReq.data?.ok ? companyReq.data.company ?? null : null);
