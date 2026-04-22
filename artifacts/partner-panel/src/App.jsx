@@ -1,77 +1,134 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePanelAuth } from "./context/PanelAuthContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
-import TaxiMasterPanel from "./components/TaxiMasterPanel.jsx";
-import AgenturMasterPanel from "./components/AgenturMasterPanel.jsx";
-import KasseMasterPanel from "./components/KasseMasterPanel.jsx";
+import PanelShell from "./layout/PanelShell.jsx";
+import { filterNavItems, firstNavKey } from "./lib/panelNavigation.js";
 
 export default function App() {
   const { user, booting, logout } = usePanelAuth();
+  const [active, setActive] = useState("overview");
+  const INACTIVITY_MS = 10 * 60 * 1000;
+
+  const navItems = useMemo(
+    () => filterNavItems(user?.panelModules, user?.permissions),
+    [user?.panelModules, user?.permissions],
+  );
+
+  const hasFleetRedirectRef = useRef(false);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const evOpts = { capture: true, passive: true };
+    let lastActivity = Date.now();
+    let timer = 0;
+    let didLogout = false;
+
+    const runLogout = () => {
+      if (didLogout) return;
+      didLogout = true;
+      void logout();
+      window.alert("Sie wurden nach 10 Minuten Inaktivität automatisch abgemeldet.");
+    };
+
+    const schedule = () => {
+      if (timer) window.clearTimeout(timer);
+      if (document.visibilityState === "hidden") {
+        timer = 0;
+        return;
+      }
+      const elapsed = Date.now() - lastActivity;
+      if (elapsed >= INACTIVITY_MS) {
+        runLogout();
+        return;
+      }
+      timer = window.setTimeout(runLogout, INACTIVITY_MS - elapsed);
+    };
+
+    const bump = () => {
+      lastActivity = Date.now();
+      schedule();
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        if (timer) window.clearTimeout(timer);
+        timer = 0;
+        return;
+      }
+      schedule();
+    };
+
+    bump();
+    const events = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
+    events.forEach((e) => document.addEventListener(e, bump, evOpts));
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      events.forEach((e) => document.removeEventListener(e, bump, evOpts));
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [user, logout]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.mustChangePassword) {
+      if (active !== "settings") {
+        queueMicrotask(() => setActive("settings"));
+      }
+      return;
+    }
+    const allowed = new Set(navItems.map((i) => i.key));
+    if (allowed.size === 0) return;
+    if (!allowed.has(active)) {
+      const next = firstNavKey(user.panelModules, user.permissions);
+      if (next) queueMicrotask(() => setActive(next));
+    }
+  }, [user, navItems, active]);
+
+  useEffect(() => {
+    if (!user || user.mustChangePassword) return;
+    if (user.companyKind !== "taxi") return;
+    if (hasFleetRedirectRef.current) return;
+    if (active === "fleet") return;
+    if (!navItems.some((i) => i.key === "fleet")) return;
+    queueMicrotask(() => {
+      setActive("fleet");
+      hasFleetRedirectRef.current = true;
+    });
+  }, [user, active, navItems]);
 
   if (booting) {
-    return <div style={{ padding: "20px" }}>System startet...</div>;
+    return (
+      <div className="partner-login partner-login--boot">
+        <p className="partner-login__lead">Sitzung wird geladen …</p>
+      </div>
+    );
   }
 
   if (!user) {
     return <LoginPage />;
   }
 
-  const company = useMemo(() => {
-    const nestedCompany = user?.company;
-    if (nestedCompany && typeof nestedCompany === "object") {
-      return nestedCompany;
-    }
-
-    return {
-      id: user?.companyId ?? "",
-      name: user?.companyName ?? "",
-      company_kind: user?.companyKind ?? "",
-    };
-  }, [user]);
-
-  const kind = company?.company_kind;
-
-  if (kind === "taxi") {
-    return <TaxiMasterPanel company={company} onLogout={logout} />;
-  }
-
-  if (kind === "hotel" || kind === "agency" || kind === "travel") {
-    return <AgenturMasterPanel company={company} onLogout={logout} />;
-  }
-
-  if (kind === "insurer" || kind === "medical") {
-    return <KasseMasterPanel company={company} onLogout={logout} />;
+  if (navItems.length === 0) {
+    return (
+      <div className="partner-login partner-login--boot">
+        <p className="partner-login__lead">
+          Für Ihr Unternehmen sind keine Panel-Module freigeschaltet. Bitte wenden Sie sich an die Onroda-Zentrale.
+        </p>
+        <button type="button" className="panel-app__session-out" onClick={() => void logout()}>
+          Abmelden
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: "40px", textAlign: "center", fontFamily: "sans-serif" }}>
-      <h1>Willkommen bei Onroda!</h1>
-      <p>Portal-Typ nicht erkannt.</p>
-      <pre
-        style={{
-          marginTop: "16px",
-          padding: "12px",
-          textAlign: "left",
-          background: "#f5f5f5",
-          borderRadius: "8px",
-          overflow: "auto",
-        }}
-      >
-        {JSON.stringify(
-          {
-            username: user?.username,
-            companyId: user?.companyId,
-            companyName: user?.companyName,
-            companyKind: user?.companyKind,
-            company,
-          },
-          null,
-          2,
-        )}
-      </pre>
-      <button onClick={logout} style={{ padding: "10px", cursor: "pointer", marginTop: "16px" }}>
-        Abmelden
-      </button>
-    </div>
+    <PanelShell
+      active={active}
+      onChange={setActive}
+      user={user}
+      onLogout={logout}
+      navItems={navItems}
+    />
   );
 }
