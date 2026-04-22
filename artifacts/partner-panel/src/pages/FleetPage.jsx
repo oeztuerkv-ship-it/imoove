@@ -48,10 +48,12 @@ function messageForFleetDriverCreateError(data) {
     case "user_inactive_or_missing":
     case "token_out_of_sync":
       return "Sitzung abgelaufen oder ungültig. Bitte abmelden und neu anmelden.";
+    case "timeout":
+      return "Die Anfrage hat zu lange gedauert. Bitte erneut versuchen.";
+    case "network_error":
+      return "Netzwerkfehler. Bitte Verbindung prüfen und erneut versuchen.";
     default:
-      return code
-        ? `Fahrer konnte nicht angelegt werden (Technisch: ${code}).`
-        : "Fahrer konnte nicht angelegt werden.";
+      return code ? `Ein unbekannter Fehler ist aufgetreten (Technisch: ${code}).` : "Ein unbekannter Fehler ist aufgetreten.";
   }
 }
 
@@ -88,6 +90,7 @@ export default function FleetPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const [driverCreateError, setDriverCreateError] = useState("");
   const [filterExpiring, setFilterExpiring] = useState(false);
   const [vehiclesActiveOnly, setVehiclesActiveOnly] = useState(false);
 
@@ -160,6 +163,7 @@ export default function FleetPage() {
     e.preventDefault();
     if (!token || !canManage) return;
     setMsg("");
+    setDriverCreateError("");
     try {
       const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers`, {
         method: "POST",
@@ -177,7 +181,7 @@ export default function FleetPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        setMsg(messageForFleetDriverCreateError(data));
+        setDriverCreateError(messageForFleetDriverCreateError(data));
         return;
       }
       setMsg(
@@ -188,7 +192,7 @@ export default function FleetPage() {
       setDriverForm({ email: "", firstName: "", lastName: "", phone: "", initialPassword: "" });
       await loadAll();
     } catch {
-      setMsg("Fahrer konnte nicht angelegt werden.");
+      setDriverCreateError("Fehler beim Erstellen des Fahrers.");
     }
   }
 
@@ -449,6 +453,7 @@ export default function FleetPage() {
       </div>
 
       {err ? <p className="panel-page__warn">{err}</p> : null}
+      {driverCreateError ? <p className="panel-page__warn">{driverCreateError}</p> : null}
       {msg ? <p className="panel-page__ok">{msg}</p> : null}
 
       <div className="panel-fleet-tabs">
