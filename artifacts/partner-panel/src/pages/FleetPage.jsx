@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 
@@ -62,6 +62,10 @@ const VEHICLE_TYPES = [
   { value: "wheelchair", label: "Rollstuhlgerecht" },
 ];
 
+const VEHICLE_LEGAL_TYPES = [
+  { value: "taxi", label: "Taxi" },
+];
+
 const VEHICLE_LEGAL_HINT =
   "Onroda arbeitet nur mit Taxi-Schätzpreis. Alle Fahrzeuge werden als Taxi geführt; die Zuordnung erfolgt weiterhin über Fahrzeugklasse (Standard, XL, Rollstuhl).";
 
@@ -70,34 +74,6 @@ const VEHICLE_CLASSES = [
   { value: "xl", label: "XL / Großraum" },
   { value: "wheelchair", label: "Rollstuhl / barrierefrei" },
 ];
-
-const REQUEST_TIMEOUT_MS = 12000;
-
-function statusClass(ok) {
-  return ok ? "panel-pill panel-pill--ok" : "panel-pill panel-pill--warn";
-}
-
-function asSafeList(value) {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item) => item && typeof item === "object");
-}
-
-async function fetchJsonWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, data };
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      return { ok: false, status: 408, data: { error: "timeout" } };
-    }
-    return { ok: false, status: 0, data: { error: "network_error" } };
-  } finally {
-    window.clearTimeout(timeout);
-  }
-}
 
 export default function FleetPage() {
   const { token, user } = usePanelAuth();
@@ -109,16 +85,11 @@ export default function FleetPage() {
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
-  const [busyAction, setBusyAction] = useState("");
   const [filterExpiring, setFilterExpiring] = useState(false);
-  const [driversActiveOnly, setDriversActiveOnly] = useState(false);
-  const [vehiclesActiveOnly, setVehiclesActiveOnly] = useState(true);
-  const [driverQuery, setDriverQuery] = useState("");
-  const [vehicleQuery, setVehicleQuery] = useState("");
+  const [vehiclesActiveOnly, setVehiclesActiveOnly] = useState(false);
 
   const [driverForm, setDriverForm] = useState({
     email: "",
@@ -132,31 +103,12 @@ export default function FleetPage() {
     model: "",
     color: "",
     vehicleType: "sedan",
+    vehicleLegalType: "taxi",
     vehicleClass: "standard",
     taxiOrderNumber: "",
     nextInspectionDate: "",
   });
   const [assignForm, setAssignForm] = useState({ driverId: "", vehicleId: "" });
-  const [editDriverId, setEditDriverId] = useState("");
-  const [editDriverForm, setEditDriverForm] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    pScheinNumber: "",
-    pScheinExpiry: "",
-    vehicleClass: "standard",
-  });
-  const [editVehicleId, setEditVehicleId] = useState("");
-  const [editVehicleForm, setEditVehicleForm] = useState({
-    licensePlate: "",
-    model: "",
-    color: "",
-    vehicleType: "sedan",
-    vehicleClass: "standard",
-    taxiOrderNumber: "",
-    nextInspectionDate: "",
-    isActive: true,
-  });
 
   const loadAll = useCallback(async () => {
     if (!token || !canRead) return;
@@ -165,50 +117,34 @@ export default function FleetPage() {
     try {
       const qDrivers = filterExpiring ? "?pScheinExpiring=1" : "";
       const qVeh = vehiclesActiveOnly ? "?activeOnly=1" : "";
-      const [driversReq, vehiclesReq, assignmentsReq, dashReq, companyReq] = await Promise.all([
-        fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/drivers${qDrivers}`, {
+      const [dRes, vRes, aRes, dashRes] = await Promise.all([
+        fetch(`${API_BASE}/panel/v1/fleet/drivers${qDrivers}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/vehicles${qVeh}`, {
+        fetch(`${API_BASE}/panel/v1/fleet/vehicles${qVeh}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/assignments`, {
+        fetch(`${API_BASE}/panel/v1/fleet/assignments`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetchJsonWithTimeout(`${API_BASE}/panel/v1/company`, {
+        fetch(`${API_BASE}/panel/v1/fleet/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
-
-      if (!driversReq.ok || !driversReq.data?.ok) {
-        const code = driversReq.data?.error;
-        if (driversReq.status === 403 && code === "module_not_enabled") {
-          setErr("Flottenmodul ist für dieses Konto nicht freigeschaltet.");
-        } else if (driversReq.status === 403 && code === "fleet_only_taxi_company") {
-          setErr("Flottenmodul ist nur für Taxi-Unternehmen verfügbar.");
-        } else if (driversReq.status === 401) {
-          setErr("Sitzung abgelaufen. Bitte neu anmelden.");
-        } else if (driversReq.status === 408 || code === "timeout") {
-          setErr("API reagiert zu langsam. Bitte erneut laden.");
-        } else {
-          setErr("Flotten-Daten konnten nicht geladen werden.");
-        }
+      const [dData, vData, aData, dashData] = await Promise.all([
+        dRes.json().catch(() => ({})),
+        vRes.json().catch(() => ({})),
+        aRes.json().catch(() => ({})),
+        dashRes.json().catch(() => ({})),
+      ]);
+      if (!dRes.ok || !dData?.ok) {
+        setErr("Flotten-Daten konnten nicht geladen werden.");
         return;
       }
-      setDrivers(asSafeList(driversReq.data.drivers));
-      setVehicles(vehiclesReq.ok && vehiclesReq.data?.ok ? asSafeList(vehiclesReq.data.vehicles) : []);
-      setAssignments(
-        assignmentsReq.ok && assignmentsReq.data?.ok ? asSafeList(assignmentsReq.data.assignments) : [],
-      );
-      setDash(dashReq.ok && dashReq.data?.ok ? dashReq.data : null);
-      setCompany(companyReq.ok && companyReq.data?.ok ? companyReq.data.company ?? null : null);
-
-      if (!vehiclesReq.ok || !assignmentsReq.ok || !dashReq.ok) {
-        setErr("Teilweise Daten konnten nicht geladen werden. Fahrerbereich bleibt nutzbar.");
-      }
+      setDrivers(Array.isArray(dData.drivers) ? dData.drivers : []);
+      setVehicles(vRes.ok && vData?.ok && Array.isArray(vData.vehicles) ? vData.vehicles : []);
+      setAssignments(aRes.ok && aData?.ok && Array.isArray(aData.assignments) ? aData.assignments : []);
+      setDash(dashRes.ok && dashData?.ok ? dashData : null);
     } catch {
       setErr("Flotten-Daten konnten nicht geladen werden.");
     } finally {
@@ -261,7 +197,7 @@ export default function FleetPage() {
     if (!token || !canManage) return;
     setMsg("");
     try {
-      const { ok, status, data } = await fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/vehicles`, {
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -278,16 +214,9 @@ export default function FleetPage() {
           nextInspectionDate: vehicleForm.nextInspectionDate || null,
         }),
       });
-      if (!ok || !data?.ok) {
-        if (status === 403 && data?.error === "vehicle_limit_reached") {
-          setMsg(`Maximale Fahrzeuganzahl erreicht${data?.maxVehicles ? ` (${data.maxVehicles})` : ""}.`);
-        } else if (status === 403) {
-          setMsg("Fahrzeug kann aktuell nicht angelegt werden (Freigabe/Profil prüfen).");
-        } else if (status === 408 || data?.error === "timeout") {
-          setMsg("API-Zeitüberschreitung. Bitte erneut versuchen.");
-        } else {
-          setMsg("Fahrzeug konnte nicht angelegt werden.");
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg("Fahrzeug konnte nicht angelegt werden.");
         return;
       }
       setMsg("Fahrzeug angelegt.");
@@ -296,6 +225,7 @@ export default function FleetPage() {
         model: "",
         color: "",
         vehicleType: "sedan",
+        vehicleLegalType: "taxi",
         vehicleClass: "standard",
         taxiOrderNumber: "",
         nextInspectionDate: "",
@@ -303,120 +233,6 @@ export default function FleetPage() {
       await loadAll();
     } catch {
       setMsg("Fahrzeug konnte nicht angelegt werden.");
-    }
-  }
-
-  function startEditDriver(d) {
-    setEditDriverId(d.id);
-    setEditDriverForm({
-      firstName: d.firstName ?? "",
-      lastName: d.lastName ?? "",
-      phone: d.phone ?? "",
-      pScheinNumber: d.pScheinNumber ?? "",
-      pScheinExpiry: d.pScheinExpiry ?? "",
-      vehicleClass: d.vehicleClass ?? "standard",
-    });
-    setMsg("");
-  }
-
-  async function saveDriverEdit(e) {
-    e.preventDefault();
-    if (!token || !canManage || !editDriverId) return;
-    setBusyAction(`driver-edit-${editDriverId}`);
-    setMsg("");
-    try {
-      const { ok, status, data } = await fetchJsonWithTimeout(
-        `${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(editDriverId)}`,
-        {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          firstName: editDriverForm.firstName,
-          lastName: editDriverForm.lastName,
-          phone: editDriverForm.phone,
-          pScheinNumber: editDriverForm.pScheinNumber,
-          pScheinExpiry: editDriverForm.pScheinExpiry || null,
-          vehicleClass: editDriverForm.vehicleClass,
-          vehicleLegalType: "taxi",
-        }),
-      },
-      );
-      if (!ok || !data?.ok) {
-        if (status === 404) setMsg("Fahrer wurde nicht gefunden (evtl. bereits gelöscht).");
-        else if (status === 403) setMsg("Keine Berechtigung zum Bearbeiten.");
-        else if (status === 408 || data?.error === "timeout") setMsg("API-Zeitüberschreitung. Bitte erneut versuchen.");
-        else setMsg("Fahrer konnte nicht aktualisiert werden.");
-        return;
-      }
-      setMsg("Fahrerdaten aktualisiert.");
-      setEditDriverId("");
-      await loadAll();
-    } catch {
-      setMsg("Fahrer konnte nicht aktualisiert werden.");
-    } finally {
-      setBusyAction("");
-    }
-  }
-
-  function startEditVehicle(v) {
-    setEditVehicleId(v.id);
-    setEditVehicleForm({
-      licensePlate: v.licensePlate ?? "",
-      model: v.model ?? "",
-      color: v.color ?? "",
-      vehicleType: v.vehicleType ?? "sedan",
-      vehicleClass: v.vehicleClass ?? "standard",
-      taxiOrderNumber: v.taxiOrderNumber ?? "",
-      nextInspectionDate: v.nextInspectionDate ?? "",
-      isActive: Boolean(v.isActive),
-    });
-    setMsg("");
-  }
-
-  async function saveVehicleEdit(e) {
-    e.preventDefault();
-    if (!token || !canManage || !editVehicleId) return;
-    setBusyAction(`vehicle-edit-${editVehicleId}`);
-    setMsg("");
-    try {
-      const { ok, status, data } = await fetchJsonWithTimeout(
-        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(editVehicleId)}`,
-        {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          licensePlate: editVehicleForm.licensePlate,
-          model: editVehicleForm.model,
-          color: editVehicleForm.color,
-          vehicleType: editVehicleForm.vehicleType,
-          vehicleClass: editVehicleForm.vehicleClass,
-          vehicleLegalType: "taxi",
-          taxiOrderNumber: editVehicleForm.taxiOrderNumber,
-          nextInspectionDate: editVehicleForm.nextInspectionDate || null,
-          isActive: editVehicleForm.isActive,
-        }),
-      },
-      );
-      if (!ok || !data?.ok) {
-        if (status === 404) setMsg("Fahrzeug wurde nicht gefunden.");
-        else if (status === 403) setMsg("Keine Berechtigung zum Bearbeiten.");
-        else if (status === 408 || data?.error === "timeout") setMsg("API-Zeitüberschreitung. Bitte erneut versuchen.");
-        else setMsg("Fahrzeug konnte nicht aktualisiert werden.");
-        return;
-      }
-      setMsg("Fahrzeug aktualisiert.");
-      setEditVehicleId("");
-      await loadAll();
-    } catch {
-      setMsg("Fahrzeug konnte nicht aktualisiert werden.");
-    } finally {
-      setBusyAction("");
     }
   }
 
@@ -449,7 +265,6 @@ export default function FleetPage() {
     if (!token || !canManage) return;
     if (!window.confirm("Fahrer sperren? Der Login wird sofort ungültig.")) return;
     setMsg("");
-    setBusyAction(`driver-suspend-${id}`);
     try {
       const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(id)}/suspend`, {
         method: "POST",
@@ -464,15 +279,12 @@ export default function FleetPage() {
       await loadAll();
     } catch {
       setMsg("Sperren fehlgeschlagen.");
-    } finally {
-      setBusyAction("");
     }
   }
 
   async function activateDriver(id) {
     if (!token || !canManage) return;
     setMsg("");
-    setBusyAction(`driver-activate-${id}`);
     try {
       const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(id)}/activate`, {
         method: "POST",
@@ -487,8 +299,6 @@ export default function FleetPage() {
       await loadAll();
     } catch {
       setMsg("Aktivierung fehlgeschlagen.");
-    } finally {
-      setBusyAction("");
     }
   }
 
@@ -521,7 +331,7 @@ export default function FleetPage() {
     if (!token || !canManage) return;
     setMsg("");
     try {
-      const { ok, status, data } = await fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/assignments`, {
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/assignments`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -529,20 +339,12 @@ export default function FleetPage() {
         },
         body: JSON.stringify({ driverId: assignForm.driverId, vehicleId: assignForm.vehicleId }),
       });
-      if (!ok || !data?.ok) {
-        if (status === 404 || data?.error === "driver_or_vehicle_not_found") {
-          setMsg("Fahrer oder Fahrzeug nicht gefunden.");
-        } else if (status === 403) {
-          setMsg("Keine Berechtigung für Zuweisungen.");
-        } else if (status === 408 || data?.error === "timeout") {
-          setMsg("API-Zeitüberschreitung. Bitte erneut versuchen.");
-        } else {
-          setMsg("Zuweisung fehlgeschlagen.");
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg("Zuweisung fehlgeschlagen.");
         return;
       }
       setMsg("Zuweisung gespeichert.");
-      setAssignForm({ driverId: "", vehicleId: "" });
       await loadAll();
     } catch {
       setMsg("Zuweisung fehlgeschlagen.");
@@ -618,98 +420,8 @@ export default function FleetPage() {
     );
   }
 
-  const assignmentByDriver = useMemo(() => {
-    const map = new Map();
-    for (const a of assignments) {
-      if (a?.driverId) map.set(a.driverId, a);
-    }
-    return map;
-  }, [assignments]);
-
-  const assignmentByVehicle = useMemo(() => {
-    const map = new Map();
-    for (const a of assignments) {
-      if (a?.vehicleId) map.set(a.vehicleId, a);
-    }
-    return map;
-  }, [assignments]);
-
-  const normalizedDriverQuery = driverQuery.trim().toLowerCase();
-  const normalizedVehicleQuery = vehicleQuery.trim().toLowerCase();
-  const filteredDrivers = useMemo(() => {
-    return drivers.filter((d) => {
-      if (driversActiveOnly && !(d.accessStatus === "active" && d.isActive)) return false;
-      if (!normalizedDriverQuery) return true;
-      const hay = `${d.firstName ?? ""} ${d.lastName ?? ""} ${d.email ?? ""} ${d.phone ?? ""} ${d.pScheinNumber ?? ""}`
-        .toLowerCase()
-        .trim();
-      return hay.includes(normalizedDriverQuery);
-    });
-  }, [drivers, driversActiveOnly, normalizedDriverQuery]);
-
-  const filteredVehicles = useMemo(() => {
-    return vehicles.filter((v) => {
-      if (vehiclesActiveOnly && !v.isActive) return false;
-      if (!normalizedVehicleQuery) return true;
-      const hay =
-        `${v.licensePlate ?? ""} ${v.model ?? ""} ${v.color ?? ""} ${v.taxiOrderNumber ?? ""} ${v.vehicleClass ?? ""}`.toLowerCase();
-      return hay.includes(normalizedVehicleQuery);
-    });
-  }, [vehicles, vehiclesActiveOnly, normalizedVehicleQuery]);
-
-  const canManageFleet = canManage;
-  const showDriverCreateForm = canManageFleet && tab === "drivers";
-  const showVehicleCreateForm = canManageFleet && tab === "vehicles";
-  const showAssignmentForm = canManageFleet && tab === "assignments";
-  const basicsComplete = company
-    ? Boolean(
-        company.name &&
-          company.contactName &&
-          company.email &&
-          company.phone &&
-          company.addressLine1 &&
-          company.postalCode &&
-          company.city &&
-          company.country &&
-          company.legalForm &&
-          company.ownerName,
-      )
-    : false;
-
   return (
     <div className="panel-page">
-      <div
-        className="panel-card panel-card--wide"
-        style={{ marginBottom: 12, borderColor: "#f59e0b", background: "#fffbeb" }}
-      >
-        <h3 className="panel-card__title" style={{ color: "#92400e" }}>
-          Debug (temporär)
-        </h3>
-        <pre
-          style={{
-            margin: 0,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontSize: 12,
-            lineHeight: 1.45,
-            color: "#78350f",
-          }}
-        >
-          {JSON.stringify(
-            {
-              permissions: Array.isArray(user?.permissions) ? user.permissions : [],
-              canRead,
-              canManageFleet,
-              tab,
-              showDriverCreateForm,
-              showVehicleCreateForm,
-              showAssignmentForm,
-            },
-            null,
-            2,
-          )}
-        </pre>
-      </div>
       <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
         <h3 className="panel-card__title">Flotte auf einen Blick</h3>
         {dash ? (
@@ -727,10 +439,6 @@ export default function FleetPage() {
               <span className="panel-fleet-dash__lbl">Aktive Fahrzeuge</span>
             </div>
             <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{dash.vehiclesTotal ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Fahrzeuge gesamt</span>
-            </div>
-            <div className="panel-fleet-dash__kpi">
               <span className="panel-fleet-dash__num">{dash.pScheinExpiringWithin30Days ?? 0}</span>
               <span className="panel-fleet-dash__lbl">P-Schein ≤ 30 Tage</span>
             </div>
@@ -739,30 +447,6 @@ export default function FleetPage() {
           <p className="panel-page__muted">Kennzahlen werden geladen …</p>
         )}
       </div>
-      {company ? (
-        <div className="panel-card panel-card--wide">
-          <h3 className="panel-card__title">Taxi-Stammdaten & Freigabe</h3>
-          <div className="panel-fleet-status-grid">
-            <p className="panel-card__row">
-              <span className="panel-card__k">Stammdaten</span>
-              <span className={statusClass(basicsComplete)}>{basicsComplete ? "vollständig" : "unvollständig"}</span>
-            </p>
-            <p className="panel-card__row">
-              <span className="panel-card__k">Profil-Lock</span>
-              <span className={statusClass(company.profileLocked)}>{company.profileLocked ? "aktiv" : "offen"}</span>
-            </p>
-            <p className="panel-card__row">
-              <span className="panel-card__k">Freigabe</span>
-              <span className={statusClass(company.verificationStatus === "verified")}>{company.verificationStatus}</span>
-            </p>
-            <p className="panel-card__row">
-              <span className="panel-card__k">Compliance</span>
-              <span className={statusClass(company.complianceStatus === "compliant")}>{company.complianceStatus}</span>
-            </p>
-          </div>
-          {!canManageFleet ? <p className="panel-page__muted">Keine Berechtigung für Flotten-Bearbeitung.</p> : null}
-        </div>
-      ) : null}
 
       {err ? <p className="panel-page__warn">{err}</p> : null}
       {msg ? <p className="panel-page__ok">{msg}</p> : null}
@@ -784,13 +468,6 @@ export default function FleetPage() {
         </button>
         <button
           type="button"
-          className={tab === "assignments" ? "panel-fleet-tab panel-fleet-tab--on" : "panel-fleet-tab"}
-          onClick={() => setTab("assignments")}
-        >
-          Zuweisungen
-        </button>
-        <button
-          type="button"
           className={tab === "compliance" ? "panel-fleet-tab panel-fleet-tab--on" : "panel-fleet-tab"}
           onClick={() => setTab("compliance")}
         >
@@ -809,22 +486,8 @@ export default function FleetPage() {
               />
               Nur P-Schein bald ablaufend (30 Tage)
             </label>
-            <label className="panel-fleet-filter">
-              <input
-                type="checkbox"
-                checked={driversActiveOnly}
-                onChange={(ev) => setDriversActiveOnly(ev.target.checked)}
-              />
-              Nur aktive Fahrer
-            </label>
-            <input
-              className="panel-fleet-search"
-              value={driverQuery}
-              onChange={(ev) => setDriverQuery(ev.target.value)}
-              placeholder="Fahrer suchen (Name, E-Mail, Telefon, P-Schein)"
-            />
           </div>
-          {canManageFleet ? (
+          {canManage ? (
             <form className="panel-rides-form" onSubmit={createDriver} style={{ marginBottom: 18 }}>
               <h4 className="panel-card__title">Neuen Fahrer anlegen</h4>
               <div className="panel-rides-form__grid">
@@ -884,39 +547,29 @@ export default function FleetPage() {
                   <th>E-Mail</th>
                   <th>Status</th>
                   <th>P-Schein bis</th>
-                  <th>Fahrzeug</th>
                   <th>Aktionen</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6}>Laden …</td>
+                    <td colSpan={5}>Laden …</td>
                   </tr>
-                ) : filteredDrivers.length === 0 ? (
+                ) : drivers.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>Keine Fahrer.</td>
+                    <td colSpan={5}>Keine Fahrer.</td>
                   </tr>
                 ) : (
-                  filteredDrivers.map((d) => (
+                  drivers.map((d) => (
                     <tr key={d.id}>
                       <td>
                         {d.firstName} {d.lastName}
                       </td>
                       <td>{d.email}</td>
-                      <td>
-                        <span className={statusClass(d.accessStatus === "active" && d.isActive)}>
-                          {d.accessStatus === "active" && d.isActive ? "aktiv" : "gesperrt"}
-                        </span>
-                      </td>
+                      <td>{d.accessStatus === "active" && d.isActive ? "aktiv" : "gesperrt"}</td>
                       <td>{d.pScheinExpiry || "—"}</td>
-                      <td>
-                        {assignmentByDriver.get(d.id)
-                          ? vehicles.find((v) => v.id === assignmentByDriver.get(d.id)?.vehicleId)?.licensePlate ?? "zugewiesen"
-                          : "—"}
-                      </td>
                       <td className="panel-fleet-table__actions">
-                        {canManageFleet ? (
+                        {canManage ? (
                           <>
                             <label className="panel-fleet-btn panel-fleet-btn--blue" style={{ cursor: "pointer" }}>
                               P-Schein PDF
@@ -934,18 +587,10 @@ export default function FleetPage() {
                             >
                               Passwort zurücksetzen
                             </button>
-                            <button
-                              type="button"
-                              className="panel-fleet-btn panel-fleet-btn--blue"
-                              onClick={() => startEditDriver(d)}
-                            >
-                              Bearbeiten
-                            </button>
                             {d.accessStatus === "active" && d.isActive ? (
                               <button
                                 type="button"
                                 className="panel-fleet-btn panel-fleet-btn--red"
-                                disabled={busyAction === `driver-suspend-${d.id}`}
                                 onClick={() => void suspendDriver(d.id)}
                               >
                                 Sperren
@@ -954,7 +599,6 @@ export default function FleetPage() {
                               <button
                                 type="button"
                                 className="panel-btn-secondary"
-                                disabled={busyAction === `driver-activate-${d.id}`}
                                 onClick={() => void activateDriver(d.id)}
                               >
                                 Aktivieren
@@ -971,72 +615,6 @@ export default function FleetPage() {
               </tbody>
             </table>
           </div>
-          {editDriverId ? (
-            <form className="panel-rides-form" onSubmit={saveDriverEdit} style={{ marginTop: 18 }}>
-              <h4 className="panel-card__title">Fahrer bearbeiten</h4>
-              <div className="panel-rides-form__grid">
-                <label className="panel-rides-form__field">
-                  <span>Vorname</span>
-                  <input
-                    value={editDriverForm.firstName}
-                    onChange={(ev) => setEditDriverForm((f) => ({ ...f, firstName: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Nachname</span>
-                  <input
-                    value={editDriverForm.lastName}
-                    onChange={(ev) => setEditDriverForm((f) => ({ ...f, lastName: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Mobilnummer</span>
-                  <input
-                    value={editDriverForm.phone}
-                    onChange={(ev) => setEditDriverForm((f) => ({ ...f, phone: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>P-Schein Nummer</span>
-                  <input
-                    value={editDriverForm.pScheinNumber}
-                    onChange={(ev) => setEditDriverForm((f) => ({ ...f, pScheinNumber: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>P-Schein Ablaufdatum</span>
-                  <input
-                    type="date"
-                    value={editDriverForm.pScheinExpiry}
-                    onChange={(ev) => setEditDriverForm((f) => ({ ...f, pScheinExpiry: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Fahrzeugklasse</span>
-                  <select
-                    value={editDriverForm.vehicleClass}
-                    onChange={(ev) => setEditDriverForm((f) => ({ ...f, vehicleClass: ev.target.value }))}
-                  >
-                    {VEHICLE_CLASSES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="panel-profile-actions">
-                <button type="submit" className="panel-btn-primary" disabled={busyAction === `driver-edit-${editDriverId}`}>
-                  {busyAction === `driver-edit-${editDriverId}` ? "Speichern …" : "Änderungen speichern"}
-                </button>
-                <button type="button" className="panel-btn-secondary" onClick={() => setEditDriverId("")}>
-                  Abbrechen
-                </button>
-              </div>
-            </form>
-          ) : null}
         </div>
       ) : null}
 
@@ -1051,14 +629,8 @@ export default function FleetPage() {
               />
               Nur aktive Fahrzeuge
             </label>
-            <input
-              className="panel-fleet-search"
-              value={vehicleQuery}
-              onChange={(ev) => setVehicleQuery(ev.target.value)}
-              placeholder="Fahrzeug suchen (Kennzeichen, Modell, Farbe, Ordnungsnr.)"
-            />
           </div>
-          {canManageFleet ? (
+          {canManage ? (
             <form className="panel-rides-form" onSubmit={createVehicle} style={{ marginBottom: 18 }}>
               <h4 className="panel-card__title">Neues Fahrzeug</h4>
               <div className="panel-rides-form__grid">
@@ -1144,178 +716,9 @@ export default function FleetPage() {
             </form>
           ) : null}
 
-          <div style={{ overflowX: "auto" }}>
-            <table className="panel-fleet-table">
-              <thead>
-                <tr>
-                  <th>Kennzeichen</th>
-                  <th>Modell</th>
-                  <th>Typ</th>
-                  <th>Klasse</th>
-                  <th>Taxi-Nr.</th>
-                  <th>HU</th>
-                  <th>Status</th>
-                  <th>Aktueller Fahrer</th>
-                  <th>Aktionen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={9}>Laden …</td>
-                  </tr>
-                ) : filteredVehicles.length === 0 ? (
-                  <tr>
-                    <td colSpan={9}>Keine Fahrzeuge.</td>
-                  </tr>
-                ) : (
-                  filteredVehicles.map((v) => {
-                    const a = assignmentByVehicle.get(v.id);
-                    const drv = a ? drivers.find((d) => d.id === a.driverId) : null;
-                    return (
-                      <tr key={v.id}>
-                        <td>{v.licensePlate}</td>
-                        <td>{v.model || "—"}</td>
-                        <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
-                        <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
-                        <td>{v.taxiOrderNumber || "—"}</td>
-                        <td>{v.nextInspectionDate || "—"}</td>
-                        <td>
-                          <span className={statusClass(v.isActive)}>{v.isActive ? "aktiv" : "inaktiv"}</span>
-                        </td>
-                        <td>
-                          {drv ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span>
-                                {drv.firstName} {drv.lastName}
-                              </span>
-                              {canManageFleet ? (
-                                <button
-                                  type="button"
-                                  className="panel-btn-secondary"
-                                  style={{ padding: "4px 8px", fontSize: 12 }}
-                                  onClick={() => clearAssignment(drv.id)}
-                                >
-                                  Zuweisung löschen
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td className="panel-fleet-table__actions">
-                          {canManageFleet ? (
-                            <button type="button" className="panel-fleet-btn panel-fleet-btn--blue" onClick={() => startEditVehicle(v)}>
-                              Bearbeiten
-                            </button>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          {editVehicleId ? (
-            <form className="panel-rides-form" onSubmit={saveVehicleEdit} style={{ marginTop: 18 }}>
-              <h4 className="panel-card__title">Fahrzeug bearbeiten</h4>
-              <div className="panel-rides-form__grid">
-                <label className="panel-rides-form__field">
-                  <span>Kennzeichen</span>
-                  <input
-                    value={editVehicleForm.licensePlate}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, licensePlate: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Hersteller / Modell</span>
-                  <input
-                    value={editVehicleForm.model}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, model: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Farbe</span>
-                  <input
-                    value={editVehicleForm.color}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, color: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Typ</span>
-                  <select
-                    value={editVehicleForm.vehicleType}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, vehicleType: ev.target.value }))}
-                  >
-                    {VEHICLE_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Fahrzeugklasse</span>
-                  <select
-                    value={editVehicleForm.vehicleClass}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, vehicleClass: ev.target.value }))}
-                  >
-                    {VEHICLE_CLASSES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Taxi-Ordnungsnr.</span>
-                  <input
-                    value={editVehicleForm.taxiOrderNumber}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, taxiOrderNumber: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Nächste HU (TÜV)</span>
-                  <input
-                    type="date"
-                    value={editVehicleForm.nextInspectionDate}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, nextInspectionDate: ev.target.value }))}
-                  />
-                </label>
-                <label className="panel-rides-form__field">
-                  <span>Status</span>
-                  <select
-                    value={editVehicleForm.isActive ? "active" : "inactive"}
-                    onChange={(ev) => setEditVehicleForm((f) => ({ ...f, isActive: ev.target.value === "active" }))}
-                  >
-                    <option value="active">Aktiv</option>
-                    <option value="inactive">Inaktiv</option>
-                  </select>
-                </label>
-              </div>
-              <div className="panel-profile-actions">
-                <button type="submit" className="panel-btn-primary" disabled={busyAction === `vehicle-edit-${editVehicleId}`}>
-                  {busyAction === `vehicle-edit-${editVehicleId}` ? "Speichern …" : "Änderungen speichern"}
-                </button>
-                <button type="button" className="panel-btn-secondary" onClick={() => setEditVehicleId("")}>
-                  Abbrechen
-                </button>
-              </div>
-            </form>
-          ) : null}
-        </div>
-      ) : null}
-
-      {tab === "assignments" ? (
-        <div className="panel-card panel-card--wide">
-          {canManageFleet ? (
+          {canManage ? (
             <form className="panel-rides-form" onSubmit={submitAssignment} style={{ marginBottom: 18 }}>
-              <h4 className="panel-card__title">Fahrer ↔ Fahrzeug zuweisen</h4>
+              <h4 className="panel-card__title">Fahrer ↔ Fahrzeug (aktuell)</h4>
               <div className="panel-rides-form__grid">
                 <label className="panel-rides-form__field">
                   <span>Fahrer</span>
@@ -1349,48 +752,62 @@ export default function FleetPage() {
                 </label>
               </div>
               <button type="submit" className="panel-btn-primary" style={{ marginTop: 10 }}>
-                Zuweisung speichern
+                Zuweisen
               </button>
             </form>
           ) : null}
+
           <div style={{ overflowX: "auto" }}>
             <table className="panel-fleet-table">
               <thead>
                 <tr>
-                  <th>Fahrer</th>
-                  <th>Fahrzeug</th>
-                  <th>Zuletzt aktualisiert</th>
-                  <th>Aktionen</th>
+                  <th>Kennzeichen</th>
+                  <th>Modell</th>
+                  <th>Typ</th>
+                  <th>Klasse</th>
+                  <th>Taxi-Nr.</th>
+                  <th>HU</th>
+                  <th>Aktueller Fahrer</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={4}>Laden …</td>
+                    <td colSpan={6}>Laden …</td>
                   </tr>
-                ) : assignments.length === 0 ? (
+                ) : vehicles.length === 0 ? (
                   <tr>
-                    <td colSpan={4}>Keine Zuweisungen.</td>
+                    <td colSpan={6}>Keine Fahrzeuge.</td>
                   </tr>
                 ) : (
-                  assignments.map((a) => {
-                    const drv = drivers.find((d) => d.id === a.driverId);
-                    const veh = vehicles.find((v) => v.id === a.vehicleId);
+                  vehicles.map((v) => {
+                    const a = assignments.find((x) => x.vehicleId === v.id);
+                    const drv = a ? drivers.find((d) => d.id === a.driverId) : null;
                     return (
-                      <tr key={`${a.driverId}-${a.vehicleId}`}>
-                        <td>{drv ? `${drv.firstName} ${drv.lastName}` : a.driverId}</td>
-                        <td>{veh ? `${veh.licensePlate}${veh.model ? ` · ${veh.model}` : ""}` : a.vehicleId}</td>
-                        <td>{a.assignedAt || "—"}</td>
+                      <tr key={v.id}>
+                        <td>{v.licensePlate}</td>
+                        <td>{v.model || "—"}</td>
+                        <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
+                        <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
+                        <td>{v.taxiOrderNumber || "—"}</td>
+                        <td>{v.nextInspectionDate || "—"}</td>
                         <td>
-                          {canManageFleet ? (
-                            <button
-                              type="button"
-                              className="panel-btn-secondary"
-                              style={{ padding: "4px 8px", fontSize: 12 }}
-                              onClick={() => clearAssignment(a.driverId)}
-                            >
-                              Zuweisung lösen
-                            </button>
+                          {drv ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span>
+                                {drv.firstName} {drv.lastName}
+                              </span>
+                              {canManage ? (
+                                <button
+                                  type="button"
+                                  className="panel-btn-secondary"
+                                  style={{ padding: "4px 8px", fontSize: 12 }}
+                                  onClick={() => clearAssignment(drv.id)}
+                                >
+                                  Zuweisung löschen
+                                </button>
+                              ) : null}
+                            </div>
                           ) : (
                             "—"
                           )}
@@ -1411,7 +828,7 @@ export default function FleetPage() {
           <p className="panel-page__muted">
             Laden Sie hier die Gewerbeanmeldung und die Versicherungspolice als PDF hoch (max. ca. 6–8 MB).
           </p>
-          {canManageFleet ? (
+          {canManage ? (
             <div className="panel-fleet-uploads">
               <label className="panel-fleet-upload">
                 <span className="panel-fleet-upload__lbl">Gewerbeanmeldung</span>
