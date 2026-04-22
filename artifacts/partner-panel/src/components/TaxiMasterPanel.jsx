@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
+import FleetPage from "../pages/FleetPage.jsx";
 
 const STORAGE_KEY = "onrodaPanelJwt";
 
@@ -94,8 +95,9 @@ export default function TaxiMasterPanel({ company, onLogout }) {
   const menuItems = [
     { key: "dashboard", label: "Dashboard" },
     { key: "stammdaten", label: "Stammdaten" },
-    { key: "fahrer", label: "Fahrer" },
-    { key: "fahrzeuge", label: "Fahrzeuge" },
+    { key: "fleet", label: "Flotte & Fahrer" },
+    { key: "fahrer", label: "Fahrer (alt)" },
+    { key: "fahrzeuge", label: "Fahrzeuge (alt)" },
   ];
 
   const theme = {
@@ -204,7 +206,9 @@ export default function TaxiMasterPanel({ company, onLogout }) {
         {activeTab === "dashboard" && (
           <div>
             <div style={{ marginBottom: 20 }}>
-              <h1 style={{ margin: 0, fontSize: 28 }}>Willkommen, {currentCompany?.name || "Taxi-Unternehmer"}</h1>
+              <h1 style={{ margin: 0, fontSize: 28 }}>
+                Willkommen, {currentCompany?.name || "Taxi-Unternehmer"}
+              </h1>
               <p style={{ marginTop: 8, color: theme.muted }}>
                 Übersicht über Betrieb, Flotte und aktuelle Kennzahlen.
               </p>
@@ -217,26 +221,32 @@ export default function TaxiMasterPanel({ company, onLogout }) {
               <Card title="Aktive Fahrzeuge" value={String(activeVehicles)} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16, marginTop: 16 }}>
-              <Card title="Umsatz heute" value={money(metrics?.today?.revenue)} />
-              <Card title="Umsatz Woche" value={money(metrics?.week?.revenue)} />
-              <Card title="Umsatz Monat" value={money(metrics?.month?.revenue)} />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 16,
+                marginTop: 16,
+              }}
+            >
+              <Card title="Abgeschlossen heute" value={String(metrics?.completedToday ?? 0)} />
+              <Card title="Umsatz heute" value={money(metrics?.revenueToday ?? 0)} />
+              <Card title="Ausstehende Zahlungen" value={money(metrics?.openPayouts ?? 0)} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginTop: 20 }}>
-              <Section title="Betriebsstatus">
-                <InfoRow label="Firmenstatus" value={currentCompany?.contractStatus || "-"} />
-                <InfoRow label="Verifizierung" value={currentCompany?.verificationStatus || "-"} />
-                <InfoRow label="Compliance" value={currentCompany?.complianceStatus || "-"} />
-                <InfoRow label="Firma aktiv" value={currentCompany?.isActive ? "Ja" : "Nein"} />
-                <InfoRow label="Firma gesperrt" value={currentCompany?.isBlocked ? "Ja" : "Nein"} />
+            <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Section title="Betrieb aktuell">
+                <InfoRow label="Firma" value={currentCompany?.name || "-"} />
+                <InfoRow label="Unternehmensart" value={currentCompany?.companyKind || "-"} />
+                <InfoRow label="Aktive Fahrer" value={String(activeDrivers)} />
+                <InfoRow label="Aktive Fahrzeuge" value={String(activeVehicles)} />
               </Section>
 
-              <Section title="Vollständigkeit">
-                <InfoRow label="Gewerbenachweis" value={currentCompany?.hasComplianceGewerbe ? "Vorhanden" : "Fehlt"} />
-                <InfoRow label="Versicherungsnachweis" value={currentCompany?.hasComplianceInsurance ? "Vorhanden" : "Fehlt"} />
-                <InfoRow label="Bank-IBAN" value={currentCompany?.bankIban || "Nicht hinterlegt"} />
-                <InfoRow label="Konzession" value={currentCompany?.concessionNumber || "Nicht hinterlegt"} />
+              <Section title="Heute">
+                <InfoRow label="Offene Fahrten" value={String(metrics?.openRides ?? 0)} />
+                <InfoRow label="Geplante Fahrten" value={String(metrics?.scheduled?.todayCount ?? 0)} />
+                <InfoRow label="Abgeschlossen" value={String(metrics?.completedToday ?? 0)} />
+                <InfoRow label="Umsatz" value={money(metrics?.revenueToday ?? 0)} />
               </Section>
             </div>
           </div>
@@ -244,40 +254,23 @@ export default function TaxiMasterPanel({ company, onLogout }) {
 
         {activeTab === "stammdaten" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 28 }}>Stammdaten</h2>
-                <p style={{ marginTop: 8, color: theme.muted, maxWidth: 760 }}>
-                  Pflege hier die Pflichtangaben für deinen Taxi-Betrieb. Nach vollständigem Abschluss werden zentrale Basisdaten gesperrt und können später nur noch über Onroda geändert werden.
-                </p>
-              </div>
-              <div
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 999,
-                  background: currentCompany?.profileLocked ? "#111111" : "#fff7cc",
-                  color: currentCompany?.profileLocked ? "#ffffff" : "#6b5900",
-                  border: currentCompany?.profileLocked ? "1px solid #111111" : "1px solid #f1c40f",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {currentCompany?.profileLocked ? "Stammdaten gesperrt" : "Ersteinrichtung offen"}
-              </div>
+            <div style={{ marginBottom: 20 }}>
+              <h1 style={{ margin: 0, fontSize: 28 }}>Stammdaten</h1>
+              <p style={{ marginTop: 8, color: theme.muted }}>
+                Unternehmens-, Kontakt-, Adress- und Abrechnungsdaten.
+              </p>
             </div>
 
             <div
               style={{
-                background: "#ffffff",
+                background: "#fff",
                 border: `1px solid ${theme.border}`,
-                borderRadius: 18,
-                padding: 20,
-                marginBottom: 18,
-                boxShadow: "0 10px 30px rgba(17,17,17,0.04)",
+                borderRadius: 16,
+                padding: 18,
+                marginBottom: 16,
               }}
             >
-              <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Pflichtfelder Taxi</div>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>Verfügbare Datenfelder</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
                 {[
                   "Firmenname",
@@ -348,10 +341,39 @@ export default function TaxiMasterPanel({ company, onLogout }) {
           </div>
         )}
 
+        {activeTab === "fleet" && (
+          <div>
+            <div style={{ marginBottom: 20 }}>
+              <h1 style={{ margin: 0, fontSize: 28 }}>Flotte & Fahrer</h1>
+              <p style={{ marginTop: 8, color: theme.muted }}>
+                Fahrer, Fahrzeuge, Zuweisungen und Nachweise.
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: "#fff",
+                border: `1px solid ${theme.border}`,
+                borderRadius: 14,
+                padding: 10,
+              }}
+            >
+              <FleetPage />
+            </div>
+          </div>
+        )}
+
         {activeTab === "fahrer" && (
           <div>
-            <h2>Fahrer</h2>
-            <div style={{ background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <h2>Fahrer (alte Übersicht)</h2>
+            <div
+              style={{
+                background: "#fff",
+                border: `1px solid ${theme.border}`,
+                borderRadius: 14,
+                overflow: "hidden",
+              }}
+            >
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
@@ -366,7 +388,9 @@ export default function TaxiMasterPanel({ company, onLogout }) {
                 <tbody>
                   {drivers.map((driver) => (
                     <tr key={driver.id} style={{ borderTop: `1px solid ${theme.border}` }}>
-                      <Td>{driver.firstName} {driver.lastName}</Td>
+                      <Td>
+                        {driver.firstName} {driver.lastName}
+                      </Td>
                       <Td>{driver.email || "-"}</Td>
                       <Td>{driver.phone || "-"}</Td>
                       <Td>{driver.isActive ? driver.accessStatus : "inactive"}</Td>
@@ -387,8 +411,15 @@ export default function TaxiMasterPanel({ company, onLogout }) {
 
         {activeTab === "fahrzeuge" && (
           <div>
-            <h2>Fahrzeuge</h2>
-            <div style={{ background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" }}>
+            <h2>Fahrzeuge (alte Übersicht)</h2>
+            <div
+              style={{
+                background: "#fff",
+                border: `1px solid ${theme.border}`,
+                borderRadius: 14,
+                overflow: "hidden",
+              }}
+            >
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
@@ -436,8 +467,8 @@ function Card({ title, value }) {
         padding: 18,
       }}
     >
-      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10 }}>{title}</div>
-      <div style={{ fontSize: 28, fontWeight: 800 }}>{value}</div>
+      <div style={{ color: "#6b7280", fontSize: 14, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.1 }}>{value}</div>
     </div>
   );
 }
@@ -479,5 +510,9 @@ function Th({ children }) {
 }
 
 function Td({ children, colSpan }) {
-  return <td colSpan={colSpan} style={{ padding: "14px 16px", fontSize: 14 }}>{children}</td>;
+  return (
+    <td colSpan={colSpan} style={{ padding: "14px 16px", fontSize: 14 }}>
+      {children}
+    </td>
+  );
 }
