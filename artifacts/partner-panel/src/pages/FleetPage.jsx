@@ -222,7 +222,7 @@ export default function FleetPage() {
 
   async function createDriver(e) {
     e.preventDefault();
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     setMsg("");
     try {
       const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers`, {
@@ -258,7 +258,7 @@ export default function FleetPage() {
 
   async function createVehicle(e) {
     e.preventDefault();
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     setMsg("");
     try {
       const { ok, status, data } = await fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/vehicles`, {
@@ -421,7 +421,7 @@ export default function FleetPage() {
   }
 
   async function clearAssignment(driverId) {
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     if (!driverId) return;
     if (!window.confirm("Zuweisung für diesen Fahrer wirklich entfernen? Der Fahrer hat dann kein aktives Fahrzeug.")) {
       return;
@@ -446,7 +446,7 @@ export default function FleetPage() {
   }
 
   async function suspendDriver(id) {
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     if (!window.confirm("Fahrer sperren? Der Login wird sofort ungültig.")) return;
     setMsg("");
     setBusyAction(`driver-suspend-${id}`);
@@ -470,7 +470,7 @@ export default function FleetPage() {
   }
 
   async function activateDriver(id) {
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     setMsg("");
     setBusyAction(`driver-activate-${id}`);
     try {
@@ -493,7 +493,7 @@ export default function FleetPage() {
   }
 
   async function resetDriverPassword(id) {
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     setMsg("");
     try {
       const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(id)}/reset-password`, {
@@ -518,7 +518,7 @@ export default function FleetPage() {
 
   async function submitAssignment(e) {
     e.preventDefault();
-    if (!token || !canManage || company?.profileLocked) return;
+    if (!token || !canManage) return;
     setMsg("");
     try {
       const { ok, status, data } = await fetchJsonWithTimeout(`${API_BASE}/panel/v1/fleet/assignments`, {
@@ -657,7 +657,10 @@ export default function FleetPage() {
     });
   }, [vehicles, vehiclesActiveOnly, normalizedVehicleQuery]);
 
-  const canManageFleet = canManage && !company?.profileLocked;
+  const canManageFleet = canManage;
+  const showDriverCreateForm = canManageFleet && tab === "drivers";
+  const showVehicleCreateForm = canManageFleet && tab === "vehicles";
+  const showAssignmentForm = canManageFleet && tab === "assignments";
   const basicsComplete = company
     ? Boolean(
         company.name &&
@@ -675,6 +678,38 @@ export default function FleetPage() {
 
   return (
     <div className="panel-page">
+      <div
+        className="panel-card panel-card--wide"
+        style={{ marginBottom: 12, borderColor: "#f59e0b", background: "#fffbeb" }}
+      >
+        <h3 className="panel-card__title" style={{ color: "#92400e" }}>
+          Debug (temporär)
+        </h3>
+        <pre
+          style={{
+            margin: 0,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontSize: 12,
+            lineHeight: 1.45,
+            color: "#78350f",
+          }}
+        >
+          {JSON.stringify(
+            {
+              permissions: Array.isArray(user?.permissions) ? user.permissions : [],
+              canRead,
+              canManageFleet,
+              tab,
+              showDriverCreateForm,
+              showVehicleCreateForm,
+              showAssignmentForm,
+            },
+            null,
+            2,
+          )}
+        </pre>
+      </div>
       <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
         <h3 className="panel-card__title">Flotte auf einen Blick</h3>
         {dash ? (
@@ -725,12 +760,7 @@ export default function FleetPage() {
               <span className={statusClass(company.complianceStatus === "compliant")}>{company.complianceStatus}</span>
             </p>
           </div>
-          {!canManageFleet ? (
-            <p className="panel-page__muted">
-              Bearbeitung ist aktuell gesperrt (Profil-Lock aktiv). Bitte Stammdatenanpassungen über die Onroda-Administration
-              freigeben lassen.
-            </p>
-          ) : null}
+          {!canManageFleet ? <p className="panel-page__muted">Keine Berechtigung für Flotten-Bearbeitung.</p> : null}
         </div>
       ) : null}
 
