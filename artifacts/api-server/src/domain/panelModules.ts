@@ -1,6 +1,6 @@
 /**
  * Partner-Panel: sichtbare Menüpunkte/Kacheln pro Mandant (`admin_companies.panel_modules`).
- * `null` in der DB = alle Module (Abwärtskompatibilität).
+ * `null` in der DB = effektiv alle **für `company_kind` erlaubten** Module (Legacy; gleiche Whitelist wie Admin-PATCH).
  *
  * `productIntent`: fachliche Zielrichtung für Roadmap und Abstimmung (nicht nur UI-Label).
  */
@@ -91,6 +91,96 @@ const ID_SET = new Set<string>(PANEL_MODULE_DEFINITIONS.map((d) => d.id));
 
 export const ALL_PANEL_MODULE_IDS: PanelModuleId[] = PANEL_MODULE_DEFINITIONS.map((d) => d.id);
 
+function asModuleIdSet(ids: readonly PanelModuleId[]): ReadonlySet<PanelModuleId> {
+  return new Set(ids);
+}
+
+/** Ohne Taxi-Mandant nie `taxi_fleet` (Legacy-„alle“ für unbekannte / `general`-ähnliche Typen). */
+const GENERAL_LIKE_KIND_MODULES: ReadonlySet<PanelModuleId> = asModuleIdSet(
+  ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet"),
+);
+
+const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> = {
+  taxi: asModuleIdSet([
+    "overview",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "taxi_fleet",
+  ]),
+  hotel: asModuleIdSet([
+    "overview",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "hotel_mode",
+    "billing",
+  ]),
+  insurer: asModuleIdSet([
+    "overview",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides",
+  ]),
+  medical: asModuleIdSet([
+    "overview",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides",
+  ]),
+  corporate: asModuleIdSet([
+    "overview",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides",
+  ]),
+  voucher_client: asModuleIdSet([
+    "overview",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+  ]),
+  general: GENERAL_LIKE_KIND_MODULES,
+};
+
+/**
+ * Erlaubte Panel-Modul-IDs für `admin_companies.company_kind` (Whitelist).
+ * Abgleich Admin-UI: `artifacts/admin-panel/src/lib/panelModulesByCompanyKind.js`
+ */
+export function allowedPanelModuleIdsForCompanyKind(companyKind: string): ReadonlySet<PanelModuleId> {
+  const k = (companyKind || "general").trim();
+  return PANEL_MODULES_BY_COMPANY_KIND[k] ?? GENERAL_LIKE_KIND_MODULES;
+}
+
+/** Wie {@link resolveEffectivePanelModules} bei `stored === null`: Katalog-Reihenfolge, nur erlaubte IDs. */
+export function getAllowedModulesForKind(companyKind: string | null | undefined): PanelModuleId[] {
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
+  return ALL_PANEL_MODULE_IDS.filter((id) => allowed.has(id));
+}
+
 /** Rohwert aus JSONB; ungültige Einträge werden verworfen. */
 export function normalizeStoredPanelModules(raw: unknown): string[] | null {
   if (raw == null) return null;
@@ -109,12 +199,19 @@ export function normalizeStoredPanelModules(raw: unknown): string[] | null {
 }
 
 /**
- * Effektiv aktive Module: `null` = alle (Legacy). Leeres Array = nichts freigeschaltet (nur für Tests).
+ * Effektiv aktive Module.
+ * - `stored === null` (Legacy): alle für `companyKind` erlaubten Module (`getAllowedModulesForKind`).
+ * - `stored` als Liste: nur gültige Katalog-IDs in Katalog-Reihenfolge (wie bisher).
+ *
+ * @param companyKind `admin_companies.company_kind` — bei `stored == null` erforderlich für korrekte Whitelist;
+ *   fehlt es, wird `"general"` angenommen.
  */
-export function resolveEffectivePanelModules(stored: string[] | null | undefined): PanelModuleId[] {
-  /** `taxi_fleet` nie implizit über „alle Module“ (Legacy-NULL) — nur explizit in der Whitelist. */
+export function resolveEffectivePanelModules(
+  stored: string[] | null | undefined,
+  companyKind?: string | null,
+): PanelModuleId[] {
   if (stored == null) {
-    return ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet");
+    return getAllowedModulesForKind(companyKind);
   }
   const set = new Set(stored);
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));

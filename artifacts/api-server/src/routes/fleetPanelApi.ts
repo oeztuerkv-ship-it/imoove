@@ -56,8 +56,8 @@ const FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path.jo
 const ALLOWED_VEHICLE_LEGAL_TYPES: FleetVehicleLegalType[] = ["taxi"];
 const ALLOWED_VEHICLE_CLASSES: FleetVehicleClass[] = ["standard", "xl", "wheelchair"];
 
-function enabledPanelModules(panelModules: string[] | null) {
-  return resolveEffectivePanelModules(panelModules);
+function enabledPanelModules(panelModules: string[] | null, companyKind: string) {
+  return resolveEffectivePanelModules(panelModules, companyKind);
 }
 
 async function assertFleetPanel(
@@ -90,7 +90,7 @@ async function assertFleetPanel(
     res.status(403).json({ error: "fleet_only_taxi_company" });
     return null;
   }
-  if (!enabledPanelModules(profile.panelModules).includes("taxi_fleet")) {
+  if (!enabledPanelModules(profile.panelModules, kind).includes("taxi_fleet")) {
     res.status(403).json({ error: "module_not_enabled", module: "taxi_fleet" });
     return null;
   }

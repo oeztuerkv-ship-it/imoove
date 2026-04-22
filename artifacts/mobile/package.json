@@ -2,6 +2,9 @@
   "name": "@workspace/mobile",
   "version": "0.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0 <21"
+  },
   "main": "expo-router/entry",
   "scripts": {
     "dev": "npx expo start . --port 8081 --clear",
@@ -13,8 +16,8 @@
     "dev:local": "npx expo start . --port 8081 --clear"
   },
   "dependencies": {
-    "@expo/metro-runtime": "~6.1.2",
     "@expo-google-fonts/inter": "^0.4.0",
+    "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@tanstack/react-query": "catalog:",
@@ -25,6 +28,7 @@
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.11",
     "expo-crypto": "^15.0.8",
+    "expo-dev-client": "^55.0.27",
     "expo-font": "~14.0.10",
     "expo-glass-effect": "~0.1.4",
     "expo-haptics": "~15.0.8",

@@ -533,6 +533,34 @@
   color: var(--onroda-text-dark);
 }
 
+.panel-fleet-search {
+  min-width: 280px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--onroda-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: var(--onroda-text-dark);
+  background: #fff;
+}
+
+.panel-fleet-search:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 1px;
+}
+
+.panel-fleet-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+@media (max-width: 700px) {
+  .panel-fleet-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .panel-fleet-table {
   width: 100%;
   border-collapse: collapse;

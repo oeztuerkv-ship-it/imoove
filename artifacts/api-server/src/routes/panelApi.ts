@@ -101,7 +101,7 @@ async function assertActivePanelProfile(
 }
 
 function enabledPanelModules(profile: PanelUserProfileRow): PanelModuleId[] {
-  return resolveEffectivePanelModules(profile.panelModules);
+  return resolveEffectivePanelModules(profile.panelModules, profile.companyKind);
 }
 
 function denyUnlessPanelModule(res: Response, profile: PanelUserProfileRow, mod: PanelModuleId): boolean {

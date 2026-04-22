@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Router, type IRouter, type Request, type Response } from "express";
+import { forbiddenPanelModulesForCompanyKind } from "../domain/adminCompanyKindPanelModules";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
 import { normalizeStoredPanelModules, PANEL_MODULE_DEFINITIONS } from "../domain/panelModules";
 import { getPartnerRegistrationPolicy } from "../domain/partnerRegistrationPolicies";
@@ -1891,7 +1892,8 @@ adminJson.patch("/rides/:id/release", async (req, res, next) => {
 adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
   try {
     const { companyId } = req.params;
-    if ((await requireCompanyRowForMutation(req, res, companyId)) == null) return;
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     const body = req.body as Record<string, unknown>;
     if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
       res.status(400).json({ error: "panel_modules_required", hint: "null = alle Module, sonst string[]" });
@@ -1911,6 +1913,17 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
     } else {
       res.status(400).json({ error: "panel_modules_invalid" });
       return;
+    }
+    if (modules != null) {
+      const bad = forbiddenPanelModulesForCompanyKind(company.company_kind, modules);
+      if (bad.length > 0) {
+        res.status(400).json({
+          error: "panel_modules_forbidden_for_company_kind",
+          hint: `Für Mandanten-Typ „${company.company_kind}“ nicht erlaubt: ${bad.join(", ")}`,
+          forbidden: bad,
+        });
+        return;
+      }
     }
     const item = await patchCompanyPanelModules(companyId, modules);
     if (!item) {
