@@ -2155,3 +2155,56 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.8rem;
 }
+/* Workspace Tabs Layout */
+.workspace-tabs {
+  display: flex;
+  gap: 10px;
+  border-bottom: 2px solid #eee;
+  margin-bottom: 20px;
+  padding-bottom: 5px;
+}
+
+.tab-link {
+  background: none;
+  border: none;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-link.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+}
+
+.tab-link:hover {
+  background: #f8f9fa;
+}
+
+/* Mandanten-Typ Filter-Leiste */
+.admin-tabs {
+  margin: 20px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.tab-section {
+  padding: 15px 0;
+}

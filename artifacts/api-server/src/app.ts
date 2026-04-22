@@ -5,52 +5,10 @@ import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import adminRouter from "./routes/admin";
+import panelAuth from "./routes/panelAuth.js";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
-
-/**
- * Pfad zum Ordner `static/` (onroda-brand.css, Marketing-index.html).
- * Nicht `process.cwd()` — in Production ist das oft nicht das api-server-Verzeichnis.
- * Gebündelter Einstieg: `dist/index.mjs` → ein Verzeichnis darüber liegt `static/`.
- */
-function resolveStaticRoot(): string {
-  const fromEnv = process.env["STATIC_ROOT"];
-  if (fromEnv && fromEnv.length > 0) {
-    return path.resolve(fromEnv);
-  }
-  const distDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(distDir, "..", "static");
-}
-
-/**
- * Gebautes Admin-Panel (Vite, base `/partners/`).
- * Standard: `artifacts/admin-panel/dist` (API-Build löscht `dist/`, daher nicht unter api-server/dist/public).
- *
- * Hinweis: `/partners/` bleibt als technischer Pfad für den Admin-Build erhalten,
- * wird aber nur noch auf dem Admin-Host ausgeliefert.
- */
-function resolvePublicRoot(): string {
-  const fromEnv = process.env["ADMIN_STATIC_ROOT"];
-  if (fromEnv && fromEnv.length > 0) {
-    return path.resolve(fromEnv);
-  }
-  const apiDistDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(apiDistDir, "..", "..", "admin-panel", "dist");
-}
-
-/** Partner-Portal (Vite base `/` → partner-panel/dist), Host panel.onroda.de. */
-function resolvePanelPublicRoot(): string {
-  const fromEnv = process.env["PANEL_STATIC_ROOT"];
-  if (fromEnv && fromEnv.length > 0) {
-    return path.resolve(fromEnv);
-  }
-  const apiDistDir = path.dirname(fileURLToPath(import.meta.url));
-  return path.join(apiDistDir, "..", "..", "partner-panel", "dist");
-}
-
-const staticRoot = resolveStaticRoot();
-const panelPublicRoot = resolvePanelPublicRoot();
 
 function isPanelBrowserHost(h: string): boolean {
   return h === "panel.onroda.de";
@@ -60,7 +18,6 @@ function isAdminBrowserHost(h: string): boolean {
   return h === "admin.onroda.de";
 }
 
-/* Hinter Nginx/Ingress: korrektes req.protocol / Host für OAuth-Redirects */
 app.set("trust proxy", 1);
 
 function hostname(req: express.Request): string {
@@ -81,7 +38,6 @@ function isApiHost(h: string): boolean {
   );
 }
 
-/** Browser-Origins, die die API per CORS ansprechen dürfen (Admin-/Panel-Subdomains, Marketing, Dev). */
 function buildCorsAllowedOrigins(): Set<string> {
   const set = new Set<string>([
     "https://onroda.de",
@@ -153,143 +109,77 @@ app.use(
     maxAge: 86400,
   }),
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/*
- * WICHTIG: API- und Admin-Routen zuerst – vor Static/Marketing,
- * sonst kann express.static oder Host-Logik Anfragen verschlucken.
- *
- * Doppel-Mount: Viele Nginx-Setups proxy_pass mit URI `/api/…` auf den Node-Upstream;
- * andere entfernen das Präfix und liefern `/admin/…` direkt. Beides soll dieselbe App treffen.
- */
 app.use("/api", router);
 app.use(router);
 app.use(adminRouter);
+app.use("/api/panel-auth", panelAuth); // <-- HIER IST DIE NEUE ROUTE
 
-/* Partner-Host: /partners* vor Admin-Static — darf niemals die Admin-SPA treffen. */
+// Restliche Middleware und Static-Logik
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const staticRoot = path.join(__dirname, "../static");
+const panelPublicRoot = path.join(__dirname, "../../partner-panel/dist");
+function resolvePublicRoot() { return path.join(__dirname, "../../admin-panel/dist"); }
+
 app.use((req, res, next) => {
-  if (!isPanelBrowserHost(hostname(req))) {
-    return next();
-  }
-  if (req.path === "/partners" || req.path.startsWith("/partners/")) {
-    return res.redirect(302, "/");
-  }
+  if (!isPanelBrowserHost(hostname(req))) return next();
+  if (req.path === "/partners" || req.path.startsWith("/partners/")) return res.redirect(302, "/");
   return next();
 });
 
-/* Admin-Panel (Vite-Build mit base `/partners/` → admin-panel/dist), nur auf admin.onroda.de. */
+// Admin-Static
 const adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
-  if (!isAdminBrowserHost(hostname(req))) {
-    return next();
-  }
-  express.static(adminPublicRoot)(req, res, (err) => {
-    if (err) return next(err);
-    return next();
-  });
+  if (!isAdminBrowserHost(hostname(req))) return next();
+  express.static(adminPublicRoot)(req, res, (err) => { if (err) return next(err); return next(); });
 });
 app.use("/partners", (req, res, next) => {
-  if (!isAdminBrowserHost(hostname(req))) {
-    return next();
-  }
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    return next();
-  }
-  res.sendFile(path.join(adminPublicRoot, "index.html"), (err) => {
-    if (err) next(err);
-  });
+  if (!isAdminBrowserHost(hostname(req))) return next();
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  res.sendFile(path.join(adminPublicRoot, "index.html"), (err) => { if (err) next(err); });
 });
 
-/* Partner-Panel SPA: nur Host panel.onroda.de (API bleibt api.onroda.de). */
+// Panel-Static
 app.use((req, res, next) => {
-  if (!isPanelBrowserHost(hostname(req))) {
-    return next();
-  }
+  if (!isPanelBrowserHost(hostname(req))) return next();
   express.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
-  if (!isPanelBrowserHost(hostname(req))) {
-    return next();
-  }
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    return next();
-  }
-  if (req.path.startsWith("/partners")) {
-    return next();
-  }
-  res.sendFile(path.join(panelPublicRoot, "index.html"), (err) => {
-    if (err) next(err);
-  });
+  if (!isPanelBrowserHost(hostname(req))) return next();
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  if (req.path.startsWith("/partners")) return next();
+  res.sendFile(path.join(panelPublicRoot, "index.html"), (err) => { if (err) next(err); });
 });
 
-/* Marketing-Static darf /partners nicht bedienen (kein altes static/partners mehr überschreiben). */
 app.use((req, res, next) => {
   const p = req.path;
-  if (p === "/partners" || p.startsWith("/partners/")) {
-    return next();
-  }
+  if (p === "/partners" || p.startsWith("/partners/")) return next();
   express.static(staticRoot, { index: false })(req, res, next);
 });
 
-/* Root: Marketing-Domain = nur öffentliche Homepage; App = Mobile + API; Panel später eigene Subdomain. */
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") {
-    return res.sendFile(path.join(staticRoot, "index.html"));
-  }
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path.join(staticRoot, "index.html"));
   return next();
 });
 
-/* Öffentliche Partner-Anfrage: Status (E-Mail + Referenz), nur Marketing-Host. */
 app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") {
-    return res.sendFile(path.join(staticRoot, "partner-status.html"), (err) => {
-      if (err) next(err);
-    });
-  }
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path.join(staticRoot, "partner-status.html"), (err) => { if (err) next(err); });
   return next();
 });
 
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") {
-    const filePath = path.join(staticRoot, "index.html");
-    return res.sendFile(filePath);
-  }
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
-    return res.json({
-      ok: true,
-      service: "onroda-api",
-      health: "/api/healthz",
-      healthV1: "/api/v1/health",
-      admin: "/admin",
-      adminPanel: "https://admin.onroda.de/partners/",
-      partnerPanel: "https://panel.onroda.de/",
-      partnerAuth: {
-        googlePanelStart: "/api/auth/panel-login",
-        panelPasswordLogin: "/api/panel-auth/login",
-        panelMe: "/api/panel/v1/me",
-        panelCompany: "/api/panel/v1/company",
-        panelCompanyPatch: "PATCH /api/panel/v1/company",
-        panelRidesList: "/api/panel/v1/rides",
-        panelRidesCreate: "POST /api/panel/v1/rides",
-        panelHealth: "/api/panel/v1/health",
-        panelLogout: "/api/panel-auth/logout",
-        fleetAuthLogin: "/api/fleet-auth/login",
-        fleetDriverMe: "/api/fleet-driver/v1/me",
-      },
-    });
+    return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) {
-    return res.sendFile(path.join(panelPublicRoot, "index.html"), (err) => {
-      if (err) next(err);
-    });
-  }
-  if (isAdminBrowserHost(host)) {
-    return res.redirect(302, "/partners/");
-  }
+  if (isPanelBrowserHost(host)) return res.sendFile(path.join(panelPublicRoot, "index.html"), (err) => { if (err) next(err); });
+  if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");
   return next();
 });
 

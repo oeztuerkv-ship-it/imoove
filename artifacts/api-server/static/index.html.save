@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ONRODA – Digitale Mobilität für Stuttgart</title>
+  <meta
+    name="description"
+    content="ONRODA verbindet Fahrgäste, Fahrer und Unternehmen – für moderne, strukturierte Mobilität in Stuttgart und der Region."
+  />
+  <link rel="stylesheet" href="/onroda-brand.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <div class="hp-topbar">
+    <div class="hp-wrap">
+      <div class="hp-topbar-left">
+        <a class="hp-logo" href="/" style="font-size:1.1rem;text-decoration:none;">
+          <span class="on">ON</span><span class="roda" style="color:#fff;">RODA</span>
+        </a>
+      </div>
+
+      <div class="hp-topbar-actions">
+        <details class="hp-topbar-about">
+          <summary>Über ONRODA</summary>
+          <div class="hp-topbar-about-panel">
+            <h3>Über ONRODA</h3>
+            <h4>Was wir wollen</h4>
+            <p>
+              ONRODA steht für moderne Mobilität, die mehr kann als reine Fahrtvermittlung.
+              Wir wollen Abläufe digitaler, einfacher und verlässlicher machen – für Fahrgäste,
+              Unternehmen, Hotels, medizinische Einrichtungen und Partnerbetriebe.
+            </p>
+            <p>
+              Dazu gehören für uns nicht nur Buchung und Fahrt, sondern die gesamte Abwicklung:
+              von der Anfrage über digitale Codes und Bestätigungen bis zur nachvollziehbaren
+              Organisation im Alltag.
+            </p>
+            <p>
+              ONRODA ist bewusst offen gedacht: Wir ermöglichen Mobilität für unterschiedlichste
+              Anforderungen und Einsatzbereiche – von klassischen Fahrten über barrierearme Lösungen
+              bis hin zu organisierten Krankenfahrten und speziellen Partnerprozessen.
+            </p>
+            <p>
+              Ziel ist ein System, das flexibel bleibt und gleichzeitig klare, digitale Abläufe bietet –
+              schnell, transparent, kostensparend und für alle Beteiligten nachvollziehbar.
+            </p>
+          </div>
+        </details>
+
+        <a class="hp-topbar-link" href="/datenschutz">Datenschutz</a>
+        <a class="hp-topbar-link" href="/impressum">Impressum</a>
+        <a class="hp-topbar-link" href="/agb">AGB</a>
+        <a class="hp-topbar-btn" href="https://panel.onroda.de/" rel="noopener noreferrer">Partner-Login</a>
+      </div>
+    </div>
+  </div>
+
+  <section class="hp-hero" id="top">
+    <header class="hp-header">
+      <div class="hp-header-inner">
+        <a class="hp-logo" href="/"><span class="on">ON</span><span class="roda">RODA</span></a>
+      </div>
+    </header>
+
+    <div class="hp-hero-content">
+      <div class="hp-hero-layout">
+        <div class="hp-hero-copy">
+          <h1>Die <em>Zukunft</em> der Mobilität</h1>
+          <p class="hp-hero-lead">
+            ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System –
+            für eine moderne und strukturierte Mobilität.
+          </p>
+          <div class="hp-hero-cta">
+            <a class="hp-btn-primary" href="#jetzt-buchen">Jetzt buchen</a>
+            <a class="hp-btn-ghost" href="#services">Mehr erfahren</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted" id="services">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <p class="hp-kicker">Leistungen</p>
+        <h2>Unsere Services</h2>
+        <p class="hp-sub">Modernste Technologie für Ihre Mobilität in Stuttgart</p>
+      </div>
+
+      <div class="hp-grid-4">
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">⏱</div>
+          <h3>Echtzeit-Buchung</h3>
+          <p>Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live auf der Karte.</p>
+        </article>
+
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">📅</div>
+          <h3>Vorbestellung</h3>
+          <p>Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.</p>
+        </article>
+
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">🧾</div>
+          <h3>Digitale Quittungen</h3>
+          <p>Alle Belege automatisch per E-Mail. Perfekt für Ihre Buchhaltung.</p>
+        </article>
+
+        <article class="hp-card">
+          <div class="hp-card-icon" aria-hidden="true">🎁</div>
+          <h3>Gutscheine</h3>
+          <p>Verschenken Sie Mobilität. Ideal für Geschäftspartner und Freunde.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section" id="manifest">
+    <div class="hp-wrap">
+      <div class="hp-section-head">
+        <p class="hp-kicker">Das ONRODA Manifest</p>
+        <h2>Vernetzung auf allen Ebenen</h2>
+        <p class="hp-sub" style="color:var(--onroda-red);font-weight:600;">Ein intelligentes System für Fahrgäste, Fahrer und Unternehmen</p>
+      </div>
+
+      <div class="hp-grid-2">
+        <article class="hp-manifest-card">
+          <span class="hp-num">1</span>
+          <div>
+            <div class="hp-icon-manifest" aria-hidden="true">📍</div>
+            <h3>Innovation aus der Region</h3>
+            <p>Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise, gepaart mit modernster Technik.</p>
+            <a class="hp-link" href="#manifest">Mehr erfahren →</a>
+          </div>
+        </article>
+
+        <article class="hp-manifest-card">
+          <span class="hp-num">2</span>
+          <div>
+            <div class="hp-icon-manifest" aria-hidden="true">⚡</div>
+            <h3>Effizienz durch Digitalisierung</h3>
+            <p>Bei ONRODA gibt es kein Hin-und-Her. Wir haben Prozesse radikal entschlackt. Alles läuft digital, direkt und reibungslos.</p>
+            <a class="hp-link" href="#services">Mehr erfahren →</a>
+          </div>
+        </article>
+
+        <article class="hp-manifest-card">
+          <span class="hp-num">3</span>
+          <div>
+            <div class="hp-icon-manifest" aria-hidden="true">🤝</div>
+            <h3>Mobilität als Service-Baustein</h3>
+            <p>Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter. ONRODA integriert Mobilität als qualitativen Mehrwert.</p>
+            <a class="hp-link" href="#unternehmen">Mehr erfahren →</a>
+          </div>
+        </article>
+
+        <article class="hp-manifest-card">
+          <span class="hp-num">4</span>
+          <div>
+            <div class="hp-icon-manifest" aria-hidden="true">🛡</div>
+            <h3>Verlässlichkeit ist unser Standard</h3>
+            <p>Wir versprechen nicht nur Mobilität, wir liefern sie. Ein Maximum an Planungssicherheit für Sie und Ihre Partner.</p>
+            <a class="hp-link" href="#care">Mehr erfahren →</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted hp-split-bleed-host" id="care">
+    <div class="hp-split-bleed">
+      <div class="hp-split-bleed__text">
+        <p class="hp-kicker">♥ ONRODA Care &amp; Alltag</p>
+        <h2>Mobilität mit Herz für Ihren Alltag</h2>
+        <p class="hp-lead" style="color:var(--onroda-red);font-weight:600;">
+          Sicher, persönlich und verlässlich – für Krankenfahrten und mehr
+        </p>
+        <p class="hp-lead" style="color:var(--onroda-text-grey);margin:0 0 22px;">
+          Wir begleiten Sie zu Arztterminen, Physiotherapie oder bei Alltagsfahrten – diskret, pünktlich
+          und mit dem nötigen Respekt vor Ihrer Situation.
+        </p>
+        <a class="hp-btn-primary" href="#jetzt-buchen" style="display:inline-flex;">
+          Mehr über ONRODA Care <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted hp-split-bleed-host" id="unternehmen">
+    <div class="hp-split-bleed">
+      <div class="hp-split-bleed__text">
+        <p class="hp-kicker">Für Unternehmen &amp; Hotels</p>
+        <h2>Schluss mit dem Hin-und-Her</h2>
+        <p class="hp-lead" style="color:var(--onroda-text-grey);margin:0 0 22px;">
+          Unternehmen in Stuttgart und der Region vertrauen auf ONRODA – digitale Effizienz mit persönlichem Service.
+        </p>
+
+        <ul style="list-style:none;padding:0;margin:0 0 24px;">
+          <li class="hp-benefit" style="margin-bottom:12px;">
+            <span>✓</span>
+            <div>
+              <strong>Kein Papierkram mehr</strong>
+              Von der Buchung bis zur Abrechnung – durchgängig digital
+            </div>
+          </li>
+
+          <li class="hp-benefit" style="margin-bottom:12px;">
+            <span>✓</span>
+            <div>
+              <strong>Direkte Abwicklung</strong>
+              Keine Callcenter-Schleifen, keine Wartezeiten
+            </div>
+          </li>
+
+          <li class="hp-benefit">
+            <span>✓</span>
+            <div>
+              <strong>Zeit sparen</strong>
+              Weniger administrativer Aufwand für Ihr Team
+            </div>
+          </li>
+        </ul>
+
+        <a class="hp-btn-primary" href="https://panel.onroda.de/">
+  Jetzt Partner werden und Fahrten digital organisieren
+</a>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-split-bleed-host" id="partner">
+    <div class="hp-split-bleed">
+      <div class="hp-split-bleed__text">
+        <div class="hp-partner-shell">
+          <div class="hp-partner-side">
+            <p class="hp-kicker">Für Unternehmer</p>
+            <h2>Werden Sie ONRODA Partner</h2>
+            <p class="hp-lead" style="color:var(--onroda-text-grey);margin:0 0 22px;">
+              Taxibetriebe und Mobilitätsanbieter in der Region Stuttgart: Registrieren Sie sich für unsere
+              digitale Plattform und erreichen Sie neue Fahrgäste.
+            </p>
+
+            <p class="hp-lead" style="color:var(--onroda-text-grey);margin:0 0 18px;">
+              Unternehmer sollen bei ONRODA direkt im Admin-Panel Codes erstellen, Abläufe digital steuern
+              und Fahrten strukturiert abwickeln können – schnell, nachvollziehbar und kostensparend.
+            </p>
+
+            <div class="hp-benefits">
+              <div class="hp-benefit">
+                <span aria-hidden="true">📈</span>
+                <div>
+                  <strong>Wachstumspotenzial</strong>
+                  Neue Kundengruppen über die App.
+                </div>
+              </div>
+
+              <div class="hp-benefit">
+                <span aria-hidden="true">🎧</span>
+                <div>
+                  <strong>Persönlicher Support</strong>
+                  Fester Ansprechpartner für Ihren Betrieb.
+                </div>
+              </div>
+
+              <div class="hp-benefit">
+                <span aria-hidden="true">📱</span>
+                <div>
+                  <strong>Digitale Tools</strong>
+                  Moderne Fahrer-App und Übersicht.
+                </div>
+              </div>
+
+              <div class="hp-benefit">
+                <span aria-hidden="true">👥</span>
+                <div>
+                  <strong>Netzwerk</strong>
+                  Teil eines wachsenden Ökosystems.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hp-form-card">
+            <h3>Partneranfrage</h3>
+            <p class="hint">Die Anfrage wird an <strong>onroda@mail.de</strong> vorbereitet.</p>
+
+            <form id="partner-form" action="#" method="post">
+              <div class="hp-partner-form-grid">
+                <div class="hp-field hp-field--full">
+                  <label for="companyType">Art des Unternehmens *</label>
+                  <select id="companyType" required>
+                    <option value="">Bitte wählen</option>
+                    <option>Taxiunternehmen</option>
+                    <option>Hotel</option>
+                    <option>Arztpraxis</option>
+                    <option>Klinik</option>
+                    <option>Unternehmen</option>
+                    <option>Versicherung / Krankenkasse</option>
+                    <option>Veranstalter</option>
+                    <option>Sonstiges</option>
+                  </select>
+                </div>
+
+                <div class="hp-field">
+                  <label for="companyName">Unternehmensname *</label>
+                  <input id="companyName" type="text" required autocomplete="organization" />
+                </div>
+
+                <div class="hp-field">
+                  <label for="firstName">Ansprechpartner Vorname *</label>
+                  <input id="firstName" type="text" required autocomplete="given-name" />
+                </div>
+
+                <div class="hp-field">
+                  <label for="lastName">Ansprechpartner Nachname *</label>
+                  <input id="lastName" type="text" required autocomplete="family-name" />
+                </div>
+
+                <div class="hp-field">
+                  <label for="businessEmail">Geschäftliche E-Mail *</label>
+                  <input id="businessEmail" type="email" required autocomplete="email" />
+                </div>
+
+                <div class="hp-field">
+                  <label for="customerEmail">E-Mail für Rückmeldung *</label>
+                  <input id="customerEmail" type="email" required autocomplete="email" />
+                </div>
+
+                <div class="hp-field">
+                  <label for="businessPhone">Geschäftliche Telefonnummer *</label>
+                  <input id="businessPhone" type="tel" required autocomplete="tel" />
+                </div>
+
+                <div class="hp-field hp-field--full">
+                  <label for="address">Adresse *</label>
+                  <input id="address" type="text" required autocomplete="street-address" />
+                </div>
+
+                <div class="hp-field hp-field--full">
+                  <div class="hp-loc-grid">
+                    <div class="hp-field">
+                      <label for="postalCode">PLZ *</label>
+                      <input id="postalCode" type="text" required autocomplete="postal-code" />
+                    </div>
+
+                    <div class="hp-field">
+                      <label for="city">Stadt *</label>
+                      <input id="city" type="text" required autocomplete="address-level2" />
+                    </div>
+
+                    <div class="hp-field">
+                      <label for="country">Land *</label>
+                      <select id="country" required autocomplete="country-name">
+                        <option>Deutschland</option>
+                        <option>Österreich</option>
+                        <option>Schweiz</option>
+                        <option>Sonstiges</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="hp-field">
+                  <label for="region">Einsatzbereich / Region</label>
+                  <input id="region" type="text" placeholder="z. B. Stuttgart, Flughafen, Region" />
+                </div>
+
+                <div class="hp-field">
+                  <label for="notes">Hinweise</label>
+                  <textarea id="notes" placeholder="Zusätzliche Informationen"></textarea>
+                </div>
+
+                <div class="hp-field hp-field--full hp-submit-row">
+                  <button type="submit" class="hp-btn-primary">Anfrage senden</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <aside class="hp-split-bleed__aside"></aside>
+    </div>
+  </section>
+
+  <section class="hp-section" id="fahrer">
+    <div class="hp-wrap">
+      <div class="hp-prose-center">
+        <p class="hp-kicker">Fahrerinnen &amp; Fahrer</p>
+        <h2>Fahren Sie mit ONRODA</h2>
+        <p class="hp-sub">
+          Werden Sie Teil des Netzwerks – flexible Einsätze, digitale Auftragsannahme und faire Abläufe.
+          Details und Einstieg besprechen wir gern persönlich.
+        </p>
+        <p style="margin-top:22px;">
+          <a class="hp-btn-primary" href="#top">Zur App / Buchung</a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="hp-section hp-section--muted" id="jetzt-buchen">
+    <div class="hp-wrap" style="text-align:center;">
+      <h2 style="font-family:var(--font-serif);margin:0 0 12px;">Bereit für die nächste Fahrt?</h2>
+      <p class="hp-sub" style="margin-bottom:12px;">Laden Sie die ONRODA-App – buchen und live verfolgen.</p>
+      <p style="color:var(--onroda-text-grey);font-size:0.95rem;margin:0;">
+        Apple App Store und Google Play können direkt hier verlinkt werden.
+      </p>
+    </div>
+  </section>
+
+  <section class="hp-download-band">
+    <div class="hp-wrap">
+      <div class="hp-download-band-inner">
+        <div>
+          <div class="hp-download-eyebrow">
+            <span class="hp-download-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="7" y="2.75" width="10" height="18.5" rx="2.4" stroke="currentColor" stroke-width="1.9"/>
+                <circle cx="12" cy="17.8" r="0.9" fill="currentColor"/>
+              </svg>
+            </span>
+            <strong><span class="on">ON</span><span class="roda">RODA</span> App</strong>
+          </div>
+
+          <h2>Jetzt die App herunterladen</h2>
+          <p>Buchen Sie Ihre Fahrt in Sekunden. Verfügbar für iOS und Android.</p>
+        </div>
+
+        <div class="hp-store-links">
+          <a class="hp-store-link" href="#" aria-label="Im Apple App Store laden">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16.37 12.25c.02 2.2 1.94 2.94 1.96 2.95-.02.05-.31 1.06-1.02 2.1-.61.9-1.25 1.8-2.24 1.82-.97.02-1.28-.58-2.39-.58-1.12 0-1.46.56-2.37.6-.95.04-1.68-.96-2.29-1.85-1.24-1.8-2.18-5.08-.91-7.28.63-1.09 1.77-1.78 3.01-1.8.94-.02 1.83.63 2.39.63.56 0 1.62-.78 2.73-.67.47.02 1.8.19 2.65 1.43-.07.04-1.58.92-1.56 2.65ZM14.61 5.82c.51-.62.85-1.49.76-2.35-.73.03-1.62.49-2.15 1.11-.47.54-.88 1.42-.77 2.25.81.06 1.64-.41 2.16-1.01Z"/>
+            </svg>
+            <span class="hp-store-copy">
+              <small>Laden im</small>
+              <span>App Store</span>
+            </span>
+          </a>
+
+          <a class="hp-store-link" href="#" aria-label="Bei Google Play laden">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 3.8c0-.53.57-.85 1.02-.57l10.66 6.5-2.6 2.6L3.36 4.6A.93.93 0 0 1 3 3.8Z" fill="#34A853"/>
+              <path d="M15.89 10.46 18.85 8.7c.88-.52 1.43-.1 1.43.93v4.74c0 1.03-.55 1.45-1.43.93l-2.96-1.76-2.34-1.39 2.34-1.39Z" fill="#FBBC04"/>
+              <path d="m3.36 19.4 8.72-7.73 2.6 2.6-10.66 6.5A.67.67 0 0 1 3 20.2c0-.28.13-.55.36-.8Z" fill="#EA4335"/>
+              <path d="m14.68 14.27-2.6-2.6 2.6-2.6 1.21.72 2.96 1.76-2.96 1.76-1.21.72Z" fill="#4285F4"/>
+            </svg>
+            <span class="hp-store-copy">
+              <small>Verfügbar bei</small>
+              <span>Google Play</span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="hp-footer">
+    <div class="hp-wrap">
+      <div class="hp-footer-main">
+        <div class="hp-footer-brand">
+          <a class="hp-footer-logo" href="/"><span class="on">ON</span><span class="roda">RODA</span></a>
+          <p class="hp-footer-text">Ihr verlässlicher Taxi- und Mobilitätspartner in Stuttgart und Umgebung.</p>
+
+          <p class="hp-footer-contact-title">Kontakt</p>
+          <ul class="hp-footer-contact-list">
+            <li>ONRODA</li>
+            <li><a href="mailto:onroda@mail.de">onroda@mail.de</a></li>
+          </ul>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Services</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="#jetzt-buchen">Jetzt buchen</a></li>
+            <li><a href="#jetzt-buchen">App herunterladen</a></li>
+            <li><a href="#services">Leistungen</a></li>
+            <li><a href="#care">Servicebereiche</a></li>
+          </ul>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Partner</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="#partner">Partner werden</a></li>
+            <li><a href="https://panel.onroda.de/">Partner-Login</a></li>
+            <li><a href="#unternehmen">Firmenkunden</a></li>
+            <li><a href="#unternehmen">Hotels</a></li>
+          </ul>
+        </div>
+
+        <div class="hp-footer-col">
+          <h4>Support</h4>
+          <ul class="hp-footer-nav">
+            <li><a href="mailto:onroda@mail.de">Kontakt</a></li>
+            <li><a href="/impressum">Impressum</a></li>
+            <li><a href="/datenschutz">Datenschutz</a></li>
+            <li><a href="/agb">AGB</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hp-footer-bottom">
+        <p class="hp-footer-copy">© <span id="y"></span> ONRODA. Alle Rechte vorbehalten.</p>
+        <div class="hp-footer-legal">
+          <a href="/impressum">Impressum</a>
+          <a href="/datenschutz">Datenschutz</a>
+          <a href="/agb">AGB</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/script.js"></script>
+</body>
+</html>

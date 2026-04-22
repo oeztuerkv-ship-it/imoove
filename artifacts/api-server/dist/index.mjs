@@ -1196,34 +1196,34 @@ var require_receiver = __commonJS({
        * @return {Buffer} The consumed bytes
        * @private
        */
-      consume(n) {
-        this._bufferedBytes -= n;
-        if (n === this._buffers[0].length) return this._buffers.shift();
-        if (n < this._buffers[0].length) {
+      consume(n2) {
+        this._bufferedBytes -= n2;
+        if (n2 === this._buffers[0].length) return this._buffers.shift();
+        if (n2 < this._buffers[0].length) {
           const buf = this._buffers[0];
           this._buffers[0] = new FastBuffer(
             buf.buffer,
-            buf.byteOffset + n,
-            buf.length - n
+            buf.byteOffset + n2,
+            buf.length - n2
           );
-          return new FastBuffer(buf.buffer, buf.byteOffset, n);
+          return new FastBuffer(buf.buffer, buf.byteOffset, n2);
         }
-        const dst = Buffer.allocUnsafe(n);
+        const dst = Buffer.allocUnsafe(n2);
         do {
           const buf = this._buffers[0];
-          const offset = dst.length - n;
-          if (n >= buf.length) {
+          const offset = dst.length - n2;
+          if (n2 >= buf.length) {
             dst.set(this._buffers.shift(), offset);
           } else {
-            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n), offset);
+            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n2), offset);
             this._buffers[0] = new FastBuffer(
               buf.buffer,
-              buf.byteOffset + n,
-              buf.length - n
+              buf.byteOffset + n2,
+              buf.length - n2
             );
           }
-          n -= buf.length;
-        } while (n > 0);
+          n2 -= buf.length;
+        } while (n2 > 0);
         return dst;
       }
       /**
@@ -4016,18 +4016,18 @@ var require_ms = __commonJS({
         "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
       );
     };
-    function parse(str) {
-      str = String(str);
-      if (str.length > 100) {
+    function parse(str2) {
+      str2 = String(str2);
+      if (str2.length > 100) {
         return;
       }
       var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
-        str
+        str2
       );
       if (!match) {
         return;
       }
-      var n = parseFloat(match[1]);
+      var n2 = parseFloat(match[1]);
       var type = (match[2] || "ms").toLowerCase();
       switch (type) {
         case "years":
@@ -4035,39 +4035,39 @@ var require_ms = __commonJS({
         case "yrs":
         case "yr":
         case "y":
-          return n * y;
+          return n2 * y;
         case "weeks":
         case "week":
         case "w":
-          return n * w;
+          return n2 * w;
         case "days":
         case "day":
         case "d":
-          return n * d;
+          return n2 * d;
         case "hours":
         case "hour":
         case "hrs":
         case "hr":
         case "h":
-          return n * h;
+          return n2 * h;
         case "minutes":
         case "minute":
         case "mins":
         case "min":
         case "m":
-          return n * m;
+          return n2 * m;
         case "seconds":
         case "second":
         case "secs":
         case "sec":
         case "s":
-          return n * s;
+          return n2 * s;
         case "milliseconds":
         case "millisecond":
         case "msecs":
         case "msec":
         case "ms":
-          return n;
+          return n2;
         default:
           return void 0;
       }
@@ -4104,9 +4104,9 @@ var require_ms = __commonJS({
       }
       return ms + " ms";
     }
-    function plural(ms, msAbs, n, name) {
-      var isPlural = msAbs >= n * 1.5;
-      return Math.round(ms / n) + " " + name + (isPlural ? "s" : "");
+    function plural(ms, msAbs, n2, name) {
+      var isPlural = msAbs >= n2 * 1.5;
+      return Math.round(ms / n2) + " " + name + (isPlural ? "s" : "");
     }
   }
 });
@@ -4738,7 +4738,7 @@ var require_node = __commonJS({
     var { formatters } = module.exports;
     formatters.o = function(v) {
       this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
+      return util2.inspect(v, this.inspectOpts).split("\n").map((str2) => str2.trim()).join(" ");
     };
     formatters.O = function(v) {
       this.inspectOpts.colors = this.useColors;
@@ -4764,8 +4764,8 @@ var require_depd = __commonJS({
     var relative = __require("path").relative;
     module.exports = depd;
     var basePath = process.cwd();
-    function containsNamespace(str, namespace) {
-      var vals = str.split(/[ ,]+/);
+    function containsNamespace(str2, namespace) {
+      var vals = str2.split(/[ ,]+/);
       var ns = String(namespace).toLowerCase();
       for (var i = 0; i < vals.length; i++) {
         var val = vals[i];
@@ -4792,21 +4792,21 @@ var require_depd = __commonJS({
       return descriptor;
     }
     function createArgumentsString(arity) {
-      var str = "";
+      var str2 = "";
       for (var i = 0; i < arity; i++) {
-        str += ", arg" + i;
+        str2 += ", arg" + i;
       }
-      return str.substr(2);
+      return str2.substr(2);
     }
     function createStackString(stack) {
-      var str = this.name + ": " + this.namespace;
+      var str2 = this.name + ": " + this.namespace;
       if (this.message) {
-        str += " deprecated " + this.message;
+        str2 += " deprecated " + this.message;
       }
       for (var i = 0; i < stack.length; i++) {
-        str += "\n    at " + stack[i].toString();
+        str2 += "\n    at " + stack[i].toString();
       }
-      return str;
+      return str2;
     }
     function depd(namespace) {
       if (!namespace) {
@@ -4835,15 +4835,15 @@ var require_depd = __commonJS({
       if (process.noDeprecation) {
         return true;
       }
-      var str = process.env.NO_DEPRECATION || "";
-      return containsNamespace(str, namespace);
+      var str2 = process.env.NO_DEPRECATION || "";
+      return containsNamespace(str2, namespace);
     }
     function istraced(namespace) {
       if (process.traceDeprecation) {
         return true;
       }
-      var str = process.env.TRACE_DEPRECATION || "";
-      return containsNamespace(str, namespace);
+      var str2 = process.env.TRACE_DEPRECATION || "";
+      return containsNamespace(str2, namespace);
     }
     function log(message2, site) {
       var haslisteners = eehaslisteners(process, "deprecation");
@@ -5217,9 +5217,9 @@ var require_statuses = __commonJS({
       if (typeof code !== "string") {
         throw new TypeError("code must be a number or string");
       }
-      var n = parseInt(code, 10);
-      if (!isNaN(n)) {
-        return getStatusMessage(n);
+      var n2 = parseInt(code, 10);
+      if (!isNaN(n2)) {
+        return getStatusMessage(n2);
       }
       return getStatusCode(code);
     }
@@ -5277,8 +5277,8 @@ var require_toidentifier = __commonJS({
   "../../node_modules/.pnpm/toidentifier@1.0.1/node_modules/toidentifier/index.js"(exports, module) {
     "use strict";
     module.exports = toIdentifier;
-    function toIdentifier(str) {
-      return str.split(" ").map(function(token) {
+    function toIdentifier(str2) {
+      return str2.split(" ").map(function(token) {
         return token.slice(0, 1).toUpperCase() + token.slice(1);
       }).join("").replace(/[^ _0-9a-z]/gi, "");
     }
@@ -5502,16 +5502,16 @@ var require_bytes = __commonJS({
         }
       }
       var val = value / map[unit.toLowerCase()];
-      var str = val.toFixed(decimalPlaces);
+      var str2 = val.toFixed(decimalPlaces);
       if (!fixedDecimals) {
-        str = str.replace(formatDecimalsRegExp, "$1");
+        str2 = str2.replace(formatDecimalsRegExp, "$1");
       }
       if (thousandsSeparator) {
-        str = str.split(".").map(function(s, i) {
+        str2 = str2.split(".").map(function(s, i) {
           return i === 0 ? s.replace(formatThousandsRegExp, thousandsSeparator) : s;
         }).join(".");
       }
-      return str + unitSeparator + unit;
+      return str2 + unitSeparator + unit;
     }
     function parse(val) {
       if (typeof val === "number" && !isNaN(val)) {
@@ -5616,12 +5616,12 @@ var require_bom_handling = __commonJS({
       this.encoder = encoder2;
       this.addBOM = true;
     }
-    PrependBOMWrapper.prototype.write = function(str) {
+    PrependBOMWrapper.prototype.write = function(str2) {
       if (this.addBOM) {
-        str = BOMChar + str;
+        str2 = BOMChar + str2;
         this.addBOM = false;
       }
-      return this.encoder.write(str);
+      return this.encoder.write(str2);
     };
     PrependBOMWrapper.prototype.end = function() {
       return this.encoder.end();
@@ -5720,31 +5720,31 @@ var require_internal = __commonJS({
     function InternalEncoder(options, codec) {
       this.enc = codec.enc;
     }
-    InternalEncoder.prototype.write = function(str) {
-      return Buffer2.from(str, this.enc);
+    InternalEncoder.prototype.write = function(str2) {
+      return Buffer2.from(str2, this.enc);
     };
     InternalEncoder.prototype.end = function() {
     };
     function InternalEncoderBase64(options, codec) {
       this.prevStr = "";
     }
-    InternalEncoderBase64.prototype.write = function(str) {
-      str = this.prevStr + str;
-      var completeQuads = str.length - str.length % 4;
-      this.prevStr = str.slice(completeQuads);
-      str = str.slice(0, completeQuads);
-      return Buffer2.from(str, "base64");
+    InternalEncoderBase64.prototype.write = function(str2) {
+      str2 = this.prevStr + str2;
+      var completeQuads = str2.length - str2.length % 4;
+      this.prevStr = str2.slice(completeQuads);
+      str2 = str2.slice(0, completeQuads);
+      return Buffer2.from(str2, "base64");
     };
     InternalEncoderBase64.prototype.end = function() {
       return Buffer2.from(this.prevStr, "base64");
     };
     function InternalEncoderCesu8(options, codec) {
     }
-    InternalEncoderCesu8.prototype.write = function(str) {
-      var buf = Buffer2.alloc(str.length * 3);
+    InternalEncoderCesu8.prototype.write = function(str2) {
+      var buf = Buffer2.alloc(str2.length * 3);
       var bufIdx = 0;
-      for (var i = 0; i < str.length; i++) {
-        var charCode = str.charCodeAt(i);
+      for (var i = 0; i < str2.length; i++) {
+        var charCode = str2.charCodeAt(i);
         if (charCode < 128) {
           buf[bufIdx++] = charCode;
         } else if (charCode < 2048) {
@@ -5825,25 +5825,25 @@ var require_internal = __commonJS({
     function InternalEncoderUtf8(options, codec) {
       this.highSurrogate = "";
     }
-    InternalEncoderUtf8.prototype.write = function(str) {
+    InternalEncoderUtf8.prototype.write = function(str2) {
       if (this.highSurrogate) {
-        str = this.highSurrogate + str;
+        str2 = this.highSurrogate + str2;
         this.highSurrogate = "";
       }
-      if (str.length > 0) {
-        var charCode = str.charCodeAt(str.length - 1);
+      if (str2.length > 0) {
+        var charCode = str2.charCodeAt(str2.length - 1);
         if (charCode >= 55296 && charCode < 56320) {
-          this.highSurrogate = str[str.length - 1];
-          str = str.slice(0, str.length - 1);
+          this.highSurrogate = str2[str2.length - 1];
+          str2 = str2.slice(0, str2.length - 1);
         }
       }
-      return Buffer2.from(str, this.enc);
+      return Buffer2.from(str2, this.enc);
     };
     InternalEncoderUtf8.prototype.end = function() {
       if (this.highSurrogate) {
-        var str = this.highSurrogate;
+        var str2 = this.highSurrogate;
         this.highSurrogate = "";
-        return Buffer2.from(str, this.enc);
+        return Buffer2.from(str2, this.enc);
       }
     };
   }
@@ -5870,8 +5870,8 @@ var require_utf32 = __commonJS({
       this.isLE = codec.isLE;
       this.highSurrogate = 0;
     }
-    Utf32Encoder.prototype.write = function(str) {
-      var src = Buffer2.from(str, "ucs2");
+    Utf32Encoder.prototype.write = function(str2) {
+      var src = Buffer2.from(str2, "ucs2");
       var dst = Buffer2.alloc(src.length * 2);
       var write32 = this.isLE ? dst.writeUInt32LE : dst.writeUInt32BE;
       var offset = 0;
@@ -5992,8 +5992,8 @@ var require_utf32 = __commonJS({
       }
       this.encoder = codec.iconv.getEncoder(options.defaultEncoding || "utf-32le", options);
     }
-    Utf32AutoEncoder.prototype.write = function(str) {
-      return this.encoder.write(str);
+    Utf32AutoEncoder.prototype.write = function(str2) {
+      return this.encoder.write(str2);
     };
     Utf32AutoEncoder.prototype.end = function() {
       return this.encoder.end();
@@ -6093,8 +6093,8 @@ var require_utf16 = __commonJS({
     Utf16BECodec.prototype.bomAware = true;
     function Utf16BEEncoder() {
     }
-    Utf16BEEncoder.prototype.write = function(str) {
-      var buf = Buffer2.from(str, "ucs2");
+    Utf16BEEncoder.prototype.write = function(str2) {
+      var buf = Buffer2.from(str2, "ucs2");
       for (var i = 0; i < buf.length; i += 2) {
         var tmp = buf[i];
         buf[i] = buf[i + 1];
@@ -6143,8 +6143,8 @@ var require_utf16 = __commonJS({
       }
       this.encoder = codec.iconv.getEncoder("utf-16le", options);
     }
-    Utf16Encoder.prototype.write = function(str) {
-      return this.encoder.write(str);
+    Utf16Encoder.prototype.write = function(str2) {
+      return this.encoder.write(str2);
     };
     Utf16Encoder.prototype.end = function() {
       return this.encoder.end();
@@ -6240,8 +6240,8 @@ var require_utf7 = __commonJS({
     function Utf7Encoder(options, codec) {
       this.iconv = codec.iconv;
     }
-    Utf7Encoder.prototype.write = function(str) {
-      return Buffer2.from(str.replace(nonDirectChars, function(chunk) {
+    Utf7Encoder.prototype.write = function(str2) {
+      return Buffer2.from(str2.replace(nonDirectChars, function(chunk) {
         return "+" + (chunk === "+" ? "" : this.iconv.encode(chunk, "utf16-be").toString("base64").replace(/=+$/, "")) + "-";
       }.bind(this)));
     };
@@ -6325,14 +6325,14 @@ var require_utf7 = __commonJS({
       this.base64Accum = Buffer2.alloc(6);
       this.base64AccumIdx = 0;
     }
-    Utf7IMAPEncoder.prototype.write = function(str) {
+    Utf7IMAPEncoder.prototype.write = function(str2) {
       var inBase64 = this.inBase64;
       var base64Accum = this.base64Accum;
       var base64AccumIdx = this.base64AccumIdx;
-      var buf = Buffer2.alloc(str.length * 5 + 10);
+      var buf = Buffer2.alloc(str2.length * 5 + 10);
       var bufIdx = 0;
-      for (var i2 = 0; i2 < str.length; i2++) {
-        var uChar = str.charCodeAt(i2);
+      for (var i2 = 0; i2 < str2.length; i2++) {
+        var uChar = str2.charCodeAt(i2);
         if (uChar >= 32 && uChar <= 126) {
           if (inBase64) {
             if (base64AccumIdx > 0) {
@@ -6473,10 +6473,10 @@ var require_sbcs_codec = __commonJS({
     function SBCSEncoder(options, codec) {
       this.encodeBuf = codec.encodeBuf;
     }
-    SBCSEncoder.prototype.write = function(str) {
-      var buf = Buffer2.alloc(str.length);
-      for (var i = 0; i < str.length; i++) {
-        buf[i] = this.encodeBuf[str.charCodeAt(i)];
+    SBCSEncoder.prototype.write = function(str2) {
+      var buf = Buffer2.alloc(str2.length);
+      for (var i = 0; i < str2.length; i++) {
+        buf[i] = this.encodeBuf[str2.charCodeAt(i)];
       }
       return buf;
     };
@@ -7350,8 +7350,8 @@ var require_dbcs_codec = __commonJS({
       this.defaultCharSingleByte = codec.defCharSB;
       this.gb18030 = codec.gb18030;
     }
-    DBCSEncoder.prototype.write = function(str) {
-      var newBuf = Buffer2.alloc(str.length * (this.gb18030 ? 4 : 3));
+    DBCSEncoder.prototype.write = function(str2) {
+      var newBuf = Buffer2.alloc(str2.length * (this.gb18030 ? 4 : 3));
       var leadSurrogate = this.leadSurrogate;
       var seqObj = this.seqObj;
       var nextChar = -1;
@@ -7359,8 +7359,8 @@ var require_dbcs_codec = __commonJS({
       var j = 0;
       while (true) {
         if (nextChar === -1) {
-          if (i2 == str.length) break;
-          var uCode = str.charCodeAt(i2++);
+          if (i2 == str2.length) break;
+          var uCode = str2.charCodeAt(i2++);
         } else {
           var uCode = nextChar;
           nextChar = -1;
@@ -9198,10 +9198,10 @@ var require_lib = __commonJS({
     module.exports.encodings = null;
     module.exports.defaultCharUnicode = "\uFFFD";
     module.exports.defaultCharSingleByte = "?";
-    module.exports.encode = function encode3(str, encoding, options) {
-      str = "" + (str || "");
+    module.exports.encode = function encode3(str2, encoding, options) {
+      str2 = "" + (str2 || "");
       var encoder2 = module.exports.getEncoder(encoding, options);
-      var res = encoder2.write(str);
+      var res = encoder2.write(str2);
       var trail = encoder2.end();
       return trail && trail.length > 0 ? Buffer2.concat([res, trail]) : res;
     };
@@ -9795,14 +9795,14 @@ var require_content_type = __commonJS({
       return header;
     }
     function qstring(val) {
-      var str = String(val);
-      if (TOKEN_REGEXP.test(str)) {
-        return str;
+      var str2 = String(val);
+      if (TOKEN_REGEXP.test(str2)) {
+        return str2;
       }
-      if (str.length > 0 && !TEXT_REGEXP.test(str)) {
+      if (str2.length > 0 && !TEXT_REGEXP.test(str2)) {
         throw new TypeError("invalid parameter value");
       }
-      return '"' + str.replace(QUOTE_REGEXP, "\\$1") + '"';
+      return '"' + str2.replace(QUOTE_REGEXP, "\\$1") + '"';
     }
     function ContentType(type) {
       this.parameters = /* @__PURE__ */ Object.create(null);
@@ -19242,11 +19242,11 @@ var require_mime_types = __commonJS({
       }
       return false;
     }
-    function contentType(str) {
-      if (!str || typeof str !== "string") {
+    function contentType(str2) {
+      if (!str2 || typeof str2 !== "string") {
         return false;
       }
-      var mime = str.indexOf("/") === -1 ? exports.lookup(str) : str;
+      var mime = str2.indexOf("/") === -1 ? exports.lookup(str2) : str2;
       if (!mime) {
         return false;
       }
@@ -19627,14 +19627,14 @@ var require_read = __commonJS({
             return;
           }
         }
-        var str = body;
+        var str2 = body;
         try {
           debug("parse body");
-          str = typeof body !== "string" && encoding !== null ? iconv.decode(body, encoding) : body;
-          req.body = parse(str, encoding);
+          str2 = typeof body !== "string" && encoding !== null ? iconv.decode(body, encoding) : body;
+          req.body = parse(str2, encoding);
         } catch (err) {
           next(createError(400, err, {
-            body: str,
+            body: str2,
             type: err.type || "entity.parse.failed"
           }));
           return;
@@ -19734,11 +19734,11 @@ var require_json = __commonJS({
         read(req, res, next, parse, debug, readOptions);
       };
     }
-    function createStrictSyntaxError(str, char2) {
-      var index = str.indexOf(char2);
+    function createStrictSyntaxError(str2, char2) {
+      var index = str2.indexOf(char2);
       var partial = "";
       if (index !== -1) {
-        partial = str.substring(0, index) + JSON_SYNTAX_CHAR.repeat(str.length - index);
+        partial = str2.substring(0, index) + JSON_SYNTAX_CHAR.repeat(str2.length - index);
       }
       try {
         JSON.parse(partial);
@@ -19746,14 +19746,14 @@ var require_json = __commonJS({
       } catch (e) {
         return normalizeJsonSyntaxError(e, {
           message: e.message.replace(JSON_SYNTAX_REGEXP, function(placeholder) {
-            return str.substring(index, index + placeholder.length);
+            return str2.substring(index, index + placeholder.length);
           }),
           stack: e.stack
         });
       }
     }
-    function firstchar(str) {
-      var match = FIRST_CHAR_REGEXP.exec(str);
+    function firstchar(str2) {
+      var match = FIRST_CHAR_REGEXP.exec(str2);
       return match ? match[1] : void 0;
     }
     function normalizeJsonSyntaxError(error, obj) {
@@ -19864,20 +19864,20 @@ var require_object_inspect = __commonJS({
     var gPO = (typeof Reflect === "function" ? Reflect.getPrototypeOf : Object.getPrototypeOf) || ([].__proto__ === Array.prototype ? function(O) {
       return O.__proto__;
     } : null);
-    function addNumericSeparator(num2, str) {
-      if (num2 === Infinity || num2 === -Infinity || num2 !== num2 || num2 && num2 > -1e3 && num2 < 1e3 || $test.call(/e/, str)) {
-        return str;
+    function addNumericSeparator(num2, str2) {
+      if (num2 === Infinity || num2 === -Infinity || num2 !== num2 || num2 && num2 > -1e3 && num2 < 1e3 || $test.call(/e/, str2)) {
+        return str2;
       }
       var sepRegex = /[0-9](?=(?:[0-9]{3})+(?![0-9]))/g;
       if (typeof num2 === "number") {
         var int = num2 < 0 ? -$floor(-num2) : $floor(num2);
         if (int !== num2) {
           var intStr = String(int);
-          var dec = $slice.call(str, intStr.length + 1);
+          var dec = $slice.call(str2, intStr.length + 1);
           return $replace.call(intStr, sepRegex, "$&_") + "." + $replace.call($replace.call(dec, /([0-9]{3})/g, "$&_"), /_$/, "");
         }
       }
-      return $replace.call(str, sepRegex, "$&_");
+      return $replace.call(str2, sepRegex, "$&_");
     }
     var utilInspect = require_util_inspect();
     var inspectCustom = utilInspect.custom;
@@ -19927,8 +19927,8 @@ var require_object_inspect = __commonJS({
         if (obj === 0) {
           return Infinity / obj > 0 ? "0" : "-0";
         }
-        var str = String(obj);
-        return numericSeparator ? addNumericSeparator(obj, str) : str;
+        var str2 = String(obj);
+        return numericSeparator ? addNumericSeparator(obj, str2) : str2;
       }
       if (typeof obj === "bigint") {
         var bigIntStr = String(obj) + "n";
@@ -20248,33 +20248,33 @@ var require_object_inspect = __commonJS({
       }
       return typeof x.nodeName === "string" && typeof x.getAttribute === "function";
     }
-    function inspectString(str, opts) {
-      if (str.length > opts.maxStringLength) {
-        var remaining = str.length - opts.maxStringLength;
+    function inspectString(str2, opts) {
+      if (str2.length > opts.maxStringLength) {
+        var remaining = str2.length - opts.maxStringLength;
         var trailer = "... " + remaining + " more character" + (remaining > 1 ? "s" : "");
-        return inspectString($slice.call(str, 0, opts.maxStringLength), opts) + trailer;
+        return inspectString($slice.call(str2, 0, opts.maxStringLength), opts) + trailer;
       }
       var quoteRE = quoteREs[opts.quoteStyle || "single"];
       quoteRE.lastIndex = 0;
-      var s = $replace.call($replace.call(str, quoteRE, "\\$1"), /[\x00-\x1f]/g, lowbyte);
+      var s = $replace.call($replace.call(str2, quoteRE, "\\$1"), /[\x00-\x1f]/g, lowbyte);
       return wrapQuotes(s, "single", opts);
     }
     function lowbyte(c) {
-      var n = c.charCodeAt(0);
+      var n2 = c.charCodeAt(0);
       var x = {
         8: "b",
         9: "t",
         10: "n",
         12: "f",
         13: "r"
-      }[n];
+      }[n2];
       if (x) {
         return "\\" + x;
       }
-      return "\\x" + (n < 16 ? "0" : "") + $toUpperCase.call(n.toString(16));
+      return "\\x" + (n2 < 16 ? "0" : "") + $toUpperCase.call(n2.toString(16));
     }
-    function markBoxed(str) {
-      return "Object(" + str + ")";
+    function markBoxed(str2) {
+      return "Object(" + str2 + ")";
     }
     function weakCollectionOf(type) {
       return type + " { ? }";
@@ -20740,14 +20740,14 @@ var require_implementation = __commonJS({
       return arr;
     };
     var joiny = function(arr, joiner) {
-      var str = "";
+      var str2 = "";
       for (var i = 0; i < arr.length; i += 1) {
-        str += arr[i];
+        str2 += arr[i];
         if (i + 1 < arr.length) {
-          str += joiner;
+          str2 += joiner;
         }
       }
-      return str;
+      return str2;
     };
     module.exports = function bind(that) {
       var target = this;
@@ -21601,8 +21601,8 @@ var require_utils2 = __commonJS({
         return acc;
       }, target);
     };
-    var decode2 = function(str, defaultDecoder, charset) {
-      var strWithoutPlus = str.replace(/\+/g, " ");
+    var decode2 = function(str2, defaultDecoder, charset) {
+      var strWithoutPlus = str2.replace(/\+/g, " ");
       if (charset === "iso-8859-1") {
         return strWithoutPlus.replace(/%[0-9a-f]{2}/gi, unescape);
       }
@@ -21613,15 +21613,15 @@ var require_utils2 = __commonJS({
       }
     };
     var limit = 1024;
-    var encode3 = function encode4(str, defaultEncoder, charset, kind, format) {
-      if (str.length === 0) {
-        return str;
+    var encode3 = function encode4(str2, defaultEncoder, charset, kind, format) {
+      if (str2.length === 0) {
+        return str2;
       }
-      var string = str;
-      if (typeof str === "symbol") {
-        string = Symbol.prototype.toString.call(str);
-      } else if (typeof str !== "string") {
-        string = String(str);
+      var string = str2;
+      if (typeof str2 === "symbol") {
+        string = Symbol.prototype.toString.call(str2);
+      } else if (typeof str2 !== "string") {
+        string = String(str2);
       }
       if (charset === "iso-8859-1") {
         return escape(string).replace(/%u[0-9a-f]{4}/gi, function($0) {
@@ -22040,8 +22040,8 @@ var require_parse = __commonJS({
       strictNullHandling: false,
       throwOnLimitExceeded: false
     };
-    var interpretNumericEntities = function(str) {
-      return str.replace(/&#(\d+);/g, function($0, numberStr) {
+    var interpretNumericEntities = function(str2) {
+      return str2.replace(/&#(\d+);/g, function($0, numberStr) {
         return String.fromCharCode(parseInt(numberStr, 10));
       });
     };
@@ -22056,9 +22056,9 @@ var require_parse = __commonJS({
     };
     var isoSentinel = "utf8=%26%2310003%3B";
     var charsetSentinel = "utf8=%E2%9C%93";
-    var parseValues = function parseQueryStringValues(str, options) {
+    var parseValues = function parseQueryStringValues(str2, options) {
       var obj = { __proto__: null };
-      var cleanStr = options.ignoreQueryPrefix ? str.replace(/^\?/, "") : str;
+      var cleanStr = options.ignoreQueryPrefix ? str2.replace(/^\?/, "") : str2;
       cleanStr = cleanStr.replace(/%5B/gi, "[").replace(/%5D/gi, "]");
       var limit = options.parameterLimit === Infinity ? void 0 : options.parameterLimit;
       var parts = cleanStr.split(
@@ -22287,17 +22287,17 @@ var require_parse = __commonJS({
         throwOnLimitExceeded: typeof opts.throwOnLimitExceeded === "boolean" ? opts.throwOnLimitExceeded : false
       };
     };
-    module.exports = function(str, opts) {
+    module.exports = function(str2, opts) {
       var options = normalizeParseOptions(opts);
-      if (str === "" || str === null || typeof str === "undefined") {
+      if (str2 === "" || str2 === null || typeof str2 === "undefined") {
         return options.plainObjects ? { __proto__: null } : {};
       }
-      var tempObj = typeof str === "string" ? parseValues(str, options) : str;
+      var tempObj = typeof str2 === "string" ? parseValues(str2, options) : str2;
       var obj = options.plainObjects ? { __proto__: null } : {};
       var keys = Object.keys(tempObj);
       for (var i = 0; i < keys.length; ++i) {
         var key = keys[i];
-        var newObj = parseKeys(key, tempObj[key], options, typeof str === "string");
+        var newObj = parseKeys(key, tempObj[key], options, typeof str2 === "string");
         obj = utils.merge(obj, newObj, options);
       }
       if (options.allowSparse === true) {
@@ -22485,19 +22485,19 @@ var require_escape_html = __commonJS({
   "../../node_modules/.pnpm/escape-html@1.0.3/node_modules/escape-html/index.js"(exports, module) {
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
-    module.exports = escapeHtml3;
-    function escapeHtml3(string) {
-      var str = "" + string;
-      var match = matchHtmlRegExp.exec(str);
+    module.exports = escapeHtml4;
+    function escapeHtml4(string) {
+      var str2 = "" + string;
+      var match = matchHtmlRegExp.exec(str2);
       if (!match) {
-        return str;
+        return str2;
       }
       var escape2;
       var html = "";
       var index = 0;
       var lastIndex = 0;
-      for (index = match.index; index < str.length; index++) {
-        switch (str.charCodeAt(index)) {
+      for (index = match.index; index < str2.length; index++) {
+        switch (str2.charCodeAt(index)) {
           case 34:
             escape2 = "&quot;";
             break;
@@ -22517,12 +22517,12 @@ var require_escape_html = __commonJS({
             continue;
         }
         if (lastIndex !== index) {
-          html += str.substring(lastIndex, index);
+          html += str2.substring(lastIndex, index);
         }
         lastIndex = index + 1;
         html += escape2;
       }
-      return lastIndex !== index ? html + str.substring(lastIndex, index) : html;
+      return lastIndex !== index ? html + str2.substring(lastIndex, index) : html;
     }
   }
 });
@@ -22562,20 +22562,20 @@ var require_parseurl = __commonJS({
       parsed._raw = url2;
       return req._parsedOriginalUrl = parsed;
     }
-    function fastparse(str) {
-      if (typeof str !== "string" || str.charCodeAt(0) !== 47) {
-        return parse(str);
+    function fastparse(str2) {
+      if (typeof str2 !== "string" || str2.charCodeAt(0) !== 47) {
+        return parse(str2);
       }
-      var pathname = str;
+      var pathname = str2;
       var query = null;
       var search = null;
-      for (var i = 1; i < str.length; i++) {
-        switch (str.charCodeAt(i)) {
+      for (var i = 1; i < str2.length; i++) {
+        switch (str2.charCodeAt(i)) {
           case 63:
             if (search === null) {
-              pathname = str.substring(0, i);
-              query = str.substring(i + 1);
-              search = str.substring(i);
+              pathname = str2.substring(0, i);
+              query = str2.substring(i + 1);
+              search = str2.substring(i);
             }
             break;
           case 9:
@@ -22592,12 +22592,12 @@ var require_parseurl = __commonJS({
           /* #  */
           case 160:
           case 65279:
-            return parse(str);
+            return parse(str2);
         }
       }
       var url2 = Url !== void 0 ? new Url() : {};
-      url2.path = str;
-      url2.href = str;
+      url2.path = str2;
+      url2.href = str2;
       url2.pathname = pathname;
       if (search !== null) {
         url2.query = query;
@@ -22617,13 +22617,13 @@ var require_finalhandler = __commonJS({
     "use strict";
     var debug = require_src()("finalhandler");
     var encodeUrl = require_encodeurl();
-    var escapeHtml3 = require_escape_html();
+    var escapeHtml4 = require_escape_html();
     var onFinished = require_on_finished();
     var parseUrl = require_parseurl();
     var statuses = require_statuses();
     var isFinished = onFinished.isFinished;
     function createHtmlDocument(message2) {
-      var body = escapeHtml3(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
+      var body = escapeHtml4(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n<pre>' + body + "</pre>\n</body>\n</html>\n";
     }
     module.exports = finalhandler;
@@ -23610,11 +23610,11 @@ var require_proxy_addr = __commonJS({
     }
     function parseipNotation(note) {
       var pos = note.lastIndexOf("/");
-      var str = pos !== -1 ? note.substring(0, pos) : note;
-      if (!isip(str)) {
-        throw new TypeError("invalid IP address: " + str);
+      var str2 = pos !== -1 ? note.substring(0, pos) : note;
+      if (!isip(str2)) {
+        throw new TypeError("invalid IP address: " + str2);
       }
-      var ip = parseip(str);
+      var ip = parseip(str2);
       if (pos === -1 && ip.kind() === "ipv6" && ip.isIPv4MappedAddress()) {
         ip = ip.toIPv4Address();
       }
@@ -23723,22 +23723,22 @@ var require_utils3 = __commonJS({
     exports.normalizeTypes = function(types2) {
       return types2.map(exports.normalizeType);
     };
-    function acceptParams(str) {
-      var length = str.length;
-      var colonIndex = str.indexOf(";");
+    function acceptParams(str2) {
+      var length = str2.length;
+      var colonIndex = str2.indexOf(";");
       var index = colonIndex === -1 ? length : colonIndex;
-      var ret = { value: str.slice(0, index).trim(), quality: 1, params: {} };
+      var ret = { value: str2.slice(0, index).trim(), quality: 1, params: {} };
       while (index < length) {
-        var splitIndex = str.indexOf("=", index);
+        var splitIndex = str2.indexOf("=", index);
         if (splitIndex === -1) break;
-        var colonIndex = str.indexOf(";", index);
+        var colonIndex = str2.indexOf(";", index);
         var endIndex = colonIndex === -1 ? length : colonIndex;
         if (splitIndex > endIndex) {
-          index = str.lastIndexOf(";", splitIndex - 1) + 1;
+          index = str2.lastIndexOf(";", splitIndex - 1) + 1;
           continue;
         }
-        var key = str.slice(index, splitIndex).trim();
-        var value = str.slice(splitIndex + 1, endIndex).trim();
+        var key = str2.slice(index, splitIndex).trim();
+        var value = str2.slice(splitIndex + 1, endIndex).trim();
         if (key === "q") {
           ret.quality = parseFloat(value);
         } else {
@@ -23821,8 +23821,8 @@ var require_utils3 = __commonJS({
         return etag(buf, options);
       };
     }
-    function parseExtendedQueryString(str) {
-      return qs.parse(str, {
+    function parseExtendedQueryString(str2) {
+      return qs.parse(str2, {
         allowPrototypes: true
       });
     }
@@ -23930,11 +23930,11 @@ var require_dist = __commonJS({
     var ID_START = /^[$_\p{ID_Start}]$/u;
     var ID_CONTINUE = /^[$\u200c\u200d\p{ID_Continue}]$/u;
     var ID = /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u;
-    function escapeText(str) {
-      return str.replace(/[{}()\[\]+?!:*\\]/g, "\\$&");
+    function escapeText(str2) {
+      return str2.replace(/[{}()\[\]+?!:*\\]/g, "\\$&");
     }
-    function escape2(str) {
-      return str.replace(/[.+*?^${}()[\]|/\\]/g, "\\$&");
+    function escape2(str2) {
+      return str2.replace(/[.+*?^${}()[\]|/\\]/g, "\\$&");
     }
     var TokenData = class {
       constructor(tokens, originalPath) {
@@ -23954,9 +23954,9 @@ var require_dist = __commonJS({
       }
     };
     exports.PathError = PathError;
-    function parse(str, options = {}) {
+    function parse(str2, options = {}) {
       const { encodePath = NOOP_VALUE } = options;
-      const chars = [...str];
+      const chars = [...str2];
       let index = 0;
       function consumeUntil(end) {
         const output = [];
@@ -23978,7 +23978,7 @@ var require_dist = __commonJS({
           }
           if (value === "\\") {
             if (index === chars.length) {
-              throw new PathError(`Unexpected end after \\ at index ${index}`, str);
+              throw new PathError(`Unexpected end after \\ at index ${index}`, str2);
             }
             path5 += chars[index++];
             continue;
@@ -24003,11 +24003,11 @@ var require_dist = __commonJS({
                 name += chars[index];
               }
               if (quoteStart) {
-                throw new PathError(`Unterminated quote at index ${quoteStart}`, str);
+                throw new PathError(`Unterminated quote at index ${quoteStart}`, str2);
               }
             }
             if (!name) {
-              throw new PathError(`Missing parameter name at index ${index}`, str);
+              throw new PathError(`Missing parameter name at index ${index}`, str2);
             }
             writePath();
             output.push({ type, name });
@@ -24022,17 +24022,17 @@ var require_dist = __commonJS({
             continue;
           }
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
-            throw new PathError(`Unexpected ${value} at index ${index - 1}`, str);
+            throw new PathError(`Unexpected ${value} at index ${index - 1}`, str2);
           }
           path5 += value;
         }
         if (end) {
-          throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str);
+          throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str2);
         }
         writePath();
         return output;
       }
-      return new TokenData(consumeUntil(""), str);
+      return new TokenData(consumeUntil(""), str2);
     }
     function compile(path5, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
@@ -25230,8 +25230,8 @@ var require_charset = __commonJS({
       accepts.length = j;
       return accepts;
     }
-    function parseCharset(str, i) {
-      var match = simpleCharsetRegExp.exec(str);
+    function parseCharset(str2, i) {
+      var match = simpleCharsetRegExp.exec(str2);
       if (!match) return null;
       var charset = match[1];
       var q = 1;
@@ -25328,8 +25328,8 @@ var require_encoding = __commonJS({
       accepts.length = j;
       return accepts;
     }
-    function parseEncoding(str, i) {
-      var match = simpleEncodingRegExp.exec(str);
+    function parseEncoding(str2, i) {
+      var match = simpleEncodingRegExp.exec(str2);
       if (!match) return null;
       var encoding = match[1];
       var q = 1;
@@ -25430,8 +25430,8 @@ var require_language = __commonJS({
       accepts.length = j;
       return accepts;
     }
-    function parseLanguage(str, i) {
-      var match = simpleLanguageRegExp.exec(str);
+    function parseLanguage(str2, i) {
+      var match = simpleLanguageRegExp.exec(str2);
       if (!match) return null;
       var prefix = match[1];
       var suffix = match[2];
@@ -25525,8 +25525,8 @@ var require_mediaType = __commonJS({
       accepts.length = j;
       return accepts;
     }
-    function parseMediaType(str, i) {
-      var match = simpleMediaTypeRegExp.exec(str);
+    function parseMediaType(str2, i) {
+      var match = simpleMediaTypeRegExp.exec(str2);
       if (!match) return null;
       var params = /* @__PURE__ */ Object.create(null);
       var q = 1;
@@ -25627,15 +25627,15 @@ var require_mediaType = __commonJS({
       }
       return count2;
     }
-    function splitKeyValuePair(str) {
-      var index = str.indexOf("=");
+    function splitKeyValuePair(str2) {
+      var index = str2.indexOf("=");
       var key;
       var val;
       if (index === -1) {
-        key = str;
+        key = str2;
       } else {
-        key = str.slice(0, index);
-        val = str.slice(index + 1);
+        key = str2.slice(0, index);
+        val = str2.slice(index + 1);
       }
       return [key, val];
     }
@@ -25651,8 +25651,8 @@ var require_mediaType = __commonJS({
       accepts.length = j + 1;
       return accepts;
     }
-    function splitParameters(str) {
-      var parameters = str.split(";");
+    function splitParameters(str2) {
+      var parameters = str2.split(";");
       for (var i = 1, j = 0; i < parameters.length; i++) {
         if (quoteCount(parameters[j]) % 2 == 0) {
           parameters[++j] = parameters[i];
@@ -25852,19 +25852,19 @@ var require_fresh = __commonJS({
       var timestamp2 = date2 && Date.parse(date2);
       return typeof timestamp2 === "number" ? timestamp2 : NaN;
     }
-    function parseTokenList(str) {
+    function parseTokenList(str2) {
       var end = 0;
       var list = [];
       var start = 0;
-      for (var i = 0, len = str.length; i < len; i++) {
-        switch (str.charCodeAt(i)) {
+      for (var i = 0, len = str2.length; i < len; i++) {
+        switch (str2.charCodeAt(i)) {
           case 32:
             if (start === end) {
               start = end = i + 1;
             }
             break;
           case 44:
-            list.push(str.substring(start, end));
+            list.push(str2.substring(start, end));
             start = end = i + 1;
             break;
           default:
@@ -25872,7 +25872,7 @@ var require_fresh = __commonJS({
             break;
         }
       }
-      list.push(str.substring(start, end));
+      list.push(str2.substring(start, end));
       return list;
     }
   }
@@ -25883,17 +25883,17 @@ var require_range_parser = __commonJS({
   "../../node_modules/.pnpm/range-parser@1.2.1/node_modules/range-parser/index.js"(exports, module) {
     "use strict";
     module.exports = rangeParser;
-    function rangeParser(size, str, options) {
-      if (typeof str !== "string") {
+    function rangeParser(size, str2, options) {
+      if (typeof str2 !== "string") {
         throw new TypeError("argument str must be a string");
       }
-      var index = str.indexOf("=");
+      var index = str2.indexOf("=");
       if (index === -1) {
         return -2;
       }
-      var arr = str.slice(index + 1).split(",");
+      var arr = str2.slice(index + 1).split(",");
       var ranges = [];
-      ranges.type = str.slice(0, index);
+      ranges.type = str2.slice(0, index);
       for (var i = 0; i < arr.length; i++) {
         var range = arr[i].split("-");
         var start = parseInt(range[0], 10);
@@ -26178,8 +26178,8 @@ var require_content_disposition = __commonJS({
       }
       return string;
     }
-    function decodefield(str) {
-      var match = EXT_VALUE_REGEXP.exec(str);
+    function decodefield(str2) {
+      var match = EXT_VALUE_REGEXP.exec(str2);
       if (!match) {
         throw new TypeError("invalid extended field value");
       }
@@ -26248,19 +26248,19 @@ var require_content_disposition = __commonJS({
       }
       return new ContentDisposition(type, params);
     }
-    function pdecode(str, hex) {
+    function pdecode(str2, hex) {
       return String.fromCharCode(parseInt(hex, 16));
     }
     function pencode(char2) {
       return "%" + String(char2).charCodeAt(0).toString(16).toUpperCase();
     }
     function qstring(val) {
-      var str = String(val);
-      return '"' + str.replace(QUOTE_REGEXP, "\\$1") + '"';
+      var str2 = String(val);
+      return '"' + str2.replace(QUOTE_REGEXP, "\\$1") + '"';
     }
     function ustring(val) {
-      var str = String(val);
-      var encoded = encodeURIComponent(str).replace(ENCODE_URL_ATTR_CHAR_REGEXP, pencode);
+      var str2 = String(val);
+      var encoded = encodeURIComponent(str2).replace(ENCODE_URL_ATTR_CHAR_REGEXP, pencode);
       return "UTF-8''" + encoded;
     }
     function ContentDisposition(type, parameters) {
@@ -26300,54 +26300,54 @@ var require_cookie = __commonJS({
     var cookieValueRegExp = /^("?)[\u0021\u0023-\u002B\u002D-\u003A\u003C-\u005B\u005D-\u007E]*\1$/;
     var domainValueRegExp = /^([.]?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
     var pathValueRegExp = /^[\u0020-\u003A\u003D-\u007E]*$/;
-    function parse(str, opt) {
-      if (typeof str !== "string") {
+    function parse(str2, opt) {
+      if (typeof str2 !== "string") {
         throw new TypeError("argument str must be a string");
       }
       var obj = {};
-      var len = str.length;
+      var len = str2.length;
       if (len < 2) return obj;
       var dec = opt && opt.decode || decode2;
       var index = 0;
       var eqIdx = 0;
       var endIdx = 0;
       do {
-        eqIdx = str.indexOf("=", index);
+        eqIdx = str2.indexOf("=", index);
         if (eqIdx === -1) break;
-        endIdx = str.indexOf(";", index);
+        endIdx = str2.indexOf(";", index);
         if (endIdx === -1) {
           endIdx = len;
         } else if (eqIdx > endIdx) {
-          index = str.lastIndexOf(";", eqIdx - 1) + 1;
+          index = str2.lastIndexOf(";", eqIdx - 1) + 1;
           continue;
         }
-        var keyStartIdx = startIndex(str, index, eqIdx);
-        var keyEndIdx = endIndex(str, eqIdx, keyStartIdx);
-        var key = str.slice(keyStartIdx, keyEndIdx);
+        var keyStartIdx = startIndex(str2, index, eqIdx);
+        var keyEndIdx = endIndex(str2, eqIdx, keyStartIdx);
+        var key = str2.slice(keyStartIdx, keyEndIdx);
         if (!__hasOwnProperty.call(obj, key)) {
-          var valStartIdx = startIndex(str, eqIdx + 1, endIdx);
-          var valEndIdx = endIndex(str, endIdx, valStartIdx);
-          if (str.charCodeAt(valStartIdx) === 34 && str.charCodeAt(valEndIdx - 1) === 34) {
+          var valStartIdx = startIndex(str2, eqIdx + 1, endIdx);
+          var valEndIdx = endIndex(str2, endIdx, valStartIdx);
+          if (str2.charCodeAt(valStartIdx) === 34 && str2.charCodeAt(valEndIdx - 1) === 34) {
             valStartIdx++;
             valEndIdx--;
           }
-          var val = str.slice(valStartIdx, valEndIdx);
+          var val = str2.slice(valStartIdx, valEndIdx);
           obj[key] = tryDecode(val, dec);
         }
         index = endIdx + 1;
       } while (index < len);
       return obj;
     }
-    function startIndex(str, index, max) {
+    function startIndex(str2, index, max) {
       do {
-        var code = str.charCodeAt(index);
+        var code = str2.charCodeAt(index);
         if (code !== 32 && code !== 9) return index;
       } while (++index < max);
       return max;
     }
-    function endIndex(str, index, min) {
+    function endIndex(str2, index, min) {
       while (index > min) {
-        var code = str.charCodeAt(--index);
+        var code = str2.charCodeAt(--index);
         if (code !== 32 && code !== 9) return index + 1;
       }
       return min;
@@ -26364,54 +26364,54 @@ var require_cookie = __commonJS({
       if (!cookieValueRegExp.test(value)) {
         throw new TypeError("argument val is invalid");
       }
-      var str = name + "=" + value;
-      if (!opt) return str;
+      var str2 = name + "=" + value;
+      if (!opt) return str2;
       if (null != opt.maxAge) {
         var maxAge = Math.floor(opt.maxAge);
         if (!isFinite(maxAge)) {
           throw new TypeError("option maxAge is invalid");
         }
-        str += "; Max-Age=" + maxAge;
+        str2 += "; Max-Age=" + maxAge;
       }
       if (opt.domain) {
         if (!domainValueRegExp.test(opt.domain)) {
           throw new TypeError("option domain is invalid");
         }
-        str += "; Domain=" + opt.domain;
+        str2 += "; Domain=" + opt.domain;
       }
       if (opt.path) {
         if (!pathValueRegExp.test(opt.path)) {
           throw new TypeError("option path is invalid");
         }
-        str += "; Path=" + opt.path;
+        str2 += "; Path=" + opt.path;
       }
       if (opt.expires) {
         var expires = opt.expires;
         if (!isDate(expires) || isNaN(expires.valueOf())) {
           throw new TypeError("option expires is invalid");
         }
-        str += "; Expires=" + expires.toUTCString();
+        str2 += "; Expires=" + expires.toUTCString();
       }
       if (opt.httpOnly) {
-        str += "; HttpOnly";
+        str2 += "; HttpOnly";
       }
       if (opt.secure) {
-        str += "; Secure";
+        str2 += "; Secure";
       }
       if (opt.partitioned) {
-        str += "; Partitioned";
+        str2 += "; Partitioned";
       }
       if (opt.priority) {
         var priority = typeof opt.priority === "string" ? opt.priority.toLowerCase() : opt.priority;
         switch (priority) {
           case "low":
-            str += "; Priority=Low";
+            str2 += "; Priority=Low";
             break;
           case "medium":
-            str += "; Priority=Medium";
+            str2 += "; Priority=Medium";
             break;
           case "high":
-            str += "; Priority=High";
+            str2 += "; Priority=High";
             break;
           default:
             throw new TypeError("option priority is invalid");
@@ -26421,34 +26421,34 @@ var require_cookie = __commonJS({
         var sameSite = typeof opt.sameSite === "string" ? opt.sameSite.toLowerCase() : opt.sameSite;
         switch (sameSite) {
           case true:
-            str += "; SameSite=Strict";
+            str2 += "; SameSite=Strict";
             break;
           case "lax":
-            str += "; SameSite=Lax";
+            str2 += "; SameSite=Lax";
             break;
           case "strict":
-            str += "; SameSite=Strict";
+            str2 += "; SameSite=Strict";
             break;
           case "none":
-            str += "; SameSite=None";
+            str2 += "; SameSite=None";
             break;
           default:
             throw new TypeError("option sameSite is invalid");
         }
       }
-      return str;
+      return str2;
     }
-    function decode2(str) {
-      return str.indexOf("%") !== -1 ? decodeURIComponent(str) : str;
+    function decode2(str2) {
+      return str2.indexOf("%") !== -1 ? decodeURIComponent(str2) : str2;
     }
     function isDate(val) {
       return __toString.call(val) === "[object Date]";
     }
-    function tryDecode(str, decode3) {
+    function tryDecode(str2, decode3) {
       try {
-        return decode3(str);
+        return decode3(str2);
       } catch (e) {
-        return str;
+        return str2;
       }
     }
   }
@@ -26461,7 +26461,7 @@ var require_send = __commonJS({
     var createError = require_http_errors();
     var debug = require_src()("send");
     var encodeUrl = require_encodeurl();
-    var escapeHtml3 = require_escape_html();
+    var escapeHtml4 = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
     var fs2 = __require("fs");
@@ -26514,7 +26514,7 @@ var require_send = __commonJS({
       }
       var res = this.res;
       var msg = statuses.message[status] || String(status);
-      var doc = createHtmlDocument("Error", escapeHtml3(msg));
+      var doc = createHtmlDocument("Error", escapeHtml4(msg));
       clearHeaders(res);
       if (err && err.headers) {
         setHeaders(res, err.headers);
@@ -26614,7 +26614,7 @@ var require_send = __commonJS({
         return;
       }
       var loc = encodeUrl(collapseLeadingSlashes(this.path + "/"));
-      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml3(loc));
+      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml4(loc));
       res.statusCode = 301;
       res.setHeader("Content-Type", "text/html; charset=UTF-8");
       res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -26847,13 +26847,13 @@ var require_send = __commonJS({
         res.removeHeader(header);
       }
     }
-    function collapseLeadingSlashes(str) {
-      for (var i = 0; i < str.length; i++) {
-        if (str[i] !== "/") {
+    function collapseLeadingSlashes(str2) {
+      for (var i = 0; i < str2.length; i++) {
+        if (str2[i] !== "/") {
           break;
         }
       }
-      return i > 1 ? "/" + str.substr(i) : str;
+      return i > 1 ? "/" + str2.substr(i) : str2;
     }
     function containsDotFile(parts) {
       for (var i = 0; i < parts.length; i++) {
@@ -26900,12 +26900,12 @@ var require_send = __commonJS({
       var timestamp2 = date2 && Date.parse(date2);
       return typeof timestamp2 === "number" ? timestamp2 : NaN;
     }
-    function parseTokenList(str) {
+    function parseTokenList(str2) {
       var end = 0;
       var list = [];
       var start = 0;
-      for (var i = 0, len = str.length; i < len; i++) {
-        switch (str.charCodeAt(i)) {
+      for (var i = 0, len = str2.length; i < len; i++) {
+        switch (str2.charCodeAt(i)) {
           case 32:
             if (start === end) {
               start = end = i + 1;
@@ -26913,7 +26913,7 @@ var require_send = __commonJS({
             break;
           case 44:
             if (start !== end) {
-              list.push(str.substring(start, end));
+              list.push(str2.substring(start, end));
             }
             start = end = i + 1;
             break;
@@ -26923,7 +26923,7 @@ var require_send = __commonJS({
         }
       }
       if (start !== end) {
-        list.push(str.substring(start, end));
+        list.push(str2.substring(start, end));
       }
       return list;
     }
@@ -27018,7 +27018,7 @@ var require_response = __commonJS({
     var createError = require_http_errors();
     var deprecate = require_depd()("express");
     var encodeUrl = require_encodeurl();
-    var escapeHtml3 = require_escape_html();
+    var escapeHtml4 = require_escape_html();
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
@@ -27357,7 +27357,7 @@ var require_response = __commonJS({
           body = statuses.message[status] + ". Redirecting to " + address;
         },
         html: function() {
-          var u = escapeHtml3(address);
+          var u = escapeHtml4(address);
           body = "<p>" + statuses.message[status] + ". Redirecting to " + u + "</p>";
         },
         default: function() {
@@ -27387,9 +27387,9 @@ var require_response = __commonJS({
         opts = {};
       }
       opts._locals = self.locals;
-      done = done || function(err, str) {
+      done = done || function(err, str2) {
         if (err) return req.next(err);
-        self.send(str);
+        self.send(str2);
       };
       app2.render(view, opts, done);
     };
@@ -27485,7 +27485,7 @@ var require_serve_static = __commonJS({
   "../../node_modules/.pnpm/serve-static@2.2.1/node_modules/serve-static/index.js"(exports, module) {
     "use strict";
     var encodeUrl = require_encodeurl();
-    var escapeHtml3 = require_escape_html();
+    var escapeHtml4 = require_escape_html();
     var parseUrl = require_parseurl();
     var resolve = __require("path").resolve;
     var send = require_send();
@@ -27545,13 +27545,13 @@ var require_serve_static = __commonJS({
         stream.pipe(res);
       };
     }
-    function collapseLeadingSlashes(str) {
-      for (var i = 0; i < str.length; i++) {
-        if (str.charCodeAt(i) !== 47) {
+    function collapseLeadingSlashes(str2) {
+      for (var i = 0; i < str2.length; i++) {
+        if (str2.charCodeAt(i) !== 47) {
           break;
         }
       }
-      return i > 1 ? "/" + str.substr(i) : str;
+      return i > 1 ? "/" + str2.substr(i) : str2;
     }
     function createHtmlDocument(title, body) {
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>' + title + "</title>\n</head>\n<body>\n<pre>" + body + "</pre>\n</body>\n</html>\n";
@@ -27571,7 +27571,7 @@ var require_serve_static = __commonJS({
         originalUrl.path = null;
         originalUrl.pathname = collapseLeadingSlashes(originalUrl.pathname + "/");
         var loc = encodeUrl(url.format(originalUrl));
-        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml3(loc));
+        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml4(loc));
         res.statusCode = 301;
         res.setHeader("Content-Type", "text/html; charset=UTF-8");
         res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -27659,8 +27659,8 @@ var require_object_assign = __commonJS({
         for (var i = 0; i < 10; i++) {
           test2["_" + String.fromCharCode(i)] = i;
         }
-        var order2 = Object.getOwnPropertyNames(test2).map(function(n) {
-          return test2[n];
+        var order2 = Object.getOwnPropertyNames(test2).map(function(n2) {
+          return test2[n2];
         });
         if (order2.join("") !== "0123456789") {
           return false;
@@ -27828,7 +27828,7 @@ var require_lib3 = __commonJS({
         return null;
       }
       function applyHeaders(headers, res) {
-        for (var i = 0, n = headers.length; i < n; i++) {
+        for (var i = 0, n2 = headers.length; i < n2; i++) {
           var header = headers[i];
           if (header) {
             if (Array.isArray(header)) {
@@ -28825,10 +28825,10 @@ var require_redaction = __commonJS({
     var strict = false;
     function redaction(opts, serialize) {
       const { paths, censor, remove } = handle(opts);
-      const shape = paths.reduce((o, str) => {
+      const shape = paths.reduce((o, str2) => {
         rx.lastIndex = 0;
-        const first = rx.exec(str);
-        const next = rx.exec(str);
+        const first = rx.exec(str2);
+        const next = rx.exec(str2);
         let ns = first[1] !== void 0 ? first[1].replace(/^(?:"|'|`)(.*)(?:"|'|`)$/, "$1") : first[0];
         if (ns === "*") {
           ns = wildcardFirstSym;
@@ -28841,7 +28841,7 @@ var require_redaction = __commonJS({
           return o;
         }
         const { index } = next;
-        const nextPath = `${str.substr(index, str.length - 1)}`;
+        const nextPath = `${str2.substr(index, str2.length - 1)}`;
         o[ns] = o[ns] || [];
         if (ns !== wildcardFirstSym && o[ns].length === 0) {
           o[ns].push(...o[wildcardFirstSym] || []);
@@ -28957,7 +28957,7 @@ var require_quick_format_unescaped = __commonJS({
       }
       var argLen = args.length;
       if (argLen === 0) return f;
-      var str = "";
+      var str2 = "";
       var a = 1 - offset;
       var lastPos = -1;
       var flen = f && f.length || 0;
@@ -28972,8 +28972,8 @@ var require_quick_format_unescaped = __commonJS({
                 break;
               if (args[a] == null) break;
               if (lastPos < i)
-                str += f.slice(lastPos, i);
-              str += Number(args[a]);
+                str2 += f.slice(lastPos, i);
+              str2 += Number(args[a]);
               lastPos = i + 2;
               i++;
               break;
@@ -28982,8 +28982,8 @@ var require_quick_format_unescaped = __commonJS({
                 break;
               if (args[a] == null) break;
               if (lastPos < i)
-                str += f.slice(lastPos, i);
-              str += Math.floor(Number(args[a]));
+                str2 += f.slice(lastPos, i);
+              str2 += Math.floor(Number(args[a]));
               lastPos = i + 2;
               i++;
               break;
@@ -28996,21 +28996,21 @@ var require_quick_format_unescaped = __commonJS({
                 break;
               if (args[a] === void 0) break;
               if (lastPos < i)
-                str += f.slice(lastPos, i);
+                str2 += f.slice(lastPos, i);
               var type = typeof args[a];
               if (type === "string") {
-                str += "'" + args[a] + "'";
+                str2 += "'" + args[a] + "'";
                 lastPos = i + 2;
                 i++;
                 break;
               }
               if (type === "function") {
-                str += args[a].name || "<anonymous>";
+                str2 += args[a].name || "<anonymous>";
                 lastPos = i + 2;
                 i++;
                 break;
               }
-              str += ss(args[a]);
+              str2 += ss(args[a]);
               lastPos = i + 2;
               i++;
               break;
@@ -29018,15 +29018,15 @@ var require_quick_format_unescaped = __commonJS({
               if (a >= argLen)
                 break;
               if (lastPos < i)
-                str += f.slice(lastPos, i);
-              str += String(args[a]);
+                str2 += f.slice(lastPos, i);
+              str2 += String(args[a]);
               lastPos = i + 2;
               i++;
               break;
             case 37:
               if (lastPos < i)
-                str += f.slice(lastPos, i);
-              str += "%";
+                str2 += f.slice(lastPos, i);
+              str2 += "%";
               lastPos = i + 2;
               i++;
               a--;
@@ -29039,9 +29039,9 @@ var require_quick_format_unescaped = __commonJS({
       if (lastPos === -1)
         return f;
       else if (lastPos < flen) {
-        str += f.slice(lastPos);
+        str2 += f.slice(lastPos);
       }
-      return str;
+      return str2;
     }
   }
 });
@@ -29230,7 +29230,7 @@ var require_sonic_boom = __commonJS({
       if (this.minLength >= this.maxWrite) {
         throw new Error(`minLength should be smaller than maxWrite (${this.maxWrite})`);
       }
-      this.release = (err, n) => {
+      this.release = (err, n2) => {
         if (err) {
           if ((err.code === "EAGAIN" || err.code === "EBUSY") && this.retryEAGAIN(err, this._writingBuf.length, this._len - this._writingBuf.length)) {
             if (this.sync) {
@@ -29249,8 +29249,8 @@ var require_sonic_boom = __commonJS({
           }
           return;
         }
-        this.emit("write", n);
-        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n);
+        this.emit("write", n2);
+        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n2);
         this._len = releasedBufObj.len;
         this._writingBuf = releasedBufObj.writingBuf;
         if (this._writingBuf.length) {
@@ -29260,8 +29260,8 @@ var require_sonic_boom = __commonJS({
           }
           try {
             do {
-              const n2 = fsWriteSync();
-              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n2);
+              const n3 = fsWriteSync();
+              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n3);
               this._len = releasedBufObj2.len;
               this._writingBuf = releasedBufObj2.writingBuf;
             } while (this._writingBuf.length);
@@ -29309,12 +29309,12 @@ var require_sonic_boom = __commonJS({
         this._periodicFlushTimer.unref();
       }
     }
-    function releaseWritingBuf(writingBuf, len, n) {
+    function releaseWritingBuf(writingBuf, len, n2) {
       if (typeof writingBuf === "string") {
         writingBuf = Buffer.from(writingBuf);
       }
-      len = Math.max(len - n, 0);
-      writingBuf = writingBuf.subarray(n);
+      len = Math.max(len - n2, 0);
+      writingBuf = writingBuf.subarray(n2);
       return { writingBuf, len };
     }
     function emitDrain(sonic) {
@@ -29536,8 +29536,8 @@ var require_sonic_boom = __commonJS({
           buf = this._bufs[0];
         }
         try {
-          const n = Buffer.isBuffer(buf) ? fs2.writeSync(this.fd, buf) : fs2.writeSync(this.fd, buf, "utf8");
-          const releasedBufObj = releaseWritingBuf(buf, this._len, n);
+          const n2 = Buffer.isBuffer(buf) ? fs2.writeSync(this.fd, buf) : fs2.writeSync(this.fd, buf, "utf8");
+          const releasedBufObj = releaseWritingBuf(buf, this._len, n2);
           buf = releasedBufObj.writingBuf;
           this._len = releasedBufObj.len;
           if (buf.length <= 0) {
@@ -29573,9 +29573,9 @@ var require_sonic_boom = __commonJS({
           buf = mergeBuf(this._bufs[0], this._lens[0]);
         }
         try {
-          const n = fs2.writeSync(this.fd, buf);
-          buf = buf.subarray(n);
-          this._len = Math.max(this._len - n, 0);
+          const n2 = fs2.writeSync(this.fd, buf);
+          buf = buf.subarray(n2);
+          this._len = Math.max(this._len - n2, 0);
           if (buf.length <= 0) {
             this._bufs.shift();
             this._lens.shift();
@@ -30497,7 +30497,7 @@ var require_tools = __commonJS({
       return function hookWrappedLog(...args) {
         hook.call(this, args, LOG, level);
       };
-      function LOG(o, ...n) {
+      function LOG(o, ...n2) {
         if (typeof o === "object") {
           let msg = o;
           if (o !== null) {
@@ -30508,48 +30508,48 @@ var require_tools = __commonJS({
             }
           }
           let formatParams;
-          if (msg === null && n.length === 0) {
+          if (msg === null && n2.length === 0) {
             formatParams = [null];
           } else {
-            msg = n.shift();
-            formatParams = n;
+            msg = n2.shift();
+            formatParams = n2;
           }
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
           this[writeSym](o, format(msg, formatParams, this[formatOptsSym]), level);
         } else {
-          let msg = o === void 0 ? n.shift() : o;
+          let msg = o === void 0 ? n2.shift() : o;
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
-          this[writeSym](null, format(msg, n, this[formatOptsSym]), level);
+          this[writeSym](null, format(msg, n2, this[formatOptsSym]), level);
         }
       }
     }
-    function asString(str) {
+    function asString(str2) {
       let result = "";
       let last = 0;
       let found = false;
       let point2 = 255;
-      const l = str.length;
+      const l = str2.length;
       if (l > 100) {
-        return JSON.stringify(str);
+        return JSON.stringify(str2);
       }
       for (var i = 0; i < l && point2 >= 32; i++) {
-        point2 = str.charCodeAt(i);
+        point2 = str2.charCodeAt(i);
         if (point2 === 34 || point2 === 92) {
-          result += str.slice(last, i) + "\\";
+          result += str2.slice(last, i) + "\\";
           last = i;
           found = true;
         }
       }
       if (!found) {
-        result = str;
+        result = str2;
       } else {
-        result += str.slice(last);
+        result += str2.slice(last);
       }
-      return point2 < 32 ? JSON.stringify(str) : '"' + result + '"';
+      return point2 < 32 ? JSON.stringify(str2) : '"' + result + '"';
     }
     function asJson(obj, msg, num2, time2) {
       if (asJsonChan.hasSubscribers === false) {
@@ -31081,7 +31081,7 @@ var require_proto = __commonJS({
       get levelVal() {
         return this[levelValSym];
       },
-      set levelVal(n) {
+      set levelVal(n2) {
         throw Error("levelVal is read-only");
       },
       get msgPrefix() {
@@ -31254,11 +31254,11 @@ var require_safe_stable_stringify = __commonJS({
     exports.configure = configure;
     module.exports = stringify;
     var strEscapeSequencesRegExp = /[\u0000-\u001f\u0022\u005c\ud800-\udfff]/;
-    function strEscape(str) {
-      if (str.length < 5e3 && !strEscapeSequencesRegExp.test(str)) {
-        return `"${str}"`;
+    function strEscape(str2) {
+      if (str2.length < 5e3 && !strEscapeSequencesRegExp.test(str2)) {
+        return `"${str2}"`;
       }
-      return JSON.stringify(str);
+      return JSON.stringify(str2);
     }
     function sort(array, comparator) {
       if (array.length > 200 || comparator) {
@@ -32011,7 +32011,7 @@ var require_pino = __commonJS({
     function pinoBundlerAbsolutePath(p) {
       try {
         const path5 = __require("path");
-        const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
+        const outputDir = "/root/imoove/artifacts/api-server/dist";
         return path5.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
@@ -33679,8 +33679,8 @@ var init_sql = __esm({
         return new SQL(list);
       }
       sql2.fromList = fromList;
-      function raw(str) {
-        return new SQL([new StringChunk(str)]);
+      function raw(str2) {
+        return new SQL([new StringChunk(str2)]);
       }
       sql2.raw = raw;
       function join(chunks, separator) {
@@ -36847,8 +36847,8 @@ var init_dialect = __esm({
       escapeParam(num2) {
         return `$${num2 + 1}`;
       }
-      escapeString(str) {
-        return `'${str.replace(/'/g, "''")}'`;
+      escapeString(str2) {
+        return `'${str2.replace(/'/g, "''")}'`;
       }
       buildWithCTE(queries) {
         if (!queries?.length) return void 0;
@@ -40943,21 +40943,28 @@ __export(schema_exports, {
   adminAuthPasswordResetsTable: () => adminAuthPasswordResetsTable,
   adminAuthUsersTable: () => adminAuthUsersTable,
   adminCompaniesTable: () => adminCompaniesTable,
+  billingAccountsTable: () => billingAccountsTable,
   companyChangeRequestsTable: () => companyChangeRequestsTable,
   driverVehicleAssignmentsTable: () => driverVehicleAssignmentsTable,
   fareAreasTable: () => fareAreasTable,
+  financialAuditLogTable: () => financialAuditLogTable,
   fleetDriversTable: () => fleetDriversTable,
   fleetVehiclesTable: () => fleetVehiclesTable,
+  invoiceItemsTable: () => invoiceItemsTable,
+  invoicesTable: () => invoicesTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
   partnerRegistrationDocumentsTable: () => partnerRegistrationDocumentsTable,
   partnerRegistrationRequestsTable: () => partnerRegistrationRequestsTable,
   partnerRegistrationTimelineTable: () => partnerRegistrationTimelineTable,
   partnerRideSeriesTable: () => partnerRideSeriesTable,
+  paymentsTable: () => paymentsTable,
   rideEventsTable: () => rideEventsTable,
-  ridesTable: () => ridesTable
+  rideFinancialsTable: () => rideFinancialsTable,
+  ridesTable: () => ridesTable,
+  settlementsTable: () => settlementsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, partnerRideSeriesTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, paymentsTable, financialAuditLogTable, partnerRideSeriesTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41012,7 +41019,12 @@ var init_schema2 = __esm({
       max_vehicles: integer("max_vehicles").notNull().default(100),
       fare_permissions: jsonb("fare_permissions").$type().notNull().default({}),
       insurer_permissions: jsonb("insurer_permissions").$type().notNull().default({}),
-      area_assignments: jsonb("area_assignments").$type().notNull().default([])
+      area_assignments: jsonb("area_assignments").$type().notNull().default([]),
+      /**
+       * Nach vollständig ausgefüllten Basis-Stammdaten im Partner-Panel: keine Self-Service-PATCHes mehr
+       * für diese Felder — nur noch `company_change_requests`.
+       */
+      partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false)
     });
     fleetDriversTable = pgTable("fleet_drivers", {
       id: text("id").primaryKey(),
@@ -41180,6 +41192,9 @@ var init_schema2 = __esm({
       email: text("email").notNull(),
       phone: text("phone").notNull().default(""),
       address_line1: text("address_line1").notNull().default(""),
+      address_line2: text("address_line2").notNull().default(""),
+      owner_name: text("owner_name").notNull().default(""),
+      dispo_phone: text("dispo_phone").notNull().default(""),
       postal_code: text("postal_code").notNull().default(""),
       city: text("city").notNull().default(""),
       country: text("country").notNull().default(""),
@@ -41286,6 +41301,135 @@ var init_schema2 = __esm({
       actor_type: text("actor_type").notNull().default("system"),
       actor_id: text("actor_id"),
       payload: jsonb("payload").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    billingAccountsTable = pgTable("billing_accounts", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "cascade"
+      }),
+      account_role: text("account_role").notNull().default("partner"),
+      account_name: text("account_name").notNull().default(""),
+      billing_email: text("billing_email").notNull().default(""),
+      billing_address_json: jsonb("billing_address_json").$type().notNull().default({}),
+      payment_terms_days: integer("payment_terms_days").notNull().default(14),
+      settlement_interval: text("settlement_interval").notNull().default("monthly"),
+      payment_method: text("payment_method").notNull().default("bank_transfer"),
+      metadata_json: jsonb("metadata_json").$type().notNull().default({}),
+      is_active: boolean("is_active").notNull().default(true),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    rideFinancialsTable = pgTable("ride_financials", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      payer_type: text("payer_type").notNull(),
+      billing_mode: text("billing_mode").notNull(),
+      service_provider_company_id: text("service_provider_company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      partner_company_id: text("partner_company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      billing_reference: text("billing_reference").notNull().default(""),
+      gross_amount: doublePrecision("gross_amount").notNull().default(0),
+      net_amount: doublePrecision("net_amount").notNull().default(0),
+      vat_rate: doublePrecision("vat_rate").notNull().default(0),
+      vat_amount: doublePrecision("vat_amount").notNull().default(0),
+      commission_type: text("commission_type").notNull().default("percentage"),
+      commission_value: doublePrecision("commission_value").notNull().default(0),
+      commission_amount: doublePrecision("commission_amount").notNull().default(0),
+      operator_payout_amount: doublePrecision("operator_payout_amount").notNull().default(0),
+      billing_status: text("billing_status").notNull().default("unbilled"),
+      settlement_status: text("settlement_status").notNull().default("open"),
+      calculated_at: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+      calculation_version: text("calculation_version").notNull().default("v1"),
+      calculation_rule_set: text("calculation_rule_set"),
+      calculation_metadata_json: jsonb("calculation_metadata_json").$type().notNull().default({}),
+      locked_at: timestamp("locked_at", { withTimezone: true }),
+      lock_reason: text("lock_reason"),
+      correction_count: integer("correction_count").notNull().default(0),
+      last_correction_at: timestamp("last_correction_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    invoicesTable = pgTable("invoices", {
+      id: text("id").primaryKey(),
+      invoice_number: text("invoice_number").notNull(),
+      company_id: text("company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      invoice_type: text("invoice_type").notNull(),
+      billing_period_start: date("billing_period_start").notNull(),
+      billing_period_end: date("billing_period_end").notNull(),
+      subtotal_net: doublePrecision("subtotal_net").notNull().default(0),
+      vat_total: doublePrecision("vat_total").notNull().default(0),
+      total_gross: doublePrecision("total_gross").notNull().default(0),
+      issue_date: date("issue_date").notNull(),
+      due_date: date("due_date"),
+      status: text("status").notNull().default("draft"),
+      pdf_storage_key: text("pdf_storage_key").notNull().default(""),
+      metadata_json: jsonb("metadata_json").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    invoiceItemsTable = pgTable("invoice_items", {
+      id: text("id").primaryKey(),
+      invoice_id: text("invoice_id").notNull().references(() => invoicesTable.id, { onDelete: "cascade" }),
+      ride_id: text("ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+      item_type: text("item_type").notNull(),
+      description: text("description").notNull().default(""),
+      quantity: doublePrecision("quantity").notNull().default(1),
+      unit_net: doublePrecision("unit_net").notNull().default(0),
+      vat_rate: doublePrecision("vat_rate").notNull().default(0),
+      line_net: doublePrecision("line_net").notNull().default(0),
+      line_vat: doublePrecision("line_vat").notNull().default(0),
+      line_gross: doublePrecision("line_gross").notNull().default(0),
+      metadata_json: jsonb("metadata_json").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    settlementsTable = pgTable("settlements", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      settlement_number: text("settlement_number").notNull(),
+      period_start: date("period_start").notNull(),
+      period_end: date("period_end").notNull(),
+      gross_revenue: doublePrecision("gross_revenue").notNull().default(0),
+      platform_commission: doublePrecision("platform_commission").notNull().default(0),
+      adjustments: doublePrecision("adjustments").notNull().default(0),
+      payout_amount: doublePrecision("payout_amount").notNull().default(0),
+      status: text("status").notNull().default("draft"),
+      paid_at: timestamp("paid_at", { withTimezone: true }),
+      payment_reference: text("payment_reference").notNull().default(""),
+      metadata_json: jsonb("metadata_json").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    paymentsTable = pgTable("payments", {
+      id: text("id").primaryKey(),
+      target_type: text("target_type").notNull(),
+      target_id: text("target_id").notNull(),
+      company_id: text("company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      payment_method: text("payment_method").notNull().default("bank_transfer"),
+      amount: doublePrecision("amount").notNull().default(0),
+      paid_at: timestamp("paid_at", { withTimezone: true }),
+      reference: text("reference").notNull().default(""),
+      status: text("status").notNull().default("pending"),
+      metadata_json: jsonb("metadata_json").$type().notNull().default({}),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    financialAuditLogTable = pgTable("financial_audit_log", {
+      id: text("id").primaryKey(),
+      entity_type: text("entity_type").notNull(),
+      entity_id: text("entity_id").notNull(),
+      action: text("action").notNull(),
+      old_value_json: jsonb("old_value_json").$type().notNull().default({}),
+      new_value_json: jsonb("new_value_json").$type().notNull().default({}),
+      actor_type: text("actor_type").notNull().default("system"),
+      actor_id: text("actor_id"),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
     partnerRideSeriesTable = pgTable("partner_ride_series", {
@@ -41632,9 +41776,9 @@ async function insertAccessCodeAdmin(body) {
     const maxAttempts = 12;
     for (let a = 0; a < maxAttempts; a += 1) {
       const plain = generateAccessCodePlain(12);
-      const n = normalizeAccessCodeInput(plain);
+      const n2 = normalizeAccessCodeInput(plain);
       const ins = await insertAccessCodeRow({
-        normalized: n,
+        normalized: n2,
         codeType: body.codeType,
         companyId,
         label,
@@ -41795,6 +41939,7 @@ __export(ridesData_exports, {
   countRidesAdmin: () => countRidesAdmin,
   findRide: () => findRide,
   findRideAdminById: () => findRideAdminById,
+  getPanelCompanyOverviewMetrics: () => getPanelCompanyOverviewMetrics,
   insertRide: () => insertRide,
   insertRideCloningAccessFromTemplate: () => insertRideCloningAccessFromTemplate,
   insertRideWithOptionalAccessCode: () => insertRideWithOptionalAccessCode,
@@ -42343,6 +42488,183 @@ function adminPreviousDayBounds(bounds) {
   const end = addDaysUtc(bounds.end, -1);
   return { start, end };
 }
+function panelOverviewRideRevenue(r) {
+  const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
+  return Number.isFinite(a) ? a : 0;
+}
+function panelOverviewPresentation(kind) {
+  return kind === "taxi" ? "taxi_betrieb" : "leistungspartner";
+}
+function monthWindowBerlin(companyId) {
+  const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  return and(
+    companyIdMatchCondition(companyId),
+    gte(ridesTable.created_at, berlinMonthStart),
+    lt(ridesTable.created_at, berlinMonthEnd)
+  );
+}
+async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
+  const presentation = panelOverviewPresentation(companyKind);
+  const db2 = getDb();
+  if (!db2) {
+    const list = memoryRides.filter((r) => r.companyId && String(r.companyId) === companyId);
+    const now = Date.now();
+    const u = /* @__PURE__ */ new Date();
+    const dayStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
+    const dayEnd = dayStart + 24 * 3600 * 1e3;
+    const weekStart = now - 7 * 24 * 3600 * 1e3;
+    const monthStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), 1);
+    const monthEnd = Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1);
+    const tomorrowStart = dayEnd;
+    const tomorrowEnd = tomorrowStart + 24 * 3600 * 1e3;
+    const inCreated = (r, a, b) => {
+      const t = new Date(r.createdAt).getTime();
+      return t >= a && t < b;
+    };
+    const completedIn = (a, b) => list.filter((r) => r.status === "completed" && inCreated(r, a, b));
+    const todayRides = completedIn(dayStart, dayEnd);
+    const weekRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= weekStart);
+    const monthRides = completedIn(monthStart, monthEnd);
+    const openRides = list.filter((r) => !PANEL_OVERVIEW_TERMINAL_STATUSES.includes(r.status)).length;
+    const monthList = list.filter((r) => inCreated(r, monthStart, monthEnd));
+    const compM = monthList.filter((r) => r.status === "completed").length;
+    const cancM = monthList.filter((r) => PANEL_OVERVIEW_CANCELLED_STATUSES.includes(r.status)).length;
+    const denom = compM + cancM;
+    const cancelRate2 = denom > 0 ? cancM / denom : null;
+    const schedIn = (a, b) => list.filter((r) => {
+      if (!r.scheduledAt) return false;
+      const t = new Date(r.scheduledAt).getTime();
+      return t >= a && t < b;
+    });
+    const scheduledTodayCount = schedIn(dayStart, dayEnd).length;
+    const scheduledTomorrowCount = schedIn(tomorrowStart, tomorrowEnd).length;
+    const completedMonth = monthList.filter((r) => r.status === "completed");
+    let avgFare2 = null;
+    let avgKm = null;
+    if (completedMonth.length > 0) {
+      avgFare2 = completedMonth.reduce((s, r) => s + panelOverviewRideRevenue(r), 0) / completedMonth.length;
+      const kmSum = completedMonth.reduce((s, r) => s + (Number.isFinite(r.distanceKm) ? r.distanceKm : 0), 0);
+      avgKm = kmSum / completedMonth.length;
+    }
+    const completedWithAccessCode = completedMonth.filter((r) => Boolean(r.accessCodeId)).length;
+    return {
+      companyKind,
+      presentation,
+      zone: "Europe/Berlin",
+      weekScope: "rolling_7d",
+      today: {
+        completedRides: todayRides.length,
+        revenue: todayRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0)
+      },
+      week: {
+        completedRides: weekRides.length,
+        revenue: weekRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0)
+      },
+      month: {
+        completedRides: monthRides.length,
+        revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0)
+      },
+      openRides,
+      monthDecided: { completedRides: compM, cancelledRides: cancM, cancelRate: cancelRate2 },
+      scheduled: { todayCount: scheduledTodayCount, tomorrowCount: scheduledTomorrowCount },
+      monthCompletedQuality: {
+        avgFare: avgFare2,
+        avgDistanceKm: avgKm,
+        completedWithAccessCode
+      }
+    };
+  }
+  const berlinTodayStart = sql`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
+  const berlinTodayEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinTomorrowStart = berlinTodayEnd;
+  const berlinTomorrowEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '2 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  const weekRollingStart = sql`(now() - interval '7 days')`;
+  const baseCompleted = and(companyIdMatchCondition(companyId), eq(ridesTable.status, "completed"));
+  const [todayRow] = await db2.select({
+    completedRides: sql`count(*)::int`,
+    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+  }).from(ridesTable).where(
+    and(baseCompleted, gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd))
+  );
+  const [weekRow] = await db2.select({
+    completedRides: sql`count(*)::int`,
+    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+  }).from(ridesTable).where(and(baseCompleted, gte(ridesTable.created_at, weekRollingStart)));
+  const [monthRow] = await db2.select({
+    completedRides: sql`count(*)::int`,
+    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+  }).from(ridesTable).where(
+    and(baseCompleted, gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd))
+  );
+  const [openRow] = await db2.select({ openRides: sql`count(*)::int` }).from(ridesTable).where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)));
+  const mw = monthWindowBerlin(companyId);
+  const [compDec] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(mw, eq(ridesTable.status, "completed")));
+  const [cancDec] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(mw, inArray(ridesTable.status, PANEL_OVERVIEW_CANCELLED_STATUSES)));
+  const compN = Number(compDec?.n ?? 0);
+  const cancN = Number(cancDec?.n ?? 0);
+  const decDenom = compN + cancN;
+  const cancelRate = decDenom > 0 ? cancN / decDenom : null;
+  const [stToday] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(
+    and(
+      companyIdMatchCondition(companyId),
+      isNotNull(ridesTable.scheduled_at),
+      gte(ridesTable.scheduled_at, berlinTodayStart),
+      lt(ridesTable.scheduled_at, berlinTodayEnd)
+    )
+  );
+  const [stTomorrow] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(
+    and(
+      companyIdMatchCondition(companyId),
+      isNotNull(ridesTable.scheduled_at),
+      gte(ridesTable.scheduled_at, berlinTomorrowStart),
+      lt(ridesTable.scheduled_at, berlinTomorrowEnd)
+    )
+  );
+  const [qualRow] = await db2.select({
+    avgFare: sql`coalesce(avg(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    avgKm: sql`coalesce(avg(${ridesTable.distance_km}), 0)`,
+    withCode: sql`count(*) FILTER (WHERE ${ridesTable.access_code_id} IS NOT NULL)::int`
+  }).from(ridesTable).where(and(mw, eq(ridesTable.status, "completed")));
+  const completedMonthN = Number(monthRow?.completedRides ?? 0);
+  const avgFare = completedMonthN > 0 ? Number(qualRow?.avgFare ?? 0) : null;
+  const avgDistanceKm = completedMonthN > 0 ? Number(qualRow?.avgKm ?? 0) : null;
+  return {
+    companyKind,
+    presentation,
+    zone: "Europe/Berlin",
+    weekScope: "rolling_7d",
+    today: {
+      completedRides: Number(todayRow?.completedRides ?? 0),
+      revenue: Number(todayRow?.revenue ?? 0)
+    },
+    week: {
+      completedRides: Number(weekRow?.completedRides ?? 0),
+      revenue: Number(weekRow?.revenue ?? 0)
+    },
+    month: {
+      completedRides: Number(monthRow?.completedRides ?? 0),
+      revenue: Number(monthRow?.revenue ?? 0)
+    },
+    openRides: Number(openRow?.openRides ?? 0),
+    monthDecided: {
+      completedRides: compN,
+      cancelledRides: cancN,
+      cancelRate
+    },
+    scheduled: {
+      todayCount: Number(stToday?.n ?? 0),
+      tomorrowCount: Number(stTomorrow?.n ?? 0)
+    },
+    monthCompletedQuality: {
+      avgFare,
+      avgDistanceKm,
+      completedWithAccessCode: Number(qualRow?.withCode ?? 0)
+    }
+  };
+}
 async function updateRide(id, patch) {
   const cur = await findRide(id);
   if (!cur) return null;
@@ -42384,7 +42706,7 @@ async function resetRidesDemo(seed) {
     await db2.insert(ridesTable).values(seed.map(rideToInsert));
   }
 }
-var memoryRides;
+var memoryRides, PANEL_OVERVIEW_TERMINAL_STATUSES, PANEL_OVERVIEW_CANCELLED_STATUSES;
 var init_ridesData = __esm({
   "src/db/ridesData.ts"() {
     init_drizzle_orm();
@@ -42396,6 +42718,519 @@ var init_ridesData = __esm({
     init_client();
     init_schema2();
     memoryRides = [];
+    PANEL_OVERVIEW_TERMINAL_STATUSES = [
+      "completed",
+      "cancelled",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "expired",
+      "rejected"
+    ];
+    PANEL_OVERVIEW_CANCELLED_STATUSES = [
+      "cancelled",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system"
+    ];
+  }
+});
+
+// src/lib/financeCalculationService.ts
+function roundMoney(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+function toSafeNonNegative(value, fallback) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, value);
+}
+function derivePayerType(ride) {
+  if (ride.partnerBookingMeta?.flow === "hotel_guest") return "hotel";
+  if (ride.payerKind === "insurance") return "insurance";
+  if (ride.payerKind === "voucher") return "voucher";
+  if (ride.payerKind === "third_party") return "third_party";
+  if (ride.payerKind === "company") return "company";
+  return "passenger";
+}
+function deriveBillingMode(ride) {
+  if (ride.authorizationSource === "access_code") return "voucher";
+  if (ride.payerKind === "insurance") return "insurance";
+  if (ride.payerKind === "company") return "invoice";
+  if (ride.payerKind === "voucher") return "voucher";
+  return "direct";
+}
+function deriveInitialBillingStatus(ride) {
+  if (ride.status === "cancelled" || ride.status === "cancelled_by_customer" || ride.status === "cancelled_by_driver") {
+    return "cancelled";
+  }
+  return "unbilled";
+}
+function deriveInitialSettlementStatus(ride) {
+  if (ride.status === "cancelled" || ride.status === "cancelled_by_customer" || ride.status === "cancelled_by_driver") {
+    return "held";
+  }
+  return "open";
+}
+function calculateRideFinancialsV1(input) {
+  const { ride } = input;
+  const pricingContext = input.pricingContext ?? null;
+  const grossAmount = roundMoney(
+    toSafeNonNegative(
+      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
+      0
+    )
+  );
+  const vatRate = toSafeNonNegative(pricingContext?.vatRate ?? DEFAULT_VAT_RATE, DEFAULT_VAT_RATE);
+  const netAmount = roundMoney(grossAmount / (1 + vatRate));
+  const vatAmount = roundMoney(grossAmount - netAmount);
+  const commissionType = pricingContext?.commissionType ?? "percentage";
+  const commissionValue = toSafeNonNegative(
+    pricingContext?.commissionValue ?? DEFAULT_COMMISSION_VALUE,
+    DEFAULT_COMMISSION_VALUE
+  );
+  const commissionAmount = commissionType === "fixed" ? roundMoney(commissionValue) : commissionType === "none" ? 0 : roundMoney(grossAmount * commissionValue);
+  const operatorPayoutAmount = roundMoney(Math.max(0, grossAmount - commissionAmount));
+  return {
+    grossAmount,
+    netAmount,
+    vatRate,
+    vatAmount,
+    payerType: derivePayerType(ride),
+    billingMode: deriveBillingMode(ride),
+    partnerCompanyId: input.partnerCompanyId ?? ride.companyId ?? null,
+    serviceProviderCompanyId: input.serviceProviderCompanyId ?? ride.companyId ?? null,
+    commissionType,
+    commissionValue,
+    commissionAmount,
+    operatorPayoutAmount,
+    calculationVersion: DEFAULT_CALCULATION_VERSION,
+    calculationRuleSet: DEFAULT_RULE_SET,
+    calculationMetadata: {
+      rideStatus: ride.status,
+      pricingMode: ride.pricingMode ?? "taxi_tariff",
+      rideKind: ride.rideKind,
+      payerKind: ride.payerKind,
+      initialBillingStatus: deriveInitialBillingStatus(ride),
+      initialSettlementStatus: deriveInitialSettlementStatus(ride)
+    }
+  };
+}
+function deriveFinanceInitialStatuses(ride) {
+  return {
+    billingStatus: deriveInitialBillingStatus(ride),
+    settlementStatus: deriveInitialSettlementStatus(ride)
+  };
+}
+var DEFAULT_VAT_RATE, DEFAULT_COMMISSION_VALUE, DEFAULT_CALCULATION_VERSION, DEFAULT_RULE_SET;
+var init_financeCalculationService = __esm({
+  "src/lib/financeCalculationService.ts"() {
+    DEFAULT_VAT_RATE = 0.19;
+    DEFAULT_COMMISSION_VALUE = 0.15;
+    DEFAULT_CALCULATION_VERSION = "finance_v1";
+    DEFAULT_RULE_SET = "onroda.finance.v1.default";
+  }
+});
+
+// src/db/rideFinancialsData.ts
+var rideFinancialsData_exports = {};
+__export(rideFinancialsData_exports, {
+  RIDE_FINANCIAL_BILLING_STATUSES: () => RIDE_FINANCIAL_BILLING_STATUSES,
+  RIDE_FINANCIAL_SETTLEMENT_STATUSES: () => RIDE_FINANCIAL_SETTLEMENT_STATUSES,
+  correctRideFinancialSnapshot: () => correctRideFinancialSnapshot,
+  getInvoiceEligibility: () => getInvoiceEligibility,
+  getRideFinancialSnapshotByRideId: () => getRideFinancialSnapshotByRideId,
+  getSettlementEligibility: () => getSettlementEligibility,
+  lockRideFinancialSnapshot: () => lockRideFinancialSnapshot,
+  updateRideFinancialStatuses: () => updateRideFinancialStatuses,
+  upsertRideFinancialSnapshot: () => upsertRideFinancialSnapshot
+});
+import { randomUUID as randomUUID2 } from "node:crypto";
+async function insertFinancialAuditLog(input) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID2()}`,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    action: input.action,
+    old_value_json: input.oldValue ?? {},
+    new_value_json: input.newValue ?? {},
+    actor_type: input.actorType ?? "system",
+    actor_id: input.actorId ?? null
+  });
+}
+function toPublicSnapshot(row) {
+  return {
+    id: row.id,
+    rideId: row.ride_id,
+    payerType: row.payer_type,
+    billingMode: row.billing_mode,
+    serviceProviderCompanyId: row.service_provider_company_id,
+    partnerCompanyId: row.partner_company_id,
+    billingReference: row.billing_reference,
+    grossAmount: row.gross_amount,
+    netAmount: row.net_amount,
+    vatRate: row.vat_rate,
+    vatAmount: row.vat_amount,
+    commissionType: row.commission_type,
+    commissionValue: row.commission_value,
+    commissionAmount: row.commission_amount,
+    operatorPayoutAmount: row.operator_payout_amount,
+    billingStatus: row.billing_status,
+    settlementStatus: row.settlement_status,
+    calculationVersion: row.calculation_version,
+    calculationRuleSet: row.calculation_rule_set ?? null,
+    calculationMetadata: row.calculation_metadata_json ?? {},
+    lockReason: row.lock_reason ?? null,
+    correctionCount: row.correction_count ?? 0,
+    lockedAt: row.locked_at,
+    calculatedAt: row.calculated_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+async function getAutoLockReason(rideId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const linkedInvoiceItem = await db2.select({ id: invoiceItemsTable.id }).from(invoiceItemsTable).where(eq(invoiceItemsTable.ride_id, rideId)).limit(1);
+  if (linkedInvoiceItem[0]) return "invoice_item_assigned";
+  return null;
+}
+function isValidBillingStatus(value) {
+  return RIDE_FINANCIAL_BILLING_STATUSES.includes(value);
+}
+function isValidSettlementStatus(value) {
+  return RIDE_FINANCIAL_SETTLEMENT_STATUSES.includes(value);
+}
+async function getRideFinancialSnapshotByRideId(rideId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, rideId)).limit(1);
+  const row = rows[0];
+  return row ? toPublicSnapshot(row) : null;
+}
+async function upsertRideFinancialSnapshot(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const { ride } = input;
+  const calc = calculateRideFinancialsV1({
+    ride,
+    pricingContext: input.pricingContext ?? null,
+    partnerCompanyId: ride.companyId ?? null,
+    serviceProviderCompanyId: ride.companyId ?? null
+  });
+  const initialStatuses = deriveFinanceInitialStatuses(ride);
+  const now = /* @__PURE__ */ new Date();
+  const autoLockReason = await getAutoLockReason(ride.id);
+  const existingRows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, ride.id)).limit(1);
+  const existing = existingRows[0];
+  if (!existing) {
+    const id = `rf-${randomUUID2()}`;
+    await db2.insert(rideFinancialsTable).values({
+      id,
+      ride_id: ride.id,
+      payer_type: calc.payerType,
+      billing_mode: calc.billingMode,
+      service_provider_company_id: calc.serviceProviderCompanyId,
+      partner_company_id: calc.partnerCompanyId,
+      billing_reference: ride.billingReference ?? "",
+      gross_amount: calc.grossAmount,
+      net_amount: calc.netAmount,
+      vat_rate: calc.vatRate,
+      vat_amount: calc.vatAmount,
+      commission_type: calc.commissionType,
+      commission_value: calc.commissionValue,
+      commission_amount: calc.commissionAmount,
+      operator_payout_amount: calc.operatorPayoutAmount,
+      billing_status: initialStatuses.billingStatus,
+      settlement_status: initialStatuses.settlementStatus,
+      calculated_at: now,
+      calculation_version: calc.calculationVersion,
+      calculation_rule_set: calc.calculationRuleSet,
+      calculation_metadata_json: calc.calculationMetadata,
+      lock_reason: autoLockReason,
+      locked_at: autoLockReason ? now : null,
+      updated_at: now
+    });
+    await insertFinancialAuditLog({
+      entityType: "ride_financial",
+      entityId: id,
+      action: "snapshot_created",
+      newValue: {
+        rideId: ride.id,
+        calculationVersion: calc.calculationVersion,
+        reason: input.reason ?? "ride_completed"
+      },
+      actorType: input.actorType,
+      actorId: input.actorId
+    });
+    return { ok: true, snapshotId: id };
+  }
+  if (existing.locked_at) {
+    return { ok: false, error: "snapshot_locked" };
+  }
+  if (autoLockReason) {
+    await db2.update(rideFinancialsTable).set({
+      locked_at: now,
+      lock_reason: autoLockReason,
+      updated_at: now
+    }).where(eq(rideFinancialsTable.id, existing.id));
+    await insertFinancialAuditLog({
+      entityType: "ride_financial",
+      entityId: existing.id,
+      action: "snapshot_locked",
+      oldValue: { lockReason: existing.lock_reason ?? null },
+      newValue: { lockReason: autoLockReason },
+      actorType: input.actorType,
+      actorId: input.actorId
+    });
+    return { ok: false, error: "snapshot_locked" };
+  }
+  await db2.update(rideFinancialsTable).set({
+    payer_type: calc.payerType,
+    billing_mode: calc.billingMode,
+    service_provider_company_id: calc.serviceProviderCompanyId,
+    partner_company_id: calc.partnerCompanyId,
+    billing_reference: ride.billingReference ?? "",
+    gross_amount: calc.grossAmount,
+    net_amount: calc.netAmount,
+    vat_rate: calc.vatRate,
+    vat_amount: calc.vatAmount,
+    commission_type: calc.commissionType,
+    commission_value: calc.commissionValue,
+    commission_amount: calc.commissionAmount,
+    operator_payout_amount: calc.operatorPayoutAmount,
+    calculation_version: calc.calculationVersion,
+    calculation_rule_set: calc.calculationRuleSet,
+    calculation_metadata_json: calc.calculationMetadata,
+    calculated_at: now,
+    updated_at: now
+  }).where(eq(rideFinancialsTable.id, existing.id));
+  await insertFinancialAuditLog({
+    entityType: "ride_financial",
+    entityId: existing.id,
+    action: "snapshot_updated",
+    oldValue: {
+      calculationVersion: existing.calculation_version,
+      grossAmount: existing.gross_amount,
+      netAmount: existing.net_amount
+    },
+    newValue: {
+      calculationVersion: calc.calculationVersion,
+      grossAmount: calc.grossAmount,
+      netAmount: calc.netAmount,
+      reason: input.reason ?? "refresh"
+    },
+    actorType: input.actorType,
+    actorId: input.actorId
+  });
+  return { ok: true, snapshotId: existing.id };
+}
+async function lockRideFinancialSnapshot(rideId, reason, actor) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const rows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, rideId)).limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: "snapshot_not_found" };
+  if (row.locked_at) return { ok: true };
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(rideFinancialsTable).set({
+    locked_at: now,
+    lock_reason: reason.trim() || "manual_lock",
+    updated_at: now
+  }).where(eq(rideFinancialsTable.id, row.id));
+  await insertFinancialAuditLog({
+    entityType: "ride_financial",
+    entityId: row.id,
+    action: "snapshot_locked",
+    oldValue: { lockReason: row.lock_reason ?? null },
+    newValue: { lockReason: reason.trim() || "manual_lock" },
+    actorType: actor?.actorType,
+    actorId: actor?.actorId
+  });
+  return { ok: true };
+}
+async function correctRideFinancialSnapshot(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const reason = input.reason.trim();
+  if (!reason) return { ok: false, error: "correction_reason_required" };
+  const rows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, input.ride.id)).limit(1);
+  const existing = rows[0];
+  if (!existing) {
+    return upsertRideFinancialSnapshot({
+      ride: input.ride,
+      pricingContext: input.pricingContext ?? null,
+      reason,
+      actorType: input.actorType,
+      actorId: input.actorId
+    });
+  }
+  await insertFinancialAuditLog({
+    entityType: "ride_financial",
+    entityId: existing.id,
+    action: "correction_started",
+    oldValue: {
+      calculationVersion: existing.calculation_version,
+      lockedAt: existing.locked_at ? existing.locked_at.toISOString() : null
+    },
+    newValue: { reason },
+    actorType: input.actorType,
+    actorId: input.actorId
+  });
+  const calc = calculateRideFinancialsV1({
+    ride: input.ride,
+    pricingContext: input.pricingContext ?? null,
+    partnerCompanyId: input.ride.companyId ?? null,
+    serviceProviderCompanyId: input.ride.companyId ?? null
+  });
+  const now = /* @__PURE__ */ new Date();
+  const correctionCount = Number(existing.correction_count ?? 0) + 1;
+  await db2.update(rideFinancialsTable).set({
+    payer_type: calc.payerType,
+    billing_mode: calc.billingMode,
+    service_provider_company_id: calc.serviceProviderCompanyId,
+    partner_company_id: calc.partnerCompanyId,
+    billing_reference: input.ride.billingReference ?? "",
+    gross_amount: calc.grossAmount,
+    net_amount: calc.netAmount,
+    vat_rate: calc.vatRate,
+    vat_amount: calc.vatAmount,
+    commission_type: calc.commissionType,
+    commission_value: calc.commissionValue,
+    commission_amount: calc.commissionAmount,
+    operator_payout_amount: calc.operatorPayoutAmount,
+    calculation_version: `${calc.calculationVersion}:corr_${correctionCount}`,
+    calculation_rule_set: calc.calculationRuleSet,
+    calculation_metadata_json: {
+      ...calc.calculationMetadata,
+      correctionReason: reason
+    },
+    correction_count: correctionCount,
+    last_correction_at: now,
+    locked_at: now,
+    lock_reason: `corrected:${reason}`,
+    calculated_at: now,
+    updated_at: now
+  }).where(eq(rideFinancialsTable.id, existing.id));
+  await insertFinancialAuditLog({
+    entityType: "ride_financial",
+    entityId: existing.id,
+    action: "snapshot_corrected",
+    oldValue: {
+      calculationVersion: existing.calculation_version,
+      correctionCount: existing.correction_count ?? 0
+    },
+    newValue: {
+      calculationVersion: `${calc.calculationVersion}:corr_${correctionCount}`,
+      correctionCount,
+      reason
+    },
+    actorType: input.actorType,
+    actorId: input.actorId
+  });
+  return { ok: true, snapshotId: existing.id };
+}
+async function updateRideFinancialStatuses(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const rows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, input.rideId)).limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: "snapshot_not_found" };
+  const billingStatus = input.billingStatus ?? row.billing_status;
+  const settlementStatus = input.settlementStatus ?? row.settlement_status;
+  if (!isValidBillingStatus(billingStatus)) return { ok: false, error: "billing_status_invalid" };
+  if (!isValidSettlementStatus(settlementStatus)) return { ok: false, error: "settlement_status_invalid" };
+  await db2.update(rideFinancialsTable).set({
+    billing_status: billingStatus,
+    settlement_status: settlementStatus,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(eq(rideFinancialsTable.id, row.id));
+  await insertFinancialAuditLog({
+    entityType: "ride_financial",
+    entityId: row.id,
+    action: "status_changed",
+    oldValue: {
+      billingStatus: row.billing_status,
+      settlementStatus: row.settlement_status
+    },
+    newValue: {
+      billingStatus,
+      settlementStatus,
+      reason: input.reason ?? "manual_status_update"
+    },
+    actorType: input.actorType,
+    actorId: input.actorId
+  });
+  return { ok: true };
+}
+function pushBlocker(blockers, value) {
+  if (!blockers.includes(value)) blockers.push(value);
+}
+function getInvoiceEligibility(input) {
+  const blockers = [];
+  if (input.ride.status !== "completed") pushBlocker(blockers, "ride_not_completed");
+  if (input.ride.status.startsWith("cancelled")) pushBlocker(blockers, "cancelled_ride");
+  if (!input.snapshot) pushBlocker(blockers, "missing_snapshot");
+  if (input.snapshot && !input.snapshot.payerType) pushBlocker(blockers, "missing_payer");
+  if (input.snapshot && !input.snapshot.billingMode) pushBlocker(blockers, "missing_billing_mode");
+  if (input.snapshot && !["unbilled", "queued"].includes(input.snapshot.billingStatus)) {
+    pushBlocker(blockers, "billing_status_not_invoice_eligible");
+  }
+  const billingReference = input.snapshot?.billingReference ?? input.ride.billingReference ?? "";
+  const refRequired = input.ride.payerKind === "insurance" || input.ride.payerKind === "company";
+  if (refRequired && !billingReference.trim()) pushBlocker(blockers, "missing_billing_reference");
+  if (input.ride.rideKind === "medical") {
+    if (!input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
+      pushBlocker(blockers, "incomplete_medical_fields");
+    }
+  }
+  if (input.ride.payerKind === "insurance" && !billingReference.trim()) {
+    pushBlocker(blockers, "incomplete_insurance_fields");
+  }
+  return { eligible: blockers.length === 0, blockers };
+}
+function getSettlementEligibility(input) {
+  const blockers = [];
+  if (input.ride.status !== "completed") pushBlocker(blockers, "ride_not_completed");
+  if (input.ride.status.startsWith("cancelled")) pushBlocker(blockers, "cancelled_ride");
+  if (!input.snapshot) pushBlocker(blockers, "missing_snapshot");
+  if (input.snapshot && !input.snapshot.serviceProviderCompanyId) {
+    pushBlocker(blockers, "missing_service_provider");
+  }
+  if (input.snapshot && !["open", "calculated"].includes(input.snapshot.settlementStatus)) {
+    pushBlocker(blockers, "settlement_status_not_eligible");
+  }
+  if (input.ride.rideKind === "medical" && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
+    pushBlocker(blockers, "incomplete_medical_fields");
+  }
+  return { eligible: blockers.length === 0, blockers };
+}
+var RIDE_FINANCIAL_BILLING_STATUSES, RIDE_FINANCIAL_SETTLEMENT_STATUSES;
+var init_rideFinancialsData = __esm({
+  "src/db/rideFinancialsData.ts"() {
+    init_drizzle_orm();
+    init_financeCalculationService();
+    init_client();
+    init_schema2();
+    RIDE_FINANCIAL_BILLING_STATUSES = [
+      "unbilled",
+      "queued",
+      "invoiced",
+      "partially_paid",
+      "paid",
+      "cancelled",
+      "written_off"
+    ];
+    RIDE_FINANCIAL_SETTLEMENT_STATUSES = [
+      "open",
+      "calculated",
+      "approved",
+      "paid_out",
+      "held",
+      "disputed"
+    ];
   }
 });
 
@@ -46502,6 +47337,7 @@ var import_express2 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_accessCodesData();
 init_ridesData();
+init_rideFinancialsData();
 init_rideAuthorization();
 
 // src/domain/ridePublic.ts
@@ -46520,7 +47356,7 @@ function stripPartnerOnlyRideFields(r) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 
 // src/domain/panelModules.ts
 var PANEL_MODULE_DEFINITIONS = [
@@ -46616,7 +47452,54 @@ function resolveEffectivePanelModules(stored) {
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
 }
 
+// src/lib/logger.ts
+var import_pino = __toESM(require_pino(), 1);
+var isProduction = process.env.NODE_ENV === "production";
+var logger = (0, import_pino.default)({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "res.headers['set-cookie']"
+  ],
+  ...isProduction ? {} : {
+    transport: {
+      target: "pino-pretty",
+      options: { colorize: true }
+    }
+  }
+});
+
 // src/db/adminData.ts
+function flattenPgError(err) {
+  const parts = [];
+  const seen = /* @__PURE__ */ new Set();
+  let cur = err;
+  for (let depth = 0; depth < 10 && cur != null && !seen.has(cur); depth++) {
+    seen.add(cur);
+    if (cur instanceof Error) {
+      parts.push(cur.message);
+      cur = cur.cause;
+      continue;
+    }
+    if (typeof cur === "object") {
+      const o = cur;
+      for (const k of ["message", "detail", "constraint", "column", "table", "schema"]) {
+        const v = o[k];
+        if (typeof v === "string" && v.trim()) parts.push(v.trim());
+      }
+      if (typeof o.code === "string" && o.code.trim()) parts.push(`code=${o.code.trim()}`);
+      cur = o.cause;
+      continue;
+    }
+    if (typeof cur === "string") {
+      parts.push(cur);
+      break;
+    }
+    break;
+  }
+  return parts.join(" | ");
+}
 var seedCompanies = [
   {
     id: "co-demo-1",
@@ -46675,7 +47558,8 @@ var seedCompanies = [
       "access_codes",
       "billing",
       "taxi_fleet"
-    ]
+    ],
+    partner_panel_profile_locked: false
   },
   {
     id: "co-demo-2",
@@ -46725,7 +47609,8 @@ var seedCompanies = [
     priority_price_threshold: 18,
     priority_timeout_seconds: 120,
     release_radius_km: 8,
-    panel_modules: null
+    panel_modules: null,
+    partner_panel_profile_locked: false
   }
 ];
 var seedFareAreas = [
@@ -46825,9 +47710,9 @@ function rowToFareArea(r) {
   };
 }
 function asMoney(v, fallback) {
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return fallback;
-  return n;
+  const n2 = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n2)) return fallback;
+  return n2;
 }
 async function getPublicFareProfile() {
   const defaults = {
@@ -46865,8 +47750,8 @@ async function getPublicFareProfile() {
 }
 var ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
 function num(v) {
-  const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
-  return Number.isFinite(n) ? n : 0;
+  const n2 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n2) ? n2 : 0;
 }
 function rideRevenueAmount(r) {
   if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
@@ -47074,7 +47959,8 @@ function companyRowToDbValues(c) {
     priority_price_threshold: c.priority_price_threshold,
     priority_timeout_seconds: c.priority_timeout_seconds,
     release_radius_km: c.release_radius_km,
-    panel_modules: c.panel_modules ?? null
+    panel_modules: c.panel_modules ?? null,
+    partner_panel_profile_locked: c.partner_panel_profile_locked
   };
 }
 function applyAdminCompanyPatch(cur, body) {
@@ -47094,7 +47980,7 @@ function applyAdminCompanyPatch(cur, body) {
   if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
   if (typeof body.company_kind === "string") {
     const k = body.company_kind.trim();
-    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate"].includes(k)) {
+    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate", "medical"].includes(k)) {
       next.company_kind = k;
     }
   }
@@ -47164,12 +48050,23 @@ function applyAdminCompanyPatch(cur, body) {
   if (typeof body.release_radius_km === "number" && Number.isFinite(body.release_radius_km)) {
     next.release_radius_km = Math.max(0, body.release_radius_km);
   }
+  if (body.panel_modules !== void 0) {
+    if (body.panel_modules === null) {
+      next.panel_modules = null;
+    } else if (Array.isArray(body.panel_modules)) {
+      const normalized = normalizeStoredPanelModules(body.panel_modules);
+      next.panel_modules = normalized && normalized.length > 0 ? normalized : null;
+    }
+  }
+  if (typeof body.partner_panel_profile_locked === "boolean") {
+    next.partner_panel_profile_locked = body.partner_panel_profile_locked;
+  }
   return next;
 }
 async function insertAdminCompany(body) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return { error: "name_required" };
-  const id = `co-${randomUUID2()}`;
+  const id = `co-${randomUUID3()}`;
   const base = {
     id,
     name,
@@ -47218,7 +48115,8 @@ async function insertAdminCompany(body) {
     priority_price_threshold: 25,
     priority_timeout_seconds: 90,
     release_radius_km: 10,
-    panel_modules: null
+    panel_modules: null,
+    partner_panel_profile_locked: false
   };
   const next = applyAdminCompanyPatch(base, body);
   const db2 = getDb();
@@ -47226,7 +48124,23 @@ async function insertAdminCompany(body) {
     memCompanies = [...memCompanies, next];
     return next;
   }
-  await db2.insert(adminCompaniesTable).values(companyRowToDbValues(next));
+  try {
+    await db2.insert(adminCompaniesTable).values(companyRowToDbValues(next));
+  } catch (err) {
+    const flat = flattenPgError(err);
+    logger.error({ err, flat }, "insertAdminCompany failed");
+    const low = flat.toLowerCase();
+    if (low.includes("partner_panel_profile_locked") || low.includes("42703") && low.includes("partner_panel")) {
+      return { error: "db_schema_partner_panel_profile_locked" };
+    }
+    if (low.includes("admin_companies_company_kind_chk") || low.includes("23514") && low.includes("company_kind") || low.includes("check constraint") && low.includes("company_kind")) {
+      return { error: "db_schema_company_kind_constraint" };
+    }
+    return {
+      error: "db_insert_admin_company_failed",
+      hint: flat.slice(0, 2e3) || "Unbekannter Datenbankfehler beim Anlegen des Mandanten."
+    };
+  }
   return next;
 }
 async function updateAdminCompany(companyId, body) {
@@ -47575,7 +48489,7 @@ async function getFleetDriverCapability(driverId, companyId) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 function rowToList(r) {
   return {
     id: r.id,
@@ -47662,7 +48576,7 @@ async function insertFleetDriver(input) {
   if (existing) {
     return { ok: false, error: "email_taken" };
   }
-  const id = `fd-${randomUUID3()}`;
+  const id = `fd-${randomUUID4()}`;
   await db2.insert(fleetDriversTable).values({
     id,
     company_id: input.companyId,
@@ -47815,8 +48729,8 @@ function parseOptionalFinalFareFromBody(body) {
   if (raw == null || raw === "") return void 0;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string") {
-    const n = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(n) ? n : void 0;
+    const n2 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(n2) ? n2 : void 0;
   }
   return void 0;
 }
@@ -48244,6 +49158,16 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
     }
     if (nextStatus === "cancelled_by_customer") {
       customerCancelReasons.set(id, cancelReasonClean);
+    }
+    if (nextStatus === "completed") {
+      const finance = await upsertRideFinancialSnapshot({
+        ride: updated,
+        reason: "ride_completed_status_transition"
+      });
+      if (!finance.ok) {
+        res.status(500).json({ error: finance.error });
+        return;
+      }
     }
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);
@@ -49370,8 +50294,8 @@ var day = hour * 24;
 var week = day * 7;
 var year = day * 365.25;
 var REGEX = /^(\+|\-)? ?(\d+|\d+\.\d+) ?(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)(?: (ago|from now))?$/i;
-function secs(str) {
-  const matched = REGEX.exec(str);
+function secs(str2) {
+  const matched = REGEX.exec(str2);
   if (!matched || matched[4] && matched[1]) {
     throw new TypeError("Invalid time period format");
   }
@@ -49838,7 +50762,7 @@ function isAllowedPanelReturnUrl(urlStr) {
     if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") {
       return u.protocol === "http:" || u.protocol === "https:";
     }
-    if (host === "panel.onroda.de" || host === "admin.onroda.de") {
+    if (host === "panel.onroda.de") {
       return u.protocol === "https:";
     }
     const extra = (process.env.PANEL_ALLOWED_RETURN_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -49936,7 +50860,7 @@ router3.get("/auth/panel-login", (req, res) => {
   if (!isAllowedPanelReturnUrl(returnUrl)) {
     res.status(400).json({
       error: "invalid_return_url",
-      hint: "returnUrl must use https://panel.onroda.de, https://admin.onroda.de, localhost, or a host listed in PANEL_ALLOWED_RETURN_ORIGINS."
+      hint: "returnUrl must use https://panel.onroda.de, localhost, or a host listed in PANEL_ALLOWED_RETURN_ORIGINS."
     });
     return;
   }
@@ -50169,7 +51093,7 @@ var auth_default = router3;
 
 // src/routes/adminApi.ts
 var import_express4 = __toESM(require_express2(), 1);
-import { createHash as createHash2, randomBytes as randomBytes5, randomUUID as randomUUID7 } from "node:crypto";
+import { createHash as createHash2, randomBytes as randomBytes5, randomUUID as randomUUID8 } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 // src/domain/accessCodeLifecycle.ts
@@ -50201,246 +51125,6 @@ function computeAccessCodePublicStatus(row) {
   return { status: "active", labelDe: "Frei / aktiv" };
 }
 
-// src/routes/adminApi.ts
-init_rideBillingProfile();
-init_accessCodesData();
-
-// src/db/panelAuditData.ts
-init_client();
-init_schema2();
-async function insertPanelAuditLog(input) {
-  if (!isPostgresConfigured()) return;
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.insert(panelAuditLogTable).values({
-    id: input.id,
-    company_id: input.companyId,
-    actor_panel_user_id: input.actorPanelUserId,
-    action: input.action,
-    subject_type: input.subjectType ?? null,
-    subject_id: input.subjectId ?? null,
-    meta: input.meta ?? null
-  });
-}
-
-// src/db/panelUsersData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID4 } from "node:crypto";
-function toPublic(r) {
-  return {
-    id: r.id,
-    username: r.username,
-    email: r.email,
-    role: r.role,
-    mustChangePassword: r.must_change_password,
-    isActive: r.is_active,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString()
-  };
-}
-async function listPanelUsersInCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  }).from(panelUsersTable).where(eq(panelUsersTable.company_id, companyId)).orderBy(panelUsersTable.username);
-  return rows.map(toPublic);
-}
-async function getPanelUsernamesInCompany(companyId, ids) {
-  if (!isPostgresConfigured() || ids.length === 0) return {};
-  const db2 = getDb();
-  if (!db2) return {};
-  const uniq = [...new Set(ids.filter(Boolean))];
-  if (uniq.length === 0) return {};
-  const rows = await db2.select({ id: panelUsersTable.id, username: panelUsersTable.username }).from(panelUsersTable).where(and(eq(panelUsersTable.company_id, companyId), inArray(panelUsersTable.id, uniq)));
-  const out = {};
-  for (const r of rows) out[r.id] = r.username;
-  return out;
-}
-async function findPanelUserInCompany(id, companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    company_id: panelUsersTable.company_id,
-    username: panelUsersTable.username,
-    role: panelUsersTable.role,
-    is_active: panelUsersTable.is_active
-  }).from(panelUsersTable).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).limit(1);
-  return rows[0] ?? null;
-}
-async function insertPanelUser(input) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const id = randomUUID4();
-  const username = input.username.trim();
-  const email = input.email.trim();
-  try {
-    await db2.insert(panelUsersTable).values({
-      id,
-      company_id: input.companyId,
-      username,
-      email,
-      password_hash: input.passwordHash,
-      role: input.role,
-      must_change_password: input.mustChangePassword ?? true,
-      is_active: true
-    });
-    return { id };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes("unique") || msg.includes("duplicate")) {
-      return null;
-    }
-    throw e;
-  }
-}
-async function patchPanelUserInCompany(id, companyId, patch) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const sets = {
-    updated_at: /* @__PURE__ */ new Date()
-  };
-  if (typeof patch.isActive === "boolean") {
-    sets.is_active = patch.isActive;
-  }
-  if (typeof patch.role === "string" && patch.role.length > 0) {
-    sets.role = patch.role;
-  }
-  if (typeof patch.email === "string") {
-    sets.email = patch.email.trim();
-  }
-  if (typeof patch.username === "string") {
-    sets.username = patch.username.trim();
-  }
-  const rows = await db2.update(panelUsersTable).set(sets).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({
-    id: panelUsersTable.id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  });
-  const r = rows[0];
-  return r ? toPublic(r) : null;
-}
-async function deleteInactivePanelUserInCompany(id, companyId) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const rows = await db2.delete(panelUsersTable).where(
-    and(
-      eq(panelUsersTable.id, id),
-      eq(panelUsersTable.company_id, companyId),
-      eq(panelUsersTable.is_active, false)
-    )
-  ).returning({ id: panelUsersTable.id });
-  return rows.length > 0;
-}
-async function updatePanelUserPasswordInCompany(id, companyId, passwordHash, mustChangePassword) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const rows = await db2.update(panelUsersTable).set({
-    password_hash: passwordHash,
-    ...typeof mustChangePassword === "boolean" ? { must_change_password: mustChangePassword } : {},
-    updated_at: /* @__PURE__ */ new Date()
-  }).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({ id: panelUsersTable.id });
-  return rows.length > 0;
-}
-async function panelUsernameTaken(normalized, excludeUserId) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const n = normalized.trim().toLowerCase();
-  if (!n) return false;
-  const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
-    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n}`
-  ).limit(1);
-  return rows.length > 0;
-}
-
-// src/db/companyChangeRequestsData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-function mapRow(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    requestedByPanelUserId: r.requested_by_panel_user_id,
-    requestType: r.request_type,
-    status: r.status,
-    reason: r.reason,
-    payload: r.payload ?? {},
-    adminDecisionNote: r.admin_decision_note,
-    decidedByAdminUserId: r.decided_by_admin_user_id ?? null,
-    decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString()
-  };
-}
-async function insertCompanyChangeRequest(input) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.insert(companyChangeRequestsTable).values({
-    id: input.id,
-    company_id: input.companyId,
-    requested_by_panel_user_id: input.requestedByPanelUserId,
-    request_type: input.requestType,
-    reason: input.reason,
-    payload: input.payload,
-    status: "pending",
-    admin_decision_note: ""
-  }).returning();
-  return rows[0] ? mapRow(rows[0]) : null;
-}
-async function listCompanyChangeRequestsByCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(companyChangeRequestsTable).where(eq(companyChangeRequestsTable.company_id, companyId)).orderBy(desc(companyChangeRequestsTable.created_at));
-  return rows.map(mapRow);
-}
-async function listCompanyChangeRequestsAdmin(opts) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const where = opts?.status ? eq(companyChangeRequestsTable.status, opts.status) : void 0;
-  const rows = where ? await db2.select().from(companyChangeRequestsTable).where(where).orderBy(desc(companyChangeRequestsTable.created_at)) : await db2.select().from(companyChangeRequestsTable).orderBy(desc(companyChangeRequestsTable.created_at));
-  return rows.map(mapRow);
-}
-async function decideCompanyChangeRequest(input) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const where = input.companyId ? and(eq(companyChangeRequestsTable.id, input.id), eq(companyChangeRequestsTable.company_id, input.companyId)) : eq(companyChangeRequestsTable.id, input.id);
-  const rows = await db2.update(companyChangeRequestsTable).set({
-    status: input.status,
-    admin_decision_note: input.note,
-    decided_by_admin_user_id: input.adminUserId ?? null,
-    decided_at: /* @__PURE__ */ new Date(),
-    updated_at: /* @__PURE__ */ new Date()
-  }).where(where).returning();
-  return rows[0] ? mapRow(rows[0]) : null;
-}
-
 // src/db/partnerRegistrationRequestsData.ts
 init_drizzle_orm();
 init_client();
@@ -50466,7 +51150,19 @@ var REGISTRATION_STATUSES = [
   "rejected",
   "blocked"
 ];
-function mapRow2(r) {
+var ADMIN_REG_STRING_MAX = {
+  name: 200,
+  short: 120,
+  line: 500,
+  email: 254,
+  region: 200
+};
+function clipAdminReg(s, max) {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return t.slice(0, max);
+}
+function mapRow(r) {
   return {
     id: r.id,
     companyName: r.company_name,
@@ -50478,6 +51174,9 @@ function mapRow2(r) {
     email: r.email,
     phone: r.phone,
     addressLine1: r.address_line1,
+    addressLine2: r.address_line2,
+    ownerName: r.owner_name,
+    dispoPhone: r.dispo_phone,
     postalCode: r.postal_code,
     city: r.city,
     country: r.country,
@@ -50553,61 +51252,50 @@ function isPartnerType(v) {
 function isRegistrationStatus(v) {
   return REGISTRATION_STATUSES.includes(v);
 }
-async function createPartnerRegistrationRequest(input) {
-  const db2 = getDb();
-  if (!db2) return null;
-  const id = `prr-${randomUUID5()}`;
-  await db2.insert(partnerRegistrationRequestsTable).values({
-    id,
-    company_name: input.companyName,
-    legal_form: input.legalForm,
-    partner_type: input.partnerType,
-    uses_vouchers: input.usesVouchers,
-    contact_first_name: input.contactFirstName,
-    contact_last_name: input.contactLastName,
-    email: input.email,
-    phone: input.phone,
-    address_line1: input.addressLine1,
-    postal_code: input.postalCode,
-    city: input.city,
-    country: input.country,
-    tax_id: input.taxId,
-    vat_id: input.vatId,
-    concession_number: input.concessionNumber,
-    desired_region: input.desiredRegion,
-    requested_usage: input.requestedUsage,
-    documents_meta: input.documentsMeta,
-    notes: input.notes
-  });
-  await addPartnerRegistrationTimelineEvent({
-    requestId: id,
-    actorType: "partner",
-    actorLabel: input.email,
-    eventType: "request_submitted",
-    message: "Registrierungsanfrage eingegangen.",
-    payload: { partnerType: input.partnerType, usesVouchers: input.usesVouchers }
-  });
-  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(eq(partnerRegistrationRequestsTable.id, id)).limit(1);
-  return rows[0] ? mapRow2(rows[0]) : null;
-}
 async function listPartnerRegistrationRequestsAdmin(status) {
   const db2 = getDb();
   if (!db2) return [];
   const where = status ? eq(partnerRegistrationRequestsTable.registration_status, status) : void 0;
   const rows = await db2.select().from(partnerRegistrationRequestsTable).where(where).orderBy(desc(partnerRegistrationRequestsTable.created_at));
-  return rows.map(mapRow2);
+  return rows.map(mapRow);
+}
+var PENDING_REGISTRATION_STATUSES = ["open", "in_review", "documents_required"];
+async function listPartnerRegistrationPendingQueueAdmin() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(inArray(partnerRegistrationRequestsTable.registration_status, PENDING_REGISTRATION_STATUSES)).orderBy(desc(partnerRegistrationRequestsTable.created_at));
+  return rows.map(mapRow);
 }
 async function findPartnerRegistrationRequestById(id) {
   const db2 = getDb();
   if (!db2) return null;
   const rows = await db2.select().from(partnerRegistrationRequestsTable).where(eq(partnerRegistrationRequestsTable.id, id)).limit(1);
-  return rows[0] ? mapRow2(rows[0]) : null;
+  return rows[0] ? mapRow(rows[0]) : null;
 }
-async function findLatestPartnerRegistrationRequestByEmail(email) {
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(sql`lower(${partnerRegistrationRequestsTable.email}) = ${email.trim().toLowerCase()}`).orderBy(desc(partnerRegistrationRequestsTable.created_at)).limit(1);
-  return rows[0] ? mapRow2(rows[0]) : null;
+function collectMasterDataPatchKeys(patch) {
+  const keys = [];
+  if (patch.partnerType !== void 0) keys.push("partnerType");
+  if (patch.companyName !== void 0) keys.push("companyName");
+  if (patch.legalForm !== void 0) keys.push("legalForm");
+  if (patch.usesVouchers !== void 0) keys.push("usesVouchers");
+  if (patch.contactFirstName !== void 0) keys.push("contactFirstName");
+  if (patch.contactLastName !== void 0) keys.push("contactLastName");
+  if (patch.email !== void 0) keys.push("email");
+  if (patch.phone !== void 0) keys.push("phone");
+  if (patch.addressLine1 !== void 0) keys.push("addressLine1");
+  if (patch.addressLine2 !== void 0) keys.push("addressLine2");
+  if (patch.ownerName !== void 0) keys.push("ownerName");
+  if (patch.dispoPhone !== void 0) keys.push("dispoPhone");
+  if (patch.postalCode !== void 0) keys.push("postalCode");
+  if (patch.city !== void 0) keys.push("city");
+  if (patch.country !== void 0) keys.push("country");
+  if (patch.taxId !== void 0) keys.push("taxId");
+  if (patch.vatId !== void 0) keys.push("vatId");
+  if (patch.concessionNumber !== void 0) keys.push("concessionNumber");
+  if (patch.desiredRegion !== void 0) keys.push("desiredRegion");
+  if (patch.notes !== void 0) keys.push("notes");
+  if (patch.requestedUsage !== void 0) keys.push("requestedUsage");
+  return keys;
 }
 async function patchPartnerRegistrationRequest(id, patch) {
   const db2 = getDb();
@@ -50623,6 +51311,41 @@ async function patchPartnerRegistrationRequest(id, patch) {
   if (patch.adminNote !== void 0) set.admin_note = patch.adminNote;
   if (patch.reviewedByAdminUserId !== void 0) set.reviewed_by_admin_user_id = patch.reviewedByAdminUserId;
   if (patch.status || patch.reviewedByAdminUserId !== void 0) set.reviewed_at = sql`NOW()`;
+  if (patch.partnerType !== void 0) set.partner_type = patch.partnerType;
+  if (patch.companyName !== void 0) set.company_name = clipAdminReg(patch.companyName, ADMIN_REG_STRING_MAX.name);
+  if (patch.legalForm !== void 0) set.legal_form = clipAdminReg(patch.legalForm, ADMIN_REG_STRING_MAX.short);
+  if (patch.usesVouchers !== void 0) set.uses_vouchers = patch.usesVouchers;
+  if (patch.contactFirstName !== void 0) {
+    set.contact_first_name = clipAdminReg(patch.contactFirstName, ADMIN_REG_STRING_MAX.short);
+  }
+  if (patch.contactLastName !== void 0) {
+    set.contact_last_name = clipAdminReg(patch.contactLastName, ADMIN_REG_STRING_MAX.short);
+  }
+  if (patch.email !== void 0) {
+    set.email = clipAdminReg(patch.email.toLowerCase(), ADMIN_REG_STRING_MAX.email);
+  }
+  if (patch.phone !== void 0) set.phone = clipAdminReg(patch.phone, ADMIN_REG_STRING_MAX.short);
+  if (patch.addressLine1 !== void 0) set.address_line1 = clipAdminReg(patch.addressLine1, ADMIN_REG_STRING_MAX.line);
+  if (patch.addressLine2 !== void 0) set.address_line2 = clipAdminReg(patch.addressLine2, ADMIN_REG_STRING_MAX.line);
+  if (patch.ownerName !== void 0) set.owner_name = clipAdminReg(patch.ownerName, ADMIN_REG_STRING_MAX.name);
+  if (patch.dispoPhone !== void 0) set.dispo_phone = clipAdminReg(patch.dispoPhone, ADMIN_REG_STRING_MAX.short);
+  if (patch.postalCode !== void 0) set.postal_code = clipAdminReg(patch.postalCode, ADMIN_REG_STRING_MAX.short);
+  if (patch.city !== void 0) set.city = clipAdminReg(patch.city, ADMIN_REG_STRING_MAX.short);
+  if (patch.country !== void 0) set.country = clipAdminReg(patch.country, ADMIN_REG_STRING_MAX.short);
+  if (patch.taxId !== void 0) set.tax_id = clipAdminReg(patch.taxId, ADMIN_REG_STRING_MAX.short);
+  if (patch.vatId !== void 0) set.vat_id = clipAdminReg(patch.vatId, ADMIN_REG_STRING_MAX.short);
+  if (patch.concessionNumber !== void 0) {
+    set.concession_number = clipAdminReg(patch.concessionNumber, ADMIN_REG_STRING_MAX.short);
+  }
+  if (patch.desiredRegion !== void 0) {
+    set.desired_region = clipAdminReg(patch.desiredRegion, ADMIN_REG_STRING_MAX.region);
+  }
+  if (patch.notes !== void 0) set.notes = clipAdminReg(patch.notes, ADMIN_REG_STRING_MAX.line);
+  if (patch.requestedUsage !== void 0) {
+    set.requested_usage = patch.requestedUsage && typeof patch.requestedUsage === "object" ? patch.requestedUsage : {};
+  }
+  const masterKeys = collectMasterDataPatchKeys(patch);
+  const hasMasterPatch = masterKeys.length > 0;
   await db2.update(partnerRegistrationRequestsTable).set(set).where(eq(partnerRegistrationRequestsTable.id, id));
   if (patch.status || patch.missingDocumentsNote !== void 0 || patch.adminNote !== void 0 || patch.verificationStatus || patch.complianceStatus || patch.contractStatus) {
     await addPartnerRegistrationTimelineEvent({
@@ -50640,12 +51363,24 @@ async function patchPartnerRegistrationRequest(id, patch) {
       }
     });
   }
+  if (hasMasterPatch) {
+    await addPartnerRegistrationTimelineEvent({
+      requestId: id,
+      actorType: "admin",
+      actorLabel: patch.reviewedByAdminUserId ?? "admin",
+      eventType: "admin_master_data_update",
+      message: "Stammdaten oder Anfrage-Typ durch die Plattform-Administration angepasst.",
+      payload: { fields: masterKeys }
+    });
+  }
   return findPartnerRegistrationRequestById(id);
 }
-async function attachCompanyToPartnerRegistrationRequest(id, companyId, adminUserId) {
+async function attachCompanyToPartnerRegistrationRequest(id, companyId, opts = {}) {
   const db2 = getDb();
   if (!db2) return null;
-  await db2.update(partnerRegistrationRequestsTable).set({
+  const adminUserId = opts.reviewedByAdminUserId ?? null;
+  const eventActorLabel = opts.eventActorLabel ?? "admin";
+  const updated = await db2.update(partnerRegistrationRequestsTable).set({
     linked_company_id: companyId,
     registration_status: "approved",
     contract_status: "active",
@@ -50655,15 +51390,15 @@ async function attachCompanyToPartnerRegistrationRequest(id, companyId, adminUse
     reviewed_at: sql`NOW()`,
     updated_at: sql`NOW()`
   }).where(
-    and(
-      eq(partnerRegistrationRequestsTable.id, id),
-      eq(partnerRegistrationRequestsTable.master_data_locked, true)
-    )
-  );
+    and(eq(partnerRegistrationRequestsTable.id, id), isNull(partnerRegistrationRequestsTable.linked_company_id))
+  ).returning({ id: partnerRegistrationRequestsTable.id });
+  if (!updated[0]) {
+    return null;
+  }
   await addPartnerRegistrationTimelineEvent({
     requestId: id,
     actorType: "admin",
-    actorLabel: adminUserId ?? "admin",
+    actorLabel: eventActorLabel,
     eventType: "approved_company_created",
     message: "Anfrage freigegeben und Unternehmen angelegt.",
     payload: { companyId }
@@ -50756,9 +51491,805 @@ async function resolvePartnerRegistrationStorageAbsolutePath(relPath) {
   return path2.join(uploadsBaseDir(), relPath);
 }
 
+// src/domain/taxiPartnerOnboarding.ts
+var TAXI_ONBOARDING_PANEL_MODULES = [
+  "overview",
+  "rides_list",
+  "rides_create",
+  "company_profile",
+  "team",
+  "access_codes",
+  "billing",
+  "taxi_fleet"
+];
+function buildTaxiFarePermissionsFromRegistration(usesVouchers) {
+  return {
+    source: "taxi_partner_registration",
+    default_vehicle_legal_type: "taxi",
+    voucher_program_enabled: usesVouchers
+  };
+}
+function taxiRegistrationIncompleteForApprove(row) {
+  if (row.partnerType !== "taxi") return null;
+  if (!String(row.concessionNumber ?? "").trim()) {
+    return "Konzessionsnummer fehlt.";
+  }
+  const hasTax = Boolean(String(row.taxId ?? "").trim());
+  const hasVat = Boolean(String(row.vatId ?? "").trim());
+  if (!hasTax && !hasVat) {
+    return "Steuernummer oder USt-IdNr. muss hinterlegt sein.";
+  }
+  if (!String(row.ownerName ?? "").trim()) {
+    return "Name des Inhabers / der inhabenden Person fehlt.";
+  }
+  return null;
+}
+
+// src/domain/partnerRegistrationPolicies/taxiPartnerRegistrationPolicy.ts
+function str(body, k) {
+  return typeof body[k] === "string" ? body[k].trim() : "";
+}
+var taxiPartnerRegistrationPolicy = {
+  id: "taxi",
+  labelDe: "Taxiunternehmen",
+  publicRequiredFieldKeysPlan: [
+    "concessionNumber",
+    "taxId",
+    "vatId",
+    "ownerName",
+    "addressLine1",
+    "postalCode",
+    "city",
+    "country"
+  ],
+  validatePublicRegistration(body) {
+    if (str(body, "partnerType") !== "taxi") return null;
+    if (!str(body, "concessionNumber")) {
+      return "F\xFCr Taxiunternehmen ist die Konzessionsnummer Pflicht.";
+    }
+    if (!str(body, "taxId") || !str(body, "vatId")) {
+      return "F\xFCr Taxiunternehmen sind Steuernummer und USt-IdNr. Pflicht.";
+    }
+    if (!str(body, "ownerName")) {
+      return "F\xFCr Taxiunternehmen ist der Inhaber / die inhabende Person Pflicht.";
+    }
+    return null;
+  },
+  approveIncompleteReason(row) {
+    return taxiRegistrationIncompleteForApprove({
+      partnerType: row.partnerType,
+      concessionNumber: row.concessionNumber,
+      taxId: row.taxId,
+      vatId: row.vatId,
+      ownerName: row.ownerName
+    });
+  },
+  buildCompanyApproveExtras(row) {
+    if (row.partnerType !== "taxi") return {};
+    return {
+      panel_modules: [...TAXI_ONBOARDING_PANEL_MODULES],
+      fare_permissions: buildTaxiFarePermissionsFromRegistration(row.usesVouchers)
+    };
+  }
+};
+
+// src/domain/partnerRegistrationPolicies/hotelPartnerRegistrationPolicy.ts
+var hotelPartnerRegistrationPolicy = {
+  id: "hotel",
+  labelDe: "Hotel",
+  publicRequiredFieldKeysPlan: [
+    "companyName",
+    "addressLine1",
+    "postalCode",
+    "city",
+    "country",
+    "email",
+    "phone",
+    "contactFirstName",
+    "contactLastName"
+    // Geplant: hotelTyp, Rechnungsart / Zimmer-Ledger-Kontext — noch kein separates JSON-Feld in der Anfrage
+  ],
+  validatePublicRegistration() {
+    return null;
+  },
+  approveIncompleteReason() {
+    return null;
+  },
+  buildCompanyApproveExtras() {
+    return {};
+  }
+};
+
+// src/domain/partnerRegistrationPolicies/insurerPartnerRegistrationPolicy.ts
+var insurerPartnerRegistrationPolicy = {
+  id: "insurance",
+  labelDe: "Krankenkasse / Versicherer",
+  publicRequiredFieldKeysPlan: [
+    "companyName",
+    "addressLine1",
+    "postalCode",
+    "city",
+    "country",
+    "email",
+    "phone",
+    "contactFirstName",
+    "contactLastName"
+    // Geplant: Leistungsträger-Referenz, ggf. Kostenstelle-Default in fare_permissions — später
+  ],
+  validatePublicRegistration() {
+    return null;
+  },
+  approveIncompleteReason() {
+    return null;
+  },
+  buildCompanyApproveExtras() {
+    return {};
+  }
+};
+
+// src/domain/partnerRegistrationPolicies/medicalPartnerRegistrationPolicy.ts
+var medicalPartnerRegistrationPolicy = {
+  id: "medical",
+  labelDe: "Medical / Krankenfahrt",
+  publicRequiredFieldKeysPlan: [
+    "companyName",
+    "addressLine1",
+    "postalCode",
+    "city",
+    "country",
+    "email",
+    "phone",
+    "contactFirstName",
+    "contactLastName"
+    // Geplant: Serien/Referenzen — eher Buchungs- als Nur-Anfrage-Felder; schrittweise nachziehen
+  ],
+  validatePublicRegistration() {
+    return null;
+  },
+  approveIncompleteReason() {
+    return null;
+  },
+  buildCompanyApproveExtras() {
+    return {};
+  }
+};
+var carePartnerRegistrationPolicy = {
+  ...medicalPartnerRegistrationPolicy,
+  id: "care",
+  labelDe: "Pflege & Leistungspartner"
+};
+
+// src/domain/partnerRegistrationPolicies/generalPartnerRegistrationPolicy.ts
+function makeGeneralPolicy(id, labelDe, plan) {
+  return {
+    id,
+    labelDe,
+    publicRequiredFieldKeysPlan: plan,
+    validatePublicRegistration() {
+      return null;
+    },
+    approveIncompleteReason() {
+      return null;
+    },
+    buildCompanyApproveExtras() {
+      return {};
+    }
+  };
+}
+var businessPartnerRegistrationPolicy = makeGeneralPolicy("business", "Unternehmen / Corporate", [
+  "companyName",
+  "addressLine1",
+  "postalCode",
+  "city",
+  "country",
+  "email",
+  "phone",
+  "contactFirstName",
+  "contactLastName"
+]);
+var voucherPartnerRegistrationPolicy = makeGeneralPolicy("voucher_partner", "Gutscheinpartner", [
+  "companyName",
+  "addressLine1",
+  "postalCode",
+  "city",
+  "country",
+  "email",
+  "phone",
+  "contactFirstName",
+  "contactLastName"
+]);
+var otherPartnerRegistrationPolicy = makeGeneralPolicy("other", "Sonstiges", [
+  "companyName",
+  "addressLine1",
+  "postalCode",
+  "city",
+  "country",
+  "email",
+  "phone",
+  "contactFirstName",
+  "contactLastName"
+]);
+
+// src/domain/partnerRegistrationPolicies/index.ts
+var POLICIES = {
+  taxi: taxiPartnerRegistrationPolicy,
+  hotel: hotelPartnerRegistrationPolicy,
+  insurance: insurerPartnerRegistrationPolicy,
+  medical: medicalPartnerRegistrationPolicy,
+  care: carePartnerRegistrationPolicy,
+  business: businessPartnerRegistrationPolicy,
+  voucher_partner: voucherPartnerRegistrationPolicy,
+  other: otherPartnerRegistrationPolicy
+};
+function getPartnerRegistrationPolicy(partnerType) {
+  if (!isPartnerType(partnerType)) return null;
+  return POLICIES[partnerType];
+}
+
+// src/routes/adminApi.ts
+init_rideBillingProfile();
+
+// src/db/adminFinanceData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function n(v) {
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+function escapeIlikePattern2(s) {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+async function companyNameMap() {
+  const db2 = getDb();
+  if (!db2) return /* @__PURE__ */ new Map();
+  const companies = await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable);
+  return new Map(companies.map((c) => [c.id, c.name]));
+}
+function buildRideFinancialWhere(filters) {
+  const cond = [];
+  if (filters.dateFrom) cond.push(gte(rideFinancialsTable.calculated_at, filters.dateFrom));
+  if (filters.dateTo) cond.push(lte(rideFinancialsTable.calculated_at, filters.dateTo));
+  if (filters.payerType?.trim()) cond.push(eq(rideFinancialsTable.payer_type, filters.payerType.trim()));
+  if (filters.billingStatus?.trim()) cond.push(eq(rideFinancialsTable.billing_status, filters.billingStatus.trim()));
+  if (filters.settlementStatus?.trim()) {
+    cond.push(eq(rideFinancialsTable.settlement_status, filters.settlementStatus.trim()));
+  }
+  if (filters.partnerCompanyId?.trim()) {
+    cond.push(eq(rideFinancialsTable.partner_company_id, filters.partnerCompanyId.trim()));
+  }
+  if (filters.serviceProviderCompanyId?.trim()) {
+    cond.push(eq(rideFinancialsTable.service_provider_company_id, filters.serviceProviderCompanyId.trim()));
+  }
+  if (typeof filters.locked === "boolean") {
+    cond.push(filters.locked ? isNotNull(rideFinancialsTable.locked_at) : isNull(rideFinancialsTable.locked_at));
+  }
+  if (typeof filters.hasInvoice === "boolean") {
+    cond.push(
+      filters.hasInvoice ? sql`exists (select 1 from invoice_items ii where ii.ride_id = ${rideFinancialsTable.ride_id})` : sql`not exists (select 1 from invoice_items ii where ii.ride_id = ${rideFinancialsTable.ride_id})`
+    );
+  }
+  if (filters.search?.trim()) {
+    const raw = escapeIlikePattern2(filters.search.trim());
+    const p = `%${raw}%`;
+    cond.push(or(ilike(rideFinancialsTable.ride_id, p), ilike(rideFinancialsTable.billing_reference, p)));
+  }
+  return cond;
+}
+async function getAdminFinanceSummary(args) {
+  if (!isPostgresConfigured()) {
+    return {
+      totalRevenue: 0,
+      openReceivables: 0,
+      invoicesPaidCount: 0,
+      invoicesOpenCount: 0,
+      invoicesOverdueCount: 0,
+      openSettlementsCount: 0,
+      openPlatformCommission: 0,
+      currency: "EUR"
+    };
+  }
+  const db2 = getDb();
+  if (!db2) {
+    return {
+      totalRevenue: 0,
+      openReceivables: 0,
+      invoicesPaidCount: 0,
+      invoicesOpenCount: 0,
+      invoicesOverdueCount: 0,
+      openSettlementsCount: 0,
+      openPlatformCommission: 0,
+      currency: "EUR"
+    };
+  }
+  const financialConds = [];
+  if (args.dateFrom) financialConds.push(gte(rideFinancialsTable.calculated_at, args.dateFrom));
+  if (args.dateTo) financialConds.push(lte(rideFinancialsTable.calculated_at, args.dateTo));
+  const invoiceConds = [];
+  if (args.dateFrom) invoiceConds.push(gte(invoicesTable.issue_date, args.dateFrom.toISOString().slice(0, 10)));
+  if (args.dateTo) invoiceConds.push(lte(invoicesTable.issue_date, args.dateTo.toISOString().slice(0, 10)));
+  const settlementConds = [];
+  if (args.dateFrom) settlementConds.push(gte(settlementsTable.created_at, args.dateFrom));
+  if (args.dateTo) settlementConds.push(lte(settlementsTable.created_at, args.dateTo));
+  const [rf, inv, set] = await Promise.all([
+    db2.select({
+      totalRevenue: sql`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
+      openReceivables: sql`coalesce(sum(case when ${rideFinancialsTable.billing_status} in ('unbilled','queued','invoiced','partially_paid') then ${rideFinancialsTable.gross_amount} else 0 end), 0)`,
+      openPlatformCommission: sql`coalesce(sum(case when ${rideFinancialsTable.settlement_status} <> 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`
+    }).from(rideFinancialsTable).where(financialConds.length ? and(...financialConds) : void 0),
+    db2.select({
+      paidCount: sql`count(*) filter (where ${invoicesTable.status} = 'paid')::int`,
+      openCount: sql`count(*) filter (where ${invoicesTable.status} in ('draft','issued','partially_paid'))::int`,
+      overdueCount: sql`count(*) filter (where ${invoicesTable.status} = 'overdue')::int`
+    }).from(invoicesTable).where(invoiceConds.length ? and(...invoiceConds) : void 0),
+    db2.select({
+      openSettlementsCount: sql`count(*) filter (where ${settlementsTable.status} in ('draft','issued','approved'))::int`
+    }).from(settlementsTable).where(settlementConds.length ? and(...settlementConds) : void 0)
+  ]);
+  return {
+    totalRevenue: n(rf[0]?.totalRevenue),
+    openReceivables: n(rf[0]?.openReceivables),
+    invoicesPaidCount: n(inv[0]?.paidCount),
+    invoicesOpenCount: n(inv[0]?.openCount),
+    invoicesOverdueCount: n(inv[0]?.overdueCount),
+    openSettlementsCount: n(set[0]?.openSettlementsCount),
+    openPlatformCommission: n(rf[0]?.openPlatformCommission),
+    currency: "EUR"
+  };
+}
+async function countRideFinancialsAdmin(filters) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const cond = buildRideFinancialWhere(filters);
+  const [row] = await db2.select({ n: sql`count(*)::int` }).from(rideFinancialsTable).where(cond.length ? and(...cond) : void 0);
+  return n(row?.n);
+}
+async function listRideFinancialsAdmin(args) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cond = buildRideFinancialWhere(args.filters);
+  const rows = await db2.select().from(rideFinancialsTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(rideFinancialsTable.calculated_at)).limit(args.limit).offset(args.offset);
+  const map = await companyNameMap();
+  return rows.map((row) => ({
+    ...row,
+    partner_company_name: row.partner_company_id ? map.get(row.partner_company_id) ?? null : null,
+    service_provider_company_name: row.service_provider_company_id ? map.get(row.service_provider_company_id) ?? null : null
+  }));
+}
+async function getRideFinancialDetailAdmin(rideId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, rideId)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const map = await companyNameMap();
+  const [invoiceLinks, auditEntries] = await Promise.all([
+    db2.select({
+      invoiceId: invoicesTable.id,
+      invoiceNumber: invoicesTable.invoice_number,
+      invoiceType: invoicesTable.invoice_type,
+      status: invoicesTable.status,
+      issueDate: invoicesTable.issue_date
+    }).from(invoiceItemsTable).innerJoin(invoicesTable, eq(invoiceItemsTable.invoice_id, invoicesTable.id)).where(eq(invoiceItemsTable.ride_id, rideId)),
+    db2.select().from(financialAuditLogTable).where(and(eq(financialAuditLogTable.entity_type, "ride_financial"), eq(financialAuditLogTable.entity_id, row.id))).orderBy(desc(financialAuditLogTable.created_at)).limit(100)
+  ]);
+  const settlementLinks = await db2.select({
+    id: settlementsTable.id,
+    settlementNumber: settlementsTable.settlement_number,
+    status: settlementsTable.status,
+    periodStart: settlementsTable.period_start,
+    periodEnd: settlementsTable.period_end,
+    companyId: settlementsTable.company_id
+  }).from(settlementsTable).where(sql`${settlementsTable.metadata_json}->>'ride_id' = ${rideId}`).limit(20);
+  return {
+    ...row,
+    partner_company_name: row.partner_company_id ? map.get(row.partner_company_id) ?? null : null,
+    service_provider_company_name: row.service_provider_company_id ? map.get(row.service_provider_company_id) ?? null : null,
+    invoice_links: invoiceLinks,
+    settlement_links: settlementLinks.map((x) => ({
+      ...x,
+      companyName: map.get(x.companyId) ?? null
+    })),
+    audit_entries: auditEntries
+  };
+}
+async function countInvoicesAdmin(filters) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const cond = [];
+  if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
+  if (filters.status?.trim()) cond.push(eq(invoicesTable.status, filters.status.trim()));
+  if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
+  const [row] = await db2.select({ n: sql`count(*)::int` }).from(invoicesTable).where(cond.length ? and(...cond) : void 0);
+  return n(row?.n);
+}
+async function listInvoicesAdmin(args) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cond = [];
+  if (args.filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, args.filters.companyId.trim()));
+  if (args.filters.status?.trim()) cond.push(eq(invoicesTable.status, args.filters.status.trim()));
+  if (args.filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, args.filters.type.trim()));
+  const rows = await db2.select().from(invoicesTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(invoicesTable.created_at)).limit(args.limit).offset(args.offset);
+  const map = await companyNameMap();
+  return rows.map((r) => ({ ...r, company_name: r.company_id ? map.get(r.company_id) ?? null : null }));
+}
+async function findInvoiceAdmin(invoiceId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const map = await companyNameMap();
+  const items = await db2.select().from(invoiceItemsTable).where(eq(invoiceItemsTable.invoice_id, invoiceId));
+  return {
+    ...row,
+    company_name: row.company_id ? map.get(row.company_id) ?? null : null,
+    items
+  };
+}
+async function countSettlementsAdmin(filters) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const cond = [];
+  if (filters.companyId?.trim()) cond.push(eq(settlementsTable.company_id, filters.companyId.trim()));
+  if (filters.status?.trim()) cond.push(eq(settlementsTable.status, filters.status.trim()));
+  const [row] = await db2.select({ n: sql`count(*)::int` }).from(settlementsTable).where(cond.length ? and(...cond) : void 0);
+  return n(row?.n);
+}
+async function listSettlementsAdmin(args) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cond = [];
+  if (args.filters.companyId?.trim()) cond.push(eq(settlementsTable.company_id, args.filters.companyId.trim()));
+  if (args.filters.status?.trim()) cond.push(eq(settlementsTable.status, args.filters.status.trim()));
+  const rows = await db2.select().from(settlementsTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(settlementsTable.created_at)).limit(args.limit).offset(args.offset);
+  const map = await companyNameMap();
+  return rows.map((r) => ({ ...r, company_name: map.get(r.company_id) ?? null }));
+}
+async function findSettlementAdmin(settlementId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const [row] = await db2.select().from(settlementsTable).where(eq(settlementsTable.id, settlementId)).limit(1);
+  if (!row) return null;
+  const map = await companyNameMap();
+  const linkedPayments = await db2.select().from(paymentsTable).where(and(eq(paymentsTable.target_type, "settlement"), eq(paymentsTable.target_id, settlementId))).orderBy(desc(paymentsTable.created_at));
+  return {
+    ...row,
+    company_name: map.get(row.company_id) ?? null,
+    payments: linkedPayments
+  };
+}
+async function countPaymentsAdmin(filters) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const cond = [];
+  if (filters.targetType?.trim()) cond.push(eq(paymentsTable.target_type, filters.targetType.trim()));
+  if (filters.status?.trim()) cond.push(eq(paymentsTable.status, filters.status.trim()));
+  if (filters.companyId?.trim()) cond.push(eq(paymentsTable.company_id, filters.companyId.trim()));
+  const [row] = await db2.select({ n: sql`count(*)::int` }).from(paymentsTable).where(cond.length ? and(...cond) : void 0);
+  return n(row?.n);
+}
+async function listPaymentsAdmin(args) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cond = [];
+  if (args.filters.targetType?.trim()) cond.push(eq(paymentsTable.target_type, args.filters.targetType.trim()));
+  if (args.filters.status?.trim()) cond.push(eq(paymentsTable.status, args.filters.status.trim()));
+  if (args.filters.companyId?.trim()) cond.push(eq(paymentsTable.company_id, args.filters.companyId.trim()));
+  const rows = await db2.select().from(paymentsTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(paymentsTable.created_at)).limit(args.limit).offset(args.offset);
+  const map = await companyNameMap();
+  return rows.map((r) => ({ ...r, company_name: r.company_id ? map.get(r.company_id) ?? null : null }));
+}
+async function countFinancialAuditAdmin(filters) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const cond = [];
+  if (filters.entityType?.trim()) cond.push(eq(financialAuditLogTable.entity_type, filters.entityType.trim()));
+  if (filters.action?.trim()) cond.push(eq(financialAuditLogTable.action, filters.action.trim()));
+  if (filters.entityId?.trim()) cond.push(eq(financialAuditLogTable.entity_id, filters.entityId.trim()));
+  const [row] = await db2.select({ n: sql`count(*)::int` }).from(financialAuditLogTable).where(cond.length ? and(...cond) : void 0);
+  return n(row?.n);
+}
+async function listFinancialAuditAdmin(args) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cond = [];
+  if (args.filters.entityType?.trim()) cond.push(eq(financialAuditLogTable.entity_type, args.filters.entityType.trim()));
+  if (args.filters.action?.trim()) cond.push(eq(financialAuditLogTable.action, args.filters.action.trim()));
+  if (args.filters.entityId?.trim()) cond.push(eq(financialAuditLogTable.entity_id, args.filters.entityId.trim()));
+  return db2.select().from(financialAuditLogTable).where(cond.length ? and(...cond) : void 0).orderBy(desc(financialAuditLogTable.created_at)).limit(args.limit).offset(args.offset);
+}
+async function getFinanceEligibilitySummaryForRide(rideId) {
+  const db2 = getDb();
+  if (!db2) {
+    return {
+      invoiceEligible: false,
+      invoiceBlockers: ["database_not_configured"],
+      settlementEligible: false,
+      settlementBlockers: ["database_not_configured"]
+    };
+  }
+  const [{ findRide: findRide2 }] = await Promise.all([Promise.resolve().then(() => (init_ridesData(), ridesData_exports))]);
+  const ride = await findRide2(rideId);
+  const rf = await getRideFinancialDetailAdmin(rideId);
+  if (!ride || !rf) {
+    return {
+      invoiceEligible: false,
+      invoiceBlockers: ["missing_snapshot_or_ride"],
+      settlementEligible: false,
+      settlementBlockers: ["missing_snapshot_or_ride"]
+    };
+  }
+  const [{ getInvoiceEligibility: getInvoiceEligibility2, getSettlementEligibility: getSettlementEligibility2 }] = await Promise.all([
+    Promise.resolve().then(() => (init_rideFinancialsData(), rideFinancialsData_exports))
+  ]);
+  const invoice = getInvoiceEligibility2({
+    ride,
+    snapshot: {
+      payerType: rf.payer_type,
+      billingMode: rf.billing_mode,
+      billingReference: rf.billing_reference,
+      billingStatus: rf.billing_status
+    }
+  });
+  const settlement = getSettlementEligibility2({
+    ride,
+    snapshot: {
+      serviceProviderCompanyId: rf.service_provider_company_id,
+      settlementStatus: rf.settlement_status
+    }
+  });
+  return {
+    invoiceEligible: invoice.eligible,
+    invoiceBlockers: invoice.blockers,
+    settlementEligible: settlement.eligible,
+    settlementBlockers: settlement.blockers
+  };
+}
+
+// src/routes/adminApi.ts
+init_accessCodesData();
+
+// src/db/panelAuditData.ts
+init_client();
+init_schema2();
+async function insertPanelAuditLog(input) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.insert(panelAuditLogTable).values({
+    id: input.id,
+    company_id: input.companyId,
+    actor_panel_user_id: input.actorPanelUserId,
+    action: input.action,
+    subject_type: input.subjectType ?? null,
+    subject_id: input.subjectId ?? null,
+    meta: input.meta ?? null
+  });
+}
+
+// src/db/panelUsersData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID6 } from "node:crypto";
+function toPublic(r) {
+  return {
+    id: r.id,
+    username: r.username,
+    email: r.email,
+    role: r.role,
+    mustChangePassword: r.must_change_password,
+    isActive: r.is_active,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function listPanelUsersInCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).where(eq(panelUsersTable.company_id, companyId)).orderBy(panelUsersTable.username);
+  return rows.map(toPublic);
+}
+async function getPanelUsernamesInCompany(companyId, ids) {
+  if (!isPostgresConfigured() || ids.length === 0) return {};
+  const db2 = getDb();
+  if (!db2) return {};
+  const uniq = [...new Set(ids.filter(Boolean))];
+  if (uniq.length === 0) return {};
+  const rows = await db2.select({ id: panelUsersTable.id, username: panelUsersTable.username }).from(panelUsersTable).where(and(eq(panelUsersTable.company_id, companyId), inArray(panelUsersTable.id, uniq)));
+  const out = {};
+  for (const r of rows) out[r.id] = r.username;
+  return out;
+}
+async function findPanelUserInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    role: panelUsersTable.role,
+    is_active: panelUsersTable.is_active
+  }).from(panelUsersTable).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function insertPanelUser(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = randomUUID6();
+  const username = input.username.trim();
+  const email = input.email.trim();
+  try {
+    await db2.insert(panelUsersTable).values({
+      id,
+      company_id: input.companyId,
+      username,
+      email,
+      password_hash: input.passwordHash,
+      role: input.role,
+      must_change_password: input.mustChangePassword ?? true,
+      is_active: true
+    });
+    return { id };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("unique") || msg.includes("duplicate")) {
+      return null;
+    }
+    throw e;
+  }
+}
+async function patchPanelUserInCompany(id, companyId, patch) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const sets = {
+    updated_at: /* @__PURE__ */ new Date()
+  };
+  if (typeof patch.isActive === "boolean") {
+    sets.is_active = patch.isActive;
+  }
+  if (typeof patch.role === "string" && patch.role.length > 0) {
+    sets.role = patch.role;
+  }
+  if (typeof patch.email === "string") {
+    sets.email = patch.email.trim();
+  }
+  if (typeof patch.username === "string") {
+    sets.username = patch.username.trim();
+  }
+  const rows = await db2.update(panelUsersTable).set(sets).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({
+    id: panelUsersTable.id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  });
+  const r = rows[0];
+  return r ? toPublic(r) : null;
+}
+async function deleteInactivePanelUserInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const rows = await db2.delete(panelUsersTable).where(
+    and(
+      eq(panelUsersTable.id, id),
+      eq(panelUsersTable.company_id, companyId),
+      eq(panelUsersTable.is_active, false)
+    )
+  ).returning({ id: panelUsersTable.id });
+  return rows.length > 0;
+}
+async function updatePanelUserPasswordInCompany(id, companyId, passwordHash, mustChangePassword) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const rows = await db2.update(panelUsersTable).set({
+    password_hash: passwordHash,
+    ...typeof mustChangePassword === "boolean" ? { must_change_password: mustChangePassword } : {},
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(panelUsersTable.id, id), eq(panelUsersTable.company_id, companyId))).returning({ id: panelUsersTable.id });
+  return rows.length > 0;
+}
+async function panelUsernameTaken(normalized, excludeUserId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const n2 = normalized.trim().toLowerCase();
+  if (!n2) return false;
+  const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
+    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n2}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n2}`
+  ).limit(1);
+  return rows.length > 0;
+}
+
+// src/db/companyChangeRequestsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function mapRow2(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    requestedByPanelUserId: r.requested_by_panel_user_id,
+    requestType: r.request_type,
+    status: r.status,
+    reason: r.reason,
+    payload: r.payload ?? {},
+    adminDecisionNote: r.admin_decision_note,
+    decidedByAdminUserId: r.decided_by_admin_user_id ?? null,
+    decidedAt: r.decided_at ? r.decided_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function insertCompanyChangeRequest(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.insert(companyChangeRequestsTable).values({
+    id: input.id,
+    company_id: input.companyId,
+    requested_by_panel_user_id: input.requestedByPanelUserId,
+    request_type: input.requestType,
+    reason: input.reason,
+    payload: input.payload,
+    status: "pending",
+    admin_decision_note: ""
+  }).returning();
+  return rows[0] ? mapRow2(rows[0]) : null;
+}
+async function listCompanyChangeRequestsByCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(companyChangeRequestsTable).where(eq(companyChangeRequestsTable.company_id, companyId)).orderBy(desc(companyChangeRequestsTable.created_at));
+  return rows.map(mapRow2);
+}
+async function listCompanyChangeRequestsAdmin(opts) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const where = opts?.status ? eq(companyChangeRequestsTable.status, opts.status) : void 0;
+  const rows = where ? await db2.select().from(companyChangeRequestsTable).where(where).orderBy(desc(companyChangeRequestsTable.created_at)) : await db2.select().from(companyChangeRequestsTable).orderBy(desc(companyChangeRequestsTable.created_at));
+  return rows.map(mapRow2);
+}
+async function decideCompanyChangeRequest(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const where = input.companyId ? and(eq(companyChangeRequestsTable.id, input.id), eq(companyChangeRequestsTable.company_id, input.companyId)) : eq(companyChangeRequestsTable.id, input.id);
+  const rows = await db2.update(companyChangeRequestsTable).set({
+    status: input.status,
+    admin_decision_note: input.note,
+    decided_by_admin_user_id: input.adminUserId ?? null,
+    decided_at: /* @__PURE__ */ new Date(),
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(where).returning();
+  return rows[0] ? mapRow2(rows[0]) : null;
+}
+
 // src/db/adminAuthData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID7 } from "node:crypto";
 
 // src/lib/adminConsoleRoles.ts
 var ADMIN_ROLE_VALUES = ["admin", "service", "taxi", "insurance", "hotel"];
@@ -50777,6 +52308,13 @@ function canReadAdminCompaniesList(role) {
 }
 function canMutateAdminCompanies(role) {
   return role === "admin" || role === "service";
+}
+function canMutateScopedTaxiAdminCompany(role, scopeCompanyId, company) {
+  if (role !== "taxi") return false;
+  if (String(company.company_kind ?? "").trim() !== "taxi") return false;
+  const scope = scopeCompanyId?.trim();
+  if (scope) return scope === company.id;
+  return true;
 }
 function canMutateAdminFareAreas(role) {
   return role === "admin" || role === "taxi";
@@ -50905,7 +52443,7 @@ async function upsertAdminAuthUser(input) {
     return;
   }
   await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID6(),
+    id: randomUUID7(),
     username,
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
@@ -50969,7 +52507,7 @@ async function createAdminAuthUser(input) {
   if (!username) return null;
   const scope = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
   const createdRows = await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID6(),
+    id: randomUUID7(),
     username,
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
@@ -51086,7 +52624,7 @@ async function createAdminPasswordResetToken(input) {
   const db2 = getDb();
   if (!db2) return null;
   const rows = await db2.insert(adminAuthPasswordResetsTable).values({
-    id: randomUUID6(),
+    id: randomUUID7(),
     admin_user_id: input.adminUserId,
     token_hash: input.tokenHash,
     expires_at: input.expiresAt,
@@ -51130,7 +52668,7 @@ async function insertAdminAuthAuditLog(input) {
   const db2 = getDb();
   if (!db2) return;
   await db2.insert(adminAuthAuditLogTable).values({
-    id: randomUUID6(),
+    id: randomUUID7(),
     admin_user_id: input.adminUserId ?? null,
     username: (input.username ?? "").trim(),
     action: input.action,
@@ -51253,6 +52791,98 @@ function generateTemporaryPassword(length = 14) {
   return out;
 }
 
+// src/lib/partnerApprovalMail.ts
+import nodemailer from "nodemailer";
+function panelBaseUrl() {
+  return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
+}
+function statusPageUrl() {
+  return (process.env.PARTNER_REGISTRATION_STATUS_PAGE_URL ?? "https://www.onroda.de/partner/anfrage-status").replace(
+    /\/$/,
+    ""
+  );
+}
+function escapeHtml3(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function buildBodies(input) {
+  const company = input.companyName.trim() || "Ihr Unternehmen";
+  const subject = `Onroda: Partneranfrage freigegeben \u2014 ${company}`;
+  const panel = input.panelUrl;
+  const status = statusPageUrl();
+  let credBlock = "";
+  if (input.ownerUsername && input.ownerInitialPassword) {
+    credBlock = [
+      "",
+      "Ihr Erstzugang zum Partner-Portal:",
+      `  Benutzername: ${input.ownerUsername}`,
+      `  Einmalpasswort: ${input.ownerInitialPassword}`,
+      "",
+      "Bitte \xE4ndern Sie das Passwort nach dem ersten Login."
+    ].join("\n");
+  }
+  const text2 = [
+    `Guten Tag,`,
+    ``,
+    `Ihre Partneranfrage f\xFCr \u201E${company}\u201C wurde freigegeben.`,
+    ``,
+    `Partner-Portal: ${panel}`,
+    `Status Ihrer Anfrage: ${status}`,
+    credBlock,
+    ``,
+    `Mit freundlichen Gr\xFC\xDFen`,
+    `Onroda`
+  ].join("\n");
+  const pwHtml = input.ownerUsername && input.ownerInitialPassword ? `<p><strong>Erstzugang Partner-Portal</strong></p>
+         <ul>
+           <li>Benutzername: <code>${escapeHtml3(input.ownerUsername)}</code></li>
+           <li>Einmalpasswort: <code>${escapeHtml3(input.ownerInitialPassword)}</code></li>
+         </ul>
+         <p>Bitte \xE4ndern Sie das Passwort nach dem ersten Login.</p>` : `<p>Die Zugangsdaten zum Partner-Portal erhalten Sie separat von uns, falls noch nicht angelegt.</p>`;
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p>Guten Tag,</p>
+  <p>Ihre Partneranfrage f\xFCr <strong>${escapeHtml3(company)}</strong> wurde <strong>freigegeben</strong>.</p>
+  <p><a href="${escapeHtml3(panel)}">Zum Partner-Portal</a></p>
+  <p><a href="${escapeHtml3(status)}">Anfrage-Status ansehen</a></p>
+  ${pwHtml}
+  <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
+</body></html>`;
+  return { subject, text: text2, html };
+}
+async function sendPartnerRegistrationApprovedEmail(input) {
+  const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  const to = input.to.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to },
+      "partner approval mail skipped (set PARTNER_REGISTRATION_SMTP_URL and PARTNER_REGISTRATION_MAIL_FROM)"
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const panelUrl = panelBaseUrl();
+  const { subject, text: text2, html } = buildBodies({
+    companyName: input.companyName,
+    panelUrl,
+    ownerUsername: input.ownerUsername,
+    ownerInitialPassword: input.ownerInitialPassword
+  });
+  try {
+    const transport = nodemailer.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text: text2, html });
+    logger.info({ to, event: "partner.registration.approval_mail.sent" }, "partner approval mail sent");
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to }, "partner approval mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
 // src/middleware/requireAdminApiBearer.ts
 init_client();
 function getAdminSessionSecret() {
@@ -51308,16 +52938,22 @@ async function verifyAdminSessionJwt(token) {
 async function authenticateAdminCredentials(username, password) {
   const u = username.trim();
   const p = password;
-  if (!u || !p) return { ok: false, error: "invalid_credentials" };
+  if (!u || !p) return { ok: false, error: "invalid_credentials", detail: "empty_identity" };
   const dbUser = await findActiveAdminAuthUserByIdentity(u);
   if (dbUser) {
-    const ok2 = await verifyPassword(p, dbUser.passwordHash);
-    if (!ok2) return { ok: false, error: "invalid_credentials" };
+    const pwOk = await verifyPassword(p, dbUser.passwordHash);
+    if (!pwOk) return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_db" };
     return { ok: true, role: dbUser.role, source: "db" };
   }
   const users = readConfiguredUsers();
   const hit = users.find((x) => x.username === u && x.password === p);
-  if (!hit) return { ok: false, error: "invalid_credentials" };
+  if (!hit) {
+    const envUsernameMatch = users.find((x) => x.username === u);
+    if (envUsernameMatch) {
+      return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_env" };
+    }
+    return { ok: false, error: "invalid_credentials", detail: "admin_identity_unknown" };
+  }
   if (!isPostgresConfigured()) {
     return { ok: false, error: "bootstrap_persist_failed" };
   }
@@ -51363,6 +52999,18 @@ var requireAdminApiBearer = (req, res, next) => {
 };
 
 // src/routes/adminApi.ts
+async function requireCompanyRowForMutation(req, res, companyId) {
+  const company = await findCompanyById(companyId);
+  if (!company) {
+    res.status(404).json({ error: "company_not_found" });
+    return null;
+  }
+  const role = adminConsoleRole(req);
+  if (canMutateAdminCompanies(role)) return company;
+  if (canMutateScopedTaxiAdminCompany(role, req.adminAuth?.scopeCompanyId, company)) return company;
+  res.status(403).json({ error: "forbidden" });
+  return null;
+}
 function parseStatsRevenueBound(v) {
   if (typeof v !== "string") return void 0;
   const s = v.trim();
@@ -51380,6 +53028,18 @@ function parseIsoDateParam(v, endOfDay) {
     d.setHours(23, 59, 59, 999);
   }
   return d;
+}
+function parseBooleanParam(v) {
+  if (typeof v !== "string") return void 0;
+  const s = v.trim().toLowerCase();
+  if (s === "1" || s === "true" || s === "yes") return true;
+  if (s === "0" || s === "false" || s === "no") return false;
+  return void 0;
+}
+function parsePagination(req) {
+  const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
+  const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
+  return { page, pageSize, offset: (page - 1) * pageSize };
 }
 function parseAdminRideListQuery(req) {
   const q = req.query;
@@ -51421,6 +53081,9 @@ function partnerTypeToCompanyKind(partnerType) {
       return "hotel";
     case "insurance":
       return "insurer";
+    case "medical":
+    case "care":
+      return "medical";
     case "business":
       return "corporate";
     case "voucher_partner":
@@ -51428,6 +53091,26 @@ function partnerTypeToCompanyKind(partnerType) {
     default:
       return "general";
   }
+}
+function sanitizePreferredPanelUsernameBase(raw) {
+  const trimmed = raw.trim().toLowerCase();
+  const local = trimmed.includes("@") ? trimmed.split("@")[0] ?? trimmed : trimmed;
+  let s = local.replace(/[^a-z0-9._-]+/g, "_").replace(/_+/g, "_");
+  s = s.replace(/^\.+|\.+$/g, "").replace(/^[_-]+|[_-]+$/g, "");
+  if (s.length < 3) {
+    s = `partner${randomBytes5(3).toString("hex")}`;
+  }
+  return s.slice(0, 36);
+}
+async function allocateUniquePanelUsername(preferred) {
+  const base = sanitizePreferredPanelUsernameBase(preferred || "partner");
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const candidate = attempt === 0 ? base : `${base}-${randomBytes5(2).toString("hex")}`;
+    if (!await panelUsernameTaken(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+  throw new Error("panel_username_exhausted");
 }
 function hashResetToken(token) {
   return createHash2("sha256").update(token).digest("hex");
@@ -51437,7 +53120,22 @@ router4.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok2 = await authenticateAdminCredentials(username, password);
+  const loginAudit = process.env.ADMIN_AUTH_LOGIN_AUDIT === "1";
   if (!ok2.ok) {
+    if (loginAudit) {
+      const detail = !ok2.ok && ok2.error === "invalid_credentials" ? ok2.detail : void 0;
+      logger.warn(
+        {
+          event: "admin.auth.login",
+          outcome: "fail",
+          username: username || "(empty)",
+          clientIp: req.ip,
+          reason: ok2.error,
+          detail
+        },
+        "admin password login failed"
+      );
+    }
     if (ok2.error === "bootstrap_persist_failed") {
       res.status(503).json({ error: "auth_bootstrap_persist_failed" });
       return;
@@ -51448,6 +53146,19 @@ router4.post("/admin/auth/login", async (req, res) => {
   const token = await signAdminSessionJwt({ username, role: ok2.role });
   const row = await findActiveAdminAuthUserByUsername(username);
   const scopeCompanyId = row?.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null;
+  if (loginAudit) {
+    logger.info(
+      {
+        event: "admin.auth.login",
+        outcome: "ok",
+        username,
+        clientIp: req.ip,
+        role: ok2.role,
+        source: ok2.source
+      },
+      "admin password login ok"
+    );
+  }
   res.json({
     ok: true,
     token,
@@ -51857,6 +53568,198 @@ adminJson.get("/dashboard/overview", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.get("/finance/summary", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const dateFrom = parseStatsRevenueBound(q.date_from);
+    const dateTo = parseStatsRevenueBound(q.date_to);
+    const summary = await getAdminFinanceSummary({ dateFrom, dateTo });
+    res.json({
+      ok: true,
+      dateFrom: dateFrom?.toISOString() ?? null,
+      dateTo: dateTo?.toISOString() ?? null,
+      summary
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/ride-financials", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const { page, pageSize, offset } = parsePagination(req);
+    const filters = {
+      dateFrom: parseIsoDateParam(q.date_from, false),
+      dateTo: parseIsoDateParam(q.date_to, true),
+      payerType: q.payer_type,
+      billingStatus: q.billing_status,
+      settlementStatus: q.settlement_status,
+      partnerCompanyId: q.partner_company_id,
+      serviceProviderCompanyId: q.service_provider_company_id,
+      locked: parseBooleanParam(q.locked),
+      hasInvoice: parseBooleanParam(q.has_invoice),
+      search: q.search
+    };
+    const [total, items] = await Promise.all([
+      countRideFinancialsAdmin(filters),
+      listRideFinancialsAdmin({ filters, limit: pageSize, offset })
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/ride-financials/:rideId", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const detail = await getRideFinancialDetailAdmin(req.params.rideId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const eligibility = await getFinanceEligibilitySummaryForRide(req.params.rideId);
+    res.json({
+      ok: true,
+      snapshot: detail,
+      invoiceLinkage: detail.invoice_links,
+      settlementLinkage: detail.settlement_links,
+      auditEntries: detail.audit_entries,
+      eligibility
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/invoices", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const filters = {
+      companyId: q.company_id,
+      status: q.status,
+      type: q.invoice_type
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countInvoicesAdmin(filters),
+      listInvoicesAdmin({ filters, limit: pageSize, offset })
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/invoices/:invoiceId", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const item = await findInvoiceAdmin(req.params.invoiceId);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/settlements", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const filters = {
+      companyId: q.company_id,
+      status: q.status
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countSettlementsAdmin(filters),
+      listSettlementsAdmin({ filters, limit: pageSize, offset })
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/settlements/:settlementId", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const item = await findSettlementAdmin(req.params.settlementId);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/payments", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const filters = {
+      targetType: q.target_type,
+      status: q.status,
+      companyId: q.company_id
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countPaymentsAdmin(filters),
+      listPaymentsAdmin({ filters, limit: pageSize, offset })
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/finance/audit", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const q = req.query;
+    const filters = {
+      entityType: q.entity_type,
+      action: q.action,
+      entityId: q.entity_id
+    };
+    const { page, pageSize, offset } = parsePagination(req);
+    const [total, items] = await Promise.all([
+      countFinancialAuditAdmin(filters),
+      listFinancialAuditAdmin({ filters, limit: pageSize, offset })
+    ]);
+    res.json({ ok: true, total, page, pageSize, items });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.get("/companies", async (req, res, next) => {
   try {
     const role = adminConsoleRole(req);
@@ -51906,7 +53809,19 @@ adminJson.post("/companies", async (req, res, next) => {
     const { name: _drop, ...rest } = b;
     const result = await insertAdminCompany({ name, ...rest });
     if ("error" in result) {
-      res.status(400).json({ error: result.error });
+      const e = result.error;
+      if (e === "db_insert_admin_company_failed" && "hint" in result && result.hint) {
+        res.status(503).json({ error: e, hint: result.hint });
+        return;
+      }
+      if (e.startsWith("db_schema_")) {
+        res.status(503).json({
+          error: e,
+          hint: e === "db_schema_partner_panel_profile_locked" ? "Migration 031 (partner_panel_profile_locked) einspielen." : "Migration 032 (company_kind medical) einspielen."
+        });
+        return;
+      }
+      res.status(400).json({ error: e });
       return;
     }
     res.status(201).json({ ok: true, item: result });
@@ -51916,10 +53831,8 @@ adminJson.post("/companies", async (req, res, next) => {
 });
 adminJson.patch("/companies/:companyId", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
+    const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!allowed) return;
     const body = req.body;
     const item = await updateAdminCompany(req.params.companyId, body);
     if (!item) {
@@ -51983,6 +53896,13 @@ adminJson.get("/company-registration-requests", async (req, res, next) => {
       res.status(503).json({ error: "database_not_configured" });
       return;
     }
+    const pendingRaw = typeof req.query?.pending === "string" ? req.query.pending.trim() : "";
+    const pendingQueue = pendingRaw === "1" || pendingRaw.toLowerCase() === "true";
+    if (pendingQueue) {
+      const items2 = await listPartnerRegistrationPendingQueueAdmin();
+      res.json({ ok: true, items: items2, pendingQueue: true });
+      return;
+    }
     const statusRaw = typeof req.query?.status === "string" ? req.query.status.trim() : "";
     if (statusRaw && !isRegistrationStatus(statusRaw)) {
       res.status(400).json({ error: "status_invalid" });
@@ -52006,6 +53926,11 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
       res.status(503).json({ error: "database_not_configured" });
       return;
     }
+    const existing = await findPartnerRegistrationRequestById(req.params.id);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     const b = req.body ?? {};
     const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
     const verificationRaw = typeof b.verificationStatus === "string" ? b.verificationStatus.trim() : "";
@@ -52018,15 +53943,98 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
     const verificationStatus = verificationRaw === "pending" || verificationRaw === "in_review" || verificationRaw === "verified" || verificationRaw === "rejected" ? verificationRaw : void 0;
     const complianceStatus = complianceRaw === "pending" || complianceRaw === "complete" || complianceRaw === "missing_documents" || complianceRaw === "rejected" ? complianceRaw : void 0;
     const contractStatus = contractRaw === "inactive" || contractRaw === "pending" || contractRaw === "active" || contractRaw === "suspended" || contractRaw === "terminated" ? contractRaw : void 0;
-    const item = await patchPartnerRegistrationRequest(req.params.id, {
+    const strField = (k) => typeof b[k] === "string" ? b[k] : void 0;
+    const masterAttempted = b.partnerType !== void 0 || b.companyName !== void 0 || b.legalForm !== void 0 || b.usesVouchers !== void 0 || b.contactFirstName !== void 0 || b.contactLastName !== void 0 || b.email !== void 0 || b.phone !== void 0 || b.addressLine1 !== void 0 || b.addressLine2 !== void 0 || b.ownerName !== void 0 || b.dispoPhone !== void 0 || b.postalCode !== void 0 || b.city !== void 0 || b.country !== void 0 || b.taxId !== void 0 || b.vatId !== void 0 || b.concessionNumber !== void 0 || b.desiredRegion !== void 0 || b.notes !== void 0 || b.requestedUsage !== void 0;
+    if (existing.linkedCompanyId && masterAttempted) {
+      res.status(409).json({
+        error: "registration_locked",
+        hint: "Die Anfrage ist mit einem Mandanten verkn\xFCpft. Stammdaten und Anfrage-Typ k\xF6nnen hier nicht mehr ge\xE4ndert werden \u2014 bitte im Unternehmensprofil anpassen."
+      });
+      return;
+    }
+    const patchBody = {
       ...statusRaw ? { status: statusRaw } : {},
       ...verificationStatus ? { verificationStatus } : {},
       ...complianceStatus ? { complianceStatus } : {},
       ...contractStatus ? { contractStatus } : {},
       ...typeof b.missingDocumentsNote === "string" ? { missingDocumentsNote: b.missingDocumentsNote.trim() } : {},
-      ...typeof b.adminNote === "string" ? { adminNote: b.adminNote.trim() } : {},
-      reviewedByAdminUserId: null
-    });
+      ...typeof b.adminNote === "string" ? { adminNote: b.adminNote.trim() } : {}
+    };
+    if (b.partnerType !== void 0) {
+      const pt = typeof b.partnerType === "string" ? b.partnerType.trim() : "";
+      if (!isPartnerType(pt)) {
+        res.status(400).json({ error: "partner_type_invalid" });
+        return;
+      }
+      patchBody.partnerType = pt;
+    }
+    if (b.companyName !== void 0) {
+      if (typeof b.companyName !== "string") {
+        res.status(400).json({ error: "company_name_invalid" });
+        return;
+      }
+      patchBody.companyName = b.companyName;
+    }
+    if (b.legalForm !== void 0 && typeof b.legalForm === "string") patchBody.legalForm = b.legalForm;
+    if (typeof b.usesVouchers === "boolean") patchBody.usesVouchers = b.usesVouchers;
+    if (b.contactFirstName !== void 0 && typeof b.contactFirstName === "string") {
+      patchBody.contactFirstName = b.contactFirstName;
+    }
+    if (b.contactLastName !== void 0 && typeof b.contactLastName === "string") {
+      patchBody.contactLastName = b.contactLastName;
+    }
+    if (b.email !== void 0) {
+      if (typeof b.email !== "string") {
+        res.status(400).json({ error: "email_invalid" });
+        return;
+      }
+      patchBody.email = b.email;
+    }
+    const phone = strField("phone");
+    if (phone !== void 0) patchBody.phone = phone;
+    const addressLine1 = strField("addressLine1");
+    if (addressLine1 !== void 0) patchBody.addressLine1 = addressLine1;
+    const addressLine2 = strField("addressLine2");
+    if (addressLine2 !== void 0) patchBody.addressLine2 = addressLine2;
+    const ownerName = strField("ownerName");
+    if (ownerName !== void 0) patchBody.ownerName = ownerName;
+    const dispoPhone = strField("dispoPhone");
+    if (dispoPhone !== void 0) patchBody.dispoPhone = dispoPhone;
+    const postalCode = strField("postalCode");
+    if (postalCode !== void 0) patchBody.postalCode = postalCode;
+    const city = strField("city");
+    if (city !== void 0) patchBody.city = city;
+    const country = strField("country");
+    if (country !== void 0) patchBody.country = country;
+    const taxId = strField("taxId");
+    if (taxId !== void 0) patchBody.taxId = taxId;
+    const vatId = strField("vatId");
+    if (vatId !== void 0) patchBody.vatId = vatId;
+    const concessionNumber = strField("concessionNumber");
+    if (concessionNumber !== void 0) patchBody.concessionNumber = concessionNumber;
+    const desiredRegion = strField("desiredRegion");
+    if (desiredRegion !== void 0) patchBody.desiredRegion = desiredRegion;
+    const notes = strField("notes");
+    if (notes !== void 0) patchBody.notes = notes;
+    if (b.requestedUsage !== void 0) {
+      if (b.requestedUsage === null) {
+        patchBody.requestedUsage = {};
+      } else if (typeof b.requestedUsage === "object" && !Array.isArray(b.requestedUsage)) {
+        patchBody.requestedUsage = b.requestedUsage;
+      } else {
+        res.status(400).json({ error: "requested_usage_invalid" });
+        return;
+      }
+    }
+    if (patchBody.companyName !== void 0 && !String(patchBody.companyName).trim()) {
+      res.status(400).json({ error: "company_name_empty" });
+      return;
+    }
+    if (patchBody.email !== void 0 && !String(patchBody.email).trim()) {
+      res.status(400).json({ error: "email_empty" });
+      return;
+    }
+    const item = await patchPartnerRegistrationRequest(req.params.id, patchBody);
     if (!item) {
       res.status(404).json({ error: "not_found" });
       return;
@@ -52187,6 +54195,17 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       res.status(400).json({ error: "partner_type_invalid" });
       return;
     }
+    const policy = getPartnerRegistrationPolicy(reqRow.partnerType);
+    const approveIncomplete = policy?.approveIncompleteReason(reqRow) ?? null;
+    if (approveIncomplete) {
+      const isTaxi = reqRow.partnerType === "taxi";
+      res.status(400).json({
+        error: isTaxi ? "taxi_registration_incomplete" : "registration_incomplete",
+        hint: approveIncomplete
+      });
+      return;
+    }
+    const companyExtras = policy?.buildCompanyApproveExtras(reqRow) ?? {};
     const createdCompany = await insertAdminCompany({
       name: reqRow.companyName,
       legal_form: reqRow.legalForm,
@@ -52195,43 +54214,156 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       email: reqRow.email,
       phone: reqRow.phone,
       address_line1: reqRow.addressLine1,
+      address_line2: reqRow.addressLine2 ?? "",
       postal_code: reqRow.postalCode,
       city: reqRow.city,
       country: reqRow.country,
       tax_id: reqRow.taxId,
       vat_id: reqRow.vatId,
       concession_number: reqRow.concessionNumber,
+      owner_name: reqRow.ownerName ?? "",
+      dispo_phone: reqRow.dispoPhone ?? "",
       business_notes: reqRow.notes,
       contract_status: "active",
       verification_status: "verified",
       compliance_status: "compliant",
-      is_active: true
+      is_active: true,
+      partner_panel_profile_locked: true,
+      ...companyExtras
     });
     if ("error" in createdCompany) {
-      res.status(400).json({ error: createdCompany.error });
+      const e = createdCompany.error;
+      const extraHint = "hint" in createdCompany && typeof createdCompany.hint === "string" ? createdCompany.hint : "";
+      if (e === "db_schema_partner_panel_profile_locked") {
+        res.status(503).json({
+          error: e,
+          hint: "Datenbank-Migration 031 (partner_panel_profile_locked) fehlt oder wurde nicht eingespielt. Bitte Deploy-Skript mit Migrationen ausf\xFChren."
+        });
+        return;
+      }
+      if (e === "db_schema_company_kind_constraint") {
+        res.status(503).json({
+          error: e,
+          hint: "Datenbank-Constraint f\xFCr company_kind veraltet. Migration 032 (medical) einspielen."
+        });
+        return;
+      }
+      if (e === "db_insert_admin_company_failed") {
+        res.status(503).json({
+          error: e,
+          hint: [
+            "INSERT in admin_companies ist fehlgeschlagen (Schema/Constraint/Migration).",
+            "Auf dem Server: ./scripts/deploy-onroda-production.sh (inkl. Migrationen 031 + 032) oder fehlende SQL-Migrationen manuell per psql einspielen.",
+            extraHint ? `Postgres: ${extraHint}` : ""
+          ].filter(Boolean).join(" ")
+        });
+        return;
+      }
+      res.status(400).json({ error: e });
       return;
     }
-    const updatedReq = await attachCompanyToPartnerRegistrationRequest(
-      reqRow.id,
-      createdCompany.id,
-      null
-    );
-    res.status(201).json({ ok: true, company: createdCompany, request: updatedReq });
+    const actorLabel = req.adminAuth?.username ?? "admin";
+    let reviewerId = null;
+    if (req.adminAuth?.username) {
+      const authRow = await findActiveAdminAuthUserByUsername(req.adminAuth.username);
+      reviewerId = authRow?.id ?? null;
+    }
+    const updatedReq = await attachCompanyToPartnerRegistrationRequest(reqRow.id, createdCompany.id, {
+      reviewedByAdminUserId: reviewerId,
+      eventActorLabel: actorLabel
+    });
+    if (!updatedReq) {
+      res.status(409).json({
+        error: "attach_failed",
+        hint: "Anfrage konnte nicht verkn\xFCpft werden (z. B. Stammdaten nicht gesperrt). Das Unternehmen wurde bereits angelegt.",
+        companyId: createdCompany.id
+      });
+      return;
+    }
+    const approveBody = req.body ?? {};
+    const createOwnerUser = approveBody.createOwnerUser !== false;
+    let ownerOnboarding;
+    let ownerProvisioningWarning;
+    if (createOwnerUser) {
+      const ownerUsernameHint = typeof approveBody.ownerUsername === "string" && approveBody.ownerUsername.trim() ? approveBody.ownerUsername.trim() : reqRow.email;
+      try {
+        const username = await allocateUniquePanelUsername(ownerUsernameHint);
+        const ownerEmail = reqRow.email.trim();
+        const generatedPassword = generateTemporaryPassword();
+        const pwHash = await hashPassword(generatedPassword);
+        const createdUser = await insertPanelUser({
+          companyId: createdCompany.id,
+          username,
+          email: ownerEmail,
+          role: "owner",
+          passwordHash: pwHash,
+          mustChangePassword: true
+        });
+        if (!createdUser) {
+          ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
+        } else {
+          await insertPanelAuditLog({
+            id: randomUUID8(),
+            companyId: createdCompany.id,
+            actorPanelUserId: null,
+            action: "admin.panel_user.created",
+            subjectType: "panel_user",
+            subjectId: createdUser.id,
+            meta: { username, role: "owner", source: "registration_request_approve" }
+          });
+          await addPartnerRegistrationTimelineEvent({
+            requestId: reqRow.id,
+            actorType: "admin",
+            actorLabel,
+            eventType: "panel_owner_provisioned",
+            message: "Erstzugang Partner-Panel (Owner) angelegt.",
+            payload: { panelUserId: createdUser.id, username }
+          });
+          ownerOnboarding = {
+            username,
+            email: ownerEmail,
+            initialPassword: generatedPassword,
+            mustChangePassword: true
+          };
+          logger.info(
+            {
+              event: "admin.partner_registration.owner_provisioned",
+              requestId: reqRow.id,
+              companyId: createdCompany.id,
+              panelUserId: createdUser.id,
+              username
+            },
+            "panel owner provisioned from registration approve"
+          );
+        }
+      } catch (err) {
+        ownerProvisioningWarning = err instanceof Error ? err.message : "owner_provisioning_failed";
+        logger.warn({ err, requestId: reqRow.id }, "panel owner provisioning failed after approve");
+      }
+    }
+    res.status(201).json({
+      ok: true,
+      company: createdCompany,
+      request: updatedReq,
+      ...ownerOnboarding ? { ownerOnboarding } : {},
+      ...ownerProvisioningWarning ? { ownerProvisioningWarning } : {}
+    });
+    void sendPartnerRegistrationApprovedEmail({
+      to: reqRow.email,
+      companyName: reqRow.companyName,
+      ownerUsername: ownerOnboarding?.username,
+      ownerInitialPassword: ownerOnboarding?.initialPassword
+    }).catch((err) => {
+      logger.warn({ err, requestId: reqRow.id }, "partner approval mail async failed");
+    });
   } catch (e) {
     next(e);
   }
 });
 adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
-    const company = await findCompanyById(req.params.companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!company) return;
     const users = await listPanelUsersInCompany(req.params.companyId);
     res.json({ ok: true, users });
   } catch (e) {
@@ -52240,16 +54372,9 @@ adminJson.get("/companies/:companyId/panel-users", async (req, res, next) => {
 });
 adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId } = req.params;
-    const company = await findCompanyById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     if (!company.is_active) {
       res.status(400).json({ error: "company_inactive" });
       return;
@@ -52288,7 +54413,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID7(),
+      id: randomUUID8(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -52311,16 +54436,9 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
 });
 adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId, userId } = req.params;
-    const company = await findCompanyById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     const target = await findPanelUserInCompany(userId, companyId);
     if (!target) {
       res.status(404).json({ error: "not_found" });
@@ -52362,7 +54480,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID7(),
+      id: randomUUID8(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -52377,16 +54495,9 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
 });
 adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId, userId } = req.params;
-    const company = await findCompanyById(companyId);
-    if (!company) {
-      res.status(404).json({ error: "company_not_found" });
-      return;
-    }
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     const target = await findPanelUserInCompany(userId, companyId);
     if (!target || !target.is_active) {
       res.status(404).json({ error: "not_found" });
@@ -52405,7 +54516,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID7(),
+      id: randomUUID8(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -52485,11 +54596,8 @@ adminJson.patch("/rides/:id/release", async (req, res, next) => {
 });
 adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId } = req.params;
+    if (await requireCompanyRowForMutation(req, res, companyId) == null) return;
     const body = req.body;
     if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
       res.status(400).json({ error: "panel_modules_required", hint: "null = alle Module, sonst string[]" });
@@ -52500,12 +54608,12 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
     if (raw === null) {
       modules = null;
     } else if (Array.isArray(raw)) {
-      const n = normalizeStoredPanelModules(raw) ?? [];
-      if (n.length === 0) {
+      const n2 = normalizeStoredPanelModules(raw) ?? [];
+      if (n2.length === 0) {
         res.status(400).json({ error: "panel_modules_empty", hint: "Mindestens ein Modul, oder panel_modules: null f\xFCr alle." });
         return;
       }
-      modules = n;
+      modules = n2;
     } else {
       res.status(400).json({ error: "panel_modules_invalid" });
       return;
@@ -52522,11 +54630,8 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
 });
 adminJson.patch("/companies/:companyId/priority", async (req, res, next) => {
   try {
-    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
     const { companyId } = req.params;
+    if (await requireCompanyRowForMutation(req, res, companyId) == null) return;
     const body = req.body;
     const item = await patchCompanyPriority(companyId, body);
     if (!item) {
@@ -52726,89 +54831,139 @@ var adminApi_default = router4;
 
 // src/routes/panelAuth.ts
 var import_express5 = __toESM(require_express2(), 1);
+init_client();
+init_drizzle_orm();
+
+// src/lib/panelJwt.ts
+function getSecretKey2() {
+  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
+  if (panel) {
+    return new TextEncoder().encode(panel);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("PANEL_JWT_SECRET is not configured (required in production for panel tokens)");
+  }
+  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!auth) {
+    throw new Error("PANEL_JWT_SECRET or AUTH_JWT_SECRET is not configured");
+  }
+  return new TextEncoder().encode(auth);
+}
+function issuer2() {
+  return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
+}
+async function signPanelJwt(claims, expiresIn = "7d") {
+  const secret = getSecretKey2();
+  return new SignJWT({
+    kind: "panel",
+    companyId: claims.companyId,
+    username: claims.username,
+    email: claims.email,
+    role: claims.role
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret);
+}
+function isPanelRole(v) {
+  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
+}
+async function verifyPanelJwt(token) {
+  const secret = getSecretKey2();
+  const { payload } = await jwtVerify(token, secret, {
+    issuer: issuer2(),
+    algorithms: ["HS256"]
+  });
+  return payloadToPanelClaims(payload);
+}
+function payloadToPanelClaims(payload) {
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  if (!sub) throw new Error("invalid panel token: missing sub");
+  if (payload.kind !== "panel") throw new Error("invalid panel token: wrong kind");
+  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
+  const username = typeof payload.username === "string" ? payload.username : "";
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const role = payload.role;
+  if (!companyId || !username || !isPanelRole(role)) {
+    throw new Error("invalid panel token: missing claims");
+  }
+  return { panelUserId: sub, companyId, username, email, role };
+}
+
+// src/routes/panelAuth.ts
+var router5 = (0, import_express5.Router)();
+router5.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    res.status(400).json({ error: "missing_credentials" });
+    return;
+  }
+  const db2 = getDb();
+  if (!db2) {
+    logger.error("Database connection could not be established");
+    res.status(500).json({ error: "database_error" });
+    return;
+  }
+  try {
+    const result = await db2.execute(sql`
+      SELECT 
+        u.*, 
+        c.name as company_name, 
+        c.company_kind 
+      FROM panel_users u
+      JOIN admin_companies c ON c.id = u.company_id
+      WHERE u.username = ${username} OR u.email = ${username}
+      LIMIT 1
+    `);
+    const row = result.rows[0];
+    if (!row || !row.is_active) {
+      res.status(401).json({ error: "invalid_credentials" });
+      return;
+    }
+    const ok2 = await verifyPassword(password, row.password_hash);
+    if (!ok2) {
+      logger.warn({ username }, "Login failed: wrong password");
+      res.status(401).json({ error: "invalid_credentials" });
+      return;
+    }
+    const token = await signPanelJwt({
+      panelUserId: row.id,
+      companyId: row.company_id,
+      username: row.username,
+      email: row.email,
+      role: row.role
+    });
+    res.json({
+      ok: true,
+      token,
+      passwordChangeRequired: row.must_change_password,
+      user: {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        role: row.role,
+        companyId: row.company_id,
+        company: {
+          id: row.company_id,
+          name: row.company_name,
+          company_kind: row.company_kind
+        }
+      }
+    });
+  } catch (err) {
+    logger.error({ err }, "Database error during login");
+    res.status(500).json({ error: "internal_server_error" });
+  }
+});
+var panelAuth_default = router5;
+
+// src/routes/panelApi.ts
+var import_express6 = __toESM(require_express2(), 1);
+init_rideBillingProfile();
+init_client();
+import { randomUUID as randomUUID10 } from "node:crypto";
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-async function findActivePanelUserByUsername(username) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const normalized = username.trim().toLowerCase();
-  if (!normalized) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    company_id: panelUsersTable.company_id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    password_hash: panelUsersTable.password_hash,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      sql`lower(${panelUsersTable.username}) = ${normalized}`,
-      eq(panelUsersTable.is_active, true),
-      eq(adminCompaniesTable.is_active, true)
-    )
-  ).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    username: r.username,
-    email: r.email,
-    password_hash: r.password_hash,
-    role: r.role,
-    must_change_password: r.must_change_password,
-    is_active: r.is_active,
-    created_at: r.created_at,
-    updated_at: r.updated_at
-  };
-}
-async function findActivePanelUserByEmailNormalized(email) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const normalized = email.trim().toLowerCase();
-  if (!normalized || !normalized.includes("@")) return null;
-  const rows = await db2.select({
-    id: panelUsersTable.id,
-    company_id: panelUsersTable.company_id,
-    username: panelUsersTable.username,
-    email: panelUsersTable.email,
-    password_hash: panelUsersTable.password_hash,
-    role: panelUsersTable.role,
-    must_change_password: panelUsersTable.must_change_password,
-    is_active: panelUsersTable.is_active,
-    created_at: panelUsersTable.created_at,
-    updated_at: panelUsersTable.updated_at
-  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      sql`lower(trim(${panelUsersTable.email})) = ${normalized}`,
-      eq(panelUsersTable.is_active, true),
-      eq(adminCompaniesTable.is_active, true)
-    )
-  ).limit(2);
-  if (rows.length !== 1) return null;
-  const r = rows[0];
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    username: r.username,
-    email: r.email,
-    password_hash: r.password_hash,
-    role: r.role,
-    must_change_password: r.must_change_password,
-    is_active: r.is_active,
-    created_at: r.created_at,
-    updated_at: r.updated_at
-  };
-}
 async function findActivePanelUserProfileById(id) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
@@ -52838,7 +54993,7 @@ async function findActivePanelUserProfileById(id) {
     id: r.id,
     companyId: r.companyId,
     companyName: r.companyName,
-    companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" ? r.companyKindRaw : "general",
+    companyKind: r.companyKindRaw === "taxi" || r.companyKindRaw === "voucher_client" || r.companyKindRaw === "insurer" || r.companyKindRaw === "hotel" || r.companyKindRaw === "corporate" || r.companyKindRaw === "medical" ? r.companyKindRaw : "general",
     username: r.username,
     email: r.email,
     role: r.role,
@@ -52886,367 +55041,6 @@ async function findActivePanelUserById(id) {
   };
 }
 
-// src/routes/panelAuth.ts
-init_client();
-
-// src/lib/panelLoginRateLimit.ts
-var WINDOW_MS = 6e4;
-var MAX_ATTEMPTS = 25;
-var buckets = /* @__PURE__ */ new Map();
-function keyForReq(ip) {
-  return ip.trim() || "unknown";
-}
-function rateLimitPanelLogin(ip) {
-  const k = keyForReq(ip);
-  const now = Date.now();
-  let b = buckets.get(k);
-  if (!b || now >= b.resetAt) {
-    b = { count: 0, resetAt: now + WINDOW_MS };
-    buckets.set(k, b);
-  }
-  b.count += 1;
-  if (b.count > MAX_ATTEMPTS) {
-    const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
-    return { ok: false, retryAfterSec };
-  }
-  return { ok: true };
-}
-
-// src/lib/panelJwt.ts
-function getSecretKey2() {
-  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
-  if (panel) {
-    return new TextEncoder().encode(panel);
-  }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("PANEL_JWT_SECRET is not configured (required in production for panel tokens)");
-  }
-  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (!auth) {
-    throw new Error("PANEL_JWT_SECRET or AUTH_JWT_SECRET is not configured");
-  }
-  return new TextEncoder().encode(auth);
-}
-function issuer2() {
-  return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
-}
-function isPanelJwtConfigured() {
-  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) {
-    return true;
-  }
-  if (process.env.NODE_ENV === "production") {
-    return false;
-  }
-  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
-}
-async function signPanelJwt(claims, expiresIn = "7d") {
-  const secret = getSecretKey2();
-  return new SignJWT({
-    kind: "panel",
-    companyId: claims.companyId,
-    username: claims.username,
-    email: claims.email,
-    role: claims.role
-  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret);
-}
-function isPanelRole(v) {
-  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
-}
-async function verifyPanelJwt(token) {
-  const secret = getSecretKey2();
-  const { payload } = await jwtVerify(token, secret, {
-    issuer: issuer2(),
-    algorithms: ["HS256"]
-  });
-  return payloadToPanelClaims(payload);
-}
-function payloadToPanelClaims(payload) {
-  const sub = typeof payload.sub === "string" ? payload.sub : "";
-  if (!sub) throw new Error("invalid panel token: missing sub");
-  if (payload.kind !== "panel") throw new Error("invalid panel token: wrong kind");
-  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
-  const username = typeof payload.username === "string" ? payload.username : "";
-  const email = typeof payload.email === "string" ? payload.email : "";
-  const role = payload.role;
-  if (!companyId || !username || !isPanelRole(role)) {
-    throw new Error("invalid panel token: missing claims");
-  }
-  return { panelUserId: sub, companyId, username, email, role };
-}
-
-// src/routes/panelAuth.ts
-var router5 = (0, import_express5.Router)();
-router5.post("/panel-auth/login", async (req, res) => {
-  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
-  const rl = rateLimitPanelLogin(ip);
-  if (!rl.ok) {
-    res.setHeader("Retry-After", String(rl.retryAfterSec));
-    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
-    return;
-  }
-  if (!isPostgresConfigured()) {
-    res.status(503).json({
-      error: "database_not_configured",
-      hint: "Set DATABASE_URL and apply init-onroda.sql (table panel_users)."
-    });
-    return;
-  }
-  if (!isPanelJwtConfigured()) {
-    res.status(503).json({
-      error: "panel_jwt_not_configured",
-      hint: process.env.NODE_ENV === "production" ? "Set PANEL_JWT_SECRET in the API environment (required in production for panel login)." : "Set PANEL_JWT_SECRET, or for local dev only AUTH_JWT_SECRET."
-    });
-    return;
-  }
-  const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
-  const password = typeof req.body?.password === "string" ? req.body.password : "";
-  if (!username || !password) {
-    res.status(400).json({ error: "username_and_password_required" });
-    return;
-  }
-  let row = await findActivePanelUserByUsername(username);
-  if (!row && username.includes("@")) {
-    row = await findActivePanelUserByEmailNormalized(username);
-  }
-  if (!row || !isPanelRoleString(row.role)) {
-    res.status(401).json({ error: "invalid_credentials" });
-    return;
-  }
-  const ok2 = await verifyPassword(password, row.password_hash);
-  if (!ok2) {
-    res.status(401).json({ error: "invalid_credentials" });
-    return;
-  }
-  let token;
-  try {
-    token = await signPanelJwt({
-      panelUserId: row.id,
-      companyId: row.company_id,
-      username: row.username,
-      email: row.email,
-      role: row.role
-    });
-  } catch (e) {
-    console.error("[panel-auth/login] signPanelJwt:", e);
-    res.status(500).json({ error: "token_sign_failed" });
-    return;
-  }
-  res.json({
-    ok: true,
-    token,
-    passwordChangeRequired: row.must_change_password,
-    user: {
-      id: row.id,
-      companyId: row.company_id,
-      username: row.username,
-      email: row.email,
-      role: row.role,
-      mustChangePassword: row.must_change_password
-    }
-  });
-});
-router5.post("/panel-auth/logout", (_req, res) => {
-  res.json({ ok: true });
-});
-router5.post("/panel-auth/registration-request", async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const body = req.body ?? {};
-  const str = (k) => typeof body[k] === "string" ? body[k].trim() : "";
-  const companyName = str("companyName");
-  const legalForm = str("legalForm");
-  const partnerTypeRaw = str("partnerType");
-  const contactFirstName = str("contactFirstName");
-  const contactLastName = str("contactLastName");
-  const email = str("email").toLowerCase();
-  const phone = str("phone");
-  const addressLine1 = str("addressLine1");
-  const postalCode = str("postalCode");
-  const city = str("city");
-  const country = str("country");
-  if (!companyName || !partnerTypeRaw || !contactFirstName || !contactLastName || !email || !phone || !addressLine1 || !postalCode || !city || !country) {
-    res.status(400).json({ error: "required_fields_missing" });
-    return;
-  }
-  if (!isPartnerType(partnerTypeRaw)) {
-    res.status(400).json({ error: "partner_type_invalid" });
-    return;
-  }
-  const usesVouchers = body.usesVouchers === true;
-  const requestedUsage = body.requestedUsage && typeof body.requestedUsage === "object" && !Array.isArray(body.requestedUsage) ? body.requestedUsage : {};
-  const documentsMeta = body.documentsMeta && typeof body.documentsMeta === "object" && !Array.isArray(body.documentsMeta) ? body.documentsMeta : {};
-  const created = await createPartnerRegistrationRequest({
-    companyName,
-    legalForm,
-    partnerType: partnerTypeRaw,
-    usesVouchers,
-    contactFirstName,
-    contactLastName,
-    email,
-    phone,
-    addressLine1,
-    postalCode,
-    city,
-    country,
-    taxId: str("taxId"),
-    vatId: str("vatId"),
-    concessionNumber: str("concessionNumber"),
-    desiredRegion: str("desiredRegion"),
-    requestedUsage,
-    documentsMeta,
-    notes: str("notes")
-  });
-  if (!created) {
-    res.status(503).json({ error: "create_failed" });
-    return;
-  }
-  res.status(201).json({ ok: true, request: created });
-});
-router5.get("/panel-auth/registration-request-status", async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-  if (!email) {
-    res.status(400).json({ error: "email_required" });
-    return;
-  }
-  const row = await findLatestPartnerRegistrationRequestByEmail(email);
-  if (!row) {
-    res.status(404).json({ error: "not_found" });
-    return;
-  }
-  res.json({ ok: true, request: row });
-});
-router5.get("/panel-auth/registration-request/:id", async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
-  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-  if (!id || !email) {
-    res.status(400).json({ error: "id_and_email_required" });
-    return;
-  }
-  const detail = await getPartnerRegistrationDetailAdmin(id);
-  if (!detail) {
-    res.status(404).json({ error: "not_found" });
-    return;
-  }
-  if ((detail.request.email ?? "").toLowerCase() !== email) {
-    res.status(403).json({ error: "forbidden" });
-    return;
-  }
-  res.json({ ok: true, ...detail });
-});
-router5.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
-  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-  const message2 = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-  if (!id || !email || !message2) {
-    res.status(400).json({ error: "id_email_message_required" });
-    return;
-  }
-  const row = await findPartnerRegistrationRequestById(id);
-  if (!row) {
-    res.status(404).json({ error: "not_found" });
-    return;
-  }
-  if ((row.email ?? "").toLowerCase() !== email) {
-    res.status(403).json({ error: "forbidden" });
-    return;
-  }
-  await addPartnerRegistrationMessage(id, "partner", email, message2);
-  res.status(201).json({ ok: true });
-});
-router5.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
-  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
-  const payload = req.body?.payload && typeof req.body.payload === "object" && !Array.isArray(req.body.payload) ? req.body.payload : {};
-  if (!id || !email || !reason) {
-    res.status(400).json({ error: "id_email_reason_required" });
-    return;
-  }
-  const row = await findPartnerRegistrationRequestById(id);
-  if (!row) {
-    res.status(404).json({ error: "not_found" });
-    return;
-  }
-  if ((row.email ?? "").toLowerCase() !== email) {
-    res.status(403).json({ error: "forbidden" });
-    return;
-  }
-  await addPartnerRegistrationTimelineEvent({
-    requestId: id,
-    actorType: "partner",
-    actorLabel: email,
-    eventType: "master_data_change_requested",
-    message: reason,
-    payload
-  });
-  await patchPartnerRegistrationRequest(id, { status: "in_review" });
-  res.status(201).json({ ok: true });
-});
-router5.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
-  if (!isPostgresConfigured()) {
-    res.status(503).json({ error: "database_not_configured" });
-    return;
-  }
-  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
-  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "general";
-  const fileName = typeof req.body?.fileName === "string" ? req.body.fileName.trim() : "";
-  const mimeType = typeof req.body?.mimeType === "string" ? req.body.mimeType.trim() : "application/octet-stream";
-  const contentBase64 = typeof req.body?.contentBase64 === "string" ? req.body.contentBase64.trim() : "";
-  if (!id || !email || !fileName || !contentBase64) {
-    res.status(400).json({ error: "id_email_file_required" });
-    return;
-  }
-  const row = await findPartnerRegistrationRequestById(id);
-  if (!row) {
-    res.status(404).json({ error: "not_found" });
-    return;
-  }
-  if ((row.email ?? "").toLowerCase() !== email) {
-    res.status(403).json({ error: "forbidden" });
-    return;
-  }
-  const doc = await addPartnerRegistrationDocument({
-    requestId: id,
-    category,
-    originalFileName: fileName,
-    mimeType,
-    contentBase64,
-    uploadedByActorType: "partner",
-    uploadedByActorLabel: email
-  });
-  if (!doc) {
-    res.status(503).json({ error: "upload_failed" });
-    return;
-  }
-  res.status(201).json({ ok: true, document: doc });
-});
-var panelAuth_default = router5;
-
-// src/routes/panelApi.ts
-var import_express6 = __toESM(require_express2(), 1);
-init_rideBillingProfile();
-init_client();
-import { randomUUID as randomUUID9 } from "node:crypto";
-
 // src/db/panelCompanyData.ts
 init_drizzle_orm();
 init_client();
@@ -53254,12 +55048,42 @@ init_schema2();
 var MAX = {
   short: 120,
   line: 500,
-  url: 2048
+  url: 2048,
+  name: 200
 };
 function clip(s, max) {
   const t = s.trim();
   if (t.length <= max) return t;
   return t.slice(0, max);
+}
+function isDbEmpty(v) {
+  return !String(v ?? "").trim();
+}
+function partnerBasicsPanelCompleteFromRow(r) {
+  return !isDbEmpty(r.name) && !isDbEmpty(r.contact_name) && !isDbEmpty(r.email) && !isDbEmpty(r.phone) && !isDbEmpty(r.address_line1) && !isDbEmpty(r.postal_code) && !isDbEmpty(r.city) && !isDbEmpty(r.country) && !isDbEmpty(r.legal_form) && !isDbEmpty(r.owner_name) && !isDbEmpty(r.concession_number) && !isDbEmpty(r.tax_id) && !isDbEmpty(r.bank_iban);
+}
+var BASICS_PATCH_KEYS = [
+  "name",
+  "contactName",
+  "email",
+  "phone",
+  "addressLine1",
+  "addressLine2",
+  "postalCode",
+  "city",
+  "country",
+  "legalForm",
+  "ownerName"
+];
+function costCenterFromFarePermissions(fp) {
+  if (!fp || typeof fp !== "object" || Array.isArray(fp)) return "";
+  const o = fp;
+  for (const k of ["cost_center", "costCenter", "kostenstelle", "Kostenstelle"]) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  }
+  return "";
 }
 function rowToPanelPublic(r) {
   return {
@@ -53275,7 +55099,7 @@ function rowToPanelPublic(r) {
     country: r.country,
     vatId: r.vat_id,
     isActive: r.is_active,
-    companyKind: r.company_kind === "taxi" || r.company_kind === "voucher_client" || r.company_kind === "insurer" || r.company_kind === "hotel" || r.company_kind === "corporate" ? r.company_kind : "general",
+    companyKind: r.company_kind === "taxi" || r.company_kind === "voucher_client" || r.company_kind === "insurer" || r.company_kind === "hotel" || r.company_kind === "corporate" || r.company_kind === "medical" ? r.company_kind : "general",
     taxId: r.tax_id ?? "",
     concessionNumber: r.concession_number ?? "",
     hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
@@ -53295,12 +55119,14 @@ function rowToPanelPublic(r) {
     billingCountry: r.billing_country ?? "",
     bankIban: r.bank_iban ?? "",
     bankBic: r.bank_bic ?? "",
+    costCenter: costCenterFromFarePermissions(r.fare_permissions),
     verificationStatus: r.verification_status ?? "pending",
     complianceStatus: r.compliance_status ?? "pending",
     contractStatus: r.contract_status ?? "inactive",
     isBlocked: Boolean(r.is_blocked),
     maxDrivers: r.max_drivers ?? 100,
-    maxVehicles: r.max_vehicles ?? 100
+    maxVehicles: r.max_vehicles ?? 100,
+    profileLocked: Boolean(r.partner_panel_profile_locked)
   };
 }
 async function getPanelCompanyById(companyId) {
@@ -53329,10 +55155,13 @@ async function patchPanelCompanyProfile(companyId, patch) {
   if (keys.length === 0) {
     return { ok: false, error: "no_changes" };
   }
-  const set = {};
-  if (patch.contactName !== void 0) {
-    set.contact_name = clip(patch.contactName, MAX.short);
+  const patchTouchesBasics = keys.some(
+    (k) => BASICS_PATCH_KEYS.includes(k)
+  );
+  if (r0.partner_panel_profile_locked && patchTouchesBasics) {
+    return { ok: false, error: "partner_basics_locked" };
   }
+  const set = {};
   if (patch.supportEmail !== void 0) {
     const e = clip(patch.supportEmail, MAX.short);
     if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
@@ -53349,8 +55178,66 @@ async function patchPanelCompanyProfile(companyId, patch) {
   if (patch.openingHours !== void 0) {
     set.opening_hours = clip(patch.openingHours, MAX.line);
   }
-  if (patch.businessNotes !== void 0) {
-    set.business_notes = clip(patch.businessNotes, MAX.line);
+  if (patch.name !== void 0 && isDbEmpty(r0.name)) {
+    const v = clip(patch.name, MAX.name);
+    if (v) set.name = v;
+  }
+  if (patch.contactName !== void 0 && isDbEmpty(r0.contact_name)) {
+    const v = clip(patch.contactName, MAX.short);
+    if (v) set.contact_name = v;
+  }
+  if (patch.email !== void 0 && isDbEmpty(r0.email)) {
+    const e = clip(patch.email, MAX.short);
+    if (e) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+        return { ok: false, error: "email_invalid" };
+      }
+      set.email = e;
+    }
+  }
+  if (patch.phone !== void 0 && isDbEmpty(r0.phone)) {
+    const v = clip(patch.phone, MAX.short);
+    if (v) set.phone = v;
+  }
+  if (patch.addressLine1 !== void 0 && isDbEmpty(r0.address_line1)) {
+    const v = clip(patch.addressLine1, MAX.line);
+    if (v) set.address_line1 = v;
+  }
+  if (patch.addressLine2 !== void 0 && isDbEmpty(r0.address_line2)) {
+    const v = clip(patch.addressLine2, MAX.line);
+    if (v) set.address_line2 = v;
+  }
+  if (patch.postalCode !== void 0 && isDbEmpty(r0.postal_code)) {
+    const v = clip(patch.postalCode, MAX.short);
+    if (v) set.postal_code = v;
+  }
+  if (patch.city !== void 0 && isDbEmpty(r0.city)) {
+    const v = clip(patch.city, MAX.short);
+    if (v) set.city = v;
+  }
+  if (patch.country !== void 0 && isDbEmpty(r0.country)) {
+    const v = clip(patch.country, MAX.short);
+    if (v) set.country = v;
+  }
+  if (patch.legalForm !== void 0 && isDbEmpty(r0.legal_form)) {
+    const v = clip(patch.legalForm, MAX.short);
+    if (v) set.legal_form = v;
+  }
+  if (patch.ownerName !== void 0 && isDbEmpty(r0.owner_name)) {
+    const v = clip(patch.ownerName, MAX.short);
+    if (v) set.owner_name = v;
+  }
+  if (patch.concessionNumber !== void 0 && isDbEmpty(r0.concession_number)) {
+    const v = clip(patch.concessionNumber, MAX.short);
+    if (v) set.concession_number = v;
+  }
+  if (patch.taxId !== void 0 && isDbEmpty(r0.tax_id)) {
+    const v = clip(patch.taxId, MAX.short);
+    if (v) set.tax_id = v;
+  }
+  if (patch.bankIban !== void 0 && isDbEmpty(r0.bank_iban)) {
+    const v = clip(patch.bankIban, MAX.short);
+    if (v) set.bank_iban = v;
   }
   if (Object.keys(set).length === 0) {
     return { ok: false, error: "no_changes" };
@@ -53360,6 +55247,15 @@ async function patchPanelCompanyProfile(companyId, patch) {
   const r1 = again[0];
   if (!r1) {
     return { ok: false, error: "company_not_found" };
+  }
+  if (!r0.partner_panel_profile_locked && partnerBasicsPanelCompleteFromRow(r1)) {
+    await db2.update(adminCompaniesTable).set({ partner_panel_profile_locked: true }).where(eq(adminCompaniesTable.id, companyId));
+    const lockedRow = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+    const r2 = lockedRow[0];
+    if (!r2) {
+      return { ok: false, error: "company_not_found" };
+    }
+    return { ok: true, company: rowToPanelPublic(r2) };
   }
   return { ok: true, company: rowToPanelPublic(r1) };
 }
@@ -53436,7 +55332,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID8 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -53454,7 +55350,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID8()}`;
+  const id = `SRS-${randomUUID9()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -53652,7 +55548,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID9()}`;
+  return `REQ-${randomUUID10()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -53917,6 +55813,20 @@ router6.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
+router6.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "overview")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const company = await getPanelCompanyById(ctx.claims.companyId);
+    const companyKind = company?.companyKind ?? ctx.profile.companyKind;
+    const metrics = await getPanelCompanyOverviewMetrics(ctx.claims.companyId, companyKind);
+    res.json({ ok: true, metrics });
+  } catch (e) {
+    next(e);
+  }
+});
 router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
@@ -53924,20 +55834,44 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     if (!denyUnlessPanelModule(res, ctx.profile, "company_profile")) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
     const body = req.body;
-    const str = (k) => typeof body[k] === "string" ? body[k] : void 0;
+    const str2 = (k) => typeof body[k] === "string" ? body[k] : void 0;
     const patch = {};
-    const cn = str("contactName");
-    const dispoPhone = str("dispoPhone");
-    const supportEmail = str("supportEmail");
-    const logoUrl = str("logoUrl");
-    const openingHours = str("openingHours");
-    const businessNotes = str("businessNotes");
-    if (cn !== void 0) patch.contactName = cn;
+    const dispoPhone = str2("dispoPhone");
+    const supportEmail = str2("supportEmail");
+    const logoUrl = str2("logoUrl");
+    const openingHours = str2("openingHours");
+    const name = str2("name");
+    const contactName = str2("contactName");
+    const email = str2("email");
+    const phone = str2("phone");
+    const addressLine1 = str2("addressLine1");
+    const addressLine2 = str2("addressLine2");
+    const postalCode = str2("postalCode");
+    const city = str2("city");
+    const country = str2("country");
+    const legalForm = str2("legalForm");
+    const ownerName = str2("ownerName");
+    const concessionNumber = str2("concessionNumber");
+    const taxId = str2("taxId");
+    const bankIban = str2("bankIban");
     if (dispoPhone !== void 0) patch.dispoPhone = dispoPhone;
     if (supportEmail !== void 0) patch.supportEmail = supportEmail;
     if (logoUrl !== void 0) patch.logoUrl = logoUrl;
     if (openingHours !== void 0) patch.openingHours = openingHours;
-    if (businessNotes !== void 0) patch.businessNotes = businessNotes;
+    if (name !== void 0) patch.name = name;
+    if (contactName !== void 0) patch.contactName = contactName;
+    if (email !== void 0) patch.email = email;
+    if (phone !== void 0) patch.phone = phone;
+    if (addressLine1 !== void 0) patch.addressLine1 = addressLine1;
+    if (addressLine2 !== void 0) patch.addressLine2 = addressLine2;
+    if (postalCode !== void 0) patch.postalCode = postalCode;
+    if (city !== void 0) patch.city = city;
+    if (country !== void 0) patch.country = country;
+    if (legalForm !== void 0) patch.legalForm = legalForm;
+    if (ownerName !== void 0) patch.ownerName = ownerName;
+    if (concessionNumber !== void 0) patch.concessionNumber = concessionNumber;
+    if (taxId !== void 0) patch.taxId = taxId;
+    if (bankIban !== void 0) patch.bankIban = bankIban;
     const result = await patchPanelCompanyProfile(ctx.claims.companyId, patch);
     if (!result.ok) {
       const code = result.error;
@@ -53953,11 +55887,18 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
         res.status(400).json({ error: code });
         return;
       }
+      if (code === "partner_basics_locked") {
+        res.status(403).json({
+          error: code,
+          hint: "Stammdaten sind abgeschlossen. Weitere \xC4nderungen nur \xFCber eine Anfrage zur Freigabe durch die Plattform-Administration (Men\xFCpunkt \xC4nderungsanfragen / Support)."
+        });
+        return;
+      }
       res.status(503).json({ error: code });
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -53995,7 +55936,7 @@ router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -54007,7 +55948,7 @@ router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -54081,7 +56022,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       res.status(400).json({ error: "customer_name_required" });
       return;
     }
-    const str = (k) => typeof body[k] === "string" ? body[k] : "";
+    const str2 = (k) => typeof body[k] === "string" ? body[k] : "";
     const num2 = (k) => typeof body[k] === "number" && Number.isFinite(body[k]) ? body[k] : NaN;
     const optStr = (k) => {
       const v = body[k];
@@ -54093,15 +56034,15 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       if (typeof v !== "number" || !Number.isFinite(v)) return void 0;
       return v;
     };
-    const from = str("from").trim();
-    const fromFull = str("fromFull").trim();
-    const to = str("to").trim();
-    const toFull = str("toFull").trim();
+    const from = str2("from").trim();
+    const fromFull = str2("fromFull").trim();
+    const to = str2("to").trim();
+    const toFull = str2("toFull").trim();
     const distanceKm = num2("distanceKm");
     const durationMinutes = num2("durationMinutes");
     const estimatedFare = num2("estimatedFare");
-    const paymentMethod = str("paymentMethod").trim();
-    const vehicle = str("vehicle").trim();
+    const paymentMethod = str2("paymentMethod").trim();
+    const vehicle = str2("vehicle").trim();
     if (!from || !fromFull || !to || !toFull) {
       res.status(400).json({ error: "route_fields_required" });
       return;
@@ -54188,7 +56129,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -54314,7 +56255,7 @@ router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -54482,7 +56423,7 @@ router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       [savedOut, savedRet].filter((x) => Boolean(x))
     );
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -54648,7 +56589,7 @@ router6.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
     const enriched = await enrichPanelRidesForResponse(loaded.filter((x) => Boolean(x)));
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -54777,7 +56718,7 @@ router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -54824,7 +56765,7 @@ router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -54869,7 +56810,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -54938,7 +56879,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -55025,7 +56966,7 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -55080,7 +57021,7 @@ router6.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -55130,7 +57071,7 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID9(),
+      id: randomUUID10(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -55208,19 +57149,19 @@ function payloadToFleetDriverClaims(payload) {
 }
 
 // src/lib/fleetLoginRateLimit.ts
-var WINDOW_MS2 = 6e4;
-var MAX_ATTEMPTS2 = 25;
-var buckets2 = /* @__PURE__ */ new Map();
+var WINDOW_MS = 6e4;
+var MAX_ATTEMPTS = 25;
+var buckets = /* @__PURE__ */ new Map();
 function rateLimitFleetLogin(ip) {
   const k = ip.trim() || "unknown";
   const now = Date.now();
-  let b = buckets2.get(k);
+  let b = buckets.get(k);
   if (!b || now >= b.resetAt) {
-    b = { count: 0, resetAt: now + WINDOW_MS2 };
-    buckets2.set(k, b);
+    b = { count: 0, resetAt: now + WINDOW_MS };
+    buckets.set(k, b);
   }
   b.count += 1;
-  if (b.count > MAX_ATTEMPTS2) {
+  if (b.count > MAX_ATTEMPTS) {
     const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
     return { ok: false, retryAfterSec };
   }
@@ -55520,7 +57461,7 @@ var fleetDriverApi_default = router8;
 // src/routes/fleetPanelApi.ts
 var import_express9 = __toESM(require_express2(), 1);
 init_drizzle_orm();
-import { randomUUID as randomUUID12 } from "node:crypto";
+import { randomUUID as randomUUID13 } from "node:crypto";
 import fs from "node:fs/promises";
 import path3 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
@@ -55531,7 +57472,7 @@ init_schema2();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID10 } from "node:crypto";
+import { randomUUID as randomUUID11 } from "node:crypto";
 function rowToVehicle(r) {
   return {
     id: r.id,
@@ -55577,7 +57518,7 @@ async function insertFleetVehicle(input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const plate = input.licensePlate.trim();
   if (!plate) return { ok: false, error: "license_plate_required" };
-  const id = `fv-${randomUUID10()}`;
+  const id = `fv-${randomUUID11()}`;
   await db2.insert(fleetVehiclesTable).values({
     id,
     company_id: input.companyId,
@@ -55620,7 +57561,7 @@ async function patchFleetVehicle(id, companyId, patch) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID11 } from "node:crypto";
+import { randomUUID as randomUUID12 } from "node:crypto";
 function toRow(r) {
   return {
     id: r.id,
@@ -55649,7 +57590,7 @@ async function setDriverVehicleAssignment(input) {
     await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
     await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
     await tx.insert(driverVehicleAssignmentsTable).values({
-      id: `fva-${randomUUID11()}`,
+      id: `fva-${randomUUID12()}`,
       company_id: input.companyId,
       driver_id: input.driverId,
       vehicle_id: input.vehicleId
@@ -55818,7 +57759,7 @@ router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID12(),
+      id: randomUUID13(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -55877,7 +57818,7 @@ router9.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID12(),
+      id: randomUUID13(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -55901,7 +57842,7 @@ router9.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID12(),
+      id: randomUUID13(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -55928,7 +57869,7 @@ router9.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, asy
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID12(),
+      id: randomUUID13(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -55961,7 +57902,7 @@ router9.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path3.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID12()}.pdf`);
+      const rel = path3.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID13()}.pdf`);
       const dest = path3.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path3.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -56043,7 +57984,7 @@ router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID12(),
+      id: randomUUID13(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -56165,7 +58106,7 @@ router9.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path3.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID12()}.pdf`);
+      const rel = path3.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID13()}.pdf`);
       const dest = path3.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path3.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -56178,7 +58119,7 @@ router9.post(
       const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
       await db2.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, ctx.claims.companyId));
       await insertPanelAuditLog({
-        id: randomUUID12(),
+        id: randomUUID13(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -56232,57 +58173,18 @@ router11.get("/admin", (_req, res) => {
 });
 var admin_default = router11;
 
-// src/lib/logger.ts
-var import_pino = __toESM(require_pino(), 1);
-var isProduction = process.env.NODE_ENV === "production";
-var logger = (0, import_pino.default)({
-  level: process.env.LOG_LEVEL ?? "info",
-  redact: [
-    "req.headers.authorization",
-    "req.headers.cookie",
-    "res.headers['set-cookie']"
-  ],
-  ...isProduction ? {} : {
-    transport: {
-      target: "pino-pretty",
-      options: { colorize: true }
-    }
-  }
-});
-
 // src/app.ts
 var app = (0, import_express12.default)();
-function resolveStaticRoot() {
-  const fromEnv = process.env["STATIC_ROOT"];
-  if (fromEnv && fromEnv.length > 0) {
-    return path4.resolve(fromEnv);
-  }
-  const distDir = path4.dirname(fileURLToPath3(import.meta.url));
-  return path4.join(distDir, "..", "static");
-}
-function resolvePublicRoot() {
-  const fromEnv = process.env["ADMIN_STATIC_ROOT"];
-  if (fromEnv && fromEnv.length > 0) {
-    return path4.resolve(fromEnv);
-  }
-  const apiDistDir = path4.dirname(fileURLToPath3(import.meta.url));
-  return path4.join(apiDistDir, "..", "..", "admin-panel", "dist");
-}
-function resolvePanelPublicRoot() {
-  const fromEnv = process.env["PANEL_STATIC_ROOT"];
-  if (fromEnv && fromEnv.length > 0) {
-    return path4.resolve(fromEnv);
-  }
-  const apiDistDir = path4.dirname(fileURLToPath3(import.meta.url));
-  return path4.join(apiDistDir, "..", "..", "partner-panel", "dist");
-}
-var staticRoot = resolveStaticRoot();
-var panelPublicRoot = resolvePanelPublicRoot();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
+function isAdminBrowserHost(h) {
+  return h === "admin.onroda.de";
+}
 app.set("trust proxy", 1);
 function hostname(req) {
+  const fromTrust = (req.hostname ?? "").toLowerCase();
+  if (fromTrust) return fromTrust;
   return (req.get("host") ?? "").split(":")[0]?.toLowerCase() ?? "";
 }
 function isApiHost(h) {
@@ -56358,86 +58260,73 @@ app.use(import_express12.default.urlencoded({ extended: true }));
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
+app.use("/api/panel-auth", panelAuth_default);
+var __dirname2 = path4.dirname(fileURLToPath3(import.meta.url));
+var staticRoot = path4.join(__dirname2, "../static");
+var panelPublicRoot = path4.join(__dirname2, "../../partner-panel/dist");
+function resolvePublicRoot() {
+  return path4.join(__dirname2, "../../admin-panel/dist");
+}
+app.use((req, res, next) => {
+  if (!isPanelBrowserHost(hostname(req))) return next();
+  if (req.path === "/partners" || req.path.startsWith("/partners/")) return res.redirect(302, "/");
+  return next();
+});
 var adminPublicRoot = resolvePublicRoot();
-app.use("/partners", import_express12.default.static(adminPublicRoot));
 app.use("/partners", (req, res, next) => {
-  if (req.method !== "GET" && req.method !== "HEAD") {
+  if (!isAdminBrowserHost(hostname(req))) return next();
+  import_express12.default.static(adminPublicRoot)(req, res, (err) => {
+    if (err) return next(err);
     return next();
-  }
+  });
+});
+app.use("/partners", (req, res, next) => {
+  if (!isAdminBrowserHost(hostname(req))) return next();
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
   res.sendFile(path4.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
-  if (!isPanelBrowserHost(hostname(req))) {
-    return next();
-  }
+  if (!isPanelBrowserHost(hostname(req))) return next();
   import_express12.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
-  if (!isPanelBrowserHost(hostname(req))) {
-    return next();
-  }
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    return next();
-  }
-  if (req.path.startsWith("/partners")) {
-    return next();
-  }
+  if (!isPanelBrowserHost(hostname(req))) return next();
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  if (req.path.startsWith("/partners")) return next();
   res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   const p = req.path;
-  if (p === "/partners" || p.startsWith("/partners/")) {
-    return next();
-  }
+  if (p === "/partners" || p.startsWith("/partners/")) return next();
   import_express12.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") {
-    return res.sendFile(path4.join(staticRoot, "index.html"));
-  }
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path4.join(staticRoot, "index.html"));
+  return next();
+});
+app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
+  const host = hostname(req);
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path4.join(staticRoot, "partner-status.html"), (err) => {
+    if (err) next(err);
+  });
   return next();
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") {
-    const filePath = path4.join(staticRoot, "index.html");
-    return res.sendFile(filePath);
-  }
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path4.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
-    return res.json({
-      ok: true,
-      service: "onroda-api",
-      health: "/api/healthz",
-      healthV1: "/api/v1/health",
-      admin: "/admin",
-      adminPanel: "/partners/",
-      partnerPanel: "https://panel.onroda.de/",
-      partnerAuth: {
-        googlePanelStart: "/api/auth/panel-login",
-        panelPasswordLogin: "/api/panel-auth/login",
-        panelMe: "/api/panel/v1/me",
-        panelCompany: "/api/panel/v1/company",
-        panelCompanyPatch: "PATCH /api/panel/v1/company",
-        panelRidesList: "/api/panel/v1/rides",
-        panelRidesCreate: "POST /api/panel/v1/rides",
-        panelHealth: "/api/panel/v1/health",
-        panelLogout: "/api/panel-auth/logout",
-        fleetAuthLogin: "/api/fleet-auth/login",
-        fleetDriverMe: "/api/fleet-driver/v1/me"
-      }
-    });
+    return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) {
-    return res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
-      if (err) next(err);
-    });
-  }
-  return res.redirect(302, "/partners/");
+  if (isPanelBrowserHost(host)) return res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
+    if (err) next(err);
+  });
+  if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");
+  return next();
 });
 var app_default = app;
 
