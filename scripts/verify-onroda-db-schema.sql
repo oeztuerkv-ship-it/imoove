@@ -253,6 +253,13 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'company_compliance_documents'
+  ) THEN
+    errs := array_append(errs, 'table company_compliance_documents (Migration 033)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'company_change_requests'
   ) THEN
     errs := array_append(errs, 'table company_change_requests (Migration 023)');

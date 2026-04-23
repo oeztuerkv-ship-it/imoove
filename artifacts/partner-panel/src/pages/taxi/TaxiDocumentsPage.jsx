@@ -6,17 +6,17 @@ import { hasPanelModule } from "../../lib/panelNavigation.js";
 function normalizeComplianceStatus(status) {
   const value = String(status ?? "").trim().toLowerCase();
   if (!value) return { label: "Unbekannt", tone: "warn", text: "Der Compliance-Status ist aktuell nicht gesetzt." };
-  if (value === "approved") {
+  if (value === "compliant" || value === "approved") {
     return { label: "Freigegeben", tone: "ok", text: "Ihr Unternehmen ist aktuell aus Compliance-Sicht freigegeben." };
   }
-  if (value === "rejected") {
+  if (value === "non_compliant" || value === "rejected") {
     return {
       label: "Abgelehnt",
       tone: "warn",
       text: "Mindestens ein Nachweis wurde nicht akzeptiert. Bitte den Änderungs-/Freigabeprozess nutzen.",
     };
   }
-  if (value === "pending") {
+  if (value === "pending" || value === "in_review") {
     return {
       label: "In Prüfung",
       tone: "pending",

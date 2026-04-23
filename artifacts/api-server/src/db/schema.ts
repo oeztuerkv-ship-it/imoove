@@ -189,6 +189,25 @@ export const panelUsersTable = pgTable("panel_users", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Firmen-Compliance (Gewerbe-/Versicherungsnachweis): aktuelle Fassung pro Typ, Prüf-Metadaten. */
+export const companyComplianceDocumentsTable = pgTable("company_compliance_documents", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  /** "gewerbe" | "insurance" */
+  document_type: text("document_type").notNull(),
+  storage_key: text("storage_key").notNull(),
+  uploaded_by_panel_user_id: text("uploaded_by_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  uploaded_at: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+  /** pending | approved | rejected */
+  review_status: text("review_status").notNull().default("pending"),
+  review_note: text("review_note").notNull().default(""),
+  is_current: boolean("is_current").notNull().default(true),
+});
+
 /** Plattform-Admin-Login (admin.onroda.de): lokale Nutzerbasis für Session/JWT-Auth. */
 export const adminAuthUsersTable = pgTable("admin_auth_users", {
   id: text("id").primaryKey(),

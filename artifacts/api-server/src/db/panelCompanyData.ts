@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
+import { getDerivedComplianceAndDocumentsForRow } from "./companyComplianceDocumentsData";
 import { adminCompaniesTable } from "./schema";
 
 /** Mandanten-Typ (Panel / Governance); z. B. Taxi vs. Leistungspartner (Hotel, Kasse, …). */
@@ -58,6 +59,14 @@ export interface PanelCompanyPublic {
   maxVehicles: number;
   /** Basis-Stammdaten im Panel abgeschlossen — Änderungen nur per Change-Request. */
   profileLocked: boolean;
+  /**
+   * Nachweise Gewerbe/Versicherung: abgeleitet aus `company_compliance_documents` + `admin_companies` Speicher-Keys
+   * (uploadedAt ISO-8601, reviewStatus pending|approved|rejected, reviewNote leer, wenn abgelehnt mit Begründung).
+   */
+  complianceDocuments: {
+    gewerbe: { uploadedAt: string; reviewStatus: string; reviewNote: string };
+    insurance: { uploadedAt: string; reviewStatus: string; reviewNote: string };
+  };
 }
 
 export type PanelCompanyProfilePatch = Partial<{
@@ -193,6 +202,10 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     maxDrivers: r.max_drivers ?? 100,
     maxVehicles: r.max_vehicles ?? 100,
     profileLocked: Boolean(r.partner_panel_profile_locked),
+    complianceDocuments: {
+      gewerbe: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
+      insurance: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
+    },
   };
 }
 
@@ -207,7 +220,8 @@ export async function getPanelCompanyById(companyId: string): Promise<PanelCompa
     .limit(1);
   const r = rows[0];
   if (!r) return null;
-  return rowToPanelPublic(r);
+  const { status, complianceDocuments } = await getDerivedComplianceAndDocumentsForRow(r);
+  return { ...rowToPanelPublic(r), complianceStatus: status, complianceDocuments };
 }
 
 /**
@@ -346,7 +360,10 @@ export async function patchPanelCompanyProfile(
     if (!r2) {
       return { ok: false, error: "company_not_found" };
     }
-    return { ok: true, company: rowToPanelPublic(r2) };
   }
-  return { ok: true, company: rowToPanelPublic(r1) };
+  const out = await getPanelCompanyById(companyId);
+  if (!out) {
+    return { ok: false, error: "company_not_found" };
+  }
+  return { ok: true, company: out };
 }

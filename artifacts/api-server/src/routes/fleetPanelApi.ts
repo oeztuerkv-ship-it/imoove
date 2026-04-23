@@ -3,10 +3,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { insertComplianceDocumentUpload } from "../db/companyComplianceDocumentsData";
 import { insertPanelAuditLog } from "../db/panelAuditData";
-import { getDb, isPostgresConfigured } from "../db/client";
-import { adminCompaniesTable } from "../db/schema";
+import { isPostgresConfigured } from "../db/client";
 import {
   activateFleetDriver,
   countFleetDriversOnline,
@@ -584,16 +583,25 @@ router.post(
       await fs.mkdir(path.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
-      const db = getDb();
-      if (!db) {
+      if (!isPostgresConfigured()) {
         res.status(503).json({ error: "database_not_configured" });
         return;
       }
-      const col =
-        kind === "gewerbe"
-          ? { compliance_gewerbe_storage_key: storageKey }
-          : { compliance_insurance_storage_key: storageKey };
-      await db.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, ctx.claims.companyId));
+      try {
+        await insertComplianceDocumentUpload(
+          ctx.claims.companyId,
+          kind,
+          storageKey,
+          ctx.claims.panelUserId,
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg === "database_not_configured") {
+          res.status(503).json({ error: "database_not_configured" });
+          return;
+        }
+        throw e;
+      }
       await insertPanelAuditLog({
         id: randomUUID(),
         companyId: ctx.claims.companyId,

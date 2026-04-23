@@ -1,5 +1,6 @@
 import { and, count, eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
+import { getDerivedGlobalComplianceStatusForCompanyRow } from "./companyComplianceDocumentsData";
 import { adminCompaniesTable, fleetDriversTable, fleetVehiclesTable } from "./schema";
 
 export interface CompanyGovernanceGate {
@@ -79,11 +80,14 @@ export async function getCompanyGovernanceGate(companyId: string): Promise<Compa
       String(r.country ?? "").trim() &&
       String(r.vat_id ?? "").trim(),
   );
+  const complianceStatus = (await getDerivedGlobalComplianceStatusForCompanyRow(
+    r,
+  )) as string;
   return {
     companyId: r.id,
     companyKind: r.company_kind ?? "general",
     verificationStatus: r.verification_status ?? "pending",
-    complianceStatus: r.compliance_status ?? "pending",
+    complianceStatus,
     contractStatus: r.contract_status ?? "inactive",
     isBlocked: Boolean(r.is_blocked),
     hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),

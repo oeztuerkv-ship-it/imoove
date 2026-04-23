@@ -337,6 +337,31 @@ CREATE TABLE IF NOT EXISTS company_change_requests (
 CREATE INDEX IF NOT EXISTS company_change_requests_company_idx ON company_change_requests (company_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS company_change_requests_status_idx ON company_change_requests (status, created_at DESC);
 
+-- Firmen-Compliance: aktueller Nachweis pro Typ (Migration 033)
+CREATE TABLE IF NOT EXISTS company_compliance_documents (
+  id TEXT PRIMARY KEY,
+  company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE CASCADE,
+  document_type TEXT NOT NULL,
+  storage_key TEXT NOT NULL,
+  uploaded_by_panel_user_id TEXT REFERENCES panel_users (id) ON DELETE SET NULL,
+  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  review_status TEXT NOT NULL DEFAULT 'pending',
+  review_note TEXT NOT NULL DEFAULT '',
+  is_current BOOLEAN NOT NULL DEFAULT TRUE,
+  CONSTRAINT company_compliance_documents_type_chk
+    CHECK (document_type IN ('gewerbe', 'insurance')),
+  CONSTRAINT company_compliance_documents_review_chk
+    CHECK (review_status IN ('pending', 'approved', 'rejected'))
+);
+
+CREATE INDEX IF NOT EXISTS company_compliance_documents_company_current_idx
+  ON company_compliance_documents (company_id, document_type)
+  WHERE is_current = TRUE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS company_compliance_documents_one_current_per_type
+  ON company_compliance_documents (company_id, document_type)
+  WHERE is_current = TRUE;
+
 CREATE TABLE IF NOT EXISTS partner_registration_requests (
   id TEXT PRIMARY KEY,
   company_name TEXT NOT NULL,

@@ -54,6 +54,7 @@ import {
   decideCompanyChangeRequest,
   listCompanyChangeRequestsAdmin,
 } from "../db/companyChangeRequestsData";
+import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
 import {
   addPartnerRegistrationDocument,
   addPartnerRegistrationMessage,
@@ -1035,6 +1036,47 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Prüfung des aktuellen Firmen-Compliance-Dokuments (Gewerbe bzw. Versicherung) — Freigabe/Ablehnung inkl. optionaler Notiz.
+ */
+adminJson.patch("/companies/:companyId/compliance-documents/:kind", async (req, res, next) => {
+  try {
+    const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!allowed) return;
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const kind = req.params.kind;
+    if (kind !== "gewerbe" && kind !== "insurance") {
+      res.status(400).json({ error: "invalid_kind" });
+      return;
+    }
+    const b = req.body as { reviewStatus?: unknown; reviewNote?: unknown };
+    const raw = typeof b.reviewStatus === "string" ? b.reviewStatus.trim().toLowerCase() : "";
+    if (raw !== "approved" && raw !== "rejected") {
+      res.status(400).json({ error: "invalid_review_status" });
+      return;
+    }
+    const note = typeof b.reviewNote === "string" ? b.reviewNote : "";
+    const r = await setCurrentComplianceDocumentReview(req.params.companyId, kind, {
+      reviewStatus: raw,
+      reviewNote: note,
+    });
+    if (!r.ok) {
+      if (r.error === "no_current_document") {
+        res.status(400).json({ error: r.error, hint: "Zuerst Nachweis-Datei hinterlegen (Partner-Upload o. Admin-Speicherpfad mit Migration 033)." });
+        return;
+      }
+      res.status(503).json({ error: r.error, hint: "Migration 033 (company_compliance_documents) prüfen." });
+      return;
+    }
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }
