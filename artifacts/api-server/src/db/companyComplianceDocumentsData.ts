@@ -42,6 +42,21 @@ export function deriveGlobalComplianceStatus(args: {
   return "in_review";
 }
 
+/** Einheitliche Partner-UI-Stufen (Dashboard, Dokumente) — abgeleitet aus Speicher-Keys + `deriveGlobalComplianceStatus`. */
+export type PanelComplianceBucket = "missing" | "in_review" | "rejected" | "compliant";
+
+export function complianceBucketFromDerived(args: {
+  derivedStatus: "pending" | "in_review" | "compliant" | "non_compliant";
+  hasGewerbe: boolean;
+  hasInsurance: boolean;
+}): PanelComplianceBucket {
+  if (!args.hasGewerbe || !args.hasInsurance) return "missing";
+  if (args.derivedStatus === "non_compliant") return "rejected";
+  if (args.derivedStatus === "compliant") return "compliant";
+  if (args.derivedStatus === "in_review") return "in_review";
+  return "missing";
+}
+
 function reviewForSide(
   has: boolean,
   companyKey: string | null,

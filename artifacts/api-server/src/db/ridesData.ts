@@ -792,6 +792,8 @@ export type PanelCompanyOverviewMetrics = {
   weekScope: "rolling_7d";
   today: { completedRides: number; revenue: number };
   week: { completedRides: number; revenue: number };
+  /** Rollierend 30×24h ab jetzt (wie `week`, nur längeres Fenster). */
+  rolling30: { completedRides: number; revenue: number };
   month: { completedRides: number; revenue: number };
   openRides: number;
   /** Kalendermonat Europe/Berlin, nach `created_at`. */
@@ -835,6 +837,7 @@ export async function getPanelCompanyOverviewMetrics(
     const dayStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
     const dayEnd = dayStart + 24 * 3600 * 1000;
     const weekStart = now - 7 * 24 * 3600 * 1000;
+    const thirtyStart = now - 30 * 24 * 3600 * 1000;
     const monthStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), 1);
     const monthEnd = Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1);
     const tomorrowStart = dayEnd;
@@ -847,6 +850,7 @@ export async function getPanelCompanyOverviewMetrics(
       list.filter((r) => r.status === "completed" && inCreated(r, a, b));
     const todayRides = completedIn(dayStart, dayEnd);
     const weekRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= weekStart);
+    const thirtyRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= thirtyStart);
     const monthRides = completedIn(monthStart, monthEnd);
     const openRides = list.filter((r) => !PANEL_OVERVIEW_TERMINAL_STATUSES.includes(r.status)).length;
 
@@ -889,6 +893,10 @@ export async function getPanelCompanyOverviewMetrics(
         completedRides: weekRides.length,
         revenue: weekRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
       },
+      rolling30: {
+        completedRides: thirtyRides.length,
+        revenue: thirtyRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
+      },
       month: {
         completedRides: monthRides.length,
         revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0),
@@ -911,6 +919,7 @@ export async function getPanelCompanyOverviewMetrics(
   const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
   const weekRollingStart = sql`(now() - interval '7 days')`;
+  const thirtyRollingStart = sql`(now() - interval '30 days')`;
 
   const baseCompleted = and(companyIdMatchCondition(companyId), eq(ridesTable.status, "completed"));
 
@@ -931,6 +940,14 @@ export async function getPanelCompanyOverviewMetrics(
     })
     .from(ridesTable)
     .where(and(baseCompleted, gte(ridesTable.created_at, weekRollingStart)));
+
+  const [thirtyRow] = await db
+    .select({
+      completedRides: sql<number>`count(*)::int`,
+      revenue: sql<string>`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    })
+    .from(ridesTable)
+    .where(and(baseCompleted, gte(ridesTable.created_at, thirtyRollingStart)));
 
   const [monthRow] = await db
     .select({
@@ -1015,6 +1032,10 @@ export async function getPanelCompanyOverviewMetrics(
     week: {
       completedRides: Number(weekRow?.completedRides ?? 0),
       revenue: Number(weekRow?.revenue ?? 0),
+    },
+    rolling30: {
+      completedRides: Number(thirtyRow?.completedRides ?? 0),
+      revenue: Number(thirtyRow?.revenue ?? 0),
     },
     month: {
       completedRides: Number(monthRow?.completedRides ?? 0),

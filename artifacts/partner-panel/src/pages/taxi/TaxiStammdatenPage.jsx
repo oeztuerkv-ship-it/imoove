@@ -2,6 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../../context/PanelAuthContext.jsx";
 import { API_BASE } from "../../lib/apiBase.js";
 import { hasPanelModule } from "../../lib/panelNavigation.js";
+import { complianceBucketFromCompany, complianceKpiLabelAndClass } from "../../lib/partnerComplianceBucket.js";
+
+const PARTNER_STAMM_SUPPORT_EMAIL =
+  (typeof import.meta !== "undefined" && String(import.meta.env?.VITE_PARTNER_SUPPORT_EMAIL ?? "").trim()) ||
+  "support@onroda.de";
+
+function mailtoStammChangeRequest(company) {
+  const id = company?.id != null ? String(company.id) : "";
+  const sub = encodeURIComponent(`Stammdaten-Änderung Taxi-Panel (${id || "Mandant"})`);
+  const body = encodeURIComponent(
+    `Guten Tag,\n\nbitte folgende Änderung an unseren Taxi-Stammdaten (Mandanten-ID: ${id || "—"}):\n\n[Bitte kurz beschreiben]\n\nMit freundlichen Grüßen`,
+  );
+  return `mailto:${PARTNER_STAMM_SUPPORT_EMAIL}?subject=${sub}&body=${body}`;
+}
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -431,6 +445,25 @@ export default function TaxiStammdatenPage() {
       {err ? <p className="partner-state-error">{err}</p> : null}
       {saveMsg ? <p className="partner-state-ok">{saveMsg}</p> : null}
 
+      {canPatch && c && !loading ? (
+        <div className="partner-card partner-card--section">
+          <h2 className="partner-card__title">Änderung bei gesperrten oder gesetzten Feldern</h2>
+          <p className="partner-muted" style={{ margin: "0 0 16px" }}>
+            Zeilen mit dem Hinweis <strong>Änderung nur über Anfrage möglich</strong> können Sie in dieser Maske nicht
+            selbst anpassen. Nutzen Sie die E-Mail — dort können Sie Ihr Anliegen strukturiert schildern (Mandanten-ID wird
+            vorbelegt).
+          </p>
+          <div className="partner-action-row">
+            <a className="partner-btn-primary" href={mailtoStammChangeRequest(c)}>
+              Änderung per E-Mail anfragen
+            </a>
+            <a className="partner-btn-secondary" href={`mailto:${PARTNER_STAMM_SUPPORT_EMAIL}`}>
+              Nur Kontakt ({PARTNER_STAMM_SUPPORT_EMAIL})
+            </a>
+          </div>
+        </div>
+      ) : null}
+
       {c?.profileLocked ? (
         <div className="partner-card partner-card--section partner-card--hint">
           <h2 className="partner-card__title">Basis-Stammdaten gesperrt</h2>
@@ -439,6 +472,13 @@ export default function TaxiStammdatenPage() {
             nicht geändert werden. Operative Angaben (Support, Dispo, Logo, Öffnungszeiten) und die <strong>Erstbefüllung</strong>{" "}
             von Konzession, Steuernummer und IBAN (falls noch leer) sind weiterhin möglich, sofern Ihr Konto das erlaubt.
           </p>
+          {canPatch ? (
+            <div className="partner-action-row" style={{ marginTop: 16 }}>
+              <a className="partner-btn-primary" href={mailtoStammChangeRequest(c)}>
+                Änderung anfragen (E-Mail)
+              </a>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -526,7 +566,13 @@ export default function TaxiStammdatenPage() {
               <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} company={c} fieldKey="__isActiveDisplay" />
               <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} company={c} fieldKey="__isBlockedDisplay" />
               <FieldRow label="Verifizierung" value={c.verificationStatus} company={c} fieldKey="__verificationDisplay" />
-              <FieldRow label="Compliance" value={c.complianceStatus} company={c} fieldKey="__complianceDisplay" />
+              <FieldRow
+                label="Compliance (Freigabe)"
+                value={complianceKpiLabelAndClass(complianceBucketFromCompany(c)).label}
+                company={c}
+                fieldKey="__complianceDisplay"
+                hint={`Systemstatus: ${c.complianceStatus ?? "—"}`}
+              />
               <FieldRow label="Vertragsstatus" value={c.contractStatus} company={c} fieldKey="__contractDisplay" />
               <FieldRow label="Gewerbenachweis hinterlegt" value={c.hasComplianceGewerbe ? "ja" : "nein"} company={c} fieldKey="__gewerbeDisplay" />
               <FieldRow
@@ -628,6 +674,11 @@ export default function TaxiStammdatenPage() {
               Leere Felder können Sie hier einmalig befüllen (wenn nicht deaktiviert). Ist ein Wert schon gesetzt oder sind die
               Basisdaten gesperrt, gilt: <strong>Änderung nur über Anfrage bei Onroda</strong>.
             </p>
+            <div className="partner-action-row" style={{ marginTop: 12 }}>
+              <a className="partner-btn-primary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
+                Änderung per E-Mail anfragen
+              </a>
+            </div>
           </div>
 
           <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
@@ -655,6 +706,13 @@ export default function TaxiStammdatenPage() {
             </div>
             {!extraGaps.length ? (
               <p className="partner-form-mono">Alle drei Felder sind befüllt — weitere Anpassungen nur über Anfrage bei Onroda.</p>
+            ) : null}
+            {!extraGaps.length ? (
+              <div className="partner-action-row" style={{ marginTop: 12 }}>
+                <a className="partner-btn-primary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
+                  Änderung per E-Mail anfragen
+                </a>
+              </div>
             ) : null}
           </div>
         </div>

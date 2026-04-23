@@ -128,6 +128,14 @@ function denyUnlessCompanyOrOverview(res: Response, profile: PanelUserProfileRow
   return false;
 }
 
+/** Taxi-Umsatz-CSV: gleicher Datenraum wie Firmenfahrtenliste. */
+function denyUnlessOverviewOrCompanyRides(res: Response, profile: PanelUserProfileRow): boolean {
+  const e = enabledPanelModules(profile);
+  if (e.includes("overview") || e.includes("company_rides")) return true;
+  res.status(403).json({ error: "module_disabled", hint: "overview_or_company_rides" });
+  return false;
+}
+
 function permissionFlag(obj: Record<string, unknown> | undefined, key: string, fallback = false): boolean {
   if (!obj) return fallback;
   const v = obj[key];
@@ -269,6 +277,74 @@ function rideToBillingCsvRow(r: RideRequest): string {
 
 const BILLING_CSV_HEADER =
   "id,createdAt,scheduledAt,status,rideKind,payerKind,billingReference,accessCodeId,accessCodeNormalized,customerName,partnerFlow,roomNumber,reservationRef,hotelBilledTo,patientReference,tripLeg,seriesId,seriesSequence,seriesTotal,linkedRideId,fromLabel,toLabel,estimatedFare,finalFare";
+
+const TAXI_REVENUE_CSV_HEADER_DE = "Datum,Fahrt-ID,Start,Ziel,Preis,Zahlungsart,Status";
+
+function formatDeDateFromIso(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso ?? "").trim();
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function rideStatusLabelDe(status: string): string {
+  const m: Record<string, string> = {
+    draft: "Entwurf",
+    scheduled: "geplant",
+    requested: "angefragt",
+    searching_driver: "Fahrersuche",
+    offered: "angeboten",
+    pending: "ausstehend",
+    accepted: "angenommen",
+    driver_arriving: "Fahrer unterwegs",
+    driver_waiting: "Fahrer wartet",
+    passenger_onboard: "Fahrgast an Bord",
+    arrived: "angekommen",
+    in_progress: "unterwegs",
+    cancelled_by_customer: "storniert (Fahrgast)",
+    cancelled_by_driver: "storniert (Fahrer)",
+    cancelled_by_system: "storniert (System)",
+    expired: "abgelaufen",
+    rejected: "abgelehnt",
+    cancelled: "storniert",
+    completed: "abgeschlossen",
+  };
+  return m[status] ?? status;
+}
+
+function rideRevenueEuro(r: RideRequest): number {
+  const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
+  return Number.isFinite(a) ? a : 0;
+}
+
+function formatEuroDe(n: number): string {
+  return `${n.toFixed(2).replace(".", ",")} €`;
+}
+
+function ridePaymentLabelDe(r: RideRequest): string {
+  const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
+  if (pm === "cash" || pm === "bar") return "Bar";
+  if (pm === "card" || pm === "karte" || pm === "credit_card") return "Karte";
+  const pk = String(r.payerKind ?? "").trim().toLowerCase();
+  if (pk === "partner" || pk === "company" || pk === "corporate") return "Firma";
+  if (pk === "insurance") return "Kasse / Versicherung";
+  if (pk === "voucher") return "Gutschein";
+  if (pk === "passenger") return pm ? `${pm} (Fahrgast)` : "Fahrgast";
+  const raw = [r.paymentMethod, r.payerKind].filter(Boolean).join(" / ");
+  return raw || "—";
+}
+
+function rideToTaxiRevenueCsvRowDe(r: RideRequest): string {
+  const cols = [
+    formatDeDateFromIso(r.createdAt),
+    r.id,
+    (r.fromFull || r.from || "").trim(),
+    (r.toFull || r.to || "").trim(),
+    formatEuroDe(rideRevenueEuro(r)),
+    ridePaymentLabelDe(r),
+    rideStatusLabelDe(r.status),
+  ];
+  return cols.map((c) => csvEscapeCell(c)).join(",");
+}
 
 type RouteLegParsed = {
   from: string;
@@ -740,6 +816,39 @@ router.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) =
       filters: parsed.filters,
       rides: withTrace,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Taxi: Umsatz-/Fahrtenexport (UTF-8 CSV, Semikolon-freie Zellen per RFC-Escaping). */
+router.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessOverviewOrCompanyRides(res, ctx.profile)) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    if (ctx.profile.companyKind !== "taxi") {
+      res.status(403).json({ error: "taxi_only" });
+      return;
+    }
+
+    const parsed = companyRidesFiltersFromQuery(
+      normalizeCompanyRidesQueryRecord(req.query as Record<string, unknown>),
+    );
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const list = await listRidesForCompanyFiltered(ctx.claims.companyId, parsed.filters);
+    const lines = [TAXI_REVENUE_CSV_HEADER_DE, ...list.map((r) => rideToTaxiRevenueCsvRowDe(r))];
+    const csv = `\uFEFF${lines.join("\n")}\n`;
+    const from = parsed.filters.createdFrom ? parsed.filters.createdFrom.toISOString().slice(0, 10) : "";
+    const to = parsed.filters.createdTo ? parsed.filters.createdTo.toISOString().slice(0, 10) : "";
+    const safe = `${from}-${to}`.replace(/[^0-9-]/g, "");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="onroda-taxi-umsatz-${safe || "export"}.csv"`);
+    res.status(200).send(csv);
   } catch (e) {
     next(e);
   }

@@ -2,29 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../../context/PanelAuthContext.jsx";
 import { API_BASE } from "../../lib/apiBase.js";
 import { hasPanelModule } from "../../lib/panelNavigation.js";
-
-function normalizeComplianceStatus(status) {
-  const value = String(status ?? "").trim().toLowerCase();
-  if (!value) return { label: "Unbekannt", tone: "warn", text: "Der Compliance-Status ist aktuell nicht gesetzt." };
-  if (value === "compliant" || value === "approved") {
-    return { label: "Freigegeben", tone: "ok", text: "Ihr Unternehmen ist aktuell aus Compliance-Sicht freigegeben." };
-  }
-  if (value === "non_compliant" || value === "rejected") {
-    return {
-      label: "Abgelehnt",
-      tone: "warn",
-      text: "Mindestens ein Nachweis wurde nicht akzeptiert. Bitte den Änderungs-/Freigabeprozess nutzen.",
-    };
-  }
-  if (value === "pending" || value === "in_review") {
-    return {
-      label: "In Prüfung",
-      tone: "pending",
-      text: "Es liegen noch offene Prüfungen vor. Fehlende Nachweise können den Status beeinflussen.",
-    };
-  }
-  return { label: value, tone: "pending", text: "Der Status wird aus dem System übernommen." };
-}
+import { complianceBucketFromCompany, complianceOverviewCopy } from "../../lib/partnerComplianceBucket.js";
 
 function complianceDocItems(company) {
   const docs = company?.complianceDocuments && typeof company.complianceDocuments === "object" ? company.complianceDocuments : {};
@@ -62,14 +40,17 @@ function formatDateTime(value) {
   return d.toLocaleString("de-DE");
 }
 
-function docState(item) {
+/** Einzelnachweis: klar getrennt von „Datei liegt vor“ vs. „gültig / freigegeben“. */
+function docUiState(item) {
   const st = String(item?.reviewStatus ?? "").trim().toLowerCase();
+  const uploadedAt = String(item?.uploadedAt ?? "").trim();
   if (!item?.ok) {
     return {
       key: "missing",
       label: "fehlt",
       tone: "missing",
-      text: item?.hintMissing || "Dokument fehlt.",
+      text: item?.hintMissing || "Noch kein Nachweis im System.",
+      validity: "—",
     };
   }
   if (st === "approved" || st === "freigegeben") {
@@ -77,7 +58,8 @@ function docState(item) {
       key: "approved",
       label: "freigegeben",
       tone: "neutral",
-      text: "Dokument wurde freigegeben.",
+      text: "Von Onroda geprüft und akzeptiert.",
+      validity: "gültig",
     };
   }
   if (st === "rejected" || st === "abgelehnt") {
@@ -85,21 +67,32 @@ function docState(item) {
       key: "rejected",
       label: "abgelehnt",
       tone: "missing",
-      text: item?.reviewNote || "Dokument wurde abgelehnt. Bitte korrigieren und erneut hochladen.",
+      text: item?.reviewNote || "Nicht akzeptiert — bitte korrigieren und erneut als PDF hochladen.",
+      validity: "ungültig",
+    };
+  }
+  if (!uploadedAt) {
+    return {
+      key: "uploaded",
+      label: "hochgeladen",
+      tone: "review",
+      text: "Datei ist im System gespeichert; die fachliche Prüfung steht noch aus.",
+      validity: "noch nicht gültig",
     };
   }
   return {
-    key: "pending",
-    label: "hochgeladen / in Prüfung",
+    key: "in_review",
+    label: "in Prüfung",
     tone: "review",
-    text: item?.hintOk || "Dokument ist hinterlegt und wird geprüft.",
+    text: "Datei liegt vor und wird durch Onroda geprüft.",
+    validity: "noch nicht gültig",
   };
 }
 
 function statusPillClass(tone) {
-  if (tone === "missing") return "partner-pill--missing";
-  if (tone === "review") return "partner-pill--review";
-  return "partner-pill--neutral";
+  if (tone === "missing") return "partner-pill partner-pill--missing";
+  if (tone === "review") return "partner-pill partner-pill--review";
+  return "partner-pill partner-pill--neutral";
 }
 
 export default function TaxiDocumentsPage() {
@@ -146,14 +139,16 @@ export default function TaxiDocumentsPage() {
     void loadCompany();
   }, [loadCompany]);
 
-  const status = useMemo(() => normalizeComplianceStatus(company?.complianceStatus), [company?.complianceStatus]);
+  const overview = useMemo(() => complianceOverviewCopy(company), [company]);
+  const globalBucket = useMemo(() => complianceBucketFromCompany(company), [company]);
   const docItems = useMemo(() => complianceDocItems(company), [company]);
   const missingDocs = docItems.filter((item) => !item.ok);
 
   function complianceHeaderPill() {
-    if (status.tone === "ok") return <span className="partner-pill--neutral">{status.label}</span>;
-    if (status.tone === "warn") return <span className="partner-pill--missing">{status.label}</span>;
-    return <span className="partner-pill--review">{status.label}</span>;
+    if (globalBucket === "compliant") return <span className="partner-pill partner-pill--neutral">{overview.label}</span>;
+    if (globalBucket === "rejected") return <span className="partner-pill partner-pill--missing">{overview.label}</span>;
+    if (globalBucket === "in_review") return <span className="partner-pill partner-pill--review">{overview.label}</span>;
+    return <span className="partner-pill partner-pill--missing">{overview.label}</span>;
   }
 
   async function uploadDocument(kind, ev) {
@@ -230,7 +225,7 @@ export default function TaxiDocumentsPage() {
               </div>
             </div>
             <p className="partner-muted" style={{ margin: "8px 0 0" }}>
-              {status.text}
+              {overview.text}
             </p>
           </div>
 
@@ -241,7 +236,7 @@ export default function TaxiDocumentsPage() {
             </h2>
             <div className="partner-stack partner-stack--tight">
               {docItems.map((item) => {
-                const ds = docState(item);
+                const ds = docUiState(item);
                 return (
                   <div key={item.key} className="partner-nested-panel">
                     <div className="partner-kv-row" style={{ border: "none", paddingTop: 0 }}>
@@ -252,15 +247,19 @@ export default function TaxiDocumentsPage() {
                     </div>
                     <div className="partner-kvlist" style={{ marginTop: 12 }}>
                       <div className="partner-kvlist__row">
-                        <span className="partner-kvlist__k">Vorhanden</span>
-                        <span className="partner-kvlist__v">{item.ok ? "ja" : "nein"}</span>
+                        <span className="partner-kvlist__k">Datei im System</span>
+                        <span className="partner-kvlist__v">{item.ok ? "ja (PDF liegt vor)" : "nein"}</span>
+                      </div>
+                      <div className="partner-kvlist__row">
+                        <span className="partner-kvlist__k">Gültigkeit / Freigabe</span>
+                        <span className="partner-kvlist__v">{ds.validity}</span>
                       </div>
                       <div className="partner-kvlist__row">
                         <span className="partner-kvlist__k">Hochgeladen am</span>
                         <span className="partner-kvlist__v">{formatDateTime(item.uploadedAt)}</span>
                       </div>
                       <div className="partner-kvlist__row">
-                        <span className="partner-kvlist__k">Prüfhinweis</span>
+                        <span className="partner-kvlist__k">Hinweis</span>
                         <span className="partner-kvlist__v" style={{ textAlign: "right", maxWidth: "100%" }}>
                           {ds.text}
                         </span>

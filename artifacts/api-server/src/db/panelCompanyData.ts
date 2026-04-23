@@ -1,6 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
-import { getDerivedComplianceAndDocumentsForRow } from "./companyComplianceDocumentsData";
+import {
+  complianceBucketFromDerived,
+  getDerivedComplianceAndDocumentsForRow,
+} from "./companyComplianceDocumentsData";
 import { adminCompaniesTable } from "./schema";
 
 /** Mandanten-Typ (Panel / Governance); z. B. Taxi vs. Leistungspartner (Hotel, Kasse, …). */
@@ -53,6 +56,11 @@ export interface PanelCompanyPublic {
   costCenter: string;
   verificationStatus: string;
   complianceStatus: string;
+  /**
+   * Gleiche Ableitung wie Dokumente/KPI: fehlt | in_review | rejected | compliant.
+   * `complianceStatus` bleibt DB-kompatibel (pending|in_review|compliant|non_compliant).
+   */
+  complianceBucket: "missing" | "in_review" | "rejected" | "compliant";
   contractStatus: string;
   isBlocked: boolean;
   maxDrivers: number;
@@ -197,6 +205,7 @@ function rowToPanelPublic(r: typeof adminCompaniesTable.$inferSelect): PanelComp
     costCenter: costCenterFromFarePermissions(r.fare_permissions),
     verificationStatus: r.verification_status ?? "pending",
     complianceStatus: r.compliance_status ?? "pending",
+    complianceBucket: "missing",
     contractStatus: r.contract_status ?? "inactive",
     isBlocked: Boolean(r.is_blocked),
     maxDrivers: r.max_drivers ?? 100,
@@ -221,7 +230,13 @@ export async function getPanelCompanyById(companyId: string): Promise<PanelCompa
   const r = rows[0];
   if (!r) return null;
   const { status, complianceDocuments } = await getDerivedComplianceAndDocumentsForRow(r);
-  return { ...rowToPanelPublic(r), complianceStatus: status, complianceDocuments };
+  const pub = rowToPanelPublic(r);
+  const complianceBucket = complianceBucketFromDerived({
+    derivedStatus: status,
+    hasGewerbe: pub.hasComplianceGewerbe,
+    hasInsurance: pub.hasComplianceInsurance,
+  });
+  return { ...pub, complianceStatus: status, complianceDocuments, complianceBucket };
 }
 
 /**
