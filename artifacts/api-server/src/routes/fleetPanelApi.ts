@@ -50,6 +50,13 @@ import { resolveEffectivePanelModules } from "../domain/panelModules";
 
 const router: IRouter = Router();
 
+router.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, private, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Vary", "Authorization");
+  next();
+});
+
 const pkgRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path.join(pkgRoot, "data", "fleet-uploads");
 const ALLOWED_VEHICLE_LEGAL_TYPES: FleetVehicleLegalType[] = ["taxi"];

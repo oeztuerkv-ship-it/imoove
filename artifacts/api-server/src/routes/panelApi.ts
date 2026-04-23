@@ -70,6 +70,14 @@ import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePa
 
 const router: IRouter = Router();
 
+/** Kein Browser-/Proxy-Caching: sonst 304 + veraltete Firmen-/Session-Daten trotz neuem JWT-Inhalt. */
+router.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, private, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Vary", "Authorization");
+  next();
+});
+
 async function assertActivePanelProfile(
   req: PanelAuthRequest,
   res: Response,
