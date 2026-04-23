@@ -38,6 +38,12 @@ const PATCHABLE = new Set([
   "openingHours",
 ]);
 
+/** Immer im Bearbeiten-Modus änderbar (kein Zusatzlabel in der Ansicht). */
+const OPERATIVE_ALWAYS_EDIT_KEYS = new Set(["supportEmail", "dispoPhone", "logoUrl", "openingHours"]);
+
+/** Erstbefüllung wenn leer; nach Wert-Setzung nur noch per Anfrage (Server: nur `isDbEmpty`). */
+const EXTRA_FIRST_FILL_KEYS = new Set(["concessionNumber", "taxId", "bankIban"]);
+
 function displayValue(v) {
   if (v == null) return "";
   const s = String(v).trim();
@@ -151,23 +157,67 @@ function buildPatch(company, form, profileLocked) {
   return patch;
 }
 
-function FieldRow({ label, value, patchable, hint }) {
+/**
+ * Badge in der Nur-Lese-Tabelle: leer + frei editierbar → kein Badge.
+ * Gesetzt bzw. gesperrt → „Änderung nur über Anfrage möglich“.
+ * Nicht im Panel änderbar → „Nur Anzeige“.
+ */
+function fieldReadOnlyBadge(fieldKey, company) {
+  if (!company || fieldKey == null) return null;
+
+  if (!PATCHABLE.has(fieldKey)) {
+    return {
+      className: "partner-pill partner-pill--soft partner-pill--sentence",
+      text: "Nur Anzeige",
+      title: "Keine Selbständerung in dieser Maske.",
+    };
+  }
+
+  if (OPERATIVE_ALWAYS_EDIT_KEYS.has(fieldKey)) {
+    return null;
+  }
+
+  const profileLocked = Boolean(company.profileLocked);
+
+  if (EXTRA_FIRST_FILL_KEYS.has(fieldKey)) {
+    if (isEmptyField(company[fieldKey])) return null;
+    return {
+      className: "partner-pill partner-pill--request partner-pill--sentence",
+      text: "Änderung nur über Anfrage möglich",
+      title: "Wert ist gesetzt. Anpassung nur über den Änderungsprozess bei Onroda.",
+    };
+  }
+
+  if (BASICS_LOCK_KEYS.has(fieldKey)) {
+    if (profileLocked) {
+      return {
+        className: "partner-pill partner-pill--request partner-pill--sentence",
+        text: "Änderung nur über Anfrage möglich",
+        title: "Basisdaten sind gesperrt. Änderung nur über den Änderungsprozess bei Onroda.",
+      };
+    }
+    if (basicsGaps(company).includes(fieldKey)) return null;
+    return {
+      className: "partner-pill partner-pill--request partner-pill--sentence",
+      text: "Änderung nur über Anfrage möglich",
+      title: "Wert ist gesetzt. Weitere Änderung nur über den Änderungsprozess bei Onroda.",
+    };
+  }
+
+  return null;
+}
+
+function FieldRow({ label, value, company, fieldKey, hint }) {
+  const badge = company && fieldKey != null ? fieldReadOnlyBadge(fieldKey, company) : null;
   return (
     <div className="partner-kv-row">
       <div className="partner-kv-k">
         <span>{label}</span>
-        {patchable ? (
-          <span
-            className="partner-pill partner-pill--soft"
-            title="Kann geändert werden, sofern die Voraussetzungen im Konto erfüllt sind."
-          >
-            später bearbeitbar
+        {badge ? (
+          <span className={badge.className} title={badge.title}>
+            {badge.text}
           </span>
-        ) : (
-          <span className="partner-pill partner-pill--hold" title="Nur Anzeige; Änderungen nur über Onroda.">
-            nur Anzeige
-          </span>
-        )}
+        ) : null}
       </div>
       <div className="partner-kv-v">
         {displayValue(value) || "—"}
@@ -370,9 +420,10 @@ export default function TaxiStammdatenPage() {
 
       <div className="partner-card partner-card--section">
         <p className="partner-muted" style={{ margin: 0 }}>
-          <strong>Hinweise neben den Feldern:</strong> „Später bearbeitbar“ = Sie können den Wert hier setzen, sobald die
-          Voraussetzungen erfüllt sind. „Nur Anzeige“ = keine Selbständerung in dieser Maske. Für sensiblere Anpassungen
-          (z.&nbsp;B. Rechnungs-/USt-relevant) den <strong>Änderungsprozess über Onroda</strong> nutzen.
+          <strong>Hinweise neben den Feldern:</strong> Ohne Zusatz = im Modus „Bearbeiten“ hier änderbar bzw. einmalig
+          befüllbar, solange das Feld noch leer ist. <strong>Änderung nur über Anfrage möglich</strong> = Wert ist gesetzt oder
+          die Basisdaten sind gesperrt; Anpassung nur über den Änderungsprozess bei Onroda. <strong>Nur Anzeige</strong> =
+          kein Selbst-Service in dieser Maske.
         </p>
       </div>
 
@@ -399,14 +450,14 @@ export default function TaxiStammdatenPage() {
               Firmenbasis
             </h2>
             <div className="partner-kv-block">
-              <FieldRow label="Firmenname" value={c.name} patchable={PATCHABLE.has("name")} />
-              <FieldRow label="Unternehmensart" value={c.companyKind} patchable={false} />
-              <FieldRow label="Rechtsform" value={c.legalForm} patchable={PATCHABLE.has("legalForm")} />
-              <FieldRow label="Inhaber / GF" value={c.ownerName} patchable={PATCHABLE.has("ownerName")} />
-              <FieldRow label="Konzession" value={c.concessionNumber} patchable={PATCHABLE.has("concessionNumber")} />
-              <FieldRow label="Steuernummer" value={c.taxId} patchable={PATCHABLE.has("taxId")} />
-              <FieldRow label="USt-IdNr." value={c.vatId} patchable={false} hint="Änderung nur über Onroda / Plattform." />
-              <FieldRow label="Mandanten-ID" value={c.id} patchable={false} hint="Keine manuelle Bearbeitung." />
+              <FieldRow label="Firmenname" value={c.name} company={c} fieldKey="name" />
+              <FieldRow label="Unternehmensart" value={c.companyKind} company={c} fieldKey="companyKind" />
+              <FieldRow label="Rechtsform" value={c.legalForm} company={c} fieldKey="legalForm" />
+              <FieldRow label="Inhaber / GF" value={c.ownerName} company={c} fieldKey="ownerName" />
+              <FieldRow label="Konzession" value={c.concessionNumber} company={c} fieldKey="concessionNumber" />
+              <FieldRow label="Steuernummer" value={c.taxId} company={c} fieldKey="taxId" />
+              <FieldRow label="USt-IdNr." value={c.vatId} company={c} fieldKey="vatId" hint="Änderung nur über Onroda / Plattform." />
+              <FieldRow label="Mandanten-ID" value={c.id} company={c} fieldKey="id" hint="Keine manuelle Bearbeitung." />
             </div>
           </div>
 
@@ -416,11 +467,11 @@ export default function TaxiStammdatenPage() {
               Betriebsadresse
             </h2>
             <div className="partner-kv-block">
-              <FieldRow label="Straße, Zeile 1" value={c.addressLine1} patchable={PATCHABLE.has("addressLine1")} />
-              <FieldRow label="Adresszusatz" value={c.addressLine2} patchable={PATCHABLE.has("addressLine2")} />
-              <FieldRow label="PLZ" value={c.postalCode} patchable={PATCHABLE.has("postalCode")} />
-              <FieldRow label="Ort" value={c.city} patchable={PATCHABLE.has("city")} />
-              <FieldRow label="Land" value={c.country} patchable={PATCHABLE.has("country")} />
+              <FieldRow label="Straße, Zeile 1" value={c.addressLine1} company={c} fieldKey="addressLine1" />
+              <FieldRow label="Adresszusatz" value={c.addressLine2} company={c} fieldKey="addressLine2" />
+              <FieldRow label="PLZ" value={c.postalCode} company={c} fieldKey="postalCode" />
+              <FieldRow label="Ort" value={c.city} company={c} fieldKey="city" />
+              <FieldRow label="Land" value={c.country} company={c} fieldKey="country" />
             </div>
           </div>
 
@@ -430,14 +481,14 @@ export default function TaxiStammdatenPage() {
               Operative Erreichbarkeit
             </h2>
             <div className="partner-kv-block">
-              <FieldRow label="Ansprechpartner" value={c.contactName} patchable={PATCHABLE.has("contactName")} />
-              <FieldRow label="E-Mail (Betrieb)" value={c.email} patchable={PATCHABLE.has("email")} />
-              <FieldRow label="Telefon (Betrieb)" value={c.phone} patchable={PATCHABLE.has("phone")} />
-              <FieldRow label="Support-E-Mail" value={c.supportEmail} patchable={PATCHABLE.has("supportEmail")} />
-              <FieldRow label="Dispo-Telefon" value={c.dispoPhone} patchable={PATCHABLE.has("dispoPhone")} />
-              <FieldRow label="Firmenlogo (Link)" value={c.logoUrl} patchable={PATCHABLE.has("logoUrl")} />
-              <FieldRow label="Öffnungszeiten (Text)" value={c.openingHours} patchable={PATCHABLE.has("openingHours")} />
-              <FieldRow label="Betriebsnotizen" value={c.businessNotes} patchable={false} hint="Nur Anzeige; Anpassung über Onroda." />
+              <FieldRow label="Ansprechpartner" value={c.contactName} company={c} fieldKey="contactName" />
+              <FieldRow label="E-Mail (Betrieb)" value={c.email} company={c} fieldKey="email" />
+              <FieldRow label="Telefon (Betrieb)" value={c.phone} company={c} fieldKey="phone" />
+              <FieldRow label="Support-E-Mail" value={c.supportEmail} company={c} fieldKey="supportEmail" />
+              <FieldRow label="Dispo-Telefon" value={c.dispoPhone} company={c} fieldKey="dispoPhone" />
+              <FieldRow label="Firmenlogo (Link)" value={c.logoUrl} company={c} fieldKey="logoUrl" />
+              <FieldRow label="Öffnungszeiten (Text)" value={c.openingHours} company={c} fieldKey="openingHours" />
+              <FieldRow label="Betriebsnotizen" value={c.businessNotes} company={c} fieldKey="businessNotes" hint="Anpassung über Onroda." />
             </div>
           </div>
 
@@ -450,20 +501,15 @@ export default function TaxiStammdatenPage() {
               Rechnungsstamm: in der Regel nur Anzeige; Anpassung über Onroda.
             </p>
             <div className="partner-kv-block">
-              <FieldRow label="Rechnungsname" value={c.billingName} patchable={false} />
-              <FieldRow label="Rechnung Straße, Zeile 1" value={c.billingAddressLine1} patchable={false} />
-              <FieldRow label="Rechnung Adresszusatz" value={c.billingAddressLine2} patchable={false} />
-              <FieldRow label="Rechnung PLZ" value={c.billingPostalCode} patchable={false} />
-              <FieldRow label="Rechnung Ort" value={c.billingCity} patchable={false} />
-              <FieldRow label="Rechnung Land" value={c.billingCountry} patchable={false} />
-              <FieldRow
-                label="IBAN"
-                value={c.bankIban}
-                patchable={PATCHABLE.has("bankIban")}
-                hint="Erstbefüllung, wenn bisher leer, im Bearbeiten-Modus."
-              />
-              <FieldRow label="BIC" value={c.bankBic} patchable={false} />
-              <FieldRow label="Kostenstelle" value={c.costCenter} patchable={false} />
+              <FieldRow label="Rechnungsname" value={c.billingName} company={c} fieldKey="billingName" />
+              <FieldRow label="Rechnung Straße, Zeile 1" value={c.billingAddressLine1} company={c} fieldKey="billingAddressLine1" />
+              <FieldRow label="Rechnung Adresszusatz" value={c.billingAddressLine2} company={c} fieldKey="billingAddressLine2" />
+              <FieldRow label="Rechnung PLZ" value={c.billingPostalCode} company={c} fieldKey="billingPostalCode" />
+              <FieldRow label="Rechnung Ort" value={c.billingCity} company={c} fieldKey="billingCity" />
+              <FieldRow label="Rechnung Land" value={c.billingCountry} company={c} fieldKey="billingCountry" />
+              <FieldRow label="IBAN" value={c.bankIban} company={c} fieldKey="bankIban" />
+              <FieldRow label="BIC" value={c.bankBic} company={c} fieldKey="bankBic" />
+              <FieldRow label="Kostenstelle" value={c.costCenter} company={c} fieldKey="costCenter" />
             </div>
           </div>
 
@@ -476,20 +522,21 @@ export default function TaxiStammdatenPage() {
               Reine Anzeige.
             </p>
             <div className="partner-kv-block">
-              <FieldRow label="Basis-Stammdaten gesperrt" value={c.profileLocked ? "ja" : "nein"} patchable={false} />
-              <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} patchable={false} />
-              <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} patchable={false} />
-              <FieldRow label="Verifizierung" value={c.verificationStatus} patchable={false} />
-              <FieldRow label="Compliance" value={c.complianceStatus} patchable={false} />
-              <FieldRow label="Vertragsstatus" value={c.contractStatus} patchable={false} />
-              <FieldRow label="Gewerbenachweis hinterlegt" value={c.hasComplianceGewerbe ? "ja" : "nein"} patchable={false} />
+              <FieldRow label="Basis-Stammdaten gesperrt" value={c.profileLocked ? "ja" : "nein"} company={c} fieldKey="__profileLockedDisplay" />
+              <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} company={c} fieldKey="__isActiveDisplay" />
+              <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} company={c} fieldKey="__isBlockedDisplay" />
+              <FieldRow label="Verifizierung" value={c.verificationStatus} company={c} fieldKey="__verificationDisplay" />
+              <FieldRow label="Compliance" value={c.complianceStatus} company={c} fieldKey="__complianceDisplay" />
+              <FieldRow label="Vertragsstatus" value={c.contractStatus} company={c} fieldKey="__contractDisplay" />
+              <FieldRow label="Gewerbenachweis hinterlegt" value={c.hasComplianceGewerbe ? "ja" : "nein"} company={c} fieldKey="__gewerbeDisplay" />
               <FieldRow
                 label="Versicherungsnachweis hinterlegt"
                 value={c.hasComplianceInsurance ? "ja" : "nein"}
-                patchable={false}
+                company={c}
+                fieldKey="__insuranceDisplay"
               />
-              <FieldRow label="Max. Fahrer" value={c.maxDrivers} patchable={false} />
-              <FieldRow label="Max. Fahrzeuge" value={c.maxVehicles} patchable={false} />
+              <FieldRow label="Max. Fahrer" value={c.maxDrivers} company={c} fieldKey="__maxDriversDisplay" />
+              <FieldRow label="Max. Fahrzeuge" value={c.maxVehicles} company={c} fieldKey="__maxVehiclesDisplay" />
             </div>
           </div>
         </>
@@ -531,7 +578,7 @@ export default function TaxiStammdatenPage() {
           </div>
 
           <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
-            <h3 className="partner-card__title">Firmenbasis &amp; Ansprech/Adresse (Kern, nur leere Felder, außer bei Sperre)</h3>
+            <h3 className="partner-card__title">Firmenbasis &amp; Ansprech/Adresse (Kern)</h3>
             <div className="partner-form-grid partner-form-grid--2-2">
               {[
                 { k: "name", l: "Firmenname" },
@@ -578,14 +625,17 @@ export default function TaxiStammdatenPage() {
               })}
             </div>
             <p className="partner-form-mono">
-              Deaktiviert = entweder schon in der Datenbank befüllt oder (bei Sperre) kein Self-Service-Ändern mehr. Korrektur
-              feststehender Werte: Onroda / vereinbarter Änderungsantrag.
+              Leere Felder können Sie hier einmalig befüllen (wenn nicht deaktiviert). Ist ein Wert schon gesetzt oder sind die
+              Basisdaten gesperrt, gilt: <strong>Änderung nur über Anfrage bei Onroda</strong>.
             </p>
           </div>
 
           <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
-            <h3 className="partner-card__title">Konzession, Steuernummer, IBAN (nur Erstbefüllung, wenn bisher leer)</h3>
-            <p className="partner-form-mono">Auch bei gesperrten Basisdaten: einmalig ausfüllbar, wenn ein Feld bisher leer war.</p>
+            <h3 className="partner-card__title">Konzession, Steuernummer, IBAN (Erstbefüllung)</h3>
+            <p className="partner-form-mono">
+              Solange ein Feld noch leer ist, können Sie es hier setzen (auch bei gesperrten Basisdaten). Nach dem Speichern
+              eines Werts: <strong>Änderung nur über Anfrage bei Onroda</strong>.
+            </p>
             <div className="partner-form-grid">
               {["concessionNumber", "taxId", "bankIban"].map((k) => {
                 const inG = extraGaps.includes(k);
@@ -604,7 +654,7 @@ export default function TaxiStammdatenPage() {
               })}
             </div>
             {!extraGaps.length ? (
-              <p className="partner-form-mono">Alle drei Felder sind bereits hinterlegt — weitere Korrekturen bitte über Onroda.</p>
+              <p className="partner-form-mono">Alle drei Felder sind befüllt — weitere Anpassungen nur über Anfrage bei Onroda.</p>
             ) : null}
           </div>
         </div>

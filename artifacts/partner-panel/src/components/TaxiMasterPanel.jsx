@@ -236,7 +236,9 @@ function buildCockpitSpotlightRows(company, drivers, vehicles) {
     {
       key: "pr",
       label: "Kern-Stammdaten",
-      value: company.profileLocked ? "gesperrt — Anpassung über Onroda" : "Kern offen bzw. nach Freigabe bearbeitbar",
+      value: company.profileLocked
+        ? "gesperrt — Änderung nur über Anfrage bei Onroda"
+        : "leere Kernfelder hier befüllbar; nach Setzung nur noch per Anfrage",
       ok: !company.profileLocked,
     },
   ];
