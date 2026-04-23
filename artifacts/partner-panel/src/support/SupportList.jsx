@@ -21,13 +21,17 @@ function formatWhen(iso) {
 
 export default function SupportList({ threads, selectedId, onSelect, loading }) {
   if (loading && (!threads || threads.length === 0)) {
-    return <p className="partner-muted">Lade Anfragen…</p>;
+    return (
+      <div className="partner-support-list-placeholder">
+        <p className="partner-support-list-placeholder__text">Lade Ihre Anfragen …</p>
+      </div>
+    );
   }
   if (!threads?.length) {
-    return <p className="partner-muted">Noch keine Anfragen. Erstellen Sie über „Neue Anfrage“ einen Thread.</p>;
+    return null;
   }
   return (
-    <ul className="partner-support-list">
+    <ul className="partner-support-list" aria-label="Ihre Anfragen">
       {threads.map((t) => {
         const active = t.id === selectedId;
         return (

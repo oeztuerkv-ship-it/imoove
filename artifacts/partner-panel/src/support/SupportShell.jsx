@@ -14,6 +14,48 @@ function authHeaders(token) {
   };
 }
 
+function EmptyInboxCTA({ onNewRequest, listLoading }) {
+  return (
+    <div className="partner-support-empty">
+      <div className="partner-support-empty__icon" aria-hidden="true">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M4 4h16v12H5.17L4 17.17V4zm0-2a2 2 0 00-2 2v18l4-4h14a2 2 0 002-2V4a2 2 0 00-2-2H4zM7 9h10v2H7V9zm0-3h10v2H7V6zm0 6h7v2H7v-2z"
+            fill="currentColor"
+            opacity="0.88"
+          />
+        </svg>
+      </div>
+      <h2 className="partner-support-empty__title">Noch keine Anfrage</h2>
+      <p className="partner-support-empty__text">Hier tauschen Sie sich mit der Plattform aus — Fragen, Rückmeldungen und Stammdaten-Anliegen laufen in einem Verlauf zusammen.</p>
+      <button
+        type="button"
+        className="partner-btn-primary"
+        onClick={onNewRequest}
+        disabled={listLoading}
+      >
+        Neue Anfrage
+      </button>
+    </div>
+  );
+}
+
+function SelectThreadHint() {
+  return (
+    <div className="partner-support-prompt">
+      <p className="partner-support-prompt__text">Wählen Sie links eine Anfrage aus, um den Verlauf zu sehen, oder starten Sie eine neue Nachricht an die Plattform.</p>
+    </div>
+  );
+}
+
+function DetailLoading() {
+  return (
+    <div className="partner-support-prompt">
+      <p className="partner-support-prompt__text">Verlauf wird geladen …</p>
+    </div>
+  );
+}
+
 export default function SupportShell({ supportPrefill, onClearSupportPrefill }) {
   const { token } = usePanelAuth();
   const [threads, setThreads] = useState([]);
@@ -24,12 +66,19 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
   const [messages, setMessages] = useState([]);
   const [threadStatus, setThreadStatus] = useState(null);
   const [detailError, setDetailError] = useState("");
+  const [detailLoading, setDetailLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalBusy, setModalBusy] = useState(false);
   const [modalError, setModalError] = useState("");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState("");
   const [modalPrefill, setModalPrefill] = useState(null);
+
+  const openNewModal = useCallback(() => {
+    setModalPrefill(null);
+    setModalError("");
+    setModalOpen(true);
+  }, []);
 
   const loadList = useCallback(async () => {
     if (!token) return;
@@ -48,15 +97,17 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
   const loadDetail = useCallback(async () => {
     if (!token || !selectedId) return;
     setDetailError("");
+    setDetailLoading(true);
+    setThread(null);
+    setMessages([]);
+    setThreadStatus(null);
     const res = await fetch(`${API_BASE}/panel/v1/support/threads/${encodeURIComponent(selectedId)}`, {
       headers: authHeaders(token),
     });
     const data = await res.json().catch(() => ({}));
+    setDetailLoading(false);
     if (!res.ok || !data?.ok) {
       setDetailError(typeof data?.error === "string" ? data.error : "Detail nicht verfügbar.");
-      setThread(null);
-      setMessages([]);
-      setThreadStatus(null);
       return;
     }
     setThread(data.thread || null);
@@ -73,6 +124,8 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
       setThread(null);
       setMessages([]);
       setThreadStatus(null);
+      setDetailError("");
+      setDetailLoading(false);
       return;
     }
     void loadDetail();
@@ -140,41 +193,68 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
     await loadList();
   };
 
+  const hasThreads = threads.length > 0;
+  const showListEmpty = !hasThreads && !loadingList;
+  const showInitialListLoading = loadingList && !hasThreads;
+
   return (
     <div className="partner-support-shell">
-      <div className="partner-page-hero partner-stack">
+      <header className="partner-support-header">
         <div>
-          <h1 className="partner-page-hero__title">Anfragen</h1>
-          <p className="partner-page-hero__lead">Schreiben Sie die Plattform — Antworten erscheinen hier im Verlauf.</p>
+          <h1 className="partner-support-header__title">Plattform</h1>
+          <p className="partner-support-header__lead">Ihre Anfragen und Antworten — in einem Verlauf gebündelt.</p>
         </div>
-        {listError ? <p className="partner-support-modal__err">{listError}</p> : null}
-      </div>
-      <div className="partner-support-layout">
-        <aside className="partner-support-sidebar">
-          <button
-            type="button"
-            className="partner-shell__nav-btn partner-shell__nav-btn--active"
-            onClick={() => {
-              setModalPrefill(null);
-              setModalOpen(true);
-            }}
-          >
-            Neue Anfrage
-          </button>
-          <SupportList threads={threads} selectedId={selectedId} onSelect={setSelectedId} loading={loadingList} />
+        {listError ? <p className="partner-support-header__err">{listError}</p> : null}
+      </header>
+
+      <div className="partner-support-workspace" aria-label="Zweispaltige Ansicht: Anfragen und Verlauf">
+        <aside className="partner-support-col partner-support-col--list">
+          <div className="partner-support-list-toolbar">
+            <button type="button" className="partner-btn-primary partner-support-list-toolbar__btn" onClick={openNewModal}>
+              Neue Anfrage
+            </button>
+            <p className="partner-support-list-toolbar__hint">Bestehende Themen erscheinen in der Liste.</p>
+          </div>
+          <div className="partner-support-list-wrap">
+            {showListEmpty && !listError ? (
+              <div className="partner-support-list-empty-sidebar">
+                <p className="partner-support-list-empty-sidebar__text">Noch kein Verlauf.</p>
+                <button type="button" className="partner-btn-secondary partner-btn-primary--sm" onClick={openNewModal}>
+                  Erste Anfrage starten
+                </button>
+              </div>
+            ) : (
+              <SupportList
+                threads={threads}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                loading={loadingList}
+              />
+            )}
+          </div>
         </aside>
-        <section className="partner-support-main partner-nested-panel">
-          {detailError ? <p className="partner-support-modal__err">{detailError}</p> : null}
-          <SupportThread
-            thread={thread}
-            messages={messages}
-            onSend={handleSend}
-            sendBusy={sendBusy}
-            sendError={sendError}
-            threadStatus={threadStatus}
-          />
+
+        <section className="partner-support-col partner-support-col--thread" aria-label="Nachrichten">
+          {detailError ? <p className="partner-support-main-err">{detailError}</p> : null}
+          {showInitialListLoading && !listError ? <DetailLoading /> : null}
+          {showListEmpty && !listError && !selectedId && !showInitialListLoading ? (
+            <EmptyInboxCTA onNewRequest={openNewModal} listLoading={loadingList} />
+          ) : null}
+          {hasThreads && !selectedId && !detailError && !showInitialListLoading ? <SelectThreadHint /> : null}
+          {selectedId && detailLoading && !detailError ? <DetailLoading /> : null}
+          {thread && !detailLoading ? (
+            <SupportThread
+              thread={thread}
+              messages={messages}
+              onSend={handleSend}
+              sendBusy={sendBusy}
+              sendError={sendError}
+              threadStatus={threadStatus}
+            />
+          ) : null}
         </section>
       </div>
+
       <SupportNewThreadModal
         open={modalOpen}
         onClose={() => {
