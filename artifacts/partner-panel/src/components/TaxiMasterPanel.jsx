@@ -262,7 +262,7 @@ export default function TaxiMasterPanel({ company, onLogout }) {
               <div>
                 <h2 style={{ margin: 0, fontSize: 28 }}>Stammdaten</h2>
                 <p style={{ marginTop: 8, color: theme.muted, maxWidth: 760 }}>
-                  Pflege hier die Pflichtangaben für deinen Taxi-Betrieb. Nach vollständigem Abschluss werden zentrale Basisdaten gesperrt und können später nur noch über Onroda geändert werden.
+                  Anzeige der bei Onroda hinterlegten Stammdaten. Ist das Profil gesperrt, gelten Anpassungen nur über Onroda.
                 </p>
               </div>
               <div
@@ -278,50 +278,6 @@ export default function TaxiMasterPanel({ company, onLogout }) {
                 }}
               >
                 {currentCompany?.profileLocked ? "Stammdaten gesperrt" : "Ersteinrichtung offen"}
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "#ffffff",
-                border: `1px solid ${theme.border}`,
-                borderRadius: 18,
-                padding: 20,
-                marginBottom: 18,
-                boxShadow: "0 10px 30px rgba(17,17,17,0.04)",
-              }}
-            >
-              <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Pflichtfelder Taxi</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                {[
-                  "Firmenname",
-                  "Ansprechpartner",
-                  "E-Mail",
-                  "Telefon",
-                  "Straße",
-                  "PLZ",
-                  "Ort",
-                  "Land",
-                  "Rechtsform",
-                  "Inhaber",
-                  "Konzessionsnummer",
-                  "Steuernummer",
-                  "IBAN",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    style={{
-                      background: "#f8f9fa",
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: 12,
-                      padding: "10px 12px",
-                      fontWeight: 600,
-                      fontSize: 14,
-                    }}
-                  >
-                    {item}
-                  </div>
-                ))}
               </div>
             </div>
 
