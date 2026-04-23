@@ -11,11 +11,6 @@ function getPanelHeaders() {
   };
 }
 
-/**
- * Liest eine Panel-API-Antwort; liefert ok + Payload oder präzise Fehlmeldung (keine Dummy-Objekte).
- * @param {string} label Kurzname für Anzeige (z. B. "Firmendaten")
- * @param {() => any} getBody bei ok: (data) => parsed payload (z. B. data.company) oder rohe data
- */
 async function loadPanelResource(url, label, getBody) {
   let res;
   try {
@@ -40,7 +35,6 @@ function money(value) {
   return `${n.toFixed(2)} €`;
 }
 
-/** Tage bis Stichtag (lokales Datum, nur für Fristen-Hinweise). */
 function daysUntilIso(iso) {
   if (iso == null || iso === "") return null;
   const s = String(iso).trim();
@@ -66,22 +60,16 @@ function formatComplianceKpiLabel(status) {
 }
 
 function unternehmenKpiMeta(company) {
-  if (!company) return { value: "—", hint: "", cls: "taxi-cockpit__kpi--muted" };
+  if (!company) return { value: "—", hint: "", cls: "partner-kpi--muted" };
   if (company.isBlocked) {
-    return { value: "Gesperrt", hint: "Kontaktieren Sie Onroda", cls: "taxi-cockpit__kpi--danger" };
+    return { value: "Gesperrt", hint: "Kontaktieren Sie Onroda", cls: "partner-kpi--danger" };
   }
   if (!company.isActive) {
-    return { value: "Inaktiv", hint: "Kein operativer Zugang", cls: "taxi-cockpit__kpi--warn" };
+    return { value: "Inaktiv", hint: "Kein operativer Zugang", cls: "partner-kpi--warn" };
   }
-  return { value: "Aktiv", hint: "Betrieb freigegeben", cls: "" };
+  return { value: "Aktiv", hint: "Betrieb freigegeben", cls: "partner-kpi--accent" };
 }
 
-/**
- * Hinweise für das Cockpit – nur aus vorhandenen Listen / Firmendaten, ohne neue API.
- * @param {Record<string, unknown> | null} company
- * @param {Array<Record<string, unknown>>} drivers
- * @param {Array<Record<string, unknown>>} vehicles
- */
 function buildTaxiCockpitAlerts(company, drivers, vehicles) {
   const out = [];
   if (!company) return out;
@@ -108,16 +96,37 @@ function buildTaxiCockpitAlerts(company, drivers, vehicles) {
       cta: { label: "Zu Dokumenten", module: "dokumente" },
     });
   }
+  const pExpired = [];
   const pSoon = [];
   for (const d of drivers) {
     if (!d?.isActive || d?.accessStatus !== "active") continue;
     const days = daysUntilIso(d.pScheinExpiry);
-    if (days != null && days >= 0 && days <= 60) {
-      const name = [d.firstName, d.lastName].filter(Boolean).join(" ").trim() || String(d.email || "Fahrer");
+    if (days == null) continue;
+    const name = [d.firstName, d.lastName].filter(Boolean).join(" ").trim() || String(d.email || "Fahrer");
+    if (days < 0) {
+      pExpired.push({ name, days, id: d.id });
+    } else if (days >= 0 && days <= 60) {
       pSoon.push({ name, days, id: d.id });
     }
   }
   pSoon.sort((a, b) => a.days - b.days);
+  pExpired.sort((a, b) => a.days - b.days);
+  for (const t of pExpired.slice(0, 3)) {
+    out.push({
+      id: `pschein-exp-${t.id}`,
+      tone: "danger",
+      text: `P-Schein (${t.name}): abgelaufen — sofort in der Flotte prüfen.`,
+      cta: { label: "Zur Flotte", module: "flotte" },
+    });
+  }
+  if (pExpired.length > 3) {
+    out.push({
+      id: "pschein-exp-more",
+      tone: "danger",
+      text: `Weitere ${pExpired.length - 3} Fahrer mit abgelaufenem P-Schein.`,
+      cta: { label: "Zur Flotte", module: "flotte" },
+    });
+  }
   for (const t of pSoon.slice(0, 2)) {
     out.push({
       id: `pschein-${t.id}`,
@@ -134,15 +143,37 @@ function buildTaxiCockpitAlerts(company, drivers, vehicles) {
       cta: { label: "Zur Flotte", module: "flotte" },
     });
   }
+  const huExpired = [];
   const huSoon = [];
   for (const v of vehicles) {
     if (!v?.isActive) continue;
     const days = daysUntilIso(v.nextInspectionDate);
-    if (days != null && days >= 0 && days <= 60) {
-      huSoon.push({ plate: v.licensePlate || "Fahrzeug", days, id: v.id });
+    if (days == null) continue;
+    const plate = v.licensePlate || "Fahrzeug";
+    if (days < 0) {
+      huExpired.push({ plate, days, id: v.id });
+    } else if (days >= 0 && days <= 60) {
+      huSoon.push({ plate, days, id: v.id });
     }
   }
   huSoon.sort((a, b) => a.days - b.days);
+  huExpired.sort((a, b) => a.days - b.days);
+  for (const h of huExpired.slice(0, 2)) {
+    out.push({
+      id: `hu-exp-${h.id}`,
+      tone: "danger",
+      text: `Hauptuntersuchung (${h.plate}): überfällig — Termin in der Flotte klären.`,
+      cta: { label: "Zur Flotte", module: "flotte" },
+    });
+  }
+  if (huExpired.length > 2) {
+    out.push({
+      id: "hu-exp-more",
+      tone: "danger",
+      text: `Weitere ${huExpired.length - 2} Fahrzeug(e) mit überfälliger HU.`,
+      cta: { label: "Zur Flotte", module: "flotte" },
+    });
+  }
   if (huSoon.length) {
     const h = huSoon[0];
     out.push({
@@ -163,25 +194,63 @@ function buildTaxiCockpitAlerts(company, drivers, vehicles) {
   return out;
 }
 
-function BlockError({ text }) {
-  if (!text) return null;
-  return (
-    <p
-      style={{
-        color: "#b91c1c",
-        margin: "0 0 14px",
-        fontSize: 14,
-        lineHeight: 1.5,
-        maxWidth: 720,
-      }}
-    >
-      {text}
-    </p>
-  );
+function buildCockpitSpotlightRows(company, drivers, vehicles) {
+  if (!company) return [];
+  const actDr = drivers.filter((d) => d?.isActive && d?.accessStatus === "active");
+  const actVeh = vehicles.filter((v) => v?.isActive);
+  let p60 = 0;
+  let pExp = 0;
+  for (const d of actDr) {
+    const days = daysUntilIso(d.pScheinExpiry);
+    if (days == null) continue;
+    if (days < 0) pExp += 1;
+    else if (days <= 60) p60 += 1;
+  }
+  let hu60 = 0;
+  let huExp = 0;
+  for (const v of actVeh) {
+    const days = daysUntilIso(v.nextInspectionDate);
+    if (days == null) continue;
+    if (days < 0) huExp += 1;
+    else if (days <= 60) hu60 += 1;
+  }
+  const psDetail =
+    pExp > 0 ? `${pExp} abgelaufen` : p60 > 0 ? `${p60} Fristen ≤ 60 Tage` : "keine Frist in 60 Tagen";
+  const huDetail =
+    huExp > 0 ? `${huExp} überfällig` : hu60 > 0 ? `${hu60} fällig ≤ 60 Tage` : "keine Frist in 60 Tagen";
+  return [
+    {
+      key: "gw",
+      label: "Gewerbenachweis",
+      value: company.hasComplianceGewerbe ? "hinterlegt" : "fehlt — unter „Dokumente“ nachreichen",
+      ok: Boolean(company.hasComplianceGewerbe),
+    },
+    {
+      key: "in",
+      label: "Versicherung",
+      value: company.hasComplianceInsurance ? "hinterlegt" : "fehlt — unter „Dokumente“ nachreichen",
+      ok: Boolean(company.hasComplianceInsurance),
+    },
+    { key: "ps", label: "P-Schein (aktive Fahrer)", value: psDetail, ok: pExp === 0 && p60 === 0 },
+    { key: "hu", label: "Hauptuntersuchung (aktive Fahrzeuge)", value: huDetail, ok: huExp === 0 && hu60 === 0 },
+    {
+      key: "pr",
+      label: "Kern-Stammdaten",
+      value: company.profileLocked ? "gesperrt — Anpassung über Onroda" : "Kern offen bzw. nach Freigabe bearbeitbar",
+      ok: !company.profileLocked,
+    },
+  ];
 }
 
-export default function TaxiMasterPanel({ company, onLogout, onNavigateModule }) {
-  const [activeTab, setActiveTab] = useState("dashboard");
+function BlockError({ text }) {
+  if (!text) return null;
+  return <p className="partner-state-error">{text}</p>;
+}
+
+/**
+ * Taxi-Dashboard (nur Übersicht). Navigation: obere Modulleiste im TaxiEntrepreneurShell.
+ */
+export default function TaxiMasterPanel({ company, onNavigateModule }) {
   const [loadComplete, setLoadComplete] = useState(false);
 
   const [companyData, setCompanyData] = useState(null);
@@ -260,477 +329,251 @@ export default function TaxiMasterPanel({ company, onLogout, onNavigateModule })
     [loadComplete, companyData, drivers, vehicles],
   );
 
+  const spotlightRows = useMemo(
+    () => (companyData ? buildCockpitSpotlightRows(companyData, drivers, vehicles) : []),
+    [companyData, drivers, vehicles],
+  );
+
+  const totalDriversListed = drivers.length;
+  const totalVehiclesListed = vehicles.length;
+
   const goModule = (key) => {
-    if (typeof onNavigateModule === "function") {
-      onNavigateModule(key);
-      return;
-    }
-    if (key === "flotte") setActiveTab("fahrer");
-    else if (key === "stammdaten") setActiveTab("stammdaten");
-  };
-
-  const menuItems = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "stammdaten", label: "Stammdaten" },
-    { key: "fahrer", label: "Fahrer" },
-    { key: "fahrzeuge", label: "Fahrzeuge" },
-  ];
-
-  const activeMenuLabel = menuItems.find((i) => i.key === activeTab)?.label ?? "";
-
-  const theme = {
-    yellow: "#f1c40f",
-    black: "#111111",
-    border: "#e5e7eb",
-    soft: "#f8f9fa",
-    white: "#ffffff",
-    text: "#1f2937",
-    muted: "#6b7280",
+    if (typeof onNavigateModule === "function") onNavigateModule(key);
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "760px",
-        background: theme.white,
-        border: `1px solid ${theme.border}`,
-        borderRadius: 18,
-        overflow: "hidden",
-        position: "relative",
-        isolation: "isolate",
-      }}
-    >
-      <aside
-        style={{
-          width: 240,
-          flexShrink: 0,
-          background: theme.black,
-          color: theme.white,
-          padding: 18,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        <div
-          style={{
-            color: theme.yellow,
-            fontWeight: 800,
-            letterSpacing: 0.4,
-            fontSize: 18,
-            padding: "8px 10px 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.12)",
-          }}
-        >
-          TAXI PORTAL
-        </div>
+    <div className="panel-app--workspace">
+      {!loadComplete && <p className="partner-state-loading">Daten werden geladen …</p>}
 
-        {menuItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setActiveTab(item.key)}
-            style={{
-              padding: "12px 14px",
-              border: "none",
-              borderRadius: 10,
-              cursor: "pointer",
-              textAlign: "left",
-              fontWeight: 700,
-              background: activeTab === item.key ? theme.yellow : "transparent",
-              color: activeTab === item.key ? theme.black : theme.white,
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-
-        <button
-          type="button"
-          onClick={onLogout}
-          style={{
-            marginTop: "auto",
-            padding: "12px 14px",
-            border: "none",
-            borderRadius: 10,
-            cursor: "pointer",
-            fontWeight: 700,
-            background: "#262626",
-            color: "#fff",
-          }}
-        >
-          Abmelden
-        </button>
-      </aside>
-
-      <main
-        style={{
-          flex: 1,
-          minWidth: 0,
-          position: "relative",
-          zIndex: 1,
-          background: theme.soft,
-          color: theme.text,
-          padding: 24,
-          overflowY: "auto",
-        }}
-      >
-        {!loadComplete && (
-          <p style={{ margin: 0, color: theme.muted }}>
-            Taxi-Panel: Daten werden geladen{activeMenuLabel ? ` – gewählter Bereich: ${activeMenuLabel}` : ""} …
-          </p>
-        )}
-
-        {loadComplete && activeTab === "dashboard" && (
-          <div className="taxi-cockpit panel-app--workspace">
-            <p className="taxi-cockpit__eyebrow">Cockpit</p>
-            <h1 className="taxi-cockpit__title">Guten Tag, {displayCompanyName}</h1>
-            <p className="taxi-cockpit__lead">
-              Überblick über Ihren Betrieb, die Flotte und offene Verpflichtungen. Details richten Sie in den
-              jeweiligen Bereichen der oberen Menüleiste ein; hier nur Status und Kurznavigation.
+      {loadComplete && (
+        <div className="panel-app--workspace">
+          <div className="partner-page-hero">
+            <p className="partner-page-eyebrow">Unternehmer-Cockpit</p>
+            <h1 className="partner-page-title">Guten Tag, {displayCompanyName}</h1>
+            <p className="partner-page-lead">
+              Status Ihres Betriebs, Nachweise, Fristen und Tageskennzahlen. Detailarbeit erledigen Sie in den Modulen oben
+              in der Leiste.
             </p>
-
-            {companyError ? <BlockError text={companyError} /> : null}
-            {!companyData && !companyError ? <BlockError text="Firmenstammdaten sind derzeit nicht verfügbar." /> : null}
-
-            {companyData ? (
-              <>
-                <div className="taxi-cockpit__kpi-row">
-                  {(() => {
-                    const u = unternehmenKpiMeta(currentCompany);
-                    return (
-                      <div className={`taxi-cockpit__kpi ${u.cls}`.trim()}>
-                        <p className="taxi-cockpit__kpi-label">Unternehmen</p>
-                        <p className="taxi-cockpit__kpi-value">{u.value}</p>
-                        {u.hint ? <p className="taxi-cockpit__kpi-hint">{u.hint}</p> : null}
-                      </div>
-                    );
-                  })()}
-                  <div className={`taxi-cockpit__kpi${driversError ? " taxi-cockpit__kpi--warn" : ""}`.trim()}>
-                    <p className="taxi-cockpit__kpi-label">Aktive Fahrer</p>
-                    <p className="taxi-cockpit__kpi-value">{driversError ? "—" : String(activeDrivers)}</p>
-                    {driversError ? <p className="taxi-cockpit__kpi-hint">{driversError}</p> : null}
-                  </div>
-                  <div className={`taxi-cockpit__kpi${vehiclesError ? " taxi-cockpit__kpi--warn" : ""}`.trim()}>
-                    <p className="taxi-cockpit__kpi-label">Aktive Fahrzeuge</p>
-                    <p className="taxi-cockpit__kpi-value">{vehiclesError ? "—" : String(activeVehicles)}</p>
-                    {vehiclesError ? <p className="taxi-cockpit__kpi-hint">{vehiclesError}</p> : null}
-                  </div>
-                  <div
-                    className={`taxi-cockpit__kpi${
-                      String(currentCompany.complianceStatus || "")
-                        .toLowerCase()
-                        .includes("non")
-                        ? " taxi-cockpit__kpi--warn"
-                        : ""
-                    }`.trim()}
-                  >
-                    <p className="taxi-cockpit__kpi-label">Compliance</p>
-                    <p className="taxi-cockpit__kpi-value">{formatComplianceKpiLabel(currentCompany.complianceStatus)}</p>
-                    <p className="taxi-cockpit__kpi-hint">Nachweise &amp; Prüfstatus</p>
-                  </div>
-                </div>
-
-                {cockpitAlerts.length > 0 ? (
-                  <div className="taxi-cockpit__alerts" aria-live="polite">
-                    {cockpitAlerts.map((a) => (
-                      <div
-                        key={a.id}
-                        className={`taxi-cockpit__alert taxi-cockpit__alert--${a.tone}`.trim()}
-                        role="status"
-                      >
-                        <span>{a.text}</span>
-                        {a.cta ? (
-                          <button
-                            type="button"
-                            className="taxi-cockpit__alert-cta"
-                            onClick={() => goModule(a.cta.module)}
-                          >
-                            {a.cta.label}
-                          </button>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="taxi-cockpit__actions">
-                  <p className="taxi-cockpit__action-note">Schnellstart – führt in den zugehörigen Arbeitsbereich der Menüleiste.</p>
-                  <button type="button" className="panel-btn-primary" onClick={() => goModule("flotte")}>
-                    Fahrer &amp; Fahrzeuge
-                  </button>
-                  <button type="button" className="panel-btn-primary" onClick={() => goModule("dokumente")}>
-                    Dokumente hochladen
-                  </button>
-                  <button type="button" className="panel-btn-primary" onClick={() => goModule("stammdaten")}>
-                    Stammdaten ansehen
-                  </button>
-                </div>
-
-                <div className="taxi-cockpit__grid">
-                  <button type="button" className="taxi-cockpit__area" onClick={() => goModule("flotte")}>
-                    <div className="taxi-cockpit__area-head">
-                      <h2 className="taxi-cockpit__area-title">Fahrer</h2>
-                      <span className="taxi-cockpit__area-chev" aria-hidden>
-                        ↗
-                      </span>
-                    </div>
-                    <p className="taxi-cockpit__area-metric">{driversError ? "—" : activeDrivers} aktiv</p>
-                    <p className="taxi-cockpit__area-desc">Flotte: Zugänge, Sperrung und P-Schein-Fristen – Detailansicht über „Flotte“ oben.</p>
-                  </button>
-                  <button type="button" className="taxi-cockpit__area" onClick={() => goModule("flotte")}>
-                    <div className="taxi-cockpit__area-head">
-                      <h2 className="taxi-cockpit__area-title">Fahrzeuge</h2>
-                      <span className="taxi-cockpit__area-chev" aria-hidden>
-                        ↗
-                      </span>
-                    </div>
-                    <p className="taxi-cockpit__area-metric">{vehiclesError ? "—" : activeVehicles} aktiv</p>
-                    <p className="taxi-cockpit__area-desc">Bestand, Kennzeichen, Hauptuntersuchung – in der Flotte bearbeiten.</p>
-                  </button>
-                  <button type="button" className="taxi-cockpit__area" onClick={() => goModule("dokumente")}>
-                    <div className="taxi-cockpit__area-head">
-                      <h2 className="taxi-cockpit__area-title">Dokumente</h2>
-                      <span className="taxi-cockpit__area-chev" aria-hidden>
-                        ↗
-                      </span>
-                    </div>
-                    <p className="taxi-cockpit__area-metric">
-                      {currentCompany.hasComplianceGewerbe && currentCompany.hasComplianceInsurance
-                        ? "Vollständig"
-                        : "Prüfen"}
-                    </p>
-                    <p className="taxi-cockpit__area-desc">Gewerbe- und Versicherungsnachweise hochladen und Status einsehen.</p>
-                  </button>
-                </div>
-
-                {metricsError ? (
-                  <BlockError text={metricsError} />
-                ) : metrics ? (
-                  <div className="taxi-cockpit__ops">
-                    <div className="taxi-cockpit__op">
-                      <p className="taxi-cockpit__op-label">Offene Fahrten</p>
-                      <p className="taxi-cockpit__op-value">{String(metrics.openRides ?? 0)}</p>
-                    </div>
-                    <div className="taxi-cockpit__op">
-                      <p className="taxi-cockpit__op-label">Geplant heute</p>
-                      <p className="taxi-cockpit__op-value">{String(metrics.scheduled?.todayCount ?? 0)}</p>
-                    </div>
-                    <div className="taxi-cockpit__op">
-                      <p className="taxi-cockpit__op-label">Umsatz heute</p>
-                      <p className="taxi-cockpit__op-value">{money(metrics?.today?.revenue)}</p>
-                    </div>
-                    <div className="taxi-cockpit__op">
-                      <p className="taxi-cockpit__op-label">Umsatz 7 Tage / 30 Tage</p>
-                      <p className="taxi-cockpit__op-value taxi-cockpit__op-value--sub">
-                        {money(metrics?.week?.revenue)} · {money(metrics?.month?.revenue)}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <BlockError text="Kennzahlen sind derzeit nicht verfügbar." />
-                )}
-              </>
-            ) : null}
           </div>
-        )}
 
-        {loadComplete && activeTab === "stammdaten" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 28 }}>Stammdaten</h2>
-                <p style={{ marginTop: 8, color: theme.muted, maxWidth: 760 }}>
-                  Anzeige der bei Onroda hinterlegten Stammdaten. Ist das Profil gesperrt, gelten Anpassungen nur über Onroda.
-                </p>
+          {companyError ? <BlockError text={companyError} /> : null}
+          {!companyData && !companyError ? <BlockError text="Firmenstammdaten sind derzeit nicht verfügbar." /> : null}
+
+          {companyData ? (
+            <>
+              <span className="partner-section-eyebrow">Kennzahlen</span>
+              <h2 className="partner-section-h">Kernzahlen</h2>
+              <p className="partner-section-p">Aktive Fahrer und Fahrzeuge, Betriebs- und Prüfstatus</p>
+              <div className="partner-kpi-grid">
+                {(() => {
+                  const u = unternehmenKpiMeta(currentCompany);
+                  return (
+                    <div className={`partner-kpi ${u.cls}`.trim()}>
+                      <p className="partner-kpi__label">Unternehmen</p>
+                      <p className="partner-kpi__value">{u.value}</p>
+                      {u.hint ? <p className="partner-kpi__hint">{u.hint}</p> : null}
+                      {currentCompany.city ? <p className="partner-kpi__hint">{String(currentCompany.city)}</p> : null}
+                    </div>
+                  );
+                })()}
+                <div className={`partner-kpi${driversError ? " partner-kpi--warn" : ""}`.trim()}>
+                  <p className="partner-kpi__label">Aktive Fahrer</p>
+                  <p className="partner-kpi__value">{driversError ? "—" : String(activeDrivers)}</p>
+                  {driversError ? (
+                    <p className="partner-kpi__hint">{driversError}</p>
+                  ) : (
+                    <p className="partner-kpi__hint">
+                      {totalDriversListed} in der Flottenliste{totalDriversListed !== activeDrivers ? " (inkl. inaktiv)" : ""}
+                    </p>
+                  )}
+                </div>
+                <div className={`partner-kpi${vehiclesError ? " partner-kpi--warn" : ""}`.trim()}>
+                  <p className="partner-kpi__label">Aktive Fahrzeuge</p>
+                  <p className="partner-kpi__value">{vehiclesError ? "—" : String(activeVehicles)}</p>
+                  {vehiclesError ? (
+                    <p className="partner-kpi__hint">{vehiclesError}</p>
+                  ) : (
+                    <p className="partner-kpi__hint">
+                      {totalVehiclesListed} im Bestand{totalVehiclesListed !== activeVehicles ? " (inkl. inaktiv)" : ""}
+                    </p>
+                  )}
+                </div>
+                {(() => {
+                  const cs = String(currentCompany.complianceStatus || "").toLowerCase();
+                  const compKpiClass =
+                    cs.includes("non") || cs === "pending"
+                      ? " partner-kpi--danger"
+                      : cs === "in_review"
+                        ? " partner-kpi--warn"
+                        : cs === "compliant"
+                          ? " partner-kpi--muted"
+                          : " partner-kpi--accent";
+                  return (
+                    <div className={`partner-kpi${compKpiClass}`.trim()}>
+                      <p className="partner-kpi__label">Compliance</p>
+                      <p className="partner-kpi__value">{formatComplianceKpiLabel(currentCompany.complianceStatus)}</p>
+                      <p className="partner-kpi__hint">Nachweise, Prüfstand laut Konto</p>
+                    </div>
+                  );
+                })()}
               </div>
-              {companyData && (
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 999,
-                    background: currentCompany?.profileLocked ? "#111111" : "#fff7cc",
-                    color: currentCompany?.profileLocked ? "#ffffff" : "#6b5900",
-                    border: currentCompany?.profileLocked ? "1px solid #111111" : "1px solid #f1c40f",
-                    fontWeight: 700,
-                    fontSize: 13,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {currentCompany?.profileLocked ? "Stammdaten gesperrt" : "Ersteinrichtung offen"}
+
+              <h2 className="partner-section-h">Dringende Hinweise</h2>
+              <p className="partner-section-p">Alles, was zuerst Ihre Aufmerksamkeit braucht</p>
+              {cockpitAlerts.length > 0 ? (
+                <div className="partner-alert-list" aria-live="polite">
+                  {cockpitAlerts.map((a) => (
+                    <div
+                      key={a.id}
+                      className={`partner-alert${
+                        a.tone === "danger"
+                          ? " partner-alert--danger"
+                          : a.tone === "warn"
+                            ? " partner-alert--warn"
+                            : " partner-alert--caution"
+                      }`.trim()}
+                      role="status"
+                    >
+                      <span className="partner-alert__text">{a.text}</span>
+                      {a.cta ? (
+                        <button
+                          type="button"
+                          className="partner-btn-primary partner-btn-primary--sm"
+                          onClick={() => goModule(a.cta.module)}
+                        >
+                          {a.cta.label}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="partner-empty-hint" aria-live="polite">
+                  <strong>Kein akuter Handlungsstau.</strong> Prüfen Sie trotzdem regelmäßig Nachweise und Fristen in der
+                  Tabelle unten.
                 </div>
               )}
-            </div>
 
-            {companyError ? <BlockError text={companyError} /> : null}
-            {companyData ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <Section title="Firma">
-                  <InfoRow label="Firmenname" value={currentCompany?.name || "-"} />
-                  <InfoRow label="Unternehmensart" value={currentCompany?.companyKind || "-"} />
-                  <InfoRow label="Rechtsform" value={currentCompany?.legalForm || "-"} />
-                  <InfoRow label="Inhaber" value={currentCompany?.ownerName || "-"} />
-                  <InfoRow label="Konzessionsnummer" value={currentCompany?.concessionNumber || "-"} />
-                </Section>
-
-                <Section title="Kontakt">
-                  <InfoRow label="Ansprechpartner" value={currentCompany?.contactName || "-"} />
-                  <InfoRow label="E-Mail" value={currentCompany?.email || "-"} />
-                  <InfoRow label="Telefon" value={currentCompany?.phone || "-"} />
-                  <InfoRow label="Support E-Mail" value={currentCompany?.supportEmail || "-"} />
-                  <InfoRow label="Dispo-Telefon" value={currentCompany?.dispoPhone || "-"} />
-                </Section>
-
-                <Section title="Adresse">
-                  <InfoRow label="Straße" value={currentCompany?.addressLine1 || "-"} />
-                  <InfoRow label="Zusatz" value={currentCompany?.addressLine2 || "-"} />
-                  <InfoRow label="PLZ" value={currentCompany?.postalCode || "-"} />
-                  <InfoRow label="Ort" value={currentCompany?.city || "-"} />
-                  <InfoRow label="Land" value={currentCompany?.country || "-"} />
-                </Section>
-
-                <Section title="Abrechnung">
-                  <InfoRow label="Rechnungsname" value={currentCompany?.billingName || "-"} />
-                  <InfoRow label="IBAN" value={currentCompany?.bankIban || "-"} />
-                  <InfoRow label="BIC" value={currentCompany?.bankBic || "-"} />
-                  <InfoRow label="Kostenstelle" value={currentCompany?.costCenter || "-"} />
-                  <InfoRow label="USt-ID" value={currentCompany?.vatId || "-"} />
-                  <InfoRow label="Steuernummer" value={currentCompany?.taxId || "-"} />
-                </Section>
+              <div className="partner-card partner-card--section partner-kvlist-card">
+                <span className="partner-section-eyebrow">Überblick</span>
+                <h2 className="partner-kvlist-title">Nachweise &amp; Fristen</h2>
+                <p className="partner-section-p partner-kvlist-lead">
+                  Überblick je aktivem Fahrer bzw. Fahrzeug, Stand aus Ihren Daten
+                </p>
+                <ul className="partner-kvlist">
+                  {spotlightRows.map((row) => (
+                    <li key={row.key} className="partner-kvlist__row">
+                      <span className="partner-kvlist__k">{row.label}</span>
+                      <span
+                        className={
+                          row.ok
+                            ? "partner-kvlist__v partner-kvlist__v--ok"
+                            : "partner-kvlist__v partner-kvlist__v--warn"
+                        }
+                      >
+                        {row.value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="partner-kvlist__foot">
+                  Fristen: 60-Tage-Horizont und überfällige Termine laut hinterlegten Daten — Details und Korrekturen in{" "}
+                  <button type="button" onClick={() => goModule("flotte")}>
+                    Flotte
+                  </button>{" "}
+                  und{" "}
+                  <button type="button" onClick={() => goModule("dokumente")}>
+                    Dokumente
+                  </button>
+                  .
+                </p>
               </div>
-            ) : companyError ? null : (
-              <p style={{ margin: 0, color: theme.muted, fontSize: 14 }}>Stammdaten konnten nicht geladen werden.</p>
-            )}
-          </div>
-        )}
 
-        {loadComplete && activeTab === "fahrer" && (
-          <div>
-            <h2 style={{ marginTop: 0, fontSize: 24 }}>Fahrer</h2>
-            {driversError ? (
-              <BlockError text={driversError} />
-            ) : (
-              <div style={{ background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
-                      <Th>Name</Th>
-                      <Th>E-Mail</Th>
-                      <Th>Telefon</Th>
-                      <Th>Status</Th>
-                      <Th>P-Schein bis</Th>
-                      <Th>Letzte Aktivität</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {drivers.map((driver) => (
-                      <tr key={driver.id} style={{ borderTop: `1px solid ${theme.border}` }}>
-                        <Td>
-                          {driver.firstName} {driver.lastName}
-                        </Td>
-                        <Td>{driver.email || "-"}</Td>
-                        <Td>{driver.phone || "-"}</Td>
-                        <Td>{driver.isActive ? driver.accessStatus : "inactive"}</Td>
-                        <Td>{driver.pScheinExpiry || "-"}</Td>
-                        <Td>{driver.lastHeartbeatAt || driver.lastLoginAt || "-"}</Td>
-                      </tr>
-                    ))}
-                    {drivers.length === 0 && (
-                      <tr>
-                        <Td colSpan={6}>Keine Fahrer vorhanden.</Td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+              <h2 className="partner-section-h">Schnellzugriff</h2>
+              <p className="partner-section-p">Direkter Sprung in den passenden Modulbereich</p>
 
-        {loadComplete && activeTab === "fahrzeuge" && (
-          <div>
-            <h2 style={{ marginTop: 0, fontSize: 24 }}>Fahrzeuge</h2>
-            {vehiclesError ? (
-              <BlockError text={vehiclesError} />
-            ) : (
-              <div style={{ background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
-                      <Th>Kennzeichen</Th>
-                      <Th>Modell</Th>
-                      <Th>Farbe</Th>
-                      <Th>Ordnungsnummer</Th>
-                      <Th>Nächste Prüfung</Th>
-                      <Th>Status</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vehicles.map((vehicle) => (
-                      <tr key={vehicle.id} style={{ borderTop: `1px solid ${theme.border}` }}>
-                        <Td>{vehicle.licensePlate || "-"}</Td>
-                        <Td>{vehicle.model || "-"}</Td>
-                        <Td>{vehicle.color || "-"}</Td>
-                        <Td>{vehicle.taxiOrderNumber || "-"}</Td>
-                        <Td>{vehicle.nextInspectionDate || "-"}</Td>
-                        <Td>{vehicle.isActive ? "aktiv" : "inaktiv"}</Td>
-                      </tr>
-                    ))}
-                    {vehicles.length === 0 && (
-                      <tr>
-                        <Td colSpan={6}>Keine Fahrzeuge vorhanden.</Td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="partner-action-row">
+                <button type="button" className="partner-btn-primary" onClick={() => goModule("flotte")}>
+                  Fahrer &amp; Fahrzeuge
+                </button>
+                <button type="button" className="partner-btn-primary" onClick={() => goModule("dokumente")}>
+                  Dokumente hochladen
+                </button>
+                <button type="button" className="partner-btn-primary" onClick={() => goModule("stammdaten")}>
+                  Stammdaten ansehen
+                </button>
               </div>
-            )}
-          </div>
-        )}
-      </main>
+
+              <div className="partner-tile-grid partner-tile-grid--spaced">
+                <button type="button" className="partner-tile" onClick={() => goModule("flotte")}>
+                  <div className="partner-tile__head">
+                    <h2 className="partner-tile__title">Fahrer</h2>
+                    <span className="partner-tile__chev" aria-hidden>
+                      ↗
+                    </span>
+                  </div>
+                  <p className="partner-tile__metric">{driversError ? "—" : activeDrivers} aktiv</p>
+                  <p className="partner-tile__desc">Zugänge, Sperrung, P-Schein: Bearbeitung unter „Flotte“.</p>
+                </button>
+                <button type="button" className="partner-tile" onClick={() => goModule("flotte")}>
+                  <div className="partner-tile__head">
+                    <h2 className="partner-tile__title">Fahrzeuge</h2>
+                    <span className="partner-tile__chev" aria-hidden>
+                      ↗
+                    </span>
+                  </div>
+                  <p className="partner-tile__metric">{vehiclesError ? "—" : activeVehicles} aktiv</p>
+                  <p className="partner-tile__desc">Bestand, Kennzeichen, Hauptuntersuchung – unter „Flotte“.</p>
+                </button>
+                <button type="button" className="partner-tile" onClick={() => goModule("dokumente")}>
+                  <div className="partner-tile__head">
+                    <h2 className="partner-tile__title">Dokumente</h2>
+                    <span className="partner-tile__chev" aria-hidden>
+                      ↗
+                    </span>
+                  </div>
+                  <p className="partner-tile__metric">
+                    {currentCompany.hasComplianceGewerbe && currentCompany.hasComplianceInsurance
+                      ? "Vollständig"
+                      : "Prüfen"}
+                  </p>
+                  <p className="partner-tile__desc">Gewerbe- und Versicherungsnachweise: Bereich „Dokumente“.</p>
+                </button>
+              </div>
+
+              <h2 className="partner-section-h">Betrieb heute</h2>
+              <p className="partner-section-p">Offene Fahrten, Tagesplan, Umsatz (je nach Konto sichtbar)</p>
+
+              {metricsError ? (
+                <BlockError text={metricsError} />
+              ) : metrics ? (
+                <div className="partner-metrics">
+                  <div>
+                    <p className="partner-metrics__label">Offene Fahrten</p>
+                    <p className="partner-metrics__value">{String(metrics.openRides ?? 0)}</p>
+                  </div>
+                  <div>
+                    <p className="partner-metrics__label">Geplant heute</p>
+                    <p className="partner-metrics__value">{String(metrics.scheduled?.todayCount ?? 0)}</p>
+                  </div>
+                  <div>
+                    <p className="partner-metrics__label">Umsatz heute</p>
+                    <p className="partner-metrics__value">{money(metrics?.today?.revenue)}</p>
+                  </div>
+                  <div>
+                    <p className="partner-metrics__label">Umsatz 7 Tage / 30 Tage</p>
+                    <p className="partner-metrics__value partner-metrics__value--sub">
+                      {money(metrics?.week?.revenue)} · {money(metrics?.month?.revenue)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <BlockError text="Kennzahlen sind derzeit nicht verfügbar." />
+              )}
+            </>
+          ) : null}
+        </div>
+      )}
     </div>
   );
-}
-
-function Section({ title, children }) {
-  return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 16,
-        padding: 18,
-      }}
-    >
-      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 14 }}>{title}</div>
-      <div style={{ display: "grid", gap: 10 }}>{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "180px 1fr",
-        gap: 12,
-        alignItems: "start",
-      }}
-    >
-      <div style={{ color: "#6b7280", fontSize: 14 }}>{label}</div>
-      <div style={{ fontWeight: 600, wordBreak: "break-word" }}>{value}</div>
-    </div>
-  );
-}
-
-function Th({ children }) {
-  return <th style={{ padding: "14px 16px", fontSize: 13 }}>{children}</th>;
-}
-
-function Td({ children, colSpan }) {
-  return <td colSpan={colSpan} style={{ padding: "14px 16px", fontSize: 14 }}>{children}</td>;
 }

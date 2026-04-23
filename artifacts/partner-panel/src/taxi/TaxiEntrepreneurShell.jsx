@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TaxiMasterPanel from "../components/TaxiMasterPanel.jsx";
 import FleetPage from "../pages/FleetPage.jsx";
 import TaxiStammdatenPage from "../pages/taxi/TaxiStammdatenPage.jsx";
@@ -11,89 +11,61 @@ const MODULES = [
   { key: "dokumente", label: "Dokumente" },
 ];
 
+const MODULE_KEYS = new Set(MODULES.map((m) => m.key));
+
 /**
- * Top-Level-Einstieg für Taxi-Unternehmer: horizontale Modul-Navigation (eine Leiste),
- * kein zweites linkes Menü — das read-only-Dashboard (TaxiMasterPanel) behält seine eigene Sidebar.
+ * Taxi-Unternehmer: eine Modulleiste (sticky) + Inhalt – kein zweites Seitenmenü.
  */
 export default function TaxiEntrepreneurShell({ company, onLogout }) {
   const [activeTaxiModule, setActiveTaxiModule] = useState("dashboard");
 
+  /** Ermöglicht z. B. `?taxiModule=stammdaten` für Tests/Screenshots; Parameter wird danach entfernt. */
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      const m = u.searchParams.get("taxiModule");
+      if (m && MODULE_KEYS.has(m)) {
+        setActiveTaxiModule(m);
+        u.searchParams.delete("taxiModule");
+        const next = `${u.pathname}${u.search}${u.hash}`;
+        window.history.replaceState({}, "", next || u.pathname);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "#f3f4f6",
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 8,
-          padding: "12px 16px",
-          borderBottom: "1px solid #e5e7eb",
-          background: "#ffffff",
-        }}
-      >
-        <span
-          style={{
-            fontWeight: 800,
-            fontSize: 14,
-            color: "#111827",
-            marginRight: 12,
-            letterSpacing: 0.02,
-          }}
-        >
-          Taxi
-        </span>
-        <nav style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, flex: 1 }}>
+    <div className="partner-shell">
+      <header className="partner-shell__header">
+        <div className="partner-shell__brand" title={company?.name || ""}>
+          <span className="partner-shell__brand-title">Taxi</span>
+          {company?.name ? <span className="partner-shell__brand-subtitle">{company.name}</span> : null}
+        </div>
+        <nav className="partner-shell__nav" aria-label="Bereiche">
           {MODULES.map((m) => (
             <button
               key={m.key}
               type="button"
               onClick={() => setActiveTaxiModule(m.key)}
-              style={{
-                padding: "8px 14px",
-                border: "1px solid #e5e7eb",
-                borderRadius: 8,
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 14,
-                background: activeTaxiModule === m.key ? "#111827" : "#ffffff",
-                color: activeTaxiModule === m.key ? "#ffffff" : "#1f2937",
-              }}
+              className={
+                activeTaxiModule === m.key
+                  ? "partner-shell__nav-btn partner-shell__nav-btn--active"
+                  : "partner-shell__nav-btn"
+              }
             >
               {m.label}
             </button>
           ))}
         </nav>
-        <button
-          type="button"
-          onClick={onLogout}
-          style={{
-            padding: "8px 14px",
-            border: "none",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontWeight: 700,
-            background: "#e5e7eb",
-            color: "#111827",
-          }}
-        >
+        <button type="button" onClick={onLogout} className="partner-shell__logout">
           Abmelden
         </button>
       </header>
 
-      <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+      <div className="partner-shell__body">
         {activeTaxiModule === "dashboard" && (
-          <TaxiMasterPanel
-            company={company}
-            onLogout={onLogout}
-            onNavigateModule={(key) => setActiveTaxiModule(key)}
-          />
+          <TaxiMasterPanel company={company} onNavigateModule={(key) => setActiveTaxiModule(key)} />
         )}
         {activeTaxiModule === "stammdaten" && <TaxiStammdatenPage />}
         {activeTaxiModule === "flotte" && <FleetPage />}

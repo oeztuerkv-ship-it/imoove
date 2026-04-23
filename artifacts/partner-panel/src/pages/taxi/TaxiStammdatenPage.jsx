@@ -122,9 +122,7 @@ function formFromCompany(company) {
   return e;
 }
 
-/** Baut den PATCH-Body: nur geänderte, fachlich erlaubte Keys (Server validiert final). */
 function buildPatch(company, form, profileLocked) {
-  /** @type {Record<string, string>} */
   const patch = {};
 
   for (const k of ["supportEmail", "dispoPhone", "logoUrl", "openingHours"]) {
@@ -153,57 +151,48 @@ function buildPatch(company, form, profileLocked) {
   return patch;
 }
 
-/** @param {{ label: string; value: unknown; patchable: boolean; hint?: string }} props */
 function FieldRow({ label, value, patchable, hint }) {
   return (
-    <p className="panel-card__row" style={{ alignItems: "flex-start" }}>
-      <span className="panel-card__k" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className="partner-kv-row">
+      <div className="partner-kv-k">
         <span>{label}</span>
         {patchable ? (
           <span
-            className="panel-pill"
-            style={{ fontSize: "0.72rem", fontWeight: 700, alignSelf: "flex-start", opacity: 0.85 }}
-            title="Per PATCH, sofern API-Regeln erfüllt."
+            className="partner-pill partner-pill--soft"
+            title="Kann geändert werden, sofern die Voraussetzungen im Konto erfüllt sind."
           >
             später bearbeitbar
           </span>
         ) : (
-          <span
-            className="panel-pill panel-pill--warn"
-            style={{ fontSize: "0.72rem", fontWeight: 700, alignSelf: "flex-start", opacity: 0.9 }}
-            title="Kein Self-Service-PATCH in der Partner-Route."
-          >
+          <span className="partner-pill partner-pill--hold" title="Nur Anzeige; Änderungen nur über Onroda.">
             nur Anzeige
           </span>
         )}
-      </span>
-      <span style={{ fontWeight: 600, wordBreak: "break-word" }}>
+      </div>
+      <div className="partner-kv-v">
         {displayValue(value) || "—"}
-        {hint ? (
-          <span className="panel-card__muted" style={{ display: "block", fontSize: "0.78rem", marginTop: 4, fontWeight: 400 }}>
-            {hint}
-          </span>
-        ) : null}
-      </span>
-    </p>
+        {hint ? <small>{hint}</small> : null}
+      </div>
+    </div>
   );
 }
 
-function LabeledInput({ label, value, onChange, disabled, maxLength, type = "text", multiline }) {
+function LabeledInput({ label, value, onChange, disabled, maxLength, type = "text", multiline, wide }) {
   return (
-    <label className="panel-rides-form__field" style={{ display: "block" }}>
+    <label className={wide ? "partner-form-field partner-form-field--span2" : "partner-form-field"}>
       <span>{label}</span>
       {multiline ? (
         <textarea
+          className="partner-input"
           value={value}
           onChange={onChange}
           disabled={disabled}
           maxLength={maxLength}
           rows={3}
-          className="panel-rides-form__input"
         />
       ) : (
         <input
+          className="partner-input"
           type={type}
           value={value}
           onChange={onChange}
@@ -315,7 +304,7 @@ export default function TaxiStammdatenPage() {
         if (code === "partner_basics_locked") {
           const hint = typeof data?.hint === "string" && data.hint.trim() ? ` ${data.hint}` : "";
           setErr(
-            `Basis-Stammdaten sind gesperrt — Änderung nur über die Plattform-Administration oder einen vorgesehenen Änderungsantrag (Change-Request).${hint}`,
+            `Die Basis-Stammdaten sind gesperrt. Änderungen nur über Onroda oder den vereinbarten Änderungsantrag bei der Plattform.${hint}`,
           );
         } else if (code === "email_invalid") {
           setErr("E-Mail ungültig (Serverprüfung).");
@@ -348,179 +337,179 @@ export default function TaxiStammdatenPage() {
   };
 
   return (
-    <div className="panel-page panel-page--profile">
-      <h2 className="panel-page__title">Stammdaten</h2>
-      <p className="panel-page__lead">
-        Quelle: <code className="panel-card__muted">GET /panel/v1/company</code> — Bearbeiten mit{" "}
-        <code className="panel-card__muted">PATCH /panel/v1/company</code> (nur geänderte, erlaubte Felder).
-      </p>
-
-      {!canPatch ? (
-        <p className="panel-page__warn">
-          Ihr Konto hat kein Recht/Modul für „Stammdaten ändern“ (Berechtigung <code>company.update</code> und Modul{" "}
-          <code>company_profile</code>).
+    <div className="partner-stack partner-stack--tight">
+      <div className="partner-page-hero">
+        <p className="partner-page-eyebrow">Unternehmen</p>
+        <h1 className="partner-page-title">Stammdaten</h1>
+        <p className="partner-page-lead">
+          Ihre im System hinterlegten Unternehmensdaten. Geändert werden nur die Felder, die für Ihren Zugang freigeschaltet
+          sind. Sperrungen wichtiger Kernstammdaten und die Freigabe weiterer Anpassungen klären Sie bitte{" "}
+          <strong>über Onroda</strong>.
         </p>
-      ) : null}
+      </div>
+
+      {!canPatch ? <p className="partner-state-warn">Für Ihr Konto ist die Bearbeitung der Stammdaten in diesem Bereich nicht freigeschaltet.</p> : null}
 
       {canPatch && !editing && c && !loading ? (
-        <p style={{ marginBottom: 12 }}>
-          <button type="button" className="panel-btn" onClick={startEdit}>
+        <div className="partner-form-toolbar">
+          <button type="button" className="partner-btn-primary" onClick={startEdit}>
             Bearbeiten
           </button>
-        </p>
+        </div>
       ) : null}
       {editing && canPatch ? (
-        <form onSubmit={onSave} style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <button type="submit" className="panel-btn" disabled={saving} style={{ fontWeight: 800 }}>
+        <form className="partner-form-toolbar" onSubmit={onSave}>
+          <button type="submit" className="partner-btn-primary" disabled={saving}>
             {saving ? "Speichert …" : "Speichern"}
           </button>
-          <button type="button" className="panel-btn" onClick={cancelEdit} disabled={saving}>
+          <button type="button" className="partner-btn-secondary" onClick={cancelEdit} disabled={saving}>
             Abbrechen
           </button>
         </form>
       ) : null}
 
-      <div className="panel-card panel-card--wide" style={{ marginBottom: 12 }}>
-        <p className="panel-page__muted panel-page__muted--tight" style={{ margin: 0 }}>
-          <strong>Legende Anzeigemodus:</strong> „später bearbeitbar“ = per PATCH vorgesehen. „nur Anzeige“ = kein
-          Self-Service-Feld. Änderungsbedarf an rechnungs- oder umsatzsteuerrelevanten Feldern, die hier nicht per PATCH
-          laufen: <strong>Änderungsprozess / Plattform (Change-Request)</strong> — kein vollständiger Antrags-Assistent
-          in dieser Seite.
+      <div className="partner-card partner-card--section">
+        <p className="partner-muted" style={{ margin: 0 }}>
+          <strong>Hinweise neben den Feldern:</strong> „Später bearbeitbar“ = Sie können den Wert hier setzen, sobald die
+          Voraussetzungen erfüllt sind. „Nur Anzeige“ = keine Selbständerung in dieser Maske. Für sensiblere Anpassungen
+          (z.&nbsp;B. Rechnungs-/USt-relevant) den <strong>Änderungsprozess über Onroda</strong> nutzen.
         </p>
       </div>
 
-      {loading ? <p className="panel-page__lead">Firmendaten werden geladen …</p> : null}
-      {err ? <p className="panel-page__warn">{err}</p> : null}
-      {saveMsg ? <p className="panel-page__ok">{saveMsg}</p> : null}
+      {loading ? <p className="partner-state-loading">Firmendaten werden geladen …</p> : null}
+      {err ? <p className="partner-state-error">{err}</p> : null}
+      {saveMsg ? <p className="partner-state-ok">{saveMsg}</p> : null}
 
       {c?.profileLocked ? (
-        <div className="panel-card panel-card--wide panel-card--hint" style={{ marginBottom: 16 }}>
-          <h3 className="panel-card__title">profileLocked: Basis-Felder gesperrt</h3>
-          <p className="panel-page__muted panel-page__muted--tight">
-            Die Felder in den Abschnitten „Firmenbasis“ und „Betriebsadresse“ (Kern) können bei aktiver Sperre nicht per
-            Basis-PATCH geändert werden. Operative Felder (Support, Dispo, Logo, Öffnungszeiten) und die Erstbefüllung von
-            Konzession / Steuernr. / IBAN (wenn bisher leer) bleiben dagegen in der Regel anwendbar.
+        <div className="partner-card partner-card--section partner-card--hint">
+          <h2 className="partner-card__title">Basis-Stammdaten gesperrt</h2>
+          <p className="partner-muted" style={{ margin: 0 }}>
+            Die wichtigsten Unternehmens- und Adressdaten in „Firmenbasis“ und „Betriebsadresse“ sind gesperrt und können hier
+            nicht geändert werden. Operative Angaben (Support, Dispo, Logo, Öffnungszeiten) und die <strong>Erstbefüllung</strong>{" "}
+            von Konzession, Steuernummer und IBAN (falls noch leer) sind weiterhin möglich, sofern Ihr Konto das erlaubt.
           </p>
         </div>
       ) : null}
 
       {c && !loading && !editing ? (
         <>
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h3 className="panel-card__title">1. Firmenbasis</h3>
-            <FieldRow label="Firmenname" value={c.name} patchable={PATCHABLE.has("name")} />
-            <FieldRow label="Unternehmensart (companyKind)" value={c.companyKind} patchable={false} />
-            <FieldRow label="Rechtsform" value={c.legalForm} patchable={PATCHABLE.has("legalForm")} />
-            <FieldRow label="Inhaber / GF" value={c.ownerName} patchable={PATCHABLE.has("ownerName")} />
-            <FieldRow
-              label="Konzession (concessionNumber)"
-              value={c.concessionNumber}
-              patchable={PATCHABLE.has("concessionNumber")}
-            />
-            <FieldRow label="Steuernummer" value={c.taxId} patchable={PATCHABLE.has("taxId")} />
-            <FieldRow
-              label="USt-IdNr."
-              value={c.vatId}
-              patchable={false}
-              hint="Kein PATCH in der Partner-Route; ggf. Änderung über Plattform."
-            />
-            <FieldRow
-              label="Mandanten-ID"
-              value={c.id}
-              patchable={false}
-              hint="Keine manuelle Bearbeitung."
-            />
+          <div className="partner-card partner-card--section">
+            <span className="partner-section-eyebrow">Abschnitt 1</span>
+            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+              Firmenbasis
+            </h2>
+            <div className="partner-kv-block">
+              <FieldRow label="Firmenname" value={c.name} patchable={PATCHABLE.has("name")} />
+              <FieldRow label="Unternehmensart" value={c.companyKind} patchable={false} />
+              <FieldRow label="Rechtsform" value={c.legalForm} patchable={PATCHABLE.has("legalForm")} />
+              <FieldRow label="Inhaber / GF" value={c.ownerName} patchable={PATCHABLE.has("ownerName")} />
+              <FieldRow label="Konzession" value={c.concessionNumber} patchable={PATCHABLE.has("concessionNumber")} />
+              <FieldRow label="Steuernummer" value={c.taxId} patchable={PATCHABLE.has("taxId")} />
+              <FieldRow label="USt-IdNr." value={c.vatId} patchable={false} hint="Änderung nur über Onroda / Plattform." />
+              <FieldRow label="Mandanten-ID" value={c.id} patchable={false} hint="Keine manuelle Bearbeitung." />
+            </div>
           </div>
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h3 className="panel-card__title">2. Betriebsadresse</h3>
-            <FieldRow label="Straße, Zeile 1" value={c.addressLine1} patchable={PATCHABLE.has("addressLine1")} />
-            <FieldRow label="Adresszusatz" value={c.addressLine2} patchable={PATCHABLE.has("addressLine2")} />
-            <FieldRow label="PLZ" value={c.postalCode} patchable={PATCHABLE.has("postalCode")} />
-            <FieldRow label="Ort" value={c.city} patchable={PATCHABLE.has("city")} />
-            <FieldRow label="Land" value={c.country} patchable={PATCHABLE.has("country")} />
+          <div className="partner-card partner-card--section">
+            <span className="partner-section-eyebrow">Abschnitt 2</span>
+            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+              Betriebsadresse
+            </h2>
+            <div className="partner-kv-block">
+              <FieldRow label="Straße, Zeile 1" value={c.addressLine1} patchable={PATCHABLE.has("addressLine1")} />
+              <FieldRow label="Adresszusatz" value={c.addressLine2} patchable={PATCHABLE.has("addressLine2")} />
+              <FieldRow label="PLZ" value={c.postalCode} patchable={PATCHABLE.has("postalCode")} />
+              <FieldRow label="Ort" value={c.city} patchable={PATCHABLE.has("city")} />
+              <FieldRow label="Land" value={c.country} patchable={PATCHABLE.has("country")} />
+            </div>
           </div>
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h3 className="panel-card__title">3. Operative Erreichbarkeit</h3>
-            <FieldRow label="Ansprechpartner" value={c.contactName} patchable={PATCHABLE.has("contactName")} />
-            <FieldRow label="E-Mail (Betrieb)" value={c.email} patchable={PATCHABLE.has("email")} />
-            <FieldRow label="Telefon (Betrieb)" value={c.phone} patchable={PATCHABLE.has("phone")} />
-            <FieldRow label="Support-E-Mail" value={c.supportEmail} patchable={PATCHABLE.has("supportEmail")} />
-            <FieldRow label="Dispo-Telefon" value={c.dispoPhone} patchable={PATCHABLE.has("dispoPhone")} />
-            <FieldRow label="Logo-URL" value={c.logoUrl} patchable={PATCHABLE.has("logoUrl")} />
-            <FieldRow label="Öffnungszeiten (Text)" value={c.openingHours} patchable={PATCHABLE.has("openingHours")} />
-            <FieldRow
-              label="Betriebsnotizen (businessNotes)"
-              value={c.businessNotes}
-              patchable={false}
-              hint="Nicht im Partner-PATCH; ggf. Plattform."
-            />
+          <div className="partner-card partner-card--section">
+            <span className="partner-section-eyebrow">Abschnitt 3</span>
+            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+              Operative Erreichbarkeit
+            </h2>
+            <div className="partner-kv-block">
+              <FieldRow label="Ansprechpartner" value={c.contactName} patchable={PATCHABLE.has("contactName")} />
+              <FieldRow label="E-Mail (Betrieb)" value={c.email} patchable={PATCHABLE.has("email")} />
+              <FieldRow label="Telefon (Betrieb)" value={c.phone} patchable={PATCHABLE.has("phone")} />
+              <FieldRow label="Support-E-Mail" value={c.supportEmail} patchable={PATCHABLE.has("supportEmail")} />
+              <FieldRow label="Dispo-Telefon" value={c.dispoPhone} patchable={PATCHABLE.has("dispoPhone")} />
+              <FieldRow label="Firmenlogo (Link)" value={c.logoUrl} patchable={PATCHABLE.has("logoUrl")} />
+              <FieldRow label="Öffnungszeiten (Text)" value={c.openingHours} patchable={PATCHABLE.has("openingHours")} />
+              <FieldRow label="Betriebsnotizen" value={c.businessNotes} patchable={false} hint="Nur Anzeige; Anpassung über Onroda." />
+            </div>
           </div>
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h3 className="panel-card__title">4. Rechnung &amp; Zahlung</h3>
-            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 0 }}>
-              Rechnungsstamm: in der Regel Anzeige; Anpassung außerhalb des hierigen PATCHs — siehe Plattform.
+          <div className="partner-card partner-card--section">
+            <span className="partner-section-eyebrow">Abschnitt 4</span>
+            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+              Rechnung &amp; Zahlung
+            </h2>
+            <p className="partner-muted" style={{ margin: "0 0 12px" }}>
+              Rechnungsstamm: in der Regel nur Anzeige; Anpassung über Onroda.
             </p>
-            <FieldRow label="Rechnungsname" value={c.billingName} patchable={false} />
-            <FieldRow label="Rechnung Straße, Zeile 1" value={c.billingAddressLine1} patchable={false} />
-            <FieldRow label="Rechnung Adresszusatz" value={c.billingAddressLine2} patchable={false} />
-            <FieldRow label="Rechnung PLZ" value={c.billingPostalCode} patchable={false} />
-            <FieldRow label="Rechnung Ort" value={c.billingCity} patchable={false} />
-            <FieldRow label="Rechnung Land" value={c.billingCountry} patchable={false} />
-            <FieldRow
-              label="IBAN"
-              value={c.bankIban}
-              patchable={PATCHABLE.has("bankIban")}
-              hint="Erstbefüllung, wenn bisher leer, siehe Erstbefüllung-Block im Bearbeiten-Modus."
-            />
-            <FieldRow label="BIC" value={c.bankBic} patchable={false} />
-            <FieldRow label="Kostenstelle" value={c.costCenter} patchable={false} />
+            <div className="partner-kv-block">
+              <FieldRow label="Rechnungsname" value={c.billingName} patchable={false} />
+              <FieldRow label="Rechnung Straße, Zeile 1" value={c.billingAddressLine1} patchable={false} />
+              <FieldRow label="Rechnung Adresszusatz" value={c.billingAddressLine2} patchable={false} />
+              <FieldRow label="Rechnung PLZ" value={c.billingPostalCode} patchable={false} />
+              <FieldRow label="Rechnung Ort" value={c.billingCity} patchable={false} />
+              <FieldRow label="Rechnung Land" value={c.billingCountry} patchable={false} />
+              <FieldRow
+                label="IBAN"
+                value={c.bankIban}
+                patchable={PATCHABLE.has("bankIban")}
+                hint="Erstbefüllung, wenn bisher leer, im Bearbeiten-Modus."
+              />
+              <FieldRow label="BIC" value={c.bankBic} patchable={false} />
+              <FieldRow label="Kostenstelle" value={c.costCenter} patchable={false} />
+            </div>
           </div>
 
-          <div className="panel-card panel-card--wide">
-            <h3 className="panel-card__title">5. Mandats- / Systemstatus</h3>
-            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 0 }}>
-              Reine Anzeige. Kein Dokumenten-Modul.
+          <div className="partner-card partner-card--section">
+            <span className="partner-section-eyebrow">Abschnitt 5</span>
+            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+              Mandats- / Systemstatus
+            </h2>
+            <p className="partner-muted" style={{ margin: "0 0 12px" }}>
+              Reine Anzeige.
             </p>
-            <FieldRow label="Basis-Stammdaten gesperrt (profileLocked)" value={c.profileLocked ? "ja" : "nein"} patchable={false} />
-            <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} patchable={false} />
-            <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} patchable={false} />
-            <FieldRow label="Verifizierung" value={c.verificationStatus} patchable={false} />
-            <FieldRow label="Compliance" value={c.complianceStatus} patchable={false} />
-            <FieldRow label="Vertragsstatus" value={c.contractStatus} patchable={false} />
-            <FieldRow
-              label="Gewerbenachweis hinterlegt"
-              value={c.hasComplianceGewerbe ? "ja" : "nein"}
-              patchable={false}
-            />
-            <FieldRow
-              label="Versicherungsnachweis hinterlegt"
-              value={c.hasComplianceInsurance ? "ja" : "nein"}
-              patchable={false}
-            />
-            <FieldRow label="Max. Fahrer" value={c.maxDrivers} patchable={false} />
-            <FieldRow label="Max. Fahrzeuge" value={c.maxVehicles} patchable={false} />
+            <div className="partner-kv-block">
+              <FieldRow label="Basis-Stammdaten gesperrt" value={c.profileLocked ? "ja" : "nein"} patchable={false} />
+              <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} patchable={false} />
+              <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} patchable={false} />
+              <FieldRow label="Verifizierung" value={c.verificationStatus} patchable={false} />
+              <FieldRow label="Compliance" value={c.complianceStatus} patchable={false} />
+              <FieldRow label="Vertragsstatus" value={c.contractStatus} patchable={false} />
+              <FieldRow label="Gewerbenachweis hinterlegt" value={c.hasComplianceGewerbe ? "ja" : "nein"} patchable={false} />
+              <FieldRow
+                label="Versicherungsnachweis hinterlegt"
+                value={c.hasComplianceInsurance ? "ja" : "nein"}
+                patchable={false}
+              />
+              <FieldRow label="Max. Fahrer" value={c.maxDrivers} patchable={false} />
+              <FieldRow label="Max. Fahrzeuge" value={c.maxVehicles} patchable={false} />
+            </div>
           </div>
         </>
       ) : null}
 
       {c && !loading && editing && canPatch ? (
-        <div className="panel-rides-form" style={{ maxWidth: 900 }}>
-          <h3 className="panel-page__title" style={{ fontSize: "1.1rem", marginTop: 0 }}>
+        <div className="partner-form">
+          <h2 className="partner-kvlist-title" style={{ margin: "0 0 8px" }}>
             Bearbeiten
-          </h3>
+          </h2>
           {profileLocked ? (
-            <p className="panel-page__warn">
+            <p className="partner-state-warn" style={{ marginTop: 0 }}>
               Basis-„Kern“-Felder (Name, Adresse, Ansprechdaten) sind <strong>gesperrt</strong> — Eingabefelder dazu sind
-              deaktiviert. Sofern nötig: <strong>Plattform / Change-Request</strong>.
+              deaktiviert. Weitere Anpassungen über <strong>Onroda</strong>.
             </p>
           ) : null}
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h4 className="panel-card__title">Operativ (jeweils anpassbar)</h4>
-            <div className="panel-rides-form__grid">
+          <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
+            <h3 className="partner-card__title">Operativ (jeweils anpassbar)</h3>
+            <div className="partner-form-grid">
               <LabeledInput
                 label="Support-E-Mail"
                 type="email"
@@ -531,6 +520,7 @@ export default function TaxiStammdatenPage() {
               <LabeledInput label="Dispo-Telefon" value={form.dispoPhone} onChange={setF("dispoPhone")} maxLength={MAX.short} />
               <LabeledInput label="Logo-URL" value={form.logoUrl} onChange={setF("logoUrl")} maxLength={MAX.url} />
               <LabeledInput
+                wide
                 label="Öffnungszeiten"
                 value={form.openingHours}
                 onChange={setF("openingHours")}
@@ -540,81 +530,81 @@ export default function TaxiStammdatenPage() {
             </div>
           </div>
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h4 className="panel-card__title">Firmenbasis &amp; Ansprech/Adresse (Kern, nur leere Felder, außer bei Sperre)</h4>
-            {[
-              { k: "name", l: "Firmenname" },
-              { k: "legalForm", l: "Rechtsform" },
-              { k: "ownerName", l: "Inhaber / GF" },
-              { k: "contactName", l: "Ansprechpartner" },
-              { k: "email", l: "E-Mail (Betrieb)", type: "email" },
-              { k: "phone", l: "Telefon" },
-            ].map(({ k, l, type }) => {
-              const inGap = gaps.includes(k);
-              const disabled = !inGap || profileLocked;
-              return (
-                <LabeledInput
-                  key={k}
-                  label={l}
-                  type={type || "text"}
-                  value={form[k]}
-                  onChange={setF(k)}
-                  disabled={disabled}
-                  maxLength={k === "name" ? MAX.name : MAX.short}
-                />
-              );
-            })}
-            {["addressLine1", "addressLine2", "postalCode", "city", "country"].map((k) => {
-              const inGap = gaps.includes(k);
-              const disabled = !inGap || profileLocked;
-              const labels = {
-                addressLine1: "Straße, Zeile 1",
-                addressLine2: "Adresszusatz",
-                postalCode: "PLZ",
-                city: "Ort",
-                country: "Land",
-              };
-              return (
-                <LabeledInput
-                  key={k}
-                  label={labels[k]}
-                  value={form[k]}
-                  onChange={setF(k)}
-                  disabled={disabled}
-                  maxLength={k === "addressLine1" || k === "addressLine2" ? MAX.line : MAX.short}
-                />
-              );
-            })}
-            <p className="panel-page__muted" style={{ fontSize: "0.86rem" }}>
-              Deaktiviert = entweder schon in der Datenbank befüllt oder (bei Sperre) kein Self-Service-Ändern mehr. Für
-              Korrektur feststehender Werte: Plattform / Change-Request.
+          <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
+            <h3 className="partner-card__title">Firmenbasis &amp; Ansprech/Adresse (Kern, nur leere Felder, außer bei Sperre)</h3>
+            <div className="partner-form-grid partner-form-grid--2-2">
+              {[
+                { k: "name", l: "Firmenname" },
+                { k: "legalForm", l: "Rechtsform" },
+                { k: "ownerName", l: "Inhaber / GF" },
+                { k: "contactName", l: "Ansprechpartner" },
+                { k: "email", l: "E-Mail (Betrieb)", type: "email" },
+                { k: "phone", l: "Telefon" },
+              ].map(({ k, l, type }) => {
+                const inGap = gaps.includes(k);
+                const disabled = !inGap || profileLocked;
+                return (
+                  <LabeledInput
+                    key={k}
+                    label={l}
+                    type={type || "text"}
+                    value={form[k]}
+                    onChange={setF(k)}
+                    disabled={disabled}
+                    maxLength={k === "name" ? MAX.name : MAX.short}
+                  />
+                );
+              })}
+              {["addressLine1", "addressLine2", "postalCode", "city", "country"].map((k) => {
+                const inGap = gaps.includes(k);
+                const disabled = !inGap || profileLocked;
+                const labels = {
+                  addressLine1: "Straße, Zeile 1",
+                  addressLine2: "Adresszusatz",
+                  postalCode: "PLZ",
+                  city: "Ort",
+                  country: "Land",
+                };
+                return (
+                  <LabeledInput
+                    key={k}
+                    label={labels[k]}
+                    value={form[k]}
+                    onChange={setF(k)}
+                    disabled={disabled}
+                    maxLength={k === "addressLine1" || k === "addressLine2" ? MAX.line : MAX.short}
+                  />
+                );
+              })}
+            </div>
+            <p className="partner-form-mono">
+              Deaktiviert = entweder schon in der Datenbank befüllt oder (bei Sperre) kein Self-Service-Ändern mehr. Korrektur
+              feststehender Werte: Onroda / vereinbarter Änderungsantrag.
             </p>
           </div>
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h4 className="panel-card__title">Konzession, Steuernummer, IBAN (nur Erstbefüllung, wenn bisher leer)</h4>
-            <p className="panel-page__muted" style={{ fontSize: "0.86rem" }}>
-              Laut API auch bei <code>profileLocked</code> anwendbar, solange der jeweilige DB-Wert leer war.
-            </p>
-            {["concessionNumber", "taxId", "bankIban"].map((k) => {
-              const inG = extraGaps.includes(k);
-              const label =
-                k === "concessionNumber" ? "Konzession" : k === "taxId" ? "Steuernummer" : "IBAN (eindeutig, Erstbelegung)";
-              return (
-                <LabeledInput
-                  key={k}
-                  label={label}
-                  value={form[k]}
-                  onChange={setF(k)}
-                  disabled={!inG}
-                  maxLength={MAX.short}
-                />
-              );
-            })}
+          <div className="partner-card partner-card--section" style={{ marginTop: 16 }}>
+            <h3 className="partner-card__title">Konzession, Steuernummer, IBAN (nur Erstbefüllung, wenn bisher leer)</h3>
+            <p className="partner-form-mono">Auch bei gesperrten Basisdaten: einmalig ausfüllbar, wenn ein Feld bisher leer war.</p>
+            <div className="partner-form-grid">
+              {["concessionNumber", "taxId", "bankIban"].map((k) => {
+                const inG = extraGaps.includes(k);
+                const label =
+                  k === "concessionNumber" ? "Konzession" : k === "taxId" ? "Steuernummer" : "IBAN (Eindeutigkeit / Erstbelegung)";
+                return (
+                  <LabeledInput
+                    key={k}
+                    label={label}
+                    value={form[k]}
+                    onChange={setF(k)}
+                    disabled={!inG}
+                    maxLength={MAX.short}
+                  />
+                );
+              })}
+            </div>
             {!extraGaps.length ? (
-              <p className="panel-page__muted" style={{ fontSize: "0.86rem" }}>
-                Alle drei Felder sind bereits hinterlegt — keine weitere Self-Service-Änderung per diesem Endpunkt.
-              </p>
+              <p className="partner-form-mono">Alle drei Felder sind bereits hinterlegt — weitere Korrekturen bitte über Onroda.</p>
             ) : null}
           </div>
         </div>

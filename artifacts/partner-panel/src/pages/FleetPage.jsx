@@ -384,55 +384,68 @@ export default function FleetPage() {
 
   if (!canRead) {
     return (
-      <div className="panel-page">
-        <p className="panel-page__warn">Keine Berechtigung für die Flottenübersicht.</p>
-      </div>
+      <p className="partner-state-warn" style={{ margin: 0 }}>
+        Keine Berechtigung für die Flottenübersicht.
+      </p>
     );
   }
 
   return (
-    <div className="panel-page">
-      <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-        <h3 className="panel-card__title">Flotte auf einen Blick</h3>
+    <div className="partner-stack partner-stack--tight">
+      <div className="partner-page-hero">
+        <p className="partner-page-eyebrow">Flotte</p>
+        <h1 className="partner-page-title">Fahrer &amp; Fahrzeuge</h1>
+        <p className="partner-page-lead">
+          Überblick, Zuweisungen und Stammdaten Ihrer aktiven Fahrer und Fahrzeuge. Unternehmensnachweise finden Sie unter
+          „Dokumente“.
+        </p>
+      </div>
+
+      <div className="partner-card partner-card--section">
+        <h2 className="partner-card__title">Auf einen Blick</h2>
         {dash ? (
-          <div className="panel-fleet-dash">
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{dash.driversOnline ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Fahrer online (2 Min.)</span>
+          <div className="partner-fleet-kpi-bar">
+            <div className="partner-fleet-kpi">
+              <span className="partner-fleet-kpi__num">{dash.driversOnline ?? 0}</span>
+              <span className="partner-fleet-kpi__lbl">Fahrer online (2 Min.)</span>
             </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{dash.driversTotal ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Fahrer gesamt</span>
+            <div className="partner-fleet-kpi">
+              <span className="partner-fleet-kpi__num">{dash.driversTotal ?? 0}</span>
+              <span className="partner-fleet-kpi__lbl">Fahrer gesamt</span>
             </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{dash.vehiclesActive ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">Aktive Fahrzeuge</span>
+            <div className="partner-fleet-kpi">
+              <span className="partner-fleet-kpi__num">{dash.vehiclesActive ?? 0}</span>
+              <span className="partner-fleet-kpi__lbl">Aktive Fahrzeuge</span>
             </div>
-            <div className="panel-fleet-dash__kpi">
-              <span className="panel-fleet-dash__num">{dash.pScheinExpiringWithin30Days ?? 0}</span>
-              <span className="panel-fleet-dash__lbl">P-Schein ≤ 30 Tage</span>
+            <div className="partner-fleet-kpi">
+              <span className="partner-fleet-kpi__num">{dash.pScheinExpiringWithin30Days ?? 0}</span>
+              <span className="partner-fleet-kpi__lbl">P-Schein ≤ 30 Tage</span>
             </div>
           </div>
         ) : (
-          <p className="panel-page__muted">Kennzahlen werden geladen …</p>
+          <p className="partner-muted">Kennzahlen werden geladen …</p>
         )}
       </div>
 
-      {err ? <p className="panel-page__warn">{err}</p> : null}
-      {driverCreateError ? <p className="panel-page__warn">{driverCreateError}</p> : null}
-      {msg ? <p className="panel-page__ok">{msg}</p> : null}
+      {err ? <p className="partner-state-error">{err}</p> : null}
+      {driverCreateError ? <p className="partner-state-error">{driverCreateError}</p> : null}
+      {msg ? <p className="partner-state-ok">{msg}</p> : null}
 
-      <div className="panel-fleet-tabs">
+      <div className="partner-pill-tabs" role="tablist">
         <button
           type="button"
-          className={tab === "drivers" ? "panel-fleet-tab panel-fleet-tab--on" : "panel-fleet-tab"}
+          role="tab"
+          aria-selected={tab === "drivers"}
+          className={tab === "drivers" ? "partner-pill-tabs__btn partner-pill-tabs__btn--active" : "partner-pill-tabs__btn"}
           onClick={() => setTab("drivers")}
         >
           Fahrer
         </button>
         <button
           type="button"
-          className={tab === "vehicles" ? "panel-fleet-tab panel-fleet-tab--on" : "panel-fleet-tab"}
+          role="tab"
+          aria-selected={tab === "vehicles"}
+          className={tab === "vehicles" ? "partner-pill-tabs__btn partner-pill-tabs__btn--active" : "partner-pill-tabs__btn"}
           onClick={() => setTab("vehicles")}
         >
           Fahrzeuge
@@ -440,9 +453,9 @@ export default function FleetPage() {
       </div>
 
       {tab === "drivers" ? (
-        <div className="panel-card panel-card--wide">
-          <div className="panel-fleet-toolbar">
-            <label className="panel-fleet-filter">
+        <div className="partner-card partner-card--section">
+          <div style={{ marginBottom: 12 }}>
+            <label className="partner-fleet-filter">
               <input
                 type="checkbox"
                 checked={filterExpiring}
@@ -451,48 +464,52 @@ export default function FleetPage() {
               Nur P-Schein bald ablaufend (30 Tage)
             </label>
           </div>
-          <p className="panel-page__muted" style={{ marginTop: 0, marginBottom: 12 }}>
-            Firmennachweise finden Sie unter Dokumente.
-          </p>
           {canManage ? (
-            <form className="panel-rides-form" onSubmit={createDriver} style={{ marginBottom: 18 }}>
-              <h4 className="panel-card__title">Neuen Fahrer anlegen</h4>
-              <div className="panel-rides-form__grid">
-                <label className="panel-rides-form__field">
+            <form className="partner-form" onSubmit={createDriver} style={{ marginBottom: 20 }}>
+              <h3 className="partner-card__title" style={{ marginTop: 0 }}>
+                Neuen Fahrer anlegen
+              </h3>
+              <div className="partner-form-grid">
+                <label className="partner-form-field">
                   <span>E-Mail (Login)</span>
                   <input
+                    className="partner-input"
                     type="email"
                     value={driverForm.email}
                     onChange={(ev) => setDriverForm((f) => ({ ...f, email: ev.target.value }))}
                     required
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Vorname</span>
                   <input
+                    className="partner-input"
                     value={driverForm.firstName}
                     onChange={(ev) => setDriverForm((f) => ({ ...f, firstName: ev.target.value }))}
                     required
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Nachname</span>
                   <input
+                    className="partner-input"
                     value={driverForm.lastName}
                     onChange={(ev) => setDriverForm((f) => ({ ...f, lastName: ev.target.value }))}
                     required
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Mobilnummer</span>
                   <input
+                    className="partner-input"
                     value={driverForm.phone}
                     onChange={(ev) => setDriverForm((f) => ({ ...f, phone: ev.target.value }))}
                   />
                 </label>
-                <label className="panel-rides-form__field panel-rides-form__field--2">
+                <label className="partner-form-field partner-form-field--span2">
                   <span>Initiales Passwort (optional, sonst generiert)</span>
                   <input
+                    className="partner-input"
                     type="password"
                     autoComplete="new-password"
                     value={driverForm.initialPassword}
@@ -501,13 +518,16 @@ export default function FleetPage() {
                   />
                 </label>
               </div>
-              <button type="submit" className="panel-btn-primary" style={{ marginTop: 10 }}>
+              <button type="submit" className="partner-btn-primary" style={{ marginTop: 12 }}>
                 Fahrer speichern
               </button>
             </form>
           ) : null}
-          <div style={{ overflowX: "auto" }}>
-            <table className="panel-fleet-table">
+          <h3 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+            Fahrerliste
+          </h3>
+          <div className="partner-table-wrap">
+            <table className="partner-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -535,10 +555,10 @@ export default function FleetPage() {
                       <td>{d.email}</td>
                       <td>{d.accessStatus === "active" && d.isActive ? "aktiv" : "gesperrt"}</td>
                       <td>{d.pScheinExpiry || "—"}</td>
-                      <td className="panel-fleet-table__actions">
+                      <td className="partner-table__actions">
                         {canManage ? (
                           <>
-                            <label className="panel-fleet-btn panel-fleet-btn--blue" style={{ cursor: "pointer" }}>
+                            <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
                               P-Schein PDF
                               <input
                                 type="file"
@@ -549,23 +569,19 @@ export default function FleetPage() {
                             </label>
                             <button
                               type="button"
-                              className="panel-fleet-btn panel-fleet-btn--blue"
+                              className="partner-link-btn partner-link-btn--solid"
                               onClick={() => void resetDriverPassword(d.id)}
                             >
                               Passwort zurücksetzen
                             </button>
                             {d.accessStatus === "active" && d.isActive ? (
-                              <button
-                                type="button"
-                                className="panel-fleet-btn panel-fleet-btn--red"
-                                onClick={() => void suspendDriver(d.id)}
-                              >
+                              <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={() => void suspendDriver(d.id)}>
                                 Sperren
                               </button>
                             ) : (
                               <button
                                 type="button"
-                                className="panel-btn-secondary"
+                                className="partner-btn-secondary"
                                 onClick={() => void activateDriver(d.id)}
                               >
                                 Aktivieren
@@ -573,7 +589,7 @@ export default function FleetPage() {
                             )}
                           </>
                         ) : (
-                          <span className="panel-page__muted">—</span>
+                          <span className="partner-muted">—</span>
                         )}
                       </td>
                     </tr>
@@ -586,9 +602,9 @@ export default function FleetPage() {
       ) : null}
 
       {tab === "vehicles" ? (
-        <div className="panel-card panel-card--wide">
-          <div className="panel-fleet-toolbar">
-            <label className="panel-fleet-filter">
+        <div className="partner-card partner-card--section">
+          <div style={{ marginBottom: 12 }}>
+            <label className="partner-fleet-filter">
               <input
                 type="checkbox"
                 checked={vehiclesActiveOnly}
@@ -598,34 +614,40 @@ export default function FleetPage() {
             </label>
           </div>
           {canManage ? (
-            <form className="panel-rides-form" onSubmit={createVehicle} style={{ marginBottom: 18 }}>
-              <h4 className="panel-card__title">Neues Fahrzeug</h4>
-              <div className="panel-rides-form__grid">
-                <label className="panel-rides-form__field">
+            <form className="partner-form" onSubmit={createVehicle} style={{ marginBottom: 20 }}>
+              <h3 className="partner-card__title" style={{ marginTop: 0 }}>
+                Neues Fahrzeug
+              </h3>
+              <div className="partner-form-grid">
+                <label className="partner-form-field">
                   <span>Kennzeichen</span>
                   <input
+                    className="partner-input"
                     value={vehicleForm.licensePlate}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, licensePlate: ev.target.value }))}
                     required
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Hersteller / Modell</span>
                   <input
+                    className="partner-input"
                     value={vehicleForm.model}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, model: ev.target.value }))}
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Farbe</span>
                   <input
+                    className="partner-input"
                     value={vehicleForm.color}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, color: ev.target.value }))}
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Typ</span>
                   <select
+                    className="partner-input"
                     value={vehicleForm.vehicleType}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleType: ev.target.value }))}
                   >
@@ -636,9 +658,10 @@ export default function FleetPage() {
                     ))}
                   </select>
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Fahrzeugklasse</span>
                   <select
+                    className="partner-input"
                     value={vehicleForm.vehicleClass}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleClass: ev.target.value }))}
                   >
@@ -649,47 +672,43 @@ export default function FleetPage() {
                     ))}
                   </select>
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Taxi-Ordnungsnr.</span>
                   <input
+                    className="partner-input"
                     value={vehicleForm.taxiOrderNumber}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, taxiOrderNumber: ev.target.value }))}
                   />
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Nächste HU (TÜV)</span>
                   <input
+                    className="partner-input"
                     type="date"
                     value={vehicleForm.nextInspectionDate}
                     onChange={(ev) => setVehicleForm((f) => ({ ...f, nextInspectionDate: ev.target.value }))}
                   />
                 </label>
               </div>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "#64748b",
-                  lineHeight: 1.45,
-                  marginTop: 4,
-                  marginBottom: 4,
-                  maxWidth: 720,
-                }}
-              >
+              <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
                 {VEHICLE_LEGAL_HINT}
               </p>
-              <button type="submit" className="panel-btn-primary" style={{ marginTop: 10 }}>
+              <button type="submit" className="partner-btn-primary" style={{ marginTop: 8 }}>
                 Fahrzeug speichern
               </button>
             </form>
           ) : null}
 
           {canManage ? (
-            <form className="panel-rides-form" onSubmit={submitAssignment} style={{ marginBottom: 18 }}>
-              <h4 className="panel-card__title">Fahrer ↔ Fahrzeug (aktuell)</h4>
-              <div className="panel-rides-form__grid">
-                <label className="panel-rides-form__field">
+            <form className="partner-form" onSubmit={submitAssignment} style={{ marginBottom: 20 }}>
+              <h3 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+                Fahrer ↔ Fahrzeug (aktuell)
+              </h3>
+              <div className="partner-form-grid">
+                <label className="partner-form-field">
                   <span>Fahrer</span>
                   <select
+                    className="partner-input"
                     value={assignForm.driverId}
                     onChange={(ev) => setAssignForm((f) => ({ ...f, driverId: ev.target.value }))}
                     required
@@ -702,9 +721,10 @@ export default function FleetPage() {
                     ))}
                   </select>
                 </label>
-                <label className="panel-rides-form__field">
+                <label className="partner-form-field">
                   <span>Fahrzeug</span>
                   <select
+                    className="partner-input"
                     value={assignForm.vehicleId}
                     onChange={(ev) => setAssignForm((f) => ({ ...f, vehicleId: ev.target.value }))}
                     required
@@ -718,14 +738,17 @@ export default function FleetPage() {
                   </select>
                 </label>
               </div>
-              <button type="submit" className="panel-btn-primary" style={{ marginTop: 10 }}>
+              <button type="submit" className="partner-btn-primary" style={{ marginTop: 12 }}>
                 Zuweisen
               </button>
             </form>
           ) : null}
 
-          <div style={{ overflowX: "auto" }}>
-            <table className="panel-fleet-table">
+          <h3 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+            Fahrzeugliste
+          </h3>
+          <div className="partner-table-wrap">
+            <table className="partner-table">
               <thead>
                 <tr>
                   <th>Kennzeichen</th>
@@ -740,11 +763,11 @@ export default function FleetPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6}>Laden …</td>
+                    <td colSpan={7}>Laden …</td>
                   </tr>
                 ) : vehicles.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>Keine Fahrzeuge.</td>
+                    <td colSpan={7}>Keine Fahrzeuge.</td>
                   </tr>
                 ) : (
                   vehicles.map((v) => {
@@ -760,15 +783,14 @@ export default function FleetPage() {
                         <td>{v.nextInspectionDate || "—"}</td>
                         <td>
                           {drv ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               <span>
                                 {drv.firstName} {drv.lastName}
                               </span>
                               {canManage ? (
                                 <button
                                   type="button"
-                                  className="panel-btn-secondary"
-                                  style={{ padding: "4px 8px", fontSize: 12 }}
+                                  className="partner-btn-secondary partner-btn-secondary--sm"
                                   onClick={() => clearAssignment(drv.id)}
                                 >
                                   Zuweisung löschen

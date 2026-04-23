@@ -23,7 +23,7 @@ function normalizeComplianceStatus(status) {
       text: "Es liegen noch offene Prüfungen vor. Fehlende Nachweise können den Status beeinflussen.",
     };
   }
-  return { label: value, tone: "pending", text: "Der Status wird aus dem Backend übernommen." };
+  return { label: value, tone: "pending", text: "Der Status wird aus dem System übernommen." };
 }
 
 function complianceDocItems(company) {
@@ -68,7 +68,7 @@ function docState(item) {
     return {
       key: "missing",
       label: "fehlt",
-      tone: "warn",
+      tone: "missing",
       text: item?.hintMissing || "Dokument fehlt.",
     };
   }
@@ -76,7 +76,7 @@ function docState(item) {
     return {
       key: "approved",
       label: "freigegeben",
-      tone: "ok",
+      tone: "neutral",
       text: "Dokument wurde freigegeben.",
     };
   }
@@ -84,16 +84,22 @@ function docState(item) {
     return {
       key: "rejected",
       label: "abgelehnt",
-      tone: "warn",
+      tone: "missing",
       text: item?.reviewNote || "Dokument wurde abgelehnt. Bitte korrigieren und erneut hochladen.",
     };
   }
   return {
     key: "pending",
     label: "hochgeladen / in Prüfung",
-    tone: "pending",
+    tone: "review",
     text: item?.hintOk || "Dokument ist hinterlegt und wird geprüft.",
   };
+}
+
+function statusPillClass(tone) {
+  if (tone === "missing") return "partner-pill--missing";
+  if (tone === "review") return "partner-pill--review";
+  return "partner-pill--neutral";
 }
 
 export default function TaxiDocumentsPage() {
@@ -144,6 +150,12 @@ export default function TaxiDocumentsPage() {
   const docItems = useMemo(() => complianceDocItems(company), [company]);
   const missingDocs = docItems.filter((item) => !item.ok);
 
+  function complianceHeaderPill() {
+    if (status.tone === "ok") return <span className="partner-pill--neutral">{status.label}</span>;
+    if (status.tone === "warn") return <span className="partner-pill--missing">{status.label}</span>;
+    return <span className="partner-pill--review">{status.label}</span>;
+  }
+
   async function uploadDocument(kind, ev) {
     const file = ev.target.files?.[0];
     ev.target.value = "";
@@ -191,125 +203,127 @@ export default function TaxiDocumentsPage() {
   }
 
   return (
-    <div className="panel-page panel-page--profile">
-      <h2 className="panel-page__title">Dokumente &amp; Compliance</h2>
-      <p className="panel-page__lead">
-        Grundlage: <code className="panel-card__muted">GET /panel/v1/company</code> plus Upload je Dokument als PDF.
-      </p>
+    <div className="partner-stack partner-stack--tight">
+      <div className="partner-page-hero">
+        <p className="partner-page-eyebrow">Nachweise</p>
+        <h1 className="partner-page-title">Dokumente &amp; Compliance</h1>
+        <p className="partner-page-lead">
+          Übersicht der für Ihr Unternehmen hinterlegten Nachweise. Fehlende Unterlagen können Sie hier als{" "}
+          <strong>PDF</strong> nachreichen, sofern Ihr Konto die Freigabe dafür hat.
+        </p>
+      </div>
 
-      {loading ? <p className="panel-page__lead">Dokumente werden geladen …</p> : null}
-      {error ? <p className="panel-page__warn">{error}</p> : null}
-      {uploadMsg ? <p className="panel-page__ok">{uploadMsg}</p> : null}
+      {loading ? <p className="partner-state-loading">Dokumente werden geladen …</p> : null}
+      {error ? <p className="partner-state-error">{error}</p> : null}
+      {uploadMsg ? <p className="partner-state-ok">{uploadMsg}</p> : null}
 
       {!loading && !error && company ? (
         <>
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h3 className="panel-card__title">Compliance-Gesamtstatus</h3>
-            <p className="panel-card__row" style={{ alignItems: "center" }}>
-              <span className="panel-card__k">Status</span>
-              <span style={{ fontWeight: 700 }}>
-                {status.tone === "ok" ? (
-                  <span className="panel-pill panel-pill--ok">{status.label}</span>
-                ) : status.tone === "warn" ? (
-                  <span className="panel-pill panel-pill--warn">{status.label}</span>
-                ) : (
-                  <span className="panel-pill">{status.label}</span>
-                )}
-              </span>
-            </p>
-            <p className="panel-page__muted panel-page__muted--tight" style={{ marginTop: 8 }}>
+          <div className="partner-card partner-card--section">
+            <h2 className="partner-card__title">Compliance-Gesamtstatus</h2>
+            <div className="partner-kv-row" style={{ border: "none", paddingTop: 0 }}>
+              <div className="partner-kv-k" style={{ maxWidth: "40%" }}>
+                Status
+              </div>
+              <div className="partner-kv-v" style={{ textAlign: "right" }}>
+                {complianceHeaderPill()}
+              </div>
+            </div>
+            <p className="partner-muted" style={{ margin: "8px 0 0" }}>
               {status.text}
             </p>
           </div>
 
-          <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
-            <h3 className="panel-card__title">Erforderliche Nachweise</h3>
-            {docItems.map((item) => (
-              <div key={item.key} className="panel-card" style={{ marginBottom: 10 }}>
-                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
-                  <span className="panel-card__k">{item.title}</span>
-                  <span style={{ fontWeight: 600, textAlign: "right" }}>
-                    {docState(item).tone === "ok" ? (
-                      <span className="panel-pill panel-pill--ok">{docState(item).label}</span>
-                    ) : docState(item).tone === "warn" ? (
-                      <span className="panel-pill panel-pill--warn">{docState(item).label}</span>
-                    ) : (
-                      <span className="panel-pill">{docState(item).label}</span>
-                    )}
-                  </span>
-                </div>
-                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
-                  <span className="panel-card__k">Vorhanden</span>
-                  <span style={{ fontWeight: 600 }}>{item.ok ? "ja" : "nein"}</span>
-                </div>
-                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
-                  <span className="panel-card__k">Hochgeladen am</span>
-                  <span style={{ fontWeight: 600 }}>{formatDateTime(item.uploadedAt)}</span>
-                </div>
-                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
-                  <span className="panel-card__k">Prüfhinweis</span>
-                  <span style={{ fontWeight: 500, maxWidth: 560, textAlign: "right" }}>{docState(item).text}</span>
-                </div>
-                {item.reviewNote ? (
-                  <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
-                    <span className="panel-card__k">Ablehnungsgrund / Bemerkung</span>
-                    <span style={{ fontWeight: 500, maxWidth: 560, textAlign: "right" }}>{item.reviewNote}</span>
+          <div>
+            <span className="partner-section-eyebrow">Pflichtnachweise</span>
+            <h2 className="partner-section-h" style={{ margin: "0 0 16px" }}>
+              Erforderliche Nachweise
+            </h2>
+            <div className="partner-stack partner-stack--tight">
+              {docItems.map((item) => {
+                const ds = docState(item);
+                return (
+                  <div key={item.key} className="partner-card partner-card--section" style={{ marginBottom: 0 }}>
+                    <div className="partner-kv-row" style={{ border: "none", paddingTop: 0 }}>
+                      <h3 className="partner-kvlist-title" style={{ margin: 0, fontSize: "1.1rem" }}>
+                        {item.title}
+                      </h3>
+                      <span className={statusPillClass(ds.tone)}>{ds.label}</span>
+                    </div>
+                    <div className="partner-kvlist" style={{ marginTop: 12, border: "1px solid #ececec" }}>
+                      <div className="partner-kvlist__row">
+                        <span className="partner-kvlist__k">Vorhanden</span>
+                        <span className="partner-kvlist__v">{item.ok ? "ja" : "nein"}</span>
+                      </div>
+                      <div className="partner-kvlist__row">
+                        <span className="partner-kvlist__k">Hochgeladen am</span>
+                        <span className="partner-kvlist__v">{formatDateTime(item.uploadedAt)}</span>
+                      </div>
+                      <div className="partner-kvlist__row">
+                        <span className="partner-kvlist__k">Prüfhinweis</span>
+                        <span className="partner-kvlist__v" style={{ textAlign: "right", maxWidth: "100%" }}>
+                          {ds.text}
+                        </span>
+                      </div>
+                      {item.reviewNote ? (
+                        <div className="partner-kvlist__row">
+                          <span className="partner-kvlist__k">Bemerkung</span>
+                          <span className="partner-kvlist__v" style={{ textAlign: "right", maxWidth: "100%" }}>
+                            {item.reviewNote}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div style={{ marginTop: 16 }}>
+                      {canUploadDocs ? (
+                        <label
+                          className="partner-btn-primary partner-btn-primary--block"
+                          role="button"
+                          tabIndex={0}
+                          style={{
+                            cursor: uploadingKind ? "wait" : "pointer",
+                            opacity: uploadingKind ? 0.55 : 1,
+                            pointerEvents: uploadingKind ? "none" : "auto",
+                          }}
+                        >
+                          {item.ok ? "Erneut hochladen (PDF)" : "Dokument hochladen (PDF)"}
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            style={{ display: "none" }}
+                            disabled={Boolean(uploadingKind)}
+                            onChange={(ev) => void uploadDocument(item.key, ev)}
+                          />
+                        </label>
+                      ) : (
+                        <p className="partner-muted" style={{ margin: 0 }}>
+                          Upload aktuell nicht verfügbar. Bitte Benutzerrechte und Module prüfen.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                ) : null}
-                <div style={{ marginTop: 12 }}>
-                  {canUploadDocs ? (
-                    <label
-                      className="panel-btn-primary"
-                      role="button"
-                      tabIndex={0}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "100%",
-                        maxWidth: 320,
-                        marginTop: 4,
-                        cursor: uploadingKind ? "wait" : "pointer",
-                        opacity: uploadingKind ? 0.55 : 1,
-                        pointerEvents: uploadingKind ? "none" : "auto",
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      {item.ok ? "Erneut hochladen (PDF)" : "Dokument hochladen (PDF)"}
-                      <input
-                        type="file"
-                        accept="application/pdf"
-                        style={{ display: "none" }}
-                        disabled={Boolean(uploadingKind)}
-                        onChange={(ev) => void uploadDocument(item.key, ev)}
-                      />
-                    </label>
-                  ) : (
-                    <p className="panel-page__muted" style={{ margin: 0 }}>
-                      Upload aktuell nicht verfügbar. Bitte Benutzerrechte/Module prüfen.
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
 
           {missingDocs.length > 0 ? (
-            <div className="panel-card panel-card--wide panel-card--hint">
-              <h3 className="panel-card__title">Hinweis bei fehlenden Dokumenten</h3>
-              <p className="panel-page__muted panel-page__muted--tight">
-                Es fehlen {missingDocs.length} Nachweis(e). Für die Nachreichung gilt der vorgesehene
-                Änderungs-/Freigabeprozess.
+            <div className="partner-card partner-card--section partner-card--hint">
+              <h2 className="partner-card__title">Hinweis bei fehlenden Dokumenten</h2>
+              <p className="partner-muted" style={{ margin: 0 }}>
+                Es fehlen {missingDocs.length} Nachweis(e). Für die Nachreichung gilt der vorgesehene Freigabeprozess.
               </p>
             </div>
           ) : (
-            <div className="panel-card panel-card--wide panel-card--hint">
-              <h3 className="panel-card__title">Status</h3>
-              <p className="panel-page__muted panel-page__muted--tight">Alle aktuell erwarteten Nachweise sind hinterlegt.</p>
+            <div className="partner-card partner-card--section">
+              <h2 className="partner-card__title">Stand</h2>
+              <p className="partner-muted" style={{ margin: 0 }}>
+                Alle aktuell erwarteten Nachweise sind hinterlegt.
+              </p>
             </div>
           )}
 
-          <p className="panel-page__muted" style={{ marginTop: 12 }}>
+          <p className="partner-muted" style={{ margin: "8px 0 0" }}>
             Erneuter Upload ersetzt den bisherigen Stand und startet die Prüfung neu.
           </p>
         </>

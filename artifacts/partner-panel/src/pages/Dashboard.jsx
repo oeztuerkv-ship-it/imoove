@@ -12,7 +12,7 @@ export default function Dashboard() {
 
   // WEICHE FÜR DIE KUNDEN-ANSICHT (PARTNER)
   if (company.company_kind === "taxi") {
-    return <TaxiMasterPanel company={company} isPartnerView={true} />;
+    return <TaxiMasterPanel company={company} />;
   }
 
   if (company.company_kind === "hotel" || company.company_kind === "agency" || company.company_kind === "travel") {
