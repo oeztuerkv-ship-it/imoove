@@ -25,7 +25,7 @@ function messageForFleetDriverCreateError(data) {
     case "contract_not_active":
       return "Kein aktiver Vertrag. Ohne aktiven Vertrag können keine Fahrer angelegt werden.";
     case "required_documents_missing":
-      return "Pflichtnachweise fehlen (z. B. Gewerbe oder Versicherung). Unter „Nachweise“ hochladen.";
+      return "Pflichtnachweise fehlen (z. B. Gewerbe oder Versicherung). Bitte im Bereich „Dokumente“ prüfen.";
     case "company_blocked":
       return "Unternehmen ist gesperrt. Bitte Support kontaktieren.";
     case "company_not_found":
@@ -62,10 +62,6 @@ const VEHICLE_TYPES = [
   { value: "station_wagon", label: "Kombi" },
   { value: "van", label: "Großraum / V-Klasse" },
   { value: "wheelchair", label: "Rollstuhlgerecht" },
-];
-
-const VEHICLE_LEGAL_TYPES = [
-  { value: "taxi", label: "Taxi" },
 ];
 
 const VEHICLE_LEGAL_HINT =
@@ -386,36 +382,6 @@ export default function FleetPage() {
     }
   }
 
-  async function uploadCompliance(kind, ev) {
-    const file = ev.target.files?.[0];
-    ev.target.value = "";
-    if (!file || !token || !canManage) return;
-    if (file.type !== "application/pdf") {
-      setMsg("Bitte eine PDF-Datei wählen.");
-      return;
-    }
-    setMsg("");
-    try {
-      const buf = await file.arrayBuffer();
-      const res = await fetch(`${API_BASE}/panel/v1/fleet/compliance/${kind}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/pdf",
-        },
-        body: buf,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        setMsg("Upload fehlgeschlagen.");
-        return;
-      }
-      setMsg(kind === "gewerbe" ? "Gewerbeanmeldung hochgeladen." : "Versicherung hochgeladen.");
-    } catch {
-      setMsg("Upload fehlgeschlagen.");
-    }
-  }
-
   if (!canRead) {
     return (
       <div className="panel-page">
@@ -471,13 +437,6 @@ export default function FleetPage() {
         >
           Fahrzeuge
         </button>
-        <button
-          type="button"
-          className={tab === "compliance" ? "panel-fleet-tab panel-fleet-tab--on" : "panel-fleet-tab"}
-          onClick={() => setTab("compliance")}
-        >
-          Nachweise
-        </button>
       </div>
 
       {tab === "drivers" ? (
@@ -492,6 +451,9 @@ export default function FleetPage() {
               Nur P-Schein bald ablaufend (30 Tage)
             </label>
           </div>
+          <p className="panel-page__muted" style={{ marginTop: 0, marginBottom: 12 }}>
+            Firmennachweise finden Sie unter Dokumente.
+          </p>
           {canManage ? (
             <form className="panel-rides-form" onSubmit={createDriver} style={{ marginBottom: 18 }}>
               <h4 className="panel-card__title">Neuen Fahrer anlegen</h4>
@@ -827,32 +789,6 @@ export default function FleetPage() {
         </div>
       ) : null}
 
-      {tab === "compliance" ? (
-        <div className="panel-card panel-card--wide">
-          <h3 className="panel-card__title">Gewerbe & Versicherung (PDF)</h3>
-          <p className="panel-page__muted">
-            Laden Sie hier die Gewerbeanmeldung und die Versicherungspolice als PDF hoch (max. ca. 6–8 MB).
-          </p>
-          {canManage ? (
-            <div className="panel-fleet-uploads">
-              <label className="panel-fleet-upload">
-                <span className="panel-fleet-upload__lbl">Gewerbeanmeldung</span>
-                <input type="file" accept="application/pdf" onChange={(ev) => void uploadCompliance("gewerbe", ev)} />
-              </label>
-              <label className="panel-fleet-upload">
-                <span className="panel-fleet-upload__lbl">Versicherungspolice</span>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(ev) => void uploadCompliance("insurance", ev)}
-                />
-              </label>
-            </div>
-          ) : (
-            <p className="panel-page__muted">Nur Inhaber/Manager können Dateien hochladen.</p>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }
