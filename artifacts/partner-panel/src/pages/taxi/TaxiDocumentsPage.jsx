@@ -234,7 +234,7 @@ export default function TaxiDocumentsPage() {
             </p>
           </div>
 
-          <div>
+          <div className="partner-card partner-card--section">
             <span className="partner-section-eyebrow">Pflichtnachweise</span>
             <h2 className="partner-section-h" style={{ margin: "0 0 16px" }}>
               Erforderliche Nachweise
@@ -243,14 +243,14 @@ export default function TaxiDocumentsPage() {
               {docItems.map((item) => {
                 const ds = docState(item);
                 return (
-                  <div key={item.key} className="partner-card partner-card--section" style={{ marginBottom: 0 }}>
+                  <div key={item.key} className="partner-nested-panel">
                     <div className="partner-kv-row" style={{ border: "none", paddingTop: 0 }}>
                       <h3 className="partner-kvlist-title" style={{ margin: 0, fontSize: "1.1rem" }}>
                         {item.title}
                       </h3>
                       <span className={statusPillClass(ds.tone)}>{ds.label}</span>
                     </div>
-                    <div className="partner-kvlist" style={{ marginTop: 12, border: "1px solid #ececec" }}>
+                    <div className="partner-kvlist" style={{ marginTop: 12 }}>
                       <div className="partner-kvlist__row">
                         <span className="partner-kvlist__k">Vorhanden</span>
                         <span className="partner-kvlist__v">{item.ok ? "ja" : "nein"}</span>
@@ -308,7 +308,7 @@ export default function TaxiDocumentsPage() {
           </div>
 
           {missingDocs.length > 0 ? (
-            <div className="partner-card partner-card--section partner-card--hint">
+            <div className="partner-card partner-card--section">
               <h2 className="partner-card__title">Hinweis bei fehlenden Dokumenten</h2>
               <p className="partner-muted" style={{ margin: 0 }}>
                 Es fehlen {missingDocs.length} Nachweis(e). Für die Nachreichung gilt der vorgesehene Freigabeprozess.

@@ -342,11 +342,11 @@ export default function TaxiMasterPanel({ company, onNavigateModule }) {
   };
 
   return (
-    <div className="panel-app--workspace">
+    <div className="partner-stack partner-stack--tight">
       {!loadComplete && <p className="partner-state-loading">Daten werden geladen …</p>}
 
       {loadComplete && (
-        <div className="panel-app--workspace">
+        <>
           <div className="partner-page-hero">
             <p className="partner-page-eyebrow">Unternehmer-Cockpit</p>
             <h1 className="partner-page-title">Guten Tag, {displayCompanyName}</h1>
@@ -361,100 +361,112 @@ export default function TaxiMasterPanel({ company, onNavigateModule }) {
 
           {companyData ? (
             <>
-              <span className="partner-section-eyebrow">Kennzahlen</span>
-              <h2 className="partner-section-h">Kernzahlen</h2>
-              <p className="partner-section-p">Aktive Fahrer und Fahrzeuge, Betriebs- und Prüfstatus</p>
-              <div className="partner-kpi-grid">
-                {(() => {
-                  const u = unternehmenKpiMeta(currentCompany);
-                  return (
-                    <div className={`partner-kpi ${u.cls}`.trim()}>
-                      <p className="partner-kpi__label">Unternehmen</p>
-                      <p className="partner-kpi__value">{u.value}</p>
-                      {u.hint ? <p className="partner-kpi__hint">{u.hint}</p> : null}
-                      {currentCompany.city ? <p className="partner-kpi__hint">{String(currentCompany.city)}</p> : null}
-                    </div>
-                  );
-                })()}
-                <div className={`partner-kpi${driversError ? " partner-kpi--warn" : ""}`.trim()}>
-                  <p className="partner-kpi__label">Aktive Fahrer</p>
-                  <p className="partner-kpi__value">{driversError ? "—" : String(activeDrivers)}</p>
-                  {driversError ? (
-                    <p className="partner-kpi__hint">{driversError}</p>
-                  ) : (
-                    <p className="partner-kpi__hint">
-                      {totalDriversListed} in der Flottenliste{totalDriversListed !== activeDrivers ? " (inkl. inaktiv)" : ""}
-                    </p>
-                  )}
+              <div className="partner-card partner-card--section">
+                <span className="partner-section-eyebrow">Kennzahlen</span>
+                <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+                  Kernzahlen
+                </h2>
+                <p className="partner-section-p" style={{ marginTop: 0 }}>
+                  Aktive Fahrer und Fahrzeuge, Betriebs- und Prüfstatus
+                </p>
+                <div className="partner-kpi-grid">
+                  {(() => {
+                    const u = unternehmenKpiMeta(currentCompany);
+                    return (
+                      <div className={`partner-kpi ${u.cls}`.trim()}>
+                        <p className="partner-kpi__label">Unternehmen</p>
+                        <p className="partner-kpi__value">{u.value}</p>
+                        {u.hint ? <p className="partner-kpi__hint">{u.hint}</p> : null}
+                        {currentCompany.city ? <p className="partner-kpi__hint">{String(currentCompany.city)}</p> : null}
+                      </div>
+                    );
+                  })()}
+                  <div className={`partner-kpi${driversError ? " partner-kpi--warn" : ""}`.trim()}>
+                    <p className="partner-kpi__label">Aktive Fahrer</p>
+                    <p className="partner-kpi__value">{driversError ? "—" : String(activeDrivers)}</p>
+                    {driversError ? (
+                      <p className="partner-kpi__hint">{driversError}</p>
+                    ) : (
+                      <p className="partner-kpi__hint">
+                        {totalDriversListed} in der Flottenliste{totalDriversListed !== activeDrivers ? " (inkl. inaktiv)" : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`partner-kpi${vehiclesError ? " partner-kpi--warn" : ""}`.trim()}>
+                    <p className="partner-kpi__label">Aktive Fahrzeuge</p>
+                    <p className="partner-kpi__value">{vehiclesError ? "—" : String(activeVehicles)}</p>
+                    {vehiclesError ? (
+                      <p className="partner-kpi__hint">{vehiclesError}</p>
+                    ) : (
+                      <p className="partner-kpi__hint">
+                        {totalVehiclesListed} im Bestand{totalVehiclesListed !== activeVehicles ? " (inkl. inaktiv)" : ""}
+                      </p>
+                    )}
+                  </div>
+                  {(() => {
+                    const cs = String(currentCompany.complianceStatus || "").toLowerCase();
+                    const compKpiClass =
+                      cs.includes("non") || cs === "pending"
+                        ? " partner-kpi--danger"
+                        : cs === "in_review"
+                          ? " partner-kpi--warn"
+                          : cs === "compliant"
+                            ? " partner-kpi--muted"
+                            : " partner-kpi--accent";
+                    return (
+                      <div className={`partner-kpi${compKpiClass}`.trim()}>
+                        <p className="partner-kpi__label">Compliance</p>
+                        <p className="partner-kpi__value">{formatComplianceKpiLabel(currentCompany.complianceStatus)}</p>
+                        <p className="partner-kpi__hint">Nachweise, Prüfstand laut Konto</p>
+                      </div>
+                    );
+                  })()}
                 </div>
-                <div className={`partner-kpi${vehiclesError ? " partner-kpi--warn" : ""}`.trim()}>
-                  <p className="partner-kpi__label">Aktive Fahrzeuge</p>
-                  <p className="partner-kpi__value">{vehiclesError ? "—" : String(activeVehicles)}</p>
-                  {vehiclesError ? (
-                    <p className="partner-kpi__hint">{vehiclesError}</p>
-                  ) : (
-                    <p className="partner-kpi__hint">
-                      {totalVehiclesListed} im Bestand{totalVehiclesListed !== activeVehicles ? " (inkl. inaktiv)" : ""}
-                    </p>
-                  )}
-                </div>
-                {(() => {
-                  const cs = String(currentCompany.complianceStatus || "").toLowerCase();
-                  const compKpiClass =
-                    cs.includes("non") || cs === "pending"
-                      ? " partner-kpi--danger"
-                      : cs === "in_review"
-                        ? " partner-kpi--warn"
-                        : cs === "compliant"
-                          ? " partner-kpi--muted"
-                          : " partner-kpi--accent";
-                  return (
-                    <div className={`partner-kpi${compKpiClass}`.trim()}>
-                      <p className="partner-kpi__label">Compliance</p>
-                      <p className="partner-kpi__value">{formatComplianceKpiLabel(currentCompany.complianceStatus)}</p>
-                      <p className="partner-kpi__hint">Nachweise, Prüfstand laut Konto</p>
-                    </div>
-                  );
-                })()}
               </div>
 
-              <h2 className="partner-section-h">Dringende Hinweise</h2>
-              <p className="partner-section-p">Alles, was zuerst Ihre Aufmerksamkeit braucht</p>
-              {cockpitAlerts.length > 0 ? (
-                <div className="partner-alert-list" aria-live="polite">
-                  {cockpitAlerts.map((a) => (
-                    <div
-                      key={a.id}
-                      className={`partner-alert${
-                        a.tone === "danger"
-                          ? " partner-alert--danger"
-                          : a.tone === "warn"
-                            ? " partner-alert--warn"
-                            : " partner-alert--caution"
-                      }`.trim()}
-                      role="status"
-                    >
-                      <span className="partner-alert__text">{a.text}</span>
-                      {a.cta ? (
-                        <button
-                          type="button"
-                          className="partner-btn-primary partner-btn-primary--sm"
-                          onClick={() => goModule(a.cta.module)}
-                        >
-                          {a.cta.label}
-                        </button>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="partner-empty-hint" aria-live="polite">
-                  <strong>Kein akuter Handlungsstau.</strong> Prüfen Sie trotzdem regelmäßig Nachweise und Fristen in der
-                  Tabelle unten.
-                </div>
-              )}
+              <div className="partner-card partner-card--section">
+                <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+                  Dringende Hinweise
+                </h2>
+                <p className="partner-section-p" style={{ marginTop: 0 }}>
+                  Alles, was zuerst Ihre Aufmerksamkeit braucht
+                </p>
+                {cockpitAlerts.length > 0 ? (
+                  <div className="partner-alert-list" aria-live="polite">
+                    {cockpitAlerts.map((a) => (
+                      <div
+                        key={a.id}
+                        className={`partner-alert${
+                          a.tone === "danger"
+                            ? " partner-alert--danger"
+                            : a.tone === "warn"
+                              ? " partner-alert--warn"
+                              : " partner-alert--caution"
+                        }`.trim()}
+                        role="status"
+                      >
+                        <span className="partner-alert__text">{a.text}</span>
+                        {a.cta ? (
+                          <button
+                            type="button"
+                            className="partner-btn-primary partner-btn-primary--sm"
+                            onClick={() => goModule(a.cta.module)}
+                          >
+                            {a.cta.label}
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="partner-empty-hint" aria-live="polite">
+                    <strong>Kein akuter Handlungsstau.</strong> Prüfen Sie trotzdem regelmäßig Nachweise und Fristen in der
+                    Tabelle unten.
+                  </div>
+                )}
+              </div>
 
-              <div className="partner-card partner-card--section partner-kvlist-card">
+              <div className="partner-card partner-card--section partner-kvlist-card partner-kvlist-card--in-stack">
                 <span className="partner-section-eyebrow">Überblick</span>
                 <h2 className="partner-kvlist-title">Nachweise &amp; Fristen</h2>
                 <p className="partner-section-p partner-kvlist-lead">
@@ -489,90 +501,99 @@ export default function TaxiMasterPanel({ company, onNavigateModule }) {
                 </p>
               </div>
 
-              <h2 className="partner-section-h">Schnellzugriff</h2>
-              <p className="partner-section-p">Direkter Sprung in den passenden Modulbereich</p>
-
-              <div className="partner-action-row">
-                <button type="button" className="partner-btn-primary" onClick={() => goModule("flotte")}>
-                  Fahrer &amp; Fahrzeuge
-                </button>
-                <button type="button" className="partner-btn-primary" onClick={() => goModule("dokumente")}>
-                  Dokumente hochladen
-                </button>
-                <button type="button" className="partner-btn-primary" onClick={() => goModule("stammdaten")}>
-                  Stammdaten ansehen
-                </button>
-              </div>
-
-              <div className="partner-tile-grid partner-tile-grid--spaced">
-                <button type="button" className="partner-tile" onClick={() => goModule("flotte")}>
-                  <div className="partner-tile__head">
-                    <h2 className="partner-tile__title">Fahrer</h2>
-                    <span className="partner-tile__chev" aria-hidden>
-                      ↗
-                    </span>
-                  </div>
-                  <p className="partner-tile__metric">{driversError ? "—" : activeDrivers} aktiv</p>
-                  <p className="partner-tile__desc">Zugänge, Sperrung, P-Schein: Bearbeitung unter „Flotte“.</p>
-                </button>
-                <button type="button" className="partner-tile" onClick={() => goModule("flotte")}>
-                  <div className="partner-tile__head">
-                    <h2 className="partner-tile__title">Fahrzeuge</h2>
-                    <span className="partner-tile__chev" aria-hidden>
-                      ↗
-                    </span>
-                  </div>
-                  <p className="partner-tile__metric">{vehiclesError ? "—" : activeVehicles} aktiv</p>
-                  <p className="partner-tile__desc">Bestand, Kennzeichen, Hauptuntersuchung – unter „Flotte“.</p>
-                </button>
-                <button type="button" className="partner-tile" onClick={() => goModule("dokumente")}>
-                  <div className="partner-tile__head">
-                    <h2 className="partner-tile__title">Dokumente</h2>
-                    <span className="partner-tile__chev" aria-hidden>
-                      ↗
-                    </span>
-                  </div>
-                  <p className="partner-tile__metric">
-                    {currentCompany.hasComplianceGewerbe && currentCompany.hasComplianceInsurance
-                      ? "Vollständig"
-                      : "Prüfen"}
-                  </p>
-                  <p className="partner-tile__desc">Gewerbe- und Versicherungsnachweise: Bereich „Dokumente“.</p>
-                </button>
-              </div>
-
-              <h2 className="partner-section-h">Betrieb heute</h2>
-              <p className="partner-section-p">Offene Fahrten, Tagesplan, Umsatz (je nach Konto sichtbar)</p>
-
-              {metricsError ? (
-                <BlockError text={metricsError} />
-              ) : metrics ? (
-                <div className="partner-metrics">
-                  <div>
-                    <p className="partner-metrics__label">Offene Fahrten</p>
-                    <p className="partner-metrics__value">{String(metrics.openRides ?? 0)}</p>
-                  </div>
-                  <div>
-                    <p className="partner-metrics__label">Geplant heute</p>
-                    <p className="partner-metrics__value">{String(metrics.scheduled?.todayCount ?? 0)}</p>
-                  </div>
-                  <div>
-                    <p className="partner-metrics__label">Umsatz heute</p>
-                    <p className="partner-metrics__value">{money(metrics?.today?.revenue)}</p>
-                  </div>
-                  <div>
-                    <p className="partner-metrics__label">Umsatz 7 Tage / 30 Tage</p>
-                    <p className="partner-metrics__value partner-metrics__value--sub">
-                      {money(metrics?.week?.revenue)} · {money(metrics?.month?.revenue)}
-                    </p>
-                  </div>
+              <div className="partner-card partner-card--section">
+                <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+                  Schnellzugriff
+                </h2>
+                <p className="partner-section-p" style={{ marginTop: 0 }}>
+                  Direkter Sprung in den passenden Modulbereich
+                </p>
+                <div className="partner-action-row">
+                  <button type="button" className="partner-btn-primary" onClick={() => goModule("flotte")}>
+                    Fahrer &amp; Fahrzeuge
+                  </button>
+                  <button type="button" className="partner-btn-primary" onClick={() => goModule("dokumente")}>
+                    Dokumente hochladen
+                  </button>
+                  <button type="button" className="partner-btn-primary" onClick={() => goModule("stammdaten")}>
+                    Stammdaten ansehen
+                  </button>
                 </div>
-              ) : (
-                <BlockError text="Kennzahlen sind derzeit nicht verfügbar." />
-              )}
+                <div className="partner-tile-grid partner-tile-grid--spaced">
+                  <button type="button" className="partner-tile" onClick={() => goModule("flotte")}>
+                    <div className="partner-tile__head">
+                      <h2 className="partner-tile__title">Fahrer</h2>
+                      <span className="partner-tile__chev" aria-hidden>
+                        ↗
+                      </span>
+                    </div>
+                    <p className="partner-tile__metric">{driversError ? "—" : activeDrivers} aktiv</p>
+                    <p className="partner-tile__desc">Zugänge, Sperrung, P-Schein: Bearbeitung unter „Flotte“.</p>
+                  </button>
+                  <button type="button" className="partner-tile" onClick={() => goModule("flotte")}>
+                    <div className="partner-tile__head">
+                      <h2 className="partner-tile__title">Fahrzeuge</h2>
+                      <span className="partner-tile__chev" aria-hidden>
+                        ↗
+                      </span>
+                    </div>
+                    <p className="partner-tile__metric">{vehiclesError ? "—" : activeVehicles} aktiv</p>
+                    <p className="partner-tile__desc">Bestand, Kennzeichen, Hauptuntersuchung – unter „Flotte“.</p>
+                  </button>
+                  <button type="button" className="partner-tile" onClick={() => goModule("dokumente")}>
+                    <div className="partner-tile__head">
+                      <h2 className="partner-tile__title">Dokumente</h2>
+                      <span className="partner-tile__chev" aria-hidden>
+                        ↗
+                      </span>
+                    </div>
+                    <p className="partner-tile__metric">
+                      {currentCompany.hasComplianceGewerbe && currentCompany.hasComplianceInsurance
+                        ? "Vollständig"
+                        : "Prüfen"}
+                    </p>
+                    <p className="partner-tile__desc">Gewerbe- und Versicherungsnachweise: Bereich „Dokumente“.</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="partner-card partner-card--section">
+                <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
+                  Betrieb heute
+                </h2>
+                <p className="partner-section-p" style={{ marginTop: 0 }}>
+                  Offene Fahrten, Tagesplan, Umsatz (je nach Konto sichtbar)
+                </p>
+                {metricsError ? (
+                  <BlockError text={metricsError} />
+                ) : metrics ? (
+                  <div className="partner-metrics partner-metrics--embedded">
+                    <div>
+                      <p className="partner-metrics__label">Offene Fahrten</p>
+                      <p className="partner-metrics__value">{String(metrics.openRides ?? 0)}</p>
+                    </div>
+                    <div>
+                      <p className="partner-metrics__label">Geplant heute</p>
+                      <p className="partner-metrics__value">{String(metrics.scheduled?.todayCount ?? 0)}</p>
+                    </div>
+                    <div>
+                      <p className="partner-metrics__label">Umsatz heute</p>
+                      <p className="partner-metrics__value">{money(metrics?.today?.revenue)}</p>
+                    </div>
+                    <div>
+                      <p className="partner-metrics__label">Umsatz 7 Tage / 30 Tage</p>
+                      <p className="partner-metrics__value partner-metrics__value--sub">
+                        {money(metrics?.week?.revenue)} · {money(metrics?.month?.revenue)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <BlockError text="Kennzahlen sind derzeit nicht verfügbar." />
+                )}
+              </div>
             </>
           ) : null}
-        </div>
+        </>
       )}
     </div>
   );

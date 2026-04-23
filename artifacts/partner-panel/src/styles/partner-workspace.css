@@ -1,5 +1,9 @@
 /* Partner-Arbeitsplatz (Mandant): eine Linie – Crimson + neutrale Flächen, wiederverwendbar (Taxi, Hotel, Kasse, …) */
 
+#root:has(.partner-shell) {
+  background: #f6f7f9;
+}
+
 /* —— Shell —— */
 .partner-shell {
   min-height: 100vh;
@@ -157,7 +161,7 @@
 }
 
 .partner-page-hero {
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
 /* —— Sektionen —— */
@@ -262,10 +266,11 @@
 }
 
 .partner-kpi {
-  padding: 22px;
+  padding: 22px 22px 24px;
   border-radius: 20px;
-  border: 1px solid #ececec;
+  border: 1px solid #e7e7ea;
   background: #ffffff;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
 }
 
 .partner-kpi__label {
@@ -336,7 +341,7 @@
 
 .partner-alert--caution {
   border-left: 4px solid #f59e0b;
-  background: linear-gradient(90deg, #fffbeb 0%, #ffffff 35%);
+  background: #ffffff;
 }
 
 .partner-alert__text {
@@ -418,6 +423,10 @@
   margin-top: 28px;
 }
 
+.partner-kvlist-card--in-stack {
+  margin-top: 0;
+}
+
 .partner-kvlist-title {
   margin: 4px 0 4px;
   font-size: 1.35rem;
@@ -434,7 +443,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  border: 1px solid #ececec;
+  border: 1px solid #e7e7ea;
   border-radius: 14px;
   overflow: hidden;
 }
@@ -470,7 +479,7 @@
 }
 
 .partner-kvlist__v--ok {
-  color: #0f766e;
+  color: #3f3f46;
 }
 
 .partner-kvlist__v--warn {
@@ -546,6 +555,15 @@
   box-shadow: 0 8px 28px rgba(217, 4, 41, 0.08);
 }
 
+/* Kacheln innerhalb einer Sektionskarte: ruhiger, keine doppelte „Karte in Karte“-Dominanz */
+.partner-card .partner-tile {
+  box-shadow: none;
+}
+
+.partner-card .partner-tile:hover {
+  box-shadow: 0 4px 16px rgba(17, 24, 39, 0.06);
+}
+
 .partner-tile__head {
   display: flex;
   align-items: center;
@@ -593,6 +611,14 @@
   background: #fff;
   border: 1px solid #e7e7ea;
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+}
+
+/* Innerhalb einer partner-card: keine zweite Karten-Umrandung */
+.partner-metrics--embedded {
+  border: none;
+  box-shadow: none;
+  padding: 4px 0 0;
+  gap: 28px 40px;
 }
 
 .partner-metrics__label {
@@ -868,8 +894,8 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #71717a;
-  border-bottom: 2px solid #ececec;
-  background: #fafafa;
+  border-bottom: 2px solid #e7e7ea;
+  background: #ffffff;
   white-space: nowrap;
 }
 
@@ -907,9 +933,10 @@
 
 .partner-fleet-kpi {
   padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid #ececec;
-  background: #fafafa;
+  border-radius: 20px;
+  border: 1px solid #e7e7ea;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
   text-align: left;
 }
 
@@ -971,7 +998,15 @@
 }
 
 .partner-stack--tight {
-  gap: 16px;
+  gap: 20px;
+}
+
+/* Blöcke in einer Sektionskarte (z. B. Dokumente) — gleiche Ruhe wie Stammdaten-Zeilen */
+.partner-nested-panel {
+  padding: 20px 22px;
+  border: 1px solid #e7e7ea;
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .partner-muted {
