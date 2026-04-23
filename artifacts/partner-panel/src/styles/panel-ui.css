@@ -969,3 +969,267 @@
   background: rgba(13, 148, 136, 0.1);
   border: 1px solid rgba(13, 148, 136, 0.22);
 }
+
+/* —— Taxi: Unternehmer-Cockpit (Dashboard) —— */
+.taxi-cockpit {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.taxi-cockpit__eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.taxi-cockpit__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0c4a3e;
+  line-height: 1.2;
+}
+
+.taxi-cockpit__lead {
+  margin: 10px 0 0;
+  max-width: 40rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #57534e;
+}
+
+.taxi-cockpit__kpi-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+
+@media (min-width: 720px) {
+  .taxi-cockpit__kpi-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.taxi-cockpit__kpi {
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.05);
+  border-left: 3px solid #0d9488;
+}
+
+.taxi-cockpit__kpi--muted {
+  border-left-color: #a8a29e;
+}
+
+.taxi-cockpit__kpi--warn {
+  border-left-color: #d97706;
+}
+
+.taxi-cockpit__kpi--danger {
+  border-left-color: #b91c1c;
+}
+
+.taxi-cockpit__kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #78716c;
+  margin: 0 0 6px;
+}
+
+.taxi-cockpit__kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1c1917;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.taxi-cockpit__kpi-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: #78716c;
+  line-height: 1.3;
+}
+
+.taxi-cockpit__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.taxi-cockpit__alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #e7e5e4;
+  background: #fffefb;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #44403c;
+  border-left: 4px solid #a8a29e;
+}
+
+.taxi-cockpit__alert--warn {
+  border-left-color: #d97706;
+  background: linear-gradient(90deg, #fffbeb 0%, #fffefb 32%);
+}
+
+.taxi-cockpit__alert--caution {
+  border-left-color: #ca8a04;
+  background: #fffef7;
+}
+
+.taxi-cockpit__alert--danger {
+  border-left-color: #b91c1c;
+  background: linear-gradient(90deg, #fef2f2 0%, #fffefb 40%);
+}
+
+.taxi-cockpit__alert-cta {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(13, 148, 136, 0.4);
+  background: #ecfdf5;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.taxi-cockpit__alert-cta:hover {
+  background: #d1fae5;
+}
+
+.taxi-cockpit__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.taxi-cockpit__action-note {
+  width: 100%;
+  font-size: 0.8rem;
+  color: #78716c;
+  margin: 0;
+}
+
+.taxi-cockpit__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+@media (min-width: 800px) {
+  .taxi-cockpit__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.taxi-cockpit__area {
+  text-align: left;
+  display: block;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid #e7e5e4;
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.taxi-cockpit__area:hover {
+  border-color: rgba(13, 148, 136, 0.45);
+  box-shadow: 0 2px 12px rgba(15, 118, 110, 0.08);
+}
+
+.taxi-cockpit__area-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+.taxi-cockpit__area-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0f766e;
+}
+
+.taxi-cockpit__area-chev {
+  font-size: 1.1rem;
+  color: #a8a29e;
+  line-height: 1;
+}
+
+.taxi-cockpit__area-metric {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1c1917;
+  letter-spacing: -0.02em;
+}
+
+.taxi-cockpit__area-desc {
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: #57534e;
+}
+
+.taxi-cockpit__ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 28px;
+  margin-top: 24px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  border-radius: 12px;
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.04);
+}
+
+.taxi-cockpit__op {
+  min-width: 0;
+}
+
+.taxi-cockpit__op-label {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #a8a29e;
+}
+
+.taxi-cockpit__op-value {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1c1917;
+}
+
+.taxi-cockpit__op-value--sub {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #44403c;
+}

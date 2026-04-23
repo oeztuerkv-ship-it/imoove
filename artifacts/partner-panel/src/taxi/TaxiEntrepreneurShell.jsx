@@ -88,7 +88,13 @@ export default function TaxiEntrepreneurShell({ company, onLogout }) {
       </header>
 
       <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        {activeTaxiModule === "dashboard" && <TaxiMasterPanel company={company} onLogout={onLogout} />}
+        {activeTaxiModule === "dashboard" && (
+          <TaxiMasterPanel
+            company={company}
+            onLogout={onLogout}
+            onNavigateModule={(key) => setActiveTaxiModule(key)}
+          />
+        )}
         {activeTaxiModule === "stammdaten" && <TaxiStammdatenPage />}
         {activeTaxiModule === "flotte" && <FleetPage />}
         {activeTaxiModule === "dokumente" && <TaxiDocumentsPage />}
