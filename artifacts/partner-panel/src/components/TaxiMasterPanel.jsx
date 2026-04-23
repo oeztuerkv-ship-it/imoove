@@ -18,8 +18,8 @@ function money(value) {
 
 export default function TaxiMasterPanel({ company, onLogout }) {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [dataReady, setDataReady] = useState(false);
+  const [dataError, setDataError] = useState("");
 
   const [companyData, setCompanyData] = useState(null);
   const [metrics, setMetrics] = useState(null);
@@ -30,8 +30,8 @@ export default function TaxiMasterPanel({ company, onLogout }) {
     let cancelled = false;
 
     async function loadAll() {
-      setLoading(true);
-      setError("");
+      setDataError("");
+      setDataReady(false);
 
       try {
         const [companyRes, metricsRes, driversRes, vehiclesRes] = await Promise.all([
@@ -67,10 +67,12 @@ export default function TaxiMasterPanel({ company, onLogout }) {
         setMetrics(metricsJson.metrics || null);
         setDrivers(Array.isArray(driversJson.drivers) ? driversJson.drivers : []);
         setVehicles(Array.isArray(vehiclesJson.vehicles) ? vehiclesJson.vehicles : []);
+        setDataReady(true);
       } catch (err) {
-        setError(err?.message || "Panel-Daten konnten nicht geladen werden.");
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setDataError(err?.message || "Panel-Daten konnten nicht geladen werden.");
+          setDataReady(false);
+        }
       }
     }
 
@@ -98,6 +100,8 @@ export default function TaxiMasterPanel({ company, onLogout }) {
     { key: "fahrzeuge", label: "Fahrzeuge" },
   ];
 
+  const activeMenuLabel = menuItems.find((i) => i.key === activeTab)?.label ?? "";
+
   const theme = {
     yellow: "#f1c40f",
     black: "#111111",
@@ -108,19 +112,6 @@ export default function TaxiMasterPanel({ company, onLogout }) {
     muted: "#6b7280",
   };
 
-  if (loading) {
-    return <div style={{ padding: 24 }}>Taxi-Panel lädt…</div>;
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 24 }}>
-        <h2>Taxi-Panel</h2>
-        <p style={{ color: "#b91c1c" }}>{error}</p>
-      </div>
-    );
-  }
-
   return (
     <div
       style={{
@@ -130,17 +121,22 @@ export default function TaxiMasterPanel({ company, onLogout }) {
         border: `1px solid ${theme.border}`,
         borderRadius: 18,
         overflow: "hidden",
+        position: "relative",
+        isolation: "isolate",
       }}
     >
       <aside
         style={{
           width: 240,
+          flexShrink: 0,
           background: theme.black,
           color: theme.white,
           padding: 18,
           display: "flex",
           flexDirection: "column",
           gap: 10,
+          position: "relative",
+          zIndex: 2,
         }}
       >
         <div
@@ -159,6 +155,7 @@ export default function TaxiMasterPanel({ company, onLogout }) {
         {menuItems.map((item) => (
           <button
             key={item.key}
+            type="button"
             onClick={() => setActiveTab(item.key)}
             style={{
               padding: "12px 14px",
@@ -176,6 +173,7 @@ export default function TaxiMasterPanel({ company, onLogout }) {
         ))}
 
         <button
+          type="button"
           onClick={onLogout}
           style={{
             marginTop: "auto",
@@ -195,13 +193,29 @@ export default function TaxiMasterPanel({ company, onLogout }) {
       <main
         style={{
           flex: 1,
+          minWidth: 0,
+          position: "relative",
+          zIndex: 1,
           background: theme.soft,
           color: theme.text,
           padding: 24,
           overflowY: "auto",
         }}
       >
-        {activeTab === "dashboard" && (
+        {!dataReady && !dataError && (
+          <p style={{ margin: 0, color: theme.muted }}>
+            Taxi-Panel: Daten werden geladen{activeMenuLabel ? ` – gewählter Bereich: ${activeMenuLabel}` : ""} …
+          </p>
+        )}
+
+        {dataError ? (
+          <div>
+            <h2 style={{ marginTop: 0 }}>Taxi-Panel</h2>
+            <p style={{ color: "#b91c1c" }}>{dataError}</p>
+          </div>
+        ) : null}
+
+        {dataReady && activeTab === "dashboard" && (
           <div>
             <div style={{ marginBottom: 20 }}>
               <h1 style={{ margin: 0, fontSize: 28 }}>Willkommen, {currentCompany?.name || "Taxi-Unternehmer"}</h1>
@@ -242,7 +256,7 @@ export default function TaxiMasterPanel({ company, onLogout }) {
           </div>
         )}
 
-        {activeTab === "stammdaten" && (
+        {dataReady && activeTab === "stammdaten" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 20 }}>
               <div>
@@ -348,7 +362,7 @@ export default function TaxiMasterPanel({ company, onLogout }) {
           </div>
         )}
 
-        {activeTab === "fahrer" && (
+        {dataReady && activeTab === "fahrer" && (
           <div>
             <h2>Fahrer</h2>
             <div style={{ background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" }}>
@@ -366,7 +380,9 @@ export default function TaxiMasterPanel({ company, onLogout }) {
                 <tbody>
                   {drivers.map((driver) => (
                     <tr key={driver.id} style={{ borderTop: `1px solid ${theme.border}` }}>
-                      <Td>{driver.firstName} {driver.lastName}</Td>
+                      <Td>
+                        {driver.firstName} {driver.lastName}
+                      </Td>
                       <Td>{driver.email || "-"}</Td>
                       <Td>{driver.phone || "-"}</Td>
                       <Td>{driver.isActive ? driver.accessStatus : "inactive"}</Td>
@@ -385,7 +401,7 @@ export default function TaxiMasterPanel({ company, onLogout }) {
           </div>
         )}
 
-        {activeTab === "fahrzeuge" && (
+        {dataReady && activeTab === "fahrzeuge" && (
           <div>
             <h2>Fahrzeuge</h2>
             <div style={{ background: "#fff", border: `1px solid ${theme.border}`, borderRadius: 14, overflow: "hidden" }}>
