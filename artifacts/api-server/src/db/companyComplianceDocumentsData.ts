@@ -62,13 +62,17 @@ function buildSide(
   if (!has) {
     return { uploadedAt: "", reviewStatus: "", reviewNote: "" };
   }
-  const k = (companyKey ?? "").trim();
-  if (row && (row.storage_key ?? "").trim() === k) {
+  if (row) {
+    const k = (companyKey ?? "").trim();
+    const rowKey = (row.storage_key ?? "").trim();
+    const keysMatch = k === rowKey;
     const uploaded = row.uploaded_at;
+    const uploadedAt =
+      uploaded instanceof Date ? uploaded.toISOString() : String(uploaded ?? "").trim();
     return {
-      uploadedAt: uploaded instanceof Date ? uploaded.toISOString() : String(uploaded ?? ""),
-      reviewStatus: asReview(row.review_status),
-      reviewNote: String(row.review_note ?? "").trim(),
+      uploadedAt: uploadedAt || "",
+      reviewStatus: keysMatch ? asReview(row.review_status) : "pending",
+      reviewNote: keysMatch ? String(row.review_note ?? "").trim() : "",
     };
   }
   return { uploadedAt: "", reviewStatus: "pending", reviewNote: "" };
