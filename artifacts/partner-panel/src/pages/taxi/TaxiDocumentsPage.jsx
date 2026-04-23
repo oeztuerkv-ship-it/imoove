@@ -256,9 +256,25 @@ export default function TaxiDocumentsPage() {
                     <span style={{ fontWeight: 500, maxWidth: 560, textAlign: "right" }}>{item.reviewNote}</span>
                   </div>
                 ) : null}
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 12 }}>
                   {canUploadDocs ? (
-                    <label className="panel-btn" style={{ cursor: uploadingKind ? "wait" : "pointer" }}>
+                    <label
+                      className="panel-btn-primary"
+                      role="button"
+                      tabIndex={0}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "100%",
+                        maxWidth: 320,
+                        marginTop: 4,
+                        cursor: uploadingKind ? "wait" : "pointer",
+                        opacity: uploadingKind ? 0.55 : 1,
+                        pointerEvents: uploadingKind ? "none" : "auto",
+                        boxSizing: "border-box",
+                      }}
+                    >
                       {item.ok ? "Erneut hochladen (PDF)" : "Dokument hochladen (PDF)"}
                       <input
                         type="file"
