@@ -24,10 +24,22 @@ Kurzüberblick über **drei getrennte Identitäten**: Plattform-Admin, Partner-P
 |----------|------------------|
 | `owner`  | Volle Partner-Rechte inkl. Nutzerverwaltung und Owner-Rolle vergeben. |
 | `manager`| Wie Owner außer: **kein** weiterer `owner`, keine Änderung zu `owner`. |
-| `staff`  | Fahrten & Lesen, kein Nutzermanagement / keine Firmen-Stammdaten-Änderung. |
-| `readonly` | Nur Lesen + Passwort ändern. |
+| `staff`  | Disponent: Fahrten lesen/erstellen, Flotte lesen, Freigabe-Codes lesen; **kein** Nutzer-Listing (`users.read`), **keine** Stammdaten-Änderung (`company.update`); Anfragen an die Plattform: `support.read` / `support.write`. |
+| `readonly` | Lesen + Passwort ändern; Anfragen: `support.read` / `support.write`. |
 
 Details: Konstante `ROLE_MATRIX` in `panelPermissions.ts`.
+
+### Partner: Anfragen (Support-Threads)
+
+- **Pfade:** `GET`/`POST` `/api/panel/v1/support/threads`, `GET` `/api/panel/v1/support/threads/:threadId`, `POST` `…/messages` — `src/routes/panelApi.ts`.
+- **Modul:** `support` muss für den Mandanten aktiv sein (`panel_modules` / `company_kind`-Whitelist in `domain/panelModules.ts`).
+- **Rechte:** `support.read` (Liste + Detail), `support.write` (neuer Thread + Nachricht). Daten strikt über `company_id` der Panel-Session.
+
+### Admin: Partner-Anfragen (Inbox)
+
+- **Pfade:** `GET` `/api/admin/support/threads`, `GET` `/api/admin/support/threads/:threadId`, `POST` `…/messages`, `PATCH` `…/:threadId` — `src/routes/adminApi.ts`.
+- **Auth:** wie übrige geschützte Admin-JSON-Routen (`requireAdminApiBearer` + Admin-Session-JWT oder statischer Admin-Bearer).
+- **Rechte:** `canMutateAdminCompanies` — derzeit **admin** und **service** (gleiche Linie wie z. B. Unternehmensanfragen / Stammdaten-Freigaben).
 
 ### Partner-intern: Rolle zuweisen
 

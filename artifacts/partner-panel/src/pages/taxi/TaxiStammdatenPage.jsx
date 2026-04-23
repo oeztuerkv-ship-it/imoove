@@ -268,7 +268,7 @@ function LabeledInput({ label, value, onChange, disabled, maxLength, type = "tex
   );
 }
 
-export default function TaxiStammdatenPage() {
+export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
   const { token, user, refreshUser } = usePanelAuth();
   const canPatch = hasPerm(user?.permissions, "company.update") && hasPanelModule(user?.panelModules, "company_profile");
 
@@ -313,6 +313,15 @@ export default function TaxiStammdatenPage() {
   }, [load]);
 
   const c = company;
+  const openStammSupport = () => {
+    if (typeof onOpenStammSupportRequest !== "function" || !c) return;
+    const id = c.id != null ? String(c.id) : "";
+    onOpenStammSupportRequest({
+      category: "stammdaten",
+      title: `Stammdaten-Änderung (${id || "Mandant"})`,
+      body: `Guten Tag,\n\nwir bitten um folgende Änderung an unseren Taxi-Stammdaten (Mandanten-ID: ${id || "—"}):\n\n`,
+    });
+  };
   const profileLocked = Boolean(c?.profileLocked);
   const gaps = useMemo(() => (c ? basicsGaps(c) : []), [c]);
   const extraGaps = useMemo(() => (c ? extraFillGaps(c) : []), [c]);
@@ -450,12 +459,16 @@ export default function TaxiStammdatenPage() {
           <h2 className="partner-card__title">Änderung bei gesperrten oder gesetzten Feldern</h2>
           <p className="partner-muted" style={{ margin: "0 0 16px" }}>
             Zeilen mit dem Hinweis <strong>Änderung nur über Anfrage möglich</strong> können Sie in dieser Maske nicht
-            selbst anpassen. Nutzen Sie die E-Mail — dort können Sie Ihr Anliegen strukturiert schildern (Mandanten-ID wird
-            vorbelegt).
+            selbst anpassen. Nutzen Sie eine Anfrage im Panel oder die E-Mail — die Mandanten-ID können wir vorbelegen.
           </p>
           <div className="partner-action-row">
-            <a className="partner-btn-primary" href={mailtoStammChangeRequest(c)}>
-              Änderung per E-Mail anfragen
+            {typeof onOpenStammSupportRequest === "function" ? (
+              <button type="button" className="partner-btn-primary" onClick={openStammSupport}>
+                Änderung im Panel anfragen
+              </button>
+            ) : null}
+            <a className="partner-btn-secondary" href={mailtoStammChangeRequest(c)}>
+              Änderung per E-Mail
             </a>
             <a className="partner-btn-secondary" href={`mailto:${PARTNER_STAMM_SUPPORT_EMAIL}`}>
               Nur Kontakt ({PARTNER_STAMM_SUPPORT_EMAIL})
@@ -474,8 +487,13 @@ export default function TaxiStammdatenPage() {
           </p>
           {canPatch ? (
             <div className="partner-action-row" style={{ marginTop: 16 }}>
-              <a className="partner-btn-primary" href={mailtoStammChangeRequest(c)}>
-                Änderung anfragen (E-Mail)
+              {typeof onOpenStammSupportRequest === "function" ? (
+                <button type="button" className="partner-btn-primary" onClick={openStammSupport}>
+                  Änderung im Panel anfragen
+                </button>
+              ) : null}
+              <a className="partner-btn-secondary" href={mailtoStammChangeRequest(c)}>
+                Änderung per E-Mail
               </a>
             </div>
           ) : null}
@@ -675,8 +693,13 @@ export default function TaxiStammdatenPage() {
               Basisdaten gesperrt, gilt: <strong>Änderung nur über Anfrage bei Onroda</strong>.
             </p>
             <div className="partner-action-row" style={{ marginTop: 12 }}>
-              <a className="partner-btn-primary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
-                Änderung per E-Mail anfragen
+              {typeof onOpenStammSupportRequest === "function" ? (
+                <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={openStammSupport}>
+                  Änderung im Panel
+                </button>
+              ) : null}
+              <a className="partner-btn-secondary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
+                E-Mail
               </a>
             </div>
           </div>
@@ -709,8 +732,13 @@ export default function TaxiStammdatenPage() {
             ) : null}
             {!extraGaps.length ? (
               <div className="partner-action-row" style={{ marginTop: 12 }}>
-                <a className="partner-btn-primary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
-                  Änderung per E-Mail anfragen
+                {typeof onOpenStammSupportRequest === "function" ? (
+                  <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={openStammSupport}>
+                    Änderung im Panel
+                  </button>
+                ) : null}
+                <a className="partner-btn-secondary partner-btn-primary--sm" href={mailtoStammChangeRequest(c)}>
+                  E-Mail
                 </a>
               </div>
             ) : null}

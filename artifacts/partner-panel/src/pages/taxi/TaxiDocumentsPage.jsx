@@ -95,7 +95,7 @@ function statusPillClass(tone) {
   return "partner-pill partner-pill--neutral";
 }
 
-export default function TaxiDocumentsPage() {
+export default function TaxiDocumentsPage({ onOpenDocumentSupportRequest }) {
   const { token, user } = usePanelAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -143,6 +143,15 @@ export default function TaxiDocumentsPage() {
   const globalBucket = useMemo(() => complianceBucketFromCompany(company), [company]);
   const docItems = useMemo(() => complianceDocItems(company), [company]);
   const missingDocs = docItems.filter((item) => !item.ok);
+
+  const openDocSupport = (item, ds) => {
+    if (typeof onOpenDocumentSupportRequest !== "function") return;
+    onOpenDocumentSupportRequest({
+      category: "documents",
+      title: `Rückfrage: ${item.title}`,
+      body: `Guten Tag,\n\nRückfrage zu unserem Nachweis „${item.title}“ (aktueller Stand: ${ds.label}).\n\n`,
+    });
+  };
 
   function complianceHeaderPill() {
     if (globalBucket === "compliant") return <span className="partner-pill partner-pill--neutral">{overview.label}</span>;
@@ -299,6 +308,17 @@ export default function TaxiDocumentsPage() {
                           Upload aktuell nicht verfügbar. Bitte Benutzerrechte und Module prüfen.
                         </p>
                       )}
+                      {typeof onOpenDocumentSupportRequest === "function" &&
+                      (ds.key === "rejected" || ds.key === "in_review") ? (
+                        <button
+                          type="button"
+                          className="partner-btn-secondary"
+                          style={{ marginTop: 12, width: "100%" }}
+                          onClick={() => openDocSupport(item, ds)}
+                        >
+                          Rückfrage stellen
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );

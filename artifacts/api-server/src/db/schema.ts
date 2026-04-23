@@ -572,6 +572,40 @@ export const financialAuditLogTable = pgTable("financial_audit_log", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Partner-Anfragen an die Plattform (Chat-Thread). */
+export const supportThreadsTable = pgTable("support_threads", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  created_by_panel_user_id: text("created_by_panel_user_id")
+    .notNull()
+    .references(() => panelUsersTable.id, { onDelete: "restrict" }),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  status: text("status").notNull().default("open"),
+  last_message_at: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const supportMessagesTable = pgTable("support_messages", {
+  id: text("id").primaryKey(),
+  thread_id: text("thread_id")
+    .notNull()
+    .references(() => supportThreadsTable.id, { onDelete: "cascade" }),
+  sender_type: text("sender_type").notNull(),
+  sender_panel_user_id: text("sender_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  sender_admin_user_id: text("sender_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  body: text("body").notNull(),
+  attachments: jsonb("attachments").$type<Record<string, unknown>[] | null>(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Medizinische Serienfahrten: Kopfdatensatz; Fahrten tragen seriesId in partner_booking_meta. */
 export const partnerRideSeriesTable = pgTable("partner_ride_series", {
   id: text("id").primaryKey(),

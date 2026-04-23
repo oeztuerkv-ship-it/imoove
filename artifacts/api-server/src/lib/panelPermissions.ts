@@ -17,7 +17,9 @@ export type PanelPermission =
   | "access_codes.read"
   | "access_codes.manage"
   | "fleet.read"
-  | "fleet.manage";
+  | "fleet.manage"
+  | "support.read"
+  | "support.write";
 
 const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
   owner: [
@@ -32,6 +34,8 @@ const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
     "access_codes.manage",
     "fleet.read",
     "fleet.manage",
+    "support.read",
+    "support.write",
   ],
   manager: [
     "rides.read",
@@ -45,16 +49,28 @@ const ROLE_MATRIX: Record<PanelRole, readonly PanelPermission[]> = {
     "access_codes.manage",
     "fleet.read",
     "fleet.manage",
+    "support.read",
+    "support.write",
   ],
+  /** Disponent: Fahrten + operative Codes/Flotte; kein Nutzer-Listing, keine Firmen-Stammdaten, kein `company.update`. */
   staff: [
     "rides.read",
     "rides.create",
+    "self.change_password",
+    "access_codes.read",
+    "fleet.read",
+    "support.read",
+    "support.write",
+  ],
+  readonly: [
+    "rides.read",
     "users.read",
     "self.change_password",
     "access_codes.read",
     "fleet.read",
+    "support.read",
+    "support.write",
   ],
-  readonly: ["rides.read", "users.read", "self.change_password", "access_codes.read", "fleet.read"],
 };
 
 export function isPanelRoleString(v: string): v is PanelRole {

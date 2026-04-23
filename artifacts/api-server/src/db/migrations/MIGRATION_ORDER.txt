@@ -44,6 +44,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Partner-Panel-Profil gesperrt (Stammdaten)           → 031_partner_panel_profile_locked.sql
   Unternehmer medical / company_kind                    → 032_admin_companies_company_kind_medical.sql
   Firmen-Compliance-Dokumente (Gewerbe/Versicherung)   → 033_company_compliance_documents.sql
+  Partner-Anfragen (Support-Threads + Nachrichten)     → 034_support_threads_and_messages.sql
 
 Nach Migrationen Schema prüfen:
 

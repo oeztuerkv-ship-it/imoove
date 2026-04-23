@@ -32,7 +32,7 @@ export default function App() {
   const kind = company?.company_kind;
 
   if (kind === "taxi") {
-    return <TaxiEntrepreneurShell company={company} onLogout={logout} />;
+    return <TaxiEntrepreneurShell user={user} company={company} onLogout={logout} />;
   }
 
   if (kind === "hotel" || kind === "agency" || kind === "travel") {

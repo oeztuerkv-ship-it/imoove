@@ -33,6 +33,7 @@ export const ADMIN_PAGE_ROLES = {
   "health-bulk": ["admin", "service", "taxi", "insurance"],
 
   companies: ["admin", "service", "taxi"],
+  "support-inbox": ["admin", "service"],
 
   "drivers-overview": ["admin", "service", "taxi"],
   "drivers-status": ["admin", "service", "taxi"],
@@ -139,7 +140,10 @@ const ADMIN_NAV_GROUPS_RAW = [
     label: "Unternehmen",
     icon: "building",
     roles: ["admin", "service", "taxi"],
-    items: [{ pageKey: "companies", label: "Firmenliste & Profile", icon: "building", roles: ["admin", "service", "taxi"] }],
+    items: [
+      { pageKey: "companies", label: "Firmenliste & Profile", icon: "building", roles: ["admin", "service", "taxi"] },
+      { pageKey: "support-inbox", label: "Partner-Anfragen", icon: "document", roles: R.adminSvc },
+    ],
   },
   {
     id: "drivers",

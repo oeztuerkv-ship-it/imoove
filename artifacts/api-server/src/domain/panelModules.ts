@@ -14,6 +14,13 @@ export const PANEL_MODULE_DEFINITIONS = [
       "Einstieg pro Login: Session, Kurzüberblick, Hinweise auf freigeschaltete Module; eigenes Passwort ändern.",
   },
   {
+    id: "support",
+    label: "Anfragen",
+    description: "Nachrichten an die Plattform (Stammdaten, Dokumente, …)",
+    productIntent:
+      "Chat-Threads je Mandant mit der Plattform: neue Anfrage, Verlauf, Status — getrennt von Taxi-Fachlogik.",
+  },
+  {
     id: "rides_list",
     label: "Fahrtenliste & Verlauf",
     description: "„Meine Fahrten“ und „Verlauf“ (gemeinsame API)",
@@ -103,6 +110,7 @@ const GENERAL_LIKE_KIND_MODULES: ReadonlySet<PanelModuleId> = asModuleIdSet(
 const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> = {
   taxi: asModuleIdSet([
     "overview",
+    "support",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -113,6 +121,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   ]),
   hotel: asModuleIdSet([
     "overview",
+    "support",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -123,6 +132,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   ]),
   insurer: asModuleIdSet([
     "overview",
+    "support",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -134,6 +144,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   ]),
   medical: asModuleIdSet([
     "overview",
+    "support",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -145,6 +156,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   ]),
   corporate: asModuleIdSet([
     "overview",
+    "support",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -156,6 +168,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   ]),
   voucher_client: asModuleIdSet([
     "overview",
+    "support",
     "rides_list",
     "rides_create",
     "company_profile",

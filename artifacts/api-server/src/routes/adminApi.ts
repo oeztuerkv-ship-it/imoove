@@ -54,6 +54,14 @@ import {
   decideCompanyChangeRequest,
   listCompanyChangeRequestsAdmin,
 } from "../db/companyChangeRequestsData";
+import {
+  getSupportThreadAdmin,
+  insertAdminSupportMessage,
+  listSupportThreadsAdmin,
+  patchSupportThreadStatusAdmin,
+  parseSupportCategory,
+  parseSupportThreadStatus,
+} from "../db/supportThreadsData";
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
 import {
   addPartnerRegistrationDocument,
@@ -203,6 +211,13 @@ function isAdminPrincipal(req: Request): boolean {
 
 function adminConsoleRole(req: Request): AdminRole {
   return req.adminAuth?.role ?? "admin";
+}
+
+async function resolveAdminAuthUserIdForSupport(req: Request): Promise<string | null> {
+  const u = req.adminAuth?.username?.trim();
+  if (!u || u === "api_bearer" || u === "dev_local") return null;
+  const row = await findActiveAdminAuthUserByUsername(u);
+  return row?.id ?? null;
 }
 
 function partnerTypeToCompanyKind(
@@ -1124,6 +1139,123 @@ adminJson.post("/company-change-requests/:id/decision", async (req, res, next) =
       return;
     }
     res.json({ ok: true, request: row });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/support/threads", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const { page, pageSize, offset } = parsePagination(req);
+    const status = parseSupportThreadStatus(req.query?.status);
+    const companyId = typeof req.query?.companyId === "string" ? req.query.companyId.trim() : "";
+    const category = parseSupportCategory(req.query?.category);
+    const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+    const threads = await listSupportThreadsAdmin({
+      status: status ?? undefined,
+      companyId: companyId || undefined,
+      category: category ?? undefined,
+      q: q || undefined,
+      limit: pageSize,
+      offset,
+    });
+    res.json({ ok: true, threads, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/support/threads/:threadId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const threadId = String(req.params.threadId ?? "").trim();
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const row = await getSupportThreadAdmin(threadId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, thread: row.thread, messages: row.messages, companyName: row.companyName });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const threadId = String(req.params.threadId ?? "").trim();
+    const b = req.body as { body?: unknown };
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    if (!body || body.length > 10000) {
+      res.status(400).json({ error: "body_invalid" });
+      return;
+    }
+    const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
+    const result = await insertAdminSupportMessage({
+      messageId: randomUUID(),
+      threadId,
+      body,
+      senderAdminUserId,
+    });
+    if (!result.ok) {
+      if (result.error === "closed") {
+        res.status(409).json({ error: "thread_closed" });
+        return;
+      }
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.status(201).json({ ok: true, message: result.message, threadStatus: result.threadStatus });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/support/threads/:threadId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const threadId = String(req.params.threadId ?? "").trim();
+    const b = req.body as { status?: unknown };
+    const st = parseSupportThreadStatus(b.status);
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    if (!st) {
+      res.status(400).json({ error: "invalid_status" });
+      return;
+    }
+    const updated = await patchSupportThreadStatusAdmin({ threadId, status: st });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, thread: updated });
   } catch (e) {
     next(e);
   }

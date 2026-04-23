@@ -21,6 +21,13 @@ import {
   insertCompanyChangeRequest,
   listCompanyChangeRequestsByCompany,
 } from "../db/companyChangeRequestsData";
+import {
+  getSupportThreadForCompany,
+  insertPartnerSupportMessage,
+  insertSupportThreadWithFirstMessage,
+  listSupportThreadsForCompany,
+  parseSupportCategory,
+} from "../db/supportThreadsData";
 import { getCompanyGovernanceGate } from "../db/companyGovernanceData";
 import {
   deleteInactivePanelUserInCompany,
@@ -769,6 +776,118 @@ router.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, r
   }
 });
 
+router.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const threads = await listSupportThreadsForCompany(ctx.claims.companyId);
+    res.json({ ok: true, threads });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.write")) return;
+    const b = req.body as { title?: unknown; body?: unknown; category?: unknown };
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    const category = parseSupportCategory(b.category) ?? "other";
+    if (!title || title.length > 200) {
+      res.status(400).json({ error: "title_invalid", hint: "max 200" });
+      return;
+    }
+    if (!body || body.length > 10000) {
+      res.status(400).json({ error: "body_invalid", hint: "max 10000" });
+      return;
+    }
+    const threadId = randomUUID();
+    const messageId = randomUUID();
+    const created = await insertSupportThreadWithFirstMessage({
+      threadId,
+      messageId,
+      companyId: ctx.claims.companyId,
+      createdByPanelUserId: ctx.claims.panelUserId,
+      category,
+      title,
+      body,
+    });
+    if (!created) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, thread: created.thread, message: created.message });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const threadId = String(req.params.threadId ?? "").trim();
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const row = await getSupportThreadForCompany(threadId, ctx.claims.companyId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, thread: row.thread, messages: row.messages });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.write")) return;
+    const threadId = String(req.params.threadId ?? "").trim();
+    const b = req.body as { body?: unknown };
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    if (!body || body.length > 10000) {
+      res.status(400).json({ error: "body_invalid" });
+      return;
+    }
+    const result = await insertPartnerSupportMessage({
+      messageId: randomUUID(),
+      threadId,
+      companyId: ctx.claims.companyId,
+      panelUserId: ctx.claims.panelUserId,
+      body,
+    });
+    if (!result.ok) {
+      if (result.error === "closed") {
+        res.status(409).json({ error: "thread_closed" });
+        return;
+      }
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.status(201).json({ ok: true, message: result.message, threadStatus: result.threadStatus });
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
@@ -832,6 +951,8 @@ router.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, re
       res.status(403).json({ error: "taxi_only" });
       return;
     }
+    /** Taxi: Umsatz-Export = Unternehmer-/Verwaltungsfunktion (nicht Disponent `staff`). */
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
 
     const parsed = companyRidesFiltersFromQuery(
       normalizeCompanyRidesQueryRecord(req.query as Record<string, unknown>),

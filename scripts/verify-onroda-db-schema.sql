@@ -21,6 +21,8 @@
 --   026 → partner_registration_documents + partner_registration_timeline
 --   027 → fleet vehicle legal/class + rides.pricing_mode
 --   028 → financial core tables (billing_accounts, ride_financials, invoices, settlements, payments, audit)
+--   033 → company_compliance_documents
+--   034 → support_threads, support_messages
 
 DO $$
 DECLARE
@@ -256,6 +258,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'company_compliance_documents'
   ) THEN
     errs := array_append(errs, 'table company_compliance_documents (Migration 033)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'support_threads'
+  ) THEN
+    errs := array_append(errs, 'table support_threads (Migration 034)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'support_messages'
+  ) THEN
+    errs := array_append(errs, 'table support_messages (Migration 034)');
   END IF;
 
   IF NOT EXISTS (

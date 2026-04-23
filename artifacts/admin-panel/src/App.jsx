@@ -22,6 +22,7 @@ import FinanceDashboardPage from "./pages/FinanceDashboardPage.jsx";
 import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
+import SupportInboxPage from "./pages/SupportInboxPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -138,6 +139,10 @@ const PAGE_META = {
   companies: {
     title: "Unternehmen",
     subtitle: "Mandanten, Module und operative Priorität",
+  },
+  "support-inbox": {
+    title: "Partner-Anfragen",
+    subtitle: "Support-Threads aller Mandanten: lesen, antworten, Status steuern",
   },
   "drivers-overview": {
     title: "Fahrerübersicht",
@@ -420,6 +425,8 @@ export default function App() {
             onInitialOpenCompanyConsumed={() => setCompaniesInitialOpenId(null)}
           />
         );
+      case "support-inbox":
+        return <SupportInboxPage />;
       case "users-panel":
         return <PanelUsersPage />;
       case "fares":
