@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../../context/PanelAuthContext.jsx";
 import { API_BASE } from "../../lib/apiBase.js";
+import { hasPanelModule } from "../../lib/panelNavigation.js";
 
 function normalizeComplianceStatus(status) {
   const value = String(status ?? "").trim().toLowerCase();
@@ -26,6 +27,9 @@ function normalizeComplianceStatus(status) {
 }
 
 function complianceDocItems(company) {
+  const docs = company?.complianceDocuments && typeof company.complianceDocuments === "object" ? company.complianceDocuments : {};
+  const gewerbe = docs.gewerbe && typeof docs.gewerbe === "object" ? docs.gewerbe : {};
+  const insurance = docs.insurance && typeof docs.insurance === "object" ? docs.insurance : {};
   return [
     {
       key: "gewerbe",
@@ -33,6 +37,9 @@ function complianceDocItems(company) {
       ok: Boolean(company?.hasComplianceGewerbe),
       hintOk: "Nachweis ist hinterlegt.",
       hintMissing: "Nachweis fehlt. Bitte über den vorgesehenen Änderungs-/Freigabeprozess nachreichen.",
+      uploadedAt: typeof gewerbe.uploadedAt === "string" ? gewerbe.uploadedAt : "",
+      reviewStatus: typeof gewerbe.reviewStatus === "string" ? gewerbe.reviewStatus : "",
+      reviewNote: typeof gewerbe.reviewNote === "string" ? gewerbe.reviewNote : "",
     },
     {
       key: "insurance",
@@ -40,15 +47,63 @@ function complianceDocItems(company) {
       ok: Boolean(company?.hasComplianceInsurance),
       hintOk: "Nachweis ist hinterlegt.",
       hintMissing: "Nachweis fehlt. Bitte über den vorgesehenen Änderungs-/Freigabeprozess nachreichen.",
+      uploadedAt: typeof insurance.uploadedAt === "string" ? insurance.uploadedAt : "",
+      reviewStatus: typeof insurance.reviewStatus === "string" ? insurance.reviewStatus : "",
+      reviewNote: typeof insurance.reviewNote === "string" ? insurance.reviewNote : "",
     },
   ];
 }
 
+function formatDateTime(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "—";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("de-DE");
+}
+
+function docState(item) {
+  const st = String(item?.reviewStatus ?? "").trim().toLowerCase();
+  if (!item?.ok) {
+    return {
+      key: "missing",
+      label: "fehlt",
+      tone: "warn",
+      text: item?.hintMissing || "Dokument fehlt.",
+    };
+  }
+  if (st === "approved" || st === "freigegeben") {
+    return {
+      key: "approved",
+      label: "freigegeben",
+      tone: "ok",
+      text: "Dokument wurde freigegeben.",
+    };
+  }
+  if (st === "rejected" || st === "abgelehnt") {
+    return {
+      key: "rejected",
+      label: "abgelehnt",
+      tone: "warn",
+      text: item?.reviewNote || "Dokument wurde abgelehnt. Bitte korrigieren und erneut hochladen.",
+    };
+  }
+  return {
+    key: "pending",
+    label: "hochgeladen / in Prüfung",
+    tone: "pending",
+    text: item?.hintOk || "Dokument ist hinterlegt und wird geprüft.",
+  };
+}
+
 export default function TaxiDocumentsPage() {
-  const { token } = usePanelAuth();
+  const { token, user } = usePanelAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [uploadMsg, setUploadMsg] = useState("");
+  const [uploadingKind, setUploadingKind] = useState("");
   const [company, setCompany] = useState(null);
+  const canUploadDocs = Array.isArray(user?.permissions) && user.permissions.includes("fleet.manage") && hasPanelModule(user?.panelModules, "taxi_fleet");
 
   const loadCompany = useCallback(async () => {
     if (!token) {
@@ -58,6 +113,7 @@ export default function TaxiDocumentsPage() {
     }
     setLoading(true);
     setError("");
+    setUploadMsg("");
     try {
       const res = await fetch(`${API_BASE}/panel/v1/company`, {
         headers: {
@@ -88,16 +144,62 @@ export default function TaxiDocumentsPage() {
   const docItems = useMemo(() => complianceDocItems(company), [company]);
   const missingDocs = docItems.filter((item) => !item.ok);
 
+  async function uploadDocument(kind, ev) {
+    const file = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!file || !token || !canUploadDocs) return;
+    if (file.type !== "application/pdf") {
+      setUploadMsg("Bitte eine PDF-Datei hochladen.");
+      return;
+    }
+    setUploadMsg("");
+    setError("");
+    setUploadingKind(kind);
+    try {
+      const buf = await file.arrayBuffer();
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/compliance/${kind}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/pdf",
+        },
+        body: buf,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        const code = typeof data?.error === "string" ? data.error : "";
+        if (code === "pdf_body_required") {
+          setUploadMsg("Upload fehlgeschlagen: PDF-Datei ist leer oder ungültig.");
+        } else if (code === "forbidden") {
+          setUploadMsg("Upload nicht erlaubt: fehlende Berechtigung.");
+        } else if (code === "module_not_enabled") {
+          setUploadMsg("Upload nicht möglich: Modul Flotte ist für Ihr Konto nicht aktiv.");
+        } else if (code === "fleet_only_taxi_company") {
+          setUploadMsg("Upload nur für Taxi-Unternehmen möglich.");
+        } else {
+          setUploadMsg("Upload fehlgeschlagen.");
+        }
+        return;
+      }
+      setUploadMsg(kind === "gewerbe" ? "Gewerbenachweis hochgeladen." : "Versicherungsnachweis hochgeladen.");
+      await loadCompany();
+    } catch {
+      setUploadMsg("Upload fehlgeschlagen (Netzwerkfehler).");
+    } finally {
+      setUploadingKind("");
+    }
+  }
+
   return (
     <div className="panel-page panel-page--profile">
       <h2 className="panel-page__title">Dokumente &amp; Compliance</h2>
       <p className="panel-page__lead">
-        Grundlage: <code className="panel-card__muted">GET /panel/v1/company</code>. Dieser Schritt ist reine Anzeige
-        von Nachweis- und Compliance-Status.
+        Grundlage: <code className="panel-card__muted">GET /panel/v1/company</code> plus Upload je Dokument als PDF.
       </p>
 
       {loading ? <p className="panel-page__lead">Dokumente werden geladen …</p> : null}
       {error ? <p className="panel-page__warn">{error}</p> : null}
+      {uploadMsg ? <p className="panel-page__ok">{uploadMsg}</p> : null}
 
       {!loading && !error && company ? (
         <>
@@ -123,18 +225,55 @@ export default function TaxiDocumentsPage() {
           <div className="panel-card panel-card--wide" style={{ marginBottom: 16 }}>
             <h3 className="panel-card__title">Erforderliche Nachweise</h3>
             {docItems.map((item) => (
-              <div key={item.key} className="panel-card__row" style={{ alignItems: "flex-start" }}>
-                <span className="panel-card__k">{item.title}</span>
-                <span style={{ fontWeight: 600 }}>
-                  {item.ok ? (
-                    <span className="panel-pill panel-pill--ok">vorhanden</span>
-                  ) : (
-                    <span className="panel-pill panel-pill--warn">fehlt</span>
-                  )}
-                  <span className="panel-card__muted" style={{ display: "block", marginTop: 6, fontWeight: 400 }}>
-                    {item.ok ? item.hintOk : item.hintMissing}
+              <div key={item.key} className="panel-card" style={{ marginBottom: 10 }}>
+                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
+                  <span className="panel-card__k">{item.title}</span>
+                  <span style={{ fontWeight: 600, textAlign: "right" }}>
+                    {docState(item).tone === "ok" ? (
+                      <span className="panel-pill panel-pill--ok">{docState(item).label}</span>
+                    ) : docState(item).tone === "warn" ? (
+                      <span className="panel-pill panel-pill--warn">{docState(item).label}</span>
+                    ) : (
+                      <span className="panel-pill">{docState(item).label}</span>
+                    )}
                   </span>
-                </span>
+                </div>
+                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
+                  <span className="panel-card__k">Vorhanden</span>
+                  <span style={{ fontWeight: 600 }}>{item.ok ? "ja" : "nein"}</span>
+                </div>
+                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
+                  <span className="panel-card__k">Hochgeladen am</span>
+                  <span style={{ fontWeight: 600 }}>{formatDateTime(item.uploadedAt)}</span>
+                </div>
+                <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
+                  <span className="panel-card__k">Prüfhinweis</span>
+                  <span style={{ fontWeight: 500, maxWidth: 560, textAlign: "right" }}>{docState(item).text}</span>
+                </div>
+                {item.reviewNote ? (
+                  <div className="panel-card__row" style={{ alignItems: "flex-start" }}>
+                    <span className="panel-card__k">Ablehnungsgrund / Bemerkung</span>
+                    <span style={{ fontWeight: 500, maxWidth: 560, textAlign: "right" }}>{item.reviewNote}</span>
+                  </div>
+                ) : null}
+                <div style={{ marginTop: 8 }}>
+                  {canUploadDocs ? (
+                    <label className="panel-btn" style={{ cursor: uploadingKind ? "wait" : "pointer" }}>
+                      {item.ok ? "Erneut hochladen (PDF)" : "Dokument hochladen (PDF)"}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        style={{ display: "none" }}
+                        disabled={Boolean(uploadingKind)}
+                        onChange={(ev) => void uploadDocument(item.key, ev)}
+                      />
+                    </label>
+                  ) : (
+                    <p className="panel-page__muted" style={{ margin: 0 }}>
+                      Upload aktuell nicht verfügbar. Bitte Benutzerrechte/Module prüfen.
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -155,7 +294,7 @@ export default function TaxiDocumentsPage() {
           )}
 
           <p className="panel-page__muted" style={{ marginTop: 12 }}>
-            Dokumente können hier später hochgeladen werden.
+            Erneuter Upload ersetzt den bisherigen Stand und startet die Prüfung neu.
           </p>
         </>
       ) : null}
