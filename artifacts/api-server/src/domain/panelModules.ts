@@ -212,9 +212,17 @@ export function normalizeStoredPanelModules(raw: unknown): string[] | null {
 }
 
 /**
+ * Katalog-Module, die bei **explizit** gespeicherter `panel_modules`-Liste nachgerüstet werden, sobald sie für
+ * `companyKind` erlaubt sind. Hintergrund: ältere Mandanten hatten eine feste Checkbox-Liste ohne z. B. `support`;
+ * ohne Nachrüstung erscheint ein neues Modul im Partner-Panel nicht, obwohl es fachlich vorgesehen ist.
+ */
+const PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED: readonly PanelModuleId[] = ["support"];
+
+/**
  * Effektiv aktive Module.
  * - `stored === null` (Legacy): alle für `companyKind` erlaubten Module (`getAllowedModulesForKind`).
- * - `stored` als Liste: nur gültige Katalog-IDs in Katalog-Reihenfolge (wie bisher).
+ * - `stored` als Liste: gültige Katalog-IDs in Katalog-Reihenfolge, plus {@link PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED}
+ *   wenn für den Mandantentyp erlaubt.
  *
  * @param companyKind `admin_companies.company_kind` — bei `stored == null` erforderlich für korrekte Whitelist;
  *   fehlt es, wird `"general"` angenommen.
@@ -226,7 +234,11 @@ export function resolveEffectivePanelModules(
   if (stored == null) {
     return getAllowedModulesForKind(companyKind);
   }
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
   const set = new Set(stored);
+  for (const id of PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED) {
+    if (allowed.has(id)) set.add(id);
+  }
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
 }
 
