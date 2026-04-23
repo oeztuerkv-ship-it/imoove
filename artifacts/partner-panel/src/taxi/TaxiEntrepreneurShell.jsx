@@ -82,9 +82,21 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   return (
     <div className="partner-shell">
       <header className="partner-shell__header">
-        <div className="partner-shell__brand" title={company?.name || ""}>
-          <span className="partner-shell__brand-title">Taxi</span>
-          {company?.name ? <span className="partner-shell__brand-subtitle">{company.name}</span> : null}
+        <div className="partner-shell__brand" title={company?.name || "ONRODA Taxi"}>
+          <a
+            className="partner-shell__onroda-wordmark"
+            href="https://onroda.de"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="ONRODA – zur Website"
+          >
+            <span className="on">ON</span>
+            <span className="roda">RODA</span>
+          </a>
+          <div className="partner-shell__brand-taxi-line">
+            <span className="partner-shell__brand-taxi">Taxi</span>
+            {company?.name ? <span className="partner-shell__brand-subtitle">{company.name}</span> : null}
+          </div>
         </div>
         <nav className="partner-shell__nav" aria-label="Bereiche">
           {visibleNav.map((m) => (

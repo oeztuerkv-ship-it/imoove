@@ -2,11 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePanelAuth } from "../../context/PanelAuthContext.jsx";
 import { API_BASE } from "../../lib/apiBase.js";
 import { hasPanelModule } from "../../lib/panelNavigation.js";
+import { PARTNER_SUPPORT_EMAIL } from "../../lib/partnerSupportEmail.js";
 import { complianceBucketFromCompany, complianceKpiLabelAndClass } from "../../lib/partnerComplianceBucket.js";
-
-const PARTNER_STAMM_SUPPORT_EMAIL =
-  (typeof import.meta !== "undefined" && String(import.meta.env?.VITE_PARTNER_SUPPORT_EMAIL ?? "").trim()) ||
-  "support@onroda.de";
 
 function mailtoStammChangeRequest(company) {
   const id = company?.id != null ? String(company.id) : "";
@@ -14,7 +11,7 @@ function mailtoStammChangeRequest(company) {
   const body = encodeURIComponent(
     `Guten Tag,\n\nbitte folgende Änderung an unseren Taxi-Stammdaten (Mandanten-ID: ${id || "—"}):\n\n[Bitte kurz beschreiben]\n\nMit freundlichen Grüßen`,
   );
-  return `mailto:${PARTNER_STAMM_SUPPORT_EMAIL}?subject=${sub}&body=${body}`;
+  return `mailto:${PARTNER_SUPPORT_EMAIL}?subject=${sub}&body=${body}`;
 }
 
 function hasPerm(permissions, key) {
@@ -470,8 +467,8 @@ export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
             <a className="partner-btn-secondary" href={mailtoStammChangeRequest(c)}>
               Änderung per E-Mail
             </a>
-            <a className="partner-btn-secondary" href={`mailto:${PARTNER_STAMM_SUPPORT_EMAIL}`}>
-              Nur Kontakt ({PARTNER_STAMM_SUPPORT_EMAIL})
+            <a className="partner-btn-secondary" href={`mailto:${PARTNER_SUPPORT_EMAIL}`}>
+              Nur Kontakt ({PARTNER_SUPPORT_EMAIL})
             </a>
           </div>
         </div>
