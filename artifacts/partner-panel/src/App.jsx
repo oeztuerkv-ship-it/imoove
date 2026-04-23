@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { usePanelAuth } from "./context/PanelAuthContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
-import TaxiMasterPanel from "./components/TaxiMasterPanel.jsx";
+import TaxiEntrepreneurShell from "./taxi/TaxiEntrepreneurShell.jsx";
 import AgenturMasterPanel from "./components/AgenturMasterPanel.jsx";
 import KasseMasterPanel from "./components/KasseMasterPanel.jsx";
 
@@ -32,7 +32,7 @@ export default function App() {
   const kind = company?.company_kind;
 
   if (kind === "taxi") {
-    return <TaxiMasterPanel company={company} onLogout={logout} />;
+    return <TaxiEntrepreneurShell company={company} onLogout={logout} />;
   }
 
   if (kind === "hotel" || kind === "agency" || kind === "travel") {
