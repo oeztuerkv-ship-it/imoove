@@ -263,7 +263,11 @@ export default function TaxiMasterPanel({ company, onLogout }) {
             ) : null}
 
             {metricsError ? (
-              <BlockError text={metricsError} />
+              <>
+                <BlockError text={metricsError} />
+                {driversError ? <BlockError text={driversError} /> : null}
+                {vehiclesError ? <BlockError text={vehiclesError} /> : null}
+              </>
             ) : !metrics ? (
               <BlockError text="Kennzahlen sind derzeit nicht verfügbar." />
             ) : (
