@@ -14,6 +14,41 @@ function authHeaders(token) {
   };
 }
 
+function messageForSupportApiError(status, fallback, apiError) {
+  if (status === 401 || status === 403) {
+    return "Keine Berechtigung fuer Anfragen. Bitte neu anmelden oder Rechte pruefen.";
+  }
+  if (status === 404) {
+    return "Support-API nicht gefunden (404). Erwartet wird /api/panel/v1/support/threads.";
+  }
+  if (status >= 500) {
+    return `Serverfehler (${status}) beim Support-System. Bitte spaeter erneut versuchen.`;
+  }
+  if (typeof apiError === "string" && apiError.trim()) return apiError.trim();
+  return fallback;
+}
+
+async function requestSupportJson(url, options, fallbackErrorText) {
+  try {
+    const res = await fetch(url, options);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      return {
+        ok: false,
+        status: res.status,
+        error: messageForSupportApiError(res.status, fallbackErrorText, data?.error),
+      };
+    }
+    return { ok: true, status: res.status, data };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      error: `Netzwerkfehler beim Support-System: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
 function EmptyInboxCTA({ onNewRequest, listLoading }) {
   return (
     <div className="partner-support-empty">
@@ -83,14 +118,17 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
   const loadList = useCallback(async () => {
     if (!token) return;
     setListError("");
-    const res = await fetch(`${API_BASE}/panel/v1/support/threads`, { headers: authHeaders(token) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) {
-      setListError(typeof data?.error === "string" ? data.error : "Liste konnte nicht geladen werden.");
+    const result = await requestSupportJson(
+      `${API_BASE}/panel/v1/support/threads`,
+      { headers: authHeaders(token) },
+      "Liste konnte nicht geladen werden.",
+    );
+    if (!result.ok) {
+      setListError(result.error);
       setLoadingList(false);
       return;
     }
-    setThreads(Array.isArray(data.threads) ? data.threads : []);
+    setThreads(Array.isArray(result.data.threads) ? result.data.threads : []);
     setLoadingList(false);
   }, [token]);
 
@@ -101,18 +139,19 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
     setThread(null);
     setMessages([]);
     setThreadStatus(null);
-    const res = await fetch(`${API_BASE}/panel/v1/support/threads/${encodeURIComponent(selectedId)}`, {
-      headers: authHeaders(token),
-    });
-    const data = await res.json().catch(() => ({}));
+    const result = await requestSupportJson(
+      `${API_BASE}/panel/v1/support/threads/${encodeURIComponent(selectedId)}`,
+      { headers: authHeaders(token) },
+      "Detail nicht verfuegbar.",
+    );
     setDetailLoading(false);
-    if (!res.ok || !data?.ok) {
-      setDetailError(typeof data?.error === "string" ? data.error : "Detail nicht verfügbar.");
+    if (!result.ok) {
+      setDetailError(result.error);
       return;
     }
-    setThread(data.thread || null);
-    setMessages(Array.isArray(data.messages) ? data.messages : []);
-    setThreadStatus(data.thread?.status ?? null);
+    setThread(result.data.thread || null);
+    setMessages(Array.isArray(result.data.messages) ? result.data.messages : []);
+    setThreadStatus(result.data.thread?.status ?? null);
   }, [token, selectedId]);
 
   useEffect(() => {
@@ -155,40 +194,46 @@ export default function SupportShell({ supportPrefill, onClearSupportPrefill }) 
     if (!token) return;
     setModalBusy(true);
     setModalError("");
-    const res = await fetch(`${API_BASE}/panel/v1/support/threads`, {
-      method: "POST",
-      headers: authHeaders(token),
-      body: JSON.stringify({ category, title, body }),
-    });
-    const data = await res.json().catch(() => ({}));
+    const result = await requestSupportJson(
+      `${API_BASE}/panel/v1/support/threads`,
+      {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ category, title, body }),
+      },
+      "Anfrage konnte nicht angelegt werden.",
+    );
     setModalBusy(false);
-    if (!res.ok || !data?.ok) {
-      setModalError(typeof data?.error === "string" ? data.error : "Anfrage konnte nicht angelegt werden.");
+    if (!result.ok) {
+      setModalError(result.error);
       return;
     }
     setModalOpen(false);
     setModalPrefill(null);
     await loadList();
-    if (data.thread?.id) setSelectedId(data.thread.id);
+    if (result.data.thread?.id) setSelectedId(result.data.thread.id);
   };
 
   const handleSend = async (body) => {
     if (!token || !selectedId) return;
     setSendBusy(true);
     setSendError("");
-    const res = await fetch(`${API_BASE}/panel/v1/support/threads/${encodeURIComponent(selectedId)}/messages`, {
-      method: "POST",
-      headers: authHeaders(token),
-      body: JSON.stringify({ body }),
-    });
-    const data = await res.json().catch(() => ({}));
+    const result = await requestSupportJson(
+      `${API_BASE}/panel/v1/support/threads/${encodeURIComponent(selectedId)}/messages`,
+      {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ body }),
+      },
+      "Senden fehlgeschlagen.",
+    );
     setSendBusy(false);
-    if (!res.ok || !data?.ok) {
-      if (res.status === 409) setSendError("Diese Anfrage ist geschlossen.");
-      else setSendError(typeof data?.error === "string" ? data.error : "Senden fehlgeschlagen.");
+    if (!result.ok) {
+      if (result.status === 409) setSendError("Diese Anfrage ist geschlossen.");
+      else setSendError(result.error);
       return;
     }
-    if (typeof data.threadStatus === "string") setThreadStatus(data.threadStatus);
+    if (typeof result.data.threadStatus === "string") setThreadStatus(result.data.threadStatus);
     await loadDetail();
     await loadList();
   };

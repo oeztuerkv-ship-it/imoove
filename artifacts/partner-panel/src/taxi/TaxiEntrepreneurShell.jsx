@@ -100,7 +100,7 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
             <span className="roda">RODA</span>
           </a>
           <div className="partner-shell__brand-taxi-line">
-            <span className="partner-shell__brand-taxi">Taxi</span>
+            <span className="partner-shell__brand-taxi">Taxi Betrieb</span>
             {company?.name ? <span className="partner-shell__brand-subtitle">{company.name}</span> : null}
           </div>
         </div>

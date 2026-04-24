@@ -77,6 +77,48 @@ function vehicleStatusDe(v) {
   return "—";
 }
 
+function vehicleStatusTone(v) {
+  const s = v?.approvalStatus;
+  if (s === "approved") return "ok";
+  if (s === "pending_approval") return "warn";
+  if (s === "rejected" || s === "blocked") return "danger";
+  return "soft";
+}
+
+function formatDateDe(isoDate) {
+  if (!isoDate) return "—";
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return String(isoDate);
+  return d.toLocaleDateString("de-DE");
+}
+
+function pScheinMeta(isoDate) {
+  if (!isoDate) return { label: "Kein Datum", tone: "warn" };
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return { label: String(isoDate), tone: "warn" };
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const expiryUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  if (expiryUtc < todayUtc) {
+    return { label: `abgelaufen (${formatDateDe(isoDate)})`, tone: "danger" };
+  }
+  return { label: formatDateDe(isoDate), tone: "ok" };
+}
+
+function driverStatusMeta(driver) {
+  const rawStatus = String(driver?.approvalStatus ?? driver?.accessStatus ?? "").toLowerCase();
+  if (rawStatus === "pending_approval" || rawStatus === "pending") {
+    return { label: "In Prüfung", tone: "warn" };
+  }
+  if (rawStatus === "blocked" || rawStatus === "rejected" || rawStatus === "suspended") {
+    return { label: "Gesperrt", tone: "danger" };
+  }
+  if (driver?.accessStatus === "active" && driver?.isActive) {
+    return { label: "Aktiv", tone: "ok" };
+  }
+  return { label: "Gesperrt", tone: "danger" };
+}
+
 const VEHICLE_CLASSES = [
   { value: "standard", label: "Standard" },
   { value: "xl", label: "XL / Großraum" },
@@ -665,18 +707,45 @@ export default function FleetPage() {
                     <td colSpan={5}>Keine Fahrer.</td>
                   </tr>
                 ) : (
-                  drivers.map((d) => (
+                  drivers.map((d) => {
+                    const statusMeta = driverStatusMeta(d);
+                    const pSchein = pScheinMeta(d.pScheinExpiry);
+                    return (
                     <tr key={d.id}>
                       <td>
                         {d.firstName} {d.lastName}
                       </td>
                       <td>{d.email}</td>
-                      <td>{d.accessStatus === "active" && d.isActive ? "aktiv" : "gesperrt"}</td>
-                      <td>{d.pScheinExpiry || "—"}</td>
+                      <td>
+                        <span className={`partner-pill partner-pill--${statusMeta.tone}`}>{statusMeta.label}</span>
+                      </td>
+                      <td>
+                        <span className={`partner-pill partner-pill--${pSchein.tone}`}>{pSchein.label}</span>
+                      </td>
                       <td className="partner-table__actions">
                         {canManage ? (
                           <>
-                            <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
+                            {d.accessStatus === "active" && d.isActive ? (
+                              <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={() => void suspendDriver(d.id)}>
+                                Sperren
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="partner-btn-secondary partner-btn-secondary--sm"
+                                onClick={() => void activateDriver(d.id)}
+                              >
+                                Aktivieren
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="partner-btn-secondary partner-btn-secondary--sm"
+                              onClick={() => void resetDriverPassword(d.id)}
+                            >
+                              Passwort zurücksetzen
+                            </button>
+                            <label className="partner-btn-secondary partner-btn-secondary--sm" style={{ cursor: "pointer" }}>
                               P-Schein PDF
                               <input
                                 type="file"
@@ -685,33 +754,14 @@ export default function FleetPage() {
                                 onChange={(ev) => void uploadPScheinDoc(d.id, ev)}
                               />
                             </label>
-                            <button
-                              type="button"
-                              className="partner-link-btn partner-link-btn--solid"
-                              onClick={() => void resetDriverPassword(d.id)}
-                            >
-                              Passwort zurücksetzen
-                            </button>
-                            {d.accessStatus === "active" && d.isActive ? (
-                              <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={() => void suspendDriver(d.id)}>
-                                Sperren
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="partner-btn-secondary"
-                                onClick={() => void activateDriver(d.id)}
-                              >
-                                Aktivieren
-                              </button>
-                            )}
                           </>
                         ) : (
                           <span className="partner-muted">—</span>
                         )}
                       </td>
                     </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>
@@ -827,11 +877,9 @@ export default function FleetPage() {
           ) : null}
 
           {canManage ? (
-            <form className="partner-form" onSubmit={submitAssignment} style={{ marginBottom: 20 }}>
-              <h3 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-                Fahrer ↔ Fahrzeug (aktuell)
-              </h3>
-              <div className="partner-form-grid">
+            <form className="partner-form partner-assign-card" onSubmit={submitAssignment}>
+              <h3 className="partner-assign-card__title">Fahrer zu Fahrzeug zuweisen</h3>
+              <div className="partner-form-grid partner-assign-card__grid">
                 <label className="partner-form-field">
                   <span>Fahrer</span>
                   <select
@@ -867,7 +915,8 @@ export default function FleetPage() {
                   </select>
                 </label>
               </div>
-              <button type="submit" className="partner-btn-primary" style={{ marginTop: 12 }}>
+              <p className="partner-assign-card__hint">Nur freigegebene Fahrzeuge auswählbar</p>
+              <button type="submit" className="partner-btn-primary partner-assign-card__submit">
                 Zuweisen
               </button>
             </form>
@@ -909,7 +958,7 @@ export default function FleetPage() {
                         <td>{v.licensePlate}</td>
                         <td>
                           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <span className="partner-pill partner-pill--muted" style={{ alignSelf: "flex-start" }}>
+                            <span className={`partner-pill partner-pill--${vehicleStatusTone(v)}`} style={{ alignSelf: "flex-start" }}>
                               {vehicleStatusDe(v)}
                             </span>
                             {v.approvalStatus === "pending_approval" ? (
@@ -952,13 +1001,14 @@ export default function FleetPage() {
                         <td>
                           {drv ? (
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span className="partner-pill partner-pill--soft">Fahrer</span>
                               <span>
                                 {drv.firstName} {drv.lastName}
                               </span>
                               {canManage ? (
                                 <button
                                   type="button"
-                                  className="partner-btn-secondary partner-btn-secondary--sm"
+                                  className="partner-btn-secondary partner-btn-secondary--sm partner-btn-secondary--muted"
                                   onClick={() => clearAssignment(drv.id)}
                                 >
                                   Zuweisung löschen
