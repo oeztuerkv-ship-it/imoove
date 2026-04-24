@@ -1698,6 +1698,38 @@
   padding-top: 4px;
 }
 
+/* —— Hilfe / FAQ —— */
+.partner-help-faq {
+  display: grid;
+  gap: 10px;
+}
+
+.partner-help-faq__item {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 12px;
+}
+
+.partner-help-faq__question {
+  cursor: pointer;
+  font-weight: 700;
+  color: #111827;
+  padding: 12px 0;
+  list-style: none;
+}
+
+.partner-help-faq__question::-webkit-details-marker {
+  display: none;
+}
+
+.partner-help-faq__answer {
+  margin: 0 0 12px;
+  color: #4b5563;
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
 /* —— Responsive: Mobile first hardening (ohne Desktop-Regression) —— */
 @media (max-width: 768px) {
   .partner-shell,

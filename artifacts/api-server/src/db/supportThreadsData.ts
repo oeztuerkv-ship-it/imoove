@@ -5,7 +5,7 @@ import { adminCompaniesTable, supportMessagesTable, supportThreadsTable } from "
 export const SUPPORT_THREAD_STATUSES = ["open", "in_progress", "answered", "closed"] as const;
 export type SupportThreadStatus = (typeof SUPPORT_THREAD_STATUSES)[number];
 
-export const SUPPORT_CATEGORIES = ["stammdaten", "documents", "billing", "technical", "other"] as const;
+export const SUPPORT_CATEGORIES = ["stammdaten", "documents", "billing", "technical", "help", "other"] as const;
 export type SupportCategory = (typeof SUPPORT_CATEGORIES)[number];
 
 export type SupportMessageRow = {

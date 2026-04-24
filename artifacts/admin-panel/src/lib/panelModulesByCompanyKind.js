@@ -7,6 +7,7 @@
 const ALL = [
   "overview",
   "support",
+  "help",
   "rides_list",
   "rides_create",
   "company_profile",
@@ -22,11 +23,12 @@ const ALL = [
 const GENERAL_LIKE = ALL.filter((id) => id !== "taxi_fleet");
 
 const BY_KIND = {
-  taxi: ["overview", "support", "rides_list", "rides_create", "company_profile", "team", "access_codes", "billing", "taxi_fleet"],
-  hotel: ["overview", "support", "rides_list", "rides_create", "company_profile", "team", "access_codes", "hotel_mode", "billing"],
+  taxi: ["overview", "support", "help", "rides_list", "rides_create", "company_profile", "team", "access_codes", "billing", "taxi_fleet"],
+  hotel: ["overview", "support", "help", "rides_list", "rides_create", "company_profile", "team", "access_codes", "hotel_mode", "billing"],
   insurer: [
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -39,6 +41,7 @@ const BY_KIND = {
   medical: [
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -51,6 +54,7 @@ const BY_KIND = {
   corporate: [
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -60,7 +64,7 @@ const BY_KIND = {
     "company_rides",
     "recurring_rides",
   ],
-  voucher_client: ["overview", "support", "rides_list", "rides_create", "company_profile", "team", "access_codes", "billing"],
+  voucher_client: ["overview", "support", "help", "rides_list", "rides_create", "company_profile", "team", "access_codes", "billing"],
   general: GENERAL_LIKE,
 };
 

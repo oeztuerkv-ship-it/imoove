@@ -21,6 +21,13 @@ export const PANEL_MODULE_DEFINITIONS = [
       "Chat-Threads je Mandant mit der Plattform: neue Anfrage, Verlauf, Status — getrennt von Taxi-Fachlogik.",
   },
   {
+    id: "help",
+    label: "Hilfe",
+    description: "Schnellhilfe, FAQ und Einstieg in Support-Anfragen",
+    productIntent:
+      "Self-Service-Hilfe zur Reduktion wiederkehrender Support-Anfragen; klare Weiterleitung in das bestehende Anfragen-Modul.",
+  },
+  {
     id: "rides_list",
     label: "Fahrtenliste & Verlauf",
     description: "„Meine Fahrten“ und „Verlauf“ (gemeinsame API)",
@@ -111,6 +118,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   taxi: asModuleIdSet([
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -122,6 +130,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   hotel: asModuleIdSet([
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -133,6 +142,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   insurer: asModuleIdSet([
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -145,6 +155,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   medical: asModuleIdSet([
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -157,6 +168,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   corporate: asModuleIdSet([
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",
@@ -169,6 +181,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   voucher_client: asModuleIdSet([
     "overview",
     "support",
+    "help",
     "rides_list",
     "rides_create",
     "company_profile",

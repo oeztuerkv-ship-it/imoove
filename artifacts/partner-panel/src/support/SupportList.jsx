@@ -10,6 +10,7 @@ const CATEGORY_DE = {
   documents: "Dokumente",
   billing: "Abrechnung",
   technical: "Technisch",
+  help: "Hilfe",
   other: "Sonstiges",
 };
 

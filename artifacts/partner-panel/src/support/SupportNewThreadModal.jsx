@@ -5,6 +5,7 @@ const CATEGORIES = [
   { id: "documents", label: "Dokumente" },
   { id: "billing", label: "Abrechnung" },
   { id: "technical", label: "Technisch" },
+  { id: "help", label: "Hilfe" },
   { id: "other", label: "Sonstiges" },
 ];
 

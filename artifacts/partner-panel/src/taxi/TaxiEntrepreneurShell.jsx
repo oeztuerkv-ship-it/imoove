@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import TaxiMasterPanel from "../components/TaxiMasterPanel.jsx";
 import FleetPage from "../pages/FleetPage.jsx";
 import TeamPage from "../pages/TeamPage.jsx";
+import HelpPage from "../pages/HelpPage.jsx";
 import TaxiStammdatenPage from "../pages/taxi/TaxiStammdatenPage.jsx";
 import TaxiDocumentsPage from "../pages/taxi/TaxiDocumentsPage.jsx";
 import SupportShell from "../support/SupportShell.jsx";
@@ -33,6 +34,11 @@ const TAXI_NAV_DEFS = [
     key: "anfragen",
     label: "Anfragen",
     show: (user) => hasPanelModule(user?.panelModules, "support") && hasPerm(user, "support.read"),
+  },
+  {
+    key: "hilfe",
+    label: "Hilfe",
+    show: (user) => hasPanelModule(user?.panelModules, "help"),
   },
   {
     key: "benutzer",
@@ -128,6 +134,18 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
         {activeTaxiModule === "dokumente" && <TaxiDocumentsPage onOpenDocumentSupportRequest={openSupportDraft} />}
         {activeTaxiModule === "anfragen" && (
           <SupportShell supportPrefill={supportPrefill} onClearSupportPrefill={() => setSupportPrefill(null)} />
+        )}
+        {activeTaxiModule === "hilfe" && (
+          <HelpPage
+            onCreateRequest={() => {
+              setSupportPrefill({
+                category: "help",
+                title: "Hilfe: Allgemeine Frage",
+                body: "",
+              });
+              setActiveTaxiModule("anfragen");
+            }}
+          />
         )}
         {activeTaxiModule === "benutzer" && (
           <TeamPage
