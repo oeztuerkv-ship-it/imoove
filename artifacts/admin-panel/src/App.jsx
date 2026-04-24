@@ -24,6 +24,7 @@ import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
 import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
+import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -404,6 +405,9 @@ export default function App() {
         return (
           <DashboardPage
             userRole={userRole}
+            onNavigate={(pageKey) => {
+              if (isAdminPageAllowed(pageKey, userRole)) setActive(pageKey);
+            }}
             onOpenRide={(id) => {
               setRidesInitialDetailId(id);
               setActive("rides");
@@ -434,6 +438,8 @@ export default function App() {
         return <SupportInboxPage />;
       case "fleet-vehicles-review":
         return <FleetVehiclesReviewPage />;
+      case "company-registration-requests":
+        return <CompanyRegistrationQueuePage />;
       case "users-panel":
         return <PanelUsersPage />;
       case "fares":
@@ -456,6 +462,9 @@ export default function App() {
         return (
           <DashboardPage
             userRole={userRole}
+            onNavigate={(pageKey) => {
+              if (isAdminPageAllowed(pageKey, userRole)) setActive(pageKey);
+            }}
             onOpenRide={(id) => {
               setRidesInitialDetailId(id);
               setActive("rides");

@@ -4,6 +4,28 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const STATS_URL = `${API_BASE}/admin/stats`;
 const OVERVIEW_URL = `${API_BASE}/admin/dashboard/overview`;
+const OPERATOR_SNAPSHOT_URL = `${API_BASE}/admin/dashboard/operator-snapshot`;
+
+function ampelClass(s) {
+  if (s === "ok") return "admin-dashboard__tile-btn--ampel-ok";
+  if (s === "warn") return "admin-dashboard__tile-btn--ampel-warn";
+  return "admin-dashboard__tile-btn--ampel-alert";
+}
+
+function severityToAmpel(n) {
+  const c = Number(n) || 0;
+  if (c <= 0) return "ok";
+  if (c <= 5) return "warn";
+  return "alert";
+}
+
+function formatTaskTime(iso) {
+  try {
+    return new Date(iso).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "—";
+  }
+}
 
 function emptyStats() {
   return {
@@ -125,7 +147,7 @@ function amountForRide(ride) {
   return Number.isFinite(n) ? n : null;
 }
 
-export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
+export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, userRole }) {
   const hotelLimited = userRole === "hotel";
   const [stats, setStats] = useState(emptyStats);
   const [revenuePreset, setRevenuePreset] = useState("30d");
@@ -145,6 +167,10 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
   const [recentCompleted, setRecentCompleted] = useState([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
+
+  const [operatorSnapshot, setOperatorSnapshot] = useState(null);
+  const [operatorLoading, setOperatorLoading] = useState(true);
+  const [operatorError, setOperatorError] = useState("");
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -268,6 +294,10 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
     void loadOverview();
   }, [loadOverview, hotelLimited]);
 
+  useEffect(() => {
+    void loadOperatorSnapshot();
+  }, [loadOperatorSnapshot]);
+
   if (!hasLoadedOnce && loading) {
     return <div className="admin-info-banner">Kennzahlen werden geladen …</div>;
   }
@@ -286,7 +316,11 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
   const r = stats.rides;
 
   return (
-    <div className={`admin-dashboard${loading || overviewLoading ? " admin-dashboard--refreshing" : ""}`}>
+    <div
+      className={`admin-dashboard${
+        loading || overviewLoading || operatorLoading ? " admin-dashboard--refreshing" : ""
+      }`}
+    >
       {hotelLimited ? (
         <div className="admin-info-banner" style={{ marginBottom: 14 }}>
           Hotel-Zugang: globale Plattform-KPIs sind deaktiviert. Nutzen Sie <strong>Fahrten</strong> für Ihre Buchungen.
@@ -296,10 +330,10 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
         <div className="admin-dashboard__hero">
           <div>
             <div className="admin-dashboard__hero-label">Kontrollzentrum</div>
-            <h2 className="admin-dashboard__hero-title">Operative Tageslage</h2>
+            <h2 className="admin-dashboard__hero-title">Plattform-Cockpit</h2>
             <p className="admin-dashboard__hero-text">
-              Chronologische Fahrten, Mandanten-Aktivität und letzte Abschlüsse — ergänzt durch Kennzahlen und Umsatz
-              für den gewählten Zeitraum.
+              Offene Warteschlangen, Support und Compliance auf einen Blick — darunter Tagesagenda, Mandanten-Top und
+              Kennzahlen.
             </p>
           </div>
 
@@ -334,14 +368,129 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, userRole }) {
               onClick={() => {
                 void loadStats();
                 void loadOverview();
+                void loadOperatorSnapshot();
               }}
-              disabled={loading || overviewLoading}
+              disabled={loading || overviewLoading || operatorLoading}
             >
-              {loading || overviewLoading ? "Aktualisiere …" : "Aktualisieren"}
+              {loading || overviewLoading || operatorLoading ? "Aktualisiere …" : "Aktualisieren"}
             </button>
           </div>
         </div>
       </div>
+
+      {operatorError ? <div className="admin-error-banner">{operatorError}</div> : null}
+
+      {!hotelLimited && operatorSnapshot ? (
+        <section className="admin-dashboard__operator" aria-labelledby="dash-op-title" style={{ marginTop: 4 }}>
+          <h3 id="dash-op-title" className="admin-dashboard__section-title" style={{ marginBottom: 12 }}>
+            Heute prüfen
+          </h3>
+          <div className="admin-dashboard__grid">
+            <button
+              type="button"
+              className={`admin-dashboard__card admin-dashboard__tile-btn ${ampelClass(
+                severityToAmpel(operatorSnapshot.registration?.pendingCount ?? 0),
+              )}`}
+              onClick={() => onNavigate?.("company-registration-requests")}
+            >
+              <div className="admin-dashboard__card-label">Registrierungsanfragen</div>
+              <div className="admin-dashboard__card-value">
+                {operatorSnapshot.registration?.pendingCount ?? 0}
+              </div>
+              <div className="admin-dashboard__card-sub">Neue Homepage-Partnerbewerbungen · Warteschlange</div>
+            </button>
+            <button
+              type="button"
+              className={`admin-dashboard__card admin-dashboard__tile-btn ${ampelClass(
+                severityToAmpel(
+                  (operatorSnapshot.support?.openCount ?? 0) + (operatorSnapshot.support?.inProgressCount ?? 0),
+                ),
+              )}`}
+              onClick={() => onNavigate?.("support-inbox")}
+            >
+              <div className="admin-dashboard__card-label">Partner-Anfragen (Support)</div>
+              <div className="admin-dashboard__card-value">{operatorSnapshot.support?.openCount ?? 0}</div>
+              <div className="admin-dashboard__tile-metric">
+                In Bearbeitung: {operatorSnapshot.support?.inProgressCount ?? 0} · Beantwortet:{" "}
+                {operatorSnapshot.support?.answeredCount ?? 0}
+              </div>
+            </button>
+            <button
+              type="button"
+              className={`admin-dashboard__card admin-dashboard__tile-btn ${ampelClass(
+                severityToAmpel(operatorSnapshot.fleet?.pendingApprovalCount ?? 0),
+              )}`}
+              onClick={() => onNavigate?.("fleet-vehicles-review")}
+            >
+              <div className="admin-dashboard__card-label">Fahrzeuge prüfen</div>
+              <div className="admin-dashboard__card-value">
+                {operatorSnapshot.fleet?.pendingApprovalCount ?? 0}
+              </div>
+              <div className="admin-dashboard__card-sub">Freigabe offen (pending)</div>
+            </button>
+            <button
+              type="button"
+              className={`admin-dashboard__card admin-dashboard__tile-btn ${ampelClass(
+                severityToAmpel(
+                  (operatorSnapshot.companies?.blockedCount ?? 0) +
+                    (operatorSnapshot.companies?.incompleteComplianceCount ?? 0),
+                ),
+              )}`}
+              onClick={() => onNavigate?.("companies")}
+            >
+              <div className="admin-dashboard__card-label">Firmen &amp; Compliance</div>
+              <div className="admin-dashboard__card-value" style={{ fontSize: "1.4rem" }}>
+                {operatorSnapshot.companies?.blockedCount ?? 0} / {operatorSnapshot.companies?.incompleteComplianceCount ?? 0}
+              </div>
+              <div className="admin-dashboard__card-sub">Gesperrt · offene oder unvollständige Compliance</div>
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {!hotelLimited && operatorLoading && !operatorSnapshot && !operatorError ? (
+        <div className="admin-info-banner">Aufgaben-Überblick wird geladen …</div>
+      ) : null}
+      {operatorSnapshot?.recentTasks?.length ? (
+        <section className="admin-dashboard__recent" aria-labelledby="dash-tasks-title" style={{ marginTop: 8 }}>
+          <div className="admin-dashboard__section-head">
+            <h3 id="dash-tasks-title" className="admin-dashboard__section-title">
+              Neueste Aufgaben
+            </h3>
+            <p className="admin-dashboard__section-sub">Sortiert nach letzter Aktivität (eingehend)</p>
+          </div>
+          <div className="admin-dashboard__todo-list">
+            {operatorSnapshot.recentTasks.map((t) => (
+              <button
+                type="button"
+                key={`${t.kind}-${t.refId}`}
+                className="admin-dashboard__todo-item"
+                onClick={() => onNavigate?.(t.pageKey)}
+                style={{ cursor: "pointer", textAlign: "left", width: "100%", font: "inherit" }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 700, color: "var(--onroda-text-dark)" }}>{t.title}</span>
+                  <span className="admin-table-sub" style={{ fontSize: 12 }}>
+                    {formatTaskTime(t.at)}
+                  </span>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                  <span
+                    className="admin-dashboard__badge"
+                    style={t.severity === "high" ? { borderColor: "#dc2626", color: "#b91c1c" } : undefined}
+                  >
+                    {t.kind === "registration"
+                      ? "Registrierung"
+                      : t.kind === "support"
+                        ? "Support"
+                        : "Fahrzeug"}
+                  </span>{" "}
+                  <span className="admin-table-sub">{t.subtitle}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {error ? <div className="admin-error-banner">{error}</div> : null}
       {overviewError ? <div className="admin-error-banner">{overviewError}</div> : null}

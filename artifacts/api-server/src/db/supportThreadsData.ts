@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, supportMessagesTable, supportThreadsTable } from "./schema";
 
@@ -114,6 +114,32 @@ export type SupportThreadsAdminQuery = {
   limit: number;
   offset: number;
 };
+
+export async function countSupportThreadsByStatusForAdmin(): Promise<Record<SupportThreadStatus, number>> {
+  const empty: Record<SupportThreadStatus, number> = {
+    open: 0,
+    in_progress: 0,
+    answered: 0,
+    closed: 0,
+  };
+  if (!isPostgresConfigured()) return { ...empty };
+  const db = getDb();
+  if (!db) return { ...empty };
+  const rows = await db
+    .select({
+      status: supportThreadsTable.status,
+      n: count(),
+    })
+    .from(supportThreadsTable)
+    .groupBy(supportThreadsTable.status);
+  for (const r of rows) {
+    const s = String(r.status ?? "");
+    if (isSupportThreadStatus(s)) {
+      empty[s] = Number(r.n ?? 0);
+    }
+  }
+  return empty;
+}
 
 export async function listSupportThreadsAdmin(q: SupportThreadsAdminQuery): Promise<SupportThreadListItemAdmin[]> {
   if (!isPostgresConfigured()) return [];

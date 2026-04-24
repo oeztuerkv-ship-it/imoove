@@ -66,6 +66,7 @@ import {
   parseSupportThreadStatus,
 } from "../db/supportThreadsData";
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
+import { getAdminOperatorSnapshot } from "../db/adminOperatorSnapshotData";
 import {
   addPartnerRegistrationDocument,
   addPartnerRegistrationMessage,
@@ -772,6 +773,24 @@ adminJson.get("/dashboard/overview", async (req, res, next) => {
       partnerDay,
       recentCompleted,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Operator-Cockpit: offene Warteschlangen & letzte eingehende Aufgaben (Admin/Service). */
+adminJson.get("/dashboard/operator-snapshot", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const snapshot = await getAdminOperatorSnapshot();
+    res.json({ ok: true, snapshot });
   } catch (e) {
     next(e);
   }

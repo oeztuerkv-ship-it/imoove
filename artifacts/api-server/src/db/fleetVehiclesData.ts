@@ -127,11 +127,22 @@ export interface FleetVehicleAdminListRow {
   companyName: string;
 }
 
-export async function listPendingFleetVehiclesForAdmin(): Promise<FleetVehicleAdminListRow[]> {
+export async function countPendingFleetVehiclesForAdmin(): Promise<number> {
+  if (!isPostgresConfigured()) return 0;
+  const db = getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(fleetVehiclesTable)
+    .where(eq(fleetVehiclesTable.approval_status, "pending_approval"));
+  return Number(rows[0]?.n ?? 0);
+}
+
+export async function listPendingFleetVehiclesForAdmin(limit?: number): Promise<FleetVehicleAdminListRow[]> {
   if (!isPostgresConfigured()) return [];
   const db = getDb();
   if (!db) return [];
-  const rows = await db
+  const q = db
     .select({
       v: fleetVehiclesTable,
       companyName: adminCompaniesTable.name,
@@ -140,6 +151,10 @@ export async function listPendingFleetVehiclesForAdmin(): Promise<FleetVehicleAd
     .innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id))
     .where(eq(fleetVehiclesTable.approval_status, "pending_approval"))
     .orderBy(desc(fleetVehiclesTable.updated_at));
+  const rows =
+    typeof limit === "number" && limit > 0
+      ? await q.limit(Math.min(500, limit))
+      : await q;
   return rows.map((r) => ({
     vehicle: rowToVehicle(r.v),
     companyName: r.companyName,

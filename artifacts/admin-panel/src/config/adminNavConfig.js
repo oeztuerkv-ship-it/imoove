@@ -33,6 +33,7 @@ export const ADMIN_PAGE_ROLES = {
   "health-bulk": ["admin", "service", "taxi", "insurance"],
 
   companies: ["admin", "service", "taxi"],
+  "company-registration-requests": ["admin", "service"],
   "support-inbox": ["admin", "service"],
   "fleet-vehicles-review": ["admin", "service"],
 
@@ -143,6 +144,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: ["admin", "service", "taxi"],
     items: [
       { pageKey: "companies", label: "Firmenliste & Profile", icon: "building", roles: ["admin", "service", "taxi"] },
+      { pageKey: "company-registration-requests", label: "Registrierungsanfragen", icon: "document", roles: R.adminSvc },
       { pageKey: "support-inbox", label: "Partner-Anfragen", icon: "document", roles: R.adminSvc },
       { pageKey: "fleet-vehicles-review", label: "Fahrzeuge prüfen", icon: "rides", roles: R.adminSvc },
     ],
