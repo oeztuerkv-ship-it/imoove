@@ -271,6 +271,42 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
     }
   }, [overviewDay]);
 
+  const loadOperatorSnapshot = useCallback(async () => {
+    if (hotelLimited) {
+      setOperatorSnapshot(null);
+      setOperatorError("");
+      setOperatorLoading(false);
+      return;
+    }
+    setOperatorLoading(true);
+    setOperatorError("");
+    try {
+      const res = await fetch(OPERATOR_SNAPSHOT_URL, { headers: adminApiHeaders() });
+      if (res.status === 403) {
+        setOperatorSnapshot(null);
+        setOperatorError("");
+        return;
+      }
+      if (!res.ok) {
+        setOperatorSnapshot(null);
+        setOperatorError("Aufgaben-Überblick konnte nicht geladen werden.");
+        return;
+      }
+      const data = await res.json();
+      if (!data?.ok || !data?.snapshot) {
+        setOperatorSnapshot(null);
+        setOperatorError("Aufgaben-Überblick: ungültige Antwort.");
+        return;
+      }
+      setOperatorSnapshot(data.snapshot);
+    } catch {
+      setOperatorSnapshot(null);
+      setOperatorError("Aufgaben-Überblick: Netzwerkfehler.");
+    } finally {
+      setOperatorLoading(false);
+    }
+  }, [hotelLimited]);
+
   useEffect(() => {
     if (hotelLimited) {
       setStats(emptyStats());
@@ -450,7 +486,7 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
       {!hotelLimited && operatorLoading && !operatorSnapshot && !operatorError ? (
         <div className="admin-info-banner">Aufgaben-Überblick wird geladen …</div>
       ) : null}
-      {operatorSnapshot?.recentTasks?.length ? (
+      {Array.isArray(operatorSnapshot?.recentTasks) && operatorSnapshot.recentTasks.length > 0 ? (
         <section className="admin-dashboard__recent" aria-labelledby="dash-tasks-title" style={{ marginTop: 8 }}>
           <div className="admin-dashboard__section-head">
             <h3 id="dash-tasks-title" className="admin-dashboard__section-title">
