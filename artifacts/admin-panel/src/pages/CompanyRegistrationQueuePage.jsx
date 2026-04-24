@@ -116,6 +116,73 @@ function companyContDe(v) {
   return COMPANY_CONT_DE[v] || v || "—";
 }
 
+/** Lesbare Kurz-Zusammenfassung des Bearbeitungsstands (nur Copy). */
+function registrationStatusHeadline(req) {
+  const s = req?.registrationStatus;
+  if (s === "open") return "Die Bewerbung ist eingegangen — bitte Unterlagen sichten und den Bearbeitungsstand setzen.";
+  if (s === "in_review") return "Die Bewerbung wird aktuell von der Plattform geprüft.";
+  if (s === "documents_required") return "Es werden noch Unterlagen oder eine Rückmeldung vom Bewerber erwartet.";
+  if (s === "approved") {
+    return req?.linkedCompanyId
+      ? "Die Bewerbung ist freigegeben; der Mandant ist angelegt."
+      : "Als freigegeben markiert — Mandanten-Anlage prüfen.";
+  }
+  if (s === "rejected") return "Die Bewerbung wurde abgelehnt.";
+  if (s === "blocked") return "Die Bewerbung ist gesperrt — Bitte intern klären.";
+  return "";
+}
+
+/** Typische Nachweis-Kategorien nur zur Orientierung (UX-Checkliste, keine neue Logik). */
+const EXPECTED_DOC_ROWS_DEFAULT = [
+  { category: "general", hint: "Allgemeine Nachweise" },
+  { category: "identity", hint: "Identität / Legitimation" },
+  { category: "gewerbe", hint: "Gewerbenachweis" },
+];
+
+const EXPECTED_DOC_ROWS_BY_PARTNER = {
+  taxi: [
+    { category: "gewerbe", hint: "Gewerbeanmeldung / Gewerbenachweis" },
+    { category: "concession", hint: "Konzession / Taxenzulassung" },
+    { category: "insurance", hint: "Betriebs- bzw. Kfz-Versicherung (falls erforderlich)" },
+    { category: "identity", hint: "Identität / Leitung (falls angefordert)" },
+  ],
+  hotel: EXPECTED_DOC_ROWS_DEFAULT,
+  insurance: [
+    { category: "general", hint: "Träger-Nachweise" },
+    { category: "insurance", hint: "Versicherungsbestätigungen" },
+    { category: "identity", hint: "Identität / Vertretung" },
+  ],
+  medical: EXPECTED_DOC_ROWS_DEFAULT,
+  care: EXPECTED_DOC_ROWS_DEFAULT,
+  business: EXPECTED_DOC_ROWS_DEFAULT,
+  voucher_partner: EXPECTED_DOC_ROWS_DEFAULT,
+  other: EXPECTED_DOC_ROWS_DEFAULT,
+};
+
+function expectedDocRowsForPartnerType(partnerType) {
+  return EXPECTED_DOC_ROWS_BY_PARTNER[partnerType] || EXPECTED_DOC_ROWS_DEFAULT;
+}
+
+function hasUploadedCategory(documents, category) {
+  return documents.some((d) => String(d.category || "") === category);
+}
+
+function timelineActorLane(ev) {
+  const t = String(ev.actorType || "").toLowerCase();
+  if (t === "admin") return "admin";
+  if (t === "partner") return "applicant";
+  return "other";
+}
+
+function eventTypeReadable(eventType) {
+  const s = String(eventType || "").trim();
+  if (!s) return "";
+  return s
+    .replace(/^admin\./, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /**
  * Reine Operatoren-Hinweise (keine neue Geschäftslogik): wo der Admin als Nächstes schauen soll.
  */
@@ -559,66 +626,18 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
               {detailErr ? <div className="admin-error-banner" style={{ marginBottom: 10 }}>{detailErr}</div> : null}
               {mailHint ? <div className="admin-info-banner" style={{ marginBottom: 10 }}>{mailHint}</div> : null}
 
-              <div
-                style={{
-                  marginBottom: 16,
-                  padding: "12px 14px",
-                  borderRadius: 8,
-                  border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-                  background: "var(--onroda-surface-2, #f8fafc)",
-                }}
-              >
-                <div className="admin-table-sub" style={{ marginBottom: 8, fontWeight: 700 }}>
-                  Status (Anfrage — Homepage-Onboarding)
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                  <span className="admin-dashboard__badge" title="Bearbeitungsstatus">
-                    Anfrage: {REG_STATUS_DE[req.registrationStatus] || req.registrationStatus}
-                  </span>
-                  <span className="admin-dashboard__badge" title="Verifizierung (Anfrage)">
-                    Verif.: {requestVerDe(req.verificationStatus)}
-                  </span>
-                  <span className="admin-dashboard__badge" title="Compliance (Anfrage)">
-                    Compl.: {requestCompDe(req.complianceStatus)}
-                  </span>
-                  <span className="admin-dashboard__badge" title="Vertrag (Anfrage)">
-                    Vertrag: {requestContDe(req.contractStatus)}
-                  </span>
-                </div>
-                {linkedCo?.id ? (
-                  <>
-                    <div className="admin-table-sub" style={{ marginBottom: 6, fontWeight: 700 }}>
-                      Mandant (nach Freigabe — operativer Stand)
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                      <span className="admin-dashboard__badge" title="Verifizierung (Mandant)">
-                        Verif.: {companyVerDe(linkedCo.verification_status)}
-                      </span>
-                      <span className="admin-dashboard__badge" title="Compliance (Mandant)">
-                        Compl.: {companyCompDe(linkedCo.compliance_status)}
-                      </span>
-                      <span className="admin-dashboard__badge" title="Vertrag (Mandant)">
-                        Vertrag: {companyContDe(linkedCo.contract_status)}
-                      </span>
-                      <span className="admin-dashboard__badge" title="Aktiv">
-                        {linkedCo.is_blocked ? "Gesperrt" : linkedCo.is_active ? "Aktiv" : "Inaktiv"}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--onroda-text-dark, #0f172a)" }}>
-                      <strong>IBAN (Auszahlung):</strong>{" "}
-                      {String(linkedCo.bank_iban || "").trim() ? (
-                        <code style={{ fontSize: 13 }}>{linkedCo.bank_iban}</code>
-                      ) : (
-                        <span style={{ color: "#b45309" }}>noch nicht hinterlegt</span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <p className="admin-table-sub" style={{ margin: 0, lineHeight: 1.45 }}>
-                    Noch kein Mandant — erscheint nach erfolgreicher Freigabe (Anlege-Button) mit Live-Daten.
-                  </p>
-                )}
-              </div>
+              {registrationStatusHeadline(req) ? (
+                <p
+                  style={{
+                    margin: "0 0 14px",
+                    lineHeight: 1.5,
+                    color: "var(--onroda-text-dark, #0f172a)",
+                    fontSize: 15,
+                  }}
+                >
+                  {registrationStatusHeadline(req)}
+                </p>
+              ) : null}
 
               <div
                 style={{
@@ -630,17 +649,120 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
                 }}
               >
                 <div className="admin-table-sub" style={{ marginBottom: 6, fontWeight: 800 }}>
-                  Nächster Schritt (Operator)
+                  Nächster Schritt
                 </div>
                 <p style={{ margin: 0, lineHeight: 1.55, color: "var(--onroda-text-dark, #0f172a)" }}>
                   {deriveNextAdminStep(req, linkedCo)}
                 </p>
-                {req.linkedCompanyId && onOpenCompany ? (
-                  <div style={{ marginTop: 12 }}>
-                    <button type="button" className="admin-btn-primary" onClick={() => onOpenCompany(req.linkedCompanyId)}>
-                      Firma in Mandantenverwaltung öffnen
-                    </button>
+              </div>
+
+              {req.linkedCompanyId ? (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: "12px 14px",
+                    borderRadius: 8,
+                    border: "1px solid #a7f3d0",
+                    background: "#ecfdf5",
+                  }}
+                >
+                  <div className="admin-table-sub" style={{ marginBottom: 8, fontWeight: 800 }}>
+                    Mandant nach Freigabe
                   </div>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: 1.45 }}>
+                    Mandanten-ID: <code>{req.linkedCompanyId}</code>
+                    {linkedCo?.name ? (
+                      <>
+                        {" "}
+                        · <strong>{linkedCo.name}</strong>
+                      </>
+                    ) : null}
+                  </p>
+                  {linkedCo?.id ? (
+                    <>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                        <span className="admin-dashboard__badge" title="Identität & Daten">
+                          Identitätsprüfung: {companyVerDe(linkedCo.verification_status)}
+                        </span>
+                        <span className="admin-dashboard__badge" title="Nachweise">
+                          Nachweise: {companyCompDe(linkedCo.compliance_status)}
+                        </span>
+                        <span className="admin-dashboard__badge" title="Vertrag">
+                          Vertrag: {companyContDe(linkedCo.contract_status)}
+                        </span>
+                        <span className="admin-dashboard__badge" title="Betrieb">
+                          {linkedCo.is_blocked ? "Gesperrt" : linkedCo.is_active ? "Aktiv im System" : "Inaktiv"}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          lineHeight: 1.5,
+                          color: "var(--onroda-text-dark, #0f172a)",
+                          marginBottom: 10,
+                        }}
+                      >
+                        <strong>IBAN für Auszahlungen</strong> —{" "}
+                        {String(linkedCo.bank_iban || "").trim() ? (
+                          <>
+                            <span style={{ color: "#15803d", fontWeight: 600 }}>Status: hinterlegt</span>
+                            <br />
+                            <code style={{ fontSize: 12, display: "inline-block", marginTop: 4 }}>{linkedCo.bank_iban}</code>
+                          </>
+                        ) : (
+                          <span style={{ color: "#b45309", fontWeight: 600 }}>Status: noch offen — in der Mandantenverwaltung eintragen</span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="admin-table-sub" style={{ margin: "0 0 8px" }}>
+                      Vollständige Mandantendaten erscheinen, sobald die Seite die Detaildaten geladen hat. Mandanten-ID
+                      oben in der Regel ausreichend, um in der Verwaltung zu springen.
+                    </p>
+                  )}
+                  {onOpenCompany ? (
+                    <button type="button" className="admin-btn-primary" onClick={() => onOpenCompany(req.linkedCompanyId)}>
+                      Firma öffnen
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                  background: "var(--onroda-surface-2, #f8fafc)",
+                }}
+              >
+                <div className="admin-table-sub" style={{ marginBottom: 8, fontWeight: 700 }}>
+                  Prüffelder & Stände (nur Anfrage)
+                </div>
+                <p className="admin-table-sub" style={{ margin: "0 0 8px", lineHeight: 1.45 }}>
+                  Kurz: Bearbeitung der <strong>öffentlichen Bewerbung</strong> (nicht der spätere laufende Betrieb im
+                  Mandanten).
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                  <span className="admin-dashboard__badge" title="Wohin die Bewerbung im Prozess steht">
+                    Bearbeitung: {REG_STATUS_DE[req.registrationStatus] || req.registrationStatus}
+                  </span>
+                  <span className="admin-dashboard__badge" title="Sind die vorgelegten Daten plausibel geprüft?">
+                    Identität / Daten: {requestVerDe(req.verificationStatus)}
+                  </span>
+                  <span className="admin-dashboard__badge" title="Sind die geforderten Nachweise da?">
+                    Nachweisprüfung: {requestCompDe(req.complianceStatus)}
+                  </span>
+                  <span className="admin-dashboard__badge" title="Vertrags-Setup in dieser Phase">
+                    Vertrag (Vorphase): {requestContDe(req.contractStatus)}
+                  </span>
+                </div>
+                {!req.linkedCompanyId ? (
+                  <p className="admin-table-sub" style={{ margin: 0, lineHeight: 1.45 }}>
+                    <strong>Kein Mandant:</strong> nach erfolgreicher Freigabe erscheint oben der grüne Block „Mandant nach
+                    Freigabe“ mit Auszahlungs-IBAN.
+                  </p>
                 ) : null}
               </div>
 
@@ -831,8 +953,58 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
               <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
                 Dokumente
               </h3>
+              <p className="admin-table-sub" style={{ margin: "0 0 10px", lineHeight: 1.45 }}>
+                <strong>Erwartete Nachweise</strong> (Orientierung für {partnerLabel}) — Abgleich mit hochgeladenen Dateien.
+                Fehlt eine erwartete Kategorie, ist die Datei unter „Eingereichte Dateien“ noch nicht vorhanden oder anders
+                benannt.
+              </p>
+              <ul
+                style={{
+                  listStyle: "none",
+                  margin: "0 0 16px",
+                  padding: 10,
+                  border: "1px dashed var(--onroda-border-subtle, #cbd5e1)",
+                  borderRadius: 8,
+                }}
+              >
+                {expectedDocRowsForPartnerType(req?.partnerType).map((row) => {
+                  const ok = hasUploadedCategory(detail.documents, row.category);
+                  return (
+                    <li
+                      key={row.category + row.hint}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        marginBottom: 6,
+                        fontSize: 13,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          color: ok ? "#15803d" : "#b45309",
+                          minWidth: 18,
+                        }}
+                        aria-hidden
+                      >
+                        {ok ? "✓" : "○"}
+                      </span>
+                      <span>
+                        <strong>{DOC_CAT_DE[row.category] || row.category}</strong> — {row.hint}
+                        {!ok ? <span className="admin-table-sub"> (noch keine Datei in dieser Kategorie)</span> : null}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="admin-table-sub" style={{ marginBottom: 6, fontWeight: 700 }}>
+                Eingereichte Dateien
+              </div>
               {detail.documents.length === 0 ? (
-                <p className="admin-table-sub">Noch keine Dokumente.</p>
+                <p className="admin-table-sub">Noch keine Dateien hochgeladen. Oben sehen Sie, welche Kategorien typischerweise
+                  erwartet werden.</p>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                   {detail.documents.map((d) => (
@@ -867,70 +1039,86 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
               )}
 
               <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
-                Status-Timeline (chronologisch)
+                Verlauf
               </h3>
               <p className="admin-table-sub" style={{ margin: "0 0 8px" }}>
-                Nur Onboarding- und Admin-Ereignisse zu dieser Anfrage — getrennt vom Partner-Support-Posteingang.
+                Chronologisch. <strong>Blau = Plattform/Admin</strong>, <strong>teal = Bewerber</strong> (Self-Service
+                EINREICHUNG) — bewusst getrennt vom allgemeinen Partner-Support.
               </p>
-              <div style={{ maxHeight: 360, overflow: "auto", paddingLeft: 4 }}>
+              <div style={{ maxHeight: 380, overflow: "auto", paddingLeft: 2 }}>
                 {detail.timeline.length === 0 ? (
-                  <p className="admin-table-sub">Noch keine Einträge im Verlauf.</p>
+                  <p className="admin-table-sub">Noch keine Einträge. Sobald E-Mails und Aktionen laufen, erscheinen sie hier.</p>
                 ) : (
                   detail.timeline
                     .slice()
                     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                    .map((ev, idx, arr) => (
-                      <div
-                        key={ev.id}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "12px 1fr",
-                          gap: 10,
-                          marginBottom: idx < arr.length - 1 ? 0 : 0,
-                        }}
-                      >
-                        <div style={{ position: "relative", width: 12 }}>
-                          <div
-                            style={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: "50%",
-                              background: "var(--onroda-accent-strong, #0ea5e9)",
-                              marginTop: 4,
-                              marginLeft: 1,
-                            }}
-                            aria-hidden
-                          />
-                          {idx < arr.length - 1 ? (
+                    .map((ev, idx, arr) => {
+                      const lane = timelineActorLane(ev);
+                      const isAdmin = lane === "admin";
+                      const isApplicant = lane === "applicant";
+                      const lineColor = isAdmin ? "#7dd3fc" : isApplicant ? "#5eead4" : "#e2e8f0";
+                      const borderColor = isAdmin ? "#0ea5e9" : isApplicant ? "#0d9488" : "#94a3b8";
+                      const label = isAdmin
+                        ? "Plattform (Admin/Operator)"
+                        : isApplicant
+                          ? "Bewerber (Einreichung)"
+                          : (ev.actorLabel || "System") + (ev.actorType ? ` · ${ev.actorType}` : "");
+                      return (
+                        <div
+                          key={ev.id}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "12px 1fr",
+                            gap: 10,
+                            marginBottom: 0,
+                          }}
+                        >
+                          <div style={{ position: "relative", width: 12 }}>
                             <div
                               style={{
-                                position: "absolute",
-                                left: 4,
-                                top: 16,
-                                bottom: -8,
-                                width: 2,
-                                background: "#e2e8f0",
+                                width: 10,
+                                height: 10,
+                                borderRadius: "50%",
+                                background: isAdmin ? "#0ea5e9" : isApplicant ? "#0d9488" : "#94a3b8",
+                                marginTop: 4,
+                                marginLeft: 1,
                               }}
                               aria-hidden
                             />
-                          ) : null}
-                        </div>
-                        <div
-                          style={{
-                            marginBottom: 12,
-                            padding: "8px 10px",
-                            border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-                            background: "#fafafa",
-                            borderRadius: 6,
-                          }}
-                        >
-                          <div style={{ fontSize: 12, color: "#64748b" }}>
-                            {fmt(ev.createdAt)} · {ev.actorType} · {ev.eventType}
+                            {idx < arr.length - 1 ? (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  left: 4,
+                                  top: 16,
+                                  bottom: -8,
+                                  width: 2,
+                                  background: lineColor,
+                                }}
+                                aria-hidden
+                              />
+                            ) : null}
                           </div>
-                          {ev.message ? <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{ev.message}</div> : null}
+                          <div
+                            style={{
+                              marginBottom: 12,
+                              padding: "8px 10px",
+                              border: `1px solid var(--onroda-border-subtle, #e2e8f0)`,
+                              borderLeft: `4px solid ${borderColor}`,
+                              background: isAdmin ? "#f0f9ff" : isApplicant ? "#f0fdfa" : "#fafafa",
+                              borderRadius: 6,
+                            }}
+                          >
+                            <div style={{ fontSize: 11, fontWeight: 700, color: borderColor, marginBottom: 4 }}>{label}</div>
+                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                              {fmt(ev.createdAt)}
+                              {eventTypeReadable(ev.eventType) ? ` · ${eventTypeReadable(ev.eventType)}` : ""}
+                            </div>
+                            {ev.message ? <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{ev.message}</div> : null}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                 )}
               </div>
             </div>
