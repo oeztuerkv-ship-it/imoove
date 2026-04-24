@@ -103,17 +103,43 @@
   cursor: pointer;
   font-size: 0.9rem;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .partner-shell__nav-btn:hover {
   background: #fafafa;
   border-color: #d4d4d8;
+  color: #18181b;
+}
+
+.partner-shell__nav-btn:active {
+  background: #f3f4f6;
+  border-color: #cbd5e1;
+  color: #18181b;
+}
+
+.partner-shell__nav-btn:focus {
+  color: #18181b;
+}
+
+.partner-shell__nav-btn:focus-visible {
+  outline: 2px solid rgba(217, 4, 41, 0.35);
+  outline-offset: 2px;
 }
 
 .partner-shell__nav-btn--active {
   background: #d90429;
   color: #ffffff;
   border-color: #d90429;
+}
+
+.partner-shell__nav-btn--active:hover,
+.partner-shell__nav-btn--active:active,
+.partner-shell__nav-btn--active:focus,
+.partner-shell__nav-btn--active:focus-visible {
+  background: #d90429;
+  border-color: #d90429;
+  color: #ffffff;
 }
 
 .partner-shell__logout {
@@ -1670,4 +1696,226 @@
   gap: 10px 12px;
   justify-content: flex-end;
   padding-top: 4px;
+}
+
+/* —— Responsive: Mobile first hardening (ohne Desktop-Regression) —— */
+@media (max-width: 768px) {
+  .partner-shell,
+  .partner-shell__body,
+  .partner-card,
+  .partner-support-shell {
+    overflow-x: clip;
+  }
+
+  .partner-shell__header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px 10px;
+    align-items: center;
+  }
+
+  .partner-shell__brand {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .partner-shell__brand-subtitle {
+    font-size: 12px;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+
+  .partner-shell__logout {
+    order: 2;
+    margin-left: auto;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 12px;
+  }
+
+  /* Top-Navigation mobil: horizontal scroll, kein Quetschen/Umbruch */
+  .partner-shell__nav {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding: 2px 0 4px;
+  }
+
+  .partner-shell__nav-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 14px;
+    font-size: 0.84rem;
+    border-radius: 12px;
+  }
+
+  .partner-shell__body {
+    padding: 16px 12px 28px;
+  }
+
+  .partner-card--section {
+    padding: 16px 14px;
+  }
+
+  .partner-page-hero {
+    margin-bottom: 18px;
+  }
+
+  .partner-page-title {
+    font-size: 30px;
+    line-height: 1.08;
+  }
+
+  .partner-page-lead {
+    font-size: 0.94rem;
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+
+  .partner-section-h {
+    font-size: 1.1rem;
+  }
+
+  .partner-kpi-grid,
+  .partner-fleet-kpi-bar,
+  .partner-tile-grid,
+  .partner-form-grid,
+  .partner-form-grid--2-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .partner-kpi,
+  .partner-fleet-kpi,
+  .partner-tile {
+    padding: 14px;
+  }
+
+  .partner-metrics {
+    gap: 14px 16px;
+    padding: 14px;
+  }
+
+  .partner-form-toolbar,
+  .partner-action-row,
+  .partner-table__actions {
+    align-items: stretch;
+  }
+
+  .partner-form-toolbar > .partner-btn-primary,
+  .partner-form-toolbar > .partner-btn-secondary,
+  .partner-action-row > .partner-btn-primary,
+  .partner-action-row > .partner-btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .partner-btn-primary,
+  .partner-btn-secondary {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  /* Tabellen mobil: scrollbar statt Layout-Break */
+  .partner-table-wrap {
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+
+  .partner-table {
+    min-width: 560px;
+  }
+
+  .partner-table th,
+  .partner-table td {
+    padding: 10px 10px;
+    font-size: 0.82rem;
+  }
+
+  /* Anfragen mobil: Liste + Thread untereinander ohne starre Höhen */
+  .partner-support-header {
+    margin-bottom: 12px;
+    padding: 0;
+  }
+
+  .partner-support-workspace {
+    border-radius: 12px;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .partner-support-col--list {
+    max-height: 34vh;
+  }
+
+  .partner-support-thread__head {
+    padding: 12px 12px 10px;
+  }
+
+  .partner-support-thread__scroll {
+    padding: 12px 10px 8px;
+  }
+
+  .partner-support-composer {
+    padding: 10px;
+  }
+
+  .partner-support-composer__actions {
+    justify-content: stretch;
+  }
+
+  .partner-support-composer__actions .partner-btn-primary,
+  .partner-support-composer__actions .partner-btn-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .partner-shell__header {
+    padding: 10px 10px 8px;
+  }
+
+  .partner-shell__onroda-wordmark {
+    font-size: 1.22rem;
+  }
+
+  .partner-shell__brand-taxi {
+    font-size: 0.72rem;
+  }
+
+  .partner-shell__body {
+    padding: 12px 10px 22px;
+  }
+
+  .partner-card--section {
+    padding: 14px 12px;
+    border-radius: 16px;
+  }
+
+  .partner-page-title {
+    font-size: 26px;
+  }
+
+  .partner-kpi__value,
+  .partner-fleet-kpi__num,
+  .partner-tile__metric {
+    font-size: 1.3rem;
+  }
+
+  .partner-shell__nav-btn {
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
+
+  .partner-table {
+    min-width: 520px;
+  }
 }
