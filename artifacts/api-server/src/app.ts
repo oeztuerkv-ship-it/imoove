@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import adminRouter from "./routes/admin";
-import panelAuth from "./routes/panelAuth.js";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -116,7 +115,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 app.use(router);
 app.use(adminRouter);
-app.use("/api/panel-auth", panelAuth); // <-- HIER IST DIE NEUE ROUTE
+/**
+ * Panel-Auth inkl. öffentlicher Partner-Registrierung: `routes/index.ts` → `router.use(panelAuthRouter)`.
+ * Kanonische URLs: `/api/panel-auth/...` (kein zweites Mount unter `/api/panel-auth`, sonst entstehen
+ * Pfade mit doppeltem `panel-auth`).
+ */
 
 // Restliche Middleware und Static-Logik
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
