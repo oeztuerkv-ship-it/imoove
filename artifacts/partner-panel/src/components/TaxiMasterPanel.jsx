@@ -180,7 +180,7 @@ function buildTaxiCockpitAlerts(company, drivers, vehicles) {
   const huExpired = [];
   const huSoon = [];
   for (const v of vehicles) {
-    if (!v?.isActive) continue;
+    if (v?.approvalStatus !== "approved") continue;
     const days = daysUntilIso(v.nextInspectionDate);
     if (days == null) continue;
     const plate = v.licensePlate || "Fahrzeug";
@@ -235,7 +235,7 @@ function buildTaxiCockpitAlerts(company, drivers, vehicles) {
 function buildCockpitSpotlightRows(company, drivers, vehicles) {
   if (!company) return [];
   const actDr = drivers.filter((d) => d?.isActive && d?.accessStatus === "active");
-  const actVeh = vehicles.filter((v) => v?.isActive);
+  const actVeh = vehicles.filter((v) => v?.approvalStatus === "approved");
   let p60 = 0;
   let pExp = 0;
   for (const d of actDr) {
@@ -272,7 +272,7 @@ function buildCockpitSpotlightRows(company, drivers, vehicles) {
       ok: ins.ok,
     },
     { key: "ps", label: "P-Schein (aktive Fahrer)", value: psDetail, ok: pExp === 0 && p60 === 0 },
-    { key: "hu", label: "Hauptuntersuchung (aktive Fahrzeuge)", value: huDetail, ok: huExp === 0 && hu60 === 0 },
+    { key: "hu", label: "Hauptuntersuchung (freigegebene Fahrzeuge)", value: huDetail, ok: huExp === 0 && hu60 === 0 },
     {
       key: "pr",
       label: "Kern-Stammdaten",
@@ -400,7 +400,10 @@ export default function TaxiMasterPanel({ company, onNavigateModule }) {
     () => drivers.filter((d) => d?.isActive && d?.accessStatus === "active").length,
     [drivers],
   );
-  const activeVehicles = useMemo(() => vehicles.filter((v) => v?.isActive).length, [vehicles]);
+  const activeVehicles = useMemo(
+    () => vehicles.filter((v) => v?.approvalStatus === "approved").length,
+    [vehicles],
+  );
 
   const cockpitAlerts = useMemo(
     () => (loadComplete && companyData ? buildTaxiCockpitAlerts(companyData, drivers, vehicles) : []),
@@ -534,7 +537,7 @@ export default function TaxiMasterPanel({ company, onNavigateModule }) {
                     )}
                   </div>
                   <div className={`partner-kpi${vehiclesError ? " partner-kpi--warn" : ""}`.trim()}>
-                    <p className="partner-kpi__label">Aktive Fahrzeuge</p>
+                    <p className="partner-kpi__label">Freigegebene Fahrzeuge</p>
                     <p className="partner-kpi__value">{vehiclesError ? "—" : String(activeVehicles)}</p>
                     {vehiclesError ? (
                       <p className="partner-kpi__hint">{vehiclesError}</p>
@@ -747,7 +750,7 @@ export default function TaxiMasterPanel({ company, onNavigateModule }) {
                         ↗
                       </span>
                     </div>
-                    <p className="partner-tile__metric">{vehiclesError ? "—" : activeVehicles} aktiv</p>
+                    <p className="partner-tile__metric">{vehiclesError ? "—" : activeVehicles} freigegeben</p>
                     <p className="partner-tile__desc">Bestand, Kennzeichen, Hauptuntersuchung – unter „Flotte“.</p>
                   </button>
                   <button type="button" className="partner-tile" onClick={() => goModule("dokumente")}>

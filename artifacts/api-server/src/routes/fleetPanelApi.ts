@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { Router, type IRouter } from "express";
@@ -21,10 +22,13 @@ import {
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import {
+  appendFleetVehicleDocument,
   countActiveFleetVehicles,
   insertFleetVehicle,
+  listFleetVehicleDocumentStorageKeysInCompany,
   listFleetVehiclesForCompany,
   patchFleetVehicle,
+  submitFleetVehicleForApproval,
   type FleetVehicleClass,
   type FleetVehicleLegalType,
   type FleetVehicleType,
@@ -397,7 +401,7 @@ router.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) 
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.read")) return;
     let rows = await listFleetVehiclesForCompany(ctx.claims.companyId);
     if (String((req.query as { activeOnly?: string }).activeOnly ?? "") === "1") {
-      rows = rows.filter((v) => v.isActive);
+      rows = rows.filter((v) => v.approvalStatus === "approved");
     }
     res.json({ ok: true, vehicles: rows });
   } catch (e) {
@@ -423,6 +427,12 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       return;
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
+    const konzessionRaw =
+      typeof b.konzessionNumber === "string"
+        ? b.konzessionNumber
+        : typeof b.taxiOrderNumber === "string"
+          ? b.taxiOrderNumber
+          : "";
     const vehicleType = (typeof b.vehicleType === "string" ? b.vehicleType : "sedan") as FleetVehicleType;
     const vehicleLegalType = "taxi" as FleetVehicleLegalType;
     const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetVehicleClass;
@@ -449,8 +459,9 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       vehicleLegalType,
       vehicleClass,
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
+      konzessionNumber: konzessionRaw,
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
-      isActive: typeof b.isActive === "boolean" ? b.isActive : true,
+      approvalStatus: "draft",
     });
     if (!ins.ok) {
       res.status(400).json({ error: ins.error });
@@ -483,11 +494,11 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
     if (typeof b.color === "string") patch.color = b.color;
     if (typeof b.model === "string") patch.model = b.model;
     if (typeof b.taxiOrderNumber === "string") patch.taxiOrderNumber = b.taxiOrderNumber;
+    if (typeof b.konzessionNumber === "string") patch.konzessionNumber = b.konzessionNumber;
     if (typeof b.nextInspectionDate === "string" || b.nextInspectionDate === null) {
       patch.nextInspectionDate =
         b.nextInspectionDate === null ? null : (b.nextInspectionDate as string);
     }
-    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
     if (typeof b.vehicleLegalType === "string") {
       patch.vehicleLegalType = "taxi" as FleetVehicleLegalType;
     }
@@ -561,6 +572,118 @@ router.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     await clearDriverAssignment(req.params.driverId, ctx.claims.companyId);
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post(
+  "/panel/v1/fleet/vehicles/:id/documents",
+  requirePanelAuth,
+  express.raw({ type: "application/pdf", limit: "8mb" }),
+  async (req, res, next) => {
+    try {
+      const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
+      if (!ctx) return;
+      if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
+      const buf = req.body as Buffer;
+      if (!buf || buf.length < 8) {
+        res.status(400).json({ error: "pdf_body_required" });
+        return;
+      }
+      const id = req.params.id;
+      const rel = path.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID()}.pdf`);
+      const dest = path.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, buf);
+      const storageKey = rel.replace(/\\/g, "/");
+      const ar = await appendFleetVehicleDocument(id, ctx.claims.companyId, storageKey);
+      if (!ar.ok) {
+        const code = ar.error;
+        res.status(code === "not_found" ? 404 : code === "documents_locked" ? 409 : 400).json({ error: code });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: ctx.claims.companyId,
+        actorPanelUserId: ctx.claims.panelUserId,
+        action: "fleet.vehicle_document_uploaded",
+        subjectType: "fleet_vehicle",
+        subjectId: id,
+        meta: {},
+      });
+      res.json({ ok: true, storageKey });
+    } catch (e) {
+      next(e);
+    }
+  },
+);
+
+router.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
+    const sr = await submitFleetVehicleForApproval(req.params.id, ctx.claims.companyId);
+    if (!sr.ok) {
+      const m: Record<string, number> = {
+        not_found: 404,
+        invalid_state: 409,
+        konzession_number_required: 400,
+        license_plate_required: 400,
+        documents_required: 400,
+      };
+      res.status(m[sr.error] ?? 400).json({ error: sr.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.vehicle_submitted_for_approval",
+      subjectType: "fleet_vehicle",
+      subjectId: req.params.id,
+      meta: {},
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.read")) return;
+    const storageKey = typeof (req.query as { storageKey?: string }).storageKey === "string"
+      ? (req.query as { storageKey: string }).storageKey.trim()
+      : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysInCompany(ctx.claims.companyId, req.params.id);
+    if (keys === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!keys.includes(storageKey)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const abs = path.resolve(path.join(FLEET_UPLOAD_ROOT, storageKey));
+    const root = path.resolve(path.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
+    if (!abs.startsWith(root + path.sep) && abs !== root) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    createReadStream(abs)
+      .on("error", () => {
+        if (!res.headersSent) res.status(404).end();
+      })
+      .pipe(res);
   } catch (e) {
     next(e);
   }

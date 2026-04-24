@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 
@@ -67,6 +67,16 @@ const VEHICLE_TYPES = [
 const VEHICLE_LEGAL_HINT =
   "Onroda arbeitet nur mit Taxi-Schätzpreis. Alle Fahrzeuge werden als Taxi geführt; die Zuordnung erfolgt weiterhin über Fahrzeugklasse (Standard, XL, Rollstuhl).";
 
+function vehicleStatusDe(v) {
+  const s = v?.approvalStatus;
+  if (s === "draft") return "Entwurf";
+  if (s === "pending_approval") return "In Prüfung";
+  if (s === "approved") return "Freigegeben";
+  if (s === "rejected") return "Abgelehnt";
+  if (s === "blocked") return "Gesperrt";
+  return "—";
+}
+
 const VEHICLE_CLASSES = [
   { value: "standard", label: "Standard" },
   { value: "xl", label: "XL / Großraum" },
@@ -104,9 +114,10 @@ export default function FleetPage() {
     vehicleType: "sedan",
     vehicleLegalType: "taxi",
     vehicleClass: "standard",
-    taxiOrderNumber: "",
+    konzessionNumber: "",
     nextInspectionDate: "",
   });
+  const vehicleCreatePdfRef = useRef(null);
   const [assignForm, setAssignForm] = useState({ driverId: "", vehicleId: "" });
 
   const loadAll = useCallback(async () => {
@@ -196,6 +207,15 @@ export default function FleetPage() {
     e.preventDefault();
     if (!token || !canManage) return;
     setMsg("");
+    const pdfFile = vehicleCreatePdfRef.current?.files?.[0];
+    if (!pdfFile) {
+      setMsg("Bitte mindestens ein PDF-Nachweis (z. B. Konzession) auswählen.");
+      return;
+    }
+    if (pdfFile.type !== "application/pdf") {
+      setMsg("Nur PDF-Dateien sind erlaubt.");
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles`, {
         method: "POST",
@@ -210,16 +230,55 @@ export default function FleetPage() {
           vehicleType: vehicleForm.vehicleType,
           vehicleLegalType: "taxi",
           vehicleClass: vehicleForm.vehicleClass,
-          taxiOrderNumber: vehicleForm.taxiOrderNumber,
+          konzessionNumber: vehicleForm.konzessionNumber,
           nextInspectionDate: vehicleForm.nextInspectionDate || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        setMsg("Fahrzeug konnte nicht angelegt werden.");
+        setMsg(
+          typeof data?.error === "string" && data.error === "konzession_number_required"
+            ? "Konzessionsnummer ist erforderlich."
+            : "Fahrzeug konnte nicht angelegt werden.",
+        );
         return;
       }
-      setMsg("Fahrzeug angelegt.");
+      const newId = data.id;
+      const buf = await pdfFile.arrayBuffer();
+      const up = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(newId)}/documents`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/pdf",
+        },
+        body: buf,
+      });
+      const upData = await up.json().catch(() => ({}));
+      if (!up.ok || !upData?.ok) {
+        setMsg("Fahrzeug angelegt, aber PDF-Upload fehlgeschlagen. Bitte in der Liste nachladen (Entwurf).");
+        if (vehicleCreatePdfRef.current) vehicleCreatePdfRef.current.value = "";
+        await loadAll();
+        return;
+      }
+      const sub = await fetch(
+        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(newId)}/submit-for-approval`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const subData = await sub.json().catch(() => ({}));
+      if (!sub.ok || !subData?.ok) {
+        const code = subData?.error;
+        setMsg(
+          code === "documents_required"
+            ? "Dokument fehlt. Bitte PDF erneut hochladen und einreichen."
+            : "Einreichung an Onroda fehlgeschlagen.",
+        );
+        await loadAll();
+        return;
+      }
+      setMsg("Fahrzeug eingereicht – wartet auf Freigabe durch Onroda.");
       setVehicleForm({
         licensePlate: "",
         model: "",
@@ -227,12 +286,67 @@ export default function FleetPage() {
         vehicleType: "sedan",
         vehicleLegalType: "taxi",
         vehicleClass: "standard",
-        taxiOrderNumber: "",
+        konzessionNumber: "",
         nextInspectionDate: "",
       });
+      if (vehicleCreatePdfRef.current) vehicleCreatePdfRef.current.value = "";
       await loadAll();
     } catch {
       setMsg("Fahrzeug konnte nicht angelegt werden.");
+    }
+  }
+
+  async function uploadVehicleDocument(vehicleId, ev) {
+    const file = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!file || !token || !canManage) return;
+    if (file.type !== "application/pdf") {
+      setMsg("Bitte eine PDF-Datei wählen.");
+      return;
+    }
+    setMsg("");
+    try {
+      const buf = await file.arrayBuffer();
+      const res = await fetch(
+        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/documents`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/pdf",
+          },
+          body: buf,
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg("Dokument-Upload fehlgeschlagen.");
+        return;
+      }
+      setMsg("Dokument gespeichert.");
+      await loadAll();
+    } catch {
+      setMsg("Dokument-Upload fehlgeschlagen.");
+    }
+  }
+
+  async function submitVehicleApproval(vehicleId) {
+    if (!token || !canManage) return;
+    setMsg("");
+    try {
+      const res = await fetch(
+        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/submit-for-approval`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg("Einreichen fehlgeschlagen (Kennzeichen, Konzession und mindestens ein PDF nötig).");
+        return;
+      }
+      setMsg("Zur Prüfung bei Onroda eingereicht.");
+      await loadAll();
+    } catch {
+      setMsg("Einreichen fehlgeschlagen.");
     }
   }
 
@@ -341,7 +455,11 @@ export default function FleetPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        setMsg("Zuweisung fehlgeschlagen.");
+        setMsg(
+          data?.error === "vehicle_not_approved"
+            ? "Nur freigegebene Fahrzeuge dürfen zugewiesen werden."
+            : "Zuweisung fehlgeschlagen.",
+        );
         return;
       }
       setMsg("Zuweisung gespeichert.");
@@ -415,7 +533,7 @@ export default function FleetPage() {
             </div>
             <div className="partner-fleet-kpi">
               <span className="partner-fleet-kpi__num">{dash.vehiclesActive ?? 0}</span>
-              <span className="partner-fleet-kpi__lbl">Aktive Fahrzeuge</span>
+              <span className="partner-fleet-kpi__lbl">Freigegebene Fahrzeuge</span>
             </div>
             <div className="partner-fleet-kpi">
               <span className="partner-fleet-kpi__num">{dash.pScheinExpiringWithin30Days ?? 0}</span>
@@ -610,7 +728,7 @@ export default function FleetPage() {
                 checked={vehiclesActiveOnly}
                 onChange={(ev) => setVehiclesActiveOnly(ev.target.checked)}
               />
-              Nur aktive Fahrzeuge
+              Nur freigegebene Fahrzeuge
             </label>
           </div>
           {canManage ? (
@@ -673,12 +791,17 @@ export default function FleetPage() {
                   </select>
                 </label>
                 <label className="partner-form-field">
-                  <span>Taxi-Ordnungsnr.</span>
+                  <span>Konzessionsnummer (Pflicht)</span>
                   <input
                     className="partner-input"
-                    value={vehicleForm.taxiOrderNumber}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, taxiOrderNumber: ev.target.value }))}
+                    value={vehicleForm.konzessionNumber}
+                    onChange={(ev) => setVehicleForm((f) => ({ ...f, konzessionNumber: ev.target.value }))}
+                    required
                   />
+                </label>
+                <label className="partner-form-field partner-form-field--span2">
+                  <span>Nachweis / Dokument (PDF, Pflicht)</span>
+                  <input ref={vehicleCreatePdfRef} className="partner-input" type="file" accept="application/pdf" />
                 </label>
                 <label className="partner-form-field">
                   <span>Nächste HU (TÜV)</span>
@@ -693,8 +816,12 @@ export default function FleetPage() {
               <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
                 {VEHICLE_LEGAL_HINT}
               </p>
+              <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
+                Nach dem Speichern wird das Fahrzeug bei Onroda zur Prüfung eingereicht. Sie können Fahrzeuge nicht
+                selbst freischalten — die Freigabe erfolgt nur durch Onroda.
+              </p>
               <button type="submit" className="partner-btn-primary" style={{ marginTop: 8 }}>
-                Fahrzeug speichern
+                Fahrzeug anlegen &amp; einreichen
               </button>
             </form>
           ) : null}
@@ -730,11 +857,13 @@ export default function FleetPage() {
                     required
                   >
                     <option value="">— wählen —</option>
-                    {vehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.licensePlate} {v.model ? `· ${v.model}` : ""}
-                      </option>
-                    ))}
+                    {vehicles
+                      .filter((v) => v.approvalStatus === "approved")
+                      .map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.licensePlate} {v.model ? `· ${v.model}` : ""}
+                        </option>
+                      ))}
                   </select>
                 </label>
               </div>
@@ -752,10 +881,11 @@ export default function FleetPage() {
               <thead>
                 <tr>
                   <th>Kennzeichen</th>
+                  <th>Status</th>
                   <th>Modell</th>
                   <th>Typ</th>
                   <th>Klasse</th>
-                  <th>Taxi-Nr.</th>
+                  <th>Konzession</th>
                   <th>HU</th>
                   <th>Aktueller Fahrer</th>
                 </tr>
@@ -763,23 +893,61 @@ export default function FleetPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7}>Laden …</td>
+                    <td colSpan={8}>Laden …</td>
                   </tr>
                 ) : vehicles.length === 0 ? (
                   <tr>
-                    <td colSpan={7}>Keine Fahrzeuge.</td>
+                    <td colSpan={8}>Keine Fahrzeuge.</td>
                   </tr>
                 ) : (
                   vehicles.map((v) => {
                     const a = assignments.find((x) => x.vehicleId === v.id);
                     const drv = a ? drivers.find((d) => d.id === a.driverId) : null;
+                    const kz = v.konzessionNumber ?? v.taxiOrderNumber ?? "—";
                     return (
                       <tr key={v.id}>
                         <td>{v.licensePlate}</td>
+                        <td>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <span className="partner-pill partner-pill--muted" style={{ alignSelf: "flex-start" }}>
+                              {vehicleStatusDe(v)}
+                            </span>
+                            {v.approvalStatus === "pending_approval" ? (
+                              <span className="partner-muted" style={{ fontSize: 12, maxWidth: 260, lineHeight: 1.35 }}>
+                                Wartet auf Freigabe durch Onroda
+                              </span>
+                            ) : null}
+                            {v.approvalStatus === "rejected" && v.rejectionReason ? (
+                              <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
+                                {v.rejectionReason}
+                              </span>
+                            ) : null}
+                            {canManage && (v.approvalStatus === "draft" || v.approvalStatus === "rejected") ? (
+                              <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                                <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
+                                  PDF
+                                  <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    style={{ display: "none" }}
+                                    onChange={(ev) => void uploadVehicleDocument(v.id, ev)}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  className="partner-btn-secondary partner-btn-secondary--sm"
+                                  onClick={() => void submitVehicleApproval(v.id)}
+                                >
+                                  Einreichen
+                                </button>
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
                         <td>{v.model || "—"}</td>
                         <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
                         <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
-                        <td>{v.taxiOrderNumber || "—"}</td>
+                        <td>{kz}</td>
                         <td>{v.nextInspectionDate || "—"}</td>
                         <td>
                           {drv ? (

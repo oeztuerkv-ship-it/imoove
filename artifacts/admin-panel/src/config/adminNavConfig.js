@@ -34,6 +34,7 @@ export const ADMIN_PAGE_ROLES = {
 
   companies: ["admin", "service", "taxi"],
   "support-inbox": ["admin", "service"],
+  "fleet-vehicles-review": ["admin", "service"],
 
   "drivers-overview": ["admin", "service", "taxi"],
   "drivers-status": ["admin", "service", "taxi"],
@@ -143,6 +144,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     items: [
       { pageKey: "companies", label: "Firmenliste & Profile", icon: "building", roles: ["admin", "service", "taxi"] },
       { pageKey: "support-inbox", label: "Partner-Anfragen", icon: "document", roles: R.adminSvc },
+      { pageKey: "fleet-vehicles-review", label: "Fahrzeuge prüfen", icon: "rides", roles: R.adminSvc },
     ],
   },
   {

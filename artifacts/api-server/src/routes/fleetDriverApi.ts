@@ -64,7 +64,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         ok: true,
         rides: [],
         message:
-          "Keine Taxi-Rechtsart am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen.",
+          "Kein fahrbereites Fahrzeug: Zuweisung prüfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge).",
       });
       return;
     }
@@ -130,7 +130,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
         ok: true,
         rides: [],
         message:
-          "Keine Taxi-Rechtsart am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen.",
+          "Kein fahrbereites Fahrzeug: Zuweisung prüfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge).",
       });
       return;
     }

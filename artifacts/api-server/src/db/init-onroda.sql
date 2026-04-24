@@ -260,8 +260,14 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
   vehicle_legal_type TEXT NOT NULL DEFAULT 'taxi',
   vehicle_class TEXT NOT NULL DEFAULT 'standard',
   taxi_order_number TEXT NOT NULL DEFAULT '',
+  konzession_number TEXT NOT NULL DEFAULT '',
+  vehicle_documents JSONB NOT NULL DEFAULT '[]'::jsonb,
+  rejection_reason TEXT NOT NULL DEFAULT '',
+  approval_decided_at TIMESTAMPTZ,
+  approval_decided_by_admin_id TEXT REFERENCES admin_auth_users (id) ON DELETE SET NULL,
   next_inspection_date DATE,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  is_active BOOLEAN NOT NULL DEFAULT FALSE,
+  approval_status TEXT NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_vehicles_type_chk CHECK (
@@ -272,6 +278,9 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
   ),
   CONSTRAINT fleet_vehicles_class_chk CHECK (
     vehicle_class IN ('standard', 'xl', 'wheelchair')
+  ),
+  CONSTRAINT fleet_vehicles_approval_status_chk CHECK (
+    approval_status IN ('draft', 'pending_approval', 'approved', 'rejected', 'blocked')
   )
 );
 

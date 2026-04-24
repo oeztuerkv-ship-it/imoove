@@ -1,5 +1,8 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { forbiddenPanelModulesForCompanyKind } from "../domain/adminCompanyKindPanelModules";
 import { computeAccessCodePublicStatus } from "../domain/accessCodeLifecycle";
@@ -106,6 +109,13 @@ import {
   parseAdminDashboardDayBounds,
   type AdminRideListQuery,
 } from "../db/ridesData";
+import {
+  forceBlockFleetVehicleByAdmin,
+  getFleetVehicleAdminDetail,
+  listFleetVehicleDocumentStorageKeysAdmin,
+  listPendingFleetVehiclesForAdmin,
+  setFleetVehicleApprovalByAdmin,
+} from "../db/fleetVehiclesData";
 import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
@@ -699,6 +709,10 @@ router.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, n
  */
 const adminJson: IRouter = Router();
 adminJson.use(requireAdminApiBearer);
+
+const adminFleetUploadRoot =
+  (process.env.FLEET_UPLOAD_DIR ?? "").trim() ||
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "data", "fleet-uploads");
 
 adminJson.get("/stats", async (req, res, next) => {
   try {
@@ -2354,6 +2368,157 @@ adminJson.delete("/fare-areas/:id", async (req, res, next) => {
     }
     const items = await listFareAreas();
     res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Plattform: Fahrzeuge (Taxi-Flotte) prüfen — nur Admin/Service, alle Mandanten. */
+adminJson.get("/fleet-vehicles/pending", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listPendingFleetVehiclesForAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/fleet-vehicles/:vehicleId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const row = await getFleetVehicleAdminDetail(vehicleId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, vehicle: row.vehicle, companyName: row.companyName });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "approved",
+      adminUserId: adminId,
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const reason = typeof (req.body as { reason?: unknown })?.reason === "string"
+      ? (req.body as { reason: string }).reason.trim()
+      : "";
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "rejected",
+      rejectionReason: reason,
+      adminUserId: adminId,
+    });
+    if (!r.ok) {
+      const m: Record<string, number> = {
+        not_found: 404,
+        not_pending: 409,
+        rejection_reason_required: 400,
+      };
+      res.status(m[r.error] ?? 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await forceBlockFleetVehicleByAdmin(vehicleId, adminId);
+    if (!r.ok) {
+      res
+        .status(r.error === "not_found" ? 404 : r.error === "already_blocked" ? 409 : 400)
+        .json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/fleet-vehicles/:vehicleId/documents/file", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const storageKey =
+      typeof (req.query as { storageKey?: string }).storageKey === "string"
+        ? (req.query as { storageKey: string }).storageKey.trim()
+        : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysAdmin(vehicleId);
+    if (keys === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!keys.includes(storageKey)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const abs = path.resolve(path.join(adminFleetUploadRoot, storageKey));
+    const base = path.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path.sep) && abs !== base) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    createReadStream(abs)
+      .on("error", () => {
+        if (!res.headersSent) res.status(404).end();
+      })
+      .pipe(res);
   } catch (e) {
     next(e);
   }

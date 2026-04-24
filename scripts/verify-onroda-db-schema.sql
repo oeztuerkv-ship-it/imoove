@@ -23,6 +23,7 @@
 --   028 → financial core tables (billing_accounts, ride_financials, invoices, settlements, payments, audit)
 --   033 → company_compliance_documents
 --   034 → support_threads, support_messages
+--   035 → fleet_vehicles.approval_status, konzession_number, vehicle_documents, …
 
 DO $$
 DECLARE
@@ -223,6 +224,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'vehicle_class'
   ) THEN
     errs := array_append(errs, 'fleet_vehicles.vehicle_class (Migration 027)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'approval_status'
+  ) THEN
+    errs := array_append(errs, 'fleet_vehicles.approval_status (Migration 035)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'konzession_number'
+  ) THEN
+    errs := array_append(errs, 'fleet_vehicles.konzession_number (Migration 035)');
   END IF;
 
   IF NOT EXISTS (

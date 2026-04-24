@@ -107,8 +107,20 @@ export const fleetVehiclesTable = pgTable("fleet_vehicles", {
   vehicle_legal_type: text("vehicle_legal_type").notNull().default("taxi"),
   vehicle_class: text("vehicle_class").notNull().default("standard"),
   taxi_order_number: text("taxi_order_number").notNull().default(""),
+  /** Taxikonzession / Ordnungsnummer (Pflicht bis Freigabe) */
+  konzession_number: text("konzession_number").notNull().default(""),
+  /** [{ storageKey, uploadedAt? }] – Nachweise; FK in Migration 035 */
+  vehicle_documents: jsonb("vehicle_documents")
+    .$type<{ storageKey: string; uploadedAt?: string }[]>()
+    .notNull()
+    .default([]),
+  rejection_reason: text("rejection_reason").notNull().default(""),
+  approval_decided_at: timestamp("approval_decided_at", { withTimezone: true }),
+  approval_decided_by_admin_id: text("approval_decided_by_admin_id"),
   next_inspection_date: date("next_inspection_date"),
-  is_active: boolean("is_active").notNull().default(true),
+  is_active: boolean("is_active").notNull().default(false),
+  /** draft | pending_approval | approved | rejected | blocked */
+  approval_status: text("approval_status").notNull().default("draft"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

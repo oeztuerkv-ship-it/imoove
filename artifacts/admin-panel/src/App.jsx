@@ -23,6 +23,7 @@ import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
+import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -143,6 +144,10 @@ const PAGE_META = {
   "support-inbox": {
     title: "Partner-Anfragen",
     subtitle: "Support-Threads aller Mandanten: lesen, antworten, Status steuern",
+  },
+  "fleet-vehicles-review": {
+    title: "Fahrzeuge prüfen",
+    subtitle: "Gesamtsystem: einzureichende Taxi-Fahrzeuge freigeben, ablehnen oder sperren",
   },
   "drivers-overview": {
     title: "Fahrerübersicht",
@@ -427,6 +432,8 @@ export default function App() {
         );
       case "support-inbox":
         return <SupportInboxPage />;
+      case "fleet-vehicles-review":
+        return <FleetVehiclesReviewPage />;
       case "users-panel":
         return <PanelUsersPage />;
       case "fares":

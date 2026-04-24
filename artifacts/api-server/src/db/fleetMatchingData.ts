@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import { getDb } from "./client";
-import { driverVehicleAssignmentsTable, fleetDriversTable, fleetVehiclesTable } from "./schema";
+import { driverVehicleAssignmentsTable, fleetVehiclesTable } from "./schema";
 
 export type VehicleLegalType = "taxi" | "rental_car";
 export type VehicleClass = "standard" | "xl" | "wheelchair";
@@ -63,6 +63,7 @@ export async function getFleetDriverCapability(
     .select({
       vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
       vehicleClass: fleetVehiclesTable.vehicle_class,
+      approvalStatus: fleetVehiclesTable.approval_status,
     })
     .from(driverVehicleAssignmentsTable)
     .innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id))
@@ -76,24 +77,14 @@ export async function getFleetDriverCapability(
     .limit(1);
 
   if (assigned[0]) {
+    if (String(assigned[0].approvalStatus) !== "approved") {
+      return null;
+    }
     return {
       vehicleLegalType: assigned[0].vehicleLegalType as VehicleLegalType,
       vehicleClass: assigned[0].vehicleClass as VehicleClass,
     };
   }
 
-  const fallback = await db
-    .select({
-      vehicleLegalType: fleetDriversTable.vehicle_legal_type,
-      vehicleClass: fleetDriversTable.vehicle_class,
-    })
-    .from(fleetDriversTable)
-    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
-    .limit(1);
-
-  if (!fallback[0]) return null;
-  return {
-    vehicleLegalType: fallback[0].vehicleLegalType as VehicleLegalType,
-    vehicleClass: fallback[0].vehicleClass as VehicleClass,
-  };
+  return null;
 }
