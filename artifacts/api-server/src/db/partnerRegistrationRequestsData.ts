@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { findCompanyById } from "./adminData";
 import { getDb } from "./client";
 import {
   partnerRegistrationDocumentsTable,
@@ -586,11 +587,12 @@ export async function listPartnerRegistrationTimeline(requestId: string) {
 export async function getPartnerRegistrationDetailAdmin(requestId: string) {
   const req = await findPartnerRegistrationRequestById(requestId);
   if (!req) return null;
-  const [documents, timeline] = await Promise.all([
+  const [documents, timeline, linkedCompany] = await Promise.all([
     listPartnerRegistrationDocuments(requestId),
     listPartnerRegistrationTimeline(requestId),
+    req.linkedCompanyId ? findCompanyById(req.linkedCompanyId) : Promise.resolve(null),
   ]);
-  return { request: req, documents, timeline };
+  return { request: req, documents, timeline, linkedCompany };
 }
 
 export async function resolvePartnerRegistrationStorageAbsolutePath(relPath: string) {

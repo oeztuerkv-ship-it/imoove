@@ -443,7 +443,14 @@ export default function App() {
       case "fleet-vehicles-review":
         return <FleetVehiclesReviewPage />;
       case "company-registration-requests":
-        return <CompanyRegistrationQueuePage />;
+        return (
+          <CompanyRegistrationQueuePage
+            onOpenCompany={(id) => {
+              setCompaniesInitialOpenId(id);
+              setActive("companies");
+            }}
+          />
+        );
       case "users-panel":
         return <PanelUsersPage />;
       case "fares":

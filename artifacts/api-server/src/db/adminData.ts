@@ -232,6 +232,7 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     priority_timeout_seconds: r.priority_timeout_seconds,
     release_radius_km: r.release_radius_km,
     panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
+    partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
   };
 }
 

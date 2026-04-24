@@ -52,6 +52,114 @@ const REG_STATUS = [
 
 const REG_STATUS_DE = Object.fromEntries(REG_STATUS.map((o) => [o.value, o.label]));
 
+const REQUEST_VER_DE = {
+  pending: "Ausstehend",
+  in_review: "In Prüfung",
+  verified: "Verifiziert",
+  rejected: "Abgelehnt",
+};
+
+const REQUEST_COMP_DE = {
+  pending: "Ausstehend",
+  complete: "Vollständig",
+  missing_documents: "Dokumente fehlen",
+  rejected: "Abgelehnt",
+};
+
+const REQUEST_CONT_DE = {
+  inactive: "Inaktiv",
+  pending: "Ausstehend",
+  active: "Aktiv",
+  suspended: "Ausgesetzt",
+  terminated: "Beendet",
+};
+
+const COMPANY_VER_DE = {
+  pending: "Ausstehend",
+  in_review: "In Prüfung",
+  verified: "Verifiziert",
+  rejected: "Abgelehnt",
+};
+
+const COMPANY_COMP_DE = {
+  pending: "Ausstehend",
+  in_review: "In Prüfung",
+  compliant: "Konform",
+  non_compliant: "Nicht konform",
+  complete: "Vollständig",
+};
+
+const COMPANY_CONT_DE = {
+  inactive: "Inaktiv",
+  pending: "Ausstehend",
+  active: "Aktiv",
+  suspended: "Ausgesetzt",
+  terminated: "Beendet",
+};
+
+function requestVerDe(v) {
+  return REQUEST_VER_DE[v] || v || "—";
+}
+function requestCompDe(v) {
+  return REQUEST_COMP_DE[v] || v || "—";
+}
+function requestContDe(v) {
+  return REQUEST_CONT_DE[v] || v || "—";
+}
+function companyVerDe(v) {
+  return COMPANY_VER_DE[v] || v || "—";
+}
+function companyCompDe(v) {
+  return COMPANY_COMP_DE[v] || v || "—";
+}
+function companyContDe(v) {
+  return COMPANY_CONT_DE[v] || v || "—";
+}
+
+/**
+ * Reine Operatoren-Hinweise (keine neue Geschäftslogik): wo der Admin als Nächstes schauen soll.
+ */
+function deriveNextAdminStep(request, linked) {
+  const rs = request?.registrationStatus;
+  if (rs === "rejected") {
+    return "Anfrage abgeschlossen (abgelehnt). Kein Mandant — kein weiterer Onboarding-Schritt in dieser Queue.";
+  }
+  if (rs === "blocked") {
+    return "Anfrage gesperrt. Ursache intern klären; Freigabe ist hier nicht vorgesehen.";
+  }
+  if (!linked?.id) {
+    if (rs === "documents_required") {
+      return "Auf Nachreichung warten, dann erneut prüfen; ggf. Rückfrage per E‑Mail senden.";
+    }
+    if (rs === "open") {
+      return "Eingang: Unterlagen prüfen, Bearbeitungs-Status anpassen, ggf. Rückfrage.";
+    }
+    if (rs === "in_review") {
+      return "Prüfung: Nachweise bewerten — bei Vollständigkeit freigeben, sonst Dokumente anfordern.";
+    }
+    if (rs === "approved" && !request?.linkedCompanyId) {
+      return "Status „freigegeben“ ohne Mandant — bitte Freigabe erneut anstoßen oder technisch prüfen.";
+    }
+    return "Anfrage in dieser Queue bearbeiten; Ziel: prüfbare Vollständigkeit, dann Freigabe.";
+  }
+  if (linked.is_blocked) {
+    return "Mandant ist gesperrt — in der Mandantenverwaltung Sperrgrund prüfen und ggf. aufheben.";
+  }
+  if (!String(linked.bank_iban || "").trim()) {
+    return "Mandant existiert: Auszahlungs-IBAN in der Mandantenverwaltung erfassen (Zahlungsverkehr / Abrechnung).";
+  }
+  if (linked.partner_panel_profile_locked) {
+    return "Mandant aktiv: Partner soll Basisangaben im Partner-Panel vervollständigen (Stammdaten noch durch Self-Service).";
+  }
+  if (linked.is_active === false) {
+    return "Mandant ist deaktiviert — bei Bedarf in der Mandantenverwaltung aktiv schalten.";
+  }
+  if (linked.contract_status && linked.contract_status !== "active") {
+    return "Mandant: Vertrags-Status prüfen (nicht „aktiv“) — in der Mandantenverwaltung.";
+  }
+  return "Aktueller Schritt: laufender Betrieb; Detailpflege in der Mandantenverwaltung bei Bedarf.";
+}
+
 const RUECKFRAGE_TEMPLATE = `Guten Tag,
 
 wir prüfen Ihre Partner-Registrierung und benötigen noch folgende Angaben bzw. Unterlagen:
@@ -87,7 +195,7 @@ function fieldLine(label, value) {
   );
 }
 
-export default function CompanyRegistrationQueuePage() {
+export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
   const [listMode, setListMode] = useState("queue");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,6 +262,7 @@ export default function CompanyRegistrationQueuePage() {
         request: req,
         documents: Array.isArray(data.documents) ? data.documents : [],
         timeline: Array.isArray(data.timeline) ? data.timeline : [],
+        linkedCompany: data.linkedCompany && typeof data.linkedCompany === "object" ? data.linkedCompany : null,
       });
       setRegStatus(String(req.registrationStatus ?? "open"));
       setAdminNote(String(req.adminNote ?? ""));
@@ -349,6 +458,7 @@ export default function CompanyRegistrationQueuePage() {
   }
 
   const req = detail?.request;
+  const linkedCo = detail?.linkedCompany;
   const locked = Boolean(req?.linkedCompanyId) || String(req?.registrationStatus) === "approved";
   const partnerLabel = PARTNER_TYPE_DE[req?.partnerType] || req?.partnerType || "—";
   const notes = (req?.notes && String(req.notes).trim()) || "";
@@ -410,6 +520,11 @@ export default function CompanyRegistrationQueuePage() {
                   <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                     {REG_STATUS_DE[r.registrationStatus] || r.registrationStatus} · {fmt(r.createdAt)}
                   </div>
+                  {r.linkedCompanyId ? (
+                    <div style={{ fontSize: 11, color: "#0369a1", marginTop: 4 }}>
+                      Mandant <code style={{ fontSize: 11 }}>{r.linkedCompanyId}</code>
+                    </div>
+                  ) : null}
                 </button>
               ))
             )}
@@ -443,6 +558,91 @@ export default function CompanyRegistrationQueuePage() {
               </p>
               {detailErr ? <div className="admin-error-banner" style={{ marginBottom: 10 }}>{detailErr}</div> : null}
               {mailHint ? <div className="admin-info-banner" style={{ marginBottom: 10 }}>{mailHint}</div> : null}
+
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                  background: "var(--onroda-surface-2, #f8fafc)",
+                }}
+              >
+                <div className="admin-table-sub" style={{ marginBottom: 8, fontWeight: 700 }}>
+                  Status (Anfrage — Homepage-Onboarding)
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                  <span className="admin-dashboard__badge" title="Bearbeitungsstatus">
+                    Anfrage: {REG_STATUS_DE[req.registrationStatus] || req.registrationStatus}
+                  </span>
+                  <span className="admin-dashboard__badge" title="Verifizierung (Anfrage)">
+                    Verif.: {requestVerDe(req.verificationStatus)}
+                  </span>
+                  <span className="admin-dashboard__badge" title="Compliance (Anfrage)">
+                    Compl.: {requestCompDe(req.complianceStatus)}
+                  </span>
+                  <span className="admin-dashboard__badge" title="Vertrag (Anfrage)">
+                    Vertrag: {requestContDe(req.contractStatus)}
+                  </span>
+                </div>
+                {linkedCo?.id ? (
+                  <>
+                    <div className="admin-table-sub" style={{ marginBottom: 6, fontWeight: 700 }}>
+                      Mandant (nach Freigabe — operativer Stand)
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                      <span className="admin-dashboard__badge" title="Verifizierung (Mandant)">
+                        Verif.: {companyVerDe(linkedCo.verification_status)}
+                      </span>
+                      <span className="admin-dashboard__badge" title="Compliance (Mandant)">
+                        Compl.: {companyCompDe(linkedCo.compliance_status)}
+                      </span>
+                      <span className="admin-dashboard__badge" title="Vertrag (Mandant)">
+                        Vertrag: {companyContDe(linkedCo.contract_status)}
+                      </span>
+                      <span className="admin-dashboard__badge" title="Aktiv">
+                        {linkedCo.is_blocked ? "Gesperrt" : linkedCo.is_active ? "Aktiv" : "Inaktiv"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--onroda-text-dark, #0f172a)" }}>
+                      <strong>IBAN (Auszahlung):</strong>{" "}
+                      {String(linkedCo.bank_iban || "").trim() ? (
+                        <code style={{ fontSize: 13 }}>{linkedCo.bank_iban}</code>
+                      ) : (
+                        <span style={{ color: "#b45309" }}>noch nicht hinterlegt</span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="admin-table-sub" style={{ margin: 0, lineHeight: 1.45 }}>
+                    Noch kein Mandant — erscheint nach erfolgreicher Freigabe (Anlege-Button) mit Live-Daten.
+                  </p>
+                )}
+              </div>
+
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #bae6fd",
+                  background: "#f0f9ff",
+                }}
+              >
+                <div className="admin-table-sub" style={{ marginBottom: 6, fontWeight: 800 }}>
+                  Nächster Schritt (Operator)
+                </div>
+                <p style={{ margin: 0, lineHeight: 1.55, color: "var(--onroda-text-dark, #0f172a)" }}>
+                  {deriveNextAdminStep(req, linkedCo)}
+                </p>
+                {req.linkedCompanyId && onOpenCompany ? (
+                  <div style={{ marginTop: 12 }}>
+                    <button type="button" className="admin-btn-primary" onClick={() => onOpenCompany(req.linkedCompanyId)}>
+                      Firma in Mandantenverwaltung öffnen
+                    </button>
+                  </div>
+                ) : null}
+              </div>
 
               <h3 style={{ fontSize: "0.8rem", margin: "16px 0 8px", fontWeight: 800 }}>
                 Stammdaten
@@ -667,29 +867,71 @@ export default function CompanyRegistrationQueuePage() {
               )}
 
               <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
-                Verlauf
+                Status-Timeline (chronologisch)
               </h3>
-              <div style={{ maxHeight: 320, overflow: "auto" }}>
-                {detail.timeline
-                  .slice()
-                  .reverse()
-                  .map((ev) => (
-                    <div
-                      key={ev.id}
-                      style={{
-                        marginBottom: 10,
-                        padding: 8,
-                        borderLeft: "3px solid #cbd5e1",
-                        background: "#fafafa",
-                        borderRadius: 4,
-                      }}
-                    >
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
-                        {fmt(ev.createdAt)} · {ev.actorType} · {ev.eventType}
+              <p className="admin-table-sub" style={{ margin: "0 0 8px" }}>
+                Nur Onboarding- und Admin-Ereignisse zu dieser Anfrage — getrennt vom Partner-Support-Posteingang.
+              </p>
+              <div style={{ maxHeight: 360, overflow: "auto", paddingLeft: 4 }}>
+                {detail.timeline.length === 0 ? (
+                  <p className="admin-table-sub">Noch keine Einträge im Verlauf.</p>
+                ) : (
+                  detail.timeline
+                    .slice()
+                    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                    .map((ev, idx, arr) => (
+                      <div
+                        key={ev.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "12px 1fr",
+                          gap: 10,
+                          marginBottom: idx < arr.length - 1 ? 0 : 0,
+                        }}
+                      >
+                        <div style={{ position: "relative", width: 12 }}>
+                          <div
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              background: "var(--onroda-accent-strong, #0ea5e9)",
+                              marginTop: 4,
+                              marginLeft: 1,
+                            }}
+                            aria-hidden
+                          />
+                          {idx < arr.length - 1 ? (
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: 4,
+                                top: 16,
+                                bottom: -8,
+                                width: 2,
+                                background: "#e2e8f0",
+                              }}
+                              aria-hidden
+                            />
+                          ) : null}
+                        </div>
+                        <div
+                          style={{
+                            marginBottom: 12,
+                            padding: "8px 10px",
+                            border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                            background: "#fafafa",
+                            borderRadius: 6,
+                          }}
+                        >
+                          <div style={{ fontSize: 12, color: "#64748b" }}>
+                            {fmt(ev.createdAt)} · {ev.actorType} · {ev.eventType}
+                          </div>
+                          {ev.message ? <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{ev.message}</div> : null}
+                        </div>
                       </div>
-                      {ev.message ? <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{ev.message}</div> : null}
-                    </div>
-                  ))}
+                    ))
+                )}
               </div>
             </div>
           )}
