@@ -31,6 +31,11 @@ const TAXI_NAV_DEFS = [
     show: (user) => hasPanelModule(user?.panelModules, "taxi_fleet") && hasPerm(user, "fleet.read"),
   },
   {
+    key: "benutzer",
+    label: "Benutzer & Rollen",
+    show: (user) => hasPanelModule(user?.panelModules, "team") && hasPerm(user, "users.read"),
+  },
+  {
     key: "anfragen",
     label: "Anfragen",
     show: (user) => hasPanelModule(user?.panelModules, "support") && hasPerm(user, "support.read"),
@@ -39,11 +44,6 @@ const TAXI_NAV_DEFS = [
     key: "hilfe",
     label: "Hilfe",
     show: (user) => hasPanelModule(user?.panelModules, "help"),
-  },
-  {
-    key: "benutzer",
-    label: "Benutzer & Rollen",
-    show: (user) => hasPanelModule(user?.panelModules, "team") && hasPerm(user, "users.read"),
   },
 ];
 
