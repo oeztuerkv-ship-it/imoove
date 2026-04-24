@@ -1,21 +1,13 @@
 import { useMemo } from "react";
 import { usePanelAuth } from "./context/PanelAuthContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import PasswordChangeRequiredPage from "./pages/PasswordChangeRequiredPage.jsx";
 import TaxiEntrepreneurShell from "./taxi/TaxiEntrepreneurShell.jsx";
 import AgenturMasterPanel from "./components/AgenturMasterPanel.jsx";
 import KasseMasterPanel from "./components/KasseMasterPanel.jsx";
 
 export default function App() {
   const { user, booting, logout } = usePanelAuth();
-
-  if (booting) {
-    return <div style={{ padding: "20px" }}>System startet...</div>;
-  }
-
-  if (!user) {
-    return <LoginPage />;
-  }
-
   const company = useMemo(() => {
     const nestedCompany = user?.company;
     if (nestedCompany && typeof nestedCompany === "object") {
@@ -28,8 +20,18 @@ export default function App() {
       company_kind: user?.companyKind ?? "",
     };
   }, [user]);
-
   const kind = company?.company_kind;
+
+  if (booting) {
+    return <div style={{ padding: "20px" }}>System startet...</div>;
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+  if (user?.mustChangePassword) {
+    return <PasswordChangeRequiredPage />;
+  }
 
   if (kind === "taxi") {
     return <TaxiEntrepreneurShell user={user} company={company} onLogout={logout} />;
