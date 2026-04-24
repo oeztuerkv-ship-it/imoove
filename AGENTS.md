@@ -18,8 +18,13 @@ Keine Abschlussmeldung ohne diese Basis (Details: **`.cursor/rules/imoove-pre-co
    `find artifacts/api-server/static -maxdepth 1 -type f | sort`  
    — fehlt eine angekündigte Datei dort, **erst** Repo/Commit klären, nicht Nginx oder SMTP.
 
+## Querschnitts-Check „Auswirkungen“ (verbindlich)
+
+Jede inhaltliche Änderung: in PR- oder Commit-Beschreibung (bzw. Plan) eine **kurze Sektion „Auswirkungen“** — Acht-Punkte-Liste, plus Zusatzfragen für Status/Dokument/Fahrzeuge/Fahrer/Anfrage/Freigabe. Volltext und Begründung: **`.cursor/rules/onroda-cross-impact.mdc`**.
+
 ## Pflichtlektüre (Cursor Rules, immer aktiv)
 
+- `.cursor/rules/onroda-cross-impact.mdc` — **Auswirkungen** je Änderung (API/DB, Admin, Partner, Mobile, Marketing, Audit, E-Mail, Rechte; kein Mix Support/Onboarding/Panel)
 - `.cursor/rules/imoove-pre-completion-git-checklist.mdc` — **vor jeder Fertigmeldung:** sauberes `git status`, keine relevanten `??`, `git show --name-only HEAD`, erwartete Dateien auf `main` / Push
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
 - `.cursor/rules/imoove-server-infrastructure-onroda.mdc` — Domains, Port 3000, Nginx, **Panel-Postmortem** (scrypt `maxmem`, `rides.company_id` TEXT, serverseitiger API-Build)

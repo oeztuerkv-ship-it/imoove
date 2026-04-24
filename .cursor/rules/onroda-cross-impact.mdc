@@ -1,0 +1,33 @@
+---
+description: Jede inhaltliche Änderung braucht eine kurze Sektion „Auswirkungen“ (Querschnitts-Check) plus Sonderfälle Lifecycle-Objekte
+alwaysApply: true
+---
+
+# Onroda: Querschnitts-Check „Auswirkungen“ (Cross-Impact)
+
+**Zweck:** stillschweigende Lücken zwischen API, DB, Rollen, Oberflächen und Kommunikation vermeiden. **Kein** Ersatz für Migrations-Deploy- oder PR-Checklisten — **ergänzend** dazu.
+
+## Pflicht-Block: „Auswirkungen“
+
+Bei **jeder inhaltlichen Änderung** (PR-Beschreibung, Commit-Body wo sinnvoll, Plan für Agent/Review) mindestens eine **kurze Sektion „Auswirkungen“** mit. Pro Punkt: **nein** / **n. a.** / **ja (ein Satz)**.
+
+1. **API/DB** betroffen?
+2. **Admin-Panel** (Plattform-Operator) betroffen?
+3. **Partner-Panel** (Mandant) betroffen?
+4. **Fahrer-App** (Mobile, Fahrer) betroffen?
+5. **Homepage/Onboarding** (Marketing, öffentliche Einstiege) betroffen?
+6. **Timeline/Audit** nötig oder sinnvoll?
+7. **E-Mail/Benachrichtigung** nötig?
+8. **Rechte-/Modul-Auswirkungen** (wer darf was, welche Route/Rolle)?
+
+## Zusatz, wenn es um Lebenszyklus-Kernobjekte geht
+
+Gilt u. a. bei Themen **Status, Dokument, Fahrzeug, Fahrer, Anfrage, Freigabe** (und vergleichbaren, zustandsgetriebenen Objekten):
+
+- Sieht **Admin** (Operator-Konsole) es?
+- Sieht **Partner** (Unternehmens-Panel) es?
+- Ist der **nächste Schritt** klar (für Betreiber, Partner, Endnutzer)?
+- Ist es im **Verlauf** nachvollziehbar (Historie, sinnvolle Zustandsübergänge)?
+- **Keine Vermischung** von Support, Onboarding und Panel-Fachflows — Zuständigkeiten und Schichten trennen (siehe **`imoove-product-architecture.mdc`**, **`imoove-pr-role-separation.mdc`**, **`imoove-panel-ux-separation.mdc`**).
+
+Reine **Doku-Disziplin**; wo nichts betroffen ist, steht z. B. „n. a. — nur Refactor/Tests in …“.
