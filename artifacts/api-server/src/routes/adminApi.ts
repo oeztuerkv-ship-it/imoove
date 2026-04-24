@@ -121,7 +121,11 @@ import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
-import { sendPartnerRegistrationApprovedEmail } from "../lib/partnerApprovalMail";
+import {
+  sendPartnerRegistrationAdminMessageEmail,
+  sendPartnerRegistrationApprovedEmail,
+  sendPartnerRegistrationRejectionEmail,
+} from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
@@ -1499,6 +1503,19 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (statusRaw === "rejected" && b.notifyApplicantOnReject !== false) {
+      const reasonFromBody =
+        typeof b.rejectionReasonToApplicant === "string" ? b.rejectionReasonToApplicant.trim() : "";
+      const reason = reasonFromBody || (typeof item.adminNote === "string" ? item.adminNote.trim() : "") || "";
+      void sendPartnerRegistrationRejectionEmail({
+        to: item.email,
+        companyName: item.companyName,
+        requestId: item.id,
+        reason: reason || "Ihre Registrierungsanfrage wurde abgelehnt. Bei Rückfragen wenden Sie sich an unsere Geschäftsführung, falls angegeben.",
+      }).catch((err) => {
+        logger.warn({ err, requestId: item.id }, "partner registration rejection mail async failed");
+      });
+    }
     res.json({ ok: true, item });
   } catch (e) {
     next(e);
@@ -1549,7 +1566,14 @@ adminJson.post("/company-registration-requests/:id/messages", async (req, res, n
     const actorLabel = req.adminAuth?.username ?? "admin";
     await addPartnerRegistrationMessage(row.id, "admin", actorLabel, message);
     await patchPartnerRegistrationRequest(row.id, { status: "in_review" });
-    res.status(201).json({ ok: true });
+    const mail = await sendPartnerRegistrationAdminMessageEmail({
+      to: row.email,
+      requestId: row.id,
+      companyName: row.companyName,
+      message,
+      adminLabel: actorLabel,
+    });
+    res.status(201).json({ ok: true, mail: { sent: mail.ok, reason: mail.ok ? null : mail.reason } });
   } catch (e) {
     next(e);
   }

@@ -3,14 +3,43 @@ import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const PENDING_LIST = `${API_BASE}/admin/company-registration-requests?pending=1`;
+const ALL_LIST = `${API_BASE}/admin/company-registration-requests`;
 
 function detailUrl(id) {
   return `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(id)}`;
 }
 
+function messagesUrl(id) {
+  return `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(id)}/messages`;
+}
+
+function approveUrl(id) {
+  return `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(id)}/approve`;
+}
+
 function downloadDocUrl(requestId, docId) {
   return `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(requestId)}/documents/${encodeURIComponent(docId)}/download`;
 }
+
+const PARTNER_TYPE_DE = {
+  taxi: "Taxi / Mietwagen",
+  hotel: "Hotel",
+  insurance: "Krankenkasse / Versicherung",
+  medical: "Medizinische Fahrt",
+  care: "Pflege / Betreuung",
+  business: "Unternehmen",
+  voucher_partner: "Gutscheinpartner",
+  other: "Sonstiges",
+};
+
+const DOC_CAT_DE = {
+  general: "Allgemein",
+  gewerbe: "Gewerbenachweis",
+  insurance: "Versicherung",
+  concession: "Konzession",
+  identity: "Identität / Ausweis",
+  other: "Sonstiges",
+};
 
 const REG_STATUS = [
   { value: "open", label: "Eingereicht" },
@@ -23,13 +52,43 @@ const REG_STATUS = [
 
 const REG_STATUS_DE = Object.fromEntries(REG_STATUS.map((o) => [o.value, o.label]));
 
+const RUECKFRAGE_TEMPLATE = `Guten Tag,
+
+wir prüfen Ihre Partner-Registrierung und benötigen noch folgende Angaben bzw. Unterlagen:
+
+• 
+
+Vielen Dank
+`;
+
+const AENDERUNG_TEMPLATE = `Guten Tag,
+
+für Ihre Onroda-Partner-Registrierung benötigen wir bitte folgende Anpassung bzw. nachgereichte Dokumente:
+
+• 
+
+Vielen Dank
+`;
+
 function fmt(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
 }
 
+function fieldLine(label, value) {
+  return (
+    <div style={{ marginBottom: 8, lineHeight: 1.45 }}>
+      <span className="admin-table-sub" style={{ display: "block", fontSize: 11, textTransform: "uppercase" }}>
+        {label}
+      </span>
+      <span style={{ color: "var(--onroda-text-dark, #0f172a)" }}>{value ?? "—"}</span>
+    </div>
+  );
+}
+
 export default function CompanyRegistrationQueuePage() {
+  const [listMode, setListMode] = useState("queue");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -39,12 +98,18 @@ export default function CompanyRegistrationQueuePage() {
   const [regStatus, setRegStatus] = useState("open");
   const [adminNote, setAdminNote] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [mailHint, setMailHint] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   const loadList = useCallback(async () => {
     setLoading(true);
     setErr("");
+    const url = listMode === "queue" ? PENDING_LIST : ALL_LIST;
     try {
-      const res = await fetch(PENDING_LIST, { headers: adminApiHeaders() });
+      const res = await fetch(url, { headers: adminApiHeaders() });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         setErr(typeof data?.error === "string" ? data.error : "Liste konnte nicht geladen werden.");
@@ -58,7 +123,7 @@ export default function CompanyRegistrationQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [listMode]);
 
   useEffect(() => {
     void loadList();
@@ -70,6 +135,7 @@ export default function CompanyRegistrationQueuePage() {
       return;
     }
     setDetailErr("");
+    setMailHint("");
     try {
       const res = await fetch(detailUrl(id), { headers: adminApiHeaders() });
       const data = await res.json().catch(() => ({}));
@@ -91,6 +157,8 @@ export default function CompanyRegistrationQueuePage() {
       });
       setRegStatus(String(req.registrationStatus ?? "open"));
       setAdminNote(String(req.adminNote ?? ""));
+      setReplyText("");
+      setRejectReason("");
     } catch {
       setDetail(null);
       setDetailErr("Netzwerkfehler.");
@@ -117,24 +185,124 @@ export default function CompanyRegistrationQueuePage() {
     }
   }
 
-  async function saveRequestMeta() {
-    if (!selectedId) return;
+  async function patchRequest(body) {
+    if (!selectedId) return { ok: false };
     setSaveBusy(true);
     setDetailErr("");
     try {
       const res = await fetch(detailUrl(selectedId), {
         method: "PATCH",
         headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ status: regStatus, adminNote: adminNote.trim() }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
+        const hint = typeof data?.hint === "string" ? ` ${data.hint}` : "";
         setDetailErr(
-          typeof data?.message === "string"
-            ? data.message
-            : typeof data?.error === "string"
-              ? data.error
-              : "Speichern fehlgeschlagen.",
+          (typeof data?.message === "string" && data.message) ||
+            (typeof data?.error === "string" && data.error) ||
+            "Aktion fehlgeschlagen." + hint,
+        );
+        return { ok: false, data };
+      }
+      await loadList();
+      await loadDetail(selectedId);
+      return { ok: true, data };
+    } catch {
+      setDetailErr("Netzwerkfehler.");
+      return { ok: false };
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  async function saveInternalNoteOnly() {
+    await patchRequest({ adminNote: adminNote.trim() });
+  }
+
+  async function saveStatus() {
+    await patchRequest({ status: regStatus, adminNote: adminNote.trim() });
+  }
+
+  async function sendApplicantMessage() {
+    if (!selectedId || !replyText.trim()) return;
+    setReplyBusy(true);
+    setDetailErr("");
+    setMailHint("");
+    try {
+      const res = await fetch(messagesUrl(selectedId), {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ message: replyText.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setDetailErr(data?.error === "message_required" ? "Nachricht fehlt." : "Senden fehlgeschlagen.");
+        return;
+      }
+      if (data.mail?.sent) {
+        setMailHint("E-Mail wurde an die Bewerber-Adresse versendet (sofern SMTP konfiguriert).");
+      } else {
+        setMailHint(
+          "Nachricht im Verlauf gespeichert. E-Mail-Versand: prüfen Sie PARTNER_REGISTRATION_SMTP_URL / MAIL_FROM auf dem API-Server.",
+        );
+      }
+      setReplyText("");
+      await loadDetail(selectedId);
+      await loadList();
+    } catch {
+      setDetailErr("Netzwerkfehler.");
+    } finally {
+      setReplyBusy(false);
+    }
+  }
+
+  async function requestDocumentsChange() {
+    if (!selectedId) return;
+    setActionBusy(true);
+    setDetailErr("");
+    setMailHint("");
+    try {
+      if (replyText.trim()) {
+        setReplyBusy(true);
+        const r = await fetch(messagesUrl(selectedId), {
+          method: "POST",
+          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ message: replyText.trim() }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d?.ok) {
+          setDetailErr("Nachricht konnte nicht gesendet werden.");
+          return;
+        }
+        if (d.mail?.sent) {
+          setMailHint("E-Mail an Bewerber versendet (SMTP vorausgesetzt).");
+        }
+        setReplyText("");
+        setReplyBusy(false);
+      }
+      await patchRequest({ status: "documents_required", adminNote: adminNote.trim() });
+    } finally {
+      setActionBusy(false);
+      setReplyBusy(false);
+    }
+  }
+
+  async function approveRegistration() {
+    if (!selectedId) return;
+    setActionBusy(true);
+    setDetailErr("");
+    try {
+      const res = await fetch(approveUrl(selectedId), {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        const h = data?.hint ? String(data.hint) : "";
+        setDetailErr(
+          h || (typeof data?.error === "string" ? data.error : "Freigabe nicht möglich (Voraussetzungen prüfen)."),
         );
         return;
       }
@@ -143,29 +311,83 @@ export default function CompanyRegistrationQueuePage() {
     } catch {
       setDetailErr("Netzwerkfehler.");
     } finally {
-      setSaveBusy(false);
+      setActionBusy(false);
     }
   }
 
+  async function rejectRegistration() {
+    if (!selectedId) return;
+    if (!window.confirm("Anfrage wirklich ablehnen? Eine Begründung per E-Mail wird mitgesendet, sofern konfiguriert.")) {
+      return;
+    }
+    const reason = rejectReason.trim() || "Ihre Anfrage entsprach nicht unseren Anforderungen.";
+    setActionBusy(true);
+    setDetailErr("");
+    try {
+      const res = await fetch(detailUrl(selectedId), {
+        method: "PATCH",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "rejected",
+          adminNote: adminNote.trim(),
+          rejectionReasonToApplicant: reason,
+          notifyApplicantOnReject: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setDetailErr(typeof data?.error === "string" ? data.error : "Ablehnen fehlgeschlagen.");
+        return;
+      }
+      await loadList();
+      await loadDetail(selectedId);
+    } catch {
+      setDetailErr("Netzwerkfehler.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  const req = detail?.request;
+  const locked = Boolean(req?.linkedCompanyId) || String(req?.registrationStatus) === "approved";
+  const partnerLabel = PARTNER_TYPE_DE[req?.partnerType] || req?.partnerType || "—";
+  const notes = (req?.notes && String(req.notes).trim()) || "";
+  const missingDocNote = (req?.missingDocumentsNote && String(req.missingDocumentsNote).trim()) || "";
+
   return (
-    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 1200 }}>
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Registrierungsanfragen</h1>
-      <p style={{ margin: "0 0 20px", color: "var(--onroda-text-muted, #64748b)", maxWidth: 720, lineHeight: 1.5 }}>
-        Homepage-Partnerbewerbungen (separat von den mandanteninternen <strong>Partner-Anfragen</strong> / Support-Threads). Hier
-        bearbeiten Sie offene Eingänge, Dokumente und Prüfstatus, bevor ein Mandat angelegt oder verknüpft wird.
+    <div className="admin-page" style={{ padding: "20px 24px", maxWidth: 1280 }}>
+      <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Registrierungsanfragen (Homepage-Onboarding)</h1>
+      <p style={{ margin: "0 0 16px", color: "var(--onroda-text-muted, #64748b)", maxWidth: 800, lineHeight: 1.5 }}>
+        <strong>Eigener Ablauf</strong> — nicht mit „Partner-Anfragen“ (Support-Threads) oder dem Partner-Panel verwechseln.
+        Bewerber:innen kommen von der <strong>öffentlichen Registrierung</strong> (<code>panel-auth/registration-request</code>).
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "flex-end" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "center" }}>
+        <label className="admin-table-sub" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          Liste
+          <select
+            className="admin-input"
+            value={listMode}
+            onChange={(e) => {
+              setListMode(e.target.value);
+              setSelectedId(null);
+            }}
+            style={{ minWidth: 220 }}
+          >
+            <option value="queue">Offene Warteschlange</option>
+            <option value="all">Alle Anfragen</option>
+          </select>
+        </label>
         <button type="button" className="admin-btn-primary" onClick={() => void loadList()} disabled={loading}>
           {loading ? "Lade…" : "Aktualisieren"}
         </button>
       </div>
       {err ? <div className="admin-error-banner">{err}</div> : null}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(0, 2fr)", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, overflow: "hidden" }}>
-          <div style={{ padding: "10px 12px", background: "var(--onroda-surface-2, #f8fafc)", fontWeight: 600 }}>Warteschlange</div>
-          <div style={{ maxHeight: 560, overflow: "auto" }}>
+          <div style={{ padding: "10px 12px", background: "var(--onroda-surface-2, #f8fafc)", fontWeight: 600 }}>Anfragen</div>
+          <div style={{ maxHeight: 640, overflow: "auto" }}>
             {items.length === 0 && !loading ? (
-              <p style={{ padding: 12, margin: 0, color: "#64748b" }}>Keine offenen Anfragen.</p>
+              <p style={{ padding: 12, margin: 0, color: "#64748b" }}>Keine Einträge.</p>
             ) : (
               items.map((r) => (
                 <button
@@ -183,6 +405,7 @@ export default function CompanyRegistrationQueuePage() {
                     cursor: "pointer",
                   }}
                 >
+                  <div style={{ fontSize: 11, color: "#64748b" }}>Ref. {r.id}</div>
                   <div style={{ fontWeight: 600 }}>{r.companyName || "—"}</div>
                   <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                     {REG_STATUS_DE[r.registrationStatus] || r.registrationStatus} · {fmt(r.createdAt)}
@@ -192,28 +415,93 @@ export default function CompanyRegistrationQueuePage() {
             )}
           </div>
         </div>
-        <div style={{ border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8, padding: 16 }}>
+        <div
+          style={{
+            border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+            borderRadius: 8,
+            padding: 16,
+            minWidth: 0,
+          }}
+        >
           {!selectedId ? (
             <p style={{ color: "#64748b", margin: 0 }}>Links eine Anfrage wählen.</p>
-          ) : detailErr ? (
+          ) : detailErr && !req ? (
             <div className="admin-error-banner">{detailErr}</div>
-          ) : !detail?.request ? (
+          ) : !req ? (
             <p style={{ color: "#64748b", margin: 0 }}>Lade …</p>
           ) : (
-            <>
-              <h2 style={{ margin: "0 0 6px", fontSize: "1.1rem" }}>{detail.request.companyName}</h2>
-              <div className="admin-table-sub" style={{ marginBottom: 12, lineHeight: 1.5 }}>
-                {detail.request.email} · {detail.request.partnerType} · {detail.request.city}
+            <div>
+              <h2 style={{ margin: "0 0 4px", fontSize: "1.1rem" }}>Ticket · {req.companyName}</h2>
+              <p className="admin-table-sub" style={{ margin: "0 0 12px" }}>
+                Referenz-ID: <code>{req.id}</code>
+                {req.linkedCompanyId ? (
+                  <>
+                    {" "}
+                    · Mandant: <code>{req.linkedCompanyId}</code>
+                  </>
+                ) : null}
+              </p>
+              {detailErr ? <div className="admin-error-banner" style={{ marginBottom: 10 }}>{detailErr}</div> : null}
+              {mailHint ? <div className="admin-info-banner" style={{ marginBottom: 10 }}>{mailHint}</div> : null}
+
+              <h3 style={{ fontSize: "0.8rem", margin: "16px 0 8px", fontWeight: 800 }}>
+                Stammdaten
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "4px 20px",
+                  marginBottom: 12,
+                }}
+              >
+                {fieldLine("Ansprechpartner", `${req.contactFirstName || ""} ${req.contactLastName || ""}`.trim())}
+                {fieldLine("E-Mail (Antworten)", req.email)}
+                {fieldLine("Telefon", req.phone || "—")}
+                {fieldLine("Partner-Art", partnerLabel)}
+                {fieldLine("Rechtsform", req.legalForm || "—")}
+                {fieldLine("Eingereicht am", fmt(req.createdAt))}
+                {fieldLine("Wunschregion", req.desiredRegion || "—")}
+                {fieldLine("Gutscheine", req.usesVouchers ? "Ja" : "Nein")}
               </div>
-              {detail.request.linkedCompanyId ? (
-                <p className="admin-table-sub" style={{ margin: "0 0 10px" }}>
-                  Verknüpft: <code>{detail.request.linkedCompanyId}</code>
+              {fieldLine("Adresse", [req.addressLine1, req.addressLine2].filter(Boolean).join(", ") || "—")}
+              {fieldLine("Ort", [req.postalCode, req.city, req.country].filter(Boolean).join(" ") || "—")}
+              {fieldLine("Steuern", `St-Id: ${req.taxId || "—"} · USt-Id: ${req.vatId || "—"}`)}
+              {fieldLine("Konzession / Zulassung", req.concessionNumber || "—")}
+
+              <h3 style={{ fontSize: "0.8rem", margin: "16px 0 8px", fontWeight: 800 }}>
+                Nachricht / Bemerkung (Formular)
+              </h3>
+              <div
+                style={{
+                  whiteSpace: "pre-wrap",
+                  padding: 12,
+                  background: "var(--onroda-surface-2, #f8fafc)",
+                  borderRadius: 8,
+                  border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                  minHeight: 48,
+                }}
+              >
+                {notes || "—"}
+              </div>
+              {missingDocNote ? (
+                <p className="admin-table-sub" style={{ marginTop: 8 }}>
+                  Hinweis fehlender Dokumente: {missingDocNote}
                 </p>
               ) : null}
-              <div style={{ display: "grid", gap: 10, maxWidth: 400 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span className="admin-table-sub">Status</span>
-                  <select className="admin-input" value={regStatus} onChange={(e) => setRegStatus(e.target.value)}>
+
+              <h3 style={{ fontSize: "0.8rem", margin: "16px 0 8px", fontWeight: 800 }}>
+                Status (Verwaltung)
+              </h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 200 }}>
+                  <span className="admin-table-sub">Bearbeitungs-Status</span>
+                  <select
+                    className="admin-input"
+                    value={regStatus}
+                    onChange={(e) => setRegStatus(e.target.value)}
+                    disabled={locked}
+                  >
                     {REG_STATUS.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
@@ -221,50 +509,189 @@ export default function CompanyRegistrationQueuePage() {
                     ))}
                   </select>
                 </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span className="admin-table-sub">Interne Notiz</span>
-                  <textarea
-                    className="admin-input"
-                    rows={3}
-                    value={adminNote}
-                    onChange={(e) => setAdminNote(e.target.value)}
-                    style={{ width: "100%" }}
-                  />
-                </label>
-                <button type="button" className="admin-btn-primary" onClick={() => void saveRequestMeta()} disabled={saveBusy}>
-                  {saveBusy ? "Speichern…" : "Speichern"}
+                <button type="button" className="admin-btn-primary" onClick={() => void saveStatus()} disabled={saveBusy || locked}>
+                  {saveBusy ? "Speichere…" : "Status speichern"}
                 </button>
               </div>
-              <h3 style={{ fontSize: "0.95rem", margin: "20px 0 8px" }}>Dokumente</h3>
+              <label style={{ display: "block", marginTop: 10 }}>
+                <span className="admin-table-sub">Interne Notiz (nicht an Bewerber)</span>
+                <textarea
+                  className="admin-input"
+                  rows={3}
+                  value={adminNote}
+                  onChange={(e) => setAdminNote(e.target.value)}
+                  style={{ width: "100%" }}
+                />
+              </label>
+              <button type="button" className="admin-btn-refresh" onClick={() => void saveInternalNoteOnly()} disabled={saveBusy || locked} style={{ marginTop: 6 }}>
+                {saveBusy ? "…" : "Nur interne Notiz speichern"}
+              </button>
+
+              <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
+                Antwort an Bewerber (E-Mail + Verlauf)
+              </h3>
+              <p className="admin-table-sub" style={{ marginBottom: 8, lineHeight: 1.45 }}>
+                Wird an <strong>{req.email}</strong> gesendet (falls SMTP <code>PARTNER_REGISTRATION_SMTP_URL</code> gesetzt) und
+                als Admin-Nachricht im Verlauf abgelegt.
+              </p>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="admin-btn-refresh"
+                  disabled={locked}
+                  onClick={() => setReplyText((t) => (t ? t : RUECKFRAGE_TEMPLATE))}
+                >
+                  Text „Rückfrage“ einfügen
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-refresh"
+                  disabled={locked}
+                  onClick={() => setReplyText((t) => (t ? t : AENDERUNG_TEMPLATE))}
+                >
+                  Text „Änderung anfordern“
+                </button>
+              </div>
+              <textarea
+                className="admin-input"
+                rows={6}
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                style={{ width: "100%" }}
+                placeholder="Antwort an die E-Mail des Bewerbers…"
+                disabled={locked}
+              />
+              <div style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="admin-btn-primary"
+                  onClick={() => void sendApplicantMessage()}
+                  disabled={replyBusy || locked || !replyText.trim()}
+                >
+                  {replyBusy ? "Sende…" : "Antwort senden (E-Mail + Verlauf)"}
+                </button>
+              </div>
+
+              <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
+                Schnellaktionen
+              </h3>
+              <p className="admin-table-sub" style={{ marginBottom: 8 }}>
+                Kein Support-Posteingang — nur Registrierungs-Queue.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <button
+                  type="button"
+                  className="admin-btn-refresh"
+                  disabled={actionBusy || locked}
+                  onClick={() => {
+                    if (!replyText.trim()) {
+                      setReplyText(RUECKFRAGE_TEMPLATE);
+                    }
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Rückfrage (Text oben)
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-refresh"
+                  disabled={actionBusy || locked}
+                  onClick={() => void requestDocumentsChange()}
+                >
+                  Änderung / Dokumente anfordern
+                </button>
+                <button type="button" className="admin-btn-primary" disabled={actionBusy || locked} onClick={() => void approveRegistration()}>
+                  {actionBusy ? "…" : "Freigeben (Mandant anlegen)"}
+                </button>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <label>
+                  <span className="admin-table-sub">Begründung für Absage (E-Mail an Bewerber)</span>
+                  <textarea
+                    className="admin-input"
+                    rows={2}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    style={{ width: "100%" }}
+                    placeholder="Kurz begründen — wird in der Absage-E-Mail genutzt."
+                    disabled={locked}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="admin-btn-refresh"
+                  style={{ color: "var(--onroda-red, #b91c1c)", borderColor: "var(--onroda-red, #b91c1c)" }}
+                  disabled={actionBusy || locked}
+                  onClick={() => void rejectRegistration()}
+                >
+                  Ablehnen
+                </button>
+              </div>
+
+              <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
+                Dokumente
+              </h3>
               {detail.documents.length === 0 ? (
-                <p className="admin-table-sub">Noch keine Dokumente hinterlegt.</p>
+                <p className="admin-table-sub">Noch keine Dokumente.</p>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                   {detail.documents.map((d) => (
-                    <li key={d.id} style={{ marginBottom: 8 }}>
+                    <li
+                      key={d.id}
+                      style={{
+                        marginBottom: 10,
+                        padding: 8,
+                        border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                        borderRadius: 6,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{DOC_CAT_DE[d.category] || d.category}</div>
                       <button
                         type="button"
                         onClick={() => void downloadDocument(d.requestId, d.id)}
-                        style={{ background: "none", border: "none", padding: 0, color: "var(--onroda-accent-strong, #0ea5e9)", cursor: "pointer", textAlign: "left" }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          color: "var(--onroda-accent-strong, #0ea5e9)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                        }}
                       >
-                        {d.originalFileName} ({d.category})
-                      </button>
+                        {d.originalFileName}
+                      </button>{" "}
+                      <span className="admin-table-sub">· {fmt(d.createdAt)}</span>
                     </li>
                   ))}
                 </ul>
               )}
-              <h3 style={{ fontSize: "0.95rem", margin: "20px 0 8px" }}>Verlauf</h3>
-              <div style={{ maxHeight: 280, overflow: "auto" }}>
+
+              <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
+                Verlauf
+              </h3>
+              <div style={{ maxHeight: 320, overflow: "auto" }}>
                 {detail.timeline
                   .slice()
                   .reverse()
                   .map((ev) => (
-                    <p key={ev.id} className="admin-table-sub" style={{ margin: "0 0 8px", lineHeight: 1.45 }}>
-                      <strong>{fmt(ev.createdAt)}</strong> — {ev.message}
-                    </p>
+                    <div
+                      key={ev.id}
+                      style={{
+                        marginBottom: 10,
+                        padding: 8,
+                        borderLeft: "3px solid #cbd5e1",
+                        background: "#fafafa",
+                        borderRadius: 4,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: "#64748b" }}>
+                        {fmt(ev.createdAt)} · {ev.actorType} · {ev.eventType}
+                      </div>
+                      {ev.message ? <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{ev.message}</div> : null}
+                    </div>
                   ))}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

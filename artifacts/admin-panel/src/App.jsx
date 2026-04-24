@@ -47,7 +47,7 @@ function roleLabelDe(r) {
 const PAGE_META = {
   dashboard: {
     title: "Dashboard",
-    subtitle: "KPIs, Live-Status und Tagesagenda der Plattform",
+    subtitle: "Plattform-Cockpit, offene Warteschlangen und Tagesagenda",
   },
   rides: {
     title: "Fahrten",
@@ -141,6 +141,10 @@ const PAGE_META = {
   companies: {
     title: "Unternehmen",
     subtitle: "Mandanten, Module und operative Priorität",
+  },
+  "company-registration-requests": {
+    title: "Registrierungsanfragen",
+    subtitle: "Homepage-Onboarding: E-Mail-Antwort, Verlauf, Freigabe — nicht der Mandanten-Support",
   },
   "support-inbox": {
     title: "Partner-Anfragen",

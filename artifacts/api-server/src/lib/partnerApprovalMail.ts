@@ -122,3 +122,136 @@ export async function sendPartnerRegistrationApprovedEmail(input: {
     return { ok: false, reason: "send_failed" };
   }
 }
+
+/** Admin-Antwort auf eine Homepage-Registrierung (Bewerber-E-Mail) — getrennt vom Support-System. */
+export async function sendPartnerRegistrationAdminMessageEmail(input: {
+  to: string;
+  requestId: string;
+  companyName: string;
+  message: string;
+  adminLabel: string;
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  const to = input.to.trim();
+  const message = input.message.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!message) {
+    return { ok: false, reason: "empty_message" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to, requestId: input.requestId },
+      "partner registration admin reply mail skipped (set PARTNER_REGISTRATION_SMTP_URL and PARTNER_REGISTRATION_MAIL_FROM)",
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const status = statusPageUrl();
+  const ref = escapeHtml(input.requestId);
+  const company = input.companyName.trim() || "Ihre Anfrage";
+  const subject = `Onroda: Rückmeldung zu Ihrer Partneranfrage — ${company}`;
+  const text = [
+    "Guten Tag,",
+    "",
+    "Sie erhalten eine Nachricht von der Onroda-Plattform zu Ihrer Registrierungsanfrage:",
+    "",
+    message,
+    "",
+    `Referenz: ${input.requestId}`,
+    `Status/Anfrage: ${status}`,
+    "",
+    "Mit freundlichen Grüßen",
+    `— ${input.adminLabel} (Plattform) / Onroda`,
+  ].join("\n");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p>Guten Tag,</p>
+  <p>Sie erhalten eine Rückmeldung zu Ihrer <strong>Partner-Registrierung</strong> (Referenz: <code>${ref}</code>).</p>
+  <blockquote style="border-left:3px solid #0ea5e9;padding-left:12px;margin:12px 0;white-space:pre-wrap;">${escapeHtml(
+    message,
+  )}</blockquote>
+  <p><a href="${escapeHtml(status)}">Zum Anfrage-Status (Homepage)</a></p>
+  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Absender: ${escapeHtml(
+    input.adminLabel,
+  )} · Onroda-Plattform (kein Support-Ticket-Posteingang)</p>
+</body></html>`;
+  try {
+    const transport = nodemailer.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text, html });
+    logger.info(
+      { to, requestId: input.requestId, event: "partner.registration.admin_reply_mail.sent" },
+      "partner registration admin reply mail sent",
+    );
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to, requestId: input.requestId }, "partner registration admin reply mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
+export async function sendPartnerRegistrationRejectionEmail(input: {
+  to: string;
+  companyName: string;
+  requestId: string;
+  reason: string;
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  const to = input.to.trim();
+  const reason = input.reason.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to, requestId: input.requestId },
+      "partner registration rejection mail skipped (set PARTNER_REGISTRATION_SMTP_URL and PARTNER_REGISTRATION_MAIL_FROM)",
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const status = statusPageUrl();
+  const company = input.companyName.trim() || "Ihre Anfrage";
+  const subject = `Onroda: Rückmeldung zu Ihrer Partneranfrage — ${company}`;
+  const textBody = reason || "Ihre Registrierungsanfrage wurde abgelehnt.";
+  const text = [
+    "Guten Tag,",
+    "",
+    "leider müssen wir Ihnen mitteilen, dass Ihre Registrierungsanfrage auf der Onroda-Plattform nicht angenommen wurde.",
+    "",
+    textBody,
+    "",
+    `Referenz: ${input.requestId}`,
+    `Weitere Informationen: ${status}`,
+    "",
+    "Mit freundlichen Grüßen",
+    "Onroda",
+  ].join("\n");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p>Guten Tag,</p>
+  <p>Leider wurde Ihre <strong>Registrierungsanfrage</strong> (Referenz: <code>${escapeHtml(
+    input.requestId,
+  )}</code>) für <strong>${escapeHtml(company)}</strong> abgelehnt.</p>
+  <p style="white-space: pre-wrap; border-left:3px solid #ef4444; padding-left:12px;">${escapeHtml(
+    textBody,
+  )}</p>
+  <p><a href="${escapeHtml(status)}">Hinweis: Statusseite (Homepage)</a></p>
+  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Dieser Vorgang betrifft die Homepage-Registrierung, nicht den Mandanten-Support-Posteingang.</p>
+</body></html>`;
+  try {
+    const transport = nodemailer.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text, html });
+    logger.info(
+      { to, requestId: input.requestId, event: "partner.registration.rejection_mail.sent" },
+      "partner registration rejection mail sent",
+    );
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to, requestId: input.requestId }, "partner registration rejection mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}

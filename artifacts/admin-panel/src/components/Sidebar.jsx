@@ -69,7 +69,17 @@ export default function Sidebar({ active, onChange, role = "admin", onCloseMobil
                     (groupActive ? " admin-sidebar__group-head--active" : "")
                   }
                   aria-expanded={open}
-                  onClick={() => toggleGroup(group.id)}
+                  onClick={() => {
+                    if (
+                      group.id === "dashboard" &&
+                      group.items.length === 1 &&
+                      group.items[0].pageKey === "dashboard"
+                    ) {
+                      pickPage("dashboard");
+                      return;
+                    }
+                    toggleGroup(group.id);
+                  }}
                 >
                   <span className="admin-sidebar__group-head-left">
                     <span className="admin-sidebar__icon admin-sidebar__icon--group" aria-hidden>

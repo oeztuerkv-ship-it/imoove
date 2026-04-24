@@ -72,7 +72,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     icon: "chart",
     roles: R.all,
     items: [
-      { pageKey: "dashboard", label: "KPIs & Live-Status", icon: "pulse", roles: R.all },
+      { pageKey: "dashboard", label: "Plattform-Cockpit", icon: "pulse", roles: R.all },
     ],
   },
   {
