@@ -229,7 +229,7 @@ export function normalizeStoredPanelModules(raw: unknown): string[] | null {
  * `companyKind` erlaubt sind. Hintergrund: ältere Mandanten hatten eine feste Checkbox-Liste ohne z. B. `support`;
  * ohne Nachrüstung erscheint ein neues Modul im Partner-Panel nicht, obwohl es fachlich vorgesehen ist.
  */
-const PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED: readonly PanelModuleId[] = ["support"];
+const PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED: readonly PanelModuleId[] = ["support", "help"];
 
 /**
  * Effektiv aktive Module.
