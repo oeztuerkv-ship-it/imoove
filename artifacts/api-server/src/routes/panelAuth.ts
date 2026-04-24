@@ -8,10 +8,12 @@ import { logger } from "../lib/logger.js";
 const router = Router();
 
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const rawUsername = typeof req.body?.username === "string" ? req.body.username : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  const username = rawUsername.trim();
 
   if (!username || !password) {
-    res.status(400).json({ error: "missing_credentials" });
+    res.status(400).json({ error: "username_and_password_required" });
     return;
   }
 
@@ -31,7 +33,8 @@ router.post("/login", async (req, res) => {
         c.company_kind 
       FROM panel_users u
       JOIN admin_companies c ON c.id = u.company_id
-      WHERE u.username = ${username} OR u.email = ${username}
+      WHERE lower(trim(u.username)) = lower(trim(${username}))
+         OR lower(trim(u.email)) = lower(trim(${username}))
       LIMIT 1
     `);
 

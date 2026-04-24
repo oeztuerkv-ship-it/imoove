@@ -36,6 +36,9 @@ export default function LoginPage() {
               autoComplete="username"
               type="text"
               inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="name@unternehmen.de"
               value={username}
               onChange={(ev) => setUsername(ev.target.value)}
@@ -49,6 +52,9 @@ export default function LoginPage() {
               name="password"
               type="password"
               autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={password}
               onChange={(ev) => setPassword(ev.target.value)}
               required
