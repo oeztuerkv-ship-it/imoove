@@ -17,8 +17,10 @@ function approveUrl(id) {
   return `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(id)}/approve`;
 }
 
-function downloadDocUrl(requestId, docId) {
-  return `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(requestId)}/documents/${encodeURIComponent(docId)}/download`;
+function downloadDocUrl(requestId, docId, opts = {}) {
+  const base = `${API_BASE}/admin/company-registration-requests/${encodeURIComponent(requestId)}/documents/${encodeURIComponent(docId)}/download`;
+  if (opts?.inline) return `${base}?inline=1`;
+  return base;
 }
 
 const PARTNER_TYPE_DE = {
@@ -167,6 +169,17 @@ function hasUploadedCategory(documents, category) {
   return documents.some((d) => String(d.category || "") === category);
 }
 
+function docUploaderLabel(d) {
+  const t = String(d.uploadedByActorType || "").toLowerCase();
+  if (t === "admin") return "Plattform (Admin)";
+  if (t === "partner") return "Bewerber (Status-Link)";
+  return String(d.uploadedByActorLabel || "").trim() || "Unbekannt";
+}
+
+function missingExpectedCategories(partnerType, documents) {
+  return expectedDocRowsForPartnerType(partnerType).filter((row) => !hasUploadedCategory(documents, row.category));
+}
+
 function timelineActorLane(ev) {
   const t = String(ev.actorType || "").toLowerCase();
   if (t === "admin") return "admin";
@@ -259,6 +272,13 @@ function fmt(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+}
+
+function fmtFileSize(n) {
+  if (n == null || !Number.isFinite(n) || n < 0) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1).replace(".0", "")} KB`;
+  return `${(n / 1024 / 1024).toFixed(1).replace(".0", "")} MB`;
 }
 
 function fieldLine(label, value) {
@@ -355,17 +375,24 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
     void loadDetail(selectedId);
   }, [selectedId, loadDetail]);
 
-  async function downloadDocument(requestId, docId) {
+  function docMimeAllowsPreview(mime) {
+    const m = String(mime || "").toLowerCase();
+    if (m === "application/pdf") return true;
+    return m.startsWith("image/");
+  }
+
+  async function openRegistrationDocument(requestId, docId, mode) {
     try {
-      const res = await fetch(downloadDocUrl(requestId, docId), { headers: adminApiHeaders() });
+      const inline = mode === "preview";
+      const res = await fetch(downloadDocUrl(requestId, docId, { inline }), { headers: adminApiHeaders() });
       if (!res.ok) {
-        window.alert("Datei konnte nicht geladen werden.");
+        window.alert("Datei konnte nicht geladen werden (nur Admin/Service, gültiger Bearer).");
         return;
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
     } catch {
       window.alert("Datei konnte nicht geöffnet werden.");
     }
@@ -1010,43 +1037,96 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
                 })}
               </ul>
               <div className="admin-table-sub" style={{ marginBottom: 6, fontWeight: 700 }}>
-                Eingereichte Dateien
+                Eingereichte Dateien (gesichert über Admin-API)
               </div>
+              <p className="admin-table-sub" style={{ margin: "0 0 10px", lineHeight: 1.45 }}>
+                Öffnen/Herunterladen nur mit Admin-Bearer — keine öffentliche URL. Dateien vom Bewerber erscheinen nach Upload
+                über den Status-Link; der Verlauf unten listet den Vorgang zusätzlich.
+              </p>
               {detail.documents.length === 0 ? (
-                <p className="admin-table-sub">Noch keine Dateien hochgeladen. Oben sehen Sie, welche Kategorien typischerweise
-                  erwartet werden.</p>
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #fed7aa",
+                    background: "#fffbeb",
+                    marginBottom: 8,
+                  }}
+                >
+                  <p style={{ margin: "0 0 8px", fontWeight: 700, color: "#9a3412" }}>Noch keine Datei in dieser Anfrage</p>
+                  <p className="admin-table-sub" style={{ margin: 0, lineHeight: 1.5 }}>
+                    Typisch noch offen (Orientierung):{" "}
+                    <strong>
+                      {missingExpectedCategories(req?.partnerType, detail.documents)
+                        .map((row) => DOC_CAT_DE[row.category] || row.category)
+                        .join(", ") || "—"}
+                    </strong>
+                    . Sobald der Bewerber im Status-Link nachreicht, erscheinen die Dateien hier — bitte Liste aktualisieren.
+                  </p>
+                </div>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                  {detail.documents.map((d) => (
-                    <li
-                      key={d.id}
-                      style={{
-                        marginBottom: 10,
-                        padding: 8,
-                        border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
-                        borderRadius: 6,
-                      }}
-                    >
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{DOC_CAT_DE[d.category] || d.category}</div>
-                      <button
-                        type="button"
-                        onClick={() => void downloadDocument(d.requestId, d.id)}
+                  {detail.documents.map((d) => {
+                    const canPreview = docMimeAllowsPreview(d.mimeType);
+                    return (
+                      <li
+                        key={d.id}
                         style={{
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          color: "var(--onroda-accent-strong, #0ea5e9)",
-                          cursor: "pointer",
-                          textAlign: "left",
+                          marginBottom: 12,
+                          padding: "10px 12px",
+                          border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                          borderRadius: 8,
+                          background: "#fff",
                         }}
                       >
-                        {d.originalFileName}
-                      </button>{" "}
-                      <span className="admin-table-sub">· {fmt(d.createdAt)}</span>
-                    </li>
-                  ))}
+                        <div style={{ fontWeight: 700, color: "var(--onroda-text-dark, #0f172a)", marginBottom: 4 }}>
+                          {d.originalFileName || "—"}
+                        </div>
+                        <div className="admin-table-sub" style={{ fontSize: 12, lineHeight: 1.45, marginBottom: 8 }}>
+                          <strong>Kategorie:</strong> {DOC_CAT_DE[d.category] || d.category}
+                          {" · "}
+                          <strong>Upload:</strong> {fmt(d.createdAt)}
+                          {" · "}
+                          <strong>Größe:</strong> {fmtFileSize(d.fileSizeBytes)}
+                          {" · "}
+                          <strong>Quelle:</strong> {docUploaderLabel(d)}
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          <button
+                            type="button"
+                            className="admin-btn-primary"
+                            onClick={() =>
+                              void openRegistrationDocument(
+                                d.requestId || selectedId,
+                                d.id,
+                                canPreview ? "preview" : "download",
+                              )
+                            }
+                          >
+                            Öffnen
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-btn-refresh"
+                            onClick={() => void openRegistrationDocument(d.requestId || selectedId, d.id, "download")}
+                          >
+                            Herunterladen
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
+              {detail.documents.length > 0 && missingExpectedCategories(req?.partnerType, detail.documents).length > 0 ? (
+                <p className="admin-table-sub" style={{ marginTop: 10, lineHeight: 1.45 }}>
+                  <strong>Hinweis:</strong> Für diese Partner-Art fehlen in der Checkliste oben noch Kategorien ohne Datei:{" "}
+                  {missingExpectedCategories(req?.partnerType, detail.documents)
+                    .map((row) => DOC_CAT_DE[row.category] || row.category)
+                    .join(", ")}
+                  .
+                </p>
+              ) : null}
 
               <h3 style={{ fontSize: "0.8rem", margin: "20px 0 8px", fontWeight: 800 }}>
                 Verlauf

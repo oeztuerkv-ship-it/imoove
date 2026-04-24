@@ -79,6 +79,7 @@ import {
   isRegistrationStatus,
   listPartnerRegistrationPendingQueueAdmin,
   listPartnerRegistrationRequestsAdmin,
+  mapDocRowForAdminList,
   type PartnerRegistrationAdminPatch,
   patchPartnerRegistrationRequest,
   resolvePartnerRegistrationStorageAbsolutePath,
@@ -1625,11 +1626,17 @@ adminJson.post("/company-registration-requests/:id/documents", async (req, res, 
       message: `Admin-Dokument hinzugefügt: ${fileName}`,
       payload: { category },
     });
-    res.status(201).json({ ok: true, document: doc });
+    res.status(201).json({ ok: true, document: mapDocRowForAdminList(doc) });
   } catch (e) {
     next(e);
   }
 });
+
+function registrationDocAllowsInlinePreview(mimeType: string): boolean {
+  const m = (mimeType || "").toLowerCase().trim();
+  if (m === "application/pdf") return true;
+  return m.startsWith("image/");
+}
 
 adminJson.get(
   "/company-registration-requests/:requestId/documents/:docId/download",
@@ -1648,13 +1655,36 @@ adminJson.get(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const abs = await resolvePartnerRegistrationStorageAbsolutePath(doc.storagePath);
-      const buf = await readFile(abs);
-      res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+      let abs: string;
+      try {
+        abs = resolvePartnerRegistrationStorageAbsolutePath(doc.storagePath);
+      } catch {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      let buf: Buffer;
+      try {
+        buf = await readFile(abs);
+      } catch (e) {
+        const err = e as NodeJS.ErrnoException;
+        if (err?.code === "ENOENT") {
+          res.status(404).json({ error: "file_missing" });
+          return;
+        }
+        throw e;
+      }
+      const mime = doc.mimeType || "application/octet-stream";
+      res.setHeader("Content-Type", mime);
+      const inlineRaw =
+        typeof req.query?.inline === "string" ? req.query.inline.trim().toLowerCase() : "";
+      const wantInline = inlineRaw === "1" || inlineRaw === "true";
+      const disposition =
+        wantInline && registrationDocAllowsInlinePreview(mime) ? "inline" : "attachment";
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${encodeURIComponent(doc.originalFileName || "document.bin")}"`,
+        `${disposition}; filename="${encodeURIComponent(doc.originalFileName || "document.bin")}"`,
       );
+      res.setHeader("Cache-Control", "private, no-store");
       res.status(200).send(buf);
     } catch (e) {
       next(e);

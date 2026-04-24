@@ -23,7 +23,7 @@ import {
   rateLimitPartnerRegistrationPublicLookup,
 } from "../lib/partnerRegistrationPublicRateLimit";
 import {
-  toPublicPartnerRegistrationDocuments,
+  toPublicPartnerRegistrationDocument,
   toPublicPartnerRegistrationSnapshot,
   toPublicPartnerRegistrationTimeline,
 } from "../lib/partnerRegistrationPublicDto";
@@ -376,8 +376,8 @@ router.get("/panel-auth/registration-request/:id", async (req, res) => {
   res.json({
     ok: true,
     request: toPublicPartnerRegistrationSnapshot(detail.request),
-    documents: toPublicPartnerRegistrationDocuments(detail.documents),
-    timeline: detail.timeline,
+    documents: detail.documents.map(toPublicPartnerRegistrationDocument),
+    timeline: toPublicPartnerRegistrationTimeline(detail.timeline),
   });
 });
 
@@ -521,7 +521,7 @@ router.post("/panel-auth/registration-request/:id/documents", async (req, res) =
     res.status(503).json({ error: "upload_failed" });
     return;
   }
-  res.status(201).json({ ok: true, document: doc });
+  res.status(201).json({ ok: true, document: toPublicPartnerRegistrationDocument(doc) });
 });
 
 export default router;

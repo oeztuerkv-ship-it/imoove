@@ -43,24 +43,30 @@ export type PublicPartnerRegistrationDocument = {
   createdAt: string;
 };
 
-export function toPublicPartnerRegistrationDocuments(
-  docs: Array<{
-    id: string;
-    category: string;
-    originalFileName: string;
-    mimeType: string;
-    fileSizeBytes: number;
-    createdAt: string;
-  }>,
-): PublicPartnerRegistrationDocument[] {
-  return docs.map((d) => ({
+type RegistrationDocFields = {
+  id: string;
+  category: string;
+  originalFileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  createdAt: string;
+};
+
+export function toPublicPartnerRegistrationDocument(d: RegistrationDocFields): PublicPartnerRegistrationDocument {
+  return {
     id: d.id,
     category: d.category,
     originalFileName: d.originalFileName,
     mimeType: d.mimeType,
     fileSizeBytes: d.fileSizeBytes,
     createdAt: d.createdAt,
-  }));
+  };
+}
+
+export function toPublicPartnerRegistrationDocuments(
+  docs: Array<RegistrationDocFields>,
+): PublicPartnerRegistrationDocument[] {
+  return docs.map(toPublicPartnerRegistrationDocument);
 }
 
 export function toPublicPartnerRegistrationSnapshot(row: RegistrationRowLike): PublicPartnerRegistrationSnapshot {

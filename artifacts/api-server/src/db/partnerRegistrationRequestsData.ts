@@ -180,6 +180,14 @@ function mapDocRow(r: typeof partnerRegistrationDocumentsTable.$inferSelect) {
   };
 }
 
+/** API-Antwort für Admin-Panel: ohne serverinternen `storagePath` (Dateizugriff nur per Admin-Route: requestId + document id). */
+export function mapDocRowForAdminList(
+  m: ReturnType<typeof mapDocRow>,
+): Omit<ReturnType<typeof mapDocRow>, "storagePath"> {
+  const { storagePath: _p, ...rest } = m;
+  return rest;
+}
+
 function mapTimelineRow(r: typeof partnerRegistrationTimelineTable.$inferSelect) {
   return {
     id: r.id,
@@ -587,14 +595,25 @@ export async function listPartnerRegistrationTimeline(requestId: string) {
 export async function getPartnerRegistrationDetailAdmin(requestId: string) {
   const req = await findPartnerRegistrationRequestById(requestId);
   if (!req) return null;
-  const [documents, timeline, linkedCompany] = await Promise.all([
+  const [rawDocs, timeline, linkedCompany] = await Promise.all([
     listPartnerRegistrationDocuments(requestId),
     listPartnerRegistrationTimeline(requestId),
     req.linkedCompanyId ? findCompanyById(req.linkedCompanyId) : Promise.resolve(null),
   ]);
+  const documents = rawDocs.map((d) => mapDocRowForAdminList(d));
   return { request: req, documents, timeline, linkedCompany };
 }
 
-export async function resolvePartnerRegistrationStorageAbsolutePath(relPath: string) {
-  return path.join(uploadsBaseDir(), relPath);
+/**
+ * Bündelt `relPath` mit Upload-Basis; verhindert Path-Traversal (`../` o. ä.).
+ * `relPath` kommt aus unserer DB (partner_registration_documents.storage_path).
+ */
+export function resolvePartnerRegistrationStorageAbsolutePath(relPath: string): string {
+  const base = path.resolve(uploadsBaseDir());
+  const resolved = path.resolve(base, relPath);
+  const rel = path.relative(base, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new Error("invalid_storage_path");
+  }
+  return resolved;
 }
