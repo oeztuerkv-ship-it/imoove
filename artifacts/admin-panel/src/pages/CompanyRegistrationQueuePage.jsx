@@ -183,6 +183,16 @@ function eventTypeReadable(eventType) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function timelineEventSubtitle(ev) {
+  const et = String(ev.eventType || "").toLowerCase();
+  if (et === "message") {
+    return timelineActorLane(ev) === "applicant"
+      ? "Nachricht · Bewerber (Status-Link)"
+      : "Nachricht · Plattform";
+  }
+  return eventTypeReadable(ev.eventType);
+}
+
 /**
  * Reine Operatoren-Hinweise (keine neue Geschäftslogik): wo der Admin als Nächstes schauen soll.
  */
@@ -1058,10 +1068,13 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
                       const isApplicant = lane === "applicant";
                       const lineColor = isAdmin ? "#7dd3fc" : isApplicant ? "#5eead4" : "#e2e8f0";
                       const borderColor = isAdmin ? "#0ea5e9" : isApplicant ? "#0d9488" : "#94a3b8";
+                      const isPartnerMessage = String(ev.eventType || "").toLowerCase() === "message" && isApplicant;
                       const label = isAdmin
                         ? "Plattform (Admin/Operator)"
                         : isApplicant
-                          ? "Bewerber (Einreichung)"
+                          ? isPartnerMessage
+                            ? "Bewerber — Antwort (Status-Link)"
+                            : "Bewerber (Einreichung)"
                           : (ev.actorLabel || "System") + (ev.actorType ? ` · ${ev.actorType}` : "");
                       return (
                         <div
@@ -1112,7 +1125,7 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
                             <div style={{ fontSize: 11, fontWeight: 700, color: borderColor, marginBottom: 4 }}>{label}</div>
                             <div style={{ fontSize: 12, color: "#64748b" }}>
                               {fmt(ev.createdAt)}
-                              {eventTypeReadable(ev.eventType) ? ` · ${eventTypeReadable(ev.eventType)}` : ""}
+                              {timelineEventSubtitle(ev) ? ` · ${timelineEventSubtitle(ev)}` : ""}
                             </div>
                             {ev.message ? <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{ev.message}</div> : null}
                           </div>

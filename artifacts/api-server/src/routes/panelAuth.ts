@@ -25,6 +25,7 @@ import {
 import {
   toPublicPartnerRegistrationDocuments,
   toPublicPartnerRegistrationSnapshot,
+  toPublicPartnerRegistrationTimeline,
 } from "../lib/partnerRegistrationPublicDto";
 import { getPartnerRegistrationPolicy } from "../domain/partnerRegistrationPolicies";
 import { isPanelRoleString } from "../lib/panelPermissions";
@@ -381,6 +382,13 @@ router.get("/panel-auth/registration-request/:id", async (req, res) => {
 });
 
 router.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rlIp = rateLimitPartnerRegistrationIp(ip);
+  if (!rlIp.ok) {
+    res.setHeader("Retry-After", String(rlIp.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rlIp.retryAfterSec });
+    return;
+  }
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -392,6 +400,16 @@ router.post("/panel-auth/registration-request/:id/messages", async (req, res) =>
     res.status(400).json({ error: "id_email_message_required" });
     return;
   }
+  if (message.length > 12_000) {
+    res.status(400).json({ error: "message_too_long" });
+    return;
+  }
+  const rlEmail = rateLimitPartnerRegistrationEmail(email);
+  if (!rlEmail.ok) {
+    res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
+    res.status(429).json({ error: "rate_limited_email", retryAfterSec: rlEmail.retryAfterSec });
+    return;
+  }
   const row = await findPartnerRegistrationRequestById(id);
   if (!row) {
     res.status(404).json({ error: "not_found" });
@@ -399,6 +417,11 @@ router.post("/panel-auth/registration-request/:id/messages", async (req, res) =>
   }
   if ((row.email ?? "").toLowerCase() !== email) {
     res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const st = row.registrationStatus;
+  if (st === "rejected" || st === "blocked" || st === "approved") {
+    res.status(409).json({ error: "registration_closed", hint: "Für diese Anfrage sind keine weiteren Nachrichten möglich." });
     return;
   }
   await addPartnerRegistrationMessage(id, "partner", email, message);
@@ -443,6 +466,13 @@ router.post("/panel-auth/registration-request/:id/change-request", async (req, r
 });
 
 router.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rlIp = rateLimitPartnerRegistrationIp(ip);
+  if (!rlIp.ok) {
+    res.setHeader("Retry-After", String(rlIp.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rlIp.retryAfterSec });
+    return;
+  }
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -458,6 +488,12 @@ router.post("/panel-auth/registration-request/:id/documents", async (req, res) =
     res.status(400).json({ error: "id_email_file_required" });
     return;
   }
+  const rlEmail = rateLimitPartnerRegistrationEmail(email);
+  if (!rlEmail.ok) {
+    res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
+    res.status(429).json({ error: "rate_limited_email", retryAfterSec: rlEmail.retryAfterSec });
+    return;
+  }
   const row = await findPartnerRegistrationRequestById(id);
   if (!row) {
     res.status(404).json({ error: "not_found" });
@@ -465,6 +501,11 @@ router.post("/panel-auth/registration-request/:id/documents", async (req, res) =
   }
   if ((row.email ?? "").toLowerCase() !== email) {
     res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const st = row.registrationStatus;
+  if (st === "rejected" || st === "blocked" || st === "approved") {
+    res.status(409).json({ error: "registration_closed", hint: "Für diese Anfrage sind keine Uploads mehr möglich." });
     return;
   }
   const doc = await addPartnerRegistrationDocument({

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="onroda-public-api-base" content="https://api.onroda.de/api" />
   <title>Partneranfrage — Status | ONRODA</title>
-  <meta name="description" content="Status Ihrer Partneranfrage bei ONRODA (Referenz-ID und E-Mail)." />
+  <meta name="description" content="Status und Verlauf Ihrer Partner-Registrierung bei ONRODA (Referenz-ID und E-Mail)." />
   <link rel="stylesheet" href="/onroda-brand.css" />
   <link rel="stylesheet" href="/style.css" />
   <style>
-    .ps-page { max-width: 560px; margin: 0 auto; padding: 32px 20px 48px; }
+    .ps-page { max-width: 640px; margin: 0 auto; padding: 32px 20px 48px; }
     .ps-back { display: inline-block; margin-bottom: 20px; font-size: 0.92rem; color: var(--onroda-red); font-weight: 600; text-decoration: none; }
     .ps-back:hover { text-decoration: underline; }
     .ps-card { background: #f3f3f5; border-radius: 18px; padding: 24px 22px; border: 1px solid var(--hp-card-border, #e5e5e8); }
@@ -17,7 +17,9 @@
     .ps-lead { color: var(--onroda-text-grey); font-size: 0.95rem; margin: 0 0 20px; line-height: 1.5; }
     .ps-field { margin-bottom: 14px; }
     .ps-field label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--onroda-text-grey); }
-    .ps-field input { width: 100%; padding: 12px 14px; border: 1px solid #d8d8dd; border-radius: 10px; font-family: inherit; font-size: 0.98rem; }
+    .ps-field input, .ps-field select, .ps-field textarea {
+      width: 100%; padding: 12px 14px; border: 1px solid #d8d8dd; border-radius: 10px; font-family: inherit; font-size: 0.98rem;
+    }
     .ps-actions { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .ps-msg { margin-top: 16px; font-size: 0.95rem; min-height: 1.25em; }
     .ps-msg--ok { color: #0d6832; font-weight: 600; }
@@ -26,6 +28,16 @@
     .ps-dl dt { color: var(--onroda-text-grey); font-weight: 600; margin-top: 10px; }
     .ps-dl dd { margin: 4px 0 0; }
     .ps-panel-cta { margin-top: 18px; }
+    .ps-detail { margin-top: 22px; padding-top: 18px; border-top: 1px solid #ddd; }
+    .ps-section-title { font-size: 1rem; font-weight: 700; margin: 20px 0 10px; }
+    .ps-tl { list-style: none; margin: 0; padding: 0; }
+    .ps-tl li { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #e0e0e4; font-size: 0.92rem; line-height: 1.45; }
+    .ps-tl--admin { border-left: 4px solid #0ea5e9; background: #f0f9ff; }
+    .ps-tl--bewerber { border-left: 4px solid #0d9488; background: #f0fdfa; }
+    .ps-tl--other { border-left: 4px solid #94a3b8; background: #fafafa; }
+    .ps-tl-meta { font-size: 0.8rem; color: #64748b; margin-bottom: 6px; }
+    .ps-note { font-size: 0.85rem; color: #64748b; line-height: 1.45; margin-top: 8px; }
+    .ps-btn-secondary { padding: 10px 16px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -46,10 +58,12 @@
   <main class="ps-page">
     <a class="ps-back" href="/">← Zurück zur Startseite</a>
     <div class="ps-card">
-      <h1>Status Ihrer Partneranfrage</h1>
+      <h1>Status Ihrer Partner-Registrierung</h1>
       <p class="ps-lead">
         Geben Sie die <strong>E-Mail-Adresse</strong> aus der Anfrage und Ihre <strong>Referenz-ID</strong> ein
-        (z.&nbsp;B. <code style="font-size:0.88em;">prr-…</code>, wie in der Bestätigung angezeigt). Es ist kein Login erforderlich.
+        (z.&nbsp;B. <code style="font-size:0.88em;">prr-…</code>). Sie sehen dann den <strong>Verlauf</strong> und können
+        <strong>antworten</strong> oder <strong>Unterlagen nachreichen</strong> — ohne Login, nur für diese eine Anfrage.
+        Dies ist <strong>nicht</strong> das Partner-Support-Ticket-System.
       </p>
       <form id="ps-form" novalidate>
         <div class="ps-field">
@@ -61,24 +75,17 @@
           <input id="ps-ref" type="text" required spellcheck="false" autocomplete="off" placeholder="prr-…" />
         </div>
         <div class="ps-actions">
-          <button type="submit" class="hp-btn-primary" id="ps-submit">Status abrufen</button>
+          <button type="submit" class="hp-btn-primary" id="ps-submit">Anzeigen</button>
         </div>
         <div id="ps-message" class="ps-msg" role="status" aria-live="polite"></div>
-        <div id="ps-result" hidden></div>
       </form>
+      <div id="ps-detail" class="ps-detail" hidden></div>
     </div>
   </main>
 
   <script>
     (function () {
-      function publicApiBase() {
-        var m = document.querySelector('meta[name="onroda-public-api-base"]');
-        if (m && m.getAttribute("content")) return String(m.getAttribute("content")).replace(/\/$/, "");
-        var h = location.hostname;
-        if (h === "localhost" || h === "127.0.0.1") return "http://" + h + ":3000/api";
-        return "https://api.onroda.de/api";
-      }
-
+      var MAX_FILE_BYTES = 8 * 1024 * 1024;
       var STATUS_LABELS = {
         open: "Eingegangen — wird bearbeitet",
         in_review: "In Bearbeitung",
@@ -87,50 +94,47 @@
         rejected: "Abgelehnt",
         blocked: "Gesperrt",
       };
+      var EVENT_LABELS = {
+        request_submitted: "Eingang der Bewerbung",
+        message: "Nachricht",
+        document_uploaded: "Dokument hochgeladen",
+        admin_document_added: "Dokument von der Plattform",
+        master_data_change_requested: "Änderungswunsch",
+        approved_company_created: "Freigabe — Mandant angelegt",
+        admin_status_update: "Stand aktualisiert",
+        admin_master_data_update: "Angaben angepasst",
+        panel_owner_provisioned: "Zugang Partner-Portal",
+      };
+      var DOC_CAT_LABEL = {
+        general: "Allgemein",
+        gewerbe: "Gewerbenachweis",
+        insurance: "Versicherung",
+        concession: "Konzession",
+        identity: "Identität / Ausweis",
+        other: "Sonstiges",
+      };
+
+      function publicApiBase() {
+        var m = document.querySelector('meta[name="onroda-public-api-base"]');
+        if (m && m.getAttribute("content")) return String(m.getAttribute("content")).replace(/\/$/, "");
+        var h = location.hostname;
+        if (h === "localhost" || h === "127.0.0.1") return "http://" + h + ":3000/api";
+        return "https://api.onroda.de/api";
+      }
 
       var form = document.getElementById("ps-form");
       var msg = document.getElementById("ps-message");
-      var result = document.getElementById("ps-result");
+      var detailEl = document.getElementById("ps-detail");
       var submit = document.getElementById("ps-submit");
+      var emailEl = document.getElementById("ps-email");
+      var refEl = document.getElementById("ps-ref");
+      var sessionEmail = "";
+      var sessionRequestId = "";
 
       function setMsg(text, kind) {
         if (!msg) return;
         msg.textContent = text || "";
         msg.className = "ps-msg" + (kind ? " ps-msg--" + kind : "");
-      }
-
-      function showResult(data) {
-        if (!result) return;
-        var r = data.request || {};
-        var statusKey = r.registrationStatus || "";
-        var line = STATUS_LABELS[statusKey] || statusKey || "—";
-        var html =
-          "<dl class=\"ps-dl\">" +
-          "<dt>Unternehmen</dt><dd>" +
-          escapeHtml(r.companyName || "—") +
-          "</dd>" +
-          "<dt>Status</dt><dd>" +
-          escapeHtml(line) +
-          "</dd>" +
-          "<dt>Referenz</dt><dd><code>" +
-          escapeHtml(r.id || "—") +
-          "</code></dd>" +
-          "<dt>Eingang</dt><dd>" +
-          formatDate(r.createdAt) +
-          "</dd>";
-        if (r.missingDocumentsNote) {
-          html +=
-            "<dt>Hinweis zu Unterlagen</dt><dd>" +
-            escapeHtml(r.missingDocumentsNote) +
-            "</dd>";
-        }
-        html += "</dl>";
-        if (r.panelAccessReady) {
-          html +=
-            "<p class=\"ps-panel-cta\"><a class=\"hp-btn-primary\" href=\"https://panel.onroda.de/\" rel=\"noopener noreferrer\">Zum Partner-Portal</a></p>";
-        }
-        result.innerHTML = html;
-        result.hidden = false;
       }
 
       function escapeHtml(s) {
@@ -150,33 +154,118 @@
         }
       }
 
-      var params = new URLSearchParams(location.search);
-      var preEmail = params.get("email") || "";
-      var preRef = params.get("requestId") || params.get("ref") || "";
-      var emailEl = document.getElementById("ps-email");
-      var refEl = document.getElementById("ps-ref");
-      if (emailEl && preEmail) emailEl.value = preEmail;
-      if (refEl && preRef) refEl.value = preRef;
+      function actorClass(actorType) {
+        var t = String(actorType || "").toLowerCase();
+        if (t === "admin") return "ps-tl--admin";
+        if (t === "partner") return "ps-tl--bewerber";
+        return "ps-tl--other";
+      }
 
-      function runLookup() {
-        setMsg("");
-        if (result) {
-          result.innerHTML = "";
-          result.hidden = true;
+      function actorTitle(actorType) {
+        var t = String(actorType || "").toLowerCase();
+        if (t === "admin") return "Plattform (ONRODA)";
+        if (t === "partner") return "Sie / Bewerber";
+        return "System";
+      }
+
+      function eventLabel(et) {
+        return EVENT_LABELS[et] || String(et || "").replace(/_/g, " ");
+      }
+
+      function renderDetail(data) {
+        if (!detailEl) return;
+        var r = data.request || {};
+        var statusKey = r.registrationStatus || "";
+        var line = STATUS_LABELS[statusKey] || statusKey || "—";
+        var closed = statusKey === "rejected" || statusKey === "blocked" || statusKey === "approved";
+        var docs = Array.isArray(data.documents) ? data.documents : [];
+        var tl = Array.isArray(data.timeline) ? data.timeline.slice() : [];
+        tl.sort(function (a, b) {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        });
+
+        var html = "<h2 class=\"ps-section-title\" style=\"margin-top:0\">Ihre Bewerbung</h2>";
+        html += "<dl class=\"ps-dl\">";
+        html += "<dt>Unternehmen</dt><dd>" + escapeHtml(r.companyName || "—") + "</dd>";
+        html += "<dt>Aktueller Stand</dt><dd><strong>" + escapeHtml(line) + "</strong></dd>";
+        html += "<dt>Referenz-ID</dt><dd><code>" + escapeHtml(r.id || "—") + "</code></dd>";
+        html += "<dt>Eingang</dt><dd>" + escapeHtml(formatDate(r.createdAt)) + "</dd>";
+        if (r.updatedAt && r.updatedAt !== r.createdAt) {
+          html += "<dt>Zuletzt geändert</dt><dd>" + escapeHtml(formatDate(r.updatedAt)) + "</dd>";
         }
-        var email = (emailEl && emailEl.value ? emailEl.value : "").trim().toLowerCase();
-        var requestId = (refEl && refEl.value ? refEl.value : "").trim();
-        if (!email || !requestId) {
-          setMsg("Bitte E-Mail und Referenz-ID ausfüllen.", "err");
-          return;
+        if (r.missingDocumentsNote) {
+          html += "<dt>Hinweis zu Unterlagen</dt><dd>" + escapeHtml(r.missingDocumentsNote) + "</dd>";
         }
+        html += "</dl>";
+        if (r.panelAccessReady) {
+          html += "<p class=\"ps-panel-cta\"><a class=\"hp-btn-primary\" href=\"https://panel.onroda.de/\" rel=\"noopener noreferrer\">Zum Partner-Portal</a></p>";
+        }
+
+        html += "<h2 class=\"ps-section-title\">Verlauf</h2>";
+        html += "<p class=\"ps-note\">Chronologisch. Blau = Nachricht oder Aktion der Plattform, grün = Ihre Einreichung oder Nachricht.</p>";
+        if (tl.length === 0) {
+          html += "<p class=\"ps-note\">Noch keine Einträge im Verlauf.</p>";
+        } else {
+          html += "<ul class=\"ps-tl\">";
+          for (var i = 0; i < tl.length; i++) {
+            var ev = tl[i];
+            var ac = actorClass(ev.actorType);
+            var title = actorTitle(ev.actorType);
+            var elab = eventLabel(ev.eventType);
+            html += "<li class=\"" + ac + "\">";
+            html += "<div class=\"ps-tl-meta\">" + escapeHtml(title) + " · " + escapeHtml(formatDate(ev.createdAt));
+            html += " · " + escapeHtml(elab) + "</div>";
+            if (ev.message) html += "<div>" + escapeHtml(ev.message).replace(/\n/g, "<br/>") + "</div>";
+            html += "</li>";
+          }
+          html += "</ul>";
+        }
+
+        html += "<h2 class=\"ps-section-title\">Antwort an die Plattform</h2>";
+        if (closed) {
+          html += "<p class=\"ps-note\">Für diesen Stand sind keine weiteren Nachrichten oder Uploads vorgesehen.</p>";
+        } else {
+          html += "<p class=\"ps-note\">Ihre Nachricht erscheint im Verlauf und wird im Admin-Panel zur Registrierungsanfrage angezeigt (nicht im Partner-Support).</p>";
+          html += "<div class=\"ps-field\"><label for=\"ps-reply\">Ihre Nachricht</label>";
+          html += "<textarea id=\"ps-reply\" rows=\"5\" maxlength=\"12000\" placeholder=\"Antwort …\"></textarea></div>";
+          html += "<div class=\"ps-actions\"><button type=\"button\" class=\"hp-btn-primary\" id=\"ps-send-reply\">Antwort senden</button>";
+          html += "<button type=\"button\" class=\"ps-btn-secondary\" id=\"ps-reload\">Verlauf neu laden</button></div>";
+        }
+
+        html += "<h2 class=\"ps-section-title\">Unterlagen nachreichen</h2>";
+        if (closed) {
+          html += "<p class=\"ps-note\">Bei abgeschlossenem Vorgang sind keine Uploads mehr möglich.</p>";
+        } else {
+          html += "<p class=\"ps-note\">Laden Sie z.&nbsp;B. PDF oder Bild hoch (max. ca. 8&nbsp;MB). Besonders bei Status „Unterlagen erforderlich“ bitten wir um Nachreichung.</p>";
+          html += "<div class=\"ps-field\"><label for=\"ps-doc-cat\">Kategorie</label><select id=\"ps-doc-cat\">";
+          Object.keys(DOC_CAT_LABEL).forEach(function (k) {
+            html += "<option value=\"" + escapeHtml(k) + "\">" + escapeHtml(DOC_CAT_LABEL[k]) + "</option>";
+          });
+          html += "</select></div>";
+          html += "<div class=\"ps-field\"><label for=\"ps-file\">Datei</label><input type=\"file\" id=\"ps-file\" /></div>";
+          html += "<div class=\"ps-actions\"><button type=\"button\" class=\"hp-btn-primary\" id=\"ps-upload\">Datei senden</button></div>";
+        }
+
+        detailEl.innerHTML = html;
+        detailEl.hidden = false;
+
+        var reloadBtn = document.getElementById("ps-reload");
+        if (reloadBtn) reloadBtn.addEventListener("click", function () { loadDetail(); });
+        var sendBtn = document.getElementById("ps-send-reply");
+        if (sendBtn) sendBtn.addEventListener("click", sendReply);
+        var upBtn = document.getElementById("ps-upload");
+        if (upBtn) upBtn.addEventListener("click", uploadFile);
+      }
+
+      function loadDetail() {
+        if (!sessionEmail || !sessionRequestId) return;
+        setMsg("Lade …", "");
         var url =
           publicApiBase() +
-          "/panel-auth/registration-request-status?email=" +
-          encodeURIComponent(email) +
-          "&requestId=" +
-          encodeURIComponent(requestId);
-        if (submit) submit.disabled = true;
+          "/panel-auth/registration-request/" +
+          encodeURIComponent(sessionRequestId) +
+          "?email=" +
+          encodeURIComponent(sessionEmail);
         fetch(url, { method: "GET", headers: { Accept: "application/json" } })
           .then(function (res) {
             return res.json().then(function (data) {
@@ -185,8 +274,172 @@
           })
           .then(function (x) {
             if (x.res.status === 200 && x.data.ok && x.data.request) {
-              setMsg("Status geladen.", "ok");
-              showResult(x.data);
+              setMsg("Aktualisiert.", "ok");
+              renderDetail(x.data);
+              return;
+            }
+            if (x.res.status === 429) {
+              setMsg("Zu viele Abrufe. Bitte später erneut versuchen.", "err");
+              return;
+            }
+            setMsg("Daten konnten nicht geladen werden.", "err");
+          })
+          .catch(function () {
+            setMsg("Netzwerkfehler.", "err");
+          });
+      }
+
+      function sendReply() {
+        var ta = document.getElementById("ps-reply");
+        var text = ta && ta.value ? ta.value.trim() : "";
+        if (!text) {
+          setMsg("Bitte eine Nachricht eintragen.", "err");
+          return;
+        }
+        var url =
+          publicApiBase() +
+          "/panel-auth/registration-request/" +
+          encodeURIComponent(sessionRequestId) +
+          "/messages";
+        var btn = document.getElementById("ps-send-reply");
+        if (btn) btn.disabled = true;
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ email: sessionEmail, message: text }),
+        })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { res: res, data: data };
+            });
+          })
+          .then(function (x) {
+            if (x.res.status === 201 && x.data.ok) {
+              if (ta) ta.value = "";
+              setMsg("Nachricht gesendet.", "ok");
+              loadDetail();
+              return;
+            }
+            if (x.res.status === 429) {
+              setMsg("Zu viele Anfragen. Bitte später erneut.", "err");
+              return;
+            }
+            if (x.res.status === 409) {
+              setMsg("Für diese Anfrage sind keine weiteren Nachrichten möglich.", "err");
+              return;
+            }
+            setMsg("Senden fehlgeschlagen.", "err");
+          })
+          .catch(function () {
+            setMsg("Netzwerkfehler.", "err");
+          })
+          .finally(function () {
+            if (btn) btn.disabled = false;
+          });
+      }
+
+      function uploadFile() {
+        var input = document.getElementById("ps-file");
+        var catEl = document.getElementById("ps-doc-cat");
+        if (!input || !input.files || !input.files[0]) {
+          setMsg("Bitte eine Datei wählen.", "err");
+          return;
+        }
+        var file = input.files[0];
+        if (file.size > MAX_FILE_BYTES) {
+          setMsg("Datei zu groß (max. ca. 8 MB).", "err");
+          return;
+        }
+        var category = catEl && catEl.value ? catEl.value : "general";
+        var btn = document.getElementById("ps-upload");
+        if (btn) btn.disabled = true;
+        var reader = new FileReader();
+        reader.onload = function () {
+          var result = reader.result;
+          var base64 = typeof result === "string" && result.indexOf(",") >= 0 ? result.split(",")[1] : result;
+          var url =
+            publicApiBase() +
+            "/panel-auth/registration-request/" +
+            encodeURIComponent(sessionRequestId) +
+            "/documents";
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              email: sessionEmail,
+              category: category,
+              fileName: file.name,
+              mimeType: file.type || "application/octet-stream",
+              contentBase64: base64,
+            }),
+          })
+            .then(function (res) {
+              return res.json().then(function (data) {
+                return { res: res, data: data };
+              });
+            })
+            .then(function (x) {
+              if (x.res.status === 201 && x.data.ok) {
+                input.value = "";
+                setMsg("Datei übermittelt.", "ok");
+                loadDetail();
+                return;
+              }
+              if (x.res.status === 429) {
+                setMsg("Zu viele Anfragen. Bitte später erneut.", "err");
+                return;
+              }
+              if (x.res.status === 409) {
+                setMsg("Für diese Anfrage sind keine Uploads mehr möglich.", "err");
+                return;
+              }
+              setMsg("Upload fehlgeschlagen.", "err");
+            })
+            .catch(function () {
+              setMsg("Netzwerkfehler.", "err");
+            })
+            .finally(function () {
+              if (btn) btn.disabled = false;
+            });
+        };
+        reader.onerror = function () {
+          setMsg("Datei konnte nicht gelesen werden.", "err");
+          if (btn) btn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function runLookup() {
+        setMsg("");
+        if (detailEl) {
+          detailEl.innerHTML = "";
+          detailEl.hidden = true;
+        }
+        var email = (emailEl && emailEl.value ? emailEl.value : "").trim().toLowerCase();
+        var requestId = (refEl && refEl.value ? refEl.value : "").trim();
+        if (!email || !requestId) {
+          setMsg("Bitte E-Mail und Referenz-ID ausfüllen.", "err");
+          return;
+        }
+        sessionEmail = email;
+        sessionRequestId = requestId;
+        if (submit) submit.disabled = true;
+        var url =
+          publicApiBase() +
+          "/panel-auth/registration-request/" +
+          encodeURIComponent(requestId) +
+          "?email=" +
+          encodeURIComponent(email);
+        fetch(url, { method: "GET", headers: { Accept: "application/json" } })
+          .then(function (res) {
+            return res.json().then(function (data) {
+              return { res: res, data: data };
+            });
+          })
+          .then(function (x) {
+            if (x.res.status === 200 && x.data.ok && x.data.request) {
+              setMsg("Geladen.", "ok");
+              renderDetail(x.data);
               return;
             }
             if (x.res.status === 429) {
@@ -202,6 +455,12 @@
             if (submit) submit.disabled = false;
           });
       }
+
+      var params = new URLSearchParams(location.search);
+      var preEmail = params.get("email") || "";
+      var preRef = params.get("requestId") || params.get("ref") || "";
+      if (emailEl && preEmail) emailEl.value = preEmail;
+      if (refEl && preRef) refEl.value = preRef;
 
       if (form) {
         form.addEventListener("submit", function (e) {

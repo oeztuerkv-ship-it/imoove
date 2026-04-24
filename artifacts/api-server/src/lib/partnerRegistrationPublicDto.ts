@@ -79,3 +79,56 @@ export function toPublicPartnerRegistrationSnapshot(row: RegistrationRowLike): P
     panelAccessReady: row.registrationStatus === "approved" && Boolean(row.linkedCompanyId),
   };
 }
+
+/** Nur Ereignisse, die für Bewerber:innen ohne Payload-Lecks sinnvoll sind (Status-Link). */
+const PUBLIC_REGISTRATION_TIMELINE_EVENT_TYPES = new Set([
+  "request_submitted",
+  "message",
+  "document_uploaded",
+  "admin_document_added",
+  "master_data_change_requested",
+  "approved_company_created",
+  "admin_status_update",
+  "admin_master_data_update",
+  "panel_owner_provisioned",
+]);
+
+export type PublicPartnerRegistrationTimelineEvent = {
+  id: string;
+  createdAt: string;
+  actorType: string;
+  actorLabel: string;
+  eventType: string;
+  message: string;
+};
+
+type TimelineRowLike = {
+  id: string;
+  createdAt: string;
+  actorType: string;
+  actorLabel: string;
+  eventType: string;
+  message: string;
+};
+
+/**
+ * Öffentlicher Verlauf: gleiche Texte wie intern, aber **ohne** `payload` (keine Admin-Interna / IDs).
+ */
+export function toPublicPartnerRegistrationTimeline(
+  rows: TimelineRowLike[],
+): PublicPartnerRegistrationTimelineEvent[] {
+  const out: PublicPartnerRegistrationTimelineEvent[] = [];
+  for (const r of rows) {
+    const et = String(r.eventType || "").trim();
+    if (!PUBLIC_REGISTRATION_TIMELINE_EVENT_TYPES.has(et)) continue;
+    out.push({
+      id: r.id,
+      createdAt: r.createdAt,
+      actorType: String(r.actorType || "").trim() || "partner",
+      actorLabel: String(r.actorLabel || "").trim(),
+      eventType: et,
+      message: String(r.message || "").trim(),
+    });
+  }
+  return out;
+}
