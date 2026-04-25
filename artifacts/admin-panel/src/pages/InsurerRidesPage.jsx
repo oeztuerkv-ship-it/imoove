@@ -61,6 +61,33 @@ function formatDriverLine(driverId) {
   return `Fahrer-ID: ${id}`;
 }
 
+function actorLabel(actorType, actorId) {
+  const type = String(actorType || "").trim() || "system";
+  const id = String(actorId || "").trim();
+  return id ? `${type}/${id}` : type;
+}
+
+function pickDrawerActors(ride) {
+  const audit = Array.isArray(ride?.audit) ? ride.audit : [];
+  const createdEvt = audit.find((a) => String(a?.eventType || "").toLowerCase().includes("created")) || audit[0];
+  const cancelledEvt = [...audit]
+    .reverse()
+    .find((a) => String(a?.toStatus || "").toLowerCase().includes("cancelled"));
+  const latestCorrection = Array.isArray(ride?.corrections) && ride.corrections.length
+    ? ride.corrections[ride.corrections.length - 1]
+    : null;
+  const latestAudit = audit.length ? audit[audit.length - 1] : null;
+  return {
+    createdBy: createdEvt ? actorLabel(createdEvt.actorType, createdEvt.actorId) : "—",
+    changedBy: latestCorrection
+      ? actorLabel(latestCorrection.actorType, latestCorrection.actorId)
+      : latestAudit
+        ? actorLabel(latestAudit.actorType, latestAudit.actorId)
+        : "—",
+    cancelledBy: cancelledEvt ? actorLabel(cancelledEvt.actorType, cancelledEvt.actorId) : "—",
+  };
+}
+
 export default function InsurerRidesPage() {
   const [range, setRange] = useState(defaultRange);
   const [rideId, setRideId] = useState("");
@@ -182,6 +209,46 @@ export default function InsurerRidesPage() {
     }
   }
 
+  function preparePruefaktePdfData() {
+    if (!selected) return;
+    const payload = {
+      rideId: selected.rideId,
+      companyName: selected.companyName,
+      status: insurerRideStatusLabel(selected.rideStatus),
+      amount: selected.amountGross,
+      executionSummary: selected.executionSummary,
+      corrections: selected.corrections ?? [],
+      proof: selected.proof ?? {},
+    };
+    window.__INSURER_PRUEFAKTE_PDF_PREP__ = payload;
+    window.alert("PDF-Export vorbereitet (Payload im Browser gesetzt).");
+  }
+
+  function applyQuickFilter(mode) {
+    if (mode === "open") {
+      setStatus("pending");
+      setHasCorrections("any");
+      setMissingProofs([]);
+      return;
+    }
+    if (mode === "completed") {
+      setStatus("completed");
+      setHasCorrections("any");
+      setMissingProofs([]);
+      return;
+    }
+    if (mode === "cancelled") {
+      setStatus("cancelled");
+      setHasCorrections("any");
+      setMissingProofs([]);
+      return;
+    }
+    // Probleme: typischer Prüf-Fokus auf Korrekturen oder fehlende Nachweise.
+    setStatus("");
+    setHasCorrections("true");
+    setMissingProofs(["gps", "chronology", "confirmation", "approval_reference"]);
+  }
+
   return (
     <div className="admin-page" style={{ padding: "20px 24px" }}>
       <h1 style={{ margin: "0 0 8px", fontSize: "1.35rem" }}>Krankenkassen · Fahrten</h1>
@@ -274,108 +341,117 @@ export default function InsurerRidesPage() {
         </button>
         <span className="admin-table-sub">Gesamt: {total}</span>
       </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("open")}>
+          Offen
+        </button>
+        <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("completed")}>
+          Abgeschlossen
+        </button>
+        <button type="button" className="admin-btn-refresh" onClick={() => applyQuickFilter("cancelled")}>
+          Storniert
+        </button>
+        <button type="button" className="admin-btn-primary" onClick={() => applyQuickFilter("problems")}>
+          Probleme
+        </button>
+      </div>
       {err ? <div className="admin-error-banner" style={{ marginBottom: 12 }}>{err}</div> : null}
       <style>{`
-        .insurer-rides-table tbody tr.insurer-rides-row {
-          transition: background-color 0.12s ease;
+        .insurer-rides-cards {
+          display: grid;
+          gap: 12px;
         }
-        .insurer-rides-table tbody tr.insurer-rides-row:hover {
-          background-color: var(--onroda-surface-2, #f1f5f9) !important;
+        .insurer-ride-card {
+          border: 1px solid var(--onroda-border-subtle, #e2e8f0);
+          border-radius: 12px;
+          padding: 12px 14px;
+          cursor: pointer;
+          transition: background-color .12s ease, border-color .12s ease;
+          background: #fff;
         }
-        .insurer-rides-table tbody tr.insurer-rides-row--selected {
-          background-color: #e0f2fe !important;
+        .insurer-ride-card:hover {
+          background-color: var(--onroda-surface-2, #f1f5f9);
+          border-color: #cbd5e1;
         }
-        .insurer-rides-table th,
-        .insurer-rides-table td {
-          padding: 14px 16px;
-          vertical-align: middle;
+        .insurer-ride-card--selected {
+          border-color: #38bdf8;
+          background: #e0f2fe;
         }
-        .insurer-rides-table tbody tr.insurer-rides-row td {
-          border-bottom: 1px solid var(--onroda-border-subtle, #e2e8f0);
+        .insurer-ride-card__row {
+          display: grid;
+          gap: 10px;
+          align-items: start;
+        }
+        .insurer-ride-card__row--top {
+          grid-template-columns: minmax(230px, 1.4fr) minmax(160px, 1fr) minmax(140px, .9fr);
+        }
+        .insurer-ride-card__row--bottom {
+          grid-template-columns: minmax(250px, 1.4fr) minmax(250px, 1.4fr) minmax(140px, .8fr);
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px dashed var(--onroda-border-subtle, #e2e8f0);
+        }
+        .insurer-ride-card__id {
+          font-size: 17px;
+          font-weight: 700;
+          color: var(--onroda-text-dark, #0f172a);
+          letter-spacing: -0.02em;
+        }
+        .insurer-ride-card__price {
+          text-align: right;
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: var(--onroda-text-dark, #0f172a);
+          white-space: nowrap;
+        }
+        .insurer-ride-card__sub {
+          color: var(--onroda-text-muted, #64748b);
+          font-size: 12px;
         }
       `}</style>
       <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr minmax(300px, 420px)" : "1fr", gap: 16, alignItems: "start" }}>
         <div style={{ overflow: "auto", border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8 }}>
-          <table className="admin-table insurer-rides-table" style={{ minWidth: 900, width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
-            <thead>
-              <tr>
-                <th>Ref</th>
-                <th>Firma</th>
-                <th>Fahrer</th>
-                <th>Fahrzeug</th>
-                <th>Datum/Zeit</th>
-                <th>Start</th>
-                <th>Ziel</th>
-                <th style={{ textAlign: "right" }}>Betrag</th>
-                <th>Status</th>
-                <th>Nachweise</th>
-                <th>Export</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 && !loading ? (
-                <tr>
-                  <td colSpan={11} className="admin-table-sub" style={{ padding: 12 }}>
-                    Keine Fahrten im Zeitraum.
-                  </td>
-                </tr>
-              ) : (
-                items.map((r) => (
-                  <tr
-                    key={r.rideId}
-                    className={`insurer-rides-row${selected?.rideId === r.rideId ? " insurer-rides-row--selected" : ""}`}
-                    style={{ cursor: "pointer" }}
-                    onClick={() => void loadDetail(r.rideId)}
-                  >
-                    <td>
-                      <code
-                        style={{
-                          fontSize: "17px",
-                          fontWeight: 700,
-                          color: "var(--onroda-text-dark, #0f172a)",
-                          letterSpacing: "-0.02em",
-                        }}
-                      >
-                        {r.rideId}
-                      </code>
-                    </td>
-                    <td>{r.companyName}</td>
-                    <td>
-                      <span style={{ fontSize: 13, lineHeight: 1.45, color: "var(--onroda-text-dark, #0f172a)" }}>{formatDriverLine(r.driverId)}</span>
-                    </td>
-                    <td>{r.vehiclePlate}</td>
-                    <td>{fmt(r.referenceTime)}</td>
-                    <td>
-                      {[r.fromPostalCode, r.fromLocality].filter(Boolean).join(" ") || "—"}
-                    </td>
-                    <td>
-                      {[r.toPostalCode, r.toLocality].filter(Boolean).join(" ") || "—"}
-                    </td>
-                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                      <strong style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--onroda-text-dark, #0f172a)" }}>
-                        {Number(r.amountGross).toFixed(2)} €
-                      </strong>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600 }}>{insurerRideStatusLabel(r.rideStatus)}</span>
-                      {r.financialSettlementStatus ? (
-                        <span className="admin-table-sub" style={{ display: "block", fontSize: 10 }}>
-                          {r.financialSettlementStatus}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td style={{ fontSize: 12 }} title="Ort, Zeit, ggf. Freigabe — keine Rohkoordinaten">
-                      GPS:{flagYes(r.proof?.hasGpsPoints)} Z:{flagYes(r.proof?.hasChronology)} S:{flagYes(r.proof?.hasSignatureOrConfirmation)} V:
-                      {flagYes(r.proof?.hasApprovalReference)}
-                    </td>
-                    <td>
-                      <code style={{ fontSize: 10 }}>{r.lastExportBatchId || "—"}</code>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <div className="insurer-rides-cards" style={{ padding: 12 }}>
+            {items.length === 0 && !loading ? (
+              <p className="admin-table-sub" style={{ margin: 0, padding: 12 }}>Keine Fahrten im Zeitraum.</p>
+            ) : (
+              items.map((r) => (
+                <article
+                  key={r.rideId}
+                  className={`insurer-ride-card${selected?.rideId === r.rideId ? " insurer-ride-card--selected" : ""}`}
+                  onClick={() => void loadDetail(r.rideId)}
+                >
+                  <div className="insurer-ride-card__row insurer-ride-card__row--top">
+                    <div>
+                      <div className="insurer-ride-card__id">{r.rideId}</div>
+                      <div className="insurer-ride-card__sub">{r.companyName}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{insurerRideStatusLabel(r.rideStatus)}</div>
+                      <div className="insurer-ride-card__sub">{fmt(r.referenceTime)}</div>
+                    </div>
+                    <div className="insurer-ride-card__price">{Number(r.amountGross).toFixed(2)} €</div>
+                  </div>
+                  <div className="insurer-ride-card__row insurer-ride-card__row--bottom">
+                    <div>
+                      <div>{[r.fromPostalCode, r.fromLocality].filter(Boolean).join(" ") || "—"}</div>
+                      <div className="insurer-ride-card__sub">Start</div>
+                    </div>
+                    <div>
+                      <div>{[r.toPostalCode, r.toLocality].filter(Boolean).join(" ") || "—"}</div>
+                      <div className="insurer-ride-card__sub">Ziel</div>
+                    </div>
+                    <div>
+                      <div>{formatDriverLine(r.driverId)}</div>
+                      <div className="insurer-ride-card__sub">
+                        Export: {r.lastExportBatchId ? "ja" : "nein"} · GPS {flagYes(r.proof?.hasGpsPoints)}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
         </div>
         {selected || detailLoading || detailErr ? (
           <div
@@ -425,6 +501,34 @@ export default function InsurerRidesPage() {
                   <button type="button" className="admin-btn-refresh" onClick={() => void downloadPruefakteCsv()}>
                     Prüfakte exportieren
                   </button>
+                  <button type="button" className="admin-btn-refresh" onClick={preparePruefaktePdfData}>
+                    PDF vorbereiten
+                  </button>
+                </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 8,
+                    marginBottom: 10,
+                    padding: 10,
+                    borderRadius: 8,
+                    background: "var(--onroda-surface-2, #f8fafc)",
+                    border: "1px solid var(--onroda-border-subtle, #e2e8f0)",
+                  }}
+                >
+                  <div>
+                    <div className="admin-table-sub">erstellt von</div>
+                    <div style={{ fontWeight: 600 }}>{pickDrawerActors(selected).createdBy}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">geändert von</div>
+                    <div style={{ fontWeight: 600 }}>{pickDrawerActors(selected).changedBy}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">storniert von</div>
+                    <div style={{ fontWeight: 600 }}>{pickDrawerActors(selected).cancelledBy}</div>
+                  </div>
                 </div>
                 {detailTab === "details" ? (
                   <>
