@@ -105,7 +105,7 @@
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
         return;
       }
-      var target = document.getElementById("hp-dynamic-placeholders");
+      var target = document.getElementById("homepage-placeholders-root");
       if (!target) return;
       var url = "https://api.onroda.de/api/public/homepage-placeholders";
       fetch(url, { method: "GET", credentials: "omit" })
