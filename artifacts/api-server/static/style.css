@@ -203,7 +203,7 @@
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      gap: 10px;
+      gap: 4px;
       position: relative;
     }
 
@@ -268,11 +268,12 @@
       background: transparent;
       color: #52525b;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 18px;
       font-weight: 500;
       line-height: 1;
       padding: 0;
       border-radius: 0;
+      transform: translateY(-1px);
     }
 
     .hp-dynamic-placeholder__close:hover {
