@@ -66,6 +66,7 @@ import {
   parseSupportThreadStatus,
 } from "../db/supportThreadsData";
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
+import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
   createHomepagePlaceholder,
   listHomepagePlaceholdersAdmin,
@@ -1055,6 +1056,61 @@ adminJson.get("/homepage-placeholders", async (req, res, next) => {
     }
     const items = await listHomepagePlaceholdersAdmin();
     res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/homepage-content", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const item = await getHomepageContentAdmin();
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/homepage-content", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const toText = (v: unknown): string | undefined => {
+      if (v === undefined) return undefined;
+      return typeof v === "string" ? v.trim() : undefined;
+    };
+    const item = await patchHomepageContentAdmin(
+      {
+        heroHeadline: toText(b.heroHeadline),
+        heroSubline: toText(b.heroSubline),
+        cta1Text: toText(b.cta1Text),
+        cta1Link: toText(b.cta1Link),
+        cta2Text: toText(b.cta2Text),
+        cta2Link: toText(b.cta2Link),
+        noticeText: toText(b.noticeText),
+        noticeActive: typeof b.noticeActive === "boolean" ? b.noticeActive : undefined,
+      },
+      req.adminAuth?.adminUserId ?? null,
+    );
+    if (!item) {
+      res.status(503).json({ error: "patch_failed" });
+      return;
+    }
+    res.json({ ok: true, item });
   } catch (e) {
     next(e);
   }

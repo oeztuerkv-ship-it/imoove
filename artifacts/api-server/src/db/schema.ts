@@ -690,3 +690,21 @@ export const homepagePlaceholdersTable = pgTable("homepage_placeholders", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** CMS-MVP für zentrale Homepage-Hero-Inhalte (Marketing-only). */
+export const homepageContentTable = pgTable("homepage_content", {
+  id: text("id").primaryKey(),
+  hero_headline: text("hero_headline").notNull().default(""),
+  hero_subline: text("hero_subline").notNull().default(""),
+  cta1_text: text("cta1_text").notNull().default(""),
+  cta1_link: text("cta1_link").notNull().default(""),
+  cta2_text: text("cta2_text").notNull().default(""),
+  cta2_link: text("cta2_link").notNull().default(""),
+  notice_text: text("notice_text").notNull().default(""),
+  notice_active: boolean("notice_active").notNull().default(false),
+  updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

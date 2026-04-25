@@ -53,6 +53,7 @@ export const ADMIN_PAGE_ROLES = {
 
   "access-codes": ["admin", "service", "taxi"],
   "homepage-placeholders": ["admin", "service"],
+  "homepage-content": ["admin", "service"],
 
   settings: ["admin", "service", "taxi", "insurance", "hotel"],
   "settings-api": ["admin"],
@@ -209,6 +210,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     items: [
       { pageKey: "settings-api", label: "API & Token", icon: "key", roles: ["admin"] },
       { pageKey: "settings-branding", label: "Branding (PDF)", icon: "document", roles: ["admin"] },
+      { pageKey: "homepage-content", label: "Homepage-Inhalte", icon: "document", roles: R.adminSvc },
       { pageKey: "homepage-placeholders", label: "Homepage-Hinweise", icon: "document", roles: R.adminSvc },
       { pageKey: "settings-payments", label: "Zahlungsarten", icon: "wallet", roles: ["admin"] },
       { pageKey: "settings", label: "Konto & Sicherheit", icon: "cog", roles: ["admin", "service", "taxi", "insurance", "hotel"] },

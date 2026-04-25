@@ -28,6 +28,7 @@ import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.j
 import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
 import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
 import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
+import HomepageContentPage from "./pages/HomepageContentPage.jsx";
 import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
 
 function isAdminPasswordResetPath() {
@@ -218,6 +219,10 @@ const PAGE_META = {
   "homepage-placeholders": {
     title: "Homepage-Hinweise",
     subtitle: "Öffentliche Banner auf onroda.de direkt aus der Plattform-Konsole steuern",
+  },
+  "homepage-content": {
+    title: "Homepage-Inhalte",
+    subtitle: "Hero-Texte und Hinweiszeile der Marketing-Homepage ohne Codeänderung steuern",
   },
   settings: {
     title: "Einstellungen",
@@ -485,6 +490,8 @@ export default function App() {
         return <AccessCodesPage />;
       case "homepage-placeholders":
         return <HomepagePlaceholdersPage />;
+      case "homepage-content":
+        return <HomepageContentPage />;
       case "finance-dashboard":
         return <FinanceDashboardPage />;
       case "finance-ride-financials":

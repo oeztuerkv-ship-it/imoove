@@ -48,6 +48,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Fahrzeug-Freigabe (Konzession, Dokumente, Admin-Prüfung) → 035_fleet_vehicle_approval_governance.sql
   Krankenkassen-Modus Phase 1 (Export-Batches, Korrekturhistorie)   → 036_insurer_kasse_phase1.sql
   Homepage-Hinweise/Banner (Admin-gesteuert, public read-only)      → 037_homepage_placeholders.sql
+  Homepage-CMS MVP (Hero + CTA + Hinweiszeile)                       → 038_homepage_content_cms.sql
 
 Nach Migrationen Schema prüfen:
 

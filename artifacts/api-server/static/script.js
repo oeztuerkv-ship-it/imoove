@@ -35,6 +35,17 @@
       return "info";
     }
 
+    function setMultilineText(target, text) {
+      if (!target) return;
+      var s = String(text || "");
+      target.innerHTML = "";
+      var parts = s.split(/\r?\n/);
+      for (var i = 0; i < parts.length; i++) {
+        if (i > 0) target.appendChild(document.createElement("br"));
+        target.appendChild(document.createTextNode(parts[i]));
+      }
+    }
+
     function buildPlaceholderNode(item) {
       var wrap = document.createElement("article");
       wrap.className = "hp-dynamic-placeholder hp-dynamic-placeholder--" + toneClass(item.tone);
@@ -67,36 +78,67 @@
       return wrap;
     }
 
-    function loadDynamicHomepagePlaceholders() {
+    function loadHomepageContent() {
       var host = window.location.hostname;
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
         return;
       }
-      var target = document.getElementById("homepage-placeholders-root");
-      if (!target) return;
-      if (!target.classList.contains("hp-dynamic-placeholders")) {
-        target.classList.add("hp-dynamic-placeholders");
-      }
-      target.setAttribute("aria-live", "polite");
-      var url = "https://api.onroda.de/api/public/homepage-placeholders";
+      var headlineEl = document.getElementById("hero-headline");
+      var sublineEl = document.getElementById("hero-subline");
+      var cta1El = document.getElementById("hero-cta1");
+      var cta2El = document.getElementById("hero-cta2");
+      var noticeRoot = document.getElementById("homepage-placeholders-root");
+      var defaultHeadline = headlineEl ? headlineEl.innerText || "" : "";
+      var defaultSubline = sublineEl ? sublineEl.textContent || "" : "";
+      var defaultCta1Text = cta1El ? cta1El.textContent || "" : "";
+      var defaultCta1Link = cta1El ? cta1El.getAttribute("href") || "" : "";
+      var defaultCta2Text = cta2El ? cta2El.textContent || "" : "";
+      var defaultCta2Link = cta2El ? cta2El.getAttribute("href") || "" : "";
+      var url = "https://api.onroda.de/api/public/homepage-content";
       fetch(url, { method: "GET", credentials: "omit" })
         .then(function (res) {
-          if (!res.ok) return { ok: false, items: [] };
-          return res.json().catch(function () { return { ok: false, items: [] }; });
+          if (!res.ok) return { ok: false, item: null };
+          return res.json().catch(function () { return { ok: false, item: null }; });
         })
         .then(function (data) {
-          if (!data || !data.ok || !Array.isArray(data.items)) return;
-          target.innerHTML = "";
-          data.items.forEach(function (item) {
-            target.appendChild(buildPlaceholderNode(item));
-          });
+          var item = data && data.ok ? data.item : null;
+          if (headlineEl) {
+            setMultilineText(headlineEl, item && item.heroHeadline ? item.heroHeadline : defaultHeadline);
+          }
+          if (sublineEl) {
+            sublineEl.textContent = (item && item.heroSubline ? item.heroSubline : defaultSubline).trim();
+          }
+          if (cta1El) {
+            cta1El.textContent = (item && item.cta1Text ? item.cta1Text : defaultCta1Text).trim();
+            cta1El.setAttribute("href", (item && item.cta1Link ? item.cta1Link : defaultCta1Link) || "#jetzt-buchen");
+          }
+          if (cta2El) {
+            cta2El.textContent = (item && item.cta2Text ? item.cta2Text : defaultCta2Text).trim();
+            cta2El.setAttribute("href", (item && item.cta2Link ? item.cta2Link : defaultCta2Link) || "#services");
+          }
+          if (noticeRoot) {
+            noticeRoot.innerHTML = "";
+            if (item && item.noticeActive && String(item.noticeText || "").trim()) {
+              if (!noticeRoot.classList.contains("hp-dynamic-placeholders")) {
+                noticeRoot.classList.add("hp-dynamic-placeholders");
+              }
+              noticeRoot.setAttribute("aria-live", "polite");
+              noticeRoot.appendChild(
+                buildPlaceholderNode({
+                  tone: "info",
+                  message: String(item.noticeText || ""),
+                  title: "Hinweis",
+                }),
+              );
+            }
+          }
         })
         .catch(function () {
           // keep homepage usable when endpoint is unavailable
         });
     }
 
-    loadDynamicHomepagePlaceholders();
+    loadHomepageContent();
 
     function syncPartnerTaxiSection() {
       var wrap = document.getElementById("partner-taxi-fields");
