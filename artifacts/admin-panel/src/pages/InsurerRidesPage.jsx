@@ -24,6 +24,43 @@ function flagYes(v) {
   return v ? "✓" : "—";
 }
 
+/** Anzeige-Label für Fahrtstatus (API liefert typisch snake_case). */
+const INSURER_RIDE_STATUS_LABEL = {
+  pending: "Offen",
+  open: "Offen",
+  requested: "Offen",
+  searching_driver: "Offen",
+  offered: "Offen",
+  draft: "Entwurf",
+  scheduled: "Geplant",
+  accepted: "Angenommen",
+  arrived: "Vor Ort",
+  driver_arriving: "Fahrer unterwegs",
+  driver_waiting: "Fahrer wartet",
+  passenger_onboard: "Fahrgast an Bord",
+  in_progress: "Unterwegs",
+  completed: "Abgeschlossen",
+  cancelled: "Storniert",
+  cancelled_by_customer: "Storniert (Kunde)",
+  cancelled_by_driver: "Storniert (Fahrer)",
+  cancelled_by_system: "Storniert (System)",
+  rejected: "Abgelehnt",
+  expired: "Abgelaufen",
+};
+
+function insurerRideStatusLabel(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "—";
+  const key = s.toLowerCase().replace(/-/g, "_");
+  return INSURER_RIDE_STATUS_LABEL[key] ?? s;
+}
+
+function formatDriverLine(driverId) {
+  const id = typeof driverId === "string" ? driverId.trim() : "";
+  if (!id) return "Nicht zugewiesen";
+  return `Fahrer-ID: ${id}`;
+}
+
 export default function InsurerRidesPage() {
   const [range, setRange] = useState(defaultRange);
   const [rideId, setRideId] = useState("");
@@ -238,19 +275,38 @@ export default function InsurerRidesPage() {
         <span className="admin-table-sub">Gesamt: {total}</span>
       </div>
       {err ? <div className="admin-error-banner" style={{ marginBottom: 12 }}>{err}</div> : null}
+      <style>{`
+        .insurer-rides-table tbody tr.insurer-rides-row {
+          transition: background-color 0.12s ease;
+        }
+        .insurer-rides-table tbody tr.insurer-rides-row:hover {
+          background-color: var(--onroda-surface-2, #f1f5f9) !important;
+        }
+        .insurer-rides-table tbody tr.insurer-rides-row--selected {
+          background-color: #e0f2fe !important;
+        }
+        .insurer-rides-table th,
+        .insurer-rides-table td {
+          padding: 14px 16px;
+          vertical-align: middle;
+        }
+        .insurer-rides-table tbody tr.insurer-rides-row td {
+          border-bottom: 1px solid var(--onroda-border-subtle, #e2e8f0);
+        }
+      `}</style>
       <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr minmax(300px, 420px)" : "1fr", gap: 16, alignItems: "start" }}>
         <div style={{ overflow: "auto", border: "1px solid var(--onroda-border-subtle, #e2e8f0)", borderRadius: 8 }}>
-          <table className="admin-table" style={{ minWidth: 900, width: "100%" }}>
+          <table className="admin-table insurer-rides-table" style={{ minWidth: 900, width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
             <thead>
               <tr>
                 <th>Ref</th>
                 <th>Firma</th>
-                <th>Fahrer-ID</th>
+                <th>Fahrer</th>
                 <th>Fahrzeug</th>
                 <th>Datum/Zeit</th>
                 <th>Start</th>
                 <th>Ziel</th>
-                <th>Betrag</th>
+                <th style={{ textAlign: "right" }}>Betrag</th>
                 <th>Status</th>
                 <th>Nachweise</th>
                 <th>Export</th>
@@ -267,15 +323,25 @@ export default function InsurerRidesPage() {
                 items.map((r) => (
                   <tr
                     key={r.rideId}
-                    style={{ cursor: "pointer", background: selected?.rideId === r.rideId ? "#e0f2fe" : undefined }}
+                    className={`insurer-rides-row${selected?.rideId === r.rideId ? " insurer-rides-row--selected" : ""}`}
+                    style={{ cursor: "pointer" }}
                     onClick={() => void loadDetail(r.rideId)}
                   >
                     <td>
-                      <code style={{ fontSize: 11 }}>{r.rideId}</code>
+                      <code
+                        style={{
+                          fontSize: "17px",
+                          fontWeight: 700,
+                          color: "var(--onroda-text-dark, #0f172a)",
+                          letterSpacing: "-0.02em",
+                        }}
+                      >
+                        {r.rideId}
+                      </code>
                     </td>
                     <td>{r.companyName}</td>
                     <td>
-                      <code style={{ fontSize: 11 }}>{r.driverId || "—"}</code>
+                      <span style={{ fontSize: 13, lineHeight: 1.45, color: "var(--onroda-text-dark, #0f172a)" }}>{formatDriverLine(r.driverId)}</span>
                     </td>
                     <td>{r.vehiclePlate}</td>
                     <td>{fmt(r.referenceTime)}</td>
@@ -285,9 +351,13 @@ export default function InsurerRidesPage() {
                     <td>
                       {[r.toPostalCode, r.toLocality].filter(Boolean).join(" ") || "—"}
                     </td>
-                    <td>{Number(r.amountGross).toFixed(2)}</td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <strong style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--onroda-text-dark, #0f172a)" }}>
+                        {Number(r.amountGross).toFixed(2)} €
+                      </strong>
+                    </td>
                     <td>
-                      {r.rideStatus}
+                      <span style={{ fontWeight: 600 }}>{insurerRideStatusLabel(r.rideStatus)}</span>
                       {r.financialSettlementStatus ? (
                         <span className="admin-table-sub" style={{ display: "block", fontSize: 10 }}>
                           {r.financialSettlementStatus}
