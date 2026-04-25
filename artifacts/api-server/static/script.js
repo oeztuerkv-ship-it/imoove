@@ -71,7 +71,7 @@
       closeBtn.className = "hp-dynamic-placeholder__close";
       closeBtn.setAttribute("type", "button");
       closeBtn.setAttribute("aria-label", "Hinweis ausblenden");
-      closeBtn.textContent = "X";
+      closeBtn.textContent = "\u00D7";
       closeBtn.addEventListener("click", function () {
         var key = item.dismissKey || item.id;
         markDismissed(key);
