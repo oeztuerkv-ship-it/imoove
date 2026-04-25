@@ -29,34 +29,6 @@
       return "https://api.onroda.de/api";
     }
 
-    function dismissedKey(key) {
-      return "onroda.homepage.dismissed." + String(key || "");
-    }
-
-    function placeholderDismissIdentity(item) {
-      var base = String((item && (item.dismissKey || item.id)) || "").trim();
-      var msg = String((item && item.message) || "").trim();
-      return base + "::" + msg;
-    }
-
-    function isDismissed(key) {
-      if (!key) return false;
-      try {
-        return window.localStorage.getItem(dismissedKey(key)) === "1";
-      } catch {
-        return false;
-      }
-    }
-
-    function markDismissed(key) {
-      if (!key) return;
-      try {
-        window.localStorage.setItem(dismissedKey(key), "1");
-      } catch {
-        // ignore storage errors
-      }
-    }
-
     function toneClass(tone) {
       var raw = String(tone || "info").toLowerCase();
       if (raw === "warning" || raw === "success" || raw === "neutral") return raw;
@@ -79,17 +51,6 @@
       msg.textContent = " " + String(item.message || item.title || "");
       line.appendChild(msg);
       wrap.appendChild(line);
-
-      var closeBtn = document.createElement("button");
-      closeBtn.className = "hp-dynamic-placeholder__close";
-      closeBtn.setAttribute("type", "button");
-      closeBtn.setAttribute("aria-label", "Hinweis ausblenden");
-      closeBtn.textContent = "\u00D7";
-      closeBtn.addEventListener("click", function () {
-        markDismissed(placeholderDismissIdentity(item));
-        wrap.remove();
-      });
-      wrap.appendChild(closeBtn);
 
       if (item.ctaLabel && item.ctaUrl) {
         var cta = document.createElement("a");
@@ -127,8 +88,6 @@
           if (!data || !data.ok || !Array.isArray(data.items)) return;
           target.innerHTML = "";
           data.items.forEach(function (item) {
-            var dismissId = placeholderDismissIdentity(item);
-            if (isDismissed(dismissId)) return;
             target.appendChild(buildPlaceholderNode(item));
           });
         })

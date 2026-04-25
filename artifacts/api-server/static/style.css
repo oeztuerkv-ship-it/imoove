@@ -200,10 +200,7 @@
       border-radius: 0;
       background: transparent;
       padding: 0 0 0 12px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 4px;
+      display: block;
       position: relative;
     }
 
@@ -226,14 +223,13 @@
     .hp-dynamic-placeholder__line {
       margin: 0;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
       min-width: 0;
       color: #3f3f46;
       font-size: 14px;
       line-height: 1.35;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
     }
 
     .hp-dynamic-placeholder__title {
@@ -250,8 +246,8 @@
       color: #3f3f46;
       line-height: 1.35;
       font-size: 14px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     .hp-dynamic-placeholder__cta {
@@ -261,24 +257,6 @@
       font-weight: 700;
       font-size: 0.88rem;
       color: var(--onroda-red);
-    }
-
-    .hp-dynamic-placeholder__close {
-      border: 0;
-      background: transparent;
-      color: #52525b;
-      cursor: pointer;
-      font-size: 18px;
-      font-weight: 500;
-      line-height: 1;
-      padding: 0;
-      border-radius: 0;
-      transform: translateY(-1px);
-    }
-
-    .hp-dynamic-placeholder__close:hover {
-      background: transparent;
-      color: #27272a;
     }
 
     .hp-header {
