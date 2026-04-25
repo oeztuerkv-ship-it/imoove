@@ -36,6 +36,7 @@ import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessC
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getDb } from "./client";
 import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
+import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
@@ -1063,12 +1064,79 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
   const cur = await findRide(id);
   if (!cur) return null;
   const next: RideRequest = { ...cur, ...patch };
+  const correctionPlan: Array<{
+    fieldName: string;
+    oldValue: unknown;
+    newValue: unknown;
+    reasonCode: string;
+    createdAt?: Date;
+  }> = [];
+  if ((cur.finalFare ?? null) !== (next.finalFare ?? null)) {
+    correctionPlan.push({
+      fieldName: "billableTotalAmount",
+      oldValue: cur.finalFare ?? "",
+      newValue: next.finalFare ?? "",
+      reasonCode: "fare_adjustment",
+    });
+  }
+  if ((cur.distanceKm ?? null) !== (next.distanceKm ?? null)) {
+    correctionPlan.push({
+      fieldName: "distanceKm",
+      oldValue: cur.distanceKm ?? "",
+      newValue: next.distanceKm ?? "",
+      reasonCode: "distance_adjustment",
+    });
+  }
+  if ((cur.scheduledAt ?? null) !== (next.scheduledAt ?? null)) {
+    correctionPlan.push({
+      fieldName: "scheduledPickupAt",
+      oldValue: cur.scheduledAt ?? "",
+      newValue: next.scheduledAt ?? "",
+      reasonCode: "schedule_change",
+    });
+  }
+  if ((cur.status ?? null) !== (next.status ?? null)) {
+    correctionPlan.push({
+      fieldName: "fulfillmentStatus",
+      oldValue: cur.status ?? "",
+      newValue: next.status ?? "",
+      reasonCode: "status_transition",
+    });
+    if (cur.status !== "completed" && next.status === "completed") {
+      correctionPlan.push({
+        fieldName: "completedAt",
+        oldValue: "",
+        newValue: new Date().toISOString(),
+        reasonCode: "completion_timestamp_set",
+      });
+    }
+  }
+  if ((cur.pricingMode ?? null) !== (next.pricingMode ?? null)) {
+    correctionPlan.push({
+      fieldName: "pricingType",
+      oldValue: cur.pricingMode ?? "",
+      newValue: next.pricingMode ?? "",
+      reasonCode: "pricing_mode_change",
+    });
+  }
   const db = getDb();
   if (!db) {
     memoryRides = memoryRides.map((x) => (x.id === id ? next : x));
     return next;
   }
   await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  for (const c of correctionPlan) {
+    await createRideBillingCorrection({
+      rideId: id,
+      fieldName: c.fieldName,
+      oldValue: c.oldValue,
+      newValue: c.newValue,
+      reasonCode: c.reasonCode,
+      actorType: "system",
+      actorId: null,
+      createdAt: c.createdAt,
+    });
+  }
   if (cur.status !== next.status) {
     await db.insert(rideEventsTable).values({
       id: makeEventId(),

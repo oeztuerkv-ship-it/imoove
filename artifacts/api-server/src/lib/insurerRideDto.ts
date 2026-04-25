@@ -63,6 +63,7 @@ export type InsurerRideDetail = InsurerRideListItem & {
     reasonCode: string;
     reasonNote: string;
     actorType: string;
+    actorId: string | null;
     createdAt: string;
   }>;
   /** Gefilterter Status-/Ereignisverlauf ohne Ro-Payload. */

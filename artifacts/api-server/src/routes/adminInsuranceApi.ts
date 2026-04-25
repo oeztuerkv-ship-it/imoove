@@ -132,7 +132,7 @@ router.get("/rides/:rideId", async (req, res, next) => {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    res.json({ ok: true, ride: detail });
+    res.json({ ok: true, ride: detail, corrections: detail.corrections ?? [] });
   } catch (e) {
     next(e);
   }

@@ -268,6 +268,7 @@ export async function getInsurerRideDetail(
     reasonCode: c.reason_code,
     reasonNote: c.reason_note,
     actorType: c.actor_type,
+    actorId: c.actor_id ?? null,
     createdAt: c.created_at.toISOString(),
   }));
 

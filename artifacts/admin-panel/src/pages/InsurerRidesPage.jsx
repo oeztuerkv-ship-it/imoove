@@ -35,6 +35,7 @@ export default function InsurerRidesPage() {
   const [err, setErr] = useState("");
 
   const [selected, setSelected] = useState(null);
+  const [detailTab, setDetailTab] = useState("details");
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailErr, setDetailErr] = useState("");
 
@@ -88,6 +89,7 @@ export default function InsurerRidesPage() {
         return;
       }
       setDetailErr("");
+      setDetailTab("details");
       setSelected(j.ride);
     } catch {
       setSelected(null);
@@ -209,7 +211,15 @@ export default function InsurerRidesPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <strong>Detail (Whitelist)</strong>
-              <button type="button" className="admin-btn-refresh" onClick={() => { setSelected(null); setDetailErr(""); }}>
+              <button
+                type="button"
+                className="admin-btn-refresh"
+                onClick={() => {
+                  setSelected(null);
+                  setDetailErr("");
+                  setDetailTab("details");
+                }}
+              >
                 Schließen
               </button>
             </div>
@@ -217,6 +227,24 @@ export default function InsurerRidesPage() {
             {detailErr ? <div className="admin-error-banner">{detailErr}</div> : null}
             {selected ? (
               <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <button
+                    type="button"
+                    className={detailTab === "details" ? "admin-btn-primary" : "admin-btn-refresh"}
+                    onClick={() => setDetailTab("details")}
+                  >
+                    Fahrt-Details
+                  </button>
+                  <button
+                    type="button"
+                    className={detailTab === "corrections" ? "admin-btn-primary" : "admin-btn-refresh"}
+                    onClick={() => setDetailTab("corrections")}
+                  >
+                    Korrekturhistorie
+                  </button>
+                </div>
+                {detailTab === "details" ? (
+                  <>
                 <p>
                   <span className="admin-table-sub">Ref</span> <code>{selected.rideId}</code>
                 </p>
@@ -248,21 +276,6 @@ export default function InsurerRidesPage() {
                   <li>Genehmigungsreferenz: {selected.proof?.hasApprovalReference ? "ja" : "nein"}</li>
                 </ul>
                 <h4 className="admin-table-sub" style={{ margin: "12px 0 6px" }}>
-                  Korrekturhistorie
-                </h4>
-                {selected.corrections?.length ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {selected.corrections.map((c) => (
-                      <li key={c.id} style={{ marginBottom: 6 }}>
-                        <code>{c.fieldName}</code>: {c.oldValue} → {c.newValue} · {c.reasonCode}{" "}
-                        <span className="admin-table-sub">({fmt(c.createdAt)})</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="admin-table-sub">Keine feingranularen Einträge (Tabelle ggf. noch leer).</p>
-                )}
-                <h4 className="admin-table-sub" style={{ margin: "12px 0 6px" }}>
                   Audit (ohne Ro-Payload)
                 </h4>
                 {selected.audit?.length ? (
@@ -275,6 +288,53 @@ export default function InsurerRidesPage() {
                   </ul>
                 ) : (
                   <p className="admin-table-sub">Keine Ereignisse.</p>
+                )}
+                  </>
+                ) : (
+                  <>
+                    <h4 className="admin-table-sub" style={{ margin: "2px 0 6px" }}>
+                      Korrekturhistorie
+                    </h4>
+                    {selected.corrections?.length ? (
+                      <div style={{ overflowX: "auto" }}>
+                        <table className="admin-table" style={{ minWidth: 540, width: "100%" }}>
+                          <thead>
+                            <tr>
+                              <th>Feld</th>
+                              <th>Alt → Neu</th>
+                              <th>Grund</th>
+                              <th>Wer</th>
+                              <th>Wann</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selected.corrections.map((c) => (
+                              <tr key={c.id}>
+                                <td><code style={{ fontSize: 11 }}>{c.fieldName}</code></td>
+                                <td style={{ maxWidth: 220, whiteSpace: "normal" }}>
+                                  <span style={{ wordBreak: "break-word" }}>{c.oldValue || "—"}</span> →{" "}
+                                  <span style={{ wordBreak: "break-word" }}>{c.newValue || "—"}</span>
+                                </td>
+                                <td>{c.reasonCode || "—"}</td>
+                                <td>
+                                  {(c.actorType || "system")}
+                                  {c.actorId ? (
+                                    <>
+                                      {" "}
+                                      <code style={{ fontSize: 10 }}>{c.actorId}</code>
+                                    </>
+                                  ) : null}
+                                </td>
+                                <td>{fmt(c.createdAt)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="admin-table-sub">Keine Korrektureinträge vorhanden.</p>
+                    )}
+                  </>
                 )}
               </div>
             ) : null}
