@@ -24,6 +24,7 @@
 --   033 → company_compliance_documents
 --   034 → support_threads, support_messages
 --   035 → fleet_vehicles.approval_status, konzession_number, vehicle_documents, …
+--   036 → billing_export_batches, ride_billing_corrections (Krankenkassen-Modus)
 
 DO $$
 DECLARE
@@ -434,6 +435,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'financial_audit_log'
   ) THEN
     errs := array_append(errs, 'table financial_audit_log (Migration 028)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'billing_export_batches'
+  ) THEN
+    errs := array_append(errs, 'table billing_export_batches (Migration 036)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_billing_corrections'
+  ) THEN
+    errs := array_append(errs, 'table ride_billing_corrections (Migration 036)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

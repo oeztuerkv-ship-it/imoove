@@ -25,6 +25,9 @@ import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
 import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
 import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.jsx";
+import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
+import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
+import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -137,6 +140,18 @@ const PAGE_META = {
     title: "Sammelabrechnung KV",
     subtitle: "Abrechnungsläufe gegenüber Krankenkassen.",
     placeholder: true,
+  },
+  "insurer-overview": {
+    title: "Krankenkassen · Übersicht",
+    subtitle: "KPIs zu Krankenfahrt-Fahrten (Zahler Krankenkasse) — Onroda als Vermittler",
+  },
+  "insurer-rides": {
+    title: "Krankenkassen · Fahrten",
+    subtitle: "Gefilterte, datensparse Ride-Projektion — kein vollständiges Ride-Objekt",
+  },
+  "insurer-exports": {
+    title: "Krankenkassen · Exporte",
+    subtitle: "Prüfbarer CSV-Export (Schema-Version), nur mit Plattform-Bearer",
   },
   companies: {
     title: "Unternehmen",
@@ -451,6 +466,12 @@ export default function App() {
             }}
           />
         );
+      case "insurer-overview":
+        return <InsurerOverviewPage />;
+      case "insurer-rides":
+        return <InsurerRidesPage />;
+      case "insurer-exports":
+        return <InsurerExportsPage />;
       case "users-panel":
         return <PanelUsersPage />;
       case "fares":

@@ -636,3 +636,34 @@ export const partnerRideSeriesTable = pgTable("partner_ride_series", {
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Admin Krankenkassen-Modus: Export-Batches (CSV), Fahrt-IDs im Batch für Anzeige „Exportiert in …“. */
+export const billingExportBatchesTable = pgTable("billing_export_batches", {
+  id: text("id").primaryKey(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  created_by_label: text("created_by_label").notNull().default(""),
+  period_from: timestamp("period_from", { withTimezone: true }).notNull(),
+  period_to: timestamp("period_to", { withTimezone: true }).notNull(),
+  company_id_filter: text("company_id_filter"),
+  status: text("status").notNull().default("completed"),
+  row_count: integer("row_count").notNull().default(0),
+  file_rel_path: text("file_rel_path").notNull().default(""),
+  included_ride_ids: jsonb("included_ride_ids").$type<string[]>().notNull().default([]),
+  schema_version: text("schema_version").notNull().default("insurer_export_v1"),
+});
+
+/** Feingranulare Korrekturhistorie zu Abrechnungsfeldern (append-only; Phase 1 meist leer). */
+export const rideBillingCorrectionsTable = pgTable("ride_billing_corrections", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  field_name: text("field_name").notNull(),
+  old_value: text("old_value").notNull().default(""),
+  new_value: text("new_value").notNull().default(""),
+  reason_code: text("reason_code").notNull().default(""),
+  reason_note: text("reason_note").notNull().default(""),
+  actor_type: text("actor_type").notNull().default("system"),
+  actor_id: text("actor_id"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

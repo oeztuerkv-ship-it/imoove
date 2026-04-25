@@ -31,6 +31,9 @@ export const ADMIN_PAGE_ROLES = {
   "health-insurers": ["admin", "service", "taxi", "insurance"],
   "health-prescriptions": ["admin", "service", "taxi", "insurance"],
   "health-bulk": ["admin", "service", "taxi", "insurance"],
+  "insurer-overview": ["admin", "service", "insurance"],
+  "insurer-rides": ["admin", "service", "insurance"],
+  "insurer-exports": ["admin", "service", "insurance"],
 
   companies: ["admin", "service", "taxi"],
   "company-registration-requests": ["admin", "service"],
@@ -73,6 +76,17 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: R.all,
     items: [
       { pageKey: "dashboard", label: "Plattform-Cockpit", icon: "pulse", roles: R.all },
+    ],
+  },
+  {
+    id: "insurer-kasse",
+    label: "Krankenkassen",
+    icon: "medical",
+    roles: ["admin", "service", "insurance"],
+    items: [
+      { pageKey: "insurer-overview", label: "Übersicht", icon: "pulse", roles: ["admin", "service", "insurance"] },
+      { pageKey: "insurer-rides", label: "Fahrten", icon: "rides", roles: ["admin", "service", "insurance"] },
+      { pageKey: "insurer-exports", label: "Exporte", icon: "download", roles: ["admin", "service", "insurance"] },
     ],
   },
   {
@@ -221,6 +235,9 @@ export function isAdminPageAllowed(pageKey, role) {
 }
 
 export function firstAllowedAdminPage(role) {
+  if (role === "insurance" && isAdminPageAllowed("insurer-overview", role)) {
+    return "insurer-overview";
+  }
   const order = [
     "dashboard",
     "rides",

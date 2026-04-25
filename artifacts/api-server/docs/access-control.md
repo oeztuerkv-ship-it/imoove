@@ -6,7 +6,8 @@ Kurzüberblick über **drei getrennte Identitäten**: Plattform-Admin, Partner-P
 
 - **Pfade:** JSON unter `/api/admin/*` (siehe `src/routes/adminApi.ts`).
 - **Auth:** `Authorization: Bearer <ADMIN_API_BEARER_TOKEN>` — Middleware `src/middleware/requireAdminApiBearer.ts`.
-- **Rechte:** Vollzugriff auf alle in diesen Routen implementierten Operationen (Mandanten, globale Fahrten, Partner-Zugänge, …). Kein `panel_users.role`-Bezug.
+- **Krankenkassen-Modus (Phase 1):** `GET/POST` unter `/api/admin/insurance/*` — `src/routes/adminInsuranceApi.ts` (kein Mix mit `/api/panel/v1/*`). Zusätzliche Durchsetzung: `canAccessInsurerAdminApi` in `src/lib/adminConsoleRoles.ts` (**admin**, **service**, **insurance**). Antworten sind **Whitelist-DTOs** (kein vollständiges `rides`-Rohobjekt, keine Koordinaten/ Klarnamen in der Kassen-Projektion).
+- **Rechte:** Vollzugriff auf alle in diesen Routen implementierten Operationen (Mandanten, globale Fahrten, Partner-Zugänge, …) richtet sich nach den jeweiligen Handler-Prüfungen. Kein `panel_users.role`-Bezug.
 - **Partner-Zugänge anlegen:** Jede gültige `PanelRole` (`owner`, `manager`, `staff`, `readonly`) ist erlaubt — unabhängig von Partner-internen Zuweisungsregeln.
 - **Admin-DB-Zugänge:** `GET/POST/PATCH/DELETE /api/admin/auth/users` nur mit Rolle **`admin`** im JWT (nicht `service`). `DELETE` verweigert Selbstlöschung und Löschen des letzten **aktiven** `admin`-Kontos (`cannot_delete_self`, `last_active_admin`).
 

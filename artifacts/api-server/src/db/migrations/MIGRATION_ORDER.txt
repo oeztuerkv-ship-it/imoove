@@ -46,6 +46,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Firmen-Compliance-Dokumente (Gewerbe/Versicherung)   → 033_company_compliance_documents.sql
   Partner-Anfragen (Support-Threads + Nachrichten)     → 034_support_threads_and_messages.sql
   Fahrzeug-Freigabe (Konzession, Dokumente, Admin-Prüfung) → 035_fleet_vehicle_approval_governance.sql
+  Krankenkassen-Modus Phase 1 (Export-Batches, Korrekturhistorie)   → 036_insurer_kasse_phase1.sql
 
 Nach Migrationen Schema prüfen:
 

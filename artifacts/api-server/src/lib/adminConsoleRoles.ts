@@ -55,6 +55,11 @@ export function canAccessAdminAccessCodes(role: AdminRole): boolean {
   return role === "admin" || role === "service" || role === "taxi";
 }
 
+/** Admin-API: Krankenkassen-Modus (read-only / Export), kein Mix mit Partner-Panel. */
+export function canAccessInsurerAdminApi(role: AdminRole): boolean {
+  return role === "admin" || role === "service" || role === "insurance";
+}
+
 export function canManageAdminAuthUsersApi(role: AdminRole): boolean {
   return role === "admin";
 }
