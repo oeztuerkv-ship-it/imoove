@@ -107,6 +107,10 @@
       }
       var target = document.getElementById("homepage-placeholders-root");
       if (!target) return;
+      if (!target.classList.contains("hp-dynamic-placeholders")) {
+        target.classList.add("hp-dynamic-placeholders");
+      }
+      target.setAttribute("aria-live", "polite");
       var url = "https://api.onroda.de/api/public/homepage-placeholders";
       fetch(url, { method: "GET", credentials: "omit" })
         .then(function (res) {
