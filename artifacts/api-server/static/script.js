@@ -60,12 +60,19 @@
     function buildPlaceholderNode(item) {
       var wrap = document.createElement("article");
       wrap.className = "hp-dynamic-placeholder hp-dynamic-placeholder--" + toneClass(item.tone);
-      var top = document.createElement("div");
-      top.className = "hp-dynamic-placeholder__top";
-      var title = document.createElement("h3");
+      var line = document.createElement("p");
+      line.className = "hp-dynamic-placeholder__line";
+
+      var title = document.createElement("strong");
       title.className = "hp-dynamic-placeholder__title";
-      title.textContent = String(item.title || "Hinweis");
-      top.appendChild(title);
+      title.textContent = "Hinweis:";
+      line.appendChild(title);
+
+      var msg = document.createElement("span");
+      msg.className = "hp-dynamic-placeholder__msg";
+      msg.textContent = " " + String(item.message || item.title || "");
+      line.appendChild(msg);
+      wrap.appendChild(line);
 
       var closeBtn = document.createElement("button");
       closeBtn.className = "hp-dynamic-placeholder__close";
@@ -77,13 +84,7 @@
         markDismissed(key);
         wrap.remove();
       });
-      top.appendChild(closeBtn);
-      wrap.appendChild(top);
-
-      var msg = document.createElement("p");
-      msg.className = "hp-dynamic-placeholder__msg";
-      msg.textContent = String(item.message || "");
-      wrap.appendChild(msg);
+      wrap.appendChild(closeBtn);
 
       if (item.ctaLabel && item.ctaUrl) {
         var cta = document.createElement("a");
