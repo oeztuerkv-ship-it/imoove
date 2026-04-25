@@ -702,6 +702,20 @@ export const homepageContentTable = pgTable("homepage_content", {
   cta2_link: text("cta2_link").notNull().default(""),
   notice_text: text("notice_text").notNull().default(""),
   notice_active: boolean("notice_active").notNull().default(false),
+  section2_title: text("section2_title").notNull().default(""),
+  section2_cards: jsonb("section2_cards")
+    .$type<
+      Array<{
+        icon: string;
+        title: string;
+        body: string;
+        ctaText: string;
+        ctaLink: string;
+        isActive: boolean;
+      }>
+    >()
+    .notNull()
+    .default([]),
   updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
     onDelete: "set null",
   }),

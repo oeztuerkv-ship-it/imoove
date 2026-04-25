@@ -739,6 +739,8 @@ CREATE TABLE IF NOT EXISTS homepage_content (
   cta2_link TEXT NOT NULL DEFAULT '',
   notice_text TEXT NOT NULL DEFAULT '',
   notice_active BOOLEAN NOT NULL DEFAULT FALSE,
+  section2_title TEXT NOT NULL DEFAULT '',
+  section2_cards JSONB NOT NULL DEFAULT '[]'::jsonb,
   updated_by_admin_user_id TEXT REFERENCES admin_auth_users (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

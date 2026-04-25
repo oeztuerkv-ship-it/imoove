@@ -88,12 +88,14 @@
       var cta1El = document.getElementById("hero-cta1");
       var cta2El = document.getElementById("hero-cta2");
       var noticeRoot = document.getElementById("homepage-placeholders-root");
+      var section2TitleEl = document.getElementById("fuer-wen-heading");
       var defaultHeadline = headlineEl ? headlineEl.innerText || "" : "";
       var defaultSubline = sublineEl ? sublineEl.textContent || "" : "";
       var defaultCta1Text = cta1El ? cta1El.textContent || "" : "";
       var defaultCta1Link = cta1El ? cta1El.getAttribute("href") || "" : "";
       var defaultCta2Text = cta2El ? cta2El.textContent || "" : "";
       var defaultCta2Link = cta2El ? cta2El.getAttribute("href") || "" : "";
+      var defaultSection2Title = section2TitleEl ? section2TitleEl.textContent || "" : "";
       var url = "https://api.onroda.de/api/public/homepage-content";
       fetch(url, { method: "GET", credentials: "omit" })
         .then(function (res) {
@@ -131,6 +133,35 @@
                 }),
               );
             }
+          }
+          if (section2TitleEl) {
+            section2TitleEl.textContent = (item && item.section2Title ? item.section2Title : defaultSection2Title).trim();
+          }
+          var cards = item && Array.isArray(item.section2Cards) ? item.section2Cards : [];
+          for (var i = 1; i <= 4; i++) {
+            var cardWrap = document.getElementById("section2-card-" + i);
+            var iconEl = document.getElementById("section2-card-" + i + "-icon");
+            var titleEl = document.getElementById("section2-card-" + i + "-title");
+            var bodyEl = document.getElementById("section2-card-" + i + "-body");
+            var ctaEl = document.getElementById("section2-card-" + i + "-cta");
+            if (!cardWrap || !iconEl || !titleEl || !bodyEl || !ctaEl) continue;
+            var defaultIcon = iconEl.textContent || "";
+            var defaultTitle = titleEl.textContent || "";
+            var defaultBody = bodyEl.textContent || "";
+            var defaultCtaText = ctaEl.textContent || "";
+            var defaultCtaHref = ctaEl.getAttribute("href") || "#";
+            var c = cards[i - 1] || null;
+            var active = c ? c.isActive !== false : !cardWrap.hasAttribute("hidden");
+            if (!active) {
+              cardWrap.setAttribute("hidden", "hidden");
+              continue;
+            }
+            cardWrap.removeAttribute("hidden");
+            iconEl.textContent = String(c && c.icon ? c.icon : defaultIcon);
+            titleEl.textContent = String(c && c.title ? c.title : defaultTitle);
+            bodyEl.textContent = String(c && c.body ? c.body : defaultBody);
+            ctaEl.textContent = String(c && c.ctaText ? c.ctaText : defaultCtaText);
+            ctaEl.setAttribute("href", String(c && c.ctaLink ? c.ctaLink : defaultCtaHref));
           }
         })
         .catch(function () {

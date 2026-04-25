@@ -1093,8 +1093,26 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
       if (v === undefined) return undefined;
       return typeof v === "string" ? v.trim() : undefined;
     };
+    const section2Cards =
+      b.section2Cards === undefined
+        ? undefined
+        : Array.isArray(b.section2Cards)
+          ? b.section2Cards.slice(0, 4).map((raw) => {
+              const r = (raw ?? {}) as Record<string, unknown>;
+              return {
+                icon: typeof r.icon === "string" ? r.icon.trim() : "",
+                title: typeof r.title === "string" ? r.title.trim() : "",
+                body: typeof r.body === "string" ? r.body.trim() : "",
+                ctaText: typeof r.ctaText === "string" ? r.ctaText.trim() : "",
+                ctaLink: typeof r.ctaLink === "string" ? r.ctaLink.trim() : "",
+                isActive: r.isActive !== false,
+              };
+            })
+          : undefined;
     const item = await patchHomepageContentAdmin(
       {
+        section2Title: toText(b.section2Title),
+        section2Cards,
         heroHeadline: toText(b.heroHeadline),
         heroSubline: toText(b.heroSubline),
         cta1Text: toText(b.cta1Text),

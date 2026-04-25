@@ -49,6 +49,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Krankenkassen-Modus Phase 1 (Export-Batches, Korrekturhistorie)   → 036_insurer_kasse_phase1.sql
   Homepage-Hinweise/Banner (Admin-gesteuert, public read-only)      → 037_homepage_placeholders.sql
   Homepage-CMS MVP (Hero + CTA + Hinweiszeile)                       → 038_homepage_content_cms.sql
+  Homepage-CMS Section 2 (Für wen Boxen editierbar)                  → 039_homepage_content_section2_cards.sql
 
 Nach Migrationen Schema prüfen:
 

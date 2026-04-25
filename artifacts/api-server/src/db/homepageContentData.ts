@@ -5,6 +5,15 @@ import { homepageContentTable } from "./schema";
 const HOMEPAGE_CONTENT_ID = "homepage-main";
 
 export type HomepageContentDto = {
+  section2Title: string;
+  section2Cards: Array<{
+    icon: string;
+    title: string;
+    body: string;
+    ctaText: string;
+    ctaLink: string;
+    isActive: boolean;
+  }>;
   heroHeadline: string;
   heroSubline: string;
   cta1Text: string;
@@ -17,6 +26,41 @@ export type HomepageContentDto = {
 };
 
 const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
+  section2Title: "Fuer wen ist ONRODA?",
+  section2Cards: [
+    {
+      icon: "🚕",
+      title: "Fuer Fahrgaeste",
+      body: "Fahrten sofort buchen oder planen. Einfach, schnell und transparent.",
+      ctaText: "Jetzt buchen",
+      ctaLink: "#jetzt-buchen",
+      isActive: true,
+    },
+    {
+      icon: "🏢",
+      title: "Fuer Unternehmen",
+      body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
+      ctaText: "Partner werden",
+      ctaLink: "#unternehmen",
+      isActive: true,
+    },
+    {
+      icon: "🏨",
+      title: "Fuer Hotels",
+      body: "Gaestemobilitaet zentral koordinieren und Ablaeufe im Team entlasten.",
+      ctaText: "Mehr erfahren",
+      ctaLink: "#unternehmen",
+      isActive: false,
+    },
+    {
+      icon: "🏥",
+      title: "Fuer medizinische Partner",
+      body: "Organisierte Fahrten mit klaren digitalen Prozessen und verlaesslicher Abwicklung.",
+      ctaText: "ONRODA Care",
+      ctaLink: "#care",
+      isActive: false,
+    },
+  ],
   heroHeadline: "Digitale Mobilitaet\nfuer Fahrgaeste, Unternehmen\nund Partnerbetriebe",
   heroSubline: "ONRODA verbindet Fahrgaeste, Fahrer und Unternehmen in einem intelligenten System - fuer einfache Buchung und strukturierte Ablaeufe.",
   cta1Text: "Jetzt buchen",
@@ -28,7 +72,17 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
 };
 
 function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDto {
+  const cards = Array.isArray(row.section2_cards) ? row.section2_cards : [];
   return {
+    section2Title: row.section2_title,
+    section2Cards: cards.map((c) => ({
+      icon: String(c?.icon ?? ""),
+      title: String(c?.title ?? ""),
+      body: String(c?.body ?? ""),
+      ctaText: String(c?.ctaText ?? ""),
+      ctaLink: String(c?.ctaLink ?? ""),
+      isActive: c?.isActive !== false,
+    })),
     heroHeadline: row.hero_headline,
     heroSubline: row.hero_subline,
     cta1Text: row.cta1_text,
@@ -73,6 +127,8 @@ export async function patchHomepageContentAdmin(
   if (!existing) {
     await db.insert(homepageContentTable).values({
       id: HOMEPAGE_CONTENT_ID,
+      section2_title: merged.section2Title,
+      section2_cards: merged.section2Cards,
       hero_headline: merged.heroHeadline,
       hero_subline: merged.heroSubline,
       cta1_text: merged.cta1Text,
@@ -90,6 +146,8 @@ export async function patchHomepageContentAdmin(
       .update(homepageContentTable)
       .set({
         hero_headline: merged.heroHeadline,
+        section2_title: merged.section2Title,
+        section2_cards: merged.section2Cards,
         hero_subline: merged.heroSubline,
         cta1_text: merged.cta1Text,
         cta1_link: merged.cta1Link,

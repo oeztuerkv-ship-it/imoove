@@ -10,6 +10,13 @@ export default function HomepageContentPage() {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [form, setForm] = useState({
+    section2Title: "",
+    section2Cards: [
+      { icon: "🚕", title: "", body: "", ctaText: "", ctaLink: "", isActive: true },
+      { icon: "🏢", title: "", body: "", ctaText: "", ctaLink: "", isActive: true },
+      { icon: "🏨", title: "", body: "", ctaText: "", ctaLink: "", isActive: false },
+      { icon: "🏥", title: "", body: "", ctaText: "", ctaLink: "", isActive: false },
+    ],
     heroHeadline: "",
     heroSubline: "",
     cta1Text: "",
@@ -28,7 +35,27 @@ export default function HomepageContentPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || `Laden fehlgeschlagen (${res.status})`);
       const item = data.item || {};
+      const defaults = [
+        { icon: "🚕", title: "", body: "", ctaText: "", ctaLink: "", isActive: true },
+        { icon: "🏢", title: "", body: "", ctaText: "", ctaLink: "", isActive: true },
+        { icon: "🏨", title: "", body: "", ctaText: "", ctaLink: "", isActive: false },
+        { icon: "🏥", title: "", body: "", ctaText: "", ctaLink: "", isActive: false },
+      ];
+      const incoming = Array.isArray(item.section2Cards) ? item.section2Cards.slice(0, 4) : [];
+      const section2Cards = defaults.map((d, idx) => {
+        const c = incoming[idx] || {};
+        return {
+          icon: c.icon || d.icon,
+          title: c.title || d.title,
+          body: c.body || d.body,
+          ctaText: c.ctaText || d.ctaText,
+          ctaLink: c.ctaLink || d.ctaLink,
+          isActive: c.isActive !== undefined ? c.isActive !== false : d.isActive,
+        };
+      });
       setForm({
+        section2Title: item.section2Title || "",
+        section2Cards,
         heroHeadline: item.heroHeadline || "",
         heroSubline: item.heroSubline || "",
         cta1Text: item.cta1Text || "",
@@ -59,6 +86,8 @@ export default function HomepageContentPage() {
         method: "PATCH",
         headers: adminApiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
+          section2Title: form.section2Title,
+          section2Cards: form.section2Cards,
           heroHeadline: form.heroHeadline,
           heroSubline: form.heroSubline,
           cta1Text: form.cta1Text,
@@ -87,6 +116,113 @@ export default function HomepageContentPage() {
       <div className="admin-panel-card">
         <div className="admin-panel-card__title">Homepage-Inhalte (Marketing)</div>
         <form className="admin-form-vertical" onSubmit={onSave}>
+          <label className="admin-form-pair">
+            <span className="admin-field-label">Section 2 Titel (Fuer wen)</span>
+            <input
+              className="admin-input"
+              value={form.section2Title}
+              onChange={(e) => setForm((p) => ({ ...p, section2Title: e.target.value }))}
+            />
+          </label>
+          <div className="admin-panel-card" style={{ padding: 12, marginBottom: 10 }}>
+            <div className="admin-panel-card__title" style={{ fontSize: 14 }}>Section 2 Boxen (max. 4)</div>
+            <div className="admin-form-vertical">
+              {form.section2Cards.map((card, idx) => (
+                <div key={`s2-card-${idx}`} className="admin-panel-card" style={{ padding: 12 }}>
+                  <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Box {idx + 1}</div>
+                  <div className="admin-form-grid-2">
+                    <label className="admin-form-pair">
+                      <span className="admin-field-label">Icon (Emoji)</span>
+                      <input
+                        className="admin-input"
+                        value={card.icon}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const next = [...p.section2Cards];
+                            next[idx] = { ...next[idx], icon: e.target.value };
+                            return { ...p, section2Cards: next };
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="admin-inline-check">
+                      <input
+                        type="checkbox"
+                        checked={card.isActive}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const next = [...p.section2Cards];
+                            next[idx] = { ...next[idx], isActive: e.target.checked };
+                            return { ...p, section2Cards: next };
+                          })
+                        }
+                      />
+                      <span>Aktiv</span>
+                    </label>
+                  </div>
+                  <label className="admin-form-pair">
+                    <span className="admin-field-label">Titel</span>
+                    <input
+                      className="admin-input"
+                      value={card.title}
+                      onChange={(e) =>
+                        setForm((p) => {
+                          const next = [...p.section2Cards];
+                          next[idx] = { ...next[idx], title: e.target.value };
+                          return { ...p, section2Cards: next };
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="admin-form-pair">
+                    <span className="admin-field-label">Text</span>
+                    <textarea
+                      className="admin-textarea"
+                      rows={2}
+                      value={card.body}
+                      onChange={(e) =>
+                        setForm((p) => {
+                          const next = [...p.section2Cards];
+                          next[idx] = { ...next[idx], body: e.target.value };
+                          return { ...p, section2Cards: next };
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="admin-form-grid-2">
+                    <label className="admin-form-pair">
+                      <span className="admin-field-label">CTA Text</span>
+                      <input
+                        className="admin-input"
+                        value={card.ctaText}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const next = [...p.section2Cards];
+                            next[idx] = { ...next[idx], ctaText: e.target.value };
+                            return { ...p, section2Cards: next };
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="admin-form-pair">
+                      <span className="admin-field-label">CTA Link</span>
+                      <input
+                        className="admin-input"
+                        value={card.ctaLink}
+                        onChange={(e) =>
+                          setForm((p) => {
+                            const next = [...p.section2Cards];
+                            next[idx] = { ...next[idx], ctaLink: e.target.value };
+                            return { ...p, section2Cards: next };
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
           <label className="admin-form-pair">
             <span className="admin-field-label">Hero-Headline</span>
             <textarea

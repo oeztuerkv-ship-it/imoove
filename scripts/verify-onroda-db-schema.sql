@@ -26,6 +26,7 @@
 --   035 → fleet_vehicles.approval_status, konzession_number, vehicle_documents, …
 --   036 → billing_export_batches, ride_billing_corrections (Krankenkassen-Modus)
 --   038 → homepage_content (Homepage-CMS MVP)
+--   039 → homepage_content.section2_title, homepage_content.section2_cards
 
 DO $$
 DECLARE
@@ -457,6 +458,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'homepage_content'
   ) THEN
     errs := array_append(errs, 'table homepage_content (Migration 038)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'section2_title'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.section2_title (Migration 039)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'section2_cards'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.section2_cards (Migration 039)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

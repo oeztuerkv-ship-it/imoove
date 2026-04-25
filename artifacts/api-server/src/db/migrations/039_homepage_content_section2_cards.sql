@@ -1,0 +1,3 @@
+ALTER TABLE homepage_content
+  ADD COLUMN IF NOT EXISTS section2_title TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS section2_cards JSONB NOT NULL DEFAULT '[]'::jsonb;
