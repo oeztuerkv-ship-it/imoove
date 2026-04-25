@@ -33,6 +33,12 @@
       return "onroda.homepage.dismissed." + String(key || "");
     }
 
+    function placeholderDismissIdentity(item) {
+      var base = String((item && (item.dismissKey || item.id)) || "").trim();
+      var msg = String((item && item.message) || "").trim();
+      return base + "::" + msg;
+    }
+
     function isDismissed(key) {
       if (!key) return false;
       try {
@@ -80,8 +86,7 @@
       closeBtn.setAttribute("aria-label", "Hinweis ausblenden");
       closeBtn.textContent = "\u00D7";
       closeBtn.addEventListener("click", function () {
-        var key = item.dismissKey || item.id;
-        markDismissed(key);
+        markDismissed(placeholderDismissIdentity(item));
         wrap.remove();
       });
       wrap.appendChild(closeBtn);
@@ -122,7 +127,7 @@
           if (!data || !data.ok || !Array.isArray(data.items)) return;
           target.innerHTML = "";
           data.items.forEach(function (item) {
-            var dismissId = item.dismissKey || item.id;
+            var dismissId = placeholderDismissIdentity(item);
             if (isDismissed(dismissId)) return;
             target.appendChild(buildPlaceholderNode(item));
           });
