@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import type { AdminRole } from "../lib/adminConsoleRoles";
 import { adminRideRowVisibleToPrincipal } from "../lib/adminConsoleRoles";
 import {
@@ -9,6 +9,9 @@ import {
   type InsurerExportBatchRow,
   type InsurerRideDetail,
   type InsurerRideListItem,
+  type InsurerExecutionSummary,
+  type InsurerMissingProofKey,
+  type InsurerSortKey,
   type InsurerSummary,
   parsePlzOrtFromLabel,
 } from "../lib/insurerRideDto";
@@ -48,6 +51,15 @@ type ListFilters = {
   createdTo: Date;
   companyId?: string;
   status?: string;
+  rideId?: string;
+  driverId?: string;
+  amountMin?: number;
+  amountMax?: number;
+  exportStatus?: "any" | "exported" | "not_exported";
+  hasCorrections?: boolean;
+  missingProofs?: InsurerMissingProofKey[];
+  sort?: InsurerSortKey;
+  order?: "asc" | "desc";
   payerKind: "insurance" | "all";
 };
 
@@ -101,6 +113,74 @@ function mapRowToListItem(
   };
 }
 
+function escapeLike(raw: string): string {
+  return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function exportExistsExpr(): SQL {
+  return sql`exists (
+    select 1
+    from ${billingExportBatchesTable}
+    where ${billingExportBatchesTable.included_ride_ids} @> jsonb_build_array(${ridesTable.id})
+  )`;
+}
+
+function correctionExistsExpr(): SQL {
+  return sql`exists (
+    select 1
+    from ${rideBillingCorrectionsTable} rbc
+    where rbc.ride_id = ${ridesTable.id}
+  )`;
+}
+
+function amountExpr(): SQL<number> {
+  return sql<number>`coalesce(${rideFinancialsTable.gross_amount}, ${ridesTable.final_fare}, ${ridesTable.estimated_fare}, 0)`;
+}
+
+function missingProofCondition(key: InsurerMissingProofKey): SQL {
+  if (key === "gps") {
+    return or(
+      sql`${ridesTable.from_lat} is null`,
+      sql`${ridesTable.from_lon} is null`,
+      sql`${ridesTable.to_lat} is null`,
+      sql`${ridesTable.to_lon} is null`,
+    )!;
+  }
+  if (key === "chronology") {
+    return sql`coalesce(${ridesTable.duration_minutes}, 0) <= 0`;
+  }
+  if (key === "confirmation") {
+    return sql`coalesce(
+      ${ridesTable.partner_booking_meta}->>'signatureReceived',
+      ${ridesTable.partner_booking_meta}->>'patientSignatureAt',
+      ${ridesTable.partner_booking_meta}->>'confirmationAt',
+      ''
+    ) = '' and coalesce(${ridesTable.partner_booking_meta}->>'confirmed', 'false') <> 'true'`;
+  }
+  return sql`coalesce(trim(${ridesTable.billing_reference}), '') = ''`;
+}
+
+function executionSummaryFromRows(input: {
+  ride: typeof ridesTable.$inferSelect;
+  events: Array<{
+    event_type: string;
+    to_status: string | null;
+    created_at: Date;
+  }>;
+}): InsurerExecutionSummary {
+  const { ride, events } = input;
+  const findAt = (statuses: string[]) =>
+    events.find((e) => e.to_status && statuses.includes(String(e.to_status)))?.created_at?.toISOString() ?? null;
+  return {
+    createdAt: ride.created_at.toISOString(),
+    scheduledAt: ride.scheduled_at ? ride.scheduled_at.toISOString() : null,
+    pickupAt: findAt(["driver_waiting", "passenger_onboard", "arrived", "in_progress"]),
+    completedAt: findAt(["completed"]),
+    cancelledAt: findAt(["cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"]),
+    cancelledReason: null,
+  };
+}
+
 export async function listInsurerRides(
   role: AdminRole,
   scopeCompanyId: string | null | undefined,
@@ -111,23 +191,56 @@ export async function listInsurerRides(
   const db = getDb();
   if (!db) return { items: [], total: 0 };
 
-  const conds = [
-    gte(ridesTable.created_at, filters.createdFrom),
-    lte(ridesTable.created_at, filters.createdTo),
-  ];
+  const conds: SQL[] = [gte(ridesTable.created_at, filters.createdFrom), lte(ridesTable.created_at, filters.createdTo)];
   if (filters.companyId) conds.push(eq(ridesTable.company_id, filters.companyId));
   if (filters.status?.trim()) conds.push(eq(ridesTable.status, filters.status.trim()));
-  if (filters.payerKind === "insurance") {
-    conds.push(eq(ridesTable.payer_kind, "insurance"));
+  if (filters.payerKind === "insurance") conds.push(eq(ridesTable.payer_kind, "insurance"));
+  if (role === "insurance") conds.push(eq(ridesTable.payer_kind, "insurance"));
+  if (scopeCompanyId?.trim()) conds.push(eq(ridesTable.company_id, scopeCompanyId.trim()));
+  if (filters.rideId?.trim()) {
+    const q = `%${escapeLike(filters.rideId.trim())}%`;
+    conds.push(ilike(ridesTable.id, q));
   }
+  if (filters.driverId?.trim()) {
+    const q = `%${escapeLike(filters.driverId.trim())}%`;
+    conds.push(ilike(ridesTable.driver_id, q));
+  }
+  if (typeof filters.amountMin === "number" && Number.isFinite(filters.amountMin)) {
+    conds.push(sql`${amountExpr()} >= ${filters.amountMin}`);
+  }
+  if (typeof filters.amountMax === "number" && Number.isFinite(filters.amountMax)) {
+    conds.push(sql`${amountExpr()} <= ${filters.amountMax}`);
+  }
+  if (filters.exportStatus === "exported") conds.push(exportExistsExpr());
+  if (filters.exportStatus === "not_exported") conds.push(sql`not (${exportExistsExpr()})`);
+  if (typeof filters.hasCorrections === "boolean") {
+    if (filters.hasCorrections) conds.push(correctionExistsExpr());
+    else conds.push(sql`not (${correctionExistsExpr()})`);
+  }
+  for (const missing of filters.missingProofs ?? []) conds.push(missingProofCondition(missing));
 
   const totalRes = await db
     .select({ c: count() })
     .from(ridesTable)
+    .leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
     .where(and(...conds));
   const total = Number(totalRes[0]?.c ?? 0);
 
   const offset = (page - 1) * pageSize;
+  const sortBy = filters.sort ?? "reference_time";
+  const sortOrder = filters.order ?? "desc";
+  const referenceExpr = sql`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+  const sortExpr: SQL =
+    sortBy === "amount_gross"
+      ? amountExpr()
+      : sortBy === "ride_status"
+        ? ridesTable.status
+        : sortBy === "company_name"
+          ? sql`coalesce(${adminCompaniesTable.name}, '')`
+          : referenceExpr;
+  const orderExpr = sortOrder === "asc" ? asc(sortExpr) : desc(sortExpr);
+  const tieBreakExpr = desc(ridesTable.created_at);
+
   const rows = await db
     .select({
       ride: ridesTable,
@@ -140,16 +253,11 @@ export async function listInsurerRides(
     .leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id))
     .leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id))
     .where(and(...conds))
-    .orderBy(desc(ridesTable.created_at))
+    .orderBy(orderExpr, tieBreakExpr)
     .limit(pageSize)
     .offset(offset);
 
-  const visible = rows.filter((row) =>
-    adminRideRowVisibleToPrincipal(role, scopeCompanyId, {
-      payerKind: row.ride.payer_kind,
-      companyId: row.ride.company_id,
-    }),
-  );
+  const visible = rows.filter((row) => adminRideRowVisibleToPrincipal(role, scopeCompanyId, { payerKind: row.ride.payer_kind, companyId: row.ride.company_id }));
   const ids = visible.map((v) => v.ride.id);
   const exportMap = await getLatestExportBatchIdForRideIds(ids);
 
@@ -227,6 +335,7 @@ export async function getInsurerRideDetail(
         from_status: rideEventsTable.from_status,
         to_status: rideEventsTable.to_status,
         actor_type: rideEventsTable.actor_type,
+        actor_id: rideEventsTable.actor_id,
         created_at: rideEventsTable.created_at,
       })
       .from(rideEventsTable)
@@ -278,8 +387,18 @@ export async function getInsurerRideDetail(
     fromStatus: e.from_status,
     toStatus: e.to_status,
     actorType: e.actor_type,
+    actorId: e.actor_id ?? null,
     createdAt: e.created_at.toISOString(),
   }));
+
+  const executionSummary = executionSummaryFromRows({
+    ride: r,
+    events: ev.map((x) => ({
+      event_type: x.event_type,
+      to_status: x.to_status,
+      created_at: x.created_at,
+    })),
+  });
 
   return {
     ...base,
@@ -301,6 +420,7 @@ export async function getInsurerRideDetail(
       : null,
     corrections,
     audit,
+    executionSummary,
   };
 }
 

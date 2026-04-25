@@ -39,6 +39,27 @@ export type InsurerRideListItem = {
   lastExportBatchId: string | null;
 };
 
+export type InsurerMissingProofKey =
+  | "gps"
+  | "chronology"
+  | "confirmation"
+  | "approval_reference";
+
+export type InsurerSortKey =
+  | "reference_time"
+  | "amount_gross"
+  | "ride_status"
+  | "company_name";
+
+export type InsurerExecutionSummary = {
+  createdAt: string;
+  scheduledAt: string | null;
+  pickupAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelledReason: string | null;
+};
+
 export type InsurerRideDetail = InsurerRideListItem & {
   distanceKm: number;
   durationMinutes: number;
@@ -73,8 +94,10 @@ export type InsurerRideDetail = InsurerRideListItem & {
     fromStatus: string | null;
     toStatus: string | null;
     actorType: string;
+    actorId: string | null;
     createdAt: string;
   }>;
+  executionSummary: InsurerExecutionSummary;
 };
 
 export type InsurerSummary = {

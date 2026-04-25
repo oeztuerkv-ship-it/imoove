@@ -45,6 +45,13 @@ function parsePagination(req: Request): { page: number; pageSize: number } {
   return { page, pageSize };
 }
 
+function parseNum(v: unknown): number | undefined {
+  if (typeof v !== "string" || !v.trim()) return undefined;
+  const n = Number(v.trim().replace(",", "."));
+  if (!Number.isFinite(n)) return undefined;
+  return n;
+}
+
 /**
  * GET /api/admin/insurance/summary
  * Query: from, to (ISO), companyId (optional) — Fahrten mit payer_kind=insurance.
@@ -94,6 +101,35 @@ router.get("/rides", async (req, res, next) => {
     const { page, pageSize } = parsePagination(req);
     const companyId = typeof req.query.companyId === "string" ? req.query.companyId.trim() : undefined;
     const status = typeof req.query.status === "string" ? req.query.status.trim() : undefined;
+    const rideId = typeof req.query.rideId === "string" ? req.query.rideId.trim() : undefined;
+    const driverId = typeof req.query.driverId === "string" ? req.query.driverId.trim() : undefined;
+    const amountMin = parseNum(req.query.amountMin);
+    const amountMax = parseNum(req.query.amountMax);
+    const exportStatusRaw = typeof req.query.exportStatus === "string" ? req.query.exportStatus.trim() : "";
+    const exportStatus =
+      exportStatusRaw === "exported" || exportStatusRaw === "not_exported" || exportStatusRaw === "any"
+        ? exportStatusRaw
+        : undefined;
+    const hasCorrectionsRaw = typeof req.query.hasCorrections === "string" ? req.query.hasCorrections.trim().toLowerCase() : "";
+    const hasCorrections =
+      hasCorrectionsRaw === "true" ? true : hasCorrectionsRaw === "false" ? false : undefined;
+    const missingProofsRaw = typeof req.query.missingProofs === "string" ? req.query.missingProofs.trim() : "";
+    const missingProofs = missingProofsRaw
+      ? missingProofsRaw
+          .split(",")
+          .map((x) => x.trim())
+          .filter((x) => ["gps", "chronology", "confirmation", "approval_reference"].includes(x))
+      : undefined;
+    const sortRaw = typeof req.query.sort === "string" ? req.query.sort.trim() : "";
+    const sort =
+      sortRaw === "reference_time" ||
+      sortRaw === "amount_gross" ||
+      sortRaw === "ride_status" ||
+      sortRaw === "company_name"
+        ? sortRaw
+        : undefined;
+    const orderRaw = typeof req.query.order === "string" ? req.query.order.trim() : "";
+    const order = orderRaw === "asc" || orderRaw === "desc" ? orderRaw : undefined;
     const { items, total } = await listInsurerRides(
       insurerRole(req),
       req.adminAuth?.scopeCompanyId,
@@ -102,6 +138,15 @@ router.get("/rides", async (req, res, next) => {
         createdTo: toD,
         companyId,
         status,
+        rideId,
+        driverId,
+        amountMin,
+        amountMax,
+        exportStatus,
+        hasCorrections,
+        missingProofs,
+        sort,
+        order,
         payerKind: "insurance",
       },
       page,
