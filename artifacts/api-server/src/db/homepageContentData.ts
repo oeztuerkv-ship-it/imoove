@@ -26,11 +26,11 @@ export type HomepageContentDto = {
 };
 
 const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
-  section2Title: "Fuer wen ist ONRODA?",
+  section2Title: "Für wen ist ONRODA?",
   section2Cards: [
     {
       icon: "🚕",
-      title: "Fuer Fahrgaeste",
+      title: "Für Fahrgäste",
       body: "Fahrten sofort buchen oder planen. Einfach, schnell und transparent.",
       ctaText: "Jetzt buchen",
       ctaLink: "#jetzt-buchen",
@@ -38,7 +38,7 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
     },
     {
       icon: "🏢",
-      title: "Fuer Unternehmen",
+      title: "Für Unternehmen",
       body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
       ctaText: "Partner werden",
       ctaLink: "#unternehmen",
@@ -46,23 +46,24 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
     },
     {
       icon: "🏨",
-      title: "Fuer Hotels",
-      body: "Gaestemobilitaet zentral koordinieren und Ablaeufe im Team entlasten.",
+      title: "Für Hotels",
+      body: "Gästemobilität zentral koordinieren und Abläufe im Team entlasten.",
       ctaText: "Mehr erfahren",
       ctaLink: "#unternehmen",
       isActive: false,
     },
     {
       icon: "🏥",
-      title: "Fuer medizinische Partner",
-      body: "Organisierte Fahrten mit klaren digitalen Prozessen und verlaesslicher Abwicklung.",
+      title: "Für medizinische Partner",
+      body: "Organisierte Fahrten mit klaren digitalen Prozessen und verlässlicher Abwicklung.",
       ctaText: "ONRODA Care",
       ctaLink: "#care",
       isActive: false,
     },
   ],
-  heroHeadline: "Digitale Mobilitaet\nfuer Fahrgaeste, Unternehmen\nund Partnerbetriebe",
-  heroSubline: "ONRODA verbindet Fahrgaeste, Fahrer und Unternehmen in einem intelligenten System - fuer einfache Buchung und strukturierte Ablaeufe.",
+  heroHeadline: "Digitale Mobilität\nfür Fahrgäste, Unternehmen\nund Partnerbetriebe",
+  heroSubline:
+    "ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für einfache Buchung und strukturierte Abläufe.",
   cta1Text: "Jetzt buchen",
   cta1Link: "#jetzt-buchen",
   cta2Text: "Mehr erfahren",

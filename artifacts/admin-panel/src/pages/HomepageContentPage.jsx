@@ -117,7 +117,7 @@ export default function HomepageContentPage() {
         <div className="admin-panel-card__title">Homepage-Inhalte (Marketing)</div>
         <form className="admin-form-vertical" onSubmit={onSave}>
           <label className="admin-form-pair">
-            <span className="admin-field-label">Section 2 Titel (Fuer wen)</span>
+            <span className="admin-field-label">Section 2 Titel (Für wen)</span>
             <input
               className="admin-input"
               value={form.section2Title}
