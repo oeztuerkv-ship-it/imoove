@@ -5,6 +5,7 @@ import PasswordChangeRequiredPage from "./pages/PasswordChangeRequiredPage.jsx";
 import TaxiEntrepreneurShell from "./taxi/TaxiEntrepreneurShell.jsx";
 import AgenturMasterPanel from "./components/AgenturMasterPanel.jsx";
 import KasseMasterPanel from "./components/KasseMasterPanel.jsx";
+import InsurerEntrepreneurShell from "./insurer/InsurerEntrepreneurShell.jsx";
 
 export default function App() {
   const { user, booting, logout } = usePanelAuth();
@@ -41,7 +42,10 @@ export default function App() {
     return <AgenturMasterPanel company={company} onLogout={logout} />;
   }
 
-  if (kind === "insurer" || kind === "medical") {
+  if (kind === "insurer") {
+    return <InsurerEntrepreneurShell company={company} onLogout={logout} />;
+  }
+  if (kind === "medical") {
     return <KasseMasterPanel company={company} onLogout={logout} />;
   }
 

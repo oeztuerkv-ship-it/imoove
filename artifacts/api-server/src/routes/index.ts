@@ -8,6 +8,7 @@ import panelApiRouter from "./panelApi";
 import fleetAuthRouter from "./fleetAuth";
 import fleetDriverApiRouter from "./fleetDriverApi";
 import fleetPanelApiRouter from "./fleetPanelApi";
+import insurerPanelApiRouter from "./insurerPanelApi";
 import publicHomepageApiRouter from "./publicHomepageApi";
 
 const router: IRouter = Router();
@@ -18,6 +19,7 @@ router.use(panelAuthRouter);
 router.use(fleetAuthRouter);
 router.use(fleetDriverApiRouter);
 router.use(fleetPanelApiRouter);
+router.use(insurerPanelApiRouter);
 router.use(publicHomepageApiRouter);
 router.use(panelApiRouter);
 router.use(adminApiRouter);

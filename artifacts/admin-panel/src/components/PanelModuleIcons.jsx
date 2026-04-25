@@ -95,6 +95,14 @@ export function PanelModuleIcon({ moduleId }) {
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
       );
+    case "insurer_workspace":
+      return (
+        <svg {...S} aria-hidden>
+          <path d="M12 2l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V5l8-3z" />
+          <line x1="8" y1="11" x2="12" y2="15" />
+          <line x1="12" y1="15" x2="16" y2="9" />
+        </svg>
+      );
     case "medical-round":
       return (
         <svg {...S} aria-hidden>

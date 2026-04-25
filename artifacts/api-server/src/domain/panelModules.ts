@@ -91,6 +91,13 @@ export const PANEL_MODULE_DEFINITIONS = [
       "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostenträger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik.",
   },
   {
+    id: "insurer_workspace",
+    label: "Krankenkasse-Portal",
+    description: "Eigener Bereich: Fahrten-Controlling, Kostenstellen, Transportnachweise (V1)",
+    productIntent:
+      "Mandant company_kind=insurer: getrennte Panel-API; keine medizinischen Befunde persistieren, nur Fahrt-/Orga-/Kostenstellen-Logik.",
+  },
+  {
     id: "taxi_fleet",
     label: "Flotte & Fahrer",
     description: "Fahrzeuge, Fahrer-Logins, Zuweisung (nur Mandant Taxi)",
@@ -109,9 +116,9 @@ function asModuleIdSet(ids: readonly PanelModuleId[]): ReadonlySet<PanelModuleId
   return new Set(ids);
 }
 
-/** Ohne Taxi-Mandant nie `taxi_fleet` (Legacy-„alle“ für unbekannte / `general`-ähnliche Typen). */
+/** Ohne Taxi-Mandant nie `taxi_fleet`; ohne Krankenkasse nie `insurer_workspace` (nur `company_kind=insurer`). */
 const GENERAL_LIKE_KIND_MODULES: ReadonlySet<PanelModuleId> = asModuleIdSet(
-  ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet"),
+  ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet" && id !== "insurer_workspace"),
 );
 
 const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> = {
@@ -141,6 +148,7 @@ const PANEL_MODULES_BY_COMPANY_KIND: Record<string, ReadonlySet<PanelModuleId>> 
   ]),
   insurer: asModuleIdSet([
     "overview",
+    "insurer_workspace",
     "support",
     "help",
     "rides_list",

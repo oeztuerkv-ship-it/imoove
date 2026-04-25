@@ -17,16 +17,18 @@ const ALL = [
   "company_rides",
   "recurring_rides",
   "billing",
+  "insurer_workspace",
   "taxi_fleet",
 ];
 
-const GENERAL_LIKE = ALL.filter((id) => id !== "taxi_fleet");
+const GENERAL_LIKE = ALL.filter((id) => id !== "taxi_fleet" && id !== "insurer_workspace");
 
 const BY_KIND = {
   taxi: ["overview", "support", "help", "rides_list", "rides_create", "company_profile", "team", "access_codes", "billing", "taxi_fleet"],
   hotel: ["overview", "support", "help", "rides_list", "rides_create", "company_profile", "team", "access_codes", "hotel_mode", "billing"],
   insurer: [
     "overview",
+    "insurer_workspace",
     "support",
     "help",
     "rides_list",

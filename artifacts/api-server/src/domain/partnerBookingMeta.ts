@@ -27,6 +27,14 @@ export interface PartnerBookingMeta {
     seriesValidFrom?: string | null;
     seriesValidUntil?: string | null;
   };
+  /**
+   * Krankenkasse / Kostenträger-Panel: organisationale Zuordnung — keine medizinischen Befunde.
+   * Kostenstelle = interne Referenz; Anzeigename/Referenz für Fahrt ohne Diagnose-Speicherung.
+   */
+  insurer?: {
+    costCenterId?: string | null;
+    passengerRef?: string | null;
+  };
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -65,6 +73,13 @@ export function parsePartnerBookingMeta(raw: unknown): PartnerBookingMeta | null
       seriesTotal: typeof m.seriesTotal === "number" && Number.isFinite(m.seriesTotal) ? m.seriesTotal : null,
       seriesValidFrom: typeof m.seriesValidFrom === "string" ? m.seriesValidFrom : null,
       seriesValidUntil: typeof m.seriesValidUntil === "string" ? m.seriesValidUntil : null,
+    };
+  }
+  if (isRecord(raw.insurer)) {
+    const ins = raw.insurer;
+    out.insurer = {
+      costCenterId: typeof ins.costCenterId === "string" ? ins.costCenterId : null,
+      passengerRef: typeof ins.passengerRef === "string" ? ins.passengerRef : null,
     };
   }
   return out;

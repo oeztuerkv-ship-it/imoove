@@ -746,3 +746,37 @@ export const homepageContentTable = pgTable("homepage_content", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Krankenkassen-Partner: interne Kostenstellen-Referenzen (V1). */
+export const insurerCostCentersTable = pgTable("insurer_cost_centers", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  label: text("label").notNull().default(""),
+  is_active: boolean("is_active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Krankenkassen-Partner: Transportschein-Datei (nur technische Metadaten; kein ausgelesener medizinischer Inhalt).
+ */
+export const insurerRideTransportDocumentsTable = pgTable("insurer_ride_transport_documents", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  storage_key: text("storage_key").notNull(),
+  original_filename: text("original_filename").notNull().default(""),
+  content_type: text("content_type").notNull().default("application/pdf"),
+  byte_size: integer("byte_size").notNull().default(0),
+  created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
