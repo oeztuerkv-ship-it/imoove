@@ -96,7 +96,7 @@
       var defaultCta2Text = cta2El ? cta2El.textContent || "" : "";
       var defaultCta2Link = cta2El ? cta2El.getAttribute("href") || "" : "";
       var defaultSection2Title = section2TitleEl ? section2TitleEl.textContent || "" : "";
-      var url = "https://api.onroda.de/api/public/homepage-content";
+      var url = publicApiBase() + "/public/homepage-content";
       fetch(url, { method: "GET", credentials: "omit" })
         .then(function (res) {
           if (!res.ok) return { ok: false, item: null };
@@ -162,6 +162,87 @@
             bodyEl.textContent = String(c && c.body ? c.body : defaultBody);
             ctaEl.textContent = String(c && c.ctaText ? c.ctaText : defaultCtaText);
             ctaEl.setAttribute("href", String(c && c.ctaLink ? c.ctaLink : defaultCtaHref));
+          }
+          var servicesKickerEl = document.getElementById("services-kicker");
+          var servicesTitleEl = document.getElementById("services-title");
+          var servicesSubEl = document.getElementById("services-sub");
+          var defaultSk = servicesKickerEl ? servicesKickerEl.textContent || "" : "";
+          var defaultSt = servicesTitleEl ? servicesTitleEl.textContent || "" : "";
+          var defaultSs = servicesSubEl ? servicesSubEl.textContent || "" : "";
+          if (servicesKickerEl) {
+            servicesKickerEl.textContent = (item && item.servicesKicker ? item.servicesKicker : defaultSk).trim();
+          }
+          if (servicesTitleEl) {
+            servicesTitleEl.textContent = (item && item.servicesTitle ? item.servicesTitle : defaultSt).trim();
+          }
+          if (servicesSubEl) {
+            servicesSubEl.textContent = (item && item.servicesSubline ? item.servicesSubline : defaultSs).trim();
+          }
+          var svc = item && Array.isArray(item.servicesCards) ? item.servicesCards : [];
+          for (var s = 1; s <= 3; s++) {
+            var scWrap = document.getElementById("services-card-" + s);
+            var scIcon = document.getElementById("services-card-" + s + "-icon");
+            var scTitle = document.getElementById("services-card-" + s + "-title");
+            var scBody = document.getElementById("services-card-" + s + "-body");
+            if (!scWrap || !scIcon || !scTitle || !scBody) continue;
+            var dIcon = scIcon.textContent || "";
+            var dTitle = scTitle.textContent || "";
+            var dBody = scBody.textContent || "";
+            var sc = svc[s - 1] || null;
+            var sActive = sc ? sc.isActive !== false : true;
+            if (!sActive) {
+              scWrap.setAttribute("hidden", "hidden");
+              continue;
+            }
+            scWrap.removeAttribute("hidden");
+            scIcon.textContent = String(sc && sc.icon ? sc.icon : dIcon);
+            scTitle.textContent = String(sc && sc.title ? sc.title : dTitle);
+            scBody.textContent = String(sc && sc.body ? sc.body : dBody);
+          }
+          var manKEl = document.getElementById("manifest-kicker");
+          var manTitleEl = document.getElementById("manifest-title");
+          var manSubEl = document.getElementById("manifest-sub");
+          var dMk = manKEl ? manKEl.textContent || "" : "";
+          var dMt = manTitleEl ? manTitleEl.textContent || "" : "";
+          var dMs = manSubEl ? manSubEl.textContent || "" : "";
+          if (manKEl) {
+            manKEl.textContent = (item && item.manifestKicker ? item.manifestKicker : dMk).trim();
+          }
+          if (manTitleEl) {
+            manTitleEl.textContent = (item && item.manifestTitle ? item.manifestTitle : dMt).trim();
+          }
+          if (manSubEl) {
+            manSubEl.textContent = (item && item.manifestSubline ? item.manifestSubline : dMs).trim();
+          }
+          var mcards = item && Array.isArray(item.manifestCards) ? item.manifestCards : [];
+          for (var m = 1; m <= 4; m++) {
+            var mWrap = document.getElementById("manifest-card-" + m);
+            var mNum = document.getElementById("manifest-card-" + m + "-num");
+            var mIcon = document.getElementById("manifest-card-" + m + "-icon");
+            var mTit = document.getElementById("manifest-card-" + m + "-title");
+            var mBody = document.getElementById("manifest-card-" + m + "-body");
+            var mCta = document.getElementById("manifest-card-" + m + "-cta");
+            if (!mWrap || !mNum || !mIcon || !mTit || !mBody || !mCta) continue;
+            var dNum = mNum.textContent || "";
+            var dMI = mIcon.textContent || "";
+            var dMTi = mTit.textContent || "";
+            var dMBo = mBody.textContent || "";
+            var dMCt = mCta.textContent || "";
+            var dMCh = mCta.getAttribute("href") || "#";
+            var mc = mcards[m - 1] || null;
+            var mAct = mc ? mc.isActive !== false : true;
+            if (!mAct) {
+              mWrap.setAttribute("hidden", "hidden");
+              continue;
+            }
+            mWrap.removeAttribute("hidden");
+            var n = mc && String(mc.num || "").trim() ? String(mc.num).trim() : dNum;
+            mNum.textContent = n;
+            mIcon.textContent = String(mc && mc.icon ? mc.icon : dMI);
+            mTit.textContent = String(mc && mc.title ? mc.title : dMTi);
+            mBody.textContent = String(mc && mc.body ? mc.body : dMBo);
+            mCta.textContent = String(mc && mc.ctaText ? mc.ctaText : dMCt);
+            mCta.setAttribute("href", String(mc && mc.ctaLink ? mc.ctaLink : dMCh));
           }
         })
         .catch(function () {

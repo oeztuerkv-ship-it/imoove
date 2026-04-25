@@ -27,6 +27,7 @@
 --   036 → billing_export_batches, ride_billing_corrections (Krankenkassen-Modus)
 --   038 → homepage_content (Homepage-CMS MVP)
 --   039 → homepage_content.section2_title, homepage_content.section2_cards
+--   040 → homepage_content (services_*, manifest_*)
 
 DO $$
 DECLARE
@@ -472,6 +473,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'section2_cards'
   ) THEN
     errs := array_append(errs, 'homepage_content.section2_cards (Migration 039)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'services_kicker'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.services_kicker (Migration 040)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'homepage_content' AND column_name = 'manifest_cards'
+  ) THEN
+    errs := array_append(errs, 'homepage_content.manifest_cards (Migration 040)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

@@ -4,6 +4,23 @@ import { homepageContentTable } from "./schema";
 
 const HOMEPAGE_CONTENT_ID = "homepage-main";
 
+export type HomepageServiceCard = {
+  icon: string;
+  title: string;
+  body: string;
+  isActive: boolean;
+};
+
+export type HomepageManifestCard = {
+  num: string;
+  icon: string;
+  title: string;
+  body: string;
+  ctaText: string;
+  ctaLink: string;
+  isActive: boolean;
+};
+
 export type HomepageContentDto = {
   section2Title: string;
   section2Cards: Array<{
@@ -14,6 +31,14 @@ export type HomepageContentDto = {
     ctaLink: string;
     isActive: boolean;
   }>;
+  servicesKicker: string;
+  servicesTitle: string;
+  servicesSubline: string;
+  servicesCards: HomepageServiceCard[];
+  manifestKicker: string;
+  manifestTitle: string;
+  manifestSubline: string;
+  manifestCards: HomepageManifestCard[];
   heroHeadline: string;
   heroSubline: string;
   cta1Text: string;
@@ -61,6 +86,70 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
       isActive: false,
     },
   ],
+  servicesKicker: "Leistungen",
+  servicesTitle: "Unsere Services",
+  servicesSubline: "Modernste Technologie für Ihre Mobilität in Stuttgart",
+  servicesCards: [
+    {
+      icon: "⏱",
+      title: "Echtzeit-Buchung",
+      body: "Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live auf der Karte.",
+      isActive: true,
+    },
+    {
+      icon: "📅",
+      title: "Vorbestellung",
+      body: "Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.",
+      isActive: true,
+    },
+    {
+      icon: "🧾",
+      title: "Digitale Quittungen",
+      body: "Alle Belege automatisch per E-Mail. Perfekt für Ihre Buchhaltung.",
+      isActive: true,
+    },
+  ],
+  manifestKicker: "Das ONRODA Manifest",
+  manifestTitle: "Vernetzung auf allen Ebenen",
+  manifestSubline: "Ein intelligentes System für Fahrgäste, Fahrer und Unternehmen",
+  manifestCards: [
+    {
+      num: "1",
+      icon: "📍",
+      title: "Innovation aus der Region",
+      body: "Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise, gepaart mit modernster Technik.",
+      ctaText: "Mehr erfahren →",
+      ctaLink: "#manifest",
+      isActive: true,
+    },
+    {
+      num: "2",
+      icon: "⚡",
+      title: "Effizienz durch Digitalisierung",
+      body: "Bei ONRODA gibt es kein Hin-und-Her. Wir haben Prozesse radikal entschlackt. Alles läuft digital, direkt und reibungslos.",
+      ctaText: "Mehr erfahren →",
+      ctaLink: "#services",
+      isActive: true,
+    },
+    {
+      num: "3",
+      icon: "🤝",
+      title: "Mobilität als Service-Baustein für Unternehmen, Hotels und Partnerbetriebe",
+      body: "Wir verstehen uns als Partner für Hotels, Firmen und Veranstalter. ONRODA integriert Mobilität als qualitativen Mehrwert.",
+      ctaText: "Mehr erfahren →",
+      ctaLink: "#unternehmen",
+      isActive: true,
+    },
+    {
+      num: "4",
+      icon: "🛡",
+      title: "Verlässlichkeit ist unser Standard",
+      body: "Wir versprechen nicht nur Mobilität, wir liefern sie. Ein Maximum an Planungssicherheit für Sie und Ihre Partner.",
+      ctaText: "Mehr erfahren →",
+      ctaLink: "#care",
+      isActive: true,
+    },
+  ],
   heroHeadline: "Digitale Mobilität\nfür Fahrgäste, Unternehmen\nund Partnerbetriebe",
   heroSubline:
     "ONRODA verbindet Fahrgäste, Fahrer und Unternehmen in einem intelligenten System – für einfache Buchung und strukturierte Abläufe.",
@@ -71,6 +160,39 @@ const DEFAULT_CONTENT: Omit<HomepageContentDto, "updatedAt"> = {
   noticeText: "",
   noticeActive: false,
 };
+
+function mapServiceCards(raw: unknown): HomepageServiceCard[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_CONTENT.servicesCards.map((c) => ({ ...c }));
+  }
+  return raw.map((c) => {
+    const o = c as Record<string, unknown>;
+    return {
+      icon: String(o?.icon ?? ""),
+      title: String(o?.title ?? ""),
+      body: String(o?.body ?? ""),
+      isActive: o?.isActive !== false,
+    };
+  });
+}
+
+function mapManifestCards(raw: unknown): HomepageManifestCard[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_CONTENT.manifestCards.map((c) => ({ ...c }));
+  }
+  return raw.map((c) => {
+    const o = c as Record<string, unknown>;
+    return {
+      num: String(o?.num ?? "").trim(),
+      icon: String(o?.icon ?? ""),
+      title: String(o?.title ?? ""),
+      body: String(o?.body ?? ""),
+      ctaText: String(o?.ctaText ?? ""),
+      ctaLink: String(o?.ctaLink ?? ""),
+      isActive: o?.isActive !== false,
+    };
+  });
+}
 
 function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDto {
   const cards = Array.isArray(row.section2_cards) ? row.section2_cards : [];
@@ -83,6 +205,17 @@ function toDto(row: typeof homepageContentTable.$inferSelect): HomepageContentDt
       ctaText: String(c?.ctaText ?? ""),
       ctaLink: String(c?.ctaLink ?? ""),
       isActive: c?.isActive !== false,
+    })),
+    servicesKicker: (row.services_kicker || "").trim() || DEFAULT_CONTENT.servicesKicker,
+    servicesTitle: (row.services_title || "").trim() || DEFAULT_CONTENT.servicesTitle,
+    servicesSubline: (row.services_subline || "").trim() || DEFAULT_CONTENT.servicesSubline,
+    servicesCards: mapServiceCards(row.services_cards),
+    manifestKicker: (row.manifest_kicker || "").trim() || DEFAULT_CONTENT.manifestKicker,
+    manifestTitle: (row.manifest_title || "").trim() || DEFAULT_CONTENT.manifestTitle,
+    manifestSubline: (row.manifest_subline || "").trim() || DEFAULT_CONTENT.manifestSubline,
+    manifestCards: mapManifestCards(row.manifest_cards).map((c, i) => ({
+      ...c,
+      num: c.num || String(i + 1),
     })),
     heroHeadline: row.hero_headline,
     heroSubline: row.hero_subline,
@@ -130,6 +263,14 @@ export async function patchHomepageContentAdmin(
       id: HOMEPAGE_CONTENT_ID,
       section2_title: merged.section2Title,
       section2_cards: merged.section2Cards,
+      services_kicker: merged.servicesKicker,
+      services_title: merged.servicesTitle,
+      services_subline: merged.servicesSubline,
+      services_cards: merged.servicesCards,
+      manifest_kicker: merged.manifestKicker,
+      manifest_title: merged.manifestTitle,
+      manifest_subline: merged.manifestSubline,
+      manifest_cards: merged.manifestCards,
       hero_headline: merged.heroHeadline,
       hero_subline: merged.heroSubline,
       cta1_text: merged.cta1Text,
@@ -149,6 +290,14 @@ export async function patchHomepageContentAdmin(
         hero_headline: merged.heroHeadline,
         section2_title: merged.section2Title,
         section2_cards: merged.section2Cards,
+        services_kicker: merged.servicesKicker,
+        services_title: merged.servicesTitle,
+        services_subline: merged.servicesSubline,
+        services_cards: merged.servicesCards,
+        manifest_kicker: merged.manifestKicker,
+        manifest_title: merged.manifestTitle,
+        manifest_subline: merged.manifestSubline,
+        manifest_cards: merged.manifestCards,
         hero_subline: merged.heroSubline,
         cta1_text: merged.cta1Text,
         cta1_link: merged.cta1Link,

@@ -50,6 +50,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Homepage-Hinweise/Banner (Admin-gesteuert, public read-only)      → 037_homepage_placeholders.sql
   Homepage-CMS MVP (Hero + CTA + Hinweiszeile)                       → 038_homepage_content_cms.sql
   Homepage-CMS Section 2 (Für wen Boxen editierbar)                  → 039_homepage_content_section2_cards.sql
+  Homepage-CMS Leistungen + Manifest                                    → 040_homepage_content_services_manifest.sql
 
 Nach Migrationen Schema prüfen:
 

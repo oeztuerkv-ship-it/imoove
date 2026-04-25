@@ -716,6 +716,30 @@ export const homepageContentTable = pgTable("homepage_content", {
     >()
     .notNull()
     .default([]),
+  services_kicker: text("services_kicker").notNull().default(""),
+  services_title: text("services_title").notNull().default(""),
+  services_subline: text("services_subline").notNull().default(""),
+  services_cards: jsonb("services_cards")
+    .$type<Array<{ icon: string; title: string; body: string; isActive: boolean }>>()
+    .notNull()
+    .default([]),
+  manifest_kicker: text("manifest_kicker").notNull().default(""),
+  manifest_title: text("manifest_title").notNull().default(""),
+  manifest_subline: text("manifest_subline").notNull().default(""),
+  manifest_cards: jsonb("manifest_cards")
+    .$type<
+      Array<{
+        num: string;
+        icon: string;
+        title: string;
+        body: string;
+        ctaText: string;
+        ctaLink: string;
+        isActive: boolean;
+      }>
+    >()
+    .notNull()
+    .default([]),
   updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
     onDelete: "set null",
   }),

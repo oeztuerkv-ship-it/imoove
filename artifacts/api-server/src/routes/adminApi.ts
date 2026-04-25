@@ -1109,10 +1109,49 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
               };
             })
           : undefined;
+    const servicesCards =
+      b.servicesCards === undefined
+        ? undefined
+        : Array.isArray(b.servicesCards)
+          ? b.servicesCards.slice(0, 3).map((raw) => {
+              const r = (raw ?? {}) as Record<string, unknown>;
+              return {
+                icon: typeof r.icon === "string" ? r.icon.trim() : "",
+                title: typeof r.title === "string" ? r.title.trim() : "",
+                body: typeof r.body === "string" ? r.body.trim() : "",
+                isActive: r.isActive !== false,
+              };
+            })
+          : undefined;
+    const manifestCards =
+      b.manifestCards === undefined
+        ? undefined
+        : Array.isArray(b.manifestCards)
+          ? b.manifestCards.slice(0, 4).map((raw) => {
+              const r = (raw ?? {}) as Record<string, unknown>;
+              return {
+                num: typeof r.num === "string" ? r.num.trim() : "",
+                icon: typeof r.icon === "string" ? r.icon.trim() : "",
+                title: typeof r.title === "string" ? r.title.trim() : "",
+                body: typeof r.body === "string" ? r.body.trim() : "",
+                ctaText: typeof r.ctaText === "string" ? r.ctaText.trim() : "",
+                ctaLink: typeof r.ctaLink === "string" ? r.ctaLink.trim() : "",
+                isActive: r.isActive !== false,
+              };
+            })
+          : undefined;
     const item = await patchHomepageContentAdmin(
       {
         section2Title: toText(b.section2Title),
         section2Cards,
+        servicesKicker: toText(b.servicesKicker),
+        servicesTitle: toText(b.servicesTitle),
+        servicesSubline: toText(b.servicesSubline),
+        servicesCards,
+        manifestKicker: toText(b.manifestKicker),
+        manifestTitle: toText(b.manifestTitle),
+        manifestSubline: toText(b.manifestSubline),
+        manifestCards,
         heroHeadline: toText(b.heroHeadline),
         heroSubline: toText(b.heroSubline),
         cta1Text: toText(b.cta1Text),
