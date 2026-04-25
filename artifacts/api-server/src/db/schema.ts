@@ -667,3 +667,26 @@ export const rideBillingCorrectionsTable = pgTable("ride_billing_corrections", {
   actor_id: text("actor_id"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Öffentliche Homepage-Hinweise/Banner (vom Admin gepflegt, public read-only ausgeliefert). */
+export const homepagePlaceholdersTable = pgTable("homepage_placeholders", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  message: text("message").notNull().default(""),
+  cta_label: text("cta_label"),
+  cta_url: text("cta_url"),
+  tone: text("tone").notNull().default("info"),
+  is_active: boolean("is_active").notNull().default(true),
+  sort_order: integer("sort_order").notNull().default(0),
+  visible_from: timestamp("visible_from", { withTimezone: true }),
+  visible_until: timestamp("visible_until", { withTimezone: true }),
+  dismiss_key: text("dismiss_key").notNull().default(""),
+  created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

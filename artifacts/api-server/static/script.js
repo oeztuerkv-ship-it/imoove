@@ -29,6 +29,106 @@
       return "https://api.onroda.de/api";
     }
 
+    function dismissedKey(key) {
+      return "onroda.homepage.dismissed." + String(key || "");
+    }
+
+    function isDismissed(key) {
+      if (!key) return false;
+      try {
+        return window.localStorage.getItem(dismissedKey(key)) === "1";
+      } catch {
+        return false;
+      }
+    }
+
+    function markDismissed(key) {
+      if (!key) return;
+      try {
+        window.localStorage.setItem(dismissedKey(key), "1");
+      } catch {
+        // ignore storage errors
+      }
+    }
+
+    function toneClass(tone) {
+      var raw = String(tone || "info").toLowerCase();
+      if (raw === "warning" || raw === "success" || raw === "neutral") return raw;
+      return "info";
+    }
+
+    function buildPlaceholderNode(item) {
+      var wrap = document.createElement("article");
+      wrap.className = "hp-dynamic-placeholder hp-dynamic-placeholder--" + toneClass(item.tone);
+      var top = document.createElement("div");
+      top.className = "hp-dynamic-placeholder__top";
+      var title = document.createElement("h3");
+      title.className = "hp-dynamic-placeholder__title";
+      title.textContent = String(item.title || "Hinweis");
+      top.appendChild(title);
+
+      var closeBtn = document.createElement("button");
+      closeBtn.className = "hp-dynamic-placeholder__close";
+      closeBtn.setAttribute("type", "button");
+      closeBtn.setAttribute("aria-label", "Hinweis ausblenden");
+      closeBtn.textContent = "X";
+      closeBtn.addEventListener("click", function () {
+        var key = item.dismissKey || item.id;
+        markDismissed(key);
+        wrap.remove();
+      });
+      top.appendChild(closeBtn);
+      wrap.appendChild(top);
+
+      var msg = document.createElement("p");
+      msg.className = "hp-dynamic-placeholder__msg";
+      msg.textContent = String(item.message || "");
+      wrap.appendChild(msg);
+
+      if (item.ctaLabel && item.ctaUrl) {
+        var cta = document.createElement("a");
+        cta.className = "hp-dynamic-placeholder__cta";
+        cta.href = String(item.ctaUrl);
+        cta.textContent = String(item.ctaLabel);
+        if (/^https?:\/\//i.test(String(item.ctaUrl))) {
+          cta.target = "_blank";
+          cta.rel = "noopener noreferrer";
+        }
+        wrap.appendChild(cta);
+      }
+
+      return wrap;
+    }
+
+    function loadDynamicHomepagePlaceholders() {
+      var host = window.location.hostname;
+      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
+        return;
+      }
+      var target = document.getElementById("hp-dynamic-placeholders");
+      if (!target) return;
+      var url = publicApiBase() + "/public/homepage-placeholders";
+      fetch(url, { method: "GET", credentials: "omit" })
+        .then(function (res) {
+          if (!res.ok) return { ok: false, items: [] };
+          return res.json().catch(function () { return { ok: false, items: [] }; });
+        })
+        .then(function (data) {
+          if (!data || !data.ok || !Array.isArray(data.items)) return;
+          target.innerHTML = "";
+          data.items.forEach(function (item) {
+            var dismissId = item.dismissKey || item.id;
+            if (isDismissed(dismissId)) return;
+            target.appendChild(buildPlaceholderNode(item));
+          });
+        })
+        .catch(function () {
+          // keep homepage usable when endpoint is unavailable
+        });
+    }
+
+    loadDynamicHomepagePlaceholders();
+
     function syncPartnerTaxiSection() {
       var wrap = document.getElementById("partner-taxi-fields");
       var ct = document.getElementById("companyType");

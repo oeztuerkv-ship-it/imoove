@@ -28,6 +28,7 @@ import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.j
 import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
 import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
 import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
+import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -213,6 +214,10 @@ const PAGE_META = {
   "access-codes": {
     title: "Zugangscodes",
     subtitle: "Digitale Freigaben und interne Zuordnung",
+  },
+  "homepage-placeholders": {
+    title: "Homepage-Hinweise",
+    subtitle: "Öffentliche Banner auf onroda.de direkt aus der Plattform-Konsole steuern",
   },
   settings: {
     title: "Einstellungen",
@@ -478,6 +483,8 @@ export default function App() {
         return <FaresPage />;
       case "access-codes":
         return <AccessCodesPage />;
+      case "homepage-placeholders":
+        return <HomepagePlaceholdersPage />;
       case "finance-dashboard":
         return <FinanceDashboardPage />;
       case "finance-ride-financials":

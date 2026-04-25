@@ -66,6 +66,11 @@ import {
   parseSupportThreadStatus,
 } from "../db/supportThreadsData";
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
+import {
+  createHomepagePlaceholder,
+  listHomepagePlaceholdersAdmin,
+  patchHomepagePlaceholder,
+} from "../db/homepagePlaceholdersData";
 import { getAdminOperatorSnapshot } from "../db/adminOperatorSnapshotData";
 import {
   addPartnerRegistrationDocument,
@@ -1017,6 +1022,141 @@ adminJson.get("/companies", async (req, res, next) => {
     const filtered =
       role === "hotel" && scope ? items.filter((c) => c.id === scope) : items;
     res.json({ ok: true, items: filtered, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+  } catch (e) {
+    next(e);
+  }
+});
+
+function parseOptionalIsoTs(v: unknown): Date | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function normalizeHomepageTone(v: unknown): string | null {
+  const raw = typeof v === "string" ? v.trim().toLowerCase() : "";
+  if (!raw) return "info";
+  return ["info", "warning", "success", "neutral"].includes(raw) ? raw : null;
+}
+
+adminJson.get("/homepage-placeholders", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepagePlaceholdersAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/homepage-placeholders", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const message = typeof b.message === "string" ? b.message.trim() : "";
+    if (!title || !message) {
+      res.status(400).json({ error: "title_message_required" });
+      return;
+    }
+    const tone = normalizeHomepageTone(b.tone);
+    if (!tone) {
+      res.status(400).json({ error: "tone_invalid" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const visibleFrom = parseOptionalIsoTs(b.visibleFrom);
+    const visibleUntil = parseOptionalIsoTs(b.visibleUntil);
+    if (visibleFrom === undefined || visibleUntil === undefined) {
+      res.status(400).json({ error: "visible_from_until_invalid" });
+      return;
+    }
+    const item = await createHomepagePlaceholder({
+      title,
+      message,
+      ctaLabel: typeof b.ctaLabel === "string" ? b.ctaLabel.trim() : null,
+      ctaUrl: typeof b.ctaUrl === "string" ? b.ctaUrl.trim() : null,
+      tone,
+      isActive: b.isActive !== false,
+      sortOrder,
+      visibleFrom,
+      visibleUntil,
+      dismissKey: typeof b.dismissKey === "string" ? b.dismissKey.trim() : null,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null,
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/homepage-placeholders/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const tone = b.tone === undefined ? undefined : normalizeHomepageTone(b.tone);
+    if (tone === null) {
+      res.status(400).json({ error: "tone_invalid" });
+      return;
+    }
+    const visibleFrom = parseOptionalIsoTs(b.visibleFrom);
+    const visibleUntil = parseOptionalIsoTs(b.visibleUntil);
+    if (visibleFrom === undefined || visibleUntil === undefined) {
+      res.status(400).json({ error: "visible_from_until_invalid" });
+      return;
+    }
+    const item = await patchHomepagePlaceholder(id, {
+      title: typeof b.title === "string" ? b.title.trim() : undefined,
+      message: typeof b.message === "string" ? b.message.trim() : undefined,
+      ctaLabel: b.ctaLabel === undefined ? undefined : typeof b.ctaLabel === "string" ? b.ctaLabel.trim() : null,
+      ctaUrl: b.ctaUrl === undefined ? undefined : typeof b.ctaUrl === "string" ? b.ctaUrl.trim() : null,
+      tone: tone ?? undefined,
+      isActive: typeof b.isActive === "boolean" ? b.isActive : undefined,
+      sortOrder: Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : undefined,
+      visibleFrom,
+      visibleUntil,
+      dismissKey: b.dismissKey === undefined ? undefined : typeof b.dismissKey === "string" ? b.dismissKey.trim() : null,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null,
+    });
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
   } catch (e) {
     next(e);
   }
