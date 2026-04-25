@@ -21,13 +21,26 @@ export function insurerRidesUrl(params) {
     to: params?.to,
     page: params?.page,
     pageSize: params?.pageSize,
+    rideId: params?.rideId,
     companyId: params?.companyId,
+    driverId: params?.driverId,
     status: params?.status,
+    amountMin: params?.amountMin,
+    amountMax: params?.amountMax,
+    exportStatus: params?.exportStatus,
+    hasCorrections: params?.hasCorrections,
+    missingProofs: params?.missingProofs,
+    sort: params?.sort,
+    order: params?.order,
   })}`;
 }
 
 export function insurerRideDetailUrl(rideId) {
   return `${BASE}/rides/${encodeURIComponent(rideId)}`;
+}
+
+export function insurerRidePruefakteCsvUrl(rideId) {
+  return `${BASE}/rides/${encodeURIComponent(rideId)}/pruefakte.csv`;
 }
 
 export function insurerExportsListUrl(params) {

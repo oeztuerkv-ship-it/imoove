@@ -52,6 +52,12 @@ function parseNum(v: unknown): number | undefined {
   return n;
 }
 
+function csvCell(v: unknown): string {
+  const raw = String(v ?? "");
+  if (/[",\n\r;]/.test(raw)) return `"${raw.replaceAll('"', '""')}"`;
+  return raw;
+}
+
 /**
  * GET /api/admin/insurance/summary
  * Query: from, to (ISO), companyId (optional) — Fahrten mit payer_kind=insurance.
@@ -178,6 +184,76 @@ router.get("/rides/:rideId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, ride: detail, corrections: detail.corrections ?? [] });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * GET /api/admin/insurance/rides/:rideId/pruefakte.csv
+ * Datenschutz: nur Whitelist-Felder aus dem Insurance-Detail, keine Rohpayloads.
+ */
+router.get("/rides/:rideId/pruefakte.csv", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.rideId ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const d = await getInsurerRideDetail(insurerRole(req), req.adminAuth?.scopeCompanyId, id);
+    if (!d) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const rows: Array<[string, string]> = [
+      ["rideId", d.rideId],
+      ["companyId", d.companyId ?? ""],
+      ["companyName", d.companyName ?? ""],
+      ["driverId", d.driverId ?? ""],
+      ["vehiclePlate", d.vehiclePlate ?? ""],
+      ["rideStatus", d.rideStatus ?? ""],
+      ["lastExportBatchId", d.lastExportBatchId ?? ""],
+      ["createdAt", d.executionSummary?.createdAt ?? ""],
+      ["scheduledAt", d.executionSummary?.scheduledAt ?? ""],
+      ["pickupAt", d.executionSummary?.pickupAt ?? ""],
+      ["completedAt", d.executionSummary?.completedAt ?? ""],
+      ["cancelledAt", d.executionSummary?.cancelledAt ?? ""],
+      ["cancelledReason", d.executionSummary?.cancelledReason ?? ""],
+      ["fromPostalCode", d.fromPostalCode ?? ""],
+      ["fromLocality", d.fromLocality ?? ""],
+      ["toPostalCode", d.toPostalCode ?? ""],
+      ["toLocality", d.toLocality ?? ""],
+      ["distanceKm", d.distanceKm ?? ""],
+      ["amountGross", d.amountGross ?? ""],
+      ["pricingMode", d.pricingMode ?? ""],
+      ["payerKind", d.payerKind ?? ""],
+      ["financialBillingStatus", d.financialBillingStatus ?? ""],
+      ["financialSettlementStatus", d.financialSettlementStatus ?? ""],
+      ["billingReference", d.billingReference ?? ""],
+      ["proof.hasGpsPoints", d.proof?.hasGpsPoints ? "true" : "false"],
+      ["proof.hasChronology", d.proof?.hasChronology ? "true" : "false"],
+      ["proof.hasSignatureOrConfirmation", d.proof?.hasSignatureOrConfirmation ? "true" : "false"],
+      ["proof.hasApprovalReference", d.proof?.hasApprovalReference ? "true" : "false"],
+      ["correctionsCount", String(d.corrections?.length ?? 0)],
+    ];
+    const correctionRows = (d.corrections ?? []).flatMap((c, idx) => [
+      [`correction.${idx}.field`, c.fieldName] as [string, string],
+      [`correction.${idx}.old`, c.oldValue] as [string, string],
+      [`correction.${idx}.new`, c.newValue] as [string, string],
+      [`correction.${idx}.reasonCode`, c.reasonCode] as [string, string],
+      [`correction.${idx}.actorType`, c.actorType] as [string, string],
+      [`correction.${idx}.actorId`, c.actorId ?? ""] as [string, string],
+      [`correction.${idx}.createdAt`, c.createdAt] as [string, string],
+    ]);
+    const lines = ["key;value", ...rows, ...correctionRows].map(([k, v]) => `${csvCell(k)};${csvCell(v)}`);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="insurance-pruefakte-${id}.csv"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(`\uFEFF${lines.join("\n")}`);
   } catch (e) {
     next(e);
   }
