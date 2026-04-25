@@ -34,6 +34,18 @@ const PARTNER_TYPE_DE = {
   other: "Sonstiges",
 };
 
+/** Reihenfolge im Admin-Dropdown (Korrektur der Bewerber-Auswahl). */
+const PARTNER_TYPE_SELECT_ORDER = [
+  "taxi",
+  "insurance",
+  "medical",
+  "hotel",
+  "care",
+  "business",
+  "voucher_partner",
+  "other",
+];
+
 const DOC_CAT_DE = {
   general: "Allgemein",
   gewerbe: "Gewerbenachweis",
@@ -308,6 +320,8 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
   const [mailHint, setMailHint] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  /** Korrektur der Partner-Art (nur solange kein Mandant / nicht gesperrt). */
+  const [editPartnerType, setEditPartnerType] = useState("taxi");
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -363,6 +377,7 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
       });
       setRegStatus(String(req.registrationStatus ?? "open"));
       setAdminNote(String(req.adminNote ?? ""));
+      setEditPartnerType(String(req.partnerType || "other"));
       setReplyText("");
       setRejectReason("");
     } catch {
@@ -435,6 +450,10 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
 
   async function saveStatus() {
     await patchRequest({ status: regStatus, adminNote: adminNote.trim() });
+  }
+
+  async function savePartnerTypeCorrection() {
+    await patchRequest({ partnerType: editPartnerType, adminNote: adminNote.trim() });
   }
 
   async function sendApplicantMessage() {
@@ -817,7 +836,44 @@ export default function CompanyRegistrationQueuePage({ onOpenCompany }) {
                 {fieldLine("Ansprechpartner", `${req.contactFirstName || ""} ${req.contactLastName || ""}`.trim())}
                 {fieldLine("E-Mail (Antworten)", req.email)}
                 {fieldLine("Telefon", req.phone || "—")}
-                {fieldLine("Partner-Art", partnerLabel)}
+                {!locked ? (
+                  <div style={{ marginBottom: 12, lineHeight: 1.45 }}>
+                    <span className="admin-table-sub" style={{ display: "block", fontSize: 11, textTransform: "uppercase" }}>
+                      Partner-Art (Bewerber-Auswahl, korrigierbar)
+                    </span>
+                    <p className="admin-table-sub" style={{ margin: "6px 0 8px", lineHeight: 1.45, maxWidth: 520 }}>
+                      Wenn z. B. <strong>Krankenkasse / Versicherung</strong> gewählt wurde, obwohl ein <strong>Taxi</strong>-Unternehmen
+                      gemeint ist (oder umgekehrt), stellen Sie die passende Art ein und speichern — vor Mandanten-Freigabe.
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                      <select
+                        className="admin-input"
+                        value={editPartnerType}
+                        onChange={(e) => setEditPartnerType(e.target.value)}
+                        style={{ minWidth: 260 }}
+                      >
+                        {PARTNER_TYPE_SELECT_ORDER.map((key) => (
+                          <option key={key} value={key}>
+                            {PARTNER_TYPE_DE[key] || key}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="admin-btn-primary"
+                        onClick={() => void savePartnerTypeCorrection()}
+                        disabled={saveBusy || editPartnerType === (req.partnerType || "")}
+                      >
+                        {saveBusy ? "…" : "Partner-Art speichern"}
+                      </button>
+                    </div>
+                    <p className="admin-table-sub" style={{ margin: "6px 0 0", fontSize: 11 }}>
+                      Eingereicht war: {partnerLabel}
+                    </p>
+                  </div>
+                ) : (
+                  fieldLine("Partner-Art", partnerLabel)
+                )}
                 {fieldLine("Rechtsform", req.legalForm || "—")}
                 {fieldLine("Eingereicht am", fmt(req.createdAt))}
                 {fieldLine("Wunschregion", req.desiredRegion || "—")}
