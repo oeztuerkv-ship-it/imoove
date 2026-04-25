@@ -107,7 +107,7 @@
       }
       var target = document.getElementById("hp-dynamic-placeholders");
       if (!target) return;
-      var url = publicApiBase() + "/public/homepage-placeholders";
+      var url = "https://api.onroda.de/api/public/homepage-placeholders";
       fetch(url, { method: "GET", credentials: "omit" })
         .then(function (res) {
           if (!res.ok) return { ok: false, items: [] };
