@@ -46,6 +46,15 @@ function vehicleTypeDe(t) {
   return m[t] || t || "—";
 }
 
+function vehicleClassDe(t) {
+  const m = {
+    standard: "Standard",
+    xl: "XL / Großraum",
+    wheelchair: "Rollstuhl / barrierefrei",
+  };
+  return m[t] || t || "—";
+}
+
 function legalTypeDe(t) {
   return t === "rental_car" ? "Mietwagen" : "Taxi";
 }
@@ -56,6 +65,52 @@ function docFileUrl(companyId, vehicleId, storageKey) {
   );
   u.searchParams.set("storageKey", storageKey);
   return u.toString();
+}
+
+function vEinsatzbereit(v) {
+  return v && v.approvalStatus === "approved";
+}
+
+function vBlocked(v) {
+  return v && v.approvalStatus === "blocked";
+}
+
+function approvalBadgeClass(status) {
+  if (status === "approved") return "admin-c-badge--ok";
+  if (status === "rejected" || status === "blocked") return "admin-c-badge--err";
+  if (status === "pending_approval" || status === "draft") return "admin-c-badge--warn";
+  return "admin-c-badge--neutral";
+}
+
+function fmtAuditMeta(meta) {
+  if (meta == null || typeof meta !== "object" || Object.keys(meta).length === 0) return null;
+  try {
+    const j = JSON.stringify(meta);
+    if (j.length > 400) return `${j.slice(0, 400)}…`;
+    return j;
+  } catch {
+    return null;
+  }
+}
+
+function auditActionDe(action) {
+  const m = {
+    "admin.fleet_vehicle.approved": "Fahrzeug freigegeben",
+    "admin.fleet_vehicle.rejected": "Fahrzeug abgelehnt",
+    "admin.fleet_vehicle.blocked": "Fahrzeug gesperrt",
+    "admin.fleet_vehicle.unblocked": "Fahrzeug entsperrt",
+    "admin.fleet_vehicle.notes_patched": "Sperrgrund/Notiz aktualisiert",
+  };
+  return m[action] || action;
+}
+
+function KvRow({ label, children, wideValue }) {
+  return (
+    <div className={`admin-taxi-fv-kv__row${wideValue ? " admin-taxi-fv-kv__row--stack" : ""}`}>
+      <div className="admin-taxi-fv-kv__k">{label}</div>
+      <div className="admin-taxi-fv-kv__v">{children}</div>
+    </div>
+  );
 }
 
 export default function TaxiFleetVehiclesPage() {
@@ -115,6 +170,11 @@ export default function TaxiFleetVehiclesPage() {
   useEffect(() => {
     if (companyId) loadVehicles(companyId);
   }, [companyId, loadVehicles]);
+
+  const selectedCompanyName = useMemo(
+    () => (companyId ? companies.find((c) => c.id === companyId)?.name : "") || "",
+    [companies, companyId],
+  );
 
   const filteredCompanies = useMemo(() => {
     const q = cQuery.trim().toLowerCase();
@@ -237,8 +297,6 @@ export default function TaxiFleetVehiclesPage() {
     }
   }
 
-  const vEinsatzbereit = (v) => v && v.approvalStatus === "approved";
-
   async function openPdf(vehicleId, storageKey) {
     if (!companyId) return;
     try {
@@ -257,90 +315,110 @@ export default function TaxiFleetVehiclesPage() {
   }
 
   return (
-    <div className="admin-page" style={{ padding: "20px", fontFamily: "sans-serif", maxWidth: 1280 }}>
-      <h1 style={{ marginTop: 0, color: "#0f172a" }}>Taxi · Fahrzeuge (Plattform)</h1>
-      <p style={{ color: "#64748b", maxWidth: 720, lineHeight: 1.5, marginBottom: 20 }}>
-        <strong>Operator-Sicht</strong> — Fahrzeuge je Taxi-Mandant prüfen, freigeben, sperren und Sperrgrund/Notiz
-        dokumentieren. Änderungen werden in <code>panel_audit_log</code> (Mandant) mitgeschrieben.
-      </p>
+    <div className="admin-page admin-taxi-fv-page">
+      <div className="admin-taxi-fv-head">
+        <h1 className="admin-taxi-fv-h1">Taxi · Fahrzeuge (Plattform)</h1>
+        <p className="admin-taxi-fv-lead">
+          <strong>Operator-Sicht</strong> — Fahrzeuge je Taxi-Mandant prüfen, freigeben, sperren und Sperrgrund/Notiz
+          dokumentieren. Änderungen werden in <code>panel_audit_log</code> (Mandant) mitgeschrieben.
+        </p>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 1fr) 1.2fr", gap: 20, alignItems: "start" }}>
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, background: "#fafafa" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>1. Taxi-Unternehmen</div>
+      <div className="admin-taxi-fv-workgrid">
+        <section className="admin-m-card admin-taxi-fv-side" aria-label="Mandant wählen">
+          <div className="admin-taxi-fv-sidelabel">1. Taxi-Unternehmen</div>
           <input
+            className="admin-m-inp"
             value={cQuery}
             onChange={(e) => setCQuery(e.target.value)}
             placeholder="Suche (Name, ID)…"
-            style={{ width: "100%", padding: "8px 10px", marginBottom: 10, border: "1px solid #cbd5e1", borderRadius: 6 }}
+            type="search"
+            style={{ marginBottom: 10 }}
           />
           {cLoading ? <p className="admin-table-sub">Lade …</p> : null}
-          <div style={{ maxHeight: 320, overflow: "auto" }}>
+          <div className="admin-taxi-fv-side-scroll" role="list">
             {filteredCompanies.map((c) => (
               <button
                 type="button"
                 key={c.id}
+                role="listitem"
                 onClick={() => {
                   setCompanyId(c.id);
                   setSel(null);
                 }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 10px",
-                  marginBottom: 4,
-                  border: "1px solid " + (companyId === c.id ? "#0ea5e9" : "#e2e8f0"),
-                  borderRadius: 6,
-                  background: companyId === c.id ? "#e0f2fe" : "#fff",
-                  cursor: "pointer",
-                }}
+                className={`admin-taxi-fv-corpick${companyId === c.id ? " is-active" : ""}`}
               >
-                <div style={{ fontWeight: 600, color: "#0f172a" }}>{c.name}</div>
-                <div style={{ fontSize: 11, color: "#64748b", fontFamily: "ui-monospace" }}>{c.id}</div>
+                <div className="admin-taxi-fv-corpick__name">{c.name}</div>
+                <div className="admin-taxi-fv-corpick__id">{c.id}</div>
               </button>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>2. Fahrzeuge in diesem Mandanten</div>
+        <section className="admin-m-card admin-taxi-fv-veh" aria-label="Fahrzeuge im Mandanten">
+          <div className="admin-taxi-fv-sidelabel">2. Fahrzeuge in diesem Mandanten</div>
           {!companyId ? (
-            <p style={{ color: "#94a3b8" }}>Bitte links ein Unternehmen wählen.</p>
+            <p className="admin-taxi-fv-muted">Bitte links ein Unternehmen wählen.</p>
           ) : dLoading ? (
             <p className="admin-table-sub">Lade Fahrzeuge …</p>
           ) : (
             <>
               <input
+                className="admin-m-inp"
                 value={dQuery}
                 onChange={(e) => setDQuery(e.target.value)}
                 placeholder="Fahrzeug suchen (Kennzeichen, Modell, Fahrer)…"
-                style={{ width: "100%", maxWidth: 420, padding: "8px 10px", marginBottom: 10, border: "1px solid #cbd5e1", borderRadius: 6 }}
+                type="search"
+                style={{ maxWidth: 480, marginBottom: 10 }}
               />
-              <div style={{ overflow: "auto", maxHeight: 400, border: "1px solid #e2e8f0", borderRadius: 6 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div className="admin-taxi-fv-tablewrap">
+                <table className="admin-taxi-fv-table">
                   <thead>
-                    <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
-                      <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Kennzeichen</th>
-                      <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Status</th>
-                      <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Einsatzbereit</th>
+                    <tr>
+                      <th>Kennzeichen</th>
+                      <th>Status</th>
+                      <th>Plattform einsatzbereit</th>
                     </tr>
                   </thead>
                   <tbody>
+                    {filteredVehicles.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="admin-taxi-fv-muted" style={{ padding: "16px 12px" }}>
+                          {dQuery.trim() ? "Keine Fahrzeuge passend zur Suche." : "Keine Fahrzeuge in diesem Mandanten."}
+                        </td>
+                      </tr>
+                    ) : null}
                     {filteredVehicles.map((v) => (
                       <tr
                         key={v.id}
+                        className={sel?.id === v.id ? "is-sel" : ""}
                         onClick={() => setSel(v)}
-                        style={{
-                          cursor: "pointer",
-                          background: sel?.id === v.id ? "#e0f2fe" : "#fff",
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSel(v);
+                          }
                         }}
+                        role="button"
+                        tabIndex={0}
+                        aria-selected={sel?.id === v.id}
                       >
-                        <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>
-                          {v.licensePlate}
-                          <div style={{ fontSize: 11, color: "#64748b" }}>{v.model || "—"}</div>
+                        <td>
+                          <span className="admin-taxi-fv-tdpl">{v.licensePlate}</span>
+                          <div className="admin-taxi-fv-tdsub">{v.model || "—"}</div>
                         </td>
-                        <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>{approvalDe(v.approvalStatus)}</td>
-                        <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>{vEinsatzbereit(v) ? "Ja" : "Nein"}</td>
+                        <td>
+                          <span className={`admin-c-badge ${approvalBadgeClass(v.approvalStatus)}`}>
+                            {approvalDe(v.approvalStatus)}
+                          </span>
+                        </td>
+                        <td>
+                          {vEinsatzbereit(v) ? (
+                            <span className="admin-c-badge admin-c-badge--ok">Ja</span>
+                          ) : (
+                            <span className="admin-c-badge admin-c-badge--warn">Nein</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -348,177 +426,291 @@ export default function TaxiFleetVehiclesPage() {
               </div>
             </>
           )}
-        </div>
+        </section>
       </div>
 
       {sel && companyId && (
-        <div style={{ marginTop: 24, border: "1px solid #e2e8f0", borderRadius: 8, padding: 16, background: "#fff" }}>
-          <h2 style={{ marginTop: 0, fontSize: 18, color: "#0f172a" }}>Fahrzeug-Detail</h2>
-          {detailLoading ? <p>Detail wird geladen…</p> : null}
+        <div className="admin-taxi-fv-detail">
+          {detailLoading && !detail ? (
+            <p className="admin-table-sub">Fahrzeugdetails werden geladen …</p>
+          ) : null}
+
           {detail && detail.vehicle && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, fontSize: 13 }}>
-              <div>
-                <div>
-                  <strong>Kennzeichen</strong> {detail.vehicle.licensePlate}
-                </div>
-                <div>
-                  <strong>Hersteller / Modell</strong> {detail.vehicle.model || "—"}
-                </div>
-                <div>
-                  <strong>Baujahr</strong> {detail.vehicle.modelYear != null ? detail.vehicle.modelYear : "—"}
-                </div>
-                <div>
-                  <strong>Farbe</strong> {detail.vehicle.color || "—"}
-                </div>
-                <div>
-                  <strong>Fahrzeugtyp / Klasse</strong> {vehicleTypeDe(detail.vehicle.vehicleType)} · {legalTypeDe(detail.vehicle.vehicleLegalType)} · {detail.vehicle.vehicleClass}
-                </div>
-                <div>
-                  <strong>Sitzplätze</strong> {detail.vehicle.passengerSeats != null ? detail.vehicle.passengerSeats : "—"}
-                </div>
-                <div>
-                  <strong>Konzession / Ordnungsnr.</strong> {detail.vehicle.konzessionNumber || detail.vehicle.taxiOrderNumber || "—"}
-                </div>
-                <div>
-                  <strong>TÜV (Hauptuntersuchung) gültig bis</strong> {fmtDate(detail.vehicle.nextInspectionDate)}
-                </div>
-                <div>
-                  <strong>Dokumente</strong>{" "}
-                  {Array.isArray(detail.vehicle.vehicleDocuments) && detail.vehicle.vehicleDocuments.length > 0
-                    ? `${detail.vehicle.vehicleDocuments.length} Datei(en)`
-                    : "keine"}
-                </div>
-                <div style={{ color: "#64748b" }}>
-                  Versicherungs-/HUK-Nachweise: bitte hochgeladene PDFs prüfen (kein separates Versicherungs-Flag in der DB).
-                </div>
-                <div>
-                  <strong>approval_status</strong> <code>{detail.vehicle.approvalStatus}</code>
-                </div>
-                <div>
-                  <strong>Plattform: einsatzbereit (Freigabe)</strong> {vEinsatzbereit(detail.vehicle) ? "Ja" : "Nein"}
-                </div>
-                {detail.vehicle.approvalStatus !== "approved" && (
-                  <p style={{ color: "#b45309", marginTop: 8, marginBottom: 0, lineHeight: 1.45 }}>
-                    Solange das Fahrzeug nicht freigegeben ist, kann der zugewiesene Fahrer nicht einsatzbereit werden (Fahrer-Logik
-                    & Zuweisung).
-                  </p>
-                )}
-                <div>
-                  <strong>Zugewiesener Fahrer</strong>{" "}
-                  {detail.assignedDriver
-                    ? `${detail.assignedDriver.firstName} ${detail.assignedDriver.lastName} · ${detail.assignedDriver.email}`
-                    : "—"}
-                </div>
-                <div>
-                  <strong>Letzte Fahrt (Näherung: letzte Fahrt des zugewiesenen Fahrers im Mandanten)</strong>
-                  {detail.lastRide
-                    ? ` ${fmtTs(detail.lastRide.createdAt)} — ${detail.lastRide.status} — ${detail.lastRide.fromLabel} → ${detail.lastRide.toLabel}`
-                    : " —"}
-                </div>
-                {detail.vehicle.rejectionReason ? (
-                  <div style={{ marginTop: 8, color: "#b45309" }}>
-                    <strong>Ablehnungsgrund (Prüfung)</strong> {detail.vehicle.rejectionReason}
-                  </div>
-                ) : null}
-                <div style={{ marginTop: 8, color: "#334155" }}>
-                  <strong>Sperrgrund (Feld)</strong> {detail.vehicle.blockReason || "—"}
-                </div>
-                <div>
-                  <strong>Interne Notiz (Plattform)</strong> {detail.vehicle.adminInternalNote || "—"}
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <strong>Dokumente öffnen (PDF)</strong>
-                  <ul style={{ margin: "4px 0 0 18px" }}>
-                    {(detail.vehicle.vehicleDocuments || []).length === 0 ? (
-                      <li>—</li>
-                    ) : (
-                      (detail.vehicle.vehicleDocuments || []).map((d, i) => (
-                        <li key={d.storageKey + i} style={{ marginBottom: 4 }}>
-                          <button type="button" className="admin-link" onClick={() => void openPdf(detail.vehicle.id, d.storageKey)}>
-                            Anzeigen {i + 1} ({d.storageKey})
-                          </button>
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </div>
-              </div>
-              <div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                  <button
-                    type="button"
-                    style={{ padding: "6px 12px" }}
-                    disabled={!!actBusy}
-                    onClick={() => postAction("/approve", {})}
-                  >
-                    Freigeben
-                  </button>
-                  <button
-                    type="button"
-                    style={{ padding: "6px 12px" }}
-                    disabled={!!actBusy}
-                    onClick={() => {
-                      const r = window.prompt("Ablehnungsgrund (sichtbar für den Partner-Workflow):", "");
-                      if (r == null) return;
-                      postAction("/reject", { reason: r });
-                    }}
-                  >
-                    Ablehnen
-                  </button>
-                  <button
-                    type="button"
-                    style={{ padding: "6px 12px" }}
-                    disabled={!!actBusy}
-                    onClick={() => {
-                      const r = window.prompt("Sperrgrund (Plattform, wird gespeichert):", "Administrativ gesperrt");
-                      if (r == null) return;
-                      postAction("/block", { blockReason: r, adminInternalNote: noteIn || undefined });
-                    }}
-                  >
-                    Sperren
-                  </button>
-                  <button type="button" style={{ padding: "6px 12px" }} disabled={!!actBusy} onClick={() => postAction("/unblock", {})}>
-                    Entsperren
-                  </button>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <label>
-                    Sperrgrund (editierbar)
-                    <br />
-                    <textarea
-                      value={blockReasonIn}
-                      onChange={(e) => setBlockReasonIn(e.target.value)}
-                      rows={2}
-                      style={{ width: "100%", maxWidth: 400, marginTop: 4 }}
-                    />
-                  </label>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <label>
-                    Interne Notiz
-                    <br />
-                    <textarea
-                      value={noteIn}
-                      onChange={(e) => setNoteIn(e.target.value)}
-                      rows={2}
-                      style={{ width: "100%", maxWidth: 400, marginTop: 4 }}
-                    />
-                  </label>
-                </div>
-                <button type="button" style={{ marginTop: 8, padding: "6px 12px" }} disabled={actBusy === "notes"} onClick={patchNotes}>
-                  Notizen / Sperrgrund speichern
-                </button>
-                <h3 style={{ fontSize: 14, marginTop: 20 }}>Audit (Ausschnitt)</h3>
-                <div style={{ maxHeight: 200, overflow: "auto", fontSize: 11, fontFamily: "ui-monospace" }}>
-                  {audit.length === 0 ? "—" : null}
-                  {audit.map((e) => (
-                    <div key={e.id} style={{ borderBottom: "1px solid #f1f5f9", padding: "4px 0" }}>
-                      {fmtTs(e.createdAt)} <strong>{e.action}</strong> {e.subjectId ? e.subjectId : ""}
+            <>
+              <header className="admin-m-hero">
+                <div className="admin-m-hero__bar">
+                  <div className="admin-m-hero__left">
+                    <div className="admin-taxi-fv-eyebrow">
+                      Taxi-Mandant: {detail.companyName || selectedCompanyName || detail.companyId || companyId}
                     </div>
-                  ))}
+                    <h1 className="admin-m-hero__title">{detail.vehicle.licensePlate}</h1>
+                    <p className="admin-taxi-fv-heroline">{detail.vehicle.model || "—"}</p>
+                    <div className="admin-m-hero__badges">
+                      <span className={`admin-c-badge ${approvalBadgeClass(detail.vehicle.approvalStatus)}`} title="Freigabestatus">
+                        {approvalDe(detail.vehicle.approvalStatus)}
+                      </span>
+                      {vEinsatzbereit(detail.vehicle) ? (
+                        <span className="admin-c-badge admin-c-badge--ok" title="Für Matching / Flotte einsatzbereit">
+                          Einsatzbereit: Ja
+                        </span>
+                      ) : (
+                        <span className="admin-c-badge admin-c-badge--warn" title="Für Matching / Flotte einsatzbereit">
+                          Einsatzbereit: Nein
+                        </span>
+                      )}
+                      {vBlocked(detail.vehicle) ? (
+                        <span className="admin-c-badge admin-c-badge--err">Gesperrt / blockiert: Ja</span>
+                      ) : (
+                        <span className="admin-c-badge admin-c-badge--neutral">Gesperrt / blockiert: Nein</span>
+                      )}
+                    </div>
+                    <p className="admin-m-hero__hint" style={{ marginTop: 10, maxWidth: 720 }}>
+                      Sperrgrund (partner-sichtbar) und interne Plattform-Notiz stellen Sie unten ein. Aktionen Freigeben,
+                      Ablehnen, Sperren und Entsperren finden sich oben rechts.
+                    </p>
+                  </div>
+                  <div className="admin-taxi-fv-heroactions admin-m-hero__actions">
+                    <button
+                      type="button"
+                      className="admin-m-btn-bearb"
+                      disabled={!!actBusy}
+                      onClick={() => postAction("/approve", {})}
+                    >
+                      {actBusy === "/approve" ? "…" : "Freigeben"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-c-btn-sec"
+                      disabled={!!actBusy}
+                      onClick={() => {
+                        const r = window.prompt("Ablehnungsgrund (sichtbar im Partner-Workflow):", "");
+                        if (r == null) return;
+                        postAction("/reject", { reason: r });
+                      }}
+                    >
+                      {actBusy === "/reject" ? "…" : "Ablehnen"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-c-btn-sec"
+                      disabled={!!actBusy}
+                      onClick={() => {
+                        const r = window.prompt("Sperrgrund (für Partner sichtbar, wird gespeichert):", "Administrativ gesperrt");
+                        if (r == null) return;
+                        postAction("/block", { blockReason: r, adminInternalNote: noteIn || undefined });
+                      }}
+                    >
+                      {actBusy === "/block" ? "…" : "Sperren"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-c-btn-sec"
+                      disabled={!!actBusy}
+                      onClick={() => postAction("/unblock", {})}
+                    >
+                      {actBusy === "/unblock" ? "…" : "Entsperren"}
+                    </button>
+                  </div>
                 </div>
+              </header>
+
+              <div className="admin-taxi-fv-cards">
+                <section className="admin-panel-card admin-m-card admin-m-card--unified">
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      Fahrzeug — Stammdaten
+                    </span>
+                  </div>
+                  <div className="admin-taxi-fv-kv">
+                    <KvRow label="Kennzeichen">{detail.vehicle.licensePlate}</KvRow>
+                    {detail.vehicle.vin ? <KvRow label="FIN / VIN">{detail.vehicle.vin}</KvRow> : null}
+                    <KvRow label="Hersteller / Modell">{detail.vehicle.model || "—"}</KvRow>
+                    <KvRow label="Baujahr">{detail.vehicle.modelYear != null ? String(detail.vehicle.modelYear) : "—"}</KvRow>
+                    <KvRow label="Farbe">{detail.vehicle.color || "—"}</KvRow>
+                    <KvRow label="Fahrzeugtyp">{vehicleTypeDe(detail.vehicle.vehicleType)}</KvRow>
+                    <KvRow label="Fahrart / Klasse">
+                      {legalTypeDe(detail.vehicle.vehicleLegalType)} · {vehicleClassDe(detail.vehicle.vehicleClass)}
+                    </KvRow>
+                    <KvRow label="Sitzplätze">
+                      {detail.vehicle.passengerSeats != null ? String(detail.vehicle.passengerSeats) : "—"}
+                    </KvRow>
+                    <KvRow label="Konzession / Ordnungsnr.">
+                      {detail.vehicle.konzessionNumber || detail.vehicle.taxiOrderNumber || "—"}
+                    </KvRow>
+                    <KvRow label="TÜV (Hauptuntersuchung) gültig bis" wideValue>
+                      {fmtDate(detail.vehicle.nextInspectionDate)}
+                    </KvRow>
+                  </div>
+                </section>
+
+                <section className="admin-panel-card admin-m-card admin-m-card--unified">
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      Status & Einsatz
+                    </span>
+                  </div>
+                  <div className="admin-taxi-fv-kv">
+                    <KvRow label="Freigabestatus">
+                      <span className={`admin-c-badge ${approvalBadgeClass(detail.vehicle.approvalStatus)}`}>
+                        {approvalDe(detail.vehicle.approvalStatus)}
+                      </span>
+                    </KvRow>
+                    <KvRow label="Plattform einsatzbereit">
+                      {vEinsatzbereit(detail.vehicle) ? (
+                        <span className="admin-c-badge admin-c-badge--ok">Ja (freigegeben)</span>
+                      ) : (
+                        <span className="admin-c-badge admin-c-badge--warn">Nein (nicht freigegeben / gesperrt / Entwurf)</span>
+                      )}
+                    </KvRow>
+                    <KvRow label="Zugewiesener Fahrer" wideValue>
+                      {detail.assignedDriver ? (
+                        <span>
+                          {detail.assignedDriver.firstName} {detail.assignedDriver.lastName}
+                          {detail.assignedDriver.phone ? ` · ${detail.assignedDriver.phone}` : ""} · {detail.assignedDriver.email}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </KvRow>
+                    <KvRow label="Letzte Fahrt (Näherung, Fahrer im Mandant)" wideValue>
+                      {detail.lastRide
+                        ? `${fmtTs(detail.lastRide.createdAt)} — ${detail.lastRide.status} — ${detail.lastRide.fromLabel} → ${detail.lastRide.toLabel}`
+                        : "—"}
+                    </KvRow>
+                    <KvRow label="Aktuell gesperrt / blockiert (Plattform)">
+                      {vBlocked(detail.vehicle) ? (
+                        <span className="admin-c-badge admin-c-badge--err">Ja (gesperrt)</span>
+                      ) : (
+                        <span className="admin-c-badge admin-c-badge--neutral">Nein</span>
+                      )}
+                    </KvRow>
+                    {detail.vehicle.rejectionReason ? (
+                      <KvRow label="Ablehnungsgrund (letzte Prüfung)" wideValue>
+                        <span className="admin-taxi-fv-warn">{detail.vehicle.rejectionReason}</span>
+                      </KvRow>
+                    ) : null}
+                  </div>
+                    {detail.vehicle.approvalStatus !== "approved" ? (
+                      <p className="admin-m-ro-note" style={{ margin: "0 16px 16px" }}>
+                        Ohne Freigabe ist der zugewiesene Fahrer in der Regel <strong>nicht einsatzbereit</strong> (Flottenlogik).
+                      </p>
+                    ) : null}
+                </section>
+
+                <section className="admin-panel-card admin-m-card admin-m-card--unified">
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      Sperre & Admin-Notiz
+                    </span>
+                    <span className="admin-table-sub" style={{ margin: 0, maxWidth: 420, textAlign: "right" }}>
+                      Sperrgrund: für Partner sichtbar. Notiz: nur Plattform-Admin.
+                    </span>
+                  </div>
+                  <div className="admin-m-form" style={{ gridTemplateColumns: "1fr", padding: "12px 14px 0" }}>
+                    <label className="admin-m-lbl">
+                      Sperrgrund (editierbar, partner-sichtbar)
+                      <textarea
+                        className="admin-m-ta"
+                        value={blockReasonIn}
+                        onChange={(e) => setBlockReasonIn(e.target.value)}
+                        rows={3}
+                        style={{ minHeight: 80 }}
+                        placeholder="Kurzgrund für Partner und Operative …"
+                      />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Interne Plattform-Notiz
+                      <textarea
+                        className="admin-m-ta"
+                        value={noteIn}
+                        onChange={(e) => setNoteIn(e.target.value)}
+                        rows={3}
+                        style={{ minHeight: 80 }}
+                        placeholder="Nur für Admins, nicht an Partner…"
+                      />
+                    </label>
+                    <div className="admin-m-form__foot" style={{ borderTop: "1px solid #e8edf4", background: "#fff" }}>
+                      <button
+                        type="button"
+                        className="admin-m-btn-bearb"
+                        disabled={actBusy === "notes"}
+                        onClick={() => void patchNotes()}
+                      >
+                        {actBusy === "notes" ? "…" : "Sperrgrund & Notiz speichern"}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="admin-panel-card admin-m-card admin-m-card--unified">
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      Dokumente
+                    </span>
+                  </div>
+                  <div className="admin-taxi-fv-kv" style={{ padding: "0 16px 16px" }}>
+                    {(!detail.vehicle.vehicleDocuments || detail.vehicle.vehicleDocuments.length === 0) ? (
+                      <div className="admin-error-banner" style={{ margin: 0 }}>
+                        Keine hochgeladenen PDFs — <strong>fehlt</strong>. Bitte prüfen, ob Nachweise in der Warteschlange oder beim
+                        Partner nachgereicht werden sollen.
+                      </div>
+                    ) : null}
+                    <p className="admin-m-sec__hint" style={{ margin: "0 0 6px" }}>
+                      Nachweise (PDF) — <strong>öffnen</strong> prüft die Datei aus dem Mandanten-Upload.
+                    </p>
+                    <ul className="admin-taxi-fv-doclist">
+                      {(detail.vehicle.vehicleDocuments || []).length === 0 ? null : (detail.vehicle.vehicleDocuments || []).map(
+                        (d, i) => (
+                          <li key={d.storageKey + i}>
+                            <button
+                              type="button"
+                              className="admin-taxi-fv-linkbtn"
+                              onClick={() => void openPdf(detail.vehicle.id, d.storageKey)}
+                            >
+                              PDF {i + 1} anzeigen
+                            </button>
+                            <code className="admin-taxi-fv-docmeta">{d.storageKey}</code>
+                            {d.uploadedAt ? (
+                              <span className="admin-taxi-fv-docmeta"> · hochgeladen: {fmtTs(d.uploadedAt)}</span>
+                            ) : null}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                    <p className="admin-taxi-fv-muted" style={{ margin: "8px 0 0" }}>
+                      Versicherungs-/HUK-Flags gibt es in der DB nicht; Bewertung erfolgt inhaltlich über die PDFs.
+                    </p>
+                  </div>
+                </section>
+
+                <section className="admin-panel-card admin-m-card admin-m-card--unified">
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      Verlauf / Audit
+                    </span>
+                    <span className="admin-table-sub" style={{ margin: 0 }}>letzte {audit.length} Einträge</span>
+                  </div>
+                  <div className="admin-taxi-fv-audit" role="log">
+                    {audit.length === 0 ? <div className="admin-taxi-fv-muted">Noch kein Audit-Eintrag zu diesem Fahrzeug.</div> : null}
+                    {audit.map((e) => {
+                      const metaS = fmtAuditMeta(e.meta);
+                      return (
+                        <div className="admin-taxi-fv-audit__row" key={e.id}>
+                          <div className="admin-taxi-fv-audit__t">{fmtTs(e.createdAt)}</div>
+                          <div className="admin-taxi-fv-audit__a">{auditActionDe(e.action)}</div>
+                          {e.subjectType || e.subjectId ? (
+                            <div className="admin-taxi-fv-audit__id">
+                              {e.subjectType || "—"} {e.subjectId ? `· ${e.subjectId}` : ""}
+                            </div>
+                          ) : null}
+                          {metaS ? <pre className="admin-taxi-fv-audit__meta">{metaS}</pre> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
-            </div>
+            </>
           )}
         </div>
       )}
