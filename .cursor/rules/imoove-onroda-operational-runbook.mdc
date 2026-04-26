@@ -30,7 +30,7 @@ Wenn etwas „nicht startet“ oder 401 zeigt: zuerst diese Checkliste, nicht am
 - **`Invalid hook call` / `useState` of null** oft: **doppeltes React** (pnpm/Monorepo) **oder** `useFonts` aus `@expo-google-fonts/inter`.
 - **Stabiler Font-Weg:** in `app/_layout.tsx` **`Font.loadAsync`** (`expo-font`) für die Inter-/Icon-Maps nutzen — **`useFonts` aus `@expo-google-fonts/inter` nicht** im Root-Layout.
 - **Layout:** **Kein** frühes `return null` für die ganze App wegen Fonts — sonst fehlen kurz `UserProvider` etc. (`useUser` bricht). Splash per `SplashScreen.hideAsync()` nach Font-Laden/Fehler; **Navigation/Provider trotzdem sofort mounten** (siehe Kommentar in `_layout.tsx`).
-- **Metro:** `artifacts/mobile/metro.config.js` — `disableHierarchicalLookup`, `extraNodeModules` für `react`/`react-dom`/optional `scheduler`/`use-sync-external-store` beibehalten bei Hook-Problemen.
+- **Metro:** `artifacts/mobile/metro.config.js` — `disableHierarchicalLookup: false` (pnpm: sonst fehlen Transitives unter `.pnpm/…/expo-router/…`); `extraNodeModules` + `resolveRequest` für `react`/`react-dom`/`@expo/metro-runtime`/optional `scheduler`/`use-sync-external-store` beibehalten bei „Invalid hook call“.
 - **Paketdeklaration:** Kern-Runtime (`expo`, `react`, `react-native`, `expo-router`, `expo-font`, RN-Libs, …) in **`artifacts/mobile/package.json` unter `dependencies`**, nicht nur unter `devDependencies`.
 
 ## Bekannte nächste Baustelle (Stand Team)

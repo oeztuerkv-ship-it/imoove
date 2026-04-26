@@ -29,8 +29,11 @@ config.resolver.nodeModulesPaths = [
   path.join(workspaceRoot, "node_modules"),
 ];
 
-/** Kein Auflösen über Eltern-`node_modules` der Workspace-Pfade — typische Duplikat-React-Quelle. */
-config.resolver.disableHierarchicalLookup = true;
+/**
+ * pnpm: Transitives unter `.pnpm/…/expo-router/node_modules/…` wäre mit `true` unsichtbar → Massen-„Unable to resolve“.
+ * Doppel-React: weiter über `extraNodeModules` (react, react-dom, @expo/metro-runtime) erzwingen, nicht über Lookup abschalten.
+ */
+config.resolver.disableHierarchicalLookup = false;
 
 const extra = {};
 const reactDir = resolvePkgDir("react");
@@ -45,6 +48,7 @@ if (schedulerDir) extra.scheduler = schedulerDir;
 
 const useSyncDir = resolvePkgDir("use-sync-external-store");
 if (useSyncDir) extra["use-sync-external-store"] = useSyncDir;
+
 
 /** Subpath-Auflösung auf dieselbe `react`-Installation (zweite Kopie → Invalid hook call). */
 function firstExistingFile(paths) {
