@@ -169,7 +169,10 @@ router.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) =
       });
     }
     const publicRows = rows.map((d) => {
-      const { adminInternalNote: _a, ...rest } = d as typeof d & { adminInternalNote?: string };
+      const { adminInternalNote: _a, readinessOverrideSystem: _o, ...rest } = d as typeof d & {
+        adminInternalNote?: string;
+        readinessOverrideSystem?: boolean;
+      };
       return rest;
     });
     res.json({ ok: true, drivers: publicRows });

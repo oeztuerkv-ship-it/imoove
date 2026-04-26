@@ -33,6 +33,8 @@
 --   044 → fleet_drivers.approval_status
 --   045 → fleet_drivers.suspension_reason, admin_internal_note
 --   046 → fleet_vehicles.admin_internal_note, block_reason, model_year, passenger_seats
+--   047 → ride_support_tickets (Kund*innen-Support pro Fahrt)
+--   048 → fleet_drivers.readiness_override_system (Operator-Tests)
 
 DO $$
 DECLARE
@@ -240,6 +242,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'admin_internal_note'
   ) THEN
     errs := array_append(errs, 'fleet_drivers.admin_internal_note (Migration 045)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'readiness_override_system'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.readiness_override_system (Migration 048)');
   END IF;
 
   IF NOT EXISTS (
@@ -555,6 +564,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'homepage_trust_metrics'
   ) THEN
     errs := array_append(errs, 'table homepage_trust_metrics (Migration 042)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_support_tickets'
+  ) THEN
+    errs := array_append(errs, 'table ride_support_tickets (Migration 047)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

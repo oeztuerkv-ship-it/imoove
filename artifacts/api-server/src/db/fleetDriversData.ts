@@ -40,6 +40,8 @@ export interface FleetDriverListRow {
   suspensionReason: string;
   /** Interne Plattform-Notiz. */
   adminInternalNote: string;
+  /** Operator: Readiness ohne Nachweis-/Fahrzeug-/Mandanten-Gate (Sperre & Freigabe bleiben). */
+  readinessOverrideSystem: boolean;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -75,6 +77,7 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     ),
     suspensionReason: (r as { suspension_reason?: string | null }).suspension_reason ?? "",
     adminInternalNote: (r as { admin_internal_note?: string | null }).admin_internal_note ?? "",
+    readinessOverrideSystem: Boolean((r as { readiness_override_system?: boolean | null }).readiness_override_system),
   };
 }
 
@@ -309,6 +312,22 @@ export async function setFleetDriverApprovalByAdmin(
 }
 
 /** Plattform-Admin: `approval_status` mit Mandantenbindung. */
+/** Plattform-Admin: System-Readiness-Override (Tests trotz fehlender Unterlagen). */
+export async function setFleetDriverReadinessOverrideSystem(
+  companyId: string,
+  driverId: string,
+  enabled: boolean,
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const r = await db
+    .update(fleetDriversTable)
+    .set({ readiness_override_system: enabled, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+
 export async function setFleetDriverApprovalForCompany(
   companyId: string,
   driverId: string,

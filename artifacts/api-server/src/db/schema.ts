@@ -88,6 +88,11 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   suspension_reason: text("suspension_reason").notNull().default(""),
   /** Interne Plattform-Notiz (nur Admin, nicht an Partner ausliefern als fachlichen Status). */
   admin_internal_note: text("admin_internal_note").notNull().default(""),
+  /**
+   * Plattform-Operator: Einsatzbereitschaft trotz fehlender Unterlagen (P-Schein, Fahrzeug, Mandanten-Gate).
+   * Sperre / explizite Nicht-Freigabe / abgelehnt bleiben wirksam.
+   */
+  readiness_override_system: boolean("readiness_override_system").notNull().default(false),
   must_change_password: boolean("must_change_password").notNull().default(true),
   p_schein_number: text("p_schein_number").notNull().default(""),
   p_schein_expiry: date("p_schein_expiry"),
@@ -443,6 +448,27 @@ export const rideEventsTable = pgTable("ride_events", {
   actor_id: text("actor_id"),
   payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Kund*innen-Support (MVP): Ticket + fester Fahrtkontext zum Erfassungszeitpunkt. */
+export const rideSupportTicketsTable = pgTable("ride_support_tickets", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  passenger_id: text("passenger_id").notNull(),
+  category: text("category").notNull(),
+  message: text("message"),
+  status: text("status").notNull().default("open"),
+  internal_note: text("internal_note"),
+  ride_context_snapshot: jsonb("ride_context_snapshot")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  snapshot_schema_version: integer("snapshot_schema_version").notNull().default(1),
+  snapshot_captured_at: timestamp("snapshot_captured_at", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Abrechnungskonto pro Unternehmen/Rolle (Partner, Betreiber, Zahler, Leistungserbringer). */

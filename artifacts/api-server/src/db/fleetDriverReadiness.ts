@@ -163,6 +163,13 @@ function pScheinExpiredOnlyWhenDatePresent(isoOrDate: string | null | undefined)
  * Einsatzbereitschaft: gleiche Kriterien wie in der Fachvorgabe (Mandant + Fahrer + P-Schein + Fahrzeugfreigabe).
  * `gate` = null => Unternehmen nicht ladbare/aktive Zeile => nicht einsatzbereit.
  */
+const READINESS_OVERRIDE_HARD_STOPS: ReadonlySet<DriverReadinessBlockCode> = new Set([
+  "driver_suspended",
+  "driver_account_inactive",
+  "driver_rejected",
+  "driver_not_approved",
+]);
+
 export function computeDriverReadiness(
   gate: CompanyGovernanceGate | null,
   d: Pick<
@@ -173,6 +180,7 @@ export function computeDriverReadiness(
     | "pScheinExpiry"
     | "pScheinDocStorageKey"
     | "suspensionReason"
+    | "readinessOverrideSystem"
   >,
   hasVehicleAssignment: boolean,
   assignedVehicle: FleetVehicleRow | null,
@@ -226,6 +234,10 @@ export function computeDriverReadiness(
     } else {
       blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
     }
+  }
+  if (d.readinessOverrideSystem) {
+    const filtered = blockReasons.filter((b) => READINESS_OVERRIDE_HARD_STOPS.has(b.code));
+    return { ready: filtered.length === 0, blockReasons: filtered };
   }
   return { ready: blockReasons.length === 0, blockReasons };
 }

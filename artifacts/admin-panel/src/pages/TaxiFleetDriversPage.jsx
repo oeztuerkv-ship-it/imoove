@@ -326,7 +326,7 @@ export default function TaxiFleetDriversPage() {
                 </div>
               </div>
               <div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10, alignItems: "center" }}>
                   <button
                     type="button"
                     style={{ padding: "6px 12px" }}
@@ -361,7 +361,41 @@ export default function TaxiFleetDriversPage() {
                   <button type="button" style={{ padding: "6px 12px" }} disabled={!!actBusy} onClick={() => postAction("/activate", {})}>
                     Entsperren / aktivieren
                   </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "6px 12px",
+                      borderColor: "#b45309",
+                      color: "#92400e",
+                      background: detail.readinessOverrideSystem ? "#fef3c7" : "#fffbeb",
+                    }}
+                    disabled={!!actBusy}
+                    title="Nur Plattform-Operator: Fahrer-App behandelt Fahrer als einsatzbereit trotz fehlender Unterlagen (P-Schein, Fahrzeug, Mandanten-Gate). Sperre und explizite Nicht-Freigabe bleiben wirksam."
+                    onClick={() => {
+                      const on = Boolean(detail.readinessOverrideSystem);
+                      const msg = on
+                        ? "System-Readiness-Override für diesen Fahrer ausschalten? Danach gelten wieder alle Nachweis-Regeln."
+                        : [
+                            "System-Readiness-Override aktivieren?",
+                            "",
+                            "Der Fahrer kann in der Fahrer-App als einsatzbereit gelten, obwohl z. B. P-Schein, Fahrzeugfreigabe oder Mandanten-Nachweise fehlen.",
+                            "Gesperrte oder noch nicht freigegebene Fahrer bleiben blockiert.",
+                            "",
+                            "Nur für interne Tests — fachlich nachziehen oder wieder deaktivieren.",
+                          ].join("\n");
+                      if (!window.confirm(msg)) return;
+                      postAction("/readiness-override-system", { enabled: !on });
+                    }}
+                  >
+                    {detail.readinessOverrideSystem ? "System-Override aus" : "System: trotz fehlender Unterlagen einsatzbereit"}
+                  </button>
                 </div>
+                {detail.readinessOverrideSystem ? (
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#92400e", maxWidth: 560 }}>
+                    <strong>Hinweis:</strong> System-Readiness-Override ist aktiv — Einsatzbereitschaft ignoriert fehlende
+                    Unterlagen/Fahrzeug/Mandanten-Gate (nicht: Sperre / keine Plattform-Freigabe).
+                  </p>
+                ) : null}
                 <div style={{ marginTop: 8 }}>
                   <label>
                     Sperrgrund (editierbar)
