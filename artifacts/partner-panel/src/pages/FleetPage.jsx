@@ -105,18 +105,28 @@ function pScheinMeta(isoDate) {
   return { label: formatDateDe(isoDate), tone: "ok" };
 }
 
-function driverStatusMeta(driver) {
-  const rawStatus = String(driver?.approvalStatus ?? driver?.accessStatus ?? "").toLowerCase();
-  if (rawStatus === "pending_approval" || rawStatus === "pending") {
-    return { label: "In Prüfung", tone: "warn" };
+function workflowPill(driver) {
+  const w = driver?.workflow;
+  if (w?.label) {
+    return { label: w.label, tone: workflowKeyToTone(w.key) };
   }
-  if (rawStatus === "blocked" || rawStatus === "rejected" || rawStatus === "suspended") {
-    return { label: "Gesperrt", tone: "danger" };
+  const st = String(driver?.approvalStatus ?? "approved").toLowerCase();
+  if (driver && (!driver.isActive || driver.accessStatus === "suspended")) {
+    return { label: "Gesperrt", tone: "missing" };
   }
-  if (driver?.accessStatus === "active" && driver?.isActive) {
-    return { label: "Aktiv", tone: "ok" };
-  }
-  return { label: "Gesperrt", tone: "danger" };
+  if (st === "rejected") return { label: "Abgelehnt", tone: "missing" };
+  if (st === "in_review") return { label: "In Prüfung", tone: "review" };
+  if (st === "pending") return { label: "Angelegt", tone: "review" };
+  if (st === "approved") return { label: "Freigegeben", tone: "neutral" };
+  return { label: "—", tone: "soft" };
+}
+
+function workflowKeyToTone(key) {
+  if (key === "suspended") return "missing";
+  if (key === "rejected") return "missing";
+  if (key === "in_review" || key === "pending") return "review";
+  if (key === "approved") return "neutral";
+  return "soft";
 }
 
 const VEHICLE_CLASSES = [
@@ -692,7 +702,9 @@ export default function FleetPage() {
                 <tr>
                   <th>Name</th>
                   <th>E-Mail</th>
-                  <th>Status</th>
+                  <th>Fahrer-Status</th>
+                  <th>Einsatzbereit</th>
+                  <th>Hinweis</th>
                   <th>P-Schein bis</th>
                   <th>Aktionen</th>
                 </tr>
@@ -700,15 +712,17 @@ export default function FleetPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5}>Laden …</td>
+                    <td colSpan={7}>Laden …</td>
                   </tr>
                 ) : drivers.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>Keine Fahrer.</td>
+                    <td colSpan={7}>Keine Fahrer.</td>
                   </tr>
                 ) : (
                   drivers.map((d) => {
-                    const statusMeta = driverStatusMeta(d);
+                    const wMeta = workflowPill(d);
+                    const ready = Boolean(d.readiness?.ready);
+                    const firstHint = d.readiness?.blockReasons?.[0]?.message;
                     const pSchein = pScheinMeta(d.pScheinExpiry);
                     return (
                     <tr key={d.id}>
@@ -717,7 +731,23 @@ export default function FleetPage() {
                       </td>
                       <td>{d.email}</td>
                       <td>
-                        <span className={`partner-pill partner-pill--${statusMeta.tone}`}>{statusMeta.label}</span>
+                        <span className={`partner-pill partner-pill--${wMeta.tone}`}>{wMeta.label}</span>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            ready ? "partner-pill partner-pill--ok" : "partner-pill partner-pill--missing"
+                          }
+                        >
+                          {ready ? "Ja" : "Nein"}
+                        </span>
+                      </td>
+                      <td
+                        className="partner-muted"
+                        style={{ maxWidth: 280, fontSize: 12, lineHeight: 1.4 }}
+                        title={d.readiness?.blockReasons?.map((b) => b.message).join("\n") || ""}
+                      >
+                        {ready ? "—" : firstHint || "Nicht einsatzbereit."}
                       </td>
                       <td>
                         <span className={`partner-pill partner-pill--${pSchein.tone}`}>{pSchein.label}</span>

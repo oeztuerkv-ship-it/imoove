@@ -51,6 +51,7 @@ import { findActivePanelUserProfileById } from "../db/panelAuthData";
 import type { PanelRole } from "../lib/panelJwt";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { resolveEffectivePanelModules } from "../domain/panelModules";
+import { getPanelFleetDriverViews } from "../db/fleetDriverReadiness";
 
 const router: IRouter = Router();
 
@@ -154,7 +155,7 @@ router.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) =
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.read")) return;
     const onlyExpiring =
       String((req.query as { pScheinExpiring?: string }).pScheinExpiring ?? "") === "1";
-    let rows = await listFleetDriversForCompany(ctx.claims.companyId);
+    let rows = await getPanelFleetDriverViews(ctx.claims.companyId);
     if (onlyExpiring) {
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);

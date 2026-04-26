@@ -1528,7 +1528,7 @@ export default function DriverDashboard() {
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
 
-  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h } = useDriver();
+  const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit } = useDriver();
   const { history } = useRide();
   const {
     requests,
@@ -1700,8 +1700,17 @@ export default function DriverDashboard() {
   }, [appRides]);
 
   const handleAccept = async (id: string) => {
+    if (!driver) return;
     if (!driverId.trim()) {
       Alert.alert("Annahme nicht möglich", "Bitte erneut als Fahrer anmelden (keine Fahrer-ID in der Sitzung).");
+      return;
+    }
+    if (!driver.einsatzbereit) {
+      Alert.alert(
+        "Noch nicht einsatzbereit",
+        driver.notFreigegebenMessage ||
+          "Sie sind noch nicht für den Auftragsmarkt freigegeben. Bitte wenden Sie sich an Ihr Unternehmen.",
+      );
       return;
     }
     try {
@@ -1919,20 +1928,70 @@ export default function DriverDashboard() {
               <Text style={styles.headerName}>{driver.name}</Text>
               <Text style={styles.headerSub}>{driver.car} · {driver.plate}</Text>
             </View>
-          </View>
-          <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setAvailable(!driver.isAvailable); }}
-            style={[styles.availToggle, { backgroundColor: driver.isAvailable ? "#16A34A" : "#374151" }]}
+        </View>
+        <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (!driver.einsatzbereit) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                void refreshEinsatzbereit();
+                Alert.alert(
+                  "Noch nicht einsatzbereit",
+                  driver.notFreigegebenMessage ||
+                    "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
+                );
+                return;
+              }
+              setAvailable(!driver.isAvailable);
+            }}
+            style={[
+              styles.availToggle,
+              {
+                backgroundColor: !driver.einsatzbereit ? "#1F2937" : driver.isAvailable ? "#16A34A" : "#374151",
+                opacity: driver.einsatzbereit ? 1 : 0.85,
+              },
+            ]}
           >
-            <View style={[styles.availDot, { backgroundColor: driver.isAvailable ? "#4ADE80" : "#6B7280" }]} />
+            <View style={[styles.availDot, { backgroundColor: driver.einsatzbereit && driver.isAvailable ? "#4ADE80" : "#6B7280" }]} />
             <View>
-              <Text style={styles.availLabel}>{driver.isAvailable ? "ONLINE" : "OFFLINE"}</Text>
-              <Text style={styles.availSub}>{driver.isAvailable ? "Aufträge annehmen" : "Keine Aufträge"}</Text>
+              <Text style={styles.availLabel}>
+                {!driver.einsatzbereit ? "GESPERRT" : driver.isAvailable ? "ONLINE" : "OFFLINE"}
+              </Text>
+              <Text style={styles.availSub} numberOfLines={2}>
+                {!driver.einsatzbereit
+                  ? "Noch nicht freigegeben"
+                  : driver.isAvailable
+                    ? "Aufträge annehmen"
+                    : "Keine Aufträge"}
+              </Text>
             </View>
-            <Feather name={driver.isAvailable ? "toggle-right" : "toggle-left"} size={22} color={driver.isAvailable ? "#4ADE80" : "#9CA3AF"} />
+            <Feather
+              name={driver.einsatzbereit && driver.isAvailable ? "toggle-right" : "toggle-left"}
+              size={22}
+              color={driver.einsatzbereit && driver.isAvailable ? "#4ADE80" : "#9CA3AF"}
+            />
           </Pressable>
         </View>
       </View>
+
+      {!driver.einsatzbereit && (
+        <View
+          style={{
+            backgroundColor: "#1E293B",
+            borderBottomWidth: 1,
+            borderBottomColor: "#F59E0B55",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+          }}
+        >
+          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#FBBF24", marginBottom: 4 }}>
+            Auftragsmarkt gesperrt
+          </Text>
+          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#E2E8F0", lineHeight: 19 }}>
+            {driver.notFreigegebenMessage}
+          </Text>
+        </View>
+      )}
 
       {/* Content */}
       <View style={{ flex: 1 }}>
@@ -1945,7 +2004,15 @@ export default function DriverDashboard() {
           />
         ) : (
           <>
-            {activeTab === "uebersicht" && <TabUebersicht pendingRequests={pendingRequests} onAccept={handleAccept} onReject={handleReject} driverPos={driverPos} isAvailable={driver.isAvailable} />}
+            {activeTab === "uebersicht" && (
+              <TabUebersicht
+                pendingRequests={pendingRequests}
+                onAccept={handleAccept}
+                onReject={handleReject}
+                driverPos={driverPos}
+                isAvailable={driver.einsatzbereit && driver.isAvailable}
+              />
+            )}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
                 <View style={styles.ordersHeaderRow}>
@@ -1962,7 +2029,11 @@ export default function DriverDashboard() {
                   <View style={styles.emptyCenter}>
                     <MaterialCommunityIcons name="taxi" size={56} color="#9CA3AF" />
                     <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine Aufträge</Text>
-                    <Text style={[styles.emptySub, { color: "#6B7280" }]}>Warte auf neue Anfragen...</Text>
+                    <Text style={[styles.emptySub, { color: "#6B7280", textAlign: "center" }]}>
+                      {!driver.einsatzbereit
+                        ? "Markt gesperrt, bis Sie einsatzbereit sind. Nutzen Sie die Meldung oben oder fragen Sie Ihr Unternehmen."
+                        : "Warte auf neue Anfragen…"}
+                    </Text>
                   </View>
                 ) : (
                   <>

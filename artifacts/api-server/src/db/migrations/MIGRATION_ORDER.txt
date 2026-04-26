@@ -54,6 +54,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Krankenkassen-Panel V1: Kostenstellen + Transportschein-Metadaten      → 041_insurer_panel_cost_centers_and_transport.sql
   Homepage-CMS Module FAQ + How + Trust                                 → 042_homepage_modules_faq_how_trust.sql
   Homepage-Hinweis-Typen (info/success/warning/important, Legacy neutral) → 043_homepage_placeholder_hint_types.sql
+  Taxi fleet_drivers.approval_status (Einsatzbereitschaft / Plattform-Freigabe)     → 044_fleet_drivers_approval_status.sql
 
 Nach Migrationen Schema prüfen:
 

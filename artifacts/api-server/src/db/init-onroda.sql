@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   session_version INTEGER NOT NULL DEFAULT 1,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   access_status TEXT NOT NULL DEFAULT 'active',
+  approval_status TEXT NOT NULL DEFAULT 'approved',
   must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
   p_schein_number TEXT NOT NULL DEFAULT '',
   p_schein_expiry DATE,
@@ -242,6 +243,7 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended')),
+  CONSTRAINT fleet_drivers_approval_status_chk CHECK (approval_status IN ('pending', 'in_review', 'approved', 'rejected')),
   CONSTRAINT fleet_drivers_vehicle_legal_type_chk CHECK (vehicle_legal_type IN ('taxi', 'rental_car')),
   CONSTRAINT fleet_drivers_vehicle_class_chk CHECK (vehicle_class IN ('standard', 'xl', 'wheelchair'))
 );

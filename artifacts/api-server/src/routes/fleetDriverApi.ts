@@ -2,10 +2,12 @@ import { Router, type IRouter, type Response } from "express";
 import { isPostgresConfigured } from "../db/client";
 import {
   findFleetDriverInCompany,
+  fleetDriverTableRowToList,
   touchFleetDriverHeartbeat,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
+import { deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
 import { listRides } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
@@ -29,8 +31,19 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     res.status(401).json({ error: "not_found" });
     return;
   }
+  const listRow = fleetDriverTableRowToList(row);
+  const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+  const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
+  const driverWorkflow = deriveDriverWorkflowLabel(listRow);
   res.json({
     ok: true,
+    einsatzbereit,
+    notFreigegebenMessage:
+      einsatzbereit
+        ? null
+        : "Noch nicht freigegeben oder Voraussetzungen unvollständig — bitte wenden Sie sich ggf. an Ihr Unternehmen oder an Onroda.",
+    driverWorkflow,
+    ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
     driver: {
       id: row.id,
       companyId: row.company_id,
@@ -38,6 +51,7 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       firstName: row.first_name,
       lastName: row.last_name,
       accessStatus: row.access_status,
+      approvalStatus: listRow.approvalStatus,
       mustChangePassword: row.must_change_password,
       vehicleLegalType: row.vehicle_legal_type,
       vehicleClass: row.vehicle_class,
@@ -57,12 +71,29 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       res.status(401).json({ error: "not_found" });
       return;
     }
+    const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+    if ("error" in readinessR) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    if (!readinessR.ready) {
+      res.json({
+        ok: true,
+        rides: [],
+        einsatzbereit: false,
+        readiness: readinessR,
+        message:
+          "Noch nicht freigegeben oder Voraussetzungen unvollständig. Aufträge sind gesperrt, bis alles erfüllt ist.",
+      });
+      return;
+    }
     /** Gleiche Quelle wie bei `PATCH /rides/:id/status` (Annahme): Zuweisung Fahrer↔Fahrzeug, sonst Fallback Fahrerprofil. */
     const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
     if (!capability?.vehicleLegalType) {
       res.json({
         ok: true,
         rides: [],
+        einsatzbereit: false,
         message:
           "Kein fahrbereites Fahrzeug: Zuweisung prüfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge).",
       });
@@ -101,6 +132,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json({
       ok: true,
+      einsatzbereit: true,
       rides: withCodes,
       message:
         withCodes.length === 0
@@ -124,11 +156,28 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       res.status(401).json({ error: "not_found" });
       return;
     }
+    const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+    if ("error" in readinessR) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    if (!readinessR.ready) {
+      res.json({
+        ok: true,
+        rides: [],
+        einsatzbereit: false,
+        readiness: readinessR,
+        message:
+          "Noch nicht freigegeben oder Voraussetzungen unvollständig. Aufträge sind gesperrt, bis alles erfüllt ist.",
+      });
+      return;
+    }
     const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
     if (!capability?.vehicleLegalType) {
       res.json({
         ok: true,
         rides: [],
+        einsatzbereit: false,
         message:
           "Kein fahrbereites Fahrzeug: Zuweisung prüfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge).",
       });
@@ -146,6 +195,7 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json({
       ok: true,
+      einsatzbereit: true,
       rides: withCodes,
       message: withCodes.length === 0 ? "Keine Vorbestellungen im Planer" : null,
     });

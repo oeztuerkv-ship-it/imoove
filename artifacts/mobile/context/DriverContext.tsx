@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { fetchErrorMessage, getApiBaseUrl } from "@/utils/apiBase";
+import { AppState } from "react-native";
+import { getApiBaseUrl } from "@/utils/apiBase";
 
 const STORAGE_KEY = "@Onroda_driver_session";
 const DRIVER_HEARTBEAT_MS = 45_000;
@@ -37,6 +38,59 @@ function fleetLoginUserMessage(errorCode: string): string {
   }
 }
 
+const DEFAULT_NICHT_FREI_MSG =
+  "Noch nicht freigegeben — Auftragsmarkt gesperrt. Bitte Ihr Unternehmen oder Onroda kontaktieren, bis alle Voraussetzungen erfüllt sind.";
+
+/** Antwort `GET /fleet-driver/v1/me` → Profil (Token bleibt aus `prev`). */
+function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {
+  const d = (me.driver ?? {}) as Record<string, unknown>;
+  const einsatzbereit = me.einsatzbereit === true;
+  const notFreigegebenMessage =
+    typeof me.notFreigegebenMessage === "string" && me.notFreigegebenMessage.trim()
+      ? me.notFreigegebenMessage.trim()
+      : einsatzbereit
+        ? ""
+        : DEFAULT_NICHT_FREI_MSG;
+  const accessStatus = String(d.accessStatus ?? "");
+  return {
+    ...prev,
+    id: String(d.id ?? prev.id ?? ""),
+    companyId: String(d.companyId ?? prev.companyId ?? ""),
+    name:
+      `${String(d.firstName ?? "").trim()} ${String(d.lastName ?? "").trim()}`.trim() ||
+      prev.name,
+    email: String(d.email ?? prev.email ?? "").trim().toLowerCase(),
+    mustChangePassword: Boolean(d.mustChangePassword ?? prev.mustChangePassword),
+    blockedUntil: accessStatus === "active" ? null : prev.blockedUntil,
+    einsatzbereit,
+    isAvailable: einsatzbereit ? prev.isAvailable : false,
+    notFreigegebenMessage,
+  };
+}
+
+function patchStoredDriver(next: DriverProfile) {
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+}
+
+function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
+  const p = parsed as Partial<DriverProfile> & Record<string, unknown>;
+  return {
+    id: String(p.id ?? ""),
+    companyId: String(p.companyId ?? ""),
+    name: String(p.name ?? "Fahrer"),
+    email: String(p.email ?? "").trim().toLowerCase(),
+    authToken: String(p.authToken ?? ""),
+    mustChangePassword: Boolean(p.mustChangePassword),
+    plate: String(p.plate ?? "—"),
+    car: String(p.car ?? "—"),
+    rating: typeof p.rating === "number" && Number.isFinite(p.rating) ? p.rating : 5,
+    isAvailable: Boolean(p.isAvailable),
+    blockedUntil: typeof p.blockedUntil === "string" || p.blockedUntil === null ? (p.blockedUntil as string | null) : null,
+    einsatzbereit: p.einsatzbereit === true,
+    notFreigegebenMessage: typeof p.notFreigegebenMessage === "string" ? p.notFreigegebenMessage : "",
+  };
+}
+
 export interface DriverProfile {
   id: string;
   companyId: string;
@@ -49,6 +103,9 @@ export interface DriverProfile {
   rating: number;
   isAvailable: boolean;
   blockedUntil: string | null;
+  /** Wahr, wenn alle Einsatzbereit-Bedingungen erfüllt sind (siehe API `/fleet-driver/v1/me`). */
+  einsatzbereit: boolean;
+  notFreigegebenMessage: string;
 }
 
 interface DriverContextValue {
@@ -57,6 +114,7 @@ interface DriverContextValue {
   isBlocked: boolean;
   blockedUntilDate: Date | null;
   driver: DriverProfile | null;
+  refreshEinsatzbereit: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
@@ -71,6 +129,7 @@ const DriverContext = createContext<DriverContextValue>({
   isBlocked: false,
   blockedUntilDate: null,
   driver: null,
+  refreshEinsatzbereit: async () => {},
   login: async () => ({ ok: false, error: "Anmeldung fehlgeschlagen." }),
   changePassword: async () => ({ ok: false, error: "Passwortänderung fehlgeschlagen." }),
   logout: async () => {},
@@ -90,33 +149,26 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       .then(async (raw) => {
         if (!raw || cancelled) return;
         try {
-          const parsed: DriverProfile = JSON.parse(raw);
-          if (!parsed?.authToken) {
+          const base = normalizeProfileFromStorage(JSON.parse(raw));
+          if (!base.authToken) {
             return;
           }
           const res = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
-            headers: { Authorization: `Bearer ${parsed.authToken}` },
+            headers: { Authorization: `Bearer ${base.authToken}` },
           });
           if (!res.ok) {
             await AsyncStorage.removeItem(STORAGE_KEY);
             return;
           }
-          const data = await res.json().catch(() => ({}));
+          const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
           if (!data?.ok || !data?.driver) {
             await AsyncStorage.removeItem(STORAGE_KEY);
             return;
           }
           if (!cancelled) {
-            const d = data.driver as Record<string, unknown>;
-            setDriver({
-              ...parsed,
-              id: String(d.id ?? parsed.id ?? ""),
-              companyId: String(d.companyId ?? parsed.companyId ?? ""),
-              name: `${String(d.firstName ?? "").trim()} ${String(d.lastName ?? "").trim()}`.trim() || parsed.name,
-              email: String(d.email ?? parsed.email ?? ""),
-              mustChangePassword: Boolean(d.mustChangePassword),
-              blockedUntil: d.accessStatus === "active" ? null : parsed.blockedUntil,
-            });
+            const next = mergeFleetDriverMeIntoProfile(base, data);
+            setDriver(next);
+            patchStoredDriver(next);
           }
         } catch {
           await AsyncStorage.removeItem(STORAGE_KEY);
@@ -163,21 +215,39 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: userFacing };
       }
       const d = data.driver as Record<string, unknown>;
+      const token = String(data.token);
       const profile: DriverProfile = {
         id: String(d.id ?? ""),
         companyId: String(d.companyId ?? ""),
         name: `${String(d.firstName ?? "").trim()} ${String(d.lastName ?? "").trim()}`.trim() || "Fahrer",
         email: String(d.email ?? "").trim().toLowerCase(),
-        authToken: String(data.token),
+        authToken: token,
         mustChangePassword: Boolean(data.passwordChangeRequired ?? d.mustChangePassword),
         plate: "—",
         car: "—",
         rating: 5,
-        isAvailable: true,
+        isAvailable: false,
         blockedUntil: null,
+        einsatzbereit: false,
+        notFreigegebenMessage: DEFAULT_NICHT_FREI_MSG,
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      try {
+        const meRes = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (meRes.ok) {
+          const meData = (await meRes.json().catch(() => ({}))) as Record<string, unknown>;
+          if (meData?.ok && meData?.driver) {
+            const enriched = mergeFleetDriverMeIntoProfile(profile, meData);
+            setDriver(enriched);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
+          }
+        }
+      } catch {
+        /* Offline /v1/me — Profil bleibt ohne Einsatzbereit-Details */
+      }
       const mustChangePassword = Boolean(data.passwordChangeRequired ?? d.mustChangePassword);
       return { ok: true, mustChangePassword };
     } catch (error) {
@@ -224,7 +294,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         setDriver((prev) => {
           if (!prev) return prev;
           const updated = { ...prev, mustChangePassword: false };
-          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+          patchStoredDriver(updated);
           return updated;
         });
         return { ok: true };
@@ -253,11 +323,35 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, [driver?.authToken]);
 
+  const refreshEinsatzbereit = useCallback(async () => {
+    const token = driver?.authToken;
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/fleet-driver/v1/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!data?.ok || !data?.driver) return;
+      setDriver((prev) => {
+        if (!prev) return prev;
+        const next = mergeFleetDriverMeIntoProfile(prev, data);
+        patchStoredDriver(next);
+        return next;
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [driver?.authToken]);
+
   const setAvailable = useCallback((v: boolean) => {
     setDriver((prev) => {
       if (!prev) return prev;
+      if (v && !prev.einsatzbereit) {
+        return prev;
+      }
       const updated = { ...prev, isAvailable: v };
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      patchStoredDriver(updated);
       return updated;
     });
   }, []);
@@ -267,13 +361,35 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     setDriver((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, blockedUntil: until, isAvailable: false };
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+      patchStoredDriver(updated);
       return updated;
     });
   }, []);
 
   const blockedUntilDate = driver?.blockedUntil ? new Date(driver.blockedUntil) : null;
   const isBlocked = blockedUntilDate !== null && blockedUntilDate > new Date();
+
+  useEffect(() => {
+    if (!driver?.authToken) return;
+    if (driver.einsatzbereit) return;
+    if (!driver.isAvailable) return;
+    setDriver((prev) => {
+      if (!prev || prev.einsatzbereit || !prev.isAvailable) return prev;
+      const updated = { ...prev, isAvailable: false };
+      patchStoredDriver(updated);
+      return updated;
+    });
+  }, [driver?.einsatzbereit, driver?.isAvailable, driver?.authToken]);
+
+  useEffect(() => {
+    if (!driver?.authToken) return;
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") {
+        void refreshEinsatzbereit();
+      }
+    });
+    return () => sub.remove();
+  }, [driver?.authToken, refreshEinsatzbereit]);
 
   useEffect(() => {
     if (!driver?.authToken) return;
@@ -294,6 +410,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         isBlocked,
         blockedUntilDate,
         driver,
+        refreshEinsatzbereit,
         login,
         changePassword,
         logout,

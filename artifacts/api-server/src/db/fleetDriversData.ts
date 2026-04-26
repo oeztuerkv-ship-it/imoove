@@ -4,6 +4,7 @@ import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
 
 export type FleetDriverAccessStatus = "active" | "suspended";
+export type FleetDriverApprovalStatus = "pending" | "in_review" | "approved" | "rejected";
 export type FleetVehicleLegalType = "taxi" | "rental_car";
 export type FleetVehicleClass = "standard" | "xl" | "wheelchair";
 
@@ -34,9 +35,18 @@ export interface FleetDriverListRow {
   lastHeartbeatAt: string | null;
   createdAt: string;
   updatedAt: string;
+  approvalStatus: FleetDriverApprovalStatus;
 }
 
-function rowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow {
+export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
+  const t = String(raw ?? "")
+    .toLowerCase()
+    .trim();
+  if (t === "in_review" || t === "pending" || t === "rejected" || t === "approved") return t;
+  return "approved";
+}
+
+export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow {
   return {
     id: r.id,
     companyId: r.company_id,
@@ -56,7 +66,14 @@ function rowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow
     lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
     createdAt: r.created_at.toISOString(),
     updatedAt: r.updated_at.toISOString(),
+    approvalStatus: normalizeFleetDriverApproval(
+      (r as { approval_status?: string | null }).approval_status ?? "approved",
+    ),
   };
+}
+
+function rowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow {
+  return fleetDriverTableRowToList(r);
 }
 
 export async function getCompanyKind(companyId: string): Promise<string | null> {
@@ -176,6 +193,7 @@ export async function insertFleetDriver(input: {
     vehicle_class: input.vehicleClass ?? "standard",
     is_active: true,
     access_status: "active",
+    approval_status: "pending",
     session_version: 1,
   });
   return { ok: true, id };
@@ -266,6 +284,22 @@ export async function activateFleetDriver(id: string, companyId: string): Promis
     .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)))
     .returning({ id: fleetDriversTable.id });
   return r.length > 0;
+}
+
+export async function setFleetDriverApprovalByAdmin(
+  driverId: string,
+  nextStatus: FleetDriverApprovalStatus,
+): Promise<{ ok: true } | { ok: false; error: "not_found" | "invalid_status" }> {
+  const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
+  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "not_found" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ approval_status: nextStatus, updated_at: new Date() })
+    .where(eq(fleetDriversTable.id, driverId))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
 }
 
 export async function touchFleetDriverLogin(id: string): Promise<void> {

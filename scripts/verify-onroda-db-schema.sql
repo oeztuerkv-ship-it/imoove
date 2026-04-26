@@ -30,6 +30,7 @@
 --   040 → homepage_content (services_*, manifest_*)
 --   041 → insurer_cost_centers, insurer_ride_transport_documents
 --   042 → homepage_faq_items, homepage_how_steps, homepage_trust_metrics
+--   044 → fleet_drivers.approval_status
 
 DO $$
 DECLARE
@@ -216,6 +217,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'vehicle_class'
   ) THEN
     errs := array_append(errs, 'fleet_drivers.vehicle_class (Migration 027)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'approval_status'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.approval_status (Migration 044)');
   END IF;
 
   IF NOT EXISTS (

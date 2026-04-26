@@ -29,6 +29,7 @@ import {
   getFleetDriverCapability,
   isRideCompatibleWithCapability,
 } from "../db/fleetMatchingData";
+import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 
@@ -551,6 +552,15 @@ router.patch("/rides/:id/status", async (req, res, next) => {
         res.status(409).json({
           error: "ride_company_mismatch",
           message: "Diese Fahrt gehört zu einem anderen Unternehmen.",
+        });
+        return;
+      }
+      const readinessR = await getFleetDriverReadinessById(driverId, capabilityCompanyId);
+      if (!("error" in readinessR) && !readinessR.ready) {
+        res.status(409).json({
+          error: "driver_not_einsatzbereit",
+          blockReasons: readinessR.blockReasons,
+          message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen).",
         });
         return;
       }

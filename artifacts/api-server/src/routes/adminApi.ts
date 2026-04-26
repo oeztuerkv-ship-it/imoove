@@ -138,6 +138,7 @@ import {
   listPendingFleetVehiclesForAdmin,
   setFleetVehicleApprovalByAdmin,
 } from "../db/fleetVehiclesData";
+import { setFleetDriverApprovalByAdmin, type FleetDriverApprovalStatus } from "../db/fleetDriversData";
 import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
@@ -3074,6 +3075,41 @@ adminJson.get("/fleet-vehicles/:vehicleId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, vehicle: row.vehicle, companyName: row.companyName });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Fahrer-Freigabestatus (Plattform) – wie Fahrzeuge, ohne Partner-UI-Pflicht in diesem Schritt. */
+adminJson.post("/fleet-drivers/:driverId/approval", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    if (!driverId) {
+      res.status(400).json({ error: "driver_id_required" });
+      return;
+    }
+    const raw = typeof (req.body as { status?: unknown })?.status === "string"
+      ? (req.body as { status: string }).status.trim().toLowerCase()
+      : "";
+    const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
+    if (!allowed.includes(raw as FleetDriverApprovalStatus)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const r = await setFleetDriverApprovalByAdmin(driverId, raw as FleetDriverApprovalStatus);
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

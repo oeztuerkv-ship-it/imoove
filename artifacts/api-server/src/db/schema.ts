@@ -82,6 +82,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   session_version: integer("session_version").notNull().default(1),
   is_active: boolean("is_active").notNull().default(true),
   access_status: text("access_status").notNull().default("active"),
+  /** Plattform-Freigabe: pending | in_review | approved | rejected (Login bleibt möglich). */
+  approval_status: text("approval_status").notNull().default("approved"),
   must_change_password: boolean("must_change_password").notNull().default(true),
   p_schein_number: text("p_schein_number").notNull().default(""),
   p_schein_expiry: date("p_schein_expiry"),
