@@ -16,6 +16,10 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
+  "optionalDependencies": {
+    "lightningcss-darwin-arm64": "1.32.0",
+    "lightningcss-linux-x64-gnu": "1.32.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@types/react": "^19.2.14",

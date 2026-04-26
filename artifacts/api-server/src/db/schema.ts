@@ -84,6 +84,10 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   access_status: text("access_status").notNull().default("active"),
   /** Plattform-Freigabe: pending | in_review | approved | rejected (Login bleibt möglich). */
   approval_status: text("approval_status").notNull().default("approved"),
+  /** Von Admin gesetzter Grund bei Sperre (MVP, Anzeige/Export). */
+  suspension_reason: text("suspension_reason").notNull().default(""),
+  /** Interne Plattform-Notiz (nur Admin, nicht an Partner ausliefern als fachlichen Status). */
+  admin_internal_note: text("admin_internal_note").notNull().default(""),
   must_change_password: boolean("must_change_password").notNull().default(true),
   p_schein_number: text("p_schein_number").notNull().default(""),
   p_schein_expiry: date("p_schein_expiry"),

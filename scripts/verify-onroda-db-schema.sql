@@ -31,6 +31,7 @@
 --   041 → insurer_cost_centers, insurer_ride_transport_documents
 --   042 → homepage_faq_items, homepage_how_steps, homepage_trust_metrics
 --   044 → fleet_drivers.approval_status
+--   045 → fleet_drivers.suspension_reason, admin_internal_note
 
 DO $$
 DECLARE
@@ -224,6 +225,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'approval_status'
   ) THEN
     errs := array_append(errs, 'fleet_drivers.approval_status (Migration 044)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'suspension_reason'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.suspension_reason (Migration 045)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'admin_internal_note'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.admin_internal_note (Migration 045)');
   END IF;
 
   IF NOT EXISTS (

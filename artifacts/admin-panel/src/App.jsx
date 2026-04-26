@@ -30,6 +30,7 @@ import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
 import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
 import HomepageContentPage from "./pages/HomepageContentPage.jsx";
 import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
+import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -158,6 +159,10 @@ const PAGE_META = {
   companies: {
     title: "Unternehmen",
     subtitle: "Mandanten, Module und operative Priorität",
+  },
+  "taxi-fleet-drivers": {
+    title: "Taxi · Fahrer",
+    subtitle: "Plattform-Admin: Fahrer pro Taxi-Mandant prüfen, freigeben, sperren (Audit im Mandantenkontext)",
   },
   "company-registration-requests": {
     title: "Registrierungsanfragen",
@@ -463,6 +468,8 @@ export default function App() {
             onInitialOpenCompanyConsumed={() => setCompaniesInitialOpenId(null)}
           />
         );
+      case "taxi-fleet-drivers":
+        return <TaxiFleetDriversPage />;
       case "support-inbox":
         return <SupportInboxPage />;
       case "fleet-vehicles-review":

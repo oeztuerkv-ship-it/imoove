@@ -173,3 +173,70 @@ export async function getFleetDriverReadinessById(
   const { has, approval } = vehicleApprovalForDriver(listRow.id, ass, veh);
   return computeDriverReadiness(gate, listRow, has, approval);
 }
+
+function assignedVehicleMeta(
+  driverId: string,
+  assignRows: { driverId: string; vehicleId: string }[],
+  vehicles: FleetVehicleRow[],
+): { id: string; licensePlate: string; model: string; approvalStatus: string } | null {
+  const a = assignRows.find((x) => x.driverId === driverId);
+  if (!a) return null;
+  const v = vehicles.find((v0) => v0.id === a.vehicleId);
+  if (!v) return null;
+  return {
+    id: v.id,
+    licensePlate: v.licensePlate,
+    model: v.model,
+    approvalStatus: v.approvalStatus,
+  };
+}
+
+/** Plattform-Admin: Fahrerliste inkl. Zuweisung & Notizen; gleiche Readiness-Logik wie Panel. */
+export type AdminTaxiFleetDriverRow = PanelFleetDriverView & {
+  assignedVehicle: { id: string; licensePlate: string; model: string; approvalStatus: string } | null;
+  pScheinDocPresent: boolean;
+  suspensionReason: string;
+  adminInternalNote: string;
+};
+
+export async function listAdminTaxiFleetDriverRows(companyId: string): Promise<AdminTaxiFleetDriverRow[]> {
+  const [views, ass, veh] = await Promise.all([
+    getPanelFleetDriverViews(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId),
+  ]);
+  return views.map((v) => ({
+    ...v,
+    assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
+    pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
+    suspensionReason: v.suspensionReason,
+    adminInternalNote: v.adminInternalNote,
+  }));
+}
+
+export async function getAdminTaxiFleetDriverDetail(
+  companyId: string,
+  driverId: string,
+): Promise<AdminTaxiFleetDriverRow | null> {
+  const r = await findFleetDriverInCompany(driverId, companyId);
+  if (!r) return null;
+  const listRow = fleetDriverTableRowToList(r);
+  const [gate, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId),
+  ]);
+  const { has, approval } = vehicleApprovalForDriver(listRow.id, ass, veh);
+  const view: PanelFleetDriverView = {
+    ...listRow,
+    workflow: deriveDriverWorkflowLabel(listRow),
+    readiness: computeDriverReadiness(gate, listRow, has, approval),
+  };
+  return {
+    ...view,
+    assignedVehicle: assignedVehicleMeta(listRow.id, ass, veh),
+    pScheinDocPresent: !pScheinDocMissing(listRow.pScheinDocStorageKey),
+    suspensionReason: listRow.suspensionReason,
+    adminInternalNote: listRow.adminInternalNote,
+  };
+}

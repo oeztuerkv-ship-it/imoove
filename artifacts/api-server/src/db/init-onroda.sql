@@ -232,6 +232,8 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   access_status TEXT NOT NULL DEFAULT 'active',
   approval_status TEXT NOT NULL DEFAULT 'approved',
+  suspension_reason TEXT NOT NULL DEFAULT '',
+  admin_internal_note TEXT NOT NULL DEFAULT '',
   must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
   p_schein_number TEXT NOT NULL DEFAULT '',
   p_schein_expiry DATE,

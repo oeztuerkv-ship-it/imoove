@@ -36,6 +36,10 @@ export interface FleetDriverListRow {
   createdAt: string;
   updatedAt: string;
   approvalStatus: FleetDriverApprovalStatus;
+  /** Admin-gesetzter Sperrgrund (Anzeige). */
+  suspensionReason: string;
+  /** Interne Plattform-Notiz. */
+  adminInternalNote: string;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -69,6 +73,8 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     approvalStatus: normalizeFleetDriverApproval(
       (r as { approval_status?: string | null }).approval_status ?? "approved",
     ),
+    suspensionReason: (r as { suspension_reason?: string | null }).suspension_reason ?? "",
+    adminInternalNote: (r as { admin_internal_note?: string | null }).admin_internal_note ?? "",
   };
 }
 
@@ -300,6 +306,93 @@ export async function setFleetDriverApprovalByAdmin(
     .where(eq(fleetDriversTable.id, driverId))
     .returning({ id: fleetDriversTable.id });
   return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+/** Plattform-Admin: `approval_status` mit Mandantenbindung. */
+export async function setFleetDriverApprovalForCompany(
+  companyId: string,
+  driverId: string,
+  nextStatus: FleetDriverApprovalStatus,
+): Promise<{ ok: true } | { ok: false; error: "not_found" | "invalid_status" }> {
+  const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
+  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "not_found" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ approval_status: nextStatus, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+const MAX_SUS_REASON = 2000;
+const MAX_ADMIN_NOTE = 4000;
+
+/** Plattform-Admin: Fahrer sperren inkl. Sperrgrund (Mandant gebunden). */
+export async function adminSuspendFleetDriver(
+  companyId: string,
+  driverId: string,
+  suspensionReason: string,
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const reason = String(suspensionReason ?? "")
+    .trim()
+    .slice(0, MAX_SUS_REASON);
+  const r = await db
+    .update(fleetDriversTable)
+    .set({
+      access_status: "suspended",
+      is_active: false,
+      suspension_reason: reason,
+      updated_at: new Date(),
+      session_version: sql`${fleetDriversTable.session_version} + 1`,
+    })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+
+/** Plattform-Admin: entsperren / aktivieren (Mandant gebunden). */
+export async function adminActivateFleetDriver(companyId: string, driverId: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const r = await db
+    .update(fleetDriversTable)
+    .set({
+      access_status: "active",
+      is_active: true,
+      suspension_reason: "",
+      updated_at: new Date(),
+      session_version: sql`${fleetDriversTable.session_version} + 1`,
+    })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+
+export async function adminPatchFleetDriverAdminFields(
+  companyId: string,
+  driverId: string,
+  patch: { adminInternalNote?: string; suspensionReason?: string },
+): Promise<boolean> {
+  if (patch.adminInternalNote === undefined && patch.suspensionReason === undefined) return true;
+  const db = getDb();
+  if (!db) return false;
+  const set: Partial<typeof fleetDriversTable.$inferInsert> = { updated_at: new Date() };
+  if (patch.adminInternalNote !== undefined) {
+    set.admin_internal_note = String(patch.adminInternalNote).trim().slice(0, MAX_ADMIN_NOTE);
+  }
+  if (patch.suspensionReason !== undefined) {
+    set.suspension_reason = String(patch.suspensionReason).trim().slice(0, MAX_SUS_REASON);
+  }
+  const r = await db
+    .update(fleetDriversTable)
+    .set(set)
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return r.length > 0;
 }
 
 export async function touchFleetDriverLogin(id: string): Promise<void> {
