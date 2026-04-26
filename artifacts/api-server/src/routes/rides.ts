@@ -12,6 +12,7 @@ import {
   adminReleaseRide,
   findRide,
   insertRideWithOptionalAccessCode,
+  insertSupplementalRideEvent,
   listRides,
   resetRidesDemo,
   updateRide,
@@ -582,6 +583,32 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       res.status(500).json({ error: "update_failed" });
       return;
     }
+    if (cancelReasonClean) {
+      const isCancel = [
+        "cancelled",
+        "cancelled_by_customer",
+        "cancelled_by_driver",
+        "cancelled_by_system",
+        "rejected",
+        "expired",
+      ].includes(nextStatus);
+      if (isCancel) {
+        const crActor =
+          nextStatus === "cancelled_by_customer"
+            ? { actorType: "passenger" as const, actorId: null as string | null }
+            : nextStatus === "cancelled_by_driver"
+              ? { actorType: "driver" as const, actorId: driverId ?? null }
+              : { actorType: "system" as const, actorId: null as string | null };
+        await insertSupplementalRideEvent(id, {
+          eventType: "cancel_reason",
+          fromStatus: cur.status,
+          toStatus: nextStatus,
+          actorType: crActor.actorType,
+          actorId: crActor.actorId,
+          payload: { reason: cancelReasonClean, nextStatus },
+        });
+      }
+    }
     if (nextStatus === "cancelled_by_customer") {
       customerCancelReasons.set(id, cancelReasonClean);
     }
@@ -678,11 +705,22 @@ router.post("/rides/:id/reject", async (req, res, next) => {
       return;
     }
     const existing = cur.rejectedBy ?? [];
+    const rejectIsNew = !existing.includes(driverId);
     const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
     const updated = await updateRide(id, { rejectedBy });
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
       return;
+    }
+    if (rejectIsNew) {
+      await insertSupplementalRideEvent(id, {
+        eventType: "driver_rejected",
+        fromStatus: cur.status,
+        toStatus: cur.status,
+        actorType: "driver",
+        actorId: driverId,
+        payload: { driverId },
+      });
     }
     res.json(stripPartnerOnlyRideFields(updated));
   } catch (e) {

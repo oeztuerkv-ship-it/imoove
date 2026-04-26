@@ -55,6 +55,35 @@ function makeEventId(prefix = "REV"): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * Zusätzliches Audit-Event (Fahrtakten). Unverändert zu `ride_status_changed` in `updateRide`.
+ * Ohne DB (In-Memory) kein Eintrag.
+ */
+export async function insertSupplementalRideEvent(
+  rideId: string,
+  input: {
+    eventType: string;
+    fromStatus?: string | null;
+    toStatus?: string | null;
+    actorType?: string;
+    actorId?: string | null;
+    payload?: Record<string, unknown>;
+  },
+): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  await db.insert(rideEventsTable).values({
+    id: makeEventId("REVX"),
+    ride_id: rideId,
+    event_type: input.eventType,
+    from_status: input.fromStatus ?? null,
+    to_status: input.toStatus ?? null,
+    actor_type: input.actorType ?? "system",
+    actor_id: input.actorId ?? null,
+    payload: (input.payload ?? {}) as Record<string, unknown>,
+  });
+}
+
 function stripEphemeral(r: RideRequest): RideRequest {
   const { accessCodeSummary: _a, ...rest } = r;
   return rest;
@@ -1200,7 +1229,64 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
       payload: {},
     });
   }
+  if ((cur.driverId ?? null) !== (next.driverId ?? null)) {
+    await insertSupplementalRideEvent(id, {
+      eventType: "ride_reassigned",
+      fromStatus: cur.status,
+      toStatus: next.status,
+      payload: {
+        fromDriverId: cur.driverId ?? null,
+        toDriverId: next.driverId ?? null,
+      },
+    });
+  }
+  if (next.status === "offered" && cur.status !== "offered") {
+    await insertSupplementalRideEvent(id, {
+      eventType: "driver_offered",
+      fromStatus: cur.status,
+      toStatus: next.status,
+      payload: {},
+    });
+  }
   return next;
+}
+
+export type AdminRideEventRow = {
+  id: string;
+  eventType: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  actorType: string;
+  actorId: string | null;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+/**
+ * Chronologische `ride_events` für Admin-Fahrtakte.
+ * Status: `ride_status_changed` in `updateRide`, `ride_created` in `insertRide`.
+ * Weitere: `ride_reassigned`, `driver_offered` in `updateRide`; `ride_released` in `adminReleaseRide`;
+ * in Routen: `driver_rejected`, `cancel_reason` (siehe `insertSupplementalRideEvent` an Aufrufern).
+ * Patches nur mit `rejectedBy` o. ä. erzeugen weiterhin ggf. kein Status-Event.
+ */
+export async function listAdminRideEventsByRideId(rideId: string): Promise<AdminRideEventRow[]> {
+  const db = getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(rideEventsTable)
+    .where(eq(rideEventsTable.ride_id, rideId))
+    .orderBy(asc(rideEventsTable.created_at));
+  return rows.map((r) => ({
+    id: r.id,
+    eventType: r.event_type,
+    fromStatus: r.from_status,
+    toStatus: r.to_status,
+    actorType: r.actor_type,
+    actorId: r.actor_id,
+    payload: (r.payload as Record<string, unknown>) ?? {},
+    createdAt: r.created_at.toISOString(),
+  }));
 }
 
 export async function adminReleaseRide(id: string): Promise<RideRequest | null> {
@@ -1208,7 +1294,18 @@ export async function adminReleaseRide(id: string): Promise<RideRequest | null> 
   if (!cur) return null;
   const nextStatus =
     cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "pending";
-  return updateRide(id, { driverId: null, status: nextStatus });
+  const fromStatus = cur.status;
+  const previousDriverId = cur.driverId ?? null;
+  const out = await updateRide(id, { driverId: null, status: nextStatus });
+  if (out) {
+    await insertSupplementalRideEvent(id, {
+      eventType: "ride_released",
+      fromStatus,
+      toStatus: nextStatus,
+      payload: { previousDriverId, newStatus: nextStatus },
+    });
+  }
+  return out;
 }
 
 export async function resetRidesDemo(seed: RideRequest[]): Promise<void> {
