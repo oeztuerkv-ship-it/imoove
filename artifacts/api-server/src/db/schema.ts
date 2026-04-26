@@ -127,6 +127,11 @@ export const fleetVehiclesTable = pgTable("fleet_vehicles", {
   is_active: boolean("is_active").notNull().default(false),
   /** draft | pending_approval | approved | rejected | blocked */
   approval_status: text("approval_status").notNull().default("draft"),
+  admin_internal_note: text("admin_internal_note").notNull().default(""),
+  /** Sperrgrund (Plattform) bei `approval_status` = blocked */
+  block_reason: text("block_reason").notNull().default(""),
+  model_year: integer("model_year"),
+  passenger_seats: integer("passenger_seats"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

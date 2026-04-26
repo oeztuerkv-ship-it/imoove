@@ -297,6 +297,57 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
   return rows.map(rowToRide);
 }
 
+/** Letzte Fahrt des Fahrers im Mandanten (Näherung: kein Fahrzeug-FK auf rides). */
+export type LastRideSummary = {
+  id: string;
+  createdAt: string;
+  status: string;
+  fromLabel: string;
+  toLabel: string;
+};
+
+export async function getLastRideForDriverInCompany(
+  companyId: string,
+  driverId: string,
+): Promise<LastRideSummary | null> {
+  const db = getDb();
+  if (!db) {
+    const list = memoryRides
+      .filter((r) => r.companyId === companyId && r.driverId === driverId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    const r0 = list[0];
+    if (!r0) return null;
+    return {
+      id: r0.id,
+      createdAt: r0.createdAt,
+      status: r0.status,
+      fromLabel: r0.fromLabel,
+      toLabel: r0.toLabel,
+    };
+  }
+  const rows = await db
+    .select({
+      id: ridesTable.id,
+      created_at: ridesTable.created_at,
+      status: ridesTable.status,
+      from_label: ridesTable.from_label,
+      to_label: ridesTable.to_label,
+    })
+    .from(ridesTable)
+    .where(and(companyIdMatchCondition(companyId), eq(ridesTable.driver_id, driverId)))
+    .orderBy(desc(ridesTable.created_at))
+    .limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    createdAt: r.created_at.toISOString(),
+    status: r.status,
+    fromLabel: r.from_label,
+    toLabel: r.to_label,
+  };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function insertRide(r: RideRequest, tx?: any): Promise<void> {
   const persisted = stripEphemeral(r);

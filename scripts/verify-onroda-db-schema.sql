@@ -32,6 +32,7 @@
 --   042 → homepage_faq_items, homepage_how_steps, homepage_trust_metrics
 --   044 → fleet_drivers.approval_status
 --   045 → fleet_drivers.suspension_reason, admin_internal_note
+--   046 → fleet_vehicles.admin_internal_note, block_reason, model_year, passenger_seats
 
 DO $$
 DECLARE
@@ -267,6 +268,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'konzession_number'
   ) THEN
     errs := array_append(errs, 'fleet_vehicles.konzession_number (Migration 035)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_vehicles' AND column_name = 'admin_internal_note'
+  ) THEN
+    errs := array_append(errs, 'fleet_vehicles.admin_internal_note (Migration 046 o. init-onroda)');
   END IF;
 
   IF NOT EXISTS (

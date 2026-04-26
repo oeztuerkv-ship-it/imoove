@@ -31,6 +31,7 @@ import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
 import HomepageContentPage from "./pages/HomepageContentPage.jsx";
 import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
+import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
 function isAdminPasswordResetPath() {
   if (typeof window === "undefined") return false;
@@ -163,6 +164,10 @@ const PAGE_META = {
   "taxi-fleet-drivers": {
     title: "Taxi · Fahrer",
     subtitle: "Plattform-Admin: Fahrer pro Taxi-Mandant prüfen, freigeben, sperren (Audit im Mandantenkontext)",
+  },
+  "taxi-fleet-vehicles": {
+    title: "Taxi · Fahrzeuge",
+    subtitle: "Plattform-Admin: Fahrzeuge pro Taxi-Mandant prüfen, freigeben, sperren (Audit im Mandantenkontext)",
   },
   "company-registration-requests": {
     title: "Registrierungsanfragen",
@@ -512,6 +517,8 @@ export default function App() {
         );
       case "taxi-fleet-drivers":
         return <TaxiFleetDriversPage />;
+      case "taxi-fleet-vehicles":
+        return <TaxiFleetVehiclesPage />;
       case "support-inbox":
         return <SupportInboxPage />;
       case "fleet-vehicles-review":

@@ -56,6 +56,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Homepage-Hinweis-Typen (info/success/warning/important, Legacy neutral) → 043_homepage_placeholder_hint_types.sql
   Taxi fleet_drivers.approval_status (Einsatzbereitschaft / Plattform-Freigabe)     → 044_fleet_drivers_approval_status.sql
   Taxi fleet_drivers: Sperrgrund + Admin-Notiz (Plattform)                         → 045_fleet_drivers_admin_note_suspension.sql
+  Taxi fleet_vehicles: Sperrgrund, Admin-Notiz, Baujahr, Sitzplätze                → 046_fleet_vehicles_admin_fields.sql
 
 Nach Migrationen Schema prüfen:
 

@@ -133,11 +133,19 @@ import {
   type AdminRideListQuery,
 } from "../db/ridesData";
 import {
+  getAdminTaxiFleetVehicleDetail,
+  listAdminTaxiFleetVehicleRows,
+} from "../db/adminTaxiFleetVehiclesData";
+import {
+  adminPatchFleetVehicleFields,
+  findFleetVehicleInCompany,
   forceBlockFleetVehicleByAdmin,
   getFleetVehicleAdminDetail,
   listFleetVehicleDocumentStorageKeysAdmin,
+  listFleetVehicleDocumentStorageKeysInCompany,
   listPendingFleetVehiclesForAdmin,
   setFleetVehicleApprovalByAdmin,
+  unblockFleetVehicleByAdmin,
 } from "../db/fleetVehiclesData";
 import {
   adminActivateFleetDriver,
@@ -1312,6 +1320,280 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
       meta: {
         hasAdminNote: adminInternalNote !== undefined,
         hasSuspensionReason: suspensionReason !== undefined,
+        adminUserId: adminId,
+      },
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Gleiche Mandanten-Audit-Logik wie Fahrer: Fahrzeuge pro Taxi-Firma. */
+adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const items = await listAdminTaxiFleetVehicleRows(companyId);
+    res.json({ ok: true, companyId, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const detail = await getAdminTaxiFleetVehicleDetail(companyId, vehicleId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/taxi-fleet-vehicles/:companyId/audit", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const subject = typeof req.query?.subjectId === "string" ? req.query.subjectId.trim() : undefined;
+    const limit = typeof req.query?.limit === "string" ? Number(req.query.limit) : undefined;
+    const entries = await listPanelAuditForCompany(companyId, {
+      subjectId: subject,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+    res.json({ ok: true, companyId, entries });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!(await findFleetVehicleInCompany(vehicleId, companyId))) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, { nextStatus: "approved", adminUserId: adminId });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.approved",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId },
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!(await findFleetVehicleInCompany(vehicleId, companyId))) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const reason = typeof (req.body as { reason?: unknown })?.reason === "string"
+      ? (req.body as { reason: string }).reason.trim()
+      : "";
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "rejected",
+      rejectionReason: reason,
+      adminUserId: adminId,
+    });
+    if (!r.ok) {
+      const m: Record<string, number> = {
+        not_found: 404,
+        not_pending: 409,
+        rejection_reason_required: 400,
+      };
+      res.status(m[r.error] ?? 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.rejected",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { reason: reason.slice(0, 500), adminUserId: adminId },
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!(await findFleetVehicleInCompany(vehicleId, companyId))) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const b = (req.body ?? {}) as { blockReason?: unknown; adminInternalNote?: unknown };
+    const blockReason = typeof b.blockReason === "string" ? b.blockReason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : undefined;
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await forceBlockFleetVehicleByAdmin(vehicleId, {
+      adminUserId: adminId,
+      blockReason,
+      adminInternalNote: adminNote,
+    });
+    if (!r.ok) {
+      res
+        .status(r.error === "not_found" ? 404 : r.error === "already_blocked" ? 409 : 400)
+        .json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.blocked",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { blockReason: String(blockReason).slice(0, 500), adminUserId: adminId },
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!(await findFleetVehicleInCompany(vehicleId, companyId))) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await unblockFleetVehicleByAdmin(vehicleId, adminId);
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "not_blocked" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.unblocked",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId },
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = (req.body ?? {}) as { adminInternalNote?: unknown; blockReason?: unknown };
+    const adminInternalNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : undefined;
+    const blockReason = typeof b.blockReason === "string" ? b.blockReason : undefined;
+    if (adminInternalNote === undefined && blockReason === undefined) {
+      res.status(400).json({ error: "no_fields" });
+      return;
+    }
+    const ok = await adminPatchFleetVehicleFields(companyId, vehicleId, { adminInternalNote, blockReason });
+    if (!ok.ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_vehicle.notes_patched",
+      subjectType: "fleet_vehicle",
+      subjectId: vehicleId,
+      meta: {
+        hasAdminNote: adminInternalNote !== undefined,
+        hasBlockReason: blockReason !== undefined,
         adminUserId: adminId,
       },
     });
@@ -3409,6 +3691,18 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
       res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
       return;
     }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.approved",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId, source: "fleet_vehicles_review" },
+      });
+    }
     res.json({ ok: true });
   } catch (e) {
     next(e);
@@ -3440,6 +3734,18 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
       res.status(m[r.error] ?? 400).json({ error: r.error });
       return;
     }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.rejected",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { reason: reason.slice(0, 500), adminUserId: adminId, source: "fleet_vehicles_review" },
+      });
+    }
     res.json({ ok: true });
   } catch (e) {
     next(e);
@@ -3453,13 +3759,32 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
       return;
     }
     const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const b = (req.body ?? {}) as { blockReason?: unknown; adminInternalNote?: unknown };
+    const blockReason = typeof b.blockReason === "string" ? b.blockReason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : undefined;
     const adminId = await resolveAdminAuthUserIdForSupport(req);
-    const r = await forceBlockFleetVehicleByAdmin(vehicleId, adminId);
+    const r = await forceBlockFleetVehicleByAdmin(vehicleId, {
+      adminUserId: adminId,
+      blockReason,
+      adminInternalNote: adminNote,
+    });
     if (!r.ok) {
       res
         .status(r.error === "not_found" ? 404 : r.error === "already_blocked" ? 409 : 400)
         .json({ error: r.error });
       return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.blocked",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { blockReason: String(blockReason).slice(0, 500), adminUserId: adminId, source: "fleet_vehicles_review" },
+      });
     }
     res.json({ ok: true });
   } catch (e) {
@@ -3483,6 +3808,51 @@ adminJson.get("/fleet-vehicles/:vehicleId/documents/file", async (req, res, next
       return;
     }
     const keys = await listFleetVehicleDocumentStorageKeysAdmin(vehicleId);
+    if (keys === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!keys.includes(storageKey)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const abs = path.resolve(path.join(adminFleetUploadRoot, storageKey));
+    const base = path.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path.sep) && abs !== base) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    createReadStream(abs)
+      .on("error", () => {
+        if (!res.headersSent) res.status(404).end();
+      })
+      .pipe(res);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Wie `fleet-vehicles/.../documents/file`, aber mit Mandanten-Scope (Taxi-Rolle in der Konsole). */
+adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/file", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const storageKey =
+      typeof (req.query as { storageKey?: string }).storageKey === "string"
+        ? (req.query as { storageKey: string }).storageKey.trim()
+        : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysInCompany(companyId, vehicleId);
     if (keys === null) {
       res.status(404).json({ error: "not_found" });
       return;

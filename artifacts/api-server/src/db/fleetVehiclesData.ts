@@ -34,6 +34,10 @@ export interface FleetVehicleRow {
   vehicleDocuments: VehicleDocumentRef[];
   approvalStatus: FleetVehicleApprovalStatus;
   rejectionReason: string;
+  adminInternalNote: string;
+  blockReason: string;
+  modelYear: number | null;
+  passengerSeats: number | null;
   approvalDecidedAt: string | null;
   nextInspectionDate: string | null;
   isActive: boolean;
@@ -70,6 +74,10 @@ function rowToVehicle(r: typeof fleetVehiclesTable.$inferSelect): FleetVehicleRo
     vehicleDocuments: parseDocuments(r.vehicle_documents),
     approvalStatus: (r.approval_status as FleetVehicleApprovalStatus) ?? "draft",
     rejectionReason: r.rejection_reason ?? "",
+    adminInternalNote: r.admin_internal_note ?? "",
+    blockReason: r.block_reason ?? "",
+    modelYear: r.model_year ?? null,
+    passengerSeats: r.passenger_seats ?? null,
     approvalDecidedAt: r.approval_decided_at ? r.approval_decided_at.toISOString() : null,
     nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
     isActive: r.is_active,
@@ -99,6 +107,7 @@ export async function listFleetVehiclesForCompany(companyId: string): Promise<Fl
   return rows.map(rowToVehicle);
 }
 
+/** Mandanten-sichere Abfrage; für Admin-Routen mit `/:companyId/` vor Statusänderung verwenden. */
 export async function findFleetVehicleInCompany(
   id: string,
   companyId: string,
@@ -360,7 +369,11 @@ export async function setFleetVehicleApprovalByAdmin(
  */
 export async function forceBlockFleetVehicleByAdmin(
   id: string,
-  adminUserId: string | null,
+  input: {
+    adminUserId: string | null;
+    blockReason?: string;
+    adminInternalNote?: string;
+  },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const cur = await findFleetVehicleGlobal(id);
   if (!cur) return { ok: false, error: "not_found" };
@@ -368,16 +381,68 @@ export async function forceBlockFleetVehicleByAdmin(
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
   const now = new Date();
+  const br = String(input.blockReason ?? "").trim().slice(0, 2000);
+  const set: Partial<typeof fleetVehiclesTable.$inferInsert> = {
+    approval_status: "blocked",
+    is_active: false,
+    block_reason: br,
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId,
+    updated_at: now,
+  };
+  if (input.adminInternalNote !== undefined) {
+    set.admin_internal_note = String(input.adminInternalNote).slice(0, 4000);
+  }
+  await db.update(fleetVehiclesTable).set(set).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+
+/** Entsperren: Status zurück in Entwurf, nicht einsatzbereit bis erneute Freigabe. */
+export async function unblockFleetVehicleByAdmin(
+  id: string,
+  adminUserId: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (String(cur.approval_status) !== "blocked") return { ok: false, error: "not_blocked" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const now = new Date();
   await db
     .update(fleetVehiclesTable)
     .set({
-      approval_status: "blocked",
+      approval_status: "draft",
       is_active: false,
+      block_reason: "",
       approval_decided_at: now,
       approval_decided_by_admin_id: adminUserId,
       updated_at: now,
     })
     .where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+
+export async function adminPatchFleetVehicleFields(
+  companyId: string,
+  vehicleId: string,
+  patch: { adminInternalNote?: string; blockReason?: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (Object.keys(patch).length === 0) return { ok: false, error: "no_fields" };
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const set: Partial<typeof fleetVehiclesTable.$inferInsert> = { updated_at: new Date() };
+  if (patch.adminInternalNote !== undefined) {
+    set.admin_internal_note = String(patch.adminInternalNote).slice(0, 4000);
+  }
+  if (patch.blockReason !== undefined) {
+    set.block_reason = String(patch.blockReason).slice(0, 2000);
+  }
+  await db
+    .update(fleetVehiclesTable)
+    .set(set)
+    .where(and(eq(fleetVehiclesTable.id, vehicleId), eq(fleetVehiclesTable.company_id, companyId)));
   return { ok: true };
 }
 

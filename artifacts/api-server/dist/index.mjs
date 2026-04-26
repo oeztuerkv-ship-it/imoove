@@ -115,8 +115,8 @@ var require_package = __commonJS({
 // ../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js
 var require_main = __commonJS({
   "../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js"(exports, module) {
-    var fs2 = __require("fs");
-    var path5 = __require("path");
+    var fs3 = __require("fs");
+    var path8 = __require("path");
     var os = __require("os");
     var crypto2 = __require("crypto");
     var packageJson = require_package();
@@ -222,7 +222,7 @@ var require_main = __commonJS({
       if (options && options.path && options.path.length > 0) {
         if (Array.isArray(options.path)) {
           for (const filepath of options.path) {
-            if (fs2.existsSync(filepath)) {
+            if (fs3.existsSync(filepath)) {
               possibleVaultPath = filepath.endsWith(".vault") ? filepath : `${filepath}.vault`;
             }
           }
@@ -230,15 +230,15 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path5.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path8.resolve(process.cwd(), ".env.vault");
       }
-      if (fs2.existsSync(possibleVaultPath)) {
+      if (fs3.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
       }
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path5.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path8.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       _log("Loading env from encrypted .env.vault");
@@ -251,7 +251,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path5.resolve(process.cwd(), ".env");
+      const dotenvPath = path8.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       const debug = Boolean(options && options.debug);
       if (options && options.encoding) {
@@ -274,13 +274,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path6 of optionPaths) {
+      for (const path9 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs2.readFileSync(path6, { encoding }));
+          const parsed = DotenvModule.parse(fs3.readFileSync(path9, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path6} ${e.message}`);
+            _debug(`Failed to load ${path9} ${e.message}`);
           }
           lastError = e;
         }
@@ -1196,34 +1196,34 @@ var require_receiver = __commonJS({
        * @return {Buffer} The consumed bytes
        * @private
        */
-      consume(n2) {
-        this._bufferedBytes -= n2;
-        if (n2 === this._buffers[0].length) return this._buffers.shift();
-        if (n2 < this._buffers[0].length) {
+      consume(n3) {
+        this._bufferedBytes -= n3;
+        if (n3 === this._buffers[0].length) return this._buffers.shift();
+        if (n3 < this._buffers[0].length) {
           const buf = this._buffers[0];
           this._buffers[0] = new FastBuffer(
             buf.buffer,
-            buf.byteOffset + n2,
-            buf.length - n2
+            buf.byteOffset + n3,
+            buf.length - n3
           );
-          return new FastBuffer(buf.buffer, buf.byteOffset, n2);
+          return new FastBuffer(buf.buffer, buf.byteOffset, n3);
         }
-        const dst = Buffer.allocUnsafe(n2);
+        const dst = Buffer.allocUnsafe(n3);
         do {
           const buf = this._buffers[0];
-          const offset = dst.length - n2;
-          if (n2 >= buf.length) {
+          const offset = dst.length - n3;
+          if (n3 >= buf.length) {
             dst.set(this._buffers.shift(), offset);
           } else {
-            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n2), offset);
+            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n3), offset);
             this._buffers[0] = new FastBuffer(
               buf.buffer,
-              buf.byteOffset + n2,
-              buf.length - n2
+              buf.byteOffset + n3,
+              buf.length - n3
             );
           }
-          n2 -= buf.length;
-        } while (n2 > 0);
+          n3 -= buf.length;
+        } while (n3 > 0);
         return dst;
       }
       /**
@@ -4027,7 +4027,7 @@ var require_ms = __commonJS({
       if (!match) {
         return;
       }
-      var n2 = parseFloat(match[1]);
+      var n3 = parseFloat(match[1]);
       var type = (match[2] || "ms").toLowerCase();
       switch (type) {
         case "years":
@@ -4035,39 +4035,39 @@ var require_ms = __commonJS({
         case "yrs":
         case "yr":
         case "y":
-          return n2 * y;
+          return n3 * y;
         case "weeks":
         case "week":
         case "w":
-          return n2 * w;
+          return n3 * w;
         case "days":
         case "day":
         case "d":
-          return n2 * d;
+          return n3 * d;
         case "hours":
         case "hour":
         case "hrs":
         case "hr":
         case "h":
-          return n2 * h;
+          return n3 * h;
         case "minutes":
         case "minute":
         case "mins":
         case "min":
         case "m":
-          return n2 * m;
+          return n3 * m;
         case "seconds":
         case "second":
         case "secs":
         case "sec":
         case "s":
-          return n2 * s;
+          return n3 * s;
         case "milliseconds":
         case "millisecond":
         case "msecs":
         case "msec":
         case "ms":
-          return n2;
+          return n3;
         default:
           return void 0;
       }
@@ -4104,9 +4104,9 @@ var require_ms = __commonJS({
       }
       return ms + " ms";
     }
-    function plural(ms, msAbs, n2, name) {
-      var isPlural = msAbs >= n2 * 1.5;
-      return Math.round(ms / n2) + " " + name + (isPlural ? "s" : "");
+    function plural(ms, msAbs, n3, name) {
+      var isPlural = msAbs >= n3 * 1.5;
+      return Math.round(ms / n3) + " " + name + (isPlural ? "s" : "");
     }
   }
 });
@@ -5217,9 +5217,9 @@ var require_statuses = __commonJS({
       if (typeof code !== "string") {
         throw new TypeError("code must be a number or string");
       }
-      var n2 = parseInt(code, 10);
-      if (!isNaN(n2)) {
-        return getStatusMessage(n2);
+      var n3 = parseInt(code, 10);
+      if (!isNaN(n3)) {
+        return getStatusMessage(n3);
       }
       return getStatusCode(code);
     }
@@ -19267,11 +19267,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path5) {
-      if (!path5 || typeof path5 !== "string") {
+    function lookup(path8) {
+      if (!path8 || typeof path8 !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path5).toLowerCase().slice(1);
+      var extension3 = extname("x." + path8).toLowerCase().slice(1);
       if (!extension3) {
         return false;
       }
@@ -20260,18 +20260,18 @@ var require_object_inspect = __commonJS({
       return wrapQuotes(s, "single", opts);
     }
     function lowbyte(c) {
-      var n2 = c.charCodeAt(0);
+      var n3 = c.charCodeAt(0);
       var x = {
         8: "b",
         9: "t",
         10: "n",
         12: "f",
         13: "r"
-      }[n2];
+      }[n3];
       if (x) {
         return "\\" + x;
       }
-      return "\\x" + (n2 < 16 ? "0" : "") + $toUpperCase.call(n2.toString(16));
+      return "\\x" + (n3 < 16 ? "0" : "") + $toUpperCase.call(n3.toString(16));
     }
     function markBoxed(str2) {
       return "Object(" + str2 + ")";
@@ -22743,13 +22743,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path5 = __require("node:path");
-    var fs2 = __require("node:fs");
-    var dirname = path5.dirname;
-    var basename = path5.basename;
-    var extname = path5.extname;
-    var join = path5.join;
-    var resolve = path5.resolve;
+    var path8 = __require("node:path");
+    var fs3 = __require("node:fs");
+    var dirname = path8.dirname;
+    var basename = path8.basename;
+    var extname = path8.extname;
+    var join = path8.join;
+    var resolve = path8.resolve;
     module.exports = View2;
     function View2(name, options) {
       var opts = options || {};
@@ -22778,17 +22778,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View2.prototype.lookup = function lookup(name) {
-      var path6;
+      var path9;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name);
-      for (var i = 0; i < roots.length && !path6; i++) {
+      for (var i = 0; i < roots.length && !path9; i++) {
         var root = roots[i];
         var loc = resolve(root, name);
         var dir = dirname(loc);
         var file = basename(loc);
-        path6 = this.resolve(dir, file);
+        path9 = this.resolve(dir, file);
       }
-      return path6;
+      return path9;
     };
     View2.prototype.render = function render(options, callback) {
       var sync = true;
@@ -22810,21 +22810,21 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path6 = join(dir, file);
-      var stat = tryStat(path6);
+      var path9 = join(dir, file);
+      var stat = tryStat(path9);
       if (stat && stat.isFile()) {
-        return path6;
+        return path9;
       }
-      path6 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path6);
+      path9 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path9);
       if (stat && stat.isFile()) {
-        return path6;
+        return path9;
       }
     };
-    function tryStat(path6) {
-      debug('stat "%s"', path6);
+    function tryStat(path9) {
+      debug('stat "%s"', path9);
       try {
-        return fs2.statSync(path6);
+        return fs3.statSync(path9);
       } catch (e) {
         return void 0;
       }
@@ -23960,15 +23960,15 @@ var require_dist = __commonJS({
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path5 = "";
+        let path8 = "";
         function writePath() {
-          if (!path5)
+          if (!path8)
             return;
           output.push({
             type: "text",
-            value: encodePath(path5)
+            value: encodePath(path8)
           });
-          path5 = "";
+          path8 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -23980,7 +23980,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str2);
             }
-            path5 += chars[index++];
+            path8 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -24024,7 +24024,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str2);
           }
-          path5 += value;
+          path8 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str2);
@@ -24034,17 +24034,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str2);
     }
-    function compile(path5, options = {}) {
+    function compile(path8, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path5 === "object" ? path5 : parse(path5, options);
+      const data = typeof path8 === "object" ? path8 : parse(path8, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode3);
-      return function path6(params = {}) {
+      return function path9(params = {}) {
         const missing = [];
-        const path7 = fn(params, missing);
+        const path10 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path7;
+        return path10;
       };
     }
     function tokensToFunction(tokens, delimiter, encode3) {
@@ -24106,9 +24106,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path5, options = {}) {
+    function match(path8, options = {}) {
       const { decode: decode2 = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path5, options);
+      const { regexp, keys } = pathToRegexp(path8, options);
       const decoders = keys.map((key) => {
         if (decode2 === false)
           return NOOP_VALUE;
@@ -24120,7 +24120,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path6 = m[0];
+        const path9 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -24129,21 +24129,21 @@ var require_dist = __commonJS({
           const decoder2 = decoders[i - 1];
           params[key.name] = decoder2(m[i]);
         }
-        return { path: path6, params };
+        return { path: path9, params };
       };
     }
-    function pathToRegexp(path5, options = {}) {
+    function pathToRegexp(path8, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path6) {
-        if (Array.isArray(path6)) {
-          for (const p of path6)
+      function process2(path9) {
+        if (Array.isArray(path9)) {
+          for (const p of path9)
             process2(p);
           return;
         }
-        const data = typeof path6 === "object" ? path6 : parse(path6, options);
+        const data = typeof path9 === "object" ? path9 : parse(path9, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -24154,7 +24154,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path5);
+      process2(path8);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -24294,18 +24294,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path5, options, fn) {
+    function Layer(path8, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path5, options, fn);
+        return new Layer(path8, options, fn);
       }
-      debug("new %o", path5);
+      debug("new %o", path8);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path5 === "/" && opts.end === false;
+      this.slash = path8 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -24344,7 +24344,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path5) ? path5.map(matcher) : [matcher(path5)];
+      this.matchers = Array.isArray(path8) ? path8.map(matcher) : [matcher(path8)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -24384,9 +24384,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path5) {
+    Layer.prototype.match = function match(path8) {
       let match2;
-      if (path5 != null) {
+      if (path8 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -24394,7 +24394,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path5);
+          match2 = this.matchers[i](path8);
           i++;
         }
       }
@@ -24422,13 +24422,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path5) {
-      if (path5 instanceof RegExp || path5 === "/") {
-        return path5;
+    function loosen(path8) {
+      if (path8 instanceof RegExp || path8 === "/") {
+        return path8;
       }
-      return Array.isArray(path5) ? path5.map(function(p) {
+      return Array.isArray(path8) ? path8.map(function(p) {
         return loosen(p);
-      }) : String(path5).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path8).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -24444,9 +24444,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path5) {
-      debug("new %o", path5);
-      this.path = path5;
+    function Route(path8) {
+      debug("new %o", path8);
+      this.path = path8;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router12;
+    module.exports = Router15;
     module.exports.Route = Route;
-    function Router12(options) {
-      if (!(this instanceof Router12)) {
-        return new Router12(options);
+    function Router15(options) {
+      if (!(this instanceof Router15)) {
+        return new Router15(options);
       }
       const opts = options || {};
-      function router12(req, res, next) {
-        router12.handle(req, res, next);
+      function router15(req, res, next) {
+        router15.handle(req, res, next);
       }
-      Object.setPrototypeOf(router12, this);
-      router12.caseSensitive = opts.caseSensitive;
-      router12.mergeParams = opts.mergeParams;
-      router12.params = {};
-      router12.strict = opts.strict;
-      router12.stack = [];
-      return router12;
+      Object.setPrototypeOf(router15, this);
+      router15.caseSensitive = opts.caseSensitive;
+      router15.mergeParams = opts.mergeParams;
+      router15.params = {};
+      router15.strict = opts.strict;
+      router15.stack = [];
+      return router15;
     }
-    Router12.prototype = function() {
+    Router15.prototype = function() {
     };
-    Router12.prototype.param = function param(name, fn) {
+    Router15.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router12.prototype.handle = function handle(req, res, callback) {
+    Router15.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24654,8 +24654,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path5 = getPathname(req);
-        if (path5 == null) {
+        const path8 = getPathname(req);
+        if (path8 == null) {
           return done(layerError);
         }
         let layer;
@@ -24663,7 +24663,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path5);
+          match = matchLayer(layer, path8);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -24701,18 +24701,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path5);
+            trimPrefix(layer, layerError, layerPath, path8);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path5) {
+      function trimPrefix(layer, layerError, layerPath, path8) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path5.substring(0, layerPath.length)) {
+          if (layerPath !== path8.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path5[layerPath.length];
+          const c = path8[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -24734,9 +24734,9 @@ var require_router = __commonJS({
         }
       }
     };
-    Router12.prototype.use = function use(handler) {
+    Router15.prototype.use = function use(handler) {
       let offset = 0;
-      let path5 = "/";
+      let path8 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -24744,7 +24744,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path5 = handler;
+          path8 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -24756,8 +24756,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path5, fn.name || "<anonymous>");
-        const layer = new Layer(path5, {
+        debug("use %o %s", path8, fn.name || "<anonymous>");
+        const layer = new Layer(path8, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -24767,9 +24767,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router12.prototype.route = function route(path5) {
-      const route2 = new Route(path5);
-      const layer = new Layer(path5, {
+    Router15.prototype.route = function route(path8) {
+      const route2 = new Route(path8);
+      const layer = new Layer(path8, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -24782,8 +24782,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router12.prototype[method] = function(path5) {
-        const route = this.route(path5);
+      Router15.prototype[method] = function(path8) {
+        const route = this.route(path8);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -24812,9 +24812,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path5) {
+    function matchLayer(layer, path8) {
       try {
-        return layer.match(path5);
+        return layer.match(path8);
       } catch (err) {
         return err;
       }
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router12 = require_router();
+    var Router15 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router12 = null;
+      var router15 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router12 === null) {
-            router12 = new Router12({
+          if (router15 === null) {
+            router15 = new Router15({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router12;
+          return router15;
         }
       });
     };
@@ -25042,7 +25042,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path5 = "/";
+      var path8 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -25050,22 +25050,22 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path5 = fn;
+          path8 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router12 = this.router;
+      var router15 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router12.use(path5, fn2);
+          return router15.use(path8, fn2);
         }
-        debug(".use app under %s", path5);
-        fn2.mountpath = path5;
+        debug(".use app under %s", path8);
+        fn2.mountpath = path8;
         fn2.parent = this;
-        router12.use(path5, function mounted_app(req, res, next) {
+        router15.use(path8, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -25077,8 +25077,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path5) {
-      return this.router.route(path5);
+    app2.route = function route(path8) {
+      return this.router.route(path8);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -25121,7 +25121,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path5() {
+    app2.path = function path8() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -25137,17 +25137,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path5) {
+      app2[method] = function(path8) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path5);
+          return this.set(path8);
         }
-        var route = this.route(path5);
+        var route = this.route(path8);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path5) {
-      var route = this.route(path5);
+    app2.all = function all(path8) {
+      var route = this.route(path8);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -26057,7 +26057,7 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname2) ? hostname2.split(".").reverse() : [hostname2];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path5() {
+    defineGetter(req, "path", function path8() {
       return parse(this).pathname;
     });
     defineGetter(req, "host", function host() {
@@ -26464,32 +26464,32 @@ var require_send = __commonJS({
     var escapeHtml4 = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
-    var fs2 = __require("fs");
+    var fs3 = __require("fs");
     var mime = require_mime_types();
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path5 = __require("path");
+    var path8 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path5.extname;
-    var join = path5.join;
-    var normalize = path5.normalize;
-    var resolve = path5.resolve;
-    var sep = path5.sep;
+    var extname = path8.extname;
+    var join = path8.join;
+    var normalize = path8.normalize;
+    var resolve = path8.resolve;
+    var sep = path8.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path6, options) {
-      return new SendStream(req, path6, options);
+    function send(req, path9, options) {
+      return new SendStream(req, path9, options);
     }
-    function SendStream(req, path6, options) {
+    function SendStream(req, path9, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path6;
+      this.path = path9;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -26603,10 +26603,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path6) {
+    SendStream.prototype.redirect = function redirect(path9) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path6);
+        this.emit("directory", res, path9);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -26626,38 +26626,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path6 = decode2(this.path);
-      if (path6 === -1) {
+      var path9 = decode2(this.path);
+      if (path9 === -1) {
         this.error(400);
         return res;
       }
-      if (~path6.indexOf("\0")) {
+      if (~path9.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path6) {
-          path6 = normalize("." + sep + path6);
+        if (path9) {
+          path9 = normalize("." + sep + path9);
         }
-        if (UP_PATH_REGEXP.test(path6)) {
-          debug('malicious path "%s"', path6);
+        if (UP_PATH_REGEXP.test(path9)) {
+          debug('malicious path "%s"', path9);
           this.error(403);
           return res;
         }
-        parts = path6.split(sep);
-        path6 = normalize(join(root, path6));
+        parts = path9.split(sep);
+        path9 = normalize(join(root, path9));
       } else {
-        if (UP_PATH_REGEXP.test(path6)) {
-          debug('malicious path "%s"', path6);
+        if (UP_PATH_REGEXP.test(path9)) {
+          debug('malicious path "%s"', path9);
           this.error(403);
           return res;
         }
-        parts = normalize(path6).split(sep);
-        path6 = resolve(path6);
+        parts = normalize(path9).split(sep);
+        path9 = resolve(path9);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path6);
+        debug('%s dotfile "%s"', this._dotfiles, path9);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -26671,13 +26671,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path6);
+        this.sendIndex(path9);
         return res;
       }
-      this.sendFile(path6);
+      this.sendFile(path9);
       return res;
     };
-    SendStream.prototype.send = function send2(path6, stat) {
+    SendStream.prototype.send = function send2(path9, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -26689,9 +26689,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path6);
-      this.setHeader(path6, stat);
-      this.type(path6);
+      debug('pipe "%s"', path9);
+      this.setHeader(path9, stat);
+      this.type(path9);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -26740,30 +26740,30 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path6, opts);
+      this.stream(path9, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path6) {
+    SendStream.prototype.sendFile = function sendFile(path9) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path6);
-      fs2.stat(path6, function onstat(err, stat) {
-        var pathEndsWithSep = path6[path6.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path6) && !pathEndsWithSep) {
+      debug('stat "%s"', path9);
+      fs3.stat(path9, function onstat(err, stat) {
+        var pathEndsWithSep = path9[path9.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path9) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path6);
+        if (stat.isDirectory()) return self.redirect(path9);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path6, stat);
-        self.send(path6, stat);
+        self.emit("file", path9, stat);
+        self.send(path9, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path6 + "." + self._extensions[i++];
+        var p = path9 + "." + self._extensions[i++];
         debug('stat "%s"', p);
-        fs2.stat(p, function(err2, stat) {
+        fs3.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self.emit("file", p, stat);
@@ -26771,7 +26771,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path6) {
+    SendStream.prototype.sendIndex = function sendIndex(path9) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -26779,9 +26779,9 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path6, self._index[i]);
+        var p = join(path9, self._index[i]);
         debug('stat "%s"', p);
-        fs2.stat(p, function(err2, stat) {
+        fs3.stat(p, function(err2, stat) {
           if (err2) return next(err2);
           if (stat.isDirectory()) return next();
           self.emit("file", p, stat);
@@ -26790,10 +26790,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path6, options) {
+    SendStream.prototype.stream = function stream(path9, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs2.createReadStream(path6, options);
+      var stream2 = fs3.createReadStream(path9, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -26808,17 +26808,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path6) {
+    SendStream.prototype.type = function type(path9) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path6);
+      var ext = extname(path9);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path6, stat) {
+    SendStream.prototype.setHeader = function setHeader(path9, stat) {
       var res = this.res;
-      this.emit("headers", res, path6, stat);
+      this.emit("headers", res, path9, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -26876,9 +26876,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode2(path6) {
+    function decode2(path9) {
       try {
-        return decodeURIComponent(path6);
+        return decodeURIComponent(path9);
       } catch (err) {
         return -1;
       }
@@ -27022,7 +27022,7 @@ var require_response = __commonJS({
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path5 = __require("node:path");
+    var path8 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign2 = require_cookie_signature().sign;
@@ -27031,8 +27031,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path5.extname;
-    var resolve = path5.resolve;
+    var extname = path8.extname;
+    var resolve = path8.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -27178,26 +27178,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path6, options, callback) {
+    res.sendFile = function sendFile(path9, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path6) {
+      if (!path9) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path6 !== "string") {
+      if (typeof path9 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path6)) {
+      if (!opts.root && !pathIsAbsolute(path9)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path6);
+      var pathname = encodeURI(path9);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -27208,7 +27208,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path6, filename, options, callback) {
+    res.download = function download(path9, filename, options, callback) {
       var done = callback;
       var name = filename;
       var opts = options || null;
@@ -27225,7 +27225,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name || path6)
+        "Content-Disposition": contentDisposition(name || path9)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -27238,7 +27238,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path6) : path6;
+      var fullPath = !opts.root ? resolve(path9) : path9;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -27521,11 +27521,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path5 = parseUrl(req).pathname;
-        if (path5 === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path5 = "";
+        var path8 = parseUrl(req).pathname;
+        if (path8 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path8 = "";
         }
-        var stream = send(req, path5, opts);
+        var stream = send(req, path8, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router12 = require_router();
+    var Router15 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router12.Route;
-    exports.Router = Router12;
+    exports.Route = Router15.Route;
+    exports.Router = Router15;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -27659,8 +27659,8 @@ var require_object_assign = __commonJS({
         for (var i = 0; i < 10; i++) {
           test2["_" + String.fromCharCode(i)] = i;
         }
-        var order2 = Object.getOwnPropertyNames(test2).map(function(n2) {
-          return test2[n2];
+        var order2 = Object.getOwnPropertyNames(test2).map(function(n3) {
+          return test2[n3];
         });
         if (order2.join("") !== "0123456789") {
           return false;
@@ -27828,7 +27828,7 @@ var require_lib3 = __commonJS({
         return null;
       }
       function applyHeaders(headers, res) {
-        for (var i = 0, n2 = headers.length; i < n2; i++) {
+        for (var i = 0, n3 = headers.length; i < n3; i++) {
           var header = headers[i];
           if (header) {
             if (Array.isArray(header)) {
@@ -28173,8 +28173,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path5 = req.path;
-        _req.url = typeof path5 === "string" ? path5 : req.url ? req.url.path || req.url : void 0;
+        const path8 = req.path;
+        _req.url = typeof path8 === "string" ? path8 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -28339,14 +28339,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path5) {
+    function parsePath(path8) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path5.length; i++) {
-        const char2 = path5[i];
+      for (let i = 0; i < path8.length; i++) {
+        const char2 = path8[i];
         if (!inBrackets && char2 === ".") {
           if (current) {
             parts.push(current);
@@ -28477,10 +28477,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path5 of paths) {
-        const parts = parsePath(path5);
+      for (const path8 of paths) {
+        const parts = parsePath(path8);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path5, remove);
+          redactWildcardPath(obj, parts, censor, path8, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -28565,8 +28565,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path5) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path5];
+            const wrappedCensor = typeof censor === "function" ? (value, path8) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path8];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -28601,8 +28601,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path5 of pathsToClone) {
-        const parts = parsePath(path5);
+      for (const path8 of pathsToClone) {
+        const parts = parsePath(path8);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -28654,24 +28654,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path5) {
-      if (typeof path5 !== "string") {
+    function validatePath(path8) {
+      if (typeof path8 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path5 === "") {
+      if (path8 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path5.includes("..")) {
-        throw new Error(`Invalid redaction path (${path5})`);
+      if (path8.includes("..")) {
+        throw new Error(`Invalid redaction path (${path8})`);
       }
-      if (path5.includes(",")) {
-        throw new Error(`Invalid redaction path (${path5})`);
+      if (path8.includes(",")) {
+        throw new Error(`Invalid redaction path (${path8})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path5.length; i++) {
-        const char2 = path5[i];
+      for (let i = 0; i < path8.length; i++) {
+        const char2 = path8[i];
         if ((char2 === '"' || char2 === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -28685,20 +28685,20 @@ var require_redact = __commonJS({
         } else if (char2 === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path5})`);
+            throw new Error(`Invalid redaction path (${path8})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path5})`);
+        throw new Error(`Invalid redaction path (${path8})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path5 of paths) {
-        validatePath(path5);
+      for (const path8 of paths) {
+        validatePath(path8);
       }
     }
     function slowRedact(options = {}) {
@@ -28866,8 +28866,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path5) => {
-            return censor(value, [k, ...path5]);
+          const wrappedCensor = typeof censor === "function" ? (value, path8) => {
+            return censor(value, [k, ...path8]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -29085,10 +29085,10 @@ var require_atomic_sleep = __commonJS({
 var require_sonic_boom = __commonJS({
   "../../node_modules/.pnpm/sonic-boom@4.2.1/node_modules/sonic-boom/index.js"(exports, module) {
     "use strict";
-    var fs2 = __require("fs");
+    var fs3 = __require("fs");
     var EventEmitter = __require("events");
     var inherits = __require("util").inherits;
-    var path5 = __require("path");
+    var path8 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -29142,27 +29142,27 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs2.mkdirSync(path5.dirname(file), { recursive: true });
-          const fd = fs2.openSync(file, flags, mode);
+          if (sonic.mkdir) fs3.mkdirSync(path8.dirname(file), { recursive: true });
+          const fd = fs3.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
           fileOpened(err);
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs2.mkdir(path5.dirname(file), { recursive: true }, (err) => {
+        fs3.mkdir(path8.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
-          fs2.open(file, flags, mode, fileOpened);
+          fs3.open(file, flags, mode, fileOpened);
         });
       } else {
-        fs2.open(file, flags, mode, fileOpened);
+        fs3.open(file, flags, mode, fileOpened);
       }
     }
     function SonicBoom(opts) {
       if (!(this instanceof SonicBoom)) {
         return new SonicBoom(opts);
       }
-      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir2, retryEAGAIN, fsync, contentMode, mode } = opts || {};
+      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir3, retryEAGAIN, fsync, contentMode, mode } = opts || {};
       fd = fd || dest;
       this._len = 0;
       this.fd = -1;
@@ -29187,7 +29187,7 @@ var require_sonic_boom = __commonJS({
       this.append = append || false;
       this.mode = mode;
       this.retryEAGAIN = retryEAGAIN || (() => true);
-      this.mkdir = mkdir2 || false;
+      this.mkdir = mkdir3 || false;
       let fsWriteSync;
       let fsWrite;
       if (contentMode === kContentModeBuffer) {
@@ -29196,8 +29196,8 @@ var require_sonic_boom = __commonJS({
         this.flush = flushBuffer;
         this.flushSync = flushBufferSync;
         this._actualWrite = actualWriteBuffer;
-        fsWriteSync = () => fs2.writeSync(this.fd, this._writingBuf);
-        fsWrite = () => fs2.write(this.fd, this._writingBuf, this.release);
+        fsWriteSync = () => fs3.writeSync(this.fd, this._writingBuf);
+        fsWrite = () => fs3.write(this.fd, this._writingBuf, this.release);
       } else if (contentMode === void 0 || contentMode === kContentModeUtf8) {
         this._writingBuf = "";
         this.write = write;
@@ -29206,15 +29206,15 @@ var require_sonic_boom = __commonJS({
         this._actualWrite = actualWrite;
         fsWriteSync = () => {
           if (Buffer.isBuffer(this._writingBuf)) {
-            return fs2.writeSync(this.fd, this._writingBuf);
+            return fs3.writeSync(this.fd, this._writingBuf);
           }
-          return fs2.writeSync(this.fd, this._writingBuf, "utf8");
+          return fs3.writeSync(this.fd, this._writingBuf, "utf8");
         };
         fsWrite = () => {
           if (Buffer.isBuffer(this._writingBuf)) {
-            return fs2.write(this.fd, this._writingBuf, this.release);
+            return fs3.write(this.fd, this._writingBuf, this.release);
           }
-          return fs2.write(this.fd, this._writingBuf, "utf8", this.release);
+          return fs3.write(this.fd, this._writingBuf, "utf8", this.release);
         };
       } else {
         throw new Error(`SonicBoom supports "${kContentModeUtf8}" and "${kContentModeBuffer}", but passed ${contentMode}`);
@@ -29230,7 +29230,7 @@ var require_sonic_boom = __commonJS({
       if (this.minLength >= this.maxWrite) {
         throw new Error(`minLength should be smaller than maxWrite (${this.maxWrite})`);
       }
-      this.release = (err, n2) => {
+      this.release = (err, n3) => {
         if (err) {
           if ((err.code === "EAGAIN" || err.code === "EBUSY") && this.retryEAGAIN(err, this._writingBuf.length, this._len - this._writingBuf.length)) {
             if (this.sync) {
@@ -29249,8 +29249,8 @@ var require_sonic_boom = __commonJS({
           }
           return;
         }
-        this.emit("write", n2);
-        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n2);
+        this.emit("write", n3);
+        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n3);
         this._len = releasedBufObj.len;
         this._writingBuf = releasedBufObj.writingBuf;
         if (this._writingBuf.length) {
@@ -29260,8 +29260,8 @@ var require_sonic_boom = __commonJS({
           }
           try {
             do {
-              const n3 = fsWriteSync();
-              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n3);
+              const n4 = fsWriteSync();
+              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n4);
               this._len = releasedBufObj2.len;
               this._writingBuf = releasedBufObj2.writingBuf;
             } while (this._writingBuf.length);
@@ -29271,7 +29271,7 @@ var require_sonic_boom = __commonJS({
           }
         }
         if (this._fsync) {
-          fs2.fsyncSync(this.fd);
+          fs3.fsyncSync(this.fd);
         }
         const len = this._len;
         if (this._reopening) {
@@ -29309,12 +29309,12 @@ var require_sonic_boom = __commonJS({
         this._periodicFlushTimer.unref();
       }
     }
-    function releaseWritingBuf(writingBuf, len, n2) {
+    function releaseWritingBuf(writingBuf, len, n3) {
       if (typeof writingBuf === "string") {
         writingBuf = Buffer.from(writingBuf);
       }
-      len = Math.max(len - n2, 0);
-      writingBuf = writingBuf.subarray(n2);
+      len = Math.max(len - n3, 0);
+      writingBuf = writingBuf.subarray(n3);
       return { writingBuf, len };
     }
     function emitDrain(sonic) {
@@ -29385,7 +29385,7 @@ var require_sonic_boom = __commonJS({
       const onDrain = () => {
         if (!this._fsync) {
           try {
-            fs2.fsync(this.fd, (err) => {
+            fs3.fsync(this.fd, (err) => {
               this._flushPending = false;
               cb(err);
             });
@@ -29487,7 +29487,7 @@ var require_sonic_boom = __commonJS({
       const fd = this.fd;
       this.once("ready", () => {
         if (fd !== this.fd) {
-          fs2.close(fd, (err) => {
+          fs3.close(fd, (err) => {
             if (err) {
               return this.emit("error", err);
             }
@@ -29536,8 +29536,8 @@ var require_sonic_boom = __commonJS({
           buf = this._bufs[0];
         }
         try {
-          const n2 = Buffer.isBuffer(buf) ? fs2.writeSync(this.fd, buf) : fs2.writeSync(this.fd, buf, "utf8");
-          const releasedBufObj = releaseWritingBuf(buf, this._len, n2);
+          const n3 = Buffer.isBuffer(buf) ? fs3.writeSync(this.fd, buf) : fs3.writeSync(this.fd, buf, "utf8");
+          const releasedBufObj = releaseWritingBuf(buf, this._len, n3);
           buf = releasedBufObj.writingBuf;
           this._len = releasedBufObj.len;
           if (buf.length <= 0) {
@@ -29552,7 +29552,7 @@ var require_sonic_boom = __commonJS({
         }
       }
       try {
-        fs2.fsyncSync(this.fd);
+        fs3.fsyncSync(this.fd);
       } catch {
       }
     }
@@ -29573,9 +29573,9 @@ var require_sonic_boom = __commonJS({
           buf = mergeBuf(this._bufs[0], this._lens[0]);
         }
         try {
-          const n2 = fs2.writeSync(this.fd, buf);
-          buf = buf.subarray(n2);
-          this._len = Math.max(this._len - n2, 0);
+          const n3 = fs3.writeSync(this.fd, buf);
+          buf = buf.subarray(n3);
+          this._len = Math.max(this._len - n3, 0);
           if (buf.length <= 0) {
             this._bufs.shift();
             this._lens.shift();
@@ -29601,13 +29601,13 @@ var require_sonic_boom = __commonJS({
       this._writingBuf = this._writingBuf.length ? this._writingBuf : this._bufs.shift() || "";
       if (this.sync) {
         try {
-          const written = Buffer.isBuffer(this._writingBuf) ? fs2.writeSync(this.fd, this._writingBuf) : fs2.writeSync(this.fd, this._writingBuf, "utf8");
+          const written = Buffer.isBuffer(this._writingBuf) ? fs3.writeSync(this.fd, this._writingBuf) : fs3.writeSync(this.fd, this._writingBuf, "utf8");
           release(null, written);
         } catch (err) {
           release(err);
         }
       } else {
-        fs2.write(this.fd, this._writingBuf, release);
+        fs3.write(this.fd, this._writingBuf, release);
       }
     }
     function actualWriteBuffer() {
@@ -29616,7 +29616,7 @@ var require_sonic_boom = __commonJS({
       this._writingBuf = this._writingBuf.length ? this._writingBuf : mergeBuf(this._bufs.shift(), this._lens.shift());
       if (this.sync) {
         try {
-          const written = fs2.writeSync(this.fd, this._writingBuf);
+          const written = fs3.writeSync(this.fd, this._writingBuf);
           release(null, written);
         } catch (err) {
           release(err);
@@ -29625,7 +29625,7 @@ var require_sonic_boom = __commonJS({
         if (kCopyBuffer) {
           this._writingBuf = Buffer.from(this._writingBuf);
         }
-        fs2.write(this.fd, this._writingBuf, release);
+        fs3.write(this.fd, this._writingBuf, release);
       }
     }
     function actualClose(sonic) {
@@ -29641,12 +29641,12 @@ var require_sonic_boom = __commonJS({
       sonic._lens = [];
       assert(typeof sonic.fd === "number", `sonic.fd must be a number, got ${typeof sonic.fd}`);
       try {
-        fs2.fsync(sonic.fd, closeWrapped);
+        fs3.fsync(sonic.fd, closeWrapped);
       } catch {
       }
       function closeWrapped() {
         if (sonic.fd !== 1 && sonic.fd !== 2) {
-          fs2.close(sonic.fd, done);
+          fs3.close(sonic.fd, done);
         } else {
           done();
         }
@@ -30497,7 +30497,7 @@ var require_tools = __commonJS({
       return function hookWrappedLog(...args) {
         hook.call(this, args, LOG, level);
       };
-      function LOG(o, ...n2) {
+      function LOG(o, ...n3) {
         if (typeof o === "object") {
           let msg = o;
           if (o !== null) {
@@ -30508,22 +30508,22 @@ var require_tools = __commonJS({
             }
           }
           let formatParams;
-          if (msg === null && n2.length === 0) {
+          if (msg === null && n3.length === 0) {
             formatParams = [null];
           } else {
-            msg = n2.shift();
-            formatParams = n2;
+            msg = n3.shift();
+            formatParams = n3;
           }
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
           this[writeSym](o, format(msg, formatParams, this[formatOptsSym]), level);
         } else {
-          let msg = o === void 0 ? n2.shift() : o;
+          let msg = o === void 0 ? n3.shift() : o;
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
-          this[writeSym](null, format(msg, n2, this[formatOptsSym]), level);
+          this[writeSym](null, format(msg, n3, this[formatOptsSym]), level);
         }
       }
     }
@@ -31081,7 +31081,7 @@ var require_proto = __commonJS({
       get levelVal() {
         return this[levelValSym];
       },
-      set levelVal(n2) {
+      set levelVal(n3) {
         throw Error("levelVal is read-only");
       },
       get msgPrefix() {
@@ -32010,9 +32010,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path5 = __require("path");
-        const outputDir = "/root/imoove/artifacts/api-server/dist";
-        return path5.resolve(outputDir, p.replace(/^\.\//, ""));
+        const path8 = __require("path");
+        const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
+        return path8.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -33985,7 +33985,7 @@ var init_query_promise = __esm({
 function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
-    (result2, { path: path5, field }, columnIndex) => {
+    (result2, { path: path8, field }, columnIndex) => {
       let decoder2;
       if (is(field, Column)) {
         decoder2 = field;
@@ -33997,8 +33997,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         decoder2 = field.sql.decoder;
       }
       let node = result2;
-      for (const [pathChunkIndex, pathChunk] of path5.entries()) {
-        if (pathChunkIndex < path5.length - 1) {
+      for (const [pathChunkIndex, pathChunk] of path8.entries()) {
+        if (pathChunkIndex < path8.length - 1) {
           if (!(pathChunk in node)) {
             node[pathChunk] = {};
           }
@@ -34006,8 +34006,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         } else {
           const rawValue = row[columnIndex];
           const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
-          if (joinsNotNullableMap && is(field, Column) && path5.length === 2) {
-            const objectName = path5[0];
+          if (joinsNotNullableMap && is(field, Column) && path8.length === 2) {
+            const objectName = path8[0];
             if (!(objectName in nullifyMap)) {
               nullifyMap[objectName] = value === null ? getTableName(field.table) : false;
             } else if (typeof nullifyMap[objectName] === "string" && nullifyMap[objectName] !== getTableName(field.table)) {
@@ -40944,12 +40944,21 @@ __export(schema_exports, {
   adminAuthUsersTable: () => adminAuthUsersTable,
   adminCompaniesTable: () => adminCompaniesTable,
   billingAccountsTable: () => billingAccountsTable,
+  billingExportBatchesTable: () => billingExportBatchesTable,
   companyChangeRequestsTable: () => companyChangeRequestsTable,
+  companyComplianceDocumentsTable: () => companyComplianceDocumentsTable,
   driverVehicleAssignmentsTable: () => driverVehicleAssignmentsTable,
   fareAreasTable: () => fareAreasTable,
   financialAuditLogTable: () => financialAuditLogTable,
   fleetDriversTable: () => fleetDriversTable,
   fleetVehiclesTable: () => fleetVehiclesTable,
+  homepageContentTable: () => homepageContentTable,
+  homepageFaqItemsTable: () => homepageFaqItemsTable,
+  homepageHowStepsTable: () => homepageHowStepsTable,
+  homepagePlaceholdersTable: () => homepagePlaceholdersTable,
+  homepageTrustMetricsTable: () => homepageTrustMetricsTable,
+  insurerCostCentersTable: () => insurerCostCentersTable,
+  insurerRideTransportDocumentsTable: () => insurerRideTransportDocumentsTable,
   invoiceItemsTable: () => invoiceItemsTable,
   invoicesTable: () => invoicesTable,
   panelAuditLogTable: () => panelAuditLogTable,
@@ -40959,12 +40968,15 @@ __export(schema_exports, {
   partnerRegistrationTimelineTable: () => partnerRegistrationTimelineTable,
   partnerRideSeriesTable: () => partnerRideSeriesTable,
   paymentsTable: () => paymentsTable,
+  rideBillingCorrectionsTable: () => rideBillingCorrectionsTable,
   rideEventsTable: () => rideEventsTable,
   rideFinancialsTable: () => rideFinancialsTable,
   ridesTable: () => ridesTable,
-  settlementsTable: () => settlementsTable
+  settlementsTable: () => settlementsTable,
+  supportMessagesTable: () => supportMessagesTable,
+  supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, paymentsTable, financialAuditLogTable, partnerRideSeriesTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41037,6 +41049,12 @@ var init_schema2 = __esm({
       session_version: integer("session_version").notNull().default(1),
       is_active: boolean("is_active").notNull().default(true),
       access_status: text("access_status").notNull().default("active"),
+      /** Plattform-Freigabe: pending | in_review | approved | rejected (Login bleibt möglich). */
+      approval_status: text("approval_status").notNull().default("approved"),
+      /** Von Admin gesetzter Grund bei Sperre (MVP, Anzeige/Export). */
+      suspension_reason: text("suspension_reason").notNull().default(""),
+      /** Interne Plattform-Notiz (nur Admin, nicht an Partner ausliefern als fachlichen Status). */
+      admin_internal_note: text("admin_internal_note").notNull().default(""),
       must_change_password: boolean("must_change_password").notNull().default(true),
       p_schein_number: text("p_schein_number").notNull().default(""),
       p_schein_expiry: date("p_schein_expiry"),
@@ -41059,8 +41077,22 @@ var init_schema2 = __esm({
       vehicle_legal_type: text("vehicle_legal_type").notNull().default("taxi"),
       vehicle_class: text("vehicle_class").notNull().default("standard"),
       taxi_order_number: text("taxi_order_number").notNull().default(""),
+      /** Taxikonzession / Ordnungsnummer (Pflicht bis Freigabe) */
+      konzession_number: text("konzession_number").notNull().default(""),
+      /** [{ storageKey, uploadedAt? }] – Nachweise; FK in Migration 035 */
+      vehicle_documents: jsonb("vehicle_documents").$type().notNull().default([]),
+      rejection_reason: text("rejection_reason").notNull().default(""),
+      approval_decided_at: timestamp("approval_decided_at", { withTimezone: true }),
+      approval_decided_by_admin_id: text("approval_decided_by_admin_id"),
       next_inspection_date: date("next_inspection_date"),
-      is_active: boolean("is_active").notNull().default(true),
+      is_active: boolean("is_active").notNull().default(false),
+      /** draft | pending_approval | approved | rejected | blocked */
+      approval_status: text("approval_status").notNull().default("draft"),
+      admin_internal_note: text("admin_internal_note").notNull().default(""),
+      /** Sperrgrund (Plattform) bei `approval_status` = blocked */
+      block_reason: text("block_reason").notNull().default(""),
+      model_year: integer("model_year"),
+      passenger_seats: integer("passenger_seats"),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
@@ -41121,6 +41153,21 @@ var init_schema2 = __esm({
       is_active: boolean("is_active").notNull().default(true),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    companyComplianceDocumentsTable = pgTable("company_compliance_documents", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      /** "gewerbe" | "insurance" */
+      document_type: text("document_type").notNull(),
+      storage_key: text("storage_key").notNull(),
+      uploaded_by_panel_user_id: text("uploaded_by_panel_user_id").references(() => panelUsersTable.id, {
+        onDelete: "set null"
+      }),
+      uploaded_at: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+      /** pending | approved | rejected */
+      review_status: text("review_status").notNull().default("pending"),
+      review_note: text("review_note").notNull().default(""),
+      is_current: boolean("is_current").notNull().default(true)
     });
     adminAuthUsersTable = pgTable("admin_auth_users", {
       id: text("id").primaryKey(),
@@ -41432,6 +41479,31 @@ var init_schema2 = __esm({
       actor_id: text("actor_id"),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
     });
+    supportThreadsTable = pgTable("support_threads", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      created_by_panel_user_id: text("created_by_panel_user_id").notNull().references(() => panelUsersTable.id, { onDelete: "restrict" }),
+      category: text("category").notNull(),
+      title: text("title").notNull(),
+      status: text("status").notNull().default("open"),
+      last_message_at: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    supportMessagesTable = pgTable("support_messages", {
+      id: text("id").primaryKey(),
+      thread_id: text("thread_id").notNull().references(() => supportThreadsTable.id, { onDelete: "cascade" }),
+      sender_type: text("sender_type").notNull(),
+      sender_panel_user_id: text("sender_panel_user_id").references(() => panelUsersTable.id, {
+        onDelete: "set null"
+      }),
+      sender_admin_user_id: text("sender_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      body: text("body").notNull(),
+      attachments: jsonb("attachments").$type(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
     partnerRideSeriesTable = pgTable("partner_ride_series", {
       id: text("id").primaryKey(),
       company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
@@ -41446,6 +41518,148 @@ var init_schema2 = __esm({
       status: text("status").notNull().default("active"),
       meta: jsonb("meta").$type().notNull().default({}),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    billingExportBatchesTable = pgTable("billing_export_batches", {
+      id: text("id").primaryKey(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      created_by_label: text("created_by_label").notNull().default(""),
+      period_from: timestamp("period_from", { withTimezone: true }).notNull(),
+      period_to: timestamp("period_to", { withTimezone: true }).notNull(),
+      company_id_filter: text("company_id_filter"),
+      status: text("status").notNull().default("completed"),
+      row_count: integer("row_count").notNull().default(0),
+      file_rel_path: text("file_rel_path").notNull().default(""),
+      included_ride_ids: jsonb("included_ride_ids").$type().notNull().default([]),
+      schema_version: text("schema_version").notNull().default("insurer_export_v1")
+    });
+    rideBillingCorrectionsTable = pgTable("ride_billing_corrections", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      field_name: text("field_name").notNull(),
+      old_value: text("old_value").notNull().default(""),
+      new_value: text("new_value").notNull().default(""),
+      reason_code: text("reason_code").notNull().default(""),
+      reason_note: text("reason_note").notNull().default(""),
+      actor_type: text("actor_type").notNull().default("system"),
+      actor_id: text("actor_id"),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    homepagePlaceholdersTable = pgTable("homepage_placeholders", {
+      id: text("id").primaryKey(),
+      title: text("title").notNull().default(""),
+      message: text("message").notNull().default(""),
+      cta_label: text("cta_label"),
+      cta_url: text("cta_url"),
+      /** Visueller Hinweis-Typ in API als `type`: info | success | warning | important (Legacy-Spaltenname). */
+      tone: text("tone").notNull().default("info"),
+      is_active: boolean("is_active").notNull().default(true),
+      sort_order: integer("sort_order").notNull().default(0),
+      visible_from: timestamp("visible_from", { withTimezone: true }),
+      visible_until: timestamp("visible_until", { withTimezone: true }),
+      dismiss_key: text("dismiss_key").notNull().default(""),
+      created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    homepageContentTable = pgTable("homepage_content", {
+      id: text("id").primaryKey(),
+      hero_headline: text("hero_headline").notNull().default(""),
+      hero_subline: text("hero_subline").notNull().default(""),
+      cta1_text: text("cta1_text").notNull().default(""),
+      cta1_link: text("cta1_link").notNull().default(""),
+      cta2_text: text("cta2_text").notNull().default(""),
+      cta2_link: text("cta2_link").notNull().default(""),
+      notice_text: text("notice_text").notNull().default(""),
+      notice_active: boolean("notice_active").notNull().default(false),
+      section2_title: text("section2_title").notNull().default(""),
+      section2_cards: jsonb("section2_cards").$type().notNull().default([]),
+      services_kicker: text("services_kicker").notNull().default(""),
+      services_title: text("services_title").notNull().default(""),
+      services_subline: text("services_subline").notNull().default(""),
+      services_cards: jsonb("services_cards").$type().notNull().default([]),
+      manifest_kicker: text("manifest_kicker").notNull().default(""),
+      manifest_title: text("manifest_title").notNull().default(""),
+      manifest_subline: text("manifest_subline").notNull().default(""),
+      manifest_cards: jsonb("manifest_cards").$type().notNull().default([]),
+      updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    insurerCostCentersTable = pgTable("insurer_cost_centers", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      code: text("code").notNull(),
+      label: text("label").notNull().default(""),
+      is_active: boolean("is_active").notNull().default(true),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    insurerRideTransportDocumentsTable = pgTable("insurer_ride_transport_documents", {
+      id: text("id").primaryKey(),
+      company_id: text("company_id").notNull().references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      storage_key: text("storage_key").notNull(),
+      original_filename: text("original_filename").notNull().default(""),
+      content_type: text("content_type").notNull().default("application/pdf"),
+      byte_size: integer("byte_size").notNull().default(0),
+      created_by_panel_user_id: text("created_by_panel_user_id").references(() => panelUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    homepageFaqItemsTable = pgTable("homepage_faq_items", {
+      id: text("id").primaryKey(),
+      question: text("question").notNull().default(""),
+      answer: text("answer").notNull().default(""),
+      sort_order: integer("sort_order").notNull().default(0),
+      is_active: boolean("is_active").notNull().default(true),
+      created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    homepageHowStepsTable = pgTable("homepage_how_steps", {
+      id: text("id").primaryKey(),
+      icon: text("icon").notNull().default(""),
+      title: text("title").notNull().default(""),
+      body: text("body").notNull().default(""),
+      sort_order: integer("sort_order").notNull().default(0),
+      is_active: boolean("is_active").notNull().default(true),
+      created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    homepageTrustMetricsTable = pgTable("homepage_trust_metrics", {
+      id: text("id").primaryKey(),
+      value: text("value").notNull().default(""),
+      label: text("label").notNull().default(""),
+      description: text("description").notNull().default(""),
+      sort_order: integer("sort_order").notNull().default(0),
+      is_active: boolean("is_active").notNull().default(true),
+      created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+        onDelete: "set null"
+      }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
   }
 });
@@ -41776,9 +41990,9 @@ async function insertAccessCodeAdmin(body) {
     const maxAttempts = 12;
     for (let a = 0; a < maxAttempts; a += 1) {
       const plain = generateAccessCodePlain(12);
-      const n2 = normalizeAccessCodeInput(plain);
+      const n3 = normalizeAccessCodeInput(plain);
       const ins = await insertAccessCodeRow({
-        normalized: n2,
+        normalized: n3,
         codeType: body.codeType,
         companyId,
         label,
@@ -41901,6 +42115,13 @@ function parsePartnerBookingMeta(raw) {
       seriesValidUntil: typeof m.seriesValidUntil === "string" ? m.seriesValidUntil : null
     };
   }
+  if (isRecord(raw.insurer)) {
+    const ins = raw.insurer;
+    out.insurer = {
+      costCenterId: typeof ins.costCenterId === "string" ? ins.costCenterId : null,
+      passengerRef: typeof ins.passengerRef === "string" ? ins.passengerRef : null
+    };
+  }
   return out;
 }
 function metaToJson(meta) {
@@ -41931,6 +42152,48 @@ var init_dispatchStatus = __esm({
   }
 });
 
+// src/db/rideBillingCorrectionsData.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+function toStoredText(v) {
+  if (v == null) return "";
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
+async function createRideBillingCorrection(input) {
+  const db2 = getDb();
+  if (!db2) return;
+  const rideId = String(input.rideId ?? "").trim();
+  const fieldName = String(input.fieldName ?? "").trim();
+  const reasonCode = String(input.reasonCode ?? "").trim();
+  if (!rideId || !fieldName || !reasonCode) {
+    throw new Error("ride_billing_correction_invalid_input");
+  }
+  await db2.insert(rideBillingCorrectionsTable).values({
+    id: `rbc-${randomUUID2()}`,
+    ride_id: rideId,
+    field_name: fieldName,
+    old_value: toStoredText(input.oldValue),
+    new_value: toStoredText(input.newValue),
+    reason_code: reasonCode,
+    reason_note: "",
+    actor_type: (input.actorType ?? "system").trim() || "system",
+    actor_id: input.actorId ?? null,
+    created_at: input.createdAt ?? /* @__PURE__ */ new Date()
+  });
+}
+var init_rideBillingCorrectionsData = __esm({
+  "src/db/rideBillingCorrectionsData.ts"() {
+    init_client();
+    init_schema2();
+  }
+});
+
 // src/db/ridesData.ts
 var ridesData_exports = {};
 __export(ridesData_exports, {
@@ -41939,6 +42202,7 @@ __export(ridesData_exports, {
   countRidesAdmin: () => countRidesAdmin,
   findRide: () => findRide,
   findRideAdminById: () => findRideAdminById,
+  getLastRideForDriverInCompany: () => getLastRideForDriverInCompany,
   getPanelCompanyOverviewMetrics: () => getPanelCompanyOverviewMetrics,
   insertRide: () => insertRide,
   insertRideCloningAccessFromTemplate: () => insertRideCloningAccessFromTemplate,
@@ -42154,6 +42418,37 @@ async function listRidesForCompany(companyId) {
   }
   const rows = await db2.select().from(ridesTable).where(companyIdMatchCondition(companyId)).orderBy(desc(ridesTable.created_at));
   return rows.map(rowToRide);
+}
+async function getLastRideForDriverInCompany(companyId, driverId) {
+  const db2 = getDb();
+  if (!db2) {
+    const list = memoryRides.filter((r2) => r2.companyId === companyId && r2.driverId === driverId).sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+    const r0 = list[0];
+    if (!r0) return null;
+    return {
+      id: r0.id,
+      createdAt: r0.createdAt,
+      status: r0.status,
+      fromLabel: r0.fromLabel,
+      toLabel: r0.toLabel
+    };
+  }
+  const rows = await db2.select({
+    id: ridesTable.id,
+    created_at: ridesTable.created_at,
+    status: ridesTable.status,
+    from_label: ridesTable.from_label,
+    to_label: ridesTable.to_label
+  }).from(ridesTable).where(and(companyIdMatchCondition(companyId), eq(ridesTable.driver_id, driverId))).orderBy(desc(ridesTable.created_at)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    createdAt: r.created_at.toISOString(),
+    status: r.status,
+    fromLabel: r.from_label,
+    toLabel: r.to_label
+  };
 }
 async function insertRide(r, tx) {
   const persisted = stripEphemeral(r);
@@ -42514,6 +42809,7 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
     const dayStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate());
     const dayEnd = dayStart + 24 * 3600 * 1e3;
     const weekStart = now - 7 * 24 * 3600 * 1e3;
+    const thirtyStart = now - 30 * 24 * 3600 * 1e3;
     const monthStart = Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), 1);
     const monthEnd = Date.UTC(u.getUTCFullYear(), u.getUTCMonth() + 1, 1);
     const tomorrowStart = dayEnd;
@@ -42525,6 +42821,7 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
     const completedIn = (a, b) => list.filter((r) => r.status === "completed" && inCreated(r, a, b));
     const todayRides = completedIn(dayStart, dayEnd);
     const weekRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= weekStart);
+    const thirtyRides = list.filter((r) => r.status === "completed" && new Date(r.createdAt).getTime() >= thirtyStart);
     const monthRides = completedIn(monthStart, monthEnd);
     const openRides = list.filter((r) => !PANEL_OVERVIEW_TERMINAL_STATUSES.includes(r.status)).length;
     const monthList = list.filter((r) => inCreated(r, monthStart, monthEnd));
@@ -42561,6 +42858,10 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
         completedRides: weekRides.length,
         revenue: weekRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0)
       },
+      rolling30: {
+        completedRides: thirtyRides.length,
+        revenue: thirtyRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0)
+      },
       month: {
         completedRides: monthRides.length,
         revenue: monthRides.reduce((s, r) => s + panelOverviewRideRevenue(r), 0)
@@ -42582,6 +42883,7 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
   const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
   const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
   const weekRollingStart = sql`(now() - interval '7 days')`;
+  const thirtyRollingStart = sql`(now() - interval '30 days')`;
   const baseCompleted = and(companyIdMatchCondition(companyId), eq(ridesTable.status, "completed"));
   const [todayRow] = await db2.select({
     completedRides: sql`count(*)::int`,
@@ -42593,6 +42895,10 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
     completedRides: sql`count(*)::int`,
     revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
   }).from(ridesTable).where(and(baseCompleted, gte(ridesTable.created_at, weekRollingStart)));
+  const [thirtyRow] = await db2.select({
+    completedRides: sql`count(*)::int`,
+    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+  }).from(ridesTable).where(and(baseCompleted, gte(ridesTable.created_at, thirtyRollingStart)));
   const [monthRow] = await db2.select({
     completedRides: sql`count(*)::int`,
     revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
@@ -42644,6 +42950,10 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
       completedRides: Number(weekRow?.completedRides ?? 0),
       revenue: Number(weekRow?.revenue ?? 0)
     },
+    rolling30: {
+      completedRides: Number(thirtyRow?.completedRides ?? 0),
+      revenue: Number(thirtyRow?.revenue ?? 0)
+    },
     month: {
       completedRides: Number(monthRow?.completedRides ?? 0),
       revenue: Number(monthRow?.revenue ?? 0)
@@ -42669,12 +42979,73 @@ async function updateRide(id, patch) {
   const cur = await findRide(id);
   if (!cur) return null;
   const next = { ...cur, ...patch };
+  const correctionPlan = [];
+  if ((cur.finalFare ?? null) !== (next.finalFare ?? null)) {
+    correctionPlan.push({
+      fieldName: "billableTotalAmount",
+      oldValue: cur.finalFare ?? "",
+      newValue: next.finalFare ?? "",
+      reasonCode: "fare_adjustment"
+    });
+  }
+  if ((cur.distanceKm ?? null) !== (next.distanceKm ?? null)) {
+    correctionPlan.push({
+      fieldName: "distanceKm",
+      oldValue: cur.distanceKm ?? "",
+      newValue: next.distanceKm ?? "",
+      reasonCode: "distance_adjustment"
+    });
+  }
+  if ((cur.scheduledAt ?? null) !== (next.scheduledAt ?? null)) {
+    correctionPlan.push({
+      fieldName: "scheduledPickupAt",
+      oldValue: cur.scheduledAt ?? "",
+      newValue: next.scheduledAt ?? "",
+      reasonCode: "schedule_change"
+    });
+  }
+  if ((cur.status ?? null) !== (next.status ?? null)) {
+    correctionPlan.push({
+      fieldName: "fulfillmentStatus",
+      oldValue: cur.status ?? "",
+      newValue: next.status ?? "",
+      reasonCode: "status_transition"
+    });
+    if (cur.status !== "completed" && next.status === "completed") {
+      correctionPlan.push({
+        fieldName: "completedAt",
+        oldValue: "",
+        newValue: (/* @__PURE__ */ new Date()).toISOString(),
+        reasonCode: "completion_timestamp_set"
+      });
+    }
+  }
+  if ((cur.pricingMode ?? null) !== (next.pricingMode ?? null)) {
+    correctionPlan.push({
+      fieldName: "pricingType",
+      oldValue: cur.pricingMode ?? "",
+      newValue: next.pricingMode ?? "",
+      reasonCode: "pricing_mode_change"
+    });
+  }
   const db2 = getDb();
   if (!db2) {
     memoryRides = memoryRides.map((x) => x.id === id ? next : x);
     return next;
   }
   await db2.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  for (const c of correctionPlan) {
+    await createRideBillingCorrection({
+      rideId: id,
+      fieldName: c.fieldName,
+      oldValue: c.oldValue,
+      newValue: c.newValue,
+      reasonCode: c.reasonCode,
+      actorType: "system",
+      actorId: null,
+      createdAt: c.createdAt
+    });
+  }
   if (cur.status !== next.status) {
     await db2.insert(rideEventsTable).values({
       id: makeEventId(),
@@ -42717,6 +43088,7 @@ var init_ridesData = __esm({
     init_dispatchStatus();
     init_client();
     init_schema2();
+    init_rideBillingCorrectionsData();
     memoryRides = [];
     PANEL_OVERVIEW_TERMINAL_STATUSES = [
       "completed",
@@ -42845,12 +43217,12 @@ __export(rideFinancialsData_exports, {
   updateRideFinancialStatuses: () => updateRideFinancialStatuses,
   upsertRideFinancialSnapshot: () => upsertRideFinancialSnapshot
 });
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 async function insertFinancialAuditLog(input) {
   const db2 = getDb();
   if (!db2) return;
   await db2.insert(financialAuditLogTable).values({
-    id: `fal-${randomUUID2()}`,
+    id: `fal-${randomUUID3()}`,
     entity_type: input.entityType,
     entity_id: input.entityId,
     action: input.action,
@@ -42926,7 +43298,7 @@ async function upsertRideFinancialSnapshot(input) {
   const existingRows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, ride.id)).limit(1);
   const existing = existingRows[0];
   if (!existing) {
-    const id = `rf-${randomUUID2()}`;
+    const id = `rf-${randomUUID3()}`;
     await db2.insert(rideFinancialsTable).values({
       id,
       ride_id: ride.id,
@@ -43264,14 +43636,14 @@ var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
 // src/app.ts
-var import_express12 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
-import path4 from "path";
-import { fileURLToPath as fileURLToPath3 } from "node:url";
+import path7 from "path";
+import { fileURLToPath as fileURLToPath5 } from "node:url";
 
 // src/routes/index.ts
-var import_express10 = __toESM(require_express2(), 1);
+var import_express13 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -43754,8 +44126,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path5, errorMaps, issueData } = params;
-  const fullPath = [...path5, ...issueData.path || []];
+  const { data, path: path8, errorMaps, issueData } = params;
+  const fullPath = [...path8, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -43871,11 +44243,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path5, key) {
+  constructor(parent, value, path8, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path5;
+    this._path = path8;
     this._key = key;
   }
   get path() {
@@ -47356,7 +47728,7 @@ function stripPartnerOnlyRideFields(r) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 
 // src/domain/panelModules.ts
 var PANEL_MODULE_DEFINITIONS = [
@@ -47365,6 +47737,18 @@ var PANEL_MODULE_DEFINITIONS = [
     label: "\xDCbersicht",
     description: "Startseite, Kennzahlen-Hinweise, eigenes Passwort",
     productIntent: "Einstieg pro Login: Session, Kurz\xFCberblick, Hinweise auf freigeschaltete Module; eigenes Passwort \xE4ndern."
+  },
+  {
+    id: "support",
+    label: "Anfragen",
+    description: "Nachrichten an die Plattform (Stammdaten, Dokumente, \u2026)",
+    productIntent: "Chat-Threads je Mandant mit der Plattform: neue Anfrage, Verlauf, Status \u2014 getrennt von Taxi-Fachlogik."
+  },
+  {
+    id: "help",
+    label: "Hilfe",
+    description: "Schnellhilfe, FAQ und Einstieg in Support-Anfragen",
+    productIntent: "Self-Service-Hilfe zur Reduktion wiederkehrender Support-Anfragen; klare Weiterleitung in das bestehende Anfragen-Modul."
   },
   {
     id: "rides_list",
@@ -47421,6 +47805,12 @@ var PANEL_MODULE_DEFINITIONS = [
     productIntent: "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostentr\xE4ger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik."
   },
   {
+    id: "insurer_workspace",
+    label: "Krankenkasse-Portal",
+    description: "Eigener Bereich: Fahrten-Controlling, Kostenstellen, Transportnachweise (V1)",
+    productIntent: "Mandant company_kind=insurer: getrennte Panel-API; keine medizinischen Befunde persistieren, nur Fahrt-/Orga-/Kostenstellen-Logik."
+  },
+  {
     id: "taxi_fleet",
     label: "Flotte & Fahrer",
     description: "Fahrzeuge, Fahrer-Logins, Zuweisung (nur Mandant Taxi)",
@@ -47429,6 +47819,98 @@ var PANEL_MODULE_DEFINITIONS = [
 ];
 var ID_SET = new Set(PANEL_MODULE_DEFINITIONS.map((d) => d.id));
 var ALL_PANEL_MODULE_IDS = PANEL_MODULE_DEFINITIONS.map((d) => d.id);
+function asModuleIdSet(ids) {
+  return new Set(ids);
+}
+var GENERAL_LIKE_KIND_MODULES = asModuleIdSet(
+  ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet" && id !== "insurer_workspace")
+);
+var PANEL_MODULES_BY_COMPANY_KIND = {
+  taxi: asModuleIdSet([
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "taxi_fleet"
+  ]),
+  hotel: asModuleIdSet([
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "hotel_mode",
+    "billing"
+  ]),
+  insurer: asModuleIdSet([
+    "overview",
+    "insurer_workspace",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides"
+  ]),
+  medical: asModuleIdSet([
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides"
+  ]),
+  corporate: asModuleIdSet([
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing",
+    "company_rides",
+    "recurring_rides"
+  ]),
+  voucher_client: asModuleIdSet([
+    "overview",
+    "support",
+    "help",
+    "rides_list",
+    "rides_create",
+    "company_profile",
+    "team",
+    "access_codes",
+    "billing"
+  ]),
+  general: GENERAL_LIKE_KIND_MODULES
+};
+function allowedPanelModuleIdsForCompanyKind(companyKind) {
+  const k = (companyKind || "general").trim();
+  return PANEL_MODULES_BY_COMPANY_KIND[k] ?? GENERAL_LIKE_KIND_MODULES;
+}
+function getAllowedModulesForKind(companyKind) {
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
+  return ALL_PANEL_MODULE_IDS.filter((id) => allowed.has(id));
+}
 function normalizeStoredPanelModules(raw) {
   if (raw == null) return null;
   if (!Array.isArray(raw)) return null;
@@ -47444,11 +47926,16 @@ function normalizeStoredPanelModules(raw) {
   }
   return out;
 }
-function resolveEffectivePanelModules(stored) {
+var PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED = ["support", "help"];
+function resolveEffectivePanelModules(stored, companyKind) {
   if (stored == null) {
-    return ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet");
+    return getAllowedModulesForKind(companyKind);
   }
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
   const set = new Set(stored);
+  for (const id of PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED) {
+    if (allowed.has(id)) set.add(id);
+  }
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
 }
 
@@ -47685,7 +48172,8 @@ function rowToCompany(r) {
     priority_price_threshold: r.priority_price_threshold,
     priority_timeout_seconds: r.priority_timeout_seconds,
     release_radius_km: r.release_radius_km,
-    panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null
+    panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
+    partner_panel_profile_locked: r.partner_panel_profile_locked ?? false
   };
 }
 function rowToFareArea(r) {
@@ -47710,9 +48198,9 @@ function rowToFareArea(r) {
   };
 }
 function asMoney(v, fallback) {
-  const n2 = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n2)) return fallback;
-  return n2;
+  const n3 = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n3)) return fallback;
+  return n3;
 }
 async function getPublicFareProfile() {
   const defaults = {
@@ -47750,8 +48238,8 @@ async function getPublicFareProfile() {
 }
 var ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
 function num(v) {
-  const n2 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
-  return Number.isFinite(n2) ? n2 : 0;
+  const n3 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n3) ? n3 : 0;
 }
 function rideRevenueAmount(r) {
   if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
@@ -47882,7 +48370,7 @@ async function getCompanyKpis(companyId, now = /* @__PURE__ */ new Date()) {
         lt(ridesTable.created_at, nextMonthStart)
       )
     ),
-    db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), sql`${ridesTable.status} = any(${openStatuses})`)),
+    db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, openStatuses))),
     db2.select({
       remaining: sql`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`
     }).from(accessCodesTable).where(
@@ -48066,7 +48554,7 @@ function applyAdminCompanyPatch(cur, body) {
 async function insertAdminCompany(body) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return { error: "name_required" };
-  const id = `co-${randomUUID3()}`;
+  const id = `co-${randomUUID4()}`;
   const base = {
     id,
     name,
@@ -48143,10 +48631,28 @@ async function insertAdminCompany(body) {
   }
   return next;
 }
+async function syncCompanyBillingAccountEmail(companyId, email) {
+  const db2 = getDb();
+  if (!db2) return;
+  const normalized = email.trim();
+  const [row] = await db2.select({ id: billingAccountsTable.id }).from(billingAccountsTable).where(and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true))).limit(1);
+  const now = /* @__PURE__ */ new Date();
+  if (row) {
+    await db2.update(billingAccountsTable).set({ billing_email: normalized, updated_at: now }).where(eq(billingAccountsTable.id, row.id));
+    return;
+  }
+  await db2.insert(billingAccountsTable).values({
+    id: `ba-${randomUUID4()}`,
+    company_id: companyId,
+    account_name: "Partner-Abrechnung",
+    billing_email: normalized
+  });
+}
 async function updateAdminCompany(companyId, body) {
+  const { billing_account_email: billingAccountEmail, ...patchBody } = body;
   const cur = await findCompanyById(companyId);
   if (!cur) return null;
-  const next = applyAdminCompanyPatch(cur, body);
+  const next = applyAdminCompanyPatch(cur, patchBody);
   const db2 = getDb();
   if (!db2) {
     const idx = memCompanies.findIndex((c) => c.id === companyId);
@@ -48155,6 +48661,13 @@ async function updateAdminCompany(companyId, body) {
     return next;
   }
   await db2.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  if (typeof billingAccountEmail === "string") {
+    try {
+      await syncCompanyBillingAccountEmail(companyId, billingAccountEmail);
+    } catch (e) {
+      logger.error({ err: e, companyId }, "syncCompanyBillingAccountEmail failed");
+    }
+  }
   return next;
 }
 async function patchCompanyPriority(companyId, body) {
@@ -48461,7 +48974,8 @@ async function getFleetDriverCapability(driverId, companyId) {
   if (!db2) return null;
   const assigned = await db2.select({
     vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
-    vehicleClass: fleetVehiclesTable.vehicle_class
+    vehicleClass: fleetVehiclesTable.vehicle_class,
+    approvalStatus: fleetVehiclesTable.approval_status
   }).from(driverVehicleAssignmentsTable).innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id)).where(
     and(
       eq(driverVehicleAssignmentsTable.driver_id, driverId),
@@ -48469,28 +48983,273 @@ async function getFleetDriverCapability(driverId, companyId) {
     )
   ).orderBy(desc(driverVehicleAssignmentsTable.assigned_at)).limit(1);
   if (assigned[0]) {
+    if (String(assigned[0].approvalStatus) !== "approved") {
+      return null;
+    }
     return {
       vehicleLegalType: assigned[0].vehicleLegalType,
       vehicleClass: assigned[0].vehicleClass
     };
   }
-  const fallback = await db2.select({
-    vehicleLegalType: fleetDriversTable.vehicle_legal_type,
-    vehicleClass: fleetDriversTable.vehicle_class
-  }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).limit(1);
-  if (!fallback[0]) return null;
+  return null;
+}
+
+// src/db/companyGovernanceData.ts
+init_drizzle_orm();
+init_client();
+
+// src/db/companyComplianceDocumentsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID5 } from "node:crypto";
+function asReview(s) {
+  const v = String(s ?? "").trim();
+  if (v === "approved" || v === "rejected" || v === "pending") return v;
+  return "pending";
+}
+function deriveGlobalComplianceStatus(args) {
+  if (!args.hasGewerbe || !args.hasInsurance) return "pending";
+  const g = args.gewerbeReview ?? "pending";
+  const i = args.insuranceReview ?? "pending";
+  if (g === "rejected" || i === "rejected") return "non_compliant";
+  if (g === "pending" || i === "pending") return "in_review";
+  if (g === "approved" && i === "approved") return "compliant";
+  return "in_review";
+}
+function complianceBucketFromDerived(args) {
+  if (!args.hasGewerbe || !args.hasInsurance) return "missing";
+  if (args.derivedStatus === "non_compliant") return "rejected";
+  if (args.derivedStatus === "compliant") return "compliant";
+  if (args.derivedStatus === "in_review") return "in_review";
+  return "missing";
+}
+function reviewForSide(has, companyKey, row) {
+  if (!has) return null;
+  const k = (companyKey ?? "").trim();
+  if (!k) return "pending";
+  if (!row || (row.storage_key ?? "").trim() !== k) return "pending";
+  return asReview(row.review_status);
+}
+function buildSide(has, companyKey, row) {
+  if (!has) {
+    return { uploadedAt: "", reviewStatus: "", reviewNote: "" };
+  }
+  if (row) {
+    const k = (companyKey ?? "").trim();
+    const rowKey = (row.storage_key ?? "").trim();
+    const keysMatch = k === rowKey;
+    const uploaded = row.uploaded_at;
+    const uploadedAt = uploaded instanceof Date ? uploaded.toISOString() : String(uploaded ?? "").trim();
+    return {
+      uploadedAt: uploadedAt || "",
+      reviewStatus: keysMatch ? asReview(row.review_status) : "pending",
+      reviewNote: keysMatch ? String(row.review_note ?? "").trim() : ""
+    };
+  }
+  return { uploadedAt: "", reviewStatus: "pending", reviewNote: "" };
+}
+async function listCurrentDocRows(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    return [];
+  }
+  return db2.select().from(companyComplianceDocumentsTable).where(
+    and(
+      eq(companyComplianceDocumentsTable.company_id, companyId),
+      eq(companyComplianceDocumentsTable.is_current, true)
+    )
+  );
+}
+async function getDerivedComplianceAndDocumentsForRow(r) {
+  const hasG = Boolean((r.compliance_gewerbe_storage_key ?? "").trim());
+  const hasI = Boolean((r.compliance_insurance_storage_key ?? "").trim());
+  if (!isPostgresConfigured() || !getDb()) {
+    const gR = hasG ? "pending" : null;
+    const iR = hasI ? "pending" : null;
+    return {
+      status: deriveGlobalComplianceStatus({
+        hasGewerbe: hasG,
+        hasInsurance: hasI,
+        gewerbeReview: gR,
+        insuranceReview: iR
+      }),
+      complianceDocuments: {
+        gewerbe: { uploadedAt: "", reviewStatus: hasG ? "pending" : "", reviewNote: "" },
+        insurance: { uploadedAt: "", reviewStatus: hasI ? "pending" : "", reviewNote: "" }
+      }
+    };
+  }
+  const rows = await listCurrentDocRows(r.id);
+  const gRow = rows.find((x) => x.document_type === "gewerbe");
+  const iRow = rows.find((x) => x.document_type === "insurance");
+  const gRev = reviewForSide(hasG, r.compliance_gewerbe_storage_key, gRow);
+  const iRev = reviewForSide(hasI, r.compliance_insurance_storage_key, iRow);
+  const status = deriveGlobalComplianceStatus({
+    hasGewerbe: hasG,
+    hasInsurance: hasI,
+    gewerbeReview: gRev,
+    insuranceReview: iRev
+  });
   return {
-    vehicleLegalType: fallback[0].vehicleLegalType,
-    vehicleClass: fallback[0].vehicleClass
+    status,
+    complianceDocuments: {
+      gewerbe: buildSide(hasG, r.compliance_gewerbe_storage_key, gRow),
+      insurance: buildSide(hasI, r.compliance_insurance_storage_key, iRow)
+    }
   };
+}
+async function getDerivedGlobalComplianceStatusForCompanyRow(r) {
+  const { status } = await getDerivedComplianceAndDocumentsForRow(r);
+  return status;
+}
+async function recomputeAndPersistGlobalCompliance(companyId) {
+  if (!isPostgresConfigured() || !getDb()) return;
+  const db2 = getDb();
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r = rows[0];
+  if (!r) return;
+  const { status } = await getDerivedComplianceAndDocumentsForRow(r);
+  await db2.update(adminCompaniesTable).set({ compliance_status: status }).where(eq(adminCompaniesTable.id, companyId));
+}
+async function insertComplianceDocumentUpload(companyId, kind, storageKey, panelUserId) {
+  const db2 = getDb();
+  if (!db2) {
+    throw new Error("database_not_configured");
+  }
+  const docId = randomUUID5();
+  const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
+  await db2.transaction(async (tx) => {
+    await tx.update(companyComplianceDocumentsTable).set({ is_current: false }).where(
+      and(
+        eq(companyComplianceDocumentsTable.company_id, companyId),
+        eq(companyComplianceDocumentsTable.document_type, kind),
+        eq(companyComplianceDocumentsTable.is_current, true)
+      )
+    );
+    await tx.insert(companyComplianceDocumentsTable).values({
+      id: docId,
+      company_id: companyId,
+      document_type: kind,
+      storage_key: storageKey,
+      uploaded_by_panel_user_id: panelUserId,
+      review_status: "pending",
+      review_note: "",
+      is_current: true
+    });
+    await tx.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, companyId));
+  });
+  await recomputeAndPersistGlobalCompliance(companyId);
+}
+async function setCurrentComplianceDocumentReview(companyId, kind, input) {
+  const db2 = getDb();
+  if (!db2) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const note = input.reviewNote.trim().slice(0, 4e3);
+  const rows = await db2.select().from(companyComplianceDocumentsTable).where(
+    and(
+      eq(companyComplianceDocumentsTable.company_id, companyId),
+      eq(companyComplianceDocumentsTable.document_type, kind),
+      eq(companyComplianceDocumentsTable.is_current, true)
+    )
+  ).limit(1);
+  if (!rows[0]) {
+    return { ok: false, error: "no_current_document" };
+  }
+  await db2.update(companyComplianceDocumentsTable).set({
+    review_status: input.reviewStatus,
+    review_note: input.reviewStatus === "rejected" ? note : ""
+  }).where(eq(companyComplianceDocumentsTable.id, rows[0].id));
+  await recomputeAndPersistGlobalCompliance(companyId);
+  return { ok: true };
+}
+
+// src/db/companyGovernanceData.ts
+init_schema2();
+function companyMeetsTaxiFleetProvisioningReadiness(gate) {
+  if (!gate) return false;
+  if (gate.companyKind !== "taxi") return false;
+  if (gate.isBlocked) return false;
+  if (gate.verificationStatus !== "verified") return false;
+  if (gate.complianceStatus !== "compliant") return false;
+  if (gate.contractStatus !== "active") return false;
+  if (!gate.requiredProfileComplete) return false;
+  return true;
+}
+async function getFleetLoginCompanyDenyReason(companyId) {
+  if (!isPostgresConfigured()) return "company_not_found";
+  const db2 = getDb();
+  if (!db2) return "company_not_found";
+  const rows = await db2.select({
+    is_active: adminCompaniesTable.is_active,
+    is_blocked: adminCompaniesTable.is_blocked,
+    contract_status: adminCompaniesTable.contract_status
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r = rows[0];
+  if (!r) return "company_not_found";
+  if (!r.is_active) return "company_inactive";
+  if (Boolean(r.is_blocked)) return "company_blocked";
+  const cs = String(r.contract_status ?? "").trim() || "inactive";
+  if (cs !== "active") return "contract_not_active";
+  return null;
+}
+async function getCompanyGovernanceGate(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  const requiredProfileComplete = Boolean(
+    String(r.company_kind ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.name ?? "").trim() && String(r.email ?? "").trim() && String(r.phone ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.vat_id ?? "").trim()
+  );
+  const complianceStatus = await getDerivedGlobalComplianceStatusForCompanyRow(
+    r
+  );
+  return {
+    companyId: r.id,
+    companyKind: r.company_kind ?? "general",
+    verificationStatus: r.verification_status ?? "pending",
+    complianceStatus,
+    contractStatus: r.contract_status ?? "inactive",
+    isBlocked: Boolean(r.is_blocked),
+    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
+    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
+    maxDrivers: r.max_drivers ?? 100,
+    maxVehicles: r.max_vehicles ?? 100,
+    requiredProfileComplete,
+    farePermissions: r.fare_permissions ?? {},
+    insurerPermissions: r.insurer_permissions ?? {},
+    areaAssignments: Array.isArray(r.area_assignments) ? r.area_assignments.filter((x) => typeof x === "string") : []
+  };
+}
+async function countFleetDriversForCompany(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: count() }).from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
+  return Number(rows[0]?.n ?? 0);
+}
+async function countFleetVehiclesForCompany(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: count() }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
+  return Number(rows[0]?.n ?? 0);
 }
 
 // src/db/fleetDriversData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID4 } from "node:crypto";
-function rowToList(r) {
+import { randomUUID as randomUUID6 } from "node:crypto";
+function normalizeFleetDriverApproval(raw) {
+  const t = String(raw ?? "").toLowerCase().trim();
+  if (t === "in_review" || t === "pending" || t === "rejected" || t === "approved") return t;
+  return "approved";
+}
+function fleetDriverTableRowToList(r) {
   return {
     id: r.id,
     companyId: r.company_id,
@@ -48509,8 +49268,16 @@ function rowToList(r) {
     lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
     lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
     createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString()
+    updatedAt: r.updated_at.toISOString(),
+    approvalStatus: normalizeFleetDriverApproval(
+      r.approval_status ?? "approved"
+    ),
+    suspensionReason: r.suspension_reason ?? "",
+    adminInternalNote: r.admin_internal_note ?? ""
   };
+}
+function rowToList(r) {
+  return fleetDriverTableRowToList(r);
 }
 async function getCompanyKind(companyId) {
   if (!isPostgresConfigured()) return null;
@@ -48576,7 +49343,7 @@ async function insertFleetDriver(input) {
   if (existing) {
     return { ok: false, error: "email_taken" };
   }
-  const id = `fd-${randomUUID4()}`;
+  const id = `fd-${randomUUID6()}`;
   await db2.insert(fleetDriversTable).values({
     id,
     company_id: input.companyId,
@@ -48590,6 +49357,7 @@ async function insertFleetDriver(input) {
     vehicle_class: input.vehicleClass ?? "standard",
     is_active: true,
     access_status: "active",
+    approval_status: "pending",
     session_version: 1
   });
   return { ok: true, id };
@@ -48647,6 +49415,63 @@ async function activateFleetDriver(id, companyId) {
   }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
   return r.length > 0;
 }
+async function setFleetDriverApprovalByAdmin(driverId, nextStatus) {
+  const allowed = ["pending", "in_review", "approved", "rejected"];
+  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "not_found" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, driverId)).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverApprovalForCompany(companyId, driverId, nextStatus) {
+  const allowed = ["pending", "in_review", "approved", "rejected"];
+  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "not_found" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+var MAX_SUS_REASON = 2e3;
+var MAX_ADMIN_NOTE = 4e3;
+async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const reason = String(suspensionReason ?? "").trim().slice(0, MAX_SUS_REASON);
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "suspended",
+    is_active: false,
+    suspension_reason: reason,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function adminActivateFleetDriver(companyId, driverId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "active",
+    is_active: true,
+    suspension_reason: "",
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function adminPatchFleetDriverAdminFields(companyId, driverId, patch) {
+  if (patch.adminInternalNote === void 0 && patch.suspensionReason === void 0) return true;
+  const db2 = getDb();
+  if (!db2) return false;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(patch.adminInternalNote).trim().slice(0, MAX_ADMIN_NOTE);
+  }
+  if (patch.suspensionReason !== void 0) {
+    set.suspension_reason = String(patch.suspensionReason).trim().slice(0, MAX_SUS_REASON);
+  }
+  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
 async function touchFleetDriverLogin(id) {
   const db2 = getDb();
   if (!db2) return;
@@ -48692,6 +49517,528 @@ async function countFleetDriversOnline(companyId, withinSeconds) {
   return Number(rows[0]?.n ?? 0);
 }
 
+// src/db/fleetAssignmentsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID7 } from "node:crypto";
+function toRow(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    driverId: r.driver_id,
+    vehicleId: r.vehicle_id,
+    assignedAt: r.assigned_at.toISOString()
+  };
+}
+async function listAssignmentsForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.company_id, companyId));
+  return rows.map(toRow);
+}
+async function setDriverVehicleAssignment(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const dRows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, input.driverId), eq(fleetDriversTable.company_id, input.companyId))).limit(1);
+  if (!dRows[0]) return { ok: false, error: "driver_not_found" };
+  const vRows = await db2.select({ id: fleetVehiclesTable.id, approvalStatus: fleetVehiclesTable.approval_status }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
+  if (!vRows[0]) return { ok: false, error: "vehicle_not_found" };
+  if (String(vRows[0].approvalStatus) !== "approved") {
+    return { ok: false, error: "vehicle_not_approved" };
+  }
+  await db2.transaction(async (tx) => {
+    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
+    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
+    await tx.insert(driverVehicleAssignmentsTable).values({
+      id: `fva-${randomUUID7()}`,
+      company_id: input.companyId,
+      driver_id: input.driverId,
+      vehicle_id: input.vehicleId
+    });
+  });
+  return { ok: true };
+}
+async function clearDriverAssignment(driverId, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.delete(driverVehicleAssignmentsTable).where(
+    and(
+      eq(driverVehicleAssignmentsTable.driver_id, driverId),
+      eq(driverVehicleAssignmentsTable.company_id, companyId)
+    )
+  ).returning({ id: driverVehicleAssignmentsTable.id });
+  return r.length > 0;
+}
+
+// src/db/fleetVehiclesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID8 } from "node:crypto";
+function parseDocuments(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const x of raw) {
+    if (x && typeof x === "object" && "storageKey" in x && typeof x.storageKey === "string") {
+      const sk = x.storageKey;
+      const uploadedAt = "uploadedAt" in x && typeof x.uploadedAt === "string" ? x.uploadedAt : void 0;
+      if (sk) out.push({ storageKey: sk, uploadedAt });
+    }
+  }
+  return out;
+}
+function rowToVehicle(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    licensePlate: r.license_plate,
+    vin: r.vin,
+    color: r.color,
+    model: r.model,
+    vehicleType: r.vehicle_type,
+    vehicleLegalType: r.vehicle_legal_type,
+    vehicleClass: r.vehicle_class,
+    taxiOrderNumber: r.taxi_order_number,
+    konzessionNumber: r.konzession_number ?? "",
+    vehicleDocuments: parseDocuments(r.vehicle_documents),
+    approvalStatus: r.approval_status ?? "draft",
+    rejectionReason: r.rejection_reason ?? "",
+    adminInternalNote: r.admin_internal_note ?? "",
+    blockReason: r.block_reason ?? "",
+    modelYear: r.model_year ?? null,
+    passengerSeats: r.passenger_seats ?? null,
+    approvalDecidedAt: r.approval_decided_at ? r.approval_decided_at.toISOString() : null,
+    nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
+    isActive: r.is_active,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function countActiveFleetVehicles(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(
+    and(eq(fleetVehiclesTable.company_id, companyId), eq(fleetVehiclesTable.approval_status, "approved"))
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function listFleetVehiclesForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
+  return rows.map(rowToVehicle);
+}
+async function findFleetVehicleInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetVehicleGlobal(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+async function countPendingFleetVehiclesForAdmin() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.approval_status, "pending_approval"));
+  return Number(rows[0]?.n ?? 0);
+}
+async function listPendingFleetVehiclesForAdmin(limit) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const q = db2.select({
+    v: fleetVehiclesTable,
+    companyName: adminCompaniesTable.name
+  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(eq(fleetVehiclesTable.approval_status, "pending_approval")).orderBy(desc(fleetVehiclesTable.updated_at));
+  const rows = typeof limit === "number" && limit > 0 ? await q.limit(Math.min(500, limit)) : await q;
+  return rows.map((r) => ({
+    vehicle: rowToVehicle(r.v),
+    companyName: r.companyName
+  }));
+}
+function syncIsActiveForStatus(s) {
+  return s === "approved";
+}
+async function insertFleetVehicle(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const plate = input.licensePlate.trim();
+  if (!plate) return { ok: false, error: "license_plate_required" };
+  const kz = (input.konzessionNumber ?? "").trim();
+  if (!kz) return { ok: false, error: "konzession_number_required" };
+  const id = `fv-${randomUUID8()}`;
+  const status = input.approvalStatus;
+  const isActive = syncIsActiveForStatus(status);
+  const docs = input.vehicleDocuments ?? [];
+  const taxiNum = (input.taxiOrderNumber ?? "").trim();
+  await db2.insert(fleetVehiclesTable).values({
+    id,
+    company_id: input.companyId,
+    license_plate: plate,
+    vin: (input.vin ?? "").trim(),
+    color: (input.color ?? "").trim(),
+    model: (input.model ?? "").trim(),
+    vehicle_type: input.vehicleType,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
+    taxi_order_number: taxiNum || kz,
+    konzession_number: kz,
+    vehicle_documents: docs,
+    next_inspection_date: input.nextInspectionDate?.trim() || null,
+    approval_status: status,
+    is_active: isActive
+  });
+  return { ok: true, id };
+}
+async function appendFleetVehicleDocument(id, companyId, storageKey) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (!["draft", "rejected"].includes(String(cur.approval_status))) {
+    return { ok: false, error: "documents_locked" };
+  }
+  const existing = parseDocuments(cur.vehicle_documents);
+  const next = [
+    ...existing,
+    { storageKey, uploadedAt: (/* @__PURE__ */ new Date()).toISOString() }
+  ];
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  await db2.update(fleetVehiclesTable).set({
+    vehicle_documents: next,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function submitFleetVehicleForApproval(id, companyId) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (st !== "draft" && st !== "rejected") return { ok: false, error: "invalid_state" };
+  const kz = (cur.konzession_number ?? "").trim();
+  if (!kz) return { ok: false, error: "konzession_number_required" };
+  const plate = (cur.license_plate ?? "").trim();
+  if (!plate) return { ok: false, error: "license_plate_required" };
+  const docs = parseDocuments(cur.vehicle_documents);
+  if (docs.length < 1) return { ok: false, error: "documents_required" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: "pending_approval",
+    is_active: false,
+    rejection_reason: "",
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function patchFleetVehicle(id, companyId, patch) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (st === "pending_approval" || st === "approved" || st === "blocked") {
+    const allowed = ["nextInspectionDate", "color", "model"];
+    const keys = Object.keys(patch);
+    for (const k of keys) {
+      if (patch[k] !== void 0 && !allowed.includes(k)) {
+        return { ok: false, error: "field_locked" };
+      }
+    }
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.licensePlate !== void 0) set.license_plate = patch.licensePlate.trim();
+  if (patch.vin !== void 0) set.vin = patch.vin.trim();
+  if (patch.color !== void 0) set.color = patch.color.trim();
+  if (patch.model !== void 0) set.model = patch.model.trim();
+  if (patch.vehicleType !== void 0) set.vehicle_type = patch.vehicleType;
+  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
+  if (patch.taxiOrderNumber !== void 0) set.taxi_order_number = patch.taxiOrderNumber.trim();
+  if (patch.konzessionNumber !== void 0) {
+    set.konzession_number = patch.konzessionNumber.trim();
+    set.taxi_order_number = patch.konzessionNumber.trim();
+  }
+  if (patch.nextInspectionDate !== void 0) {
+    set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
+  }
+  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function setFleetVehicleApprovalByAdmin(id, input) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (String(cur.approval_status) !== "pending_approval") {
+    return { ok: false, error: "not_pending" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  const next = input.nextStatus;
+  const reason = input.nextStatus === "rejected" ? (input.rejectionReason ?? "").trim() : "";
+  if (input.nextStatus === "rejected" && !reason) {
+    return { ok: false, error: "rejection_reason_required" };
+  }
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: next,
+    is_active: syncIsActiveForStatus(next),
+    rejection_reason: input.nextStatus === "rejected" ? reason : "",
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId,
+    updated_at: now
+  }).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function forceBlockFleetVehicleByAdmin(id, input) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (String(cur.approval_status) === "blocked") return { ok: false, error: "already_blocked" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  const br = String(input.blockReason ?? "").trim().slice(0, 2e3);
+  const set = {
+    approval_status: "blocked",
+    is_active: false,
+    block_reason: br,
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId,
+    updated_at: now
+  };
+  if (input.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(input.adminInternalNote).slice(0, 4e3);
+  }
+  await db2.update(fleetVehiclesTable).set(set).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function unblockFleetVehicleByAdmin(id, adminUserId) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (String(cur.approval_status) !== "blocked") return { ok: false, error: "not_blocked" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: "draft",
+    is_active: false,
+    block_reason: "",
+    approval_decided_at: now,
+    approval_decided_by_admin_id: adminUserId,
+    updated_at: now
+  }).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function adminPatchFleetVehicleFields(companyId, vehicleId, patch) {
+  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (Object.keys(patch).length === 0) return { ok: false, error: "no_fields" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(patch.adminInternalNote).slice(0, 4e3);
+  }
+  if (patch.blockReason !== void 0) {
+    set.block_reason = String(patch.blockReason).slice(0, 2e3);
+  }
+  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, vehicleId), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function listFleetVehicleDocumentStorageKeysInCompany(companyId, vehicleId) {
+  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!cur) return null;
+  return parseDocuments(cur.vehicle_documents).map((d) => d.storageKey);
+}
+async function listFleetVehicleDocumentStorageKeysAdmin(vehicleId) {
+  const cur = await findFleetVehicleGlobal(vehicleId);
+  if (!cur) return null;
+  return parseDocuments(cur.vehicle_documents).map((d) => d.storageKey);
+}
+async function getFleetVehicleAdminDetail(vehicleId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    v: fleetVehiclesTable,
+    companyName: adminCompaniesTable.name
+  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(eq(fleetVehiclesTable.id, vehicleId)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return { vehicle: rowToVehicle(r.v), companyName: r.companyName };
+}
+
+// src/db/fleetDriverReadiness.ts
+var MSG = {
+  company_not_ready: "Unternehmen ist noch nicht vollst\xE4ndig freigegeben (Verifizierung, Nachweise, Vertrag oder Stammdaten).",
+  driver_suspended: "Fahrer ist gesperrt.",
+  driver_rejected: "Fahrer wurde abgelehnt.",
+  driver_not_approved: "Fahrer ist noch nicht freigegeben (Onroda-Pr\xFCfung).",
+  p_schein_date_missing: "P-Schein: kein Ablaufdatum hinterlegt.",
+  p_schein_expired: "P-Schein: abgelaufen.",
+  p_schein_doc_missing: "P-Schein: kein PDF-Nachweis hochgeladen.",
+  no_vehicle_assigned: "Kein Fahrzeug zugeordnet.",
+  vehicle_not_approved: "Zugeordnetes Fahrzeug ist noch nicht freigegeben."
+};
+function deriveDriverWorkflowLabel(d) {
+  if (!d.isActive || d.accessStatus === "suspended") {
+    return { key: "suspended", label: "Gesperrt" };
+  }
+  switch (d.approvalStatus) {
+    case "rejected":
+      return { key: "rejected", label: "Abgelehnt" };
+    case "in_review":
+      return { key: "in_review", label: "In Pr\xFCfung" };
+    case "pending":
+      return { key: "pending", label: "Angelegt" };
+    case "approved":
+      return { key: "approved", label: "Freigegeben" };
+    default:
+      return { key: "unknown", label: "\u2014" };
+  }
+}
+function pScheinDateMissing(expiry) {
+  if (expiry == null) return true;
+  const s = String(expiry).trim();
+  if (!s) return true;
+  return false;
+}
+function pScheinDocMissing(key) {
+  return !key || !String(key).trim();
+}
+function pScheinExpiredOnlyWhenDatePresent(isoOrDate) {
+  if (pScheinDateMissing(isoOrDate)) return false;
+  const s = String(isoOrDate).trim().slice(0, 10);
+  const d = /* @__PURE__ */ new Date(`${s}T12:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = /* @__PURE__ */ new Date();
+  const endOfTodayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const exp = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return exp < endOfTodayUtc;
+}
+function computeDriverReadiness(gate, d, hasVehicleAssignment, assignedVehicleApproval) {
+  const blockReasons = [];
+  if (!companyMeetsTaxiFleetProvisioningReadiness(gate)) {
+    blockReasons.push({ code: "company_not_ready", message: MSG.company_not_ready });
+  }
+  if (!d.isActive || d.accessStatus !== "active") {
+    blockReasons.push({ code: "driver_suspended", message: MSG.driver_suspended });
+  }
+  if (d.approvalStatus === "rejected") {
+    blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
+  } else if (d.approvalStatus === "pending" || d.approvalStatus === "in_review") {
+    blockReasons.push({ code: "driver_not_approved", message: MSG.driver_not_approved });
+  }
+  if (pScheinDateMissing(d.pScheinExpiry)) {
+    blockReasons.push({ code: "p_schein_date_missing", message: MSG.p_schein_date_missing });
+  } else if (pScheinExpiredOnlyWhenDatePresent(d.pScheinExpiry)) {
+    blockReasons.push({ code: "p_schein_expired", message: MSG.p_schein_expired });
+  }
+  if (pScheinDocMissing(d.pScheinDocStorageKey)) {
+    blockReasons.push({ code: "p_schein_doc_missing", message: MSG.p_schein_doc_missing });
+  }
+  if (!hasVehicleAssignment) {
+    blockReasons.push({ code: "no_vehicle_assigned", message: MSG.no_vehicle_assigned });
+  } else if (assignedVehicleApproval !== "approved") {
+    blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
+  }
+  return { ready: blockReasons.length === 0, blockReasons };
+}
+function vehicleApprovalForDriver(driverId, assignRows, vehicles) {
+  const a = assignRows.find((x) => x.driverId === driverId);
+  if (!a) return { has: false, approval: null };
+  const v = vehicles.find((v0) => v0.id === a.vehicleId);
+  return { has: true, approval: v ? String(v.approvalStatus) : null };
+}
+async function getPanelFleetDriverViews(companyId) {
+  const [gate, rows, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listFleetDriversForCompany(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  return rows.map((row) => {
+    const { has, approval } = vehicleApprovalForDriver(row.id, ass, veh);
+    return {
+      ...row,
+      workflow: deriveDriverWorkflowLabel(row),
+      readiness: computeDriverReadiness(gate, row, has, approval)
+    };
+  });
+}
+async function getFleetDriverReadinessById(driverId, companyId) {
+  const r = await findFleetDriverInCompany(driverId, companyId);
+  if (!r) return { error: "not_found" };
+  const listRow = fleetDriverTableRowToList(r);
+  const [gate, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  const { has, approval } = vehicleApprovalForDriver(listRow.id, ass, veh);
+  return computeDriverReadiness(gate, listRow, has, approval);
+}
+function assignedVehicleMeta(driverId, assignRows, vehicles) {
+  const a = assignRows.find((x) => x.driverId === driverId);
+  if (!a) return null;
+  const v = vehicles.find((v0) => v0.id === a.vehicleId);
+  if (!v) return null;
+  return {
+    id: v.id,
+    licensePlate: v.licensePlate,
+    model: v.model,
+    approvalStatus: v.approvalStatus
+  };
+}
+async function listAdminTaxiFleetDriverRows(companyId) {
+  const [views, ass, veh] = await Promise.all([
+    getPanelFleetDriverViews(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  return views.map((v) => ({
+    ...v,
+    assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
+    pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
+    suspensionReason: v.suspensionReason,
+    adminInternalNote: v.adminInternalNote
+  }));
+}
+async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
+  const r = await findFleetDriverInCompany(driverId, companyId);
+  if (!r) return null;
+  const listRow = fleetDriverTableRowToList(r);
+  const [gate, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  const { has, approval } = vehicleApprovalForDriver(listRow.id, ass, veh);
+  const view = {
+    ...listRow,
+    workflow: deriveDriverWorkflowLabel(listRow),
+    readiness: computeDriverReadiness(gate, listRow, has, approval)
+  };
+  return {
+    ...view,
+    assignedVehicle: assignedVehicleMeta(listRow.id, ass, veh),
+    pScheinDocPresent: !pScheinDocMissing(listRow.pScheinDocStorageKey),
+    suspensionReason: listRow.suspensionReason,
+    adminInternalNote: listRow.adminInternalNote
+  };
+}
+
 // src/routes/rides.ts
 init_dispatchStatus();
 var DEMO = [];
@@ -48729,8 +50076,8 @@ function parseOptionalFinalFareFromBody(body) {
   if (raw == null || raw === "") return void 0;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw === "string") {
-    const n2 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(n2) ? n2 : void 0;
+    const n3 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(n3) ? n3 : void 0;
   }
   return void 0;
 }
@@ -49138,6 +50485,15 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
         });
         return;
       }
+      const readinessR = await getFleetDriverReadinessById(driverId, capabilityCompanyId);
+      if (!("error" in readinessR) && !readinessR.ready) {
+        res.status(409).json({
+          error: "driver_not_einsatzbereit",
+          blockReasons: readinessR.blockReasons,
+          message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen)."
+        });
+        return;
+      }
       const capability = await getFleetDriverCapability(driverId, capabilityCompanyId);
       if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
         res.status(409).json({
@@ -49331,8 +50687,8 @@ import { createHash, randomBytes as randomBytes2 } from "crypto";
 import admin from "firebase-admin";
 function isFirebaseAdminConfigured() {
   const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const path5 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  return raw.length > 0 || path5.length > 0;
+  const path8 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  return raw.length > 0 || path8.length > 0;
 }
 function ensureFirebaseApp() {
   if (admin.apps.length > 0) {
@@ -51092,9 +52448,27 @@ router3.get("/auth/google/profile", async (req, res) => {
 var auth_default = router3;
 
 // src/routes/adminApi.ts
-var import_express4 = __toESM(require_express2(), 1);
-import { createHash as createHash2, randomBytes as randomBytes5, randomUUID as randomUUID8 } from "node:crypto";
+var import_express5 = __toESM(require_express2(), 1);
+import { createHash as createHash2, randomBytes as randomBytes5, randomUUID as randomUUID15 } from "node:crypto";
+import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
+import path4 from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+
+// src/domain/adminCompanyKindPanelModules.ts
+function forbiddenPanelModulesForCompanyKind(companyKind, modules) {
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind);
+  const bad = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const id of modules) {
+    if (typeof id !== "string") continue;
+    const t = id.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    if (!allowed.has(t)) bad.push(t);
+  }
+  return bad;
+}
 
 // src/domain/accessCodeLifecycle.ts
 function computeAccessCodePublicStatus(row) {
@@ -51127,11 +52501,11 @@ function computeAccessCodePublicStatus(row) {
 
 // src/db/partnerRegistrationRequestsData.ts
 init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID5 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path2 from "node:path";
+init_client();
+init_schema2();
 var PARTNER_TYPES = [
   "taxi",
   "hotel",
@@ -51215,6 +52589,10 @@ function mapDocRow(r) {
     createdAt: r.created_at.toISOString()
   };
 }
+function mapDocRowForAdminList(m) {
+  const { storagePath: _p, ...rest } = m;
+  return rest;
+}
 function mapTimelineRow(r) {
   return {
     id: r.id,
@@ -51238,7 +52616,7 @@ async function persistDocFile(opts) {
   const ext = path2.extname(safeName) || ".bin";
   const dir = path2.join(base, opts.requestId);
   await mkdir(dir, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID5()}${ext}`;
+  const fileName = `${Date.now()}-${randomUUID9()}${ext}`;
   const absPath = path2.join(dir, fileName);
   const relPath = path2.relative(base, absPath);
   const cleaned = opts.contentBase64.includes(",") ? opts.contentBase64.split(",").pop() ?? "" : opts.contentBase64;
@@ -51251,6 +52629,46 @@ function isPartnerType(v) {
 }
 function isRegistrationStatus(v) {
   return REGISTRATION_STATUSES.includes(v);
+}
+async function createPartnerRegistrationRequest(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = `prr-${randomUUID9()}`;
+  await db2.insert(partnerRegistrationRequestsTable).values({
+    id,
+    company_name: input.companyName,
+    legal_form: input.legalForm,
+    partner_type: input.partnerType,
+    uses_vouchers: input.usesVouchers,
+    contact_first_name: input.contactFirstName,
+    contact_last_name: input.contactLastName,
+    email: input.email,
+    phone: input.phone,
+    address_line1: input.addressLine1,
+    address_line2: input.addressLine2 ?? "",
+    owner_name: input.ownerName ?? "",
+    dispo_phone: input.dispoPhone ?? "",
+    postal_code: input.postalCode,
+    city: input.city,
+    country: input.country,
+    tax_id: input.taxId,
+    vat_id: input.vatId,
+    concession_number: input.concessionNumber,
+    desired_region: input.desiredRegion,
+    requested_usage: input.requestedUsage,
+    documents_meta: input.documentsMeta,
+    notes: input.notes
+  });
+  await addPartnerRegistrationTimelineEvent({
+    requestId: id,
+    actorType: "partner",
+    actorLabel: input.email,
+    eventType: "request_submitted",
+    message: "Registrierungsanfrage eingegangen.",
+    payload: { partnerType: input.partnerType, usesVouchers: input.usesVouchers }
+  });
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(eq(partnerRegistrationRequestsTable.id, id)).limit(1);
+  return rows[0] ? mapRow(rows[0]) : null;
 }
 async function listPartnerRegistrationRequestsAdmin(status) {
   const db2 = getDb();
@@ -51270,6 +52688,12 @@ async function findPartnerRegistrationRequestById(id) {
   const db2 = getDb();
   if (!db2) return null;
   const rows = await db2.select().from(partnerRegistrationRequestsTable).where(eq(partnerRegistrationRequestsTable.id, id)).limit(1);
+  return rows[0] ? mapRow(rows[0]) : null;
+}
+async function findLatestPartnerRegistrationRequestByEmail(email) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(sql`lower(${partnerRegistrationRequestsTable.email}) = ${email.trim().toLowerCase()}`).orderBy(desc(partnerRegistrationRequestsTable.created_at)).limit(1);
   return rows[0] ? mapRow(rows[0]) : null;
 }
 function collectMasterDataPatchKeys(patch) {
@@ -51408,7 +52832,7 @@ async function attachCompanyToPartnerRegistrationRequest(id, companyId, opts = {
 async function addPartnerRegistrationTimelineEvent(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prtl-${randomUUID5()}`;
+  const id = `prtl-${randomUUID9()}`;
   await db2.insert(partnerRegistrationTimelineTable).values({
     id,
     request_id: input.requestId,
@@ -51432,7 +52856,7 @@ async function addPartnerRegistrationMessage(requestId, actorType, actorLabel, m
 async function addPartnerRegistrationDocument(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prdoc-${randomUUID5()}`;
+  const id = `prdoc-${randomUUID9()}`;
   const persisted = await persistDocFile({
     requestId: input.requestId,
     originalFileName: input.originalFileName,
@@ -51481,14 +52905,22 @@ async function listPartnerRegistrationTimeline(requestId) {
 async function getPartnerRegistrationDetailAdmin(requestId) {
   const req = await findPartnerRegistrationRequestById(requestId);
   if (!req) return null;
-  const [documents, timeline] = await Promise.all([
+  const [rawDocs, timeline, linkedCompany] = await Promise.all([
     listPartnerRegistrationDocuments(requestId),
-    listPartnerRegistrationTimeline(requestId)
+    listPartnerRegistrationTimeline(requestId),
+    req.linkedCompanyId ? findCompanyById(req.linkedCompanyId) : Promise.resolve(null)
   ]);
-  return { request: req, documents, timeline };
+  const documents = rawDocs.map((d) => mapDocRowForAdminList(d));
+  return { request: req, documents, timeline, linkedCompany };
 }
-async function resolvePartnerRegistrationStorageAbsolutePath(relPath) {
-  return path2.join(uploadsBaseDir(), relPath);
+function resolvePartnerRegistrationStorageAbsolutePath(relPath) {
+  const base = path2.resolve(uploadsBaseDir());
+  const resolved = path2.resolve(base, relPath);
+  const rel = path2.relative(base, resolved);
+  if (rel.startsWith("..") || path2.isAbsolute(rel)) {
+    throw new Error("invalid_storage_path");
+  }
+  return resolved;
 }
 
 // src/domain/taxiPartnerOnboarding.ts
@@ -52052,6 +53484,7 @@ async function getFinanceEligibilitySummaryForRide(rideId) {
 init_accessCodesData();
 
 // src/db/panelAuditData.ts
+init_drizzle_orm();
 init_client();
 init_schema2();
 async function insertPanelAuditLog(input) {
@@ -52068,12 +53501,32 @@ async function insertPanelAuditLog(input) {
     meta: input.meta ?? null
   });
 }
+async function listPanelAuditForCompany(companyId, opts) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const limit = Math.min(Math.max(opts?.limit ?? 100, 1), 500);
+  const subj = opts?.subjectId?.trim();
+  const rows = await db2.select().from(panelAuditLogTable).where(
+    subj ? and(eq(panelAuditLogTable.company_id, companyId), eq(panelAuditLogTable.subject_id, subj)) : eq(panelAuditLogTable.company_id, companyId)
+  ).orderBy(desc(panelAuditLogTable.created_at)).limit(limit);
+  return rows.map((r) => ({
+    id: r.id,
+    companyId: r.company_id,
+    actorPanelUserId: r.actor_panel_user_id,
+    action: r.action,
+    subjectType: r.subject_type,
+    subjectId: r.subject_id,
+    meta: r.meta ?? null,
+    createdAt: r.created_at.toISOString()
+  }));
+}
 
 // src/db/panelUsersData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID10 } from "node:crypto";
 function toPublic(r) {
   return {
     id: r.id,
@@ -52130,7 +53583,7 @@ async function insertPanelUser(input) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID6();
+  const id = randomUUID10();
   const username = input.username.trim();
   const email = input.email.trim();
   try {
@@ -52213,10 +53666,10 @@ async function panelUsernameTaken(normalized, excludeUserId) {
   if (!isPostgresConfigured()) return false;
   const db2 = getDb();
   if (!db2) return false;
-  const n2 = normalized.trim().toLowerCase();
-  if (!n2) return false;
+  const n3 = normalized.trim().toLowerCase();
+  if (!n3) return false;
   const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
-    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n2}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n2}`
+    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n3}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n3}`
   ).limit(1);
   return rows.length > 0;
 }
@@ -52287,9 +53740,1464 @@ async function decideCompanyChangeRequest(input) {
   return rows[0] ? mapRow2(rows[0]) : null;
 }
 
+// src/db/supportThreadsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+var SUPPORT_THREAD_STATUSES = ["open", "in_progress", "answered", "closed"];
+var SUPPORT_CATEGORIES = ["stammdaten", "documents", "billing", "technical", "help", "other"];
+function isSupportThreadStatus(v) {
+  return SUPPORT_THREAD_STATUSES.includes(v);
+}
+function isSupportCategory(v) {
+  return SUPPORT_CATEGORIES.includes(v);
+}
+function mapThread(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    createdByPanelUserId: r.created_by_panel_user_id,
+    category: r.category,
+    title: r.title,
+    status: isSupportThreadStatus(r.status) ? r.status : "open",
+    lastMessageAt: r.last_message_at.toISOString(),
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+function mapMessage(r) {
+  return {
+    id: r.id,
+    threadId: r.thread_id,
+    senderType: r.sender_type === "admin" ? "admin" : "partner",
+    senderPanelUserId: r.sender_panel_user_id ?? null,
+    senderAdminUserId: r.sender_admin_user_id ?? null,
+    body: r.body,
+    attachments: r.attachments ?? null,
+    createdAt: r.created_at.toISOString()
+  };
+}
+async function lastMessageSnippet(threadId) {
+  if (!isPostgresConfigured()) return "";
+  const db2 = getDb();
+  if (!db2) return "";
+  const rows = await db2.select({ body: supportMessagesTable.body }).from(supportMessagesTable).where(eq(supportMessagesTable.thread_id, threadId)).orderBy(desc(supportMessagesTable.created_at)).limit(1);
+  const b = rows[0]?.body ?? "";
+  const t = b.trim().replace(/\s+/g, " ");
+  return t.length > 140 ? `${t.slice(0, 137)}\u2026` : t;
+}
+async function listSupportThreadsForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(supportThreadsTable).where(eq(supportThreadsTable.company_id, companyId)).orderBy(desc(supportThreadsTable.last_message_at));
+  const out = [];
+  for (const r of rows) {
+    const base = mapThread(r);
+    out.push({ ...base, lastSnippet: await lastMessageSnippet(r.id) });
+  }
+  return out;
+}
+async function countSupportThreadsByStatusForAdmin() {
+  const empty = {
+    open: 0,
+    in_progress: 0,
+    answered: 0,
+    closed: 0
+  };
+  if (!isPostgresConfigured()) return { ...empty };
+  const db2 = getDb();
+  if (!db2) return { ...empty };
+  const rows = await db2.select({
+    status: supportThreadsTable.status,
+    n: count()
+  }).from(supportThreadsTable).groupBy(supportThreadsTable.status);
+  for (const r of rows) {
+    const s = String(r.status ?? "");
+    if (isSupportThreadStatus(s)) {
+      empty[s] = Number(r.n ?? 0);
+    }
+  }
+  return empty;
+}
+async function listSupportThreadsAdmin(q) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const conds = [];
+  if (q.status) conds.push(eq(supportThreadsTable.status, q.status));
+  if (q.companyId?.trim()) conds.push(eq(supportThreadsTable.company_id, q.companyId.trim()));
+  if (q.category) conds.push(eq(supportThreadsTable.category, q.category));
+  if (q.q?.trim()) {
+    const term = `%${q.q.trim().replace(/%/g, "\\%")}%`;
+    const searchOr = or(ilike(supportThreadsTable.title, term), ilike(supportThreadsTable.company_id, term));
+    if (searchOr) conds.push(searchOr);
+  }
+  const where = conds.length > 0 ? and(...conds) : void 0;
+  const rows = where ? await db2.select({
+    thread: supportThreadsTable,
+    companyName: adminCompaniesTable.name
+  }).from(supportThreadsTable).innerJoin(adminCompaniesTable, eq(adminCompaniesTable.id, supportThreadsTable.company_id)).where(where).orderBy(desc(supportThreadsTable.last_message_at)).limit(q.limit).offset(q.offset) : await db2.select({
+    thread: supportThreadsTable,
+    companyName: adminCompaniesTable.name
+  }).from(supportThreadsTable).innerJoin(adminCompaniesTable, eq(adminCompaniesTable.id, supportThreadsTable.company_id)).orderBy(desc(supportThreadsTable.last_message_at)).limit(q.limit).offset(q.offset);
+  const out = [];
+  for (const { thread: r, companyName } of rows) {
+    const base = mapThread(r);
+    out.push({
+      ...base,
+      companyName: companyName ?? "",
+      lastSnippet: await lastMessageSnippet(r.id)
+    });
+  }
+  return out;
+}
+async function getSupportThreadForCompany(threadId, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const trows = await db2.select().from(supportThreadsTable).where(and(eq(supportThreadsTable.id, threadId), eq(supportThreadsTable.company_id, companyId))).limit(1);
+  const tr = trows[0];
+  if (!tr) return null;
+  const mrows = await db2.select().from(supportMessagesTable).where(eq(supportMessagesTable.thread_id, threadId)).orderBy(supportMessagesTable.created_at);
+  return { thread: mapThread(tr), messages: mrows.map(mapMessage) };
+}
+async function getSupportThreadAdmin(threadId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const joined = await db2.select({
+    thread: supportThreadsTable,
+    companyName: adminCompaniesTable.name
+  }).from(supportThreadsTable).innerJoin(adminCompaniesTable, eq(adminCompaniesTable.id, supportThreadsTable.company_id)).where(eq(supportThreadsTable.id, threadId)).limit(1);
+  const j = joined[0];
+  if (!j) return null;
+  const mrows = await db2.select().from(supportMessagesTable).where(eq(supportMessagesTable.thread_id, threadId)).orderBy(supportMessagesTable.created_at);
+  return {
+    thread: mapThread(j.thread),
+    messages: mrows.map(mapMessage),
+    companyName: j.companyName ?? ""
+  };
+}
+async function insertSupportThreadWithFirstMessage(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  try {
+    return await db2.transaction(async (tx) => {
+      const [tr] = await tx.insert(supportThreadsTable).values({
+        id: input.threadId,
+        company_id: input.companyId,
+        created_by_panel_user_id: input.createdByPanelUserId,
+        category: input.category,
+        title: input.title,
+        status: "open",
+        last_message_at: now,
+        created_at: now,
+        updated_at: now
+      }).returning();
+      if (!tr) return null;
+      const [mr] = await tx.insert(supportMessagesTable).values({
+        id: input.messageId,
+        thread_id: input.threadId,
+        sender_type: "partner",
+        sender_panel_user_id: input.createdByPanelUserId,
+        sender_admin_user_id: null,
+        body: input.body,
+        attachments: null,
+        created_at: now
+      }).returning();
+      if (!mr) return null;
+      return { thread: mapThread(tr), message: mapMessage(mr) };
+    });
+  } catch {
+    return null;
+  }
+}
+async function insertPartnerSupportMessage(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "not_found" };
+  try {
+    return await db2.transaction(async (tx) => {
+      const [cur] = await tx.select().from(supportThreadsTable).where(and(eq(supportThreadsTable.id, input.threadId), eq(supportThreadsTable.company_id, input.companyId))).limit(1);
+      if (!cur) return { ok: false, error: "not_found" };
+      if (cur.status === "closed") return { ok: false, error: "closed" };
+      let nextStatus = cur.status;
+      if (cur.status === "answered") nextStatus = "open";
+      const now = /* @__PURE__ */ new Date();
+      const [mr] = await tx.insert(supportMessagesTable).values({
+        id: input.messageId,
+        thread_id: input.threadId,
+        sender_type: "partner",
+        sender_panel_user_id: input.panelUserId,
+        sender_admin_user_id: null,
+        body: input.body,
+        attachments: null,
+        created_at: now
+      }).returning();
+      if (!mr) return { ok: false, error: "not_found" };
+      await tx.update(supportThreadsTable).set({
+        status: nextStatus,
+        last_message_at: now,
+        updated_at: now
+      }).where(eq(supportThreadsTable.id, input.threadId));
+      return { ok: true, message: mapMessage(mr), threadStatus: nextStatus };
+    });
+  } catch {
+    return { ok: false, error: "not_found" };
+  }
+}
+async function insertAdminSupportMessage(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "not_found" };
+  try {
+    return await db2.transaction(async (tx) => {
+      const [cur] = await tx.select().from(supportThreadsTable).where(eq(supportThreadsTable.id, input.threadId)).limit(1);
+      if (!cur) return { ok: false, error: "not_found" };
+      if (cur.status === "closed") return { ok: false, error: "closed" };
+      const nextStatus = "answered";
+      const now = /* @__PURE__ */ new Date();
+      const [mr] = await tx.insert(supportMessagesTable).values({
+        id: input.messageId,
+        thread_id: input.threadId,
+        sender_type: "admin",
+        sender_panel_user_id: null,
+        sender_admin_user_id: input.senderAdminUserId,
+        body: input.body,
+        attachments: null,
+        created_at: now
+      }).returning();
+      if (!mr) return { ok: false, error: "not_found" };
+      await tx.update(supportThreadsTable).set({
+        status: nextStatus,
+        last_message_at: now,
+        updated_at: now
+      }).where(eq(supportThreadsTable.id, input.threadId));
+      return { ok: true, message: mapMessage(mr), threadStatus: nextStatus };
+    });
+  } catch {
+    return { ok: false, error: "not_found" };
+  }
+}
+async function patchSupportThreadStatusAdmin(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  if (!isSupportThreadStatus(input.status)) return null;
+  const now = /* @__PURE__ */ new Date();
+  const rows = await db2.update(supportThreadsTable).set({ status: input.status, updated_at: now }).where(eq(supportThreadsTable.id, input.threadId)).returning();
+  const r = rows[0];
+  return r ? mapThread(r) : null;
+}
+function parseSupportCategory(raw) {
+  if (typeof raw !== "string") return null;
+  const s = raw.trim();
+  return isSupportCategory(s) ? s : null;
+}
+function parseSupportThreadStatus(raw) {
+  if (typeof raw !== "string") return null;
+  const s = raw.trim();
+  return isSupportThreadStatus(s) ? s : null;
+}
+
+// src/db/homepageContentData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+var HOMEPAGE_CONTENT_ID = "homepage-main";
+var DEFAULT_CONTENT = {
+  section2Title: "F\xFCr wen ist ONRODA?",
+  section2Cards: [
+    {
+      icon: "\u{1F695}",
+      title: "F\xFCr Fahrg\xE4ste",
+      body: "Fahrten sofort buchen oder planen. Einfach, schnell und transparent.",
+      ctaText: "Jetzt buchen",
+      ctaLink: "#jetzt-buchen",
+      isActive: true
+    },
+    {
+      icon: "\u{1F3E2}",
+      title: "F\xFCr Unternehmen",
+      body: "Fahrten digital organisieren, Codes verwalten und Abrechnung vereinfachen.",
+      ctaText: "Partner werden",
+      ctaLink: "#unternehmen",
+      isActive: true
+    },
+    {
+      icon: "\u{1F3E8}",
+      title: "F\xFCr Hotels",
+      body: "G\xE4stemobilit\xE4t zentral koordinieren und Abl\xE4ufe im Team entlasten.",
+      ctaText: "Mehr erfahren",
+      ctaLink: "#unternehmen",
+      isActive: false
+    },
+    {
+      icon: "\u{1F3E5}",
+      title: "F\xFCr medizinische Partner",
+      body: "Organisierte Fahrten mit klaren digitalen Prozessen und verl\xE4sslicher Abwicklung.",
+      ctaText: "ONRODA Care",
+      ctaLink: "#care",
+      isActive: false
+    }
+  ],
+  servicesKicker: "Leistungen",
+  servicesTitle: "Unsere Services",
+  servicesSubline: "Modernste Technologie f\xFCr Ihre Mobilit\xE4t in Stuttgart",
+  servicesCards: [
+    {
+      icon: "\u23F1",
+      title: "Echtzeit-Buchung",
+      body: "Buchen Sie Ihr Taxi in Sekunden. Verfolgen Sie Ihren Fahrer live auf der Karte.",
+      isActive: true
+    },
+    {
+      icon: "\u{1F4C5}",
+      title: "Vorbestellung",
+      body: "Planen Sie Ihre Fahrt im Voraus. Zum Flughafen, Termin oder Meeting.",
+      isActive: true
+    },
+    {
+      icon: "\u{1F9FE}",
+      title: "Digitale Quittungen",
+      body: "Alle Belege automatisch per E-Mail. Perfekt f\xFCr Ihre Buchhaltung.",
+      isActive: true
+    }
+  ],
+  manifestKicker: "Das ONRODA Manifest",
+  manifestTitle: "Vernetzung auf allen Ebenen",
+  manifestSubline: "Ein intelligentes System f\xFCr Fahrg\xE4ste, Fahrer und Unternehmen",
+  manifestCards: [
+    {
+      num: "1",
+      icon: "\u{1F4CD}",
+      title: "Innovation aus der Region",
+      body: "Wir kennen jeden Winkel von Stuttgart. Unsere Strategie basiert auf echter lokaler Expertise, gepaart mit modernster Technik.",
+      ctaText: "Mehr erfahren \u2192",
+      ctaLink: "#manifest",
+      isActive: true
+    },
+    {
+      num: "2",
+      icon: "\u26A1",
+      title: "Effizienz durch Digitalisierung",
+      body: "Bei ONRODA gibt es kein Hin-und-Her. Wir haben Prozesse radikal entschlackt. Alles l\xE4uft digital, direkt und reibungslos.",
+      ctaText: "Mehr erfahren \u2192",
+      ctaLink: "#services",
+      isActive: true
+    },
+    {
+      num: "3",
+      icon: "\u{1F91D}",
+      title: "Mobilit\xE4t als Service-Baustein f\xFCr Unternehmen, Hotels und Partnerbetriebe",
+      body: "Wir verstehen uns als Partner f\xFCr Hotels, Firmen und Veranstalter. ONRODA integriert Mobilit\xE4t als qualitativen Mehrwert.",
+      ctaText: "Mehr erfahren \u2192",
+      ctaLink: "#unternehmen",
+      isActive: true
+    },
+    {
+      num: "4",
+      icon: "\u{1F6E1}",
+      title: "Verl\xE4sslichkeit ist unser Standard",
+      body: "Wir versprechen nicht nur Mobilit\xE4t, wir liefern sie. Ein Maximum an Planungssicherheit f\xFCr Sie und Ihre Partner.",
+      ctaText: "Mehr erfahren \u2192",
+      ctaLink: "#care",
+      isActive: true
+    }
+  ],
+  heroHeadline: "Digitale Mobilit\xE4t\nf\xFCr Fahrg\xE4ste, Unternehmen\nund Partnerbetriebe",
+  heroSubline: "ONRODA verbindet Fahrg\xE4ste, Fahrer und Unternehmen in einem intelligenten System \u2013 f\xFCr einfache Buchung und strukturierte Abl\xE4ufe.",
+  cta1Text: "Jetzt buchen",
+  cta1Link: "#jetzt-buchen",
+  cta2Text: "Mehr erfahren",
+  cta2Link: "#services",
+  noticeText: "",
+  noticeActive: false
+};
+function mapServiceCards(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_CONTENT.servicesCards.map((c) => ({ ...c }));
+  }
+  return raw.map((c) => {
+    const o = c;
+    return {
+      icon: String(o?.icon ?? ""),
+      title: String(o?.title ?? ""),
+      body: String(o?.body ?? ""),
+      isActive: o?.isActive !== false
+    };
+  });
+}
+function mapManifestCards(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return DEFAULT_CONTENT.manifestCards.map((c) => ({ ...c }));
+  }
+  return raw.map((c) => {
+    const o = c;
+    return {
+      num: String(o?.num ?? "").trim(),
+      icon: String(o?.icon ?? ""),
+      title: String(o?.title ?? ""),
+      body: String(o?.body ?? ""),
+      ctaText: String(o?.ctaText ?? ""),
+      ctaLink: String(o?.ctaLink ?? ""),
+      isActive: o?.isActive !== false
+    };
+  });
+}
+function toDto(row) {
+  const cards = Array.isArray(row.section2_cards) ? row.section2_cards : [];
+  return {
+    section2Title: row.section2_title,
+    section2Cards: cards.map((c) => ({
+      icon: String(c?.icon ?? ""),
+      title: String(c?.title ?? ""),
+      body: String(c?.body ?? ""),
+      ctaText: String(c?.ctaText ?? ""),
+      ctaLink: String(c?.ctaLink ?? ""),
+      isActive: c?.isActive !== false
+    })),
+    servicesKicker: (row.services_kicker || "").trim() || DEFAULT_CONTENT.servicesKicker,
+    servicesTitle: (row.services_title || "").trim() || DEFAULT_CONTENT.servicesTitle,
+    servicesSubline: (row.services_subline || "").trim() || DEFAULT_CONTENT.servicesSubline,
+    servicesCards: mapServiceCards(row.services_cards),
+    manifestKicker: (row.manifest_kicker || "").trim() || DEFAULT_CONTENT.manifestKicker,
+    manifestTitle: (row.manifest_title || "").trim() || DEFAULT_CONTENT.manifestTitle,
+    manifestSubline: (row.manifest_subline || "").trim() || DEFAULT_CONTENT.manifestSubline,
+    manifestCards: mapManifestCards(row.manifest_cards).map((c, i) => ({
+      ...c,
+      num: c.num || String(i + 1)
+    })),
+    heroHeadline: row.hero_headline,
+    heroSubline: row.hero_subline,
+    cta1Text: row.cta1_text,
+    cta1Link: row.cta1_link,
+    cta2Text: row.cta2_text,
+    cta2Link: row.cta2_link,
+    noticeText: row.notice_text,
+    noticeActive: row.notice_active,
+    updatedAt: row.updated_at ? row.updated_at.toISOString() : null
+  };
+}
+async function getHomepageContentPublic() {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(homepageContentTable).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID)).limit(1);
+  if (!rows[0]) return null;
+  return toDto(rows[0]);
+}
+async function getHomepageContentAdmin() {
+  const db2 = getDb();
+  if (!db2) return { ...DEFAULT_CONTENT, updatedAt: null };
+  const rows = await db2.select().from(homepageContentTable).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID)).limit(1);
+  if (!rows[0]) return { ...DEFAULT_CONTENT, updatedAt: null };
+  return toDto(rows[0]);
+}
+async function patchHomepageContentAdmin(patch, actorAdminUserId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const existingRows = await db2.select().from(homepageContentTable).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID)).limit(1);
+  const existing = existingRows[0];
+  const merged = {
+    ...existing ? toDto(existing) : { ...DEFAULT_CONTENT, updatedAt: null },
+    ...patch
+  };
+  const now = /* @__PURE__ */ new Date();
+  if (!existing) {
+    await db2.insert(homepageContentTable).values({
+      id: HOMEPAGE_CONTENT_ID,
+      section2_title: merged.section2Title,
+      section2_cards: merged.section2Cards,
+      services_kicker: merged.servicesKicker,
+      services_title: merged.servicesTitle,
+      services_subline: merged.servicesSubline,
+      services_cards: merged.servicesCards,
+      manifest_kicker: merged.manifestKicker,
+      manifest_title: merged.manifestTitle,
+      manifest_subline: merged.manifestSubline,
+      manifest_cards: merged.manifestCards,
+      hero_headline: merged.heroHeadline,
+      hero_subline: merged.heroSubline,
+      cta1_text: merged.cta1Text,
+      cta1_link: merged.cta1Link,
+      cta2_text: merged.cta2Text,
+      cta2_link: merged.cta2Link,
+      notice_text: merged.noticeText,
+      notice_active: merged.noticeActive,
+      updated_by_admin_user_id: actorAdminUserId ?? null,
+      created_at: now,
+      updated_at: now
+    });
+  } else {
+    await db2.update(homepageContentTable).set({
+      hero_headline: merged.heroHeadline,
+      section2_title: merged.section2Title,
+      section2_cards: merged.section2Cards,
+      services_kicker: merged.servicesKicker,
+      services_title: merged.servicesTitle,
+      services_subline: merged.servicesSubline,
+      services_cards: merged.servicesCards,
+      manifest_kicker: merged.manifestKicker,
+      manifest_title: merged.manifestTitle,
+      manifest_subline: merged.manifestSubline,
+      manifest_cards: merged.manifestCards,
+      hero_subline: merged.heroSubline,
+      cta1_text: merged.cta1Text,
+      cta1_link: merged.cta1Link,
+      cta2_text: merged.cta2Text,
+      cta2_link: merged.cta2Link,
+      notice_text: merged.noticeText,
+      notice_active: merged.noticeActive,
+      updated_by_admin_user_id: actorAdminUserId ?? null,
+      updated_at: now
+    }).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID));
+  }
+  const rows = await db2.select().from(homepageContentTable).where(eq(homepageContentTable.id, HOMEPAGE_CONTENT_ID)).limit(1);
+  return rows[0] ? toDto(rows[0]) : null;
+}
+
+// src/db/homepageModulesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID11 } from "node:crypto";
+var FAQ_DEFAULTS = [
+  {
+    id: "faq-default-1",
+    question: "Wie buche ich eine Fahrt?",
+    answer: "\xDCber die ONRODA App oder \xFCber Ihr Partner-Setup. Buchung und Status sind digital nachvollziehbar.",
+    sortOrder: 10,
+    isActive: true
+  },
+  {
+    id: "faq-default-2",
+    question: "Kann ich Fahrten vorplanen?",
+    answer: "Ja, Vorbestellungen und Serienfahrten sind m\xF6glich.",
+    sortOrder: 20,
+    isActive: true
+  },
+  {
+    id: "faq-default-3",
+    question: "Wie erhalte ich Belege?",
+    answer: "Digitale Quittungen und strukturierte Abrechnung stehen je nach Flow zur Verf\xFCgung.",
+    sortOrder: 30,
+    isActive: true
+  }
+];
+var HOW_DEFAULTS = [
+  { id: "how-default-1", icon: "1", title: "Fahrt anfragen", body: "Start, Ziel und Bedarf digital erfassen.", sortOrder: 10, isActive: true },
+  { id: "how-default-2", icon: "2", title: "Vermittlung l\xE4uft", body: "Passendes Partnerunternehmen wird strukturiert zugeordnet.", sortOrder: 20, isActive: true },
+  { id: "how-default-3", icon: "3", title: "Status & Abrechnung", body: "Fahrtstatus, Kostenstelle und Nachweise bleiben nachvollziehbar.", sortOrder: 30, isActive: true }
+];
+var TRUST_DEFAULTS = [
+  { id: "trust-default-1", value: "Digitale Fahrten", label: "Digitale Fahrten", description: "Organisation und Status digital gef\xFChrt", sortOrder: 10, isActive: true },
+  { id: "trust-default-2", value: "Partnerbetriebe", label: "Partnerbetriebe", description: "Strukturierte Zusammenarbeit im Netzwerk", sortOrder: 20, isActive: true },
+  { id: "trust-default-3", value: "Schnelle Vermittlung", label: "Schnelle Vermittlung", description: "Kurze Wege von Anfrage bis Disposition", sortOrder: 30, isActive: true },
+  { id: "trust-default-4", value: "Strukturierte Abrechnung", label: "Strukturierte Abrechnung", description: "Kostenstellen und Referenzen sauber zuordenbar", sortOrder: 40, isActive: true }
+];
+function mapFaqRow(r) {
+  return { id: r.id, question: r.question, answer: r.answer, sortOrder: r.sort_order, isActive: r.is_active };
+}
+function mapHowRow(r) {
+  return { id: r.id, icon: r.icon, title: r.title, body: r.body, sortOrder: r.sort_order, isActive: r.is_active };
+}
+function mapTrustRow(r) {
+  return {
+    id: r.id,
+    value: r.value,
+    label: r.label,
+    description: r.description,
+    sortOrder: r.sort_order,
+    isActive: r.is_active
+  };
+}
+async function listHomepageFaqPublic() {
+  const db2 = getDb();
+  if (!db2) return FAQ_DEFAULTS.filter((x) => x.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  const rows = await db2.select().from(homepageFaqItemsTable).where(eq(homepageFaqItemsTable.is_active, true)).orderBy(asc(homepageFaqItemsTable.sort_order), asc(homepageFaqItemsTable.created_at));
+  if (rows.length === 0) return FAQ_DEFAULTS.filter((x) => x.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  return rows.map(mapFaqRow);
+}
+async function listHomepageFaqAdmin() {
+  const db2 = getDb();
+  if (!db2) return [...FAQ_DEFAULTS].sort((a, b) => a.sortOrder - b.sortOrder);
+  const rows = await db2.select().from(homepageFaqItemsTable).orderBy(asc(homepageFaqItemsTable.sort_order), asc(homepageFaqItemsTable.created_at));
+  if (rows.length === 0) return [...FAQ_DEFAULTS].sort((a, b) => a.sortOrder - b.sortOrder);
+  return rows.map(mapFaqRow);
+}
+async function createHomepageFaqItem(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const id = randomUUID11();
+  await db2.insert(homepageFaqItemsTable).values({
+    id,
+    question: input.question,
+    answer: input.answer,
+    sort_order: input.sortOrder,
+    is_active: input.isActive,
+    created_by_admin_user_id: input.actorAdminUserId ?? null,
+    updated_by_admin_user_id: input.actorAdminUserId ?? null,
+    created_at: now,
+    updated_at: now
+  });
+  return { id, question: input.question, answer: input.answer, sortOrder: input.sortOrder, isActive: input.isActive };
+}
+async function patchHomepageFaqItem(id, patch, actorAdminUserId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  await db2.update(homepageFaqItemsTable).set({
+    question: patch.question,
+    answer: patch.answer,
+    sort_order: patch.sortOrder,
+    is_active: patch.isActive,
+    updated_by_admin_user_id: actorAdminUserId ?? null,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(eq(homepageFaqItemsTable.id, id));
+  const rows = await db2.select().from(homepageFaqItemsTable).where(eq(homepageFaqItemsTable.id, id)).limit(1);
+  return rows[0] ? mapFaqRow(rows[0]) : null;
+}
+async function deleteHomepageFaqItem(id) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const out = await db2.delete(homepageFaqItemsTable).where(eq(homepageFaqItemsTable.id, id)).returning({ id: homepageFaqItemsTable.id });
+  return out.length > 0;
+}
+async function listHomepageHowPublic() {
+  const db2 = getDb();
+  if (!db2) return HOW_DEFAULTS.filter((x) => x.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  const rows = await db2.select().from(homepageHowStepsTable).where(eq(homepageHowStepsTable.is_active, true)).orderBy(asc(homepageHowStepsTable.sort_order), asc(homepageHowStepsTable.created_at));
+  if (rows.length === 0) return HOW_DEFAULTS.filter((x) => x.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  return rows.map(mapHowRow);
+}
+async function listHomepageHowAdmin() {
+  const db2 = getDb();
+  if (!db2) return [...HOW_DEFAULTS].sort((a, b) => a.sortOrder - b.sortOrder);
+  const rows = await db2.select().from(homepageHowStepsTable).orderBy(asc(homepageHowStepsTable.sort_order), asc(homepageHowStepsTable.created_at));
+  if (rows.length === 0) return [...HOW_DEFAULTS].sort((a, b) => a.sortOrder - b.sortOrder);
+  return rows.map(mapHowRow);
+}
+async function createHomepageHowStep(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const id = randomUUID11();
+  await db2.insert(homepageHowStepsTable).values({
+    id,
+    icon: input.icon,
+    title: input.title,
+    body: input.body,
+    sort_order: input.sortOrder,
+    is_active: input.isActive,
+    created_by_admin_user_id: input.actorAdminUserId ?? null,
+    updated_by_admin_user_id: input.actorAdminUserId ?? null,
+    created_at: now,
+    updated_at: now
+  });
+  return { id, icon: input.icon, title: input.title, body: input.body, sortOrder: input.sortOrder, isActive: input.isActive };
+}
+async function patchHomepageHowStep(id, patch, actorAdminUserId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  await db2.update(homepageHowStepsTable).set({
+    icon: patch.icon,
+    title: patch.title,
+    body: patch.body,
+    sort_order: patch.sortOrder,
+    is_active: patch.isActive,
+    updated_by_admin_user_id: actorAdminUserId ?? null,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(eq(homepageHowStepsTable.id, id));
+  const rows = await db2.select().from(homepageHowStepsTable).where(eq(homepageHowStepsTable.id, id)).limit(1);
+  return rows[0] ? mapHowRow(rows[0]) : null;
+}
+async function deleteHomepageHowStep(id) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const out = await db2.delete(homepageHowStepsTable).where(eq(homepageHowStepsTable.id, id)).returning({ id: homepageHowStepsTable.id });
+  return out.length > 0;
+}
+async function listHomepageTrustPublic() {
+  const db2 = getDb();
+  if (!db2) return TRUST_DEFAULTS.filter((x) => x.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  const rows = await db2.select().from(homepageTrustMetricsTable).where(eq(homepageTrustMetricsTable.is_active, true)).orderBy(asc(homepageTrustMetricsTable.sort_order), asc(homepageTrustMetricsTable.created_at));
+  if (rows.length === 0) return TRUST_DEFAULTS.filter((x) => x.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+  return rows.map(mapTrustRow);
+}
+async function listHomepageTrustAdmin() {
+  const db2 = getDb();
+  if (!db2) return [...TRUST_DEFAULTS].sort((a, b) => a.sortOrder - b.sortOrder);
+  const rows = await db2.select().from(homepageTrustMetricsTable).orderBy(asc(homepageTrustMetricsTable.sort_order), asc(homepageTrustMetricsTable.created_at));
+  if (rows.length === 0) return [...TRUST_DEFAULTS].sort((a, b) => a.sortOrder - b.sortOrder);
+  return rows.map(mapTrustRow);
+}
+async function createHomepageTrustMetric(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const id = randomUUID11();
+  await db2.insert(homepageTrustMetricsTable).values({
+    id,
+    value: input.value,
+    label: input.label,
+    description: input.description,
+    sort_order: input.sortOrder,
+    is_active: input.isActive,
+    created_by_admin_user_id: input.actorAdminUserId ?? null,
+    updated_by_admin_user_id: input.actorAdminUserId ?? null,
+    created_at: now,
+    updated_at: now
+  });
+  return {
+    id,
+    value: input.value,
+    label: input.label,
+    description: input.description,
+    sortOrder: input.sortOrder,
+    isActive: input.isActive
+  };
+}
+async function patchHomepageTrustMetric(id, patch, actorAdminUserId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  await db2.update(homepageTrustMetricsTable).set({
+    value: patch.value,
+    label: patch.label,
+    description: patch.description,
+    sort_order: patch.sortOrder,
+    is_active: patch.isActive,
+    updated_by_admin_user_id: actorAdminUserId ?? null,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(eq(homepageTrustMetricsTable.id, id));
+  const rows = await db2.select().from(homepageTrustMetricsTable).where(eq(homepageTrustMetricsTable.id, id)).limit(1);
+  return rows[0] ? mapTrustRow(rows[0]) : null;
+}
+async function deleteHomepageTrustMetric(id) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const out = await db2.delete(homepageTrustMetricsTable).where(eq(homepageTrustMetricsTable.id, id)).returning({ id: homepageTrustMetricsTable.id });
+  return out.length > 0;
+}
+
+// src/db/homepagePlaceholdersData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID12 } from "node:crypto";
+function normalizeHomepageHintType(raw) {
+  const t = String(raw ?? "").trim().toLowerCase();
+  if (t === "success") return "success";
+  if (t === "warning") return "warning";
+  if (t === "important") return "important";
+  return "info";
+}
+function rowToAdminDto(r) {
+  return {
+    id: r.id,
+    title: r.title,
+    message: r.message,
+    ctaLabel: r.cta_label,
+    ctaUrl: r.cta_url,
+    type: normalizeHomepageHintType(r.tone),
+    isActive: r.is_active,
+    sortOrder: r.sort_order,
+    visibleFrom: r.visible_from ? r.visible_from.toISOString() : null,
+    visibleUntil: r.visible_until ? r.visible_until.toISOString() : null,
+    dismissKey: r.dismiss_key,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+function rowToPublicDto(r) {
+  return {
+    id: r.id,
+    title: r.title,
+    message: r.message,
+    ctaLabel: r.cta_label,
+    ctaUrl: r.cta_url,
+    type: normalizeHomepageHintType(r.tone),
+    dismissKey: r.dismiss_key || r.id
+  };
+}
+async function listHomepagePlaceholdersAdmin() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(homepagePlaceholdersTable).orderBy(asc(homepagePlaceholdersTable.sort_order), desc(homepagePlaceholdersTable.created_at));
+  return rows.map(rowToAdminDto);
+}
+async function listHomepagePlaceholdersPublic() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const now = /* @__PURE__ */ new Date();
+  const rows = await db2.select().from(homepagePlaceholdersTable).where(
+    and(
+      eq(homepagePlaceholdersTable.is_active, true),
+      or(isNull(homepagePlaceholdersTable.visible_from), lte(homepagePlaceholdersTable.visible_from, now)),
+      or(isNull(homepagePlaceholdersTable.visible_until), gte(homepagePlaceholdersTable.visible_until, now))
+    )
+  ).orderBy(asc(homepagePlaceholdersTable.sort_order), desc(homepagePlaceholdersTable.created_at));
+  return rows.map(rowToPublicDto);
+}
+async function createHomepagePlaceholder(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const id = `hpb-${randomUUID12()}`;
+  const storedType = normalizeHomepageHintType(input.type);
+  await db2.insert(homepagePlaceholdersTable).values({
+    id,
+    title: input.title,
+    message: input.message,
+    cta_label: input.ctaLabel ?? null,
+    cta_url: input.ctaUrl ?? null,
+    tone: storedType,
+    is_active: input.isActive,
+    sort_order: input.sortOrder,
+    visible_from: input.visibleFrom ?? null,
+    visible_until: input.visibleUntil ?? null,
+    dismiss_key: (input.dismissKey ?? "").trim(),
+    created_by_admin_user_id: input.actorAdminUserId ?? null,
+    updated_by_admin_user_id: input.actorAdminUserId ?? null,
+    created_at: now,
+    updated_at: now
+  });
+  const rows = await db2.select().from(homepagePlaceholdersTable).where(eq(homepagePlaceholdersTable.id, id)).limit(1);
+  return rows[0] ? rowToAdminDto(rows[0]) : null;
+}
+async function patchHomepagePlaceholder(id, input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const patch = {
+    updated_at: /* @__PURE__ */ new Date(),
+    updated_by_admin_user_id: input.actorAdminUserId ?? null
+  };
+  if (typeof input.title === "string") patch.title = input.title;
+  if (typeof input.message === "string") patch.message = input.message;
+  if (input.ctaLabel !== void 0) patch.cta_label = input.ctaLabel ?? null;
+  if (input.ctaUrl !== void 0) patch.cta_url = input.ctaUrl ?? null;
+  if (input.type !== void 0) patch.tone = normalizeHomepageHintType(input.type);
+  if (typeof input.isActive === "boolean") patch.is_active = input.isActive;
+  if (typeof input.sortOrder === "number") patch.sort_order = input.sortOrder;
+  if (input.visibleFrom !== void 0) patch.visible_from = input.visibleFrom ?? null;
+  if (input.visibleUntil !== void 0) patch.visible_until = input.visibleUntil ?? null;
+  if (input.dismissKey !== void 0) patch.dismiss_key = (input.dismissKey ?? "").trim();
+  await db2.update(homepagePlaceholdersTable).set(patch).where(eq(homepagePlaceholdersTable.id, id));
+  const rows = await db2.select().from(homepagePlaceholdersTable).where(eq(homepagePlaceholdersTable.id, id)).limit(1);
+  return rows[0] ? rowToAdminDto(rows[0]) : null;
+}
+
+// src/db/adminOperatorSnapshotData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+var PENDING_REGISTRATION_STATUSES2 = ["open", "in_review", "documents_required"];
+function registrationStatusDe(s) {
+  const m = {
+    open: "Eingereicht",
+    in_review: "In Pr\xFCfung",
+    documents_required: "Dokumente offen",
+    approved: "Freigegeben",
+    rejected: "Abgelehnt",
+    blocked: "Gesperrt"
+  };
+  return m[s] ?? s;
+}
+function parseIsoToMs(v) {
+  const t = new Date(v).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+async function getAdminOperatorSnapshot() {
+  const empty = {
+    registration: { pendingCount: 0, latest: [] },
+    support: { openCount: 0, inProgressCount: 0, answeredCount: 0, latestOpenThreads: [] },
+    fleet: { pendingApprovalCount: 0, latest: [] },
+    companies: { blockedCount: 0, incompleteComplianceCount: 0, latestProblematic: [] },
+    recentTasks: []
+  };
+  if (!isPostgresConfigured()) return empty;
+  const db2 = getDb();
+  if (!db2) return empty;
+  const [
+    regCountRow,
+    regLatestRows,
+    supportByStatus,
+    supportOpen,
+    fleetPendingN,
+    fleetPreview,
+    blockedRow,
+    incompleteRow,
+    probRows
+  ] = await Promise.all([
+    db2.select({ n: count() }).from(partnerRegistrationRequestsTable).where(inArray(partnerRegistrationRequestsTable.registration_status, [...PENDING_REGISTRATION_STATUSES2])),
+    db2.select({
+      id: partnerRegistrationRequestsTable.id,
+      companyName: partnerRegistrationRequestsTable.company_name,
+      email: partnerRegistrationRequestsTable.email,
+      partnerType: partnerRegistrationRequestsTable.partner_type,
+      registrationStatus: partnerRegistrationRequestsTable.registration_status,
+      createdAt: partnerRegistrationRequestsTable.created_at
+    }).from(partnerRegistrationRequestsTable).where(
+      inArray(partnerRegistrationRequestsTable.registration_status, [...PENDING_REGISTRATION_STATUSES2])
+    ).orderBy(desc(partnerRegistrationRequestsTable.created_at)).limit(5),
+    countSupportThreadsByStatusForAdmin(),
+    listSupportThreadsAdmin({
+      status: "open",
+      companyId: void 0,
+      category: void 0,
+      q: void 0,
+      limit: 5,
+      offset: 0
+    }),
+    countPendingFleetVehiclesForAdmin(),
+    listPendingFleetVehiclesForAdmin(5),
+    db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_blocked, true)),
+    db2.select({ n: count() }).from(adminCompaniesTable).where(ne(adminCompaniesTable.compliance_status, "compliant")),
+    db2.select({
+      id: adminCompaniesTable.id,
+      name: adminCompaniesTable.name,
+      isBlocked: adminCompaniesTable.is_blocked,
+      complianceStatus: adminCompaniesTable.compliance_status
+    }).from(adminCompaniesTable).where(
+      or(
+        eq(adminCompaniesTable.is_blocked, true),
+        ne(adminCompaniesTable.compliance_status, "compliant")
+      )
+    ).orderBy(desc(adminCompaniesTable.is_blocked), desc(adminCompaniesTable.id)).limit(5)
+  ]);
+  const registration = {
+    pendingCount: Number(regCountRow[0]?.n ?? 0),
+    latest: regLatestRows.map((r) => ({
+      id: r.id,
+      companyName: r.companyName,
+      email: r.email,
+      partnerType: r.partnerType,
+      registrationStatus: r.registrationStatus,
+      createdAt: r.createdAt.toISOString()
+    }))
+  };
+  const support = {
+    openCount: supportByStatus.open,
+    inProgressCount: supportByStatus.in_progress,
+    answeredCount: supportByStatus.answered,
+    latestOpenThreads: supportOpen.map((t) => ({
+      id: t.id,
+      companyId: t.companyId,
+      companyName: t.companyName,
+      title: t.title,
+      status: t.status,
+      category: t.category,
+      lastMessageAt: t.lastMessageAt,
+      lastSnippet: t.lastSnippet
+    }))
+  };
+  const fleet = {
+    pendingApprovalCount: fleetPendingN,
+    latest: fleetPreview.map((r) => ({
+      vehicleId: r.vehicle.id,
+      companyId: r.vehicle.companyId,
+      companyName: r.companyName,
+      licensePlate: r.vehicle.licensePlate,
+      model: r.vehicle.model,
+      updatedAt: r.vehicle.updatedAt,
+      approvalStatus: r.vehicle.approvalStatus
+    }))
+  };
+  const companies = {
+    blockedCount: Number(blockedRow[0]?.n ?? 0),
+    incompleteComplianceCount: Number(incompleteRow[0]?.n ?? 0),
+    latestProblematic: probRows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      isBlocked: r.isBlocked,
+      complianceStatus: r.complianceStatus
+    }))
+  };
+  const recentTasks = [];
+  for (const r of registration.latest) {
+    recentTasks.push({
+      kind: "registration",
+      at: r.createdAt,
+      title: r.companyName,
+      subtitle: `Registrierung \xB7 ${registrationStatusDe(r.registrationStatus)}`,
+      pageKey: "company-registration-requests",
+      refId: r.id,
+      severity: "high"
+    });
+  }
+  for (const t of support.latestOpenThreads) {
+    recentTasks.push({
+      kind: "support",
+      at: t.lastMessageAt,
+      title: t.title,
+      subtitle: t.companyName,
+      pageKey: "support-inbox",
+      refId: t.id,
+      severity: "high"
+    });
+  }
+  for (const v of fleet.latest) {
+    recentTasks.push({
+      kind: "fleet",
+      at: v.updatedAt,
+      title: v.licensePlate,
+      subtitle: v.companyName,
+      pageKey: "fleet-vehicles-review",
+      refId: v.vehicleId,
+      severity: "medium"
+    });
+  }
+  recentTasks.sort((a, b) => parseIsoToMs(b.at) - parseIsoToMs(a.at));
+  const trimmedTasks = recentTasks.slice(0, 10);
+  return {
+    registration,
+    support,
+    fleet,
+    companies,
+    recentTasks: trimmedTasks
+  };
+}
+
+// src/db/adminMandateDetailData.ts
+init_drizzle_orm();
+init_client();
+init_accessCodesData();
+init_ridesData();
+init_schema2();
+var OPEN_RIDE_STATUSES = ["pending", "accepted", "arrived", "in_progress"];
+var ACTIVE_RIDE_STATUSES3 = ["accepted", "arrived", "in_progress"];
+var SETTLEMENT_OPEN = ["draft", "issued", "approved"];
+function n2(v) {
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : 0;
+}
+function rideRevenueAmount2(r) {
+  if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
+  return r.estimatedFare;
+}
+function utcMonthBounds(d = /* @__PURE__ */ new Date()) {
+  return {
+    monthStart: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0)),
+    nextMonthStart: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0, 0))
+  };
+}
+function isPScheinIssue(d) {
+  return d.readiness.blockReasons.some(
+    (b) => b.code === "p_schein_date_missing" || b.code === "p_schein_expired" || b.code === "p_schein_doc_missing"
+  );
+}
+async function buildMandateRecentRides(companyId) {
+  const rows = await listRidesAdminPage({ companyId, sortCreated: "desc" }, 20, 0);
+  const drivers = await listFleetDriversForCompany(companyId);
+  const byId = new Map(drivers.map((d) => [d.id, d]));
+  return rows.map((r) => {
+    let driverLabel = null;
+    if (r.driverId) {
+      const fd = byId.get(r.driverId);
+      if (fd) {
+        const name = `${fd.firstName} ${fd.lastName}`.trim();
+        driverLabel = name || fd.email || r.driverId;
+      } else {
+        const id = String(r.driverId);
+        driverLabel = id.length > 32 ? `${id.slice(0, 12)}\u2026` : id;
+      }
+    }
+    const amount = r.finalFare != null && Number.isFinite(r.finalFare) ? r.finalFare : r.estimatedFare;
+    const meta = r.partnerBookingMeta;
+    const costCenterId = meta?.insurer?.costCenterId?.trim() || null;
+    return {
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt,
+      fromLabel: (r.from || "").trim() || "\u2014",
+      toLabel: (r.to || "").trim() || "\u2014",
+      amountEur: amount,
+      paymentMethod: r.paymentMethod,
+      driverLabel,
+      billingReference: r.billingReference?.trim() || null,
+      costCenterId,
+      rideKind: r.rideKind,
+      payerKind: r.payerKind
+    };
+  });
+}
+async function memMandateRecentRides(companyId) {
+  const all = await listRidesForCompany(companyId);
+  const sorted = [...all].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return sorted.slice(0, 20).map((r) => {
+    const amount = r.finalFare != null && Number.isFinite(r.finalFare) ? r.finalFare : r.estimatedFare;
+    const meta = r.partnerBookingMeta;
+    return {
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt,
+      fromLabel: (r.from || "").trim() || "\u2014",
+      toLabel: (r.to || "").trim() || "\u2014",
+      amountEur: amount,
+      paymentMethod: r.paymentMethod,
+      driverLabel: r.driverId ? String(r.driverId) : null,
+      billingReference: r.billingReference?.trim() || null,
+      costCenterId: meta?.insurer?.costCenterId?.trim() || null,
+      rideKind: r.rideKind,
+      payerKind: r.payerKind
+    };
+  });
+}
+var KPI_FALLBACK = {
+  monthlyRevenue: 0,
+  openRides: 0,
+  voucherLimitAvailable: null
+};
+async function memPathRidesSummary(companyId) {
+  const rides = await listRidesForCompany(companyId);
+  const { monthStart, nextMonthStart } = utcMonthBounds();
+  const by = (s) => rides.filter((r) => r.status === s).length;
+  const openPipeline = rides.filter((r) => OPEN_RIDE_STATUSES.includes(r.status)).length;
+  const active = rides.filter((r) => ACTIVE_RIDE_STATUSES3.includes(r.status)).length;
+  const completed = by("completed");
+  const medicalRides = rides.filter((r) => r.rideKind === "medical").length;
+  const insurancePayerRides = rides.filter((r) => r.payerKind === "insurance").length;
+  const revenueCompletedGross = rides.filter((r) => r.status === "completed").reduce((s, r) => s + rideRevenueAmount2({ finalFare: r.finalFare ?? null, estimatedFare: r.estimatedFare }), 0);
+  const sampleBillingRefs = rides.filter((r) => r.rideKind === "medical" && r.billingReference?.trim()).map((r) => String(r.billingReference).trim()).slice(0, 5);
+  const ridesCountCurrentMonth = rides.filter((r) => {
+    const t = new Date(r.createdAt).getTime();
+    return t >= monthStart.getTime() && t < nextMonthStart.getTime();
+  }).length;
+  return {
+    rides: {
+      total: rides.length,
+      ridesCountCurrentMonth,
+      openPipeline,
+      active,
+      completed,
+      cancelled: by("cancelled"),
+      rejected: by("rejected"),
+      revenueCompletedGross,
+      medicalRides,
+      insurancePayerRides
+    },
+    sampleBillingRefs
+  };
+}
+function memDocumentsBase(company, taxi) {
+  if (!taxi) {
+    return {
+      gewerbeFilePresent: Boolean(company.compliance_gewerbe_storage_key),
+      insuranceFilePresent: Boolean(company.compliance_insurance_storage_key),
+      companyConcessionTextPresent: Boolean(company.concession_number?.trim()),
+      pScheinDriversWithDocument: 0,
+      pScheinDriversWithIssue: 0,
+      vehiclesWithUploadedDocs: 0,
+      vehiclesTotalForDocs: 0
+    };
+  }
+  const { drivers, vehicles } = taxi;
+  return {
+    gewerbeFilePresent: Boolean(company.compliance_gewerbe_storage_key),
+    insuranceFilePresent: Boolean(company.compliance_insurance_storage_key),
+    companyConcessionTextPresent: Boolean(company.concession_number?.trim()),
+    pScheinDriversWithDocument: drivers.filter((d) => d.pScheinDocPresent).length,
+    pScheinDriversWithIssue: drivers.filter((d) => isPScheinIssue(d)).length,
+    vehiclesWithUploadedDocs: vehicles.filter((v) => v.vehicleDocuments.length > 0).length,
+    vehiclesTotalForDocs: vehicles.length
+  };
+}
+function memFinancialsForMandate(rsum, kpi) {
+  return {
+    revenueCompletedGrossAllTime: rsum.revenueCompletedGross,
+    revenueCompletedGrossCurrentMonth: kpi.monthlyRevenue,
+    openPlatformCommissionEur: 0,
+    paidPlatformCommissionEur: 0,
+    totalPlatformCommissionEur: 0,
+    onrodaCommissionCurrentMonthEur: 0,
+    openSettlementsCount: 0
+  };
+}
+async function getCompanyMandateRead(companyId) {
+  const company = await findCompanyById(companyId);
+  if (!company) return null;
+  let kpi;
+  try {
+    kpi = await getCompanyKpis(companyId);
+  } catch (err) {
+    logger.error({ err, companyId }, "getCompanyKpis failed in mandate-read; using zero KPIs");
+    kpi = KPI_FALLBACK;
+  }
+  if (!isPostgresConfigured() || !getDb()) {
+    const { rides: rsum, sampleBillingRefs } = await memPathRidesSummary(companyId);
+    const [recentRides2, taxiTup] = await Promise.all([
+      memMandateRecentRides(companyId),
+      company.company_kind === "taxi" ? Promise.all([listAdminTaxiFleetDriverRows(companyId), listFleetVehiclesForCompany(companyId)]).then(
+        ([drivers, vehicles]) => ({ drivers, vehicles })
+      ) : Promise.resolve(null)
+    ]);
+    return {
+      company,
+      kpi,
+      rides: rsum,
+      financials: memFinancialsForMandate(rsum, kpi),
+      billingAccountEmail: null,
+      recentRides: recentRides2,
+      taxi: company.company_kind === "taxi" && taxiTup ? (() => {
+        const { drivers, vehicles } = taxiTup;
+        return {
+          driversTotal: drivers.length,
+          driversActive: drivers.filter((d) => d.isActive && d.accessStatus === "active").length,
+          driversReady: drivers.filter((d) => d.readiness?.ready).length,
+          driversSuspended: drivers.filter((d) => d.accessStatus === "suspended").length,
+          pScheinDeficient: drivers.filter((d) => isPScheinIssue(d)).length,
+          vehiclesTotal: vehicles.length,
+          vehiclesApproved: vehicles.filter((v) => v.approvalStatus === "approved").length,
+          vehiclesPendingReview: vehicles.filter(
+            (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval"
+          ).length
+        };
+      })() : company.company_kind === "taxi" ? emptyTaxi() : null,
+      hotel: company.company_kind === "hotel" ? emptyHotel() : null,
+      insurer: company.company_kind === "insurer" || company.company_kind === "medical" ? emptyInsurer(company, sampleBillingRefs) : null,
+      documents: memDocumentsBase(company, taxiTup),
+      panelAudit: []
+    };
+  }
+  const db2 = getDb();
+  if (!db2) {
+    const { rides: rsum, sampleBillingRefs } = await memPathRidesSummary(companyId);
+    const [recentRides2, taxiTup] = await Promise.all([
+      memMandateRecentRides(companyId),
+      company.company_kind === "taxi" ? Promise.all([listAdminTaxiFleetDriverRows(companyId), listFleetVehiclesForCompany(companyId)]).then(
+        ([d, v]) => ({ drivers: d, vehicles: v })
+      ) : Promise.resolve(null)
+    ]);
+    return {
+      company,
+      kpi,
+      rides: rsum,
+      financials: memFinancialsForMandate(rsum, kpi),
+      billingAccountEmail: null,
+      recentRides: recentRides2,
+      taxi: company.company_kind === "taxi" && taxiTup ? (() => {
+        const { drivers, vehicles } = taxiTup;
+        return {
+          driversTotal: drivers.length,
+          driversActive: drivers.filter((d) => d.isActive && d.accessStatus === "active").length,
+          driversReady: drivers.filter((d) => d.readiness?.ready).length,
+          driversSuspended: drivers.filter((d) => d.accessStatus === "suspended").length,
+          pScheinDeficient: drivers.filter((d) => isPScheinIssue(d)).length,
+          vehiclesTotal: vehicles.length,
+          vehiclesApproved: vehicles.filter((v) => v.approvalStatus === "approved").length,
+          vehiclesPendingReview: vehicles.filter(
+            (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval"
+          ).length
+        };
+      })() : company.company_kind === "taxi" ? emptyTaxi() : null,
+      hotel: company.company_kind === "hotel" ? emptyHotel() : null,
+      insurer: company.company_kind === "insurer" || company.company_kind === "medical" ? emptyInsurer(company, sampleBillingRefs) : null,
+      documents: memDocumentsBase(company, taxiTup),
+      panelAudit: []
+    };
+  }
+  const { monthStart, nextMonthStart } = utcMonthBounds();
+  const [
+    statusRows,
+    completedRevRow,
+    finAggRow,
+    settlementOpenRow,
+    medicalN,
+    insuranceN,
+    sampleBillingRefRows,
+    ridesInMonthRow,
+    commMonthRow,
+    billingRow
+  ] = await Promise.all([
+    db2.select({ status: ridesTable.status, n: count() }).from(ridesTable).where(eq(ridesTable.company_id, companyId)).groupBy(ridesTable.status),
+    db2.select({
+      rev: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+    }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.status, "completed"))),
+    db2.select({
+      openComm: sql`coalesce(sum(case when ${rideFinancialsTable.settlement_status} <> 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`,
+      paidComm: sql`coalesce(sum(case when ${rideFinancialsTable.settlement_status} = 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`,
+      totalComm: sql`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`
+    }).from(rideFinancialsTable).where(eq(rideFinancialsTable.partner_company_id, companyId)),
+    db2.select({ n: count() }).from(settlementsTable).where(
+      and(
+        eq(settlementsTable.company_id, companyId),
+        inArray(settlementsTable.status, [...SETTLEMENT_OPEN])
+      )
+    ),
+    db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.ride_kind, "medical"))),
+    db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.payer_kind, "insurance"))),
+    db2.select({ br: ridesTable.billing_reference }).from(ridesTable).where(
+      and(
+        eq(ridesTable.company_id, companyId),
+        eq(ridesTable.ride_kind, "medical"),
+        sql`trim(coalesce(${ridesTable.billing_reference}, '')) <> ''`
+      )
+    ).limit(5),
+    db2.select({
+      n: count(),
+      monthCompletedRev: sql`coalesce(sum(case when ${ridesTable.status} = 'completed' then coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare}) else 0 end), 0)`
+    }).from(ridesTable).where(
+      and(
+        eq(ridesTable.company_id, companyId),
+        gte(ridesTable.created_at, monthStart),
+        lt(ridesTable.created_at, nextMonthStart)
+      )
+    ),
+    db2.select({
+      s: sql`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`
+    }).from(rideFinancialsTable).innerJoin(ridesTable, eq(rideFinancialsTable.ride_id, ridesTable.id)).where(
+      and(
+        eq(rideFinancialsTable.partner_company_id, companyId),
+        gte(ridesTable.created_at, monthStart),
+        lt(ridesTable.created_at, nextMonthStart)
+      )
+    ),
+    db2.select({ email: billingAccountsTable.billing_email }).from(billingAccountsTable).where(
+      and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true))
+    ).limit(1)
+  ]);
+  const st = {};
+  let total = 0;
+  for (const row of statusRows) {
+    const c = Number(row.n ?? 0);
+    st[String(row.status)] = c;
+    total += c;
+  }
+  const openPipeline = OPEN_RIDE_STATUSES.reduce(
+    (acc, s) => acc + (st[s] ?? 0),
+    0
+  );
+  const active = ACTIVE_RIDE_STATUSES3.reduce(
+    (acc, s) => acc + (st[s] ?? 0),
+    0
+  );
+  const ridesSummary = {
+    total,
+    ridesCountCurrentMonth: Number(ridesInMonthRow[0]?.n ?? 0),
+    openPipeline,
+    active,
+    completed: st.completed ?? 0,
+    cancelled: st.cancelled ?? 0,
+    rejected: st.rejected ?? 0,
+    revenueCompletedGross: n2(completedRevRow[0]?.rev),
+    medicalRides: Number(medicalN[0]?.n ?? 0),
+    insurancePayerRides: Number(insuranceN[0]?.n ?? 0)
+  };
+  const monthCompletedRev = n2(ridesInMonthRow[0]?.monthCompletedRev);
+  const financials = {
+    revenueCompletedGrossAllTime: ridesSummary.revenueCompletedGross,
+    revenueCompletedGrossCurrentMonth: monthCompletedRev,
+    openPlatformCommissionEur: n2(finAggRow[0]?.openComm),
+    paidPlatformCommissionEur: n2(finAggRow[0]?.paidComm),
+    totalPlatformCommissionEur: n2(finAggRow[0]?.totalComm),
+    onrodaCommissionCurrentMonthEur: n2(commMonthRow[0]?.s),
+    openSettlementsCount: Number(settlementOpenRow[0]?.n ?? 0)
+  };
+  const kind = company.company_kind;
+  let taxi = null;
+  let taxiForDocs = null;
+  if (kind === "taxi") {
+    const [drivers, vehicles] = await Promise.all([
+      listAdminTaxiFleetDriverRows(companyId),
+      listFleetVehiclesForCompany(companyId)
+    ]);
+    taxiForDocs = { drivers, vehicles };
+    const driversTotal = drivers.length;
+    const driversActive = drivers.filter((d) => d.isActive && d.accessStatus === "active").length;
+    const driversReady = drivers.filter((d) => d.readiness?.ready).length;
+    const driversSuspended = drivers.filter((d) => d.accessStatus === "suspended").length;
+    const pScheinDeficient = drivers.filter((d) => isPScheinIssue(d)).length;
+    const vehiclesTotal = vehicles.length;
+    const vehiclesApproved = vehicles.filter((v) => v.approvalStatus === "approved").length;
+    const vehiclesPendingReview = vehicles.filter(
+      (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval"
+    ).length;
+    taxi = {
+      driversTotal,
+      driversActive,
+      driversReady,
+      driversSuspended,
+      pScheinDeficient,
+      vehiclesTotal,
+      vehiclesApproved,
+      vehiclesPendingReview
+    };
+  }
+  let hotel = null;
+  if (kind === "hotel") {
+    const codes = await listAccessCodesForCompany(companyId);
+    const accessCodesActive = codes.filter((c) => c.isActive).length;
+    const accessCodeRedemptions = codes.reduce((s, c) => s + (c.usesCount ?? 0), 0);
+    hotel = { accessCodesActive, accessCodeRedemptions };
+  }
+  let insurer = null;
+  if (kind === "insurer" || kind === "medical") {
+    const keys = Object.keys(company.insurer_permissions || {}).filter(
+      (k) => k && k !== "diagnoses" && k !== "diagnosis"
+    );
+    insurer = {
+      insurerConfigKeys: keys.slice(0, 24),
+      medicalRides: ridesSummary.medicalRides,
+      insurancePayerRides: ridesSummary.insurancePayerRides,
+      sampleBillingReferences: sampleBillingRefRows.map((r) => String(r.br || "").trim()).filter(Boolean).slice(0, 5)
+    };
+  }
+  const [panelAudit, recentRides] = await Promise.all([
+    listPanelAuditForCompany(companyId, { limit: 40 }),
+    buildMandateRecentRides(companyId)
+  ]);
+  const billingAccountEmail = (() => {
+    const raw = billingRow[0]?.email;
+    if (raw == null || typeof raw !== "string") return null;
+    const t = raw.trim();
+    return t || null;
+  })();
+  return {
+    company,
+    kpi,
+    rides: ridesSummary,
+    financials,
+    billingAccountEmail,
+    recentRides,
+    taxi,
+    hotel,
+    insurer,
+    documents: memDocumentsBase(company, taxiForDocs),
+    panelAudit
+  };
+}
+function emptyTaxi() {
+  return {
+    driversTotal: 0,
+    driversActive: 0,
+    driversReady: 0,
+    driversSuspended: 0,
+    pScheinDeficient: 0,
+    vehiclesTotal: 0,
+    vehiclesApproved: 0,
+    vehiclesPendingReview: 0
+  };
+}
+function emptyHotel() {
+  return { accessCodesActive: 0, accessCodeRedemptions: 0 };
+}
+function emptyInsurer(company, sampleBillingReferences) {
+  const keys = Object.keys(company.insurer_permissions || {}).filter(
+    (k) => k && k !== "diagnoses" && k !== "diagnosis"
+  );
+  return {
+    insurerConfigKeys: keys,
+    medicalRides: 0,
+    insurancePayerRides: 0,
+    sampleBillingReferences
+  };
+}
+
 // src/db/adminAuthData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID7 } from "node:crypto";
+import { randomUUID as randomUUID13 } from "node:crypto";
 
 // src/lib/adminConsoleRoles.ts
 var ADMIN_ROLE_VALUES = ["admin", "service", "taxi", "insurance", "hotel"];
@@ -52321,6 +55229,9 @@ function canMutateAdminFareAreas(role) {
 }
 function canAccessAdminAccessCodes(role) {
   return role === "admin" || role === "service" || role === "taxi";
+}
+function canAccessInsurerAdminApi(role) {
+  return role === "admin" || role === "service" || role === "insurance";
 }
 function canAdminReleaseRide(role) {
   return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
@@ -52443,7 +55354,7 @@ async function upsertAdminAuthUser(input) {
     return;
   }
   await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID7(),
+    id: randomUUID13(),
     username,
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
@@ -52507,7 +55418,7 @@ async function createAdminAuthUser(input) {
   if (!username) return null;
   const scope = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
   const createdRows = await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID7(),
+    id: randomUUID13(),
     username,
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
@@ -52624,7 +55535,7 @@ async function createAdminPasswordResetToken(input) {
   const db2 = getDb();
   if (!db2) return null;
   const rows = await db2.insert(adminAuthPasswordResetsTable).values({
-    id: randomUUID7(),
+    id: randomUUID13(),
     admin_user_id: input.adminUserId,
     token_hash: input.tokenHash,
     expires_at: input.expiresAt,
@@ -52668,7 +55579,7 @@ async function insertAdminAuthAuditLog(input) {
   const db2 = getDb();
   if (!db2) return;
   await db2.insert(adminAuthAuditLogTable).values({
-    id: randomUUID7(),
+    id: randomUUID13(),
     admin_user_id: input.adminUserId ?? null,
     username: (input.username ?? "").trim(),
     action: input.action,
@@ -52680,6 +55591,58 @@ async function insertAdminAuthAuditLog(input) {
 // src/routes/adminApi.ts
 init_client();
 init_ridesData();
+
+// src/db/adminTaxiFleetVehiclesData.ts
+init_ridesData();
+async function listAdminTaxiFleetVehicleRows(companyId) {
+  const [vehicles, ass, drivers] = await Promise.all([
+    listFleetVehiclesForCompany(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetDriversForCompany(companyId)
+  ]);
+  const dById = new Map(drivers.map((d) => [d.id, d]));
+  return vehicles.map((v) => {
+    const a = ass.find((x) => x.vehicleId === v.id);
+    const d = a ? dById.get(a.driverId) : null;
+    return {
+      vehicle: v,
+      assignedDriver: d ? { id: d.id, firstName: d.firstName, lastName: d.lastName, email: d.email } : null
+    };
+  });
+}
+async function getAdminTaxiFleetVehicleDetail(companyId, vehicleId) {
+  const inCo = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!inCo) return null;
+  const base = await getFleetVehicleAdminDetail(vehicleId);
+  if (!base || base.vehicle.companyId !== companyId) return null;
+  const [ass, drivers] = await Promise.all([listAssignmentsForCompany(companyId), listFleetDriversForCompany(companyId)]);
+  const a = ass.find((x) => x.vehicleId === vehicleId);
+  if (!a) {
+    return {
+      companyId,
+      companyName: base.companyName,
+      vehicle: base.vehicle,
+      assignedDriver: null,
+      lastRide: null
+    };
+  }
+  const d = drivers.find((x) => x.id === a.driverId);
+  const assignedDriver = d ? {
+    id: d.id,
+    firstName: d.firstName,
+    lastName: d.lastName,
+    email: d.email,
+    phone: d.phone
+  } : null;
+  const lastRide = d ? await getLastRideForDriverInCompany(companyId, d.id) : null;
+  return {
+    companyId,
+    companyName: base.companyName,
+    vehicle: base.vehicle,
+    assignedDriver,
+    lastRide
+  };
+}
 
 // src/lib/password.ts
 import { randomBytes as randomBytes3, scrypt, timingSafeEqual } from "node:crypto";
@@ -52736,7 +55699,9 @@ var ROLE_MATRIX = {
     "access_codes.read",
     "access_codes.manage",
     "fleet.read",
-    "fleet.manage"
+    "fleet.manage",
+    "support.read",
+    "support.write"
   ],
   manager: [
     "rides.read",
@@ -52749,17 +55714,29 @@ var ROLE_MATRIX = {
     "access_codes.read",
     "access_codes.manage",
     "fleet.read",
-    "fleet.manage"
+    "fleet.manage",
+    "support.read",
+    "support.write"
   ],
+  /** Disponent: Fahrten + operative Codes/Flotte; kein Nutzer-Listing, keine Firmen-Stammdaten, kein `company.update`. */
   staff: [
     "rides.read",
     "rides.create",
+    "self.change_password",
+    "access_codes.read",
+    "fleet.read",
+    "support.read",
+    "support.write"
+  ],
+  readonly: [
+    "rides.read",
     "users.read",
     "self.change_password",
     "access_codes.read",
-    "fleet.read"
-  ],
-  readonly: ["rides.read", "users.read", "self.change_password", "access_codes.read", "fleet.read"]
+    "fleet.read",
+    "support.read",
+    "support.write"
+  ]
 };
 function isPanelRoleString(v) {
   return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
@@ -52882,6 +55859,609 @@ async function sendPartnerRegistrationApprovedEmail(input) {
     return { ok: false, reason: "send_failed" };
   }
 }
+async function sendPartnerRegistrationAdminMessageEmail(input) {
+  const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  const to = input.to.trim();
+  const message2 = input.message.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!message2) {
+    return { ok: false, reason: "empty_message" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to, requestId: input.requestId },
+      "partner registration admin reply mail skipped (set PARTNER_REGISTRATION_SMTP_URL and PARTNER_REGISTRATION_MAIL_FROM)"
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const status = statusPageUrl();
+  const ref = escapeHtml3(input.requestId);
+  const company = input.companyName.trim() || "Ihre Anfrage";
+  const subject = `Onroda: R\xFCckmeldung zu Ihrer Partneranfrage \u2014 ${company}`;
+  const text2 = [
+    "Guten Tag,",
+    "",
+    "Sie erhalten eine Nachricht von der Onroda-Plattform zu Ihrer Registrierungsanfrage:",
+    "",
+    message2,
+    "",
+    `Referenz: ${input.requestId}`,
+    `Status/Anfrage: ${status}`,
+    "",
+    "Mit freundlichen Gr\xFC\xDFen",
+    `\u2014 ${input.adminLabel} (Plattform) / Onroda`
+  ].join("\n");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p>Guten Tag,</p>
+  <p>Sie erhalten eine R\xFCckmeldung zu Ihrer <strong>Partner-Registrierung</strong> (Referenz: <code>${ref}</code>).</p>
+  <blockquote style="border-left:3px solid #0ea5e9;padding-left:12px;margin:12px 0;white-space:pre-wrap;">${escapeHtml3(
+    message2
+  )}</blockquote>
+  <p><a href="${escapeHtml3(status)}">Zum Anfrage-Status (Homepage)</a></p>
+  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Absender: ${escapeHtml3(
+    input.adminLabel
+  )} \xB7 Onroda-Plattform (kein Support-Ticket-Posteingang)</p>
+</body></html>`;
+  try {
+    const transport = nodemailer.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text: text2, html });
+    logger.info(
+      { to, requestId: input.requestId, event: "partner.registration.admin_reply_mail.sent" },
+      "partner registration admin reply mail sent"
+    );
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to, requestId: input.requestId }, "partner registration admin reply mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+async function sendPartnerRegistrationRejectionEmail(input) {
+  const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  const to = input.to.trim();
+  const reason = input.reason.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to, requestId: input.requestId },
+      "partner registration rejection mail skipped (set PARTNER_REGISTRATION_SMTP_URL and PARTNER_REGISTRATION_MAIL_FROM)"
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const status = statusPageUrl();
+  const company = input.companyName.trim() || "Ihre Anfrage";
+  const subject = `Onroda: R\xFCckmeldung zu Ihrer Partneranfrage \u2014 ${company}`;
+  const textBody = reason || "Ihre Registrierungsanfrage wurde abgelehnt.";
+  const text2 = [
+    "Guten Tag,",
+    "",
+    "leider m\xFCssen wir Ihnen mitteilen, dass Ihre Registrierungsanfrage auf der Onroda-Plattform nicht angenommen wurde.",
+    "",
+    textBody,
+    "",
+    `Referenz: ${input.requestId}`,
+    `Weitere Informationen: ${status}`,
+    "",
+    "Mit freundlichen Gr\xFC\xDFen",
+    "Onroda"
+  ].join("\n");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p>Guten Tag,</p>
+  <p>Leider wurde Ihre <strong>Registrierungsanfrage</strong> (Referenz: <code>${escapeHtml3(
+    input.requestId
+  )}</code>) f\xFCr <strong>${escapeHtml3(company)}</strong> abgelehnt.</p>
+  <p style="white-space: pre-wrap; border-left:3px solid #ef4444; padding-left:12px;">${escapeHtml3(
+    textBody
+  )}</p>
+  <p><a href="${escapeHtml3(status)}">Hinweis: Statusseite (Homepage)</a></p>
+  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Dieser Vorgang betrifft die Homepage-Registrierung, nicht den Mandanten-Support-Posteingang.</p>
+</body></html>`;
+  try {
+    const transport = nodemailer.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text: text2, html });
+    logger.info(
+      { to, requestId: input.requestId, event: "partner.registration.rejection_mail.sent" },
+      "partner registration rejection mail sent"
+    );
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to, requestId: input.requestId }, "partner registration rejection mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
+// src/routes/adminInsuranceApi.ts
+var import_express4 = __toESM(require_express2(), 1);
+init_client();
+import { createReadStream, existsSync as existsSync2 } from "node:fs";
+
+// src/db/insurerRideProjectionData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID14 } from "node:crypto";
+import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
+import path3 from "node:path";
+
+// src/lib/insurerRideDto.ts
+function parsePlzOrtFromLabel(label) {
+  const t = (label || "").trim();
+  if (!t) return { plz: null, locality: null };
+  const m = t.match(/\b(\d{5})\b/);
+  const plz = m ? m[1] : null;
+  if (!plz) {
+    return { plz: null, locality: t.length > 80 ? `${t.slice(0, 77)}\u2026` : t };
+  }
+  const after = t.split(plz).pop()?.replace(/^[\s,;-]+/, "").trim() ?? "";
+  const locality = after ? after.length > 64 ? `${after.slice(0, 61)}\u2026` : after : null;
+  return { plz, locality };
+}
+function boolFromNumberish(v) {
+  if (v == null) return false;
+  if (typeof v === "number") return v !== 0 && !Number.isNaN(v);
+  return true;
+}
+function buildProofFlags(input) {
+  const hasGpsPoints = boolFromNumberish(input.fromLat) && boolFromNumberish(input.fromLon) && boolFromNumberish(input.toLat) && boolFromNumberish(input.toLon);
+  const hasChronology = (input.durationMinutes ?? 0) > 0;
+  const meta = input.partnerBookingMeta ?? {};
+  const sig = meta.signatureReceived ?? meta.patientSignatureAt ?? meta.confirmationAt;
+  const hasSignatureOrConfirmation = Boolean(sig) || typeof meta.confirmed === "boolean" && meta.confirmed;
+  const hasApprovalReference = Boolean((input.billingReference ?? "").trim());
+  return {
+    hasGpsPoints,
+    hasChronology,
+    hasSignatureOrConfirmation: Boolean(hasSignatureOrConfirmation),
+    hasApprovalReference
+  };
+}
+
+// src/db/insurerRideProjectionData.ts
+init_client();
+init_schema2();
+var CANCELLED_STATUSES = [
+  "cancelled",
+  "cancelled_by_customer",
+  "cancelled_by_driver",
+  "cancelled_by_system"
+];
+function insurerExportDir() {
+  const fromEnv = (process.env.ONRODA_INSURER_EXPORT_DIR ?? "").trim();
+  if (fromEnv) return fromEnv;
+  return path3.resolve(process.cwd(), "artifacts/api-server/uploads/insurer-exports");
+}
+function rowAmountGross(r, g) {
+  if (g != null && !Number.isNaN(g)) return g;
+  const f = r.final_fare;
+  if (f != null && !Number.isNaN(f)) return f;
+  return r.estimated_fare ?? 0;
+}
+function mapRowToListItem(input) {
+  const { ride: r, companyName, financialGross, finBilling, finSettlement, vehiclePlate, lastExportBatchId } = input;
+  const fromP = parsePlzOrtFromLabel(r.from_label);
+  const toP = parsePlzOrtFromLabel(r.to_label);
+  const meta = r.partner_booking_meta && typeof r.partner_booking_meta === "object" && !Array.isArray(r.partner_booking_meta) ? r.partner_booking_meta : null;
+  return {
+    rideId: r.id,
+    companyId: r.company_id,
+    companyName: companyName || "\u2014",
+    driverId: (r.driver_id ?? "").trim() || null,
+    vehiclePlate: vehiclePlate || "\u2014",
+    referenceTime: (r.scheduled_at ?? r.created_at).toISOString(),
+    fromPostalCode: fromP.plz,
+    fromLocality: fromP.locality,
+    toPostalCode: toP.plz,
+    toLocality: toP.locality,
+    amountGross: rowAmountGross(r, financialGross),
+    rideStatus: r.status,
+    financialBillingStatus: finBilling,
+    financialSettlementStatus: finSettlement,
+    rideKind: r.ride_kind,
+    payerKind: r.payer_kind,
+    passengerPseudonymId: (r.passenger_id ?? "").trim() || null,
+    billingReference: (r.billing_reference ?? "").trim() || null,
+    proof: buildProofFlags({
+      fromLat: r.from_lat,
+      fromLon: r.from_lon,
+      toLat: r.to_lat,
+      toLon: r.to_lon,
+      durationMinutes: r.duration_minutes,
+      partnerBookingMeta: meta,
+      billingReference: r.billing_reference
+    }),
+    lastExportBatchId
+  };
+}
+function escapeLike(raw) {
+  return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+function exportExistsExpr() {
+  return sql`exists (
+    select 1
+    from ${billingExportBatchesTable}
+    where ${billingExportBatchesTable.included_ride_ids} @> jsonb_build_array(${ridesTable.id})
+  )`;
+}
+function correctionExistsExpr() {
+  return sql`exists (
+    select 1
+    from ${rideBillingCorrectionsTable} rbc
+    where rbc.ride_id = ${ridesTable.id}
+  )`;
+}
+function amountExpr() {
+  return sql`coalesce(${rideFinancialsTable.gross_amount}, ${ridesTable.final_fare}, ${ridesTable.estimated_fare}, 0)`;
+}
+function missingProofCondition(key) {
+  if (key === "gps") {
+    return or(
+      sql`${ridesTable.from_lat} is null`,
+      sql`${ridesTable.from_lon} is null`,
+      sql`${ridesTable.to_lat} is null`,
+      sql`${ridesTable.to_lon} is null`
+    );
+  }
+  if (key === "chronology") {
+    return sql`coalesce(${ridesTable.duration_minutes}, 0) <= 0`;
+  }
+  if (key === "confirmation") {
+    return sql`coalesce(
+      ${ridesTable.partner_booking_meta}->>'signatureReceived',
+      ${ridesTable.partner_booking_meta}->>'patientSignatureAt',
+      ${ridesTable.partner_booking_meta}->>'confirmationAt',
+      ''
+    ) = '' and coalesce(${ridesTable.partner_booking_meta}->>'confirmed', 'false') <> 'true'`;
+  }
+  return sql`coalesce(trim(${ridesTable.billing_reference}), '') = ''`;
+}
+function executionSummaryFromRows(input) {
+  const { ride, events } = input;
+  const findAt = (statuses) => events.find((e) => e.to_status && statuses.includes(String(e.to_status)))?.created_at?.toISOString() ?? null;
+  return {
+    createdAt: ride.created_at.toISOString(),
+    scheduledAt: ride.scheduled_at ? ride.scheduled_at.toISOString() : null,
+    pickupAt: findAt(["driver_waiting", "passenger_onboard", "arrived", "in_progress"]),
+    completedAt: findAt(["completed"]),
+    cancelledAt: findAt(["cancelled", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"]),
+    cancelledReason: null
+  };
+}
+async function listInsurerRides(role, scopeCompanyId, filters, page, pageSize) {
+  const db2 = getDb();
+  if (!db2) return { items: [], total: 0 };
+  const conds = [gte(ridesTable.created_at, filters.createdFrom), lte(ridesTable.created_at, filters.createdTo)];
+  if (filters.companyId) conds.push(eq(ridesTable.company_id, filters.companyId));
+  if (filters.status?.trim()) conds.push(eq(ridesTable.status, filters.status.trim()));
+  if (filters.payerKind === "insurance") conds.push(eq(ridesTable.payer_kind, "insurance"));
+  if (role === "insurance") conds.push(eq(ridesTable.payer_kind, "insurance"));
+  if (scopeCompanyId?.trim()) conds.push(eq(ridesTable.company_id, scopeCompanyId.trim()));
+  if (filters.rideId?.trim()) {
+    const q = `%${escapeLike(filters.rideId.trim())}%`;
+    conds.push(ilike(ridesTable.id, q));
+  }
+  if (filters.driverId?.trim()) {
+    const q = `%${escapeLike(filters.driverId.trim())}%`;
+    conds.push(ilike(ridesTable.driver_id, q));
+  }
+  if (typeof filters.amountMin === "number" && Number.isFinite(filters.amountMin)) {
+    conds.push(sql`${amountExpr()} >= ${filters.amountMin}`);
+  }
+  if (typeof filters.amountMax === "number" && Number.isFinite(filters.amountMax)) {
+    conds.push(sql`${amountExpr()} <= ${filters.amountMax}`);
+  }
+  if (filters.exportStatus === "exported") conds.push(exportExistsExpr());
+  if (filters.exportStatus === "not_exported") conds.push(sql`not (${exportExistsExpr()})`);
+  if (typeof filters.hasCorrections === "boolean") {
+    if (filters.hasCorrections) conds.push(correctionExistsExpr());
+    else conds.push(sql`not (${correctionExistsExpr()})`);
+  }
+  for (const missing of filters.missingProofs ?? []) conds.push(missingProofCondition(missing));
+  const totalRes = await db2.select({ c: count() }).from(ridesTable).leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id)).where(and(...conds));
+  const total = Number(totalRes[0]?.c ?? 0);
+  const offset = (page - 1) * pageSize;
+  const sortBy = filters.sort ?? "reference_time";
+  const sortOrder = filters.order ?? "desc";
+  const referenceExpr = sql`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+  const sortExpr = sortBy === "amount_gross" ? amountExpr() : sortBy === "ride_status" ? ridesTable.status : sortBy === "company_name" ? sql`coalesce(${adminCompaniesTable.name}, '')` : referenceExpr;
+  const orderExpr = sortOrder === "asc" ? asc(sortExpr) : desc(sortExpr);
+  const tieBreakExpr = desc(ridesTable.created_at);
+  const rows = await db2.select({
+    ride: ridesTable,
+    companyName: adminCompaniesTable.name,
+    finGross: rideFinancialsTable.gross_amount,
+    finBill: rideFinancialsTable.billing_status,
+    finSet: rideFinancialsTable.settlement_status
+  }).from(ridesTable).leftJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id)).leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id)).where(and(...conds)).orderBy(orderExpr, tieBreakExpr).limit(pageSize).offset(offset);
+  const visible = rows.filter((row) => adminRideRowVisibleToPrincipal(role, scopeCompanyId, { payerKind: row.ride.payer_kind, companyId: row.ride.company_id }));
+  const ids = visible.map((v) => v.ride.id);
+  const exportMap = await getLatestExportBatchIdForRideIds(ids);
+  const items = visible.map(
+    (row) => mapRowToListItem({
+      ride: row.ride,
+      companyName: row.companyName,
+      financialGross: row.finGross,
+      finBill: row.finBill,
+      finSet: row.finSet,
+      vehiclePlate: row.ride.vehicle || "\u2014",
+      lastExportBatchId: exportMap.get(row.ride.id) ?? null
+    })
+  );
+  return { items, total };
+}
+async function getLatestExportBatchIdForRideIds(rideIds) {
+  const m = /* @__PURE__ */ new Map();
+  if (rideIds.length === 0) return m;
+  const db2 = getDb();
+  if (!db2) return m;
+  const batches = await db2.select().from(billingExportBatchesTable).orderBy(desc(billingExportBatchesTable.created_at)).limit(200);
+  for (const rid of rideIds) {
+    for (const b of batches) {
+      const inc = b.included_ride_ids;
+      if (Array.isArray(inc) && inc.includes(rid)) {
+        m.set(rid, b.id);
+        break;
+      }
+    }
+  }
+  return m;
+}
+async function getInsurerRideDetail(role, scopeCompanyId, rideId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rRows = await db2.select().from(ridesTable).where(eq(ridesTable.id, rideId)).limit(1);
+  const r = rRows[0];
+  if (!r) return null;
+  if (!adminRideRowVisibleToPrincipal(role, scopeCompanyId, {
+    payerKind: r.payer_kind,
+    companyId: r.company_id
+  })) {
+    return null;
+  }
+  const [co, fin, exportMap, corr, ev] = await Promise.all([
+    r.company_id ? db2.select({ name: adminCompaniesTable.name }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, r.company_id)).limit(1) : Promise.resolve([]),
+    db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, rideId)).limit(1),
+    getLatestExportBatchIdForRideIds([rideId]),
+    db2.select().from(rideBillingCorrectionsTable).where(eq(rideBillingCorrectionsTable.ride_id, rideId)).orderBy(asc(rideBillingCorrectionsTable.created_at)),
+    db2.select({
+      id: rideEventsTable.id,
+      event_type: rideEventsTable.event_type,
+      from_status: rideEventsTable.from_status,
+      to_status: rideEventsTable.to_status,
+      actor_type: rideEventsTable.actor_type,
+      actor_id: rideEventsTable.actor_id,
+      created_at: rideEventsTable.created_at
+    }).from(rideEventsTable).where(eq(rideEventsTable.ride_id, rideId)).orderBy(asc(rideEventsTable.created_at))
+  ]);
+  const companyName = co[0]?.name ?? null;
+  const f = fin[0];
+  const vRows = r.company_id ? await db2.select({ plate: fleetVehiclesTable.license_plate }).from(fleetVehiclesTable).where(
+    and(
+      eq(fleetVehiclesTable.company_id, r.company_id),
+      sql`lower(trim(${fleetVehiclesTable.license_plate})) = lower(trim(${r.vehicle}))`
+    )
+  ).limit(1) : [];
+  const vehiclePlate = vRows[0]?.plate || r.vehicle;
+  const base = mapRowToListItem({
+    ride: r,
+    companyName,
+    financialGross: f?.gross_amount ?? null,
+    finBilling: f?.billing_status ?? null,
+    finSettlement: f?.settlement_status ?? null,
+    vehiclePlate,
+    lastExportBatchId: exportMap.get(rideId) ?? null
+  });
+  const corrections = corr.map((c) => ({
+    id: c.id,
+    fieldName: c.field_name,
+    oldValue: c.old_value,
+    newValue: c.new_value,
+    reasonCode: c.reason_code,
+    reasonNote: c.reason_note,
+    actorType: c.actor_type,
+    actorId: c.actor_id ?? null,
+    createdAt: c.created_at.toISOString()
+  }));
+  const audit = ev.map((e) => ({
+    id: e.id,
+    eventType: e.event_type,
+    fromStatus: e.from_status,
+    toStatus: e.to_status,
+    actorType: e.actor_type,
+    actorId: e.actor_id ?? null,
+    createdAt: e.created_at.toISOString()
+  }));
+  const executionSummary = executionSummaryFromRows({
+    ride: r,
+    events: ev.map((x) => ({
+      event_type: x.event_type,
+      to_status: x.to_status,
+      created_at: x.created_at
+    }))
+  });
+  return {
+    ...base,
+    distanceKm: r.distance_km,
+    durationMinutes: r.duration_minutes,
+    pricingMode: r.pricing_mode,
+    financial: f ? {
+      grossAmount: f.gross_amount,
+      netAmount: f.net_amount,
+      vatAmount: f.vat_amount,
+      billingStatus: f.billing_status,
+      settlementStatus: f.settlement_status,
+      billingMode: f.billing_mode,
+      payerType: f.payer_type,
+      correctionCount: f.correction_count,
+      lastCorrectionAt: f.last_correction_at?.toISOString() ?? null
+    } : null,
+    corrections,
+    audit,
+    executionSummary
+  };
+}
+async function getInsurerSummary(role, scopeCompanyId, from, to, companyIdFilter, payerMode = "insurance") {
+  const db2 = getDb();
+  if (!db2) {
+    return {
+      periodHint: { from: from.toISOString(), to: to.toISOString() },
+      rideCount: 0,
+      completedCount: 0,
+      cancelledCount: 0,
+      totalGrossAmount: 0,
+      avgGrossPerRide: 0,
+      openSettlementCount: 0
+    };
+  }
+  const conds = [gte(ridesTable.created_at, from), lte(ridesTable.created_at, to)];
+  if (companyIdFilter) conds.push(eq(ridesTable.company_id, companyIdFilter));
+  if (payerMode === "insurance") conds.push(eq(ridesTable.payer_kind, "insurance"));
+  const rideRows = await db2.select({
+    id: ridesTable.id,
+    status: ridesTable.status,
+    estimated_fare: ridesTable.estimated_fare,
+    final_fare: ridesTable.final_fare,
+    payer_kind: ridesTable.payer_kind,
+    company_id: ridesTable.company_id
+  }).from(ridesTable).where(and(...conds));
+  const visible = rideRows.filter(
+    (row) => adminRideRowVisibleToPrincipal(role, scopeCompanyId, { payerKind: row.payer_kind, companyId: row.company_id })
+  );
+  const ids = visible.map((x) => x.id);
+  const finRows = ids.length > 0 ? await db2.select().from(rideFinancialsTable).where(inArray(rideFinancialsTable.ride_id, ids)) : [];
+  const finByRide = new Map(finRows.map((x) => [x.ride_id, x]));
+  const rideCount = visible.length;
+  const completed = visible.filter((r) => r.status === "completed");
+  const cancelled = visible.filter((r) => CANCELLED_STATUSES.includes(r.status));
+  const completedCount = completed.length;
+  const cancelledCount = cancelled.length;
+  let totalGross = 0;
+  for (const v of visible) {
+    const f = finByRide.get(v.id);
+    totalGross += rowAmountGross(
+      { estimated_fare: v.estimated_fare, final_fare: v.final_fare },
+      f?.gross_amount ?? null
+    );
+  }
+  const avgGross = rideCount > 0 ? totalGross / rideCount : 0;
+  const openSettlementCount = finRows.filter((f) => f.settlement_status !== "paid_out").length;
+  return {
+    periodHint: { from: from.toISOString(), to: to.toISOString() },
+    rideCount,
+    completedCount,
+    cancelledCount,
+    totalGrossAmount: Math.round(totalGross * 100) / 100,
+    avgGrossPerRide: Math.round(avgGross * 100) / 100,
+    openSettlementCount
+  };
+}
+async function listInsurerExportBatches(limit = 50) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(billingExportBatchesTable).orderBy(desc(billingExportBatchesTable.created_at)).limit(Math.min(100, limit));
+  return rows.map((b) => ({
+    id: b.id,
+    createdAt: b.created_at.toISOString(),
+    createdByLabel: b.created_by_label,
+    periodFrom: b.period_from.toISOString(),
+    periodTo: b.period_to.toISOString(),
+    companyIdFilter: b.company_id_filter,
+    status: b.status,
+    rowCount: b.row_count,
+    schemaVersion: b.schema_version,
+    hasFile: Boolean((b.file_rel_path ?? "").trim())
+  }));
+}
+async function createInsurerExportBatch(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const conds = [gte(ridesTable.created_at, input.periodFrom), lte(ridesTable.created_at, input.periodTo)];
+  conds.push(eq(ridesTable.payer_kind, "insurance"));
+  if (input.companyIdFilter) conds.push(eq(ridesTable.company_id, input.companyIdFilter));
+  const rideRows = await db2.select().from(ridesTable).where(and(...conds));
+  const visible = rideRows.filter(
+    (r) => adminRideRowVisibleToPrincipal(input.role, input.scopeCompanyId, { payerKind: r.payer_kind, companyId: r.company_id })
+  );
+  const finRows = visible.length > 0 ? await db2.select().from(rideFinancialsTable).where(
+    inArray(
+      rideFinancialsTable.ride_id,
+      visible.map((r) => r.id)
+    )
+  ) : [];
+  const finByRide = new Map(finRows.map((x) => [x.ride_id, x]));
+  const coIds = [...new Set(visible.map((r) => r.company_id).filter(Boolean))];
+  const companies = coIds.length > 0 ? await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable).where(inArray(adminCompaniesTable.id, coIds)) : [];
+  const coName = new Map(companies.map((c) => [c.id, c.name]));
+  const batchId = `insx-${randomUUID14()}`;
+  const lines = [];
+  lines.push(
+    "schema_version;ref_id;company_id;company_name;driver_id;vehicle;datetime_utc;from_plz;from_ort;to_plz;to_ort;amount_gross;ride_status;settlement_status;payer_kind;passenger_pseudonym_id;billing_ref"
+  );
+  for (const r of visible) {
+    const f = finByRide.get(r.id);
+    const fromP = parsePlzOrtFromLabel(r.from_label);
+    const toP = parsePlzOrtFromLabel(r.to_label);
+    const amount = String(rowAmountGross(r, f?.gross_amount ?? null));
+    const cell = (s) => s.replaceAll(";", " ").replaceAll("\n", " ");
+    lines.push(
+      [
+        "insurer_export_v1",
+        r.id,
+        r.company_id ?? "",
+        cell(r.company_id && coName.get(r.company_id) || ""),
+        (r.driver_id ?? "").replaceAll(";", ""),
+        cell(r.vehicle),
+        (r.scheduled_at ?? r.created_at).toISOString(),
+        fromP.plz ?? "",
+        cell(fromP.locality ?? ""),
+        toP.plz ?? "",
+        cell(toP.locality ?? ""),
+        amount,
+        r.status,
+        f?.settlement_status ?? "",
+        r.payer_kind,
+        (r.passenger_id ?? "").replaceAll(";", ""),
+        cell((r.billing_reference ?? "").trim())
+      ].join(";")
+    );
+  }
+  const fileName = `insurer-export-${batchId}.csv`;
+  const rel = path3.join(batchId, fileName);
+  const base = insurerExportDir();
+  await mkdir2(path3.join(base, batchId), { recursive: true });
+  const abs = path3.join(base, rel);
+  await writeFile2(abs, lines.join("\n"), "utf8");
+  const rideIds = visible.map((r) => r.id);
+  await db2.insert(billingExportBatchesTable).values({
+    id: batchId,
+    created_by_label: input.createdByLabel,
+    period_from: input.periodFrom,
+    period_to: input.periodTo,
+    company_id_filter: input.companyIdFilter ?? null,
+    status: "completed",
+    row_count: visible.length,
+    file_rel_path: rel,
+    included_ride_ids: rideIds,
+    schema_version: "insurer_export_v1"
+  });
+  return { batchId, rowCount: visible.length, fileName };
+}
+function resolveInsurerExportFilePath(rel) {
+  if (!rel?.trim()) return "";
+  return path3.join(insurerExportDir(), rel);
+}
+async function getInsurerExportBatchById(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(billingExportBatchesTable).where(eq(billingExportBatchesTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
 
 // src/middleware/requireAdminApiBearer.ts
 init_client();
@@ -52998,6 +56578,298 @@ var requireAdminApiBearer = (req, res, next) => {
   res.status(401).json({ error: "unauthorized" });
 };
 
+// src/routes/adminInsuranceApi.ts
+var router4 = (0, import_express4.Router)();
+router4.use(requireAdminApiBearer);
+function insurerRole(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+function requireInsurer(_req, res, next) {
+  if (!canAccessInsurerAdminApi(insurerRole(_req))) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  next();
+}
+router4.use(requireInsurer);
+function parseDate(v, endOfDay) {
+  if (typeof v !== "string" || !v.trim()) return null;
+  const d = new Date(v.trim());
+  if (Number.isNaN(d.getTime())) return null;
+  if (endOfDay) d.setHours(23, 59, 59, 999);
+  return d;
+}
+function parsePagination(req) {
+  const page = Math.min(200, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
+  const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "25"), 10) || 25));
+  return { page, pageSize };
+}
+function parseNum(v) {
+  if (typeof v !== "string" || !v.trim()) return void 0;
+  const n3 = Number(v.trim().replace(",", "."));
+  if (!Number.isFinite(n3)) return void 0;
+  return n3;
+}
+function csvCell(v) {
+  const raw = String(v ?? "");
+  if (/[",\n\r;]/.test(raw)) return `"${raw.replaceAll('"', '""')}"`;
+  return raw;
+}
+router4.get("/summary", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const fromD = parseDate(req.query.from, false);
+    const toD = parseDate(req.query.to, true);
+    if (!fromD || !toD) {
+      res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const companyId = typeof req.query.companyId === "string" ? req.query.companyId.trim() : void 0;
+    const summary = await getInsurerSummary(
+      insurerRole(req),
+      req.adminAuth?.scopeCompanyId,
+      fromD,
+      toD,
+      companyId,
+      "insurance"
+    );
+    res.json({ ok: true, summary });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.get("/rides", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const fromD = parseDate(req.query.from, false);
+    const toD = parseDate(req.query.to, true);
+    if (!fromD || !toD) {
+      res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const { page, pageSize } = parsePagination(req);
+    const companyId = typeof req.query.companyId === "string" ? req.query.companyId.trim() : void 0;
+    const status = typeof req.query.status === "string" ? req.query.status.trim() : void 0;
+    const rideId = typeof req.query.rideId === "string" ? req.query.rideId.trim() : void 0;
+    const driverId = typeof req.query.driverId === "string" ? req.query.driverId.trim() : void 0;
+    const amountMin = parseNum(req.query.amountMin);
+    const amountMax = parseNum(req.query.amountMax);
+    const exportStatusRaw = typeof req.query.exportStatus === "string" ? req.query.exportStatus.trim() : "";
+    const exportStatus = exportStatusRaw === "exported" || exportStatusRaw === "not_exported" || exportStatusRaw === "any" ? exportStatusRaw : void 0;
+    const hasCorrectionsRaw = typeof req.query.hasCorrections === "string" ? req.query.hasCorrections.trim().toLowerCase() : "";
+    const hasCorrections = hasCorrectionsRaw === "true" ? true : hasCorrectionsRaw === "false" ? false : void 0;
+    const missingProofsRaw = typeof req.query.missingProofs === "string" ? req.query.missingProofs.trim() : "";
+    const missingProofs = missingProofsRaw ? missingProofsRaw.split(",").map((x) => x.trim()).filter((x) => ["gps", "chronology", "confirmation", "approval_reference"].includes(x)) : void 0;
+    const sortRaw = typeof req.query.sort === "string" ? req.query.sort.trim() : "";
+    const sort = sortRaw === "reference_time" || sortRaw === "amount_gross" || sortRaw === "ride_status" || sortRaw === "company_name" ? sortRaw : void 0;
+    const orderRaw = typeof req.query.order === "string" ? req.query.order.trim() : "";
+    const order = orderRaw === "asc" || orderRaw === "desc" ? orderRaw : void 0;
+    const { items, total } = await listInsurerRides(
+      insurerRole(req),
+      req.adminAuth?.scopeCompanyId,
+      {
+        createdFrom: fromD,
+        createdTo: toD,
+        companyId,
+        status,
+        rideId,
+        driverId,
+        amountMin,
+        amountMax,
+        exportStatus,
+        hasCorrections,
+        missingProofs,
+        sort,
+        order,
+        payerKind: "insurance"
+      },
+      page,
+      pageSize
+    );
+    res.json({ ok: true, items, total, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.get("/rides/:rideId", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.rideId ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const detail = await getInsurerRideDetail(insurerRole(req), req.adminAuth?.scopeCompanyId, id);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ride: detail, corrections: detail.corrections ?? [] });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.get("/rides/:rideId/pruefakte.csv", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.rideId ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const d = await getInsurerRideDetail(insurerRole(req), req.adminAuth?.scopeCompanyId, id);
+    if (!d) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const rows = [
+      ["rideId", d.rideId],
+      ["companyId", d.companyId ?? ""],
+      ["companyName", d.companyName ?? ""],
+      ["driverId", d.driverId ?? ""],
+      ["vehiclePlate", d.vehiclePlate ?? ""],
+      ["rideStatus", d.rideStatus ?? ""],
+      ["lastExportBatchId", d.lastExportBatchId ?? ""],
+      ["createdAt", d.executionSummary?.createdAt ?? ""],
+      ["scheduledAt", d.executionSummary?.scheduledAt ?? ""],
+      ["pickupAt", d.executionSummary?.pickupAt ?? ""],
+      ["completedAt", d.executionSummary?.completedAt ?? ""],
+      ["cancelledAt", d.executionSummary?.cancelledAt ?? ""],
+      ["cancelledReason", d.executionSummary?.cancelledReason ?? ""],
+      ["fromPostalCode", d.fromPostalCode ?? ""],
+      ["fromLocality", d.fromLocality ?? ""],
+      ["toPostalCode", d.toPostalCode ?? ""],
+      ["toLocality", d.toLocality ?? ""],
+      ["distanceKm", d.distanceKm ?? ""],
+      ["amountGross", d.amountGross ?? ""],
+      ["pricingMode", d.pricingMode ?? ""],
+      ["payerKind", d.payerKind ?? ""],
+      ["financialBillingStatus", d.financialBillingStatus ?? ""],
+      ["financialSettlementStatus", d.financialSettlementStatus ?? ""],
+      ["billingReference", d.billingReference ?? ""],
+      ["proof.hasGpsPoints", d.proof?.hasGpsPoints ? "true" : "false"],
+      ["proof.hasChronology", d.proof?.hasChronology ? "true" : "false"],
+      ["proof.hasSignatureOrConfirmation", d.proof?.hasSignatureOrConfirmation ? "true" : "false"],
+      ["proof.hasApprovalReference", d.proof?.hasApprovalReference ? "true" : "false"],
+      ["correctionsCount", String(d.corrections?.length ?? 0)]
+    ];
+    const correctionRows = (d.corrections ?? []).flatMap((c, idx) => [
+      [`correction.${idx}.field`, c.fieldName],
+      [`correction.${idx}.old`, c.oldValue],
+      [`correction.${idx}.new`, c.newValue],
+      [`correction.${idx}.reasonCode`, c.reasonCode],
+      [`correction.${idx}.actorType`, c.actorType],
+      [`correction.${idx}.actorId`, c.actorId ?? ""],
+      [`correction.${idx}.createdAt`, c.createdAt]
+    ]);
+    const lines = ["key;value", ...rows, ...correctionRows].map(([k, v]) => `${csvCell(k)};${csvCell(v)}`);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="insurance-pruefakte-${id}.csv"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.send(`\uFEFF${lines.join("\n")}`);
+  } catch (e) {
+    next(e);
+  }
+});
+router4.get("/exports", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? "50"), 10) || 50));
+    const items = await listInsurerExportBatches(limit);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.post("/exports", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const pf = typeof b.periodFrom === "string" ? b.periodFrom : "";
+    const pt = typeof b.periodTo === "string" ? b.periodTo : "";
+    const fromD = parseDate(pf, false);
+    const toD = parseDate(pt, true);
+    if (!fromD || !toD) {
+      res.status(400).json({ error: "period_from_to_required" });
+      return;
+    }
+    const companyId = typeof b.companyId === "string" && b.companyId.trim() ? b.companyId.trim() : void 0;
+    const label = req.adminAuth?.username && req.adminAuth.username.trim() || "api_bearer";
+    const r = await createInsurerExportBatch({
+      createdByLabel: label,
+      periodFrom: fromD,
+      periodTo: toD,
+      companyIdFilter: companyId,
+      role: insurerRole(req),
+      scopeCompanyId: req.adminAuth?.scopeCompanyId
+    });
+    if (!r) {
+      res.status(503).json({ error: "export_failed" });
+      return;
+    }
+    logger.info({ event: "admin.insurance.export", batchId: r.batchId, rowCount: r.rowCount }, "insurance export");
+    res.status(201).json({ ok: true, batchId: r.batchId, rowCount: r.rowCount, fileName: r.fileName });
+  } catch (e) {
+    next(e);
+  }
+});
+router4.get("/exports/:id/download", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const batch = await getInsurerExportBatchById(id);
+    if (!batch) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const rel = (batch.file_rel_path ?? "").trim();
+    if (!rel) {
+      res.status(404).json({ error: "file_missing" });
+      return;
+    }
+    const abs = resolveInsurerExportFilePath(rel);
+    if (!abs || !existsSync2(abs)) {
+      res.status(404).json({ error: "file_missing" });
+      return;
+    }
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="insurance-export-${id}.csv"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    createReadStream(abs).on("error", (err) => {
+      logger.warn({ err, id }, "insurance export download");
+      if (!res.headersSent) res.status(500).end();
+    }).pipe(res);
+  } catch (e) {
+    next(e);
+  }
+});
+var adminInsuranceApi_default = router4;
+
 // src/routes/adminApi.ts
 async function requireCompanyRowForMutation(req, res, companyId) {
   const company = await findCompanyById(companyId);
@@ -53010,6 +56882,15 @@ async function requireCompanyRowForMutation(req, res, companyId) {
   if (canMutateScopedTaxiAdminCompany(role, req.adminAuth?.scopeCompanyId, company)) return company;
   res.status(403).json({ error: "forbidden" });
   return null;
+}
+async function requireTaxiCompanyForAdminPanel(req, res, companyId) {
+  const c = await requireCompanyRowForMutation(req, res, companyId);
+  if (!c) return null;
+  if (c.company_kind !== "taxi") {
+    res.status(400).json({ error: "not_taxi_company" });
+    return null;
+  }
+  return c;
 }
 function parseStatsRevenueBound(v) {
   if (typeof v !== "string") return void 0;
@@ -53036,7 +56917,7 @@ function parseBooleanParam(v) {
   if (s === "0" || s === "false" || s === "no") return false;
   return void 0;
 }
-function parsePagination(req) {
+function parsePagination2(req) {
   const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
   const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
   return { page, pageSize, offset: (page - 1) * pageSize };
@@ -53072,6 +56953,12 @@ function isAdminPrincipal(req) {
 }
 function adminConsoleRole(req) {
   return req.adminAuth?.role ?? "admin";
+}
+async function resolveAdminAuthUserIdForSupport(req) {
+  const u = req.adminAuth?.username?.trim();
+  if (!u || u === "api_bearer" || u === "dev_local") return null;
+  const row = await findActiveAdminAuthUserByUsername(u);
+  return row?.id ?? null;
 }
 function partnerTypeToCompanyKind(partnerType) {
   switch (partnerType) {
@@ -53115,8 +57002,8 @@ async function allocateUniquePanelUsername(preferred) {
 function hashResetToken(token) {
   return createHash2("sha256").update(token).digest("hex");
 }
-var router4 = (0, import_express4.Router)();
-router4.post("/admin/auth/login", async (req, res) => {
+var router5 = (0, import_express5.Router)();
+router5.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok2 = await authenticateAdminCredentials(username, password);
@@ -53166,13 +57053,13 @@ router4.post("/admin/auth/login", async (req, res) => {
     authSource: ok2.source
   });
 });
-router4.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+router5.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const role = req.adminAuth?.role ?? "admin";
   const username = req.adminAuth?.username ?? "admin";
   const scopeCompanyId = typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim() ? req.adminAuth.scopeCompanyId.trim() : null;
   res.json({ ok: true, user: { username, role, scopeCompanyId } });
 });
-router4.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+router5.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({ error: "session_required" });
@@ -53208,7 +57095,7 @@ router4.post("/admin/auth/change-password", requireAdminApiBearer, async (req, r
   });
   res.json({ ok: true });
 });
-router4.post("/admin/auth/password-reset/request", async (req, res) => {
+router5.post("/admin/auth/password-reset/request", async (req, res) => {
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
   const generic = {
     ok: true,
@@ -53258,7 +57145,7 @@ router4.post("/admin/auth/password-reset/request", async (req, res) => {
   }
   res.json(generic);
 });
-router4.post("/admin/auth/password-reset/confirm", async (req, res) => {
+router5.post("/admin/auth/password-reset/confirm", async (req, res) => {
   const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
   const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
   if (!token || newPassword.length < 10) {
@@ -53297,7 +57184,7 @@ router4.post("/admin/auth/password-reset/confirm", async (req, res) => {
   });
   res.json({ ok: true });
 });
-router4.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+router5.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
   if (!isAdminPrincipal(req)) {
     res.status(403).json({ error: "forbidden" });
     return;
@@ -53338,7 +57225,7 @@ router4.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, asy
     expiresAt: expiresAt.toISOString()
   });
 });
-router4.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router5.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -53354,7 +57241,7 @@ router4.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
     next(e);
   }
 });
-router4.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router5.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -53406,7 +57293,7 @@ router4.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) 
     next(e);
   }
 });
-router4.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router5.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -53463,7 +57350,7 @@ router4.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, n
     next(e);
   }
 });
-router4.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router5.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -53510,8 +57397,10 @@ router4.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, 
     next(e);
   }
 });
-var adminJson = (0, import_express4.Router)();
+var adminJson = (0, import_express5.Router)();
 adminJson.use(requireAdminApiBearer);
+adminJson.use("/insurance", adminInsuranceApi_default);
+var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path4.join(path4.dirname(fileURLToPath2(import.meta.url)), "..", "..", "data", "fleet-uploads");
 adminJson.get("/stats", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -53568,6 +57457,22 @@ adminJson.get("/dashboard/overview", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.get("/dashboard/operator-snapshot", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const snapshot = await getAdminOperatorSnapshot();
+    res.json({ ok: true, snapshot });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.get("/finance/summary", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -53595,7 +57500,7 @@ adminJson.get("/finance/ride-financials", async (req, res, next) => {
       return;
     }
     const q = req.query;
-    const { page, pageSize, offset } = parsePagination(req);
+    const { page, pageSize, offset } = parsePagination2(req);
     const filters = {
       dateFrom: parseIsoDateParam(q.date_from, false),
       dateTo: parseIsoDateParam(q.date_to, true),
@@ -53653,7 +57558,7 @@ adminJson.get("/finance/invoices", async (req, res, next) => {
       status: q.status,
       type: q.invoice_type
     };
-    const { page, pageSize, offset } = parsePagination(req);
+    const { page, pageSize, offset } = parsePagination2(req);
     const [total, items] = await Promise.all([
       countInvoicesAdmin(filters),
       listInvoicesAdmin({ filters, limit: pageSize, offset })
@@ -53690,7 +57595,7 @@ adminJson.get("/finance/settlements", async (req, res, next) => {
       companyId: q.company_id,
       status: q.status
     };
-    const { page, pageSize, offset } = parsePagination(req);
+    const { page, pageSize, offset } = parsePagination2(req);
     const [total, items] = await Promise.all([
       countSettlementsAdmin(filters),
       listSettlementsAdmin({ filters, limit: pageSize, offset })
@@ -53728,7 +57633,7 @@ adminJson.get("/finance/payments", async (req, res, next) => {
       status: q.status,
       companyId: q.company_id
     };
-    const { page, pageSize, offset } = parsePagination(req);
+    const { page, pageSize, offset } = parsePagination2(req);
     const [total, items] = await Promise.all([
       countPaymentsAdmin(filters),
       listPaymentsAdmin({ filters, limit: pageSize, offset })
@@ -53750,7 +57655,7 @@ adminJson.get("/finance/audit", async (req, res, next) => {
       action: q.action,
       entityId: q.entity_id
     };
-    const { page, pageSize, offset } = parsePagination(req);
+    const { page, pageSize, offset } = parsePagination2(req);
     const [total, items] = await Promise.all([
       countFinancialAuditAdmin(filters),
       listFinancialAuditAdmin({ filters, limit: pageSize, offset })
@@ -53771,6 +57676,1028 @@ adminJson.get("/companies", async (req, res, next) => {
     const scope = req.adminAuth?.scopeCompanyId?.trim();
     const filtered = role === "hotel" && scope ? items.filter((c) => c.id === scope) : items;
     res.json({ ok: true, items: filtered, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/companies/:companyId/mandate-read", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    if (role === "hotel" && scope && companyId !== scope) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const data = await getCompanyMandateRead(companyId);
+    if (!data) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...data });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-drivers/taxi-companies", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const all = await listCompanies();
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    let items = all.filter((c) => c.company_kind === "taxi");
+    if (role === "hotel" && scope) items = items.filter((c) => c.id === scope);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-drivers/:companyId/drivers", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const drivers = await listAdminTaxiFleetDriverRows(companyId);
+    res.json({ ok: true, companyId, drivers });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-drivers/:companyId/drivers/:driverId", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const driver = await getAdminTaxiFleetDriverDetail(companyId, driverId);
+    if (!driver) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, companyId, driver });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-drivers/:companyId/audit", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const subject = typeof req.query?.subjectId === "string" ? req.query.subjectId.trim() : void 0;
+    const limit = typeof req.query?.limit === "string" ? Number(req.query.limit) : void 0;
+    const entries = await listPanelAuditForCompany(companyId, { subjectId: subject, limit: Number.isFinite(limit) ? limit : void 0 });
+    res.json({ ok: true, companyId, entries });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const raw = typeof req.body?.status === "string" ? req.body.status.trim().toLowerCase() : "";
+    const allowedS = ["pending", "in_review", "approved", "rejected"];
+    if (!allowedS.includes(raw)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const r = await setFleetDriverApprovalForCompany(companyId, driverId, raw);
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID15(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.approval",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { nextStatus: raw, adminUserId: adminId }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = req.body ?? {};
+    const reason = typeof b.reason === "string" ? b.reason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : void 0;
+    const ok2 = await adminSuspendFleetDriver(companyId, driverId, reason);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (adminNote !== void 0) {
+      await adminPatchFleetDriverAdminFields(companyId, driverId, { adminInternalNote: adminNote });
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID15(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.suspended",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { reason: String(reason).slice(0, 500), adminUserId: adminId }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const ok2 = await adminActivateFleetDriver(companyId, driverId);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID15(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.activated",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { adminUserId: adminId }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = req.body ?? {};
+    const adminInternalNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : void 0;
+    const suspensionReason = typeof b.suspensionReason === "string" ? b.suspensionReason : void 0;
+    if (adminInternalNote === void 0 && suspensionReason === void 0) {
+      res.status(400).json({ error: "no_fields" });
+      return;
+    }
+    const ok2 = await adminPatchFleetDriverAdminFields(companyId, driverId, {
+      adminInternalNote,
+      suspensionReason
+    });
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID15(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.notes_patched",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: {
+        hasAdminNote: adminInternalNote !== void 0,
+        hasSuspensionReason: suspensionReason !== void 0,
+        adminUserId: adminId
+      }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const items = await listAdminTaxiFleetVehicleRows(companyId);
+    res.json({ ok: true, companyId, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const detail = await getAdminTaxiFleetVehicleDetail(companyId, vehicleId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...detail });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-vehicles/:companyId/audit", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const subject = typeof req.query?.subjectId === "string" ? req.query.subjectId.trim() : void 0;
+    const limit = typeof req.query?.limit === "string" ? Number(req.query.limit) : void 0;
+    const entries = await listPanelAuditForCompany(companyId, {
+      subjectId: subject,
+      limit: Number.isFinite(limit) ? limit : void 0
+    });
+    res.json({ ok: true, companyId, entries });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!await findFleetVehicleInCompany(vehicleId, companyId)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, { nextStatus: "approved", adminUserId: adminId });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.approved",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!await findFleetVehicleInCompany(vehicleId, companyId)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "rejected",
+      rejectionReason: reason,
+      adminUserId: adminId
+    });
+    if (!r.ok) {
+      const m = {
+        not_found: 404,
+        not_pending: 409,
+        rejection_reason_required: 400
+      };
+      res.status(m[r.error] ?? 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.rejected",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { reason: reason.slice(0, 500), adminUserId: adminId }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!await findFleetVehicleInCompany(vehicleId, companyId)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const b = req.body ?? {};
+    const blockReason = typeof b.blockReason === "string" ? b.blockReason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : void 0;
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await forceBlockFleetVehicleByAdmin(vehicleId, {
+      adminUserId: adminId,
+      blockReason,
+      adminInternalNote: adminNote
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "already_blocked" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.blocked",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { blockReason: String(blockReason).slice(0, 500), adminUserId: adminId }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!await findFleetVehicleInCompany(vehicleId, companyId)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await unblockFleetVehicleByAdmin(vehicleId, adminId);
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "not_blocked" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.unblocked",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const b = req.body ?? {};
+    const adminInternalNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : void 0;
+    const blockReason = typeof b.blockReason === "string" ? b.blockReason : void 0;
+    if (adminInternalNote === void 0 && blockReason === void 0) {
+      res.status(400).json({ error: "no_fields" });
+      return;
+    }
+    const ok2 = await adminPatchFleetVehicleFields(companyId, vehicleId, { adminInternalNote, blockReason });
+    if (!ok2.ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID15(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_vehicle.notes_patched",
+      subjectType: "fleet_vehicle",
+      subjectId: vehicleId,
+      meta: {
+        hasAdminNote: adminInternalNote !== void 0,
+        hasBlockReason: blockReason !== void 0,
+        adminUserId: adminId
+      }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+function parseOptionalIsoTs(v) {
+  if (v === void 0) return void 0;
+  if (v === null) return null;
+  if (typeof v !== "string") return void 0;
+  const s = v.trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? void 0 : d;
+}
+function normalizeHomepageHintTypeBody(v) {
+  const raw = typeof v === "string" ? v.trim().toLowerCase() : "";
+  if (!raw || raw === "neutral") return "info";
+  if (raw === "info" || raw === "success" || raw === "warning" || raw === "important") return raw;
+  return null;
+}
+adminJson.get("/homepage-placeholders", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepagePlaceholdersAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/homepage-content", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const item = await getHomepageContentAdmin();
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/homepage-content", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const toText = (v) => {
+      if (v === void 0) return void 0;
+      return typeof v === "string" ? v.trim() : void 0;
+    };
+    const section2Cards = b.section2Cards === void 0 ? void 0 : Array.isArray(b.section2Cards) ? b.section2Cards.slice(0, 4).map((raw) => {
+      const r = raw ?? {};
+      return {
+        icon: typeof r.icon === "string" ? r.icon.trim() : "",
+        title: typeof r.title === "string" ? r.title.trim() : "",
+        body: typeof r.body === "string" ? r.body.trim() : "",
+        ctaText: typeof r.ctaText === "string" ? r.ctaText.trim() : "",
+        ctaLink: typeof r.ctaLink === "string" ? r.ctaLink.trim() : "",
+        isActive: r.isActive !== false
+      };
+    }) : void 0;
+    const servicesCards = b.servicesCards === void 0 ? void 0 : Array.isArray(b.servicesCards) ? b.servicesCards.slice(0, 3).map((raw) => {
+      const r = raw ?? {};
+      return {
+        icon: typeof r.icon === "string" ? r.icon.trim() : "",
+        title: typeof r.title === "string" ? r.title.trim() : "",
+        body: typeof r.body === "string" ? r.body.trim() : "",
+        isActive: r.isActive !== false
+      };
+    }) : void 0;
+    const manifestCards = b.manifestCards === void 0 ? void 0 : Array.isArray(b.manifestCards) ? b.manifestCards.slice(0, 4).map((raw) => {
+      const r = raw ?? {};
+      return {
+        num: typeof r.num === "string" ? r.num.trim() : "",
+        icon: typeof r.icon === "string" ? r.icon.trim() : "",
+        title: typeof r.title === "string" ? r.title.trim() : "",
+        body: typeof r.body === "string" ? r.body.trim() : "",
+        ctaText: typeof r.ctaText === "string" ? r.ctaText.trim() : "",
+        ctaLink: typeof r.ctaLink === "string" ? r.ctaLink.trim() : "",
+        isActive: r.isActive !== false
+      };
+    }) : void 0;
+    const item = await patchHomepageContentAdmin(
+      {
+        section2Title: toText(b.section2Title),
+        section2Cards,
+        servicesKicker: toText(b.servicesKicker),
+        servicesTitle: toText(b.servicesTitle),
+        servicesSubline: toText(b.servicesSubline),
+        servicesCards,
+        manifestKicker: toText(b.manifestKicker),
+        manifestTitle: toText(b.manifestTitle),
+        manifestSubline: toText(b.manifestSubline),
+        manifestCards,
+        heroHeadline: toText(b.heroHeadline),
+        heroSubline: toText(b.heroSubline),
+        cta1Text: toText(b.cta1Text),
+        cta1Link: toText(b.cta1Link),
+        cta2Text: toText(b.cta2Text),
+        cta2Link: toText(b.cta2Link),
+        noticeText: toText(b.noticeText),
+        noticeActive: typeof b.noticeActive === "boolean" ? b.noticeActive : void 0
+      },
+      req.adminAuth?.adminUserId ?? null
+    );
+    if (!item) {
+      res.status(503).json({ error: "patch_failed" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/homepage-faq", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepageFaqAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/homepage-faq", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const question = typeof b.question === "string" ? b.question.trim() : "";
+    const answer = typeof b.answer === "string" ? b.answer.trim() : "";
+    if (!question || !answer) {
+      res.status(400).json({ error: "question_answer_required" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const item = await createHomepageFaqItem({
+      question,
+      answer,
+      sortOrder,
+      isActive: b.isActive !== false,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/homepage-faq/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const patch = {};
+    if (typeof b.question === "string") patch.question = b.question.trim();
+    if (typeof b.answer === "string") patch.answer = b.answer.trim();
+    if (Number.isFinite(Number(b.sortOrder))) patch.sortOrder = Number(b.sortOrder);
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const item = await patchHomepageFaqItem(req.params.id, patch, req.adminAuth?.adminUserId ?? null);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.delete("/homepage-faq/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const ok2 = await deleteHomepageFaqItem(req.params.id);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/homepage-how", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepageHowAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/homepage-how", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!title || !body) {
+      res.status(400).json({ error: "title_body_required" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const item = await createHomepageHowStep({
+      icon: typeof b.icon === "string" ? b.icon.trim() : "",
+      title,
+      body,
+      sortOrder,
+      isActive: b.isActive !== false,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/homepage-how/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const patch = {};
+    if (typeof b.icon === "string") patch.icon = b.icon.trim();
+    if (typeof b.title === "string") patch.title = b.title.trim();
+    if (typeof b.body === "string") patch.body = b.body.trim();
+    if (Number.isFinite(Number(b.sortOrder))) patch.sortOrder = Number(b.sortOrder);
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const item = await patchHomepageHowStep(req.params.id, patch, req.adminAuth?.adminUserId ?? null);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.delete("/homepage-how/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const ok2 = await deleteHomepageHowStep(req.params.id);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/homepage-trust", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepageTrustAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/homepage-trust", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const value = typeof b.value === "string" ? b.value.trim() : "";
+    const label = typeof b.label === "string" ? b.label.trim() : "";
+    if (!value || !label) {
+      res.status(400).json({ error: "value_label_required" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const item = await createHomepageTrustMetric({
+      value,
+      label,
+      description: typeof b.description === "string" ? b.description.trim() : "",
+      sortOrder,
+      isActive: b.isActive !== false,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/homepage-trust/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const patch = {};
+    if (typeof b.value === "string") patch.value = b.value.trim();
+    if (typeof b.label === "string") patch.label = b.label.trim();
+    if (typeof b.description === "string") patch.description = b.description.trim();
+    if (Number.isFinite(Number(b.sortOrder))) patch.sortOrder = Number(b.sortOrder);
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const item = await patchHomepageTrustMetric(req.params.id, patch, req.adminAuth?.adminUserId ?? null);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.delete("/homepage-trust/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const ok2 = await deleteHomepageTrustMetric(req.params.id);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/homepage-placeholders", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = req.body ?? {};
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const message2 = typeof b.message === "string" ? b.message.trim() : "";
+    if (!title || !message2) {
+      res.status(400).json({ error: "title_message_required" });
+      return;
+    }
+    const typeRaw = b.type !== void 0 ? b.type : b.tone;
+    const hintType = normalizeHomepageHintTypeBody(typeRaw);
+    if (!hintType) {
+      res.status(400).json({ error: "type_invalid" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const visibleFrom = parseOptionalIsoTs(b.visibleFrom);
+    const visibleUntil = parseOptionalIsoTs(b.visibleUntil);
+    if (visibleFrom === void 0 || visibleUntil === void 0) {
+      res.status(400).json({ error: "visible_from_until_invalid" });
+      return;
+    }
+    const item = await createHomepagePlaceholder({
+      title,
+      message: message2,
+      ctaLabel: typeof b.ctaLabel === "string" ? b.ctaLabel.trim() : null,
+      ctaUrl: typeof b.ctaUrl === "string" ? b.ctaUrl.trim() : null,
+      type: hintType,
+      isActive: b.isActive !== false,
+      sortOrder,
+      visibleFrom,
+      visibleUntil,
+      dismissKey: typeof b.dismissKey === "string" ? b.dismissKey.trim() : null,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/homepage-placeholders/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const b = req.body ?? {};
+    const typeRaw = b.type !== void 0 ? b.type : b.tone !== void 0 ? b.tone : void 0;
+    const hintType = typeRaw === void 0 ? void 0 : normalizeHomepageHintTypeBody(typeRaw);
+    if (hintType === null) {
+      res.status(400).json({ error: "type_invalid" });
+      return;
+    }
+    const visibleFrom = parseOptionalIsoTs(b.visibleFrom);
+    const visibleUntil = parseOptionalIsoTs(b.visibleUntil);
+    if (visibleFrom === void 0 || visibleUntil === void 0) {
+      res.status(400).json({ error: "visible_from_until_invalid" });
+      return;
+    }
+    const item = await patchHomepagePlaceholder(id, {
+      title: typeof b.title === "string" ? b.title.trim() : void 0,
+      message: typeof b.message === "string" ? b.message.trim() : void 0,
+      ctaLabel: b.ctaLabel === void 0 ? void 0 : typeof b.ctaLabel === "string" ? b.ctaLabel.trim() : null,
+      ctaUrl: b.ctaUrl === void 0 ? void 0 : typeof b.ctaUrl === "string" ? b.ctaUrl.trim() : null,
+      type: hintType,
+      isActive: typeof b.isActive === "boolean" ? b.isActive : void 0,
+      sortOrder: Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : void 0,
+      visibleFrom,
+      visibleUntil,
+      dismissKey: b.dismissKey === void 0 ? void 0 : typeof b.dismissKey === "string" ? b.dismissKey.trim() : null,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null
+    });
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
   } catch (e) {
     next(e);
   }
@@ -53844,6 +58771,43 @@ adminJson.patch("/companies/:companyId", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.patch("/companies/:companyId/compliance-documents/:kind", async (req, res, next) => {
+  try {
+    const allowed = await requireCompanyRowForMutation(req, res, req.params.companyId);
+    if (!allowed) return;
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const kind = req.params.kind;
+    if (kind !== "gewerbe" && kind !== "insurance") {
+      res.status(400).json({ error: "invalid_kind" });
+      return;
+    }
+    const b = req.body;
+    const raw = typeof b.reviewStatus === "string" ? b.reviewStatus.trim().toLowerCase() : "";
+    if (raw !== "approved" && raw !== "rejected") {
+      res.status(400).json({ error: "invalid_review_status" });
+      return;
+    }
+    const note = typeof b.reviewNote === "string" ? b.reviewNote : "";
+    const r = await setCurrentComplianceDocumentReview(req.params.companyId, kind, {
+      reviewStatus: raw,
+      reviewNote: note
+    });
+    if (!r.ok) {
+      if (r.error === "no_current_document") {
+        res.status(400).json({ error: r.error, hint: "Zuerst Nachweis-Datei hinterlegen (Partner-Upload o. Admin-Speicherpfad mit Migration 033)." });
+        return;
+      }
+      res.status(503).json({ error: r.error, hint: "Migration 033 (company_compliance_documents) pr\xFCfen." });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.get("/company-change-requests", async (req, res, next) => {
   try {
     if (!canMutateAdminCompanies(adminConsoleRole(req))) {
@@ -53882,6 +58846,119 @@ adminJson.post("/company-change-requests/:id/decision", async (req, res, next) =
       return;
     }
     res.json({ ok: true, request: row });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/support/threads", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const { page, pageSize, offset } = parsePagination2(req);
+    const status = parseSupportThreadStatus(req.query?.status);
+    const companyId = typeof req.query?.companyId === "string" ? req.query.companyId.trim() : "";
+    const category = parseSupportCategory(req.query?.category);
+    const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+    const threads = await listSupportThreadsAdmin({
+      status: status ?? void 0,
+      companyId: companyId || void 0,
+      category: category ?? void 0,
+      q: q || void 0,
+      limit: pageSize,
+      offset
+    });
+    res.json({ ok: true, threads, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/support/threads/:threadId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const threadId = String(req.params.threadId ?? "").trim();
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const row = await getSupportThreadAdmin(threadId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, thread: row.thread, messages: row.messages, companyName: row.companyName });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const threadId = String(req.params.threadId ?? "").trim();
+    const b = req.body;
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    if (!body || body.length > 1e4) {
+      res.status(400).json({ error: "body_invalid" });
+      return;
+    }
+    const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
+    const result = await insertAdminSupportMessage({
+      messageId: randomUUID15(),
+      threadId,
+      body,
+      senderAdminUserId
+    });
+    if (!result.ok) {
+      if (result.error === "closed") {
+        res.status(409).json({ error: "thread_closed" });
+        return;
+      }
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.status(201).json({ ok: true, message: result.message, threadStatus: result.threadStatus });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/support/threads/:threadId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const threadId = String(req.params.threadId ?? "").trim();
+    const b = req.body;
+    const st = parseSupportThreadStatus(b.status);
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    if (!st) {
+      res.status(400).json({ error: "invalid_status" });
+      return;
+    }
+    const updated = await patchSupportThreadStatusAdmin({ threadId, status: st });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, thread: updated });
   } catch (e) {
     next(e);
   }
@@ -54039,6 +59116,18 @@ adminJson.patch("/company-registration-requests/:id", async (req, res, next) => 
       res.status(404).json({ error: "not_found" });
       return;
     }
+    if (statusRaw === "rejected" && b.notifyApplicantOnReject !== false) {
+      const reasonFromBody = typeof b.rejectionReasonToApplicant === "string" ? b.rejectionReasonToApplicant.trim() : "";
+      const reason = reasonFromBody || (typeof item.adminNote === "string" ? item.adminNote.trim() : "") || "";
+      void sendPartnerRegistrationRejectionEmail({
+        to: item.email,
+        companyName: item.companyName,
+        requestId: item.id,
+        reason: reason || "Ihre Registrierungsanfrage wurde abgelehnt. Bei R\xFCckfragen wenden Sie sich an unsere Gesch\xE4ftsf\xFChrung, falls angegeben."
+      }).catch((err) => {
+        logger.warn({ err, requestId: item.id }, "partner registration rejection mail async failed");
+      });
+    }
     res.json({ ok: true, item });
   } catch (e) {
     next(e);
@@ -54087,7 +59176,14 @@ adminJson.post("/company-registration-requests/:id/messages", async (req, res, n
     const actorLabel = req.adminAuth?.username ?? "admin";
     await addPartnerRegistrationMessage(row.id, "admin", actorLabel, message2);
     await patchPartnerRegistrationRequest(row.id, { status: "in_review" });
-    res.status(201).json({ ok: true });
+    const mail = await sendPartnerRegistrationAdminMessageEmail({
+      to: row.email,
+      requestId: row.id,
+      companyName: row.companyName,
+      message: message2,
+      adminLabel: actorLabel
+    });
+    res.status(201).json({ ok: true, mail: { sent: mail.ok, reason: mail.ok ? null : mail.reason } });
   } catch (e) {
     next(e);
   }
@@ -54137,11 +59233,16 @@ adminJson.post("/company-registration-requests/:id/documents", async (req, res, 
       message: `Admin-Dokument hinzugef\xFCgt: ${fileName}`,
       payload: { category }
     });
-    res.status(201).json({ ok: true, document: doc });
+    res.status(201).json({ ok: true, document: mapDocRowForAdminList(doc) });
   } catch (e) {
     next(e);
   }
 });
+function registrationDocAllowsInlinePreview(mimeType) {
+  const m = (mimeType || "").toLowerCase().trim();
+  if (m === "application/pdf") return true;
+  return m.startsWith("image/");
+}
 adminJson.get(
   "/company-registration-requests/:requestId/documents/:docId/download",
   async (req, res, next) => {
@@ -54159,13 +59260,34 @@ adminJson.get(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const abs = await resolvePartnerRegistrationStorageAbsolutePath(doc.storagePath);
-      const buf = await readFile(abs);
-      res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+      let abs;
+      try {
+        abs = resolvePartnerRegistrationStorageAbsolutePath(doc.storagePath);
+      } catch {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      let buf;
+      try {
+        buf = await readFile(abs);
+      } catch (e) {
+        const err = e;
+        if (err?.code === "ENOENT") {
+          res.status(404).json({ error: "file_missing" });
+          return;
+        }
+        throw e;
+      }
+      const mime = doc.mimeType || "application/octet-stream";
+      res.setHeader("Content-Type", mime);
+      const inlineRaw = typeof req.query?.inline === "string" ? req.query.inline.trim().toLowerCase() : "";
+      const wantInline = inlineRaw === "1" || inlineRaw === "true";
+      const disposition = wantInline && registrationDocAllowsInlinePreview(mime) ? "inline" : "attachment";
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${encodeURIComponent(doc.originalFileName || "document.bin")}"`
+        `${disposition}; filename="${encodeURIComponent(doc.originalFileName || "document.bin")}"`
       );
+      res.setHeader("Cache-Control", "private, no-store");
       res.status(200).send(buf);
     } catch (e) {
       next(e);
@@ -54303,7 +59425,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID8(),
+            id: randomUUID15(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -54413,7 +59535,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID8(),
+      id: randomUUID15(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -54480,7 +59602,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID8(),
+      id: randomUUID15(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -54516,7 +59638,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID8(),
+      id: randomUUID15(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -54597,7 +59719,8 @@ adminJson.patch("/rides/:id/release", async (req, res, next) => {
 adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) => {
   try {
     const { companyId } = req.params;
-    if (await requireCompanyRowForMutation(req, res, companyId) == null) return;
+    const company = await requireCompanyRowForMutation(req, res, companyId);
+    if (!company) return;
     const body = req.body;
     if (!Object.prototype.hasOwnProperty.call(body, "panel_modules")) {
       res.status(400).json({ error: "panel_modules_required", hint: "null = alle Module, sonst string[]" });
@@ -54608,15 +59731,26 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
     if (raw === null) {
       modules = null;
     } else if (Array.isArray(raw)) {
-      const n2 = normalizeStoredPanelModules(raw) ?? [];
-      if (n2.length === 0) {
+      const n3 = normalizeStoredPanelModules(raw) ?? [];
+      if (n3.length === 0) {
         res.status(400).json({ error: "panel_modules_empty", hint: "Mindestens ein Modul, oder panel_modules: null f\xFCr alle." });
         return;
       }
-      modules = n2;
+      modules = n3;
     } else {
       res.status(400).json({ error: "panel_modules_invalid" });
       return;
+    }
+    if (modules != null) {
+      const bad = forbiddenPanelModulesForCompanyKind(company.company_kind, modules);
+      if (bad.length > 0) {
+        res.status(400).json({
+          error: "panel_modules_forbidden_for_company_kind",
+          hint: `F\xFCr Mandanten-Typ \u201E${company.company_kind}\u201C nicht erlaubt: ${bad.join(", ")}`,
+          forbidden: bad
+        });
+        return;
+      }
     }
     const item = await patchCompanyPanelModules(companyId, modules);
     if (!item) {
@@ -54826,144 +59960,341 @@ adminJson.delete("/fare-areas/:id", async (req, res, next) => {
     next(e);
   }
 });
-router4.use("/admin", adminJson);
-var adminApi_default = router4;
-
-// src/routes/panelAuth.ts
-var import_express5 = __toESM(require_express2(), 1);
-init_client();
-init_drizzle_orm();
-
-// src/lib/panelJwt.ts
-function getSecretKey2() {
-  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
-  if (panel) {
-    return new TextEncoder().encode(panel);
-  }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("PANEL_JWT_SECRET is not configured (required in production for panel tokens)");
-  }
-  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (!auth) {
-    throw new Error("PANEL_JWT_SECRET or AUTH_JWT_SECRET is not configured");
-  }
-  return new TextEncoder().encode(auth);
-}
-function issuer2() {
-  return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
-}
-async function signPanelJwt(claims, expiresIn = "7d") {
-  const secret = getSecretKey2();
-  return new SignJWT({
-    kind: "panel",
-    companyId: claims.companyId,
-    username: claims.username,
-    email: claims.email,
-    role: claims.role
-  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret);
-}
-function isPanelRole(v) {
-  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
-}
-async function verifyPanelJwt(token) {
-  const secret = getSecretKey2();
-  const { payload } = await jwtVerify(token, secret, {
-    issuer: issuer2(),
-    algorithms: ["HS256"]
-  });
-  return payloadToPanelClaims(payload);
-}
-function payloadToPanelClaims(payload) {
-  const sub = typeof payload.sub === "string" ? payload.sub : "";
-  if (!sub) throw new Error("invalid panel token: missing sub");
-  if (payload.kind !== "panel") throw new Error("invalid panel token: wrong kind");
-  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
-  const username = typeof payload.username === "string" ? payload.username : "";
-  const email = typeof payload.email === "string" ? payload.email : "";
-  const role = payload.role;
-  if (!companyId || !username || !isPanelRole(role)) {
-    throw new Error("invalid panel token: missing claims");
-  }
-  return { panelUserId: sub, companyId, username, email, role };
-}
-
-// src/routes/panelAuth.ts
-var router5 = (0, import_express5.Router)();
-router5.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    res.status(400).json({ error: "missing_credentials" });
-    return;
-  }
-  const db2 = getDb();
-  if (!db2) {
-    logger.error("Database connection could not be established");
-    res.status(500).json({ error: "database_error" });
-    return;
-  }
+adminJson.get("/fleet-vehicles/pending", async (req, res, next) => {
   try {
-    const result = await db2.execute(sql`
-      SELECT 
-        u.*, 
-        c.name as company_name, 
-        c.company_kind 
-      FROM panel_users u
-      JOIN admin_companies c ON c.id = u.company_id
-      WHERE u.username = ${username} OR u.email = ${username}
-      LIMIT 1
-    `);
-    const row = result.rows[0];
-    if (!row || !row.is_active) {
-      res.status(401).json({ error: "invalid_credentials" });
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
       return;
     }
-    const ok2 = await verifyPassword(password, row.password_hash);
-    if (!ok2) {
-      logger.warn({ username }, "Login failed: wrong password");
-      res.status(401).json({ error: "invalid_credentials" });
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
       return;
     }
-    const token = await signPanelJwt({
-      panelUserId: row.id,
-      companyId: row.company_id,
-      username: row.username,
-      email: row.email,
-      role: row.role
-    });
-    res.json({
-      ok: true,
-      token,
-      passwordChangeRequired: row.must_change_password,
-      user: {
-        id: row.id,
-        username: row.username,
-        email: row.email,
-        role: row.role,
-        companyId: row.company_id,
-        company: {
-          id: row.company_id,
-          name: row.company_name,
-          company_kind: row.company_kind
-        }
-      }
-    });
-  } catch (err) {
-    logger.error({ err }, "Database error during login");
-    res.status(500).json({ error: "internal_server_error" });
+    const items = await listPendingFleetVehiclesForAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
   }
 });
-var panelAuth_default = router5;
+adminJson.get("/fleet-vehicles/:vehicleId", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const row = await getFleetVehicleAdminDetail(vehicleId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, vehicle: row.vehicle, companyName: row.companyName });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/fleet-drivers/:driverId/approval", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const driverId = String(req.params.driverId ?? "").trim();
+    if (!driverId) {
+      res.status(400).json({ error: "driver_id_required" });
+      return;
+    }
+    const raw = typeof req.body?.status === "string" ? req.body.status.trim().toLowerCase() : "";
+    const allowed = ["pending", "in_review", "approved", "rejected"];
+    if (!allowed.includes(raw)) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const r = await setFleetDriverApprovalByAdmin(driverId, raw);
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "approved",
+      adminUserId: adminId
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.approved",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId, source: "fleet_vehicles_review" }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "rejected",
+      rejectionReason: reason,
+      adminUserId: adminId
+    });
+    if (!r.ok) {
+      const m = {
+        not_found: 404,
+        not_pending: 409,
+        rejection_reason_required: 400
+      };
+      res.status(m[r.error] ?? 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.rejected",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { reason: reason.slice(0, 500), adminUserId: adminId, source: "fleet_vehicles_review" }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const b = req.body ?? {};
+    const blockReason = typeof b.blockReason === "string" ? b.blockReason : "";
+    const adminNote = typeof b.adminInternalNote === "string" ? b.adminInternalNote : void 0;
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await forceBlockFleetVehicleByAdmin(vehicleId, {
+      adminUserId: adminId,
+      blockReason,
+      adminInternalNote: adminNote
+    });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "already_blocked" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID15(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.blocked",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { blockReason: String(blockReason).slice(0, 500), adminUserId: adminId, source: "fleet_vehicles_review" }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/fleet-vehicles/:vehicleId/documents/file", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const storageKey = typeof req.query.storageKey === "string" ? req.query.storageKey.trim() : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysAdmin(vehicleId);
+    if (keys === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!keys.includes(storageKey)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const abs = path4.resolve(path4.join(adminFleetUploadRoot, storageKey));
+    const base = path4.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path4.sep) && abs !== base) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    createReadStream2(abs).on("error", () => {
+      if (!res.headersSent) res.status(404).end();
+    }).pipe(res);
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/file", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const storageKey = typeof req.query.storageKey === "string" ? req.query.storageKey.trim() : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysInCompany(companyId, vehicleId);
+    if (keys === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!keys.includes(storageKey)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const abs = path4.resolve(path4.join(adminFleetUploadRoot, storageKey));
+    const base = path4.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path4.sep) && abs !== base) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    createReadStream2(abs).on("error", () => {
+      if (!res.headersSent) res.status(404).end();
+    }).pipe(res);
+  } catch (e) {
+    next(e);
+  }
+});
+router5.use("/admin", adminJson);
+var adminApi_default = router5;
 
-// src/routes/panelApi.ts
+// src/routes/panelAuth.ts
 var import_express6 = __toESM(require_express2(), 1);
-init_rideBillingProfile();
-init_client();
-import { randomUUID as randomUUID10 } from "node:crypto";
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
+async function findActivePanelUserByUsername(username) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = username.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      sql`lower(${panelUsersTable.username}) = ${normalized}`,
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    must_change_password: r.must_change_password,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
+async function findActivePanelUserByEmailNormalized(email) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !normalized.includes("@")) return null;
+  const rows = await db2.select({
+    id: panelUsersTable.id,
+    company_id: panelUsersTable.company_id,
+    username: panelUsersTable.username,
+    email: panelUsersTable.email,
+    password_hash: panelUsersTable.password_hash,
+    role: panelUsersTable.role,
+    must_change_password: panelUsersTable.must_change_password,
+    is_active: panelUsersTable.is_active,
+    created_at: panelUsersTable.created_at,
+    updated_at: panelUsersTable.updated_at
+  }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      sql`lower(trim(${panelUsersTable.email})) = ${normalized}`,
+      eq(panelUsersTable.is_active, true),
+      eq(adminCompaniesTable.is_active, true)
+    )
+  ).limit(2);
+  if (rows.length !== 1) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    username: r.username,
+    email: r.email,
+    password_hash: r.password_hash,
+    role: r.role,
+    must_change_password: r.must_change_password,
+    is_active: r.is_active,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  };
+}
 async function findActivePanelUserProfileById(id) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
@@ -55040,6 +60371,628 @@ async function findActivePanelUserById(id) {
     updated_at: r.updated_at
   };
 }
+
+// src/routes/panelAuth.ts
+init_client();
+
+// src/lib/panelLoginRateLimit.ts
+var WINDOW_MS = 6e4;
+var MAX_ATTEMPTS = 25;
+var buckets = /* @__PURE__ */ new Map();
+function keyForReq(ip) {
+  return ip.trim() || "unknown";
+}
+function rateLimitPanelLogin(ip) {
+  const k = keyForReq(ip);
+  const now = Date.now();
+  let b = buckets.get(k);
+  if (!b || now >= b.resetAt) {
+    b = { count: 0, resetAt: now + WINDOW_MS };
+    buckets.set(k, b);
+  }
+  b.count += 1;
+  if (b.count > MAX_ATTEMPTS) {
+    const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
+    return { ok: false, retryAfterSec };
+  }
+  return { ok: true };
+}
+
+// src/lib/partnerRegistrationPublicRateLimit.ts
+var IP_WINDOW_MS = 60 * 60 * 1e3;
+var IP_MAX = 20;
+var EMAIL_WINDOW_MS = 60 * 60 * 1e3;
+var EMAIL_MAX = 5;
+var LOOKUP_WINDOW_MS = 60 * 60 * 1e3;
+var LOOKUP_MAX = 120;
+var ipBuckets = /* @__PURE__ */ new Map();
+var emailBuckets = /* @__PURE__ */ new Map();
+var publicLookupBuckets = /* @__PURE__ */ new Map();
+function bump(buckets3, key, windowMs, max) {
+  const k = key.trim() || "unknown";
+  const now = Date.now();
+  let b = buckets3.get(k);
+  if (!b || now >= b.resetAt) {
+    b = { count: 0, resetAt: now + windowMs };
+    buckets3.set(k, b);
+  }
+  b.count += 1;
+  if (b.count > max) {
+    const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
+    return { ok: false, retryAfterSec };
+  }
+  return { ok: true };
+}
+function rateLimitPartnerRegistrationIp(ip) {
+  return bump(ipBuckets, (ip || "").toString(), IP_WINDOW_MS, IP_MAX);
+}
+function rateLimitPartnerRegistrationEmail(email) {
+  const e = email.trim().toLowerCase();
+  if (!e) return { ok: true };
+  return bump(emailBuckets, e, EMAIL_WINDOW_MS, EMAIL_MAX);
+}
+function rateLimitPartnerRegistrationPublicLookup(ip) {
+  return bump(publicLookupBuckets, (ip || "").toString(), LOOKUP_WINDOW_MS, LOOKUP_MAX);
+}
+
+// src/lib/partnerRegistrationPublicDto.ts
+function toPublicPartnerRegistrationDocument(d) {
+  return {
+    id: d.id,
+    category: d.category,
+    originalFileName: d.originalFileName,
+    mimeType: d.mimeType,
+    fileSizeBytes: d.fileSizeBytes,
+    createdAt: d.createdAt
+  };
+}
+function toPublicPartnerRegistrationSnapshot(row) {
+  return {
+    id: row.id,
+    companyName: row.companyName,
+    partnerType: row.partnerType,
+    registrationStatus: row.registrationStatus,
+    verificationStatus: row.verificationStatus,
+    complianceStatus: row.complianceStatus,
+    contractStatus: row.contractStatus,
+    missingDocumentsNote: row.missingDocumentsNote ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    reviewedAt: row.reviewedAt,
+    panelAccessReady: row.registrationStatus === "approved" && Boolean(row.linkedCompanyId)
+  };
+}
+var PUBLIC_REGISTRATION_TIMELINE_EVENT_TYPES = /* @__PURE__ */ new Set([
+  "request_submitted",
+  "message",
+  "document_uploaded",
+  "admin_document_added",
+  "master_data_change_requested",
+  "approved_company_created",
+  "admin_status_update",
+  "admin_master_data_update",
+  "panel_owner_provisioned"
+]);
+function toPublicPartnerRegistrationTimeline(rows) {
+  const out = [];
+  for (const r of rows) {
+    const et = String(r.eventType || "").trim();
+    if (!PUBLIC_REGISTRATION_TIMELINE_EVENT_TYPES.has(et)) continue;
+    out.push({
+      id: r.id,
+      createdAt: r.createdAt,
+      actorType: String(r.actorType || "").trim() || "partner",
+      actorLabel: String(r.actorLabel || "").trim(),
+      eventType: et,
+      message: String(r.message || "").trim()
+    });
+  }
+  return out;
+}
+
+// src/lib/panelJwt.ts
+function getSecretKey2() {
+  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
+  if (panel) {
+    return new TextEncoder().encode(panel);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("PANEL_JWT_SECRET is not configured (required in production for panel tokens)");
+  }
+  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!auth) {
+    throw new Error("PANEL_JWT_SECRET or AUTH_JWT_SECRET is not configured");
+  }
+  return new TextEncoder().encode(auth);
+}
+function issuer2() {
+  return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
+}
+function isPanelJwtConfigured() {
+  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) {
+    return true;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
+}
+async function signPanelJwt(claims, expiresIn = "7d") {
+  const secret = getSecretKey2();
+  return new SignJWT({
+    kind: "panel",
+    companyId: claims.companyId,
+    username: claims.username,
+    email: claims.email,
+    role: claims.role
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret);
+}
+function isPanelRole(v) {
+  return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
+}
+async function verifyPanelJwt(token) {
+  const secret = getSecretKey2();
+  const { payload } = await jwtVerify(token, secret, {
+    issuer: issuer2(),
+    algorithms: ["HS256"]
+  });
+  return payloadToPanelClaims(payload);
+}
+function payloadToPanelClaims(payload) {
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  if (!sub) throw new Error("invalid panel token: missing sub");
+  if (payload.kind !== "panel") throw new Error("invalid panel token: wrong kind");
+  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
+  const username = typeof payload.username === "string" ? payload.username : "";
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const role = payload.role;
+  if (!companyId || !username || !isPanelRole(role)) {
+    throw new Error("invalid panel token: missing claims");
+  }
+  return { panelUserId: sub, companyId, username, email, role };
+}
+
+// src/routes/panelAuth.ts
+var router6 = (0, import_express6.Router)();
+router6.post("/panel-auth/login", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPanelLogin(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({
+      error: "database_not_configured",
+      hint: "Set DATABASE_URL and apply init-onroda.sql (table panel_users)."
+    });
+    return;
+  }
+  if (!isPanelJwtConfigured()) {
+    res.status(503).json({
+      error: "panel_jwt_not_configured",
+      hint: process.env.NODE_ENV === "production" ? "Set PANEL_JWT_SECRET in the API environment (required in production for panel login)." : "Set PANEL_JWT_SECRET, or for local dev only AUTH_JWT_SECRET."
+    });
+    return;
+  }
+  const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!username || !password) {
+    res.status(400).json({ error: "username_and_password_required" });
+    return;
+  }
+  let row = await findActivePanelUserByUsername(username);
+  if (!row && username.includes("@")) {
+    row = await findActivePanelUserByEmailNormalized(username);
+  }
+  const loginAudit = process.env.PANEL_AUTH_LOGIN_AUDIT === "1";
+  if (!row || !isPanelRoleString(row.role)) {
+    if (loginAudit) {
+      logger.warn(
+        {
+          event: "panel.auth.login",
+          outcome: "fail",
+          username: username || "(empty)",
+          clientIp: req.ip,
+          reason: "no_active_panel_user_or_role"
+        },
+        "panel password login failed"
+      );
+    }
+    res.status(401).json({ error: "invalid_credentials" });
+    return;
+  }
+  const ok2 = await verifyPassword(password, row.password_hash);
+  if (!ok2) {
+    if (loginAudit) {
+      logger.warn(
+        {
+          event: "panel.auth.login",
+          outcome: "fail",
+          username,
+          clientIp: req.ip,
+          reason: "password_mismatch"
+        },
+        "panel password login failed"
+      );
+    }
+    res.status(401).json({ error: "invalid_credentials" });
+    return;
+  }
+  let token;
+  try {
+    token = await signPanelJwt({
+      panelUserId: row.id,
+      companyId: row.company_id,
+      username: row.username,
+      email: row.email,
+      role: row.role
+    });
+  } catch (e) {
+    console.error("[panel-auth/login] signPanelJwt:", e);
+    res.status(500).json({ error: "token_sign_failed" });
+    return;
+  }
+  if (loginAudit) {
+    logger.info(
+      {
+        event: "panel.auth.login",
+        outcome: "ok",
+        username: row.username,
+        panelUserId: row.id,
+        companyId: row.company_id,
+        clientIp: req.ip
+      },
+      "panel password login ok"
+    );
+  }
+  res.json({
+    ok: true,
+    token,
+    passwordChangeRequired: row.must_change_password,
+    user: {
+      id: row.id,
+      companyId: row.company_id,
+      username: row.username,
+      email: row.email,
+      role: row.role,
+      mustChangePassword: row.must_change_password
+    }
+  });
+});
+router6.post("/panel-auth/logout", (_req, res) => {
+  res.json({ ok: true });
+});
+var PENDING_PUBLIC_REGISTRATION = /* @__PURE__ */ new Set(["open", "in_review", "documents_required"]);
+router6.post("/panel-auth/registration-request", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rlIp = rateLimitPartnerRegistrationIp(ip);
+  if (!rlIp.ok) {
+    res.setHeader("Retry-After", String(rlIp.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rlIp.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const body = req.body ?? {};
+  const hpVal = typeof body.hp_company_website === "string" ? body.hp_company_website.trim() : "";
+  if (hpVal.length > 0) {
+    res.status(400).json({ error: "invalid_request" });
+    return;
+  }
+  const str2 = (k) => typeof body[k] === "string" ? body[k].trim() : "";
+  const companyName = str2("companyName");
+  const legalForm = str2("legalForm");
+  const partnerTypeRaw = str2("partnerType");
+  const contactFirstName = str2("contactFirstName");
+  const contactLastName = str2("contactLastName");
+  const email = str2("email").toLowerCase();
+  const phone = str2("phone");
+  const addressLine1 = str2("addressLine1");
+  const postalCode = str2("postalCode");
+  const city = str2("city");
+  const country = str2("country");
+  if (!companyName || !partnerTypeRaw || !contactFirstName || !contactLastName || !email || !phone || !addressLine1 || !postalCode || !city || !country) {
+    res.status(400).json({ error: "required_fields_missing" });
+    return;
+  }
+  if (!isPartnerType(partnerTypeRaw)) {
+    res.status(400).json({ error: "partner_type_invalid" });
+    return;
+  }
+  const registrationPolicy = getPartnerRegistrationPolicy(partnerTypeRaw);
+  if (!registrationPolicy) {
+    res.status(400).json({ error: "partner_type_invalid" });
+    return;
+  }
+  const publicPolicyError = registrationPolicy.validatePublicRegistration(body);
+  if (publicPolicyError) {
+    res.status(400).json({ error: "partner_registration_incomplete", hint: publicPolicyError });
+    return;
+  }
+  const taxId = str2("taxId");
+  const vatId = str2("vatId");
+  const concessionNumber = str2("concessionNumber");
+  const ownerName = str2("ownerName");
+  const addressLine2 = str2("addressLine2");
+  const dispoPhone = str2("dispoPhone");
+  const rlEmail = rateLimitPartnerRegistrationEmail(email);
+  if (!rlEmail.ok) {
+    res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
+    res.status(429).json({ error: "rate_limited_email", retryAfterSec: rlEmail.retryAfterSec });
+    return;
+  }
+  const existingPanel = await findActivePanelUserByEmailNormalized(email);
+  if (existingPanel) {
+    res.status(409).json({
+      error: "already_panel_user",
+      hint: "F\xFCr diese E-Mail existiert bereits ein Zugang zum Partner-Portal. Bitte dort anmelden oder den Support kontaktieren."
+    });
+    return;
+  }
+  const latest = await findLatestPartnerRegistrationRequestByEmail(email);
+  if (latest) {
+    if (PENDING_PUBLIC_REGISTRATION.has(latest.registrationStatus)) {
+      res.status(409).json({
+        error: "duplicate_pending",
+        request: {
+          id: latest.id,
+          registrationStatus: latest.registrationStatus,
+          createdAt: latest.createdAt
+        }
+      });
+      return;
+    }
+    if (latest.registrationStatus === "approved") {
+      res.status(409).json({
+        error: "duplicate_approved",
+        hint: "Zu dieser E-Mail liegt bereits eine freigegebene Anfrage vor. Bitte nutzen Sie das Partner-Portal oder kontaktieren Sie uns."
+      });
+      return;
+    }
+  }
+  const usesVouchers = typeof body.usesVouchers === "boolean" ? body.usesVouchers : false;
+  const requestedUsage = body.requestedUsage && typeof body.requestedUsage === "object" && !Array.isArray(body.requestedUsage) ? body.requestedUsage : {};
+  const documentsMeta = body.documentsMeta && typeof body.documentsMeta === "object" && !Array.isArray(body.documentsMeta) ? body.documentsMeta : {};
+  const created = await createPartnerRegistrationRequest({
+    companyName,
+    legalForm,
+    partnerType: partnerTypeRaw,
+    usesVouchers,
+    contactFirstName,
+    contactLastName,
+    email,
+    phone,
+    addressLine1,
+    addressLine2,
+    ownerName,
+    dispoPhone,
+    postalCode,
+    city,
+    country,
+    taxId,
+    vatId,
+    concessionNumber,
+    desiredRegion: str2("desiredRegion"),
+    requestedUsage,
+    documentsMeta,
+    notes: str2("notes")
+  });
+  if (!created) {
+    res.status(503).json({ error: "create_failed" });
+    return;
+  }
+  logger.info(
+    { event: "partner.registration.submitted", requestId: created.id, email, clientIp: ip },
+    "partner registration request created"
+  );
+  res.status(201).json({ ok: true, request: created });
+});
+router6.get("/panel-auth/registration-request-status", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPartnerRegistrationPublicLookup(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+  const requestId = typeof req.query.requestId === "string" ? req.query.requestId.trim() : typeof req.query.id === "string" ? req.query.id.trim() : "";
+  if (!email || !requestId) {
+    res.status(400).json({ error: "email_and_requestId_required" });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(requestId);
+  if (!row || (row.email ?? "").toLowerCase() !== email) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json({ ok: true, request: toPublicPartnerRegistrationSnapshot(row) });
+});
+router6.get("/panel-auth/registration-request/:id", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rl = rateLimitPartnerRegistrationPublicLookup(ip);
+  if (!rl.ok) {
+    res.setHeader("Retry-After", String(rl.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rl.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+  if (!id || !email) {
+    res.status(400).json({ error: "id_and_email_required" });
+    return;
+  }
+  const detail = await getPartnerRegistrationDetailAdmin(id);
+  if (!detail) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((detail.request.email ?? "").toLowerCase() !== email) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  res.json({
+    ok: true,
+    request: toPublicPartnerRegistrationSnapshot(detail.request),
+    documents: detail.documents.map(toPublicPartnerRegistrationDocument),
+    timeline: toPublicPartnerRegistrationTimeline(detail.timeline)
+  });
+});
+router6.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rlIp = rateLimitPartnerRegistrationIp(ip);
+  if (!rlIp.ok) {
+    res.setHeader("Retry-After", String(rlIp.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rlIp.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const message2 = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!id || !email || !message2) {
+    res.status(400).json({ error: "id_email_message_required" });
+    return;
+  }
+  if (message2.length > 12e3) {
+    res.status(400).json({ error: "message_too_long" });
+    return;
+  }
+  const rlEmail = rateLimitPartnerRegistrationEmail(email);
+  if (!rlEmail.ok) {
+    res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
+    res.status(429).json({ error: "rate_limited_email", retryAfterSec: rlEmail.retryAfterSec });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(id);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((row.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const st = row.registrationStatus;
+  if (st === "rejected" || st === "blocked" || st === "approved") {
+    res.status(409).json({ error: "registration_closed", hint: "F\xFCr diese Anfrage sind keine weiteren Nachrichten m\xF6glich." });
+    return;
+  }
+  await addPartnerRegistrationMessage(id, "partner", email, message2);
+  res.status(201).json({ ok: true });
+});
+router6.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  const payload = req.body?.payload && typeof req.body.payload === "object" && !Array.isArray(req.body.payload) ? req.body.payload : {};
+  if (!id || !email || !reason) {
+    res.status(400).json({ error: "id_email_reason_required" });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(id);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((row.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  await addPartnerRegistrationTimelineEvent({
+    requestId: id,
+    actorType: "partner",
+    actorLabel: email,
+    eventType: "master_data_change_requested",
+    message: reason,
+    payload
+  });
+  await patchPartnerRegistrationRequest(id, { status: "in_review" });
+  res.status(201).json({ ok: true });
+});
+router6.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+  const ip = (req.ip || req.socket?.remoteAddress || "").toString();
+  const rlIp = rateLimitPartnerRegistrationIp(ip);
+  if (!rlIp.ok) {
+    res.setHeader("Retry-After", String(rlIp.retryAfterSec));
+    res.status(429).json({ error: "rate_limited", retryAfterSec: rlIp.retryAfterSec });
+    return;
+  }
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return;
+  }
+  const id = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "general";
+  const fileName = typeof req.body?.fileName === "string" ? req.body.fileName.trim() : "";
+  const mimeType = typeof req.body?.mimeType === "string" ? req.body.mimeType.trim() : "application/octet-stream";
+  const contentBase64 = typeof req.body?.contentBase64 === "string" ? req.body.contentBase64.trim() : "";
+  if (!id || !email || !fileName || !contentBase64) {
+    res.status(400).json({ error: "id_email_file_required" });
+    return;
+  }
+  const rlEmail = rateLimitPartnerRegistrationEmail(email);
+  if (!rlEmail.ok) {
+    res.setHeader("Retry-After", String(rlEmail.retryAfterSec));
+    res.status(429).json({ error: "rate_limited_email", retryAfterSec: rlEmail.retryAfterSec });
+    return;
+  }
+  const row = await findPartnerRegistrationRequestById(id);
+  if (!row) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if ((row.email ?? "").toLowerCase() !== email) {
+    res.status(403).json({ error: "forbidden" });
+    return;
+  }
+  const st = row.registrationStatus;
+  if (st === "rejected" || st === "blocked" || st === "approved") {
+    res.status(409).json({ error: "registration_closed", hint: "F\xFCr diese Anfrage sind keine Uploads mehr m\xF6glich." });
+    return;
+  }
+  const doc = await addPartnerRegistrationDocument({
+    requestId: id,
+    category,
+    originalFileName: fileName,
+    mimeType,
+    contentBase64,
+    uploadedByActorType: "partner",
+    uploadedByActorLabel: email
+  });
+  if (!doc) {
+    res.status(503).json({ error: "upload_failed" });
+    return;
+  }
+  res.status(201).json({ ok: true, document: toPublicPartnerRegistrationDocument(doc) });
+});
+var panelAuth_default = router6;
+
+// src/routes/panelApi.ts
+var import_express7 = __toESM(require_express2(), 1);
+init_rideBillingProfile();
+init_client();
+import { randomUUID as randomUUID17 } from "node:crypto";
 
 // src/db/panelCompanyData.ts
 init_drizzle_orm();
@@ -55122,11 +61075,16 @@ function rowToPanelPublic(r) {
     costCenter: costCenterFromFarePermissions(r.fare_permissions),
     verificationStatus: r.verification_status ?? "pending",
     complianceStatus: r.compliance_status ?? "pending",
+    complianceBucket: "missing",
     contractStatus: r.contract_status ?? "inactive",
     isBlocked: Boolean(r.is_blocked),
     maxDrivers: r.max_drivers ?? 100,
     maxVehicles: r.max_vehicles ?? 100,
-    profileLocked: Boolean(r.partner_panel_profile_locked)
+    profileLocked: Boolean(r.partner_panel_profile_locked),
+    complianceDocuments: {
+      gewerbe: { uploadedAt: "", reviewStatus: "", reviewNote: "" },
+      insurance: { uploadedAt: "", reviewStatus: "", reviewNote: "" }
+    }
   };
 }
 async function getPanelCompanyById(companyId) {
@@ -55136,7 +61094,14 @@ async function getPanelCompanyById(companyId) {
   const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
   const r = rows[0];
   if (!r) return null;
-  return rowToPanelPublic(r);
+  const { status, complianceDocuments } = await getDerivedComplianceAndDocumentsForRow(r);
+  const pub = rowToPanelPublic(r);
+  const complianceBucket = complianceBucketFromDerived({
+    derivedStatus: status,
+    hasGewerbe: pub.hasComplianceGewerbe,
+    hasInsurance: pub.hasComplianceInsurance
+  });
+  return { ...pub, complianceStatus: status, complianceDocuments, complianceBucket };
 }
 async function patchPanelCompanyProfile(companyId, patch) {
   if (!isPostgresConfigured()) {
@@ -55255,72 +61220,12 @@ async function patchPanelCompanyProfile(companyId, patch) {
     if (!r2) {
       return { ok: false, error: "company_not_found" };
     }
-    return { ok: true, company: rowToPanelPublic(r2) };
   }
-  return { ok: true, company: rowToPanelPublic(r1) };
-}
-
-// src/db/companyGovernanceData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-async function getFleetLoginCompanyDenyReason(companyId) {
-  if (!isPostgresConfigured()) return "company_not_found";
-  const db2 = getDb();
-  if (!db2) return "company_not_found";
-  const rows = await db2.select({
-    is_active: adminCompaniesTable.is_active,
-    is_blocked: adminCompaniesTable.is_blocked,
-    contract_status: adminCompaniesTable.contract_status
-  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const r = rows[0];
-  if (!r) return "company_not_found";
-  if (!r.is_active) return "company_inactive";
-  if (Boolean(r.is_blocked)) return "company_blocked";
-  const cs = String(r.contract_status ?? "").trim() || "inactive";
-  if (cs !== "active") return "contract_not_active";
-  return null;
-}
-async function getCompanyGovernanceGate(companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  const requiredProfileComplete = Boolean(
-    String(r.company_kind ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.name ?? "").trim() && String(r.email ?? "").trim() && String(r.phone ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.vat_id ?? "").trim()
-  );
-  return {
-    companyId: r.id,
-    companyKind: r.company_kind ?? "general",
-    verificationStatus: r.verification_status ?? "pending",
-    complianceStatus: r.compliance_status ?? "pending",
-    contractStatus: r.contract_status ?? "inactive",
-    isBlocked: Boolean(r.is_blocked),
-    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
-    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
-    maxDrivers: r.max_drivers ?? 100,
-    maxVehicles: r.max_vehicles ?? 100,
-    requiredProfileComplete,
-    farePermissions: r.fare_permissions ?? {},
-    insurerPermissions: r.insurer_permissions ?? {},
-    areaAssignments: Array.isArray(r.area_assignments) ? r.area_assignments.filter((x) => typeof x === "string") : []
-  };
-}
-async function countFleetDriversForCompany(companyId) {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: count() }).from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
-  return Number(rows[0]?.n ?? 0);
-}
-async function countFleetVehiclesForCompany(companyId) {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: count() }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
-  return Number(rows[0]?.n ?? 0);
+  const out = await getPanelCompanyById(companyId);
+  if (!out) {
+    return { ok: false, error: "company_not_found" };
+  }
+  return { ok: true, company: out };
 }
 
 // src/routes/panelApi.ts
@@ -55332,7 +61237,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID9 } from "node:crypto";
+import { randomUUID as randomUUID16 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -55350,7 +61255,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID9()}`;
+  const id = `SRS-${randomUUID16()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -55459,7 +61364,13 @@ var requirePanelAuth = async (req, res, next) => {
 };
 
 // src/routes/panelApi.ts
-var router6 = (0, import_express6.Router)();
+var router7 = (0, import_express7.Router)();
+router7.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, private, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Vary", "Authorization");
+  next();
+});
 async function assertActivePanelProfile(req, res, opts) {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
@@ -55486,7 +61397,7 @@ async function assertActivePanelProfile(req, res, opts) {
   return { claims, profile };
 }
 function enabledPanelModules(profile) {
-  return resolveEffectivePanelModules(profile.panelModules);
+  return resolveEffectivePanelModules(profile.panelModules, profile.companyKind);
 }
 function denyUnlessPanelModule(res, profile, mod) {
   if (!enabledPanelModules(profile).includes(mod)) {
@@ -55499,6 +61410,12 @@ function denyUnlessCompanyOrOverview(res, profile) {
   const e = enabledPanelModules(profile);
   if (e.includes("overview") || e.includes("company_profile")) return true;
   res.status(403).json({ error: "module_disabled", hint: "overview_or_company_profile" });
+  return false;
+}
+function denyUnlessOverviewOrCompanyRides(res, profile) {
+  const e = enabledPanelModules(profile);
+  if (e.includes("overview") || e.includes("company_rides")) return true;
+  res.status(403).json({ error: "module_disabled", hint: "overview_or_company_rides" });
   return false;
 }
 function permissionFlag(obj, key, fallback = false) {
@@ -55548,7 +61465,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID10()}`;
+  return `REQ-${randomUUID17()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -55615,6 +61532,67 @@ function rideToBillingCsvRow(r) {
   return cols.map((c) => csvEscapeCell(c)).join(",");
 }
 var BILLING_CSV_HEADER = "id,createdAt,scheduledAt,status,rideKind,payerKind,billingReference,accessCodeId,accessCodeNormalized,customerName,partnerFlow,roomNumber,reservationRef,hotelBilledTo,patientReference,tripLeg,seriesId,seriesSequence,seriesTotal,linkedRideId,fromLabel,toLabel,estimatedFare,finalFare";
+var TAXI_REVENUE_CSV_HEADER_DE = "Datum,Fahrt-ID,Start,Ziel,Preis,Zahlungsart,Status";
+function formatDeDateFromIso(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso ?? "").trim();
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+function rideStatusLabelDe(status) {
+  const m = {
+    draft: "Entwurf",
+    scheduled: "geplant",
+    requested: "angefragt",
+    searching_driver: "Fahrersuche",
+    offered: "angeboten",
+    pending: "ausstehend",
+    accepted: "angenommen",
+    driver_arriving: "Fahrer unterwegs",
+    driver_waiting: "Fahrer wartet",
+    passenger_onboard: "Fahrgast an Bord",
+    arrived: "angekommen",
+    in_progress: "unterwegs",
+    cancelled_by_customer: "storniert (Fahrgast)",
+    cancelled_by_driver: "storniert (Fahrer)",
+    cancelled_by_system: "storniert (System)",
+    expired: "abgelaufen",
+    rejected: "abgelehnt",
+    cancelled: "storniert",
+    completed: "abgeschlossen"
+  };
+  return m[status] ?? status;
+}
+function rideRevenueEuro(r) {
+  const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
+  return Number.isFinite(a) ? a : 0;
+}
+function formatEuroDe(n3) {
+  return `${n3.toFixed(2).replace(".", ",")} \u20AC`;
+}
+function ridePaymentLabelDe(r) {
+  const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
+  if (pm === "cash" || pm === "bar") return "Bar";
+  if (pm === "card" || pm === "karte" || pm === "credit_card") return "Karte";
+  const pk = String(r.payerKind ?? "").trim().toLowerCase();
+  if (pk === "partner" || pk === "company" || pk === "corporate") return "Firma";
+  if (pk === "insurance") return "Kasse / Versicherung";
+  if (pk === "voucher") return "Gutschein";
+  if (pk === "passenger") return pm ? `${pm} (Fahrgast)` : "Fahrgast";
+  const raw = [r.paymentMethod, r.payerKind].filter(Boolean).join(" / ");
+  return raw || "\u2014";
+}
+function rideToTaxiRevenueCsvRowDe(r) {
+  const cols = [
+    formatDeDateFromIso(r.createdAt),
+    r.id,
+    (r.fromFull || r.from || "").trim(),
+    (r.toFull || r.to || "").trim(),
+    formatEuroDe(rideRevenueEuro(r)),
+    ridePaymentLabelDe(r),
+    rideStatusLabelDe(r.status)
+  ];
+  return cols.map((c) => csvEscapeCell(c)).join(",");
+}
 function optBodyNum(body, k) {
   const v = body[k];
   if (typeof v !== "number" || !Number.isFinite(v)) return void 0;
@@ -55773,10 +61751,10 @@ function companyRidesFiltersFromQuery(query) {
   };
   return { ok: true, filters };
 }
-router6.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
+router7.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
-router6.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
+router7.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res, {
     allowPasswordChangeRequired: true
   });
@@ -55801,7 +61779,7 @@ router6.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
     }
   });
 });
-router6.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
+router7.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
   if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
@@ -55813,7 +61791,7 @@ router6.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
-router6.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -55827,7 +61805,7 @@ router6.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+router7.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -55898,7 +61876,7 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -55911,7 +61889,7 @@ router6.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router6.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -55922,7 +61900,7 @@ router6.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, r
     next(e);
   }
 });
-router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -55936,7 +61914,7 @@ router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -55948,7 +61926,7 @@ router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -55961,7 +61939,115 @@ router6.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router6.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const threads = await listSupportThreadsForCompany(ctx.claims.companyId);
+    res.json({ ok: true, threads });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.write")) return;
+    const b = req.body;
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    const category = parseSupportCategory(b.category) ?? "other";
+    if (!title || title.length > 200) {
+      res.status(400).json({ error: "title_invalid", hint: "max 200" });
+      return;
+    }
+    if (!body || body.length > 1e4) {
+      res.status(400).json({ error: "body_invalid", hint: "max 10000" });
+      return;
+    }
+    const threadId = randomUUID17();
+    const messageId = randomUUID17();
+    const created = await insertSupportThreadWithFirstMessage({
+      threadId,
+      messageId,
+      companyId: ctx.claims.companyId,
+      createdByPanelUserId: ctx.claims.panelUserId,
+      category,
+      title,
+      body
+    });
+    if (!created) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, thread: created.thread, message: created.message });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.read")) return;
+    const threadId = String(req.params.threadId ?? "").trim();
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const row = await getSupportThreadForCompany(threadId, ctx.claims.companyId);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, thread: row.thread, messages: row.messages });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "support")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "support.write")) return;
+    const threadId = String(req.params.threadId ?? "").trim();
+    const b = req.body;
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!threadId) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    if (!body || body.length > 1e4) {
+      res.status(400).json({ error: "body_invalid" });
+      return;
+    }
+    const result = await insertPartnerSupportMessage({
+      messageId: randomUUID17(),
+      threadId,
+      companyId: ctx.claims.companyId,
+      panelUserId: ctx.claims.panelUserId,
+      body
+    });
+    if (!result.ok) {
+      if (result.error === "closed") {
+        res.status(409).json({ error: "thread_closed" });
+        return;
+      }
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.status(201).json({ ok: true, message: result.message, threadStatus: result.threadStatus });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -55980,7 +62066,7 @@ router6.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router6.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56010,7 +62096,39 @@ router6.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessOverviewOrCompanyRides(res, ctx.profile)) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    if (ctx.profile.companyKind !== "taxi") {
+      res.status(403).json({ error: "taxi_only" });
+      return;
+    }
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "company.update")) return;
+    const parsed = companyRidesFiltersFromQuery(
+      normalizeCompanyRidesQueryRecord(req.query)
+    );
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    const list = await listRidesForCompanyFiltered(ctx.claims.companyId, parsed.filters);
+    const lines = [TAXI_REVENUE_CSV_HEADER_DE, ...list.map((r) => rideToTaxiRevenueCsvRowDe(r))];
+    const csv = `\uFEFF${lines.join("\n")}
+`;
+    const from = parsed.filters.createdFrom ? parsed.filters.createdFrom.toISOString().slice(0, 10) : "";
+    const to = parsed.filters.createdTo ? parsed.filters.createdTo.toISOString().slice(0, 10) : "";
+    const safe = `${from}-${to}`.replace(/[^0-9-]/g, "");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="onroda-taxi-umsatz-${safe || "export"}.csv"`);
+    res.status(200).send(csv);
+  } catch (e) {
+    next(e);
+  }
+});
+router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56129,7 +62247,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -56148,7 +62266,7 @@ router6.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56255,7 +62373,7 @@ router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -56268,7 +62386,7 @@ router6.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56423,7 +62541,7 @@ router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       [savedOut, savedRet].filter((x) => Boolean(x))
     );
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -56436,7 +62554,7 @@ router6.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
     next(e);
   }
 });
-router6.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56589,7 +62707,7 @@ router6.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
     const enriched = await enrichPanelRidesForResponse(loaded.filter((x) => Boolean(x)));
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -56609,7 +62727,7 @@ function normalizeQueryRecord(raw) {
   }
   return q;
 }
-router6.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56638,7 +62756,7 @@ router6.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router6.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56661,7 +62779,7 @@ router6.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router6.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56673,7 +62791,7 @@ router6.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router6.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56685,7 +62803,7 @@ router6.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56718,7 +62836,7 @@ router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -56739,7 +62857,7 @@ router6.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
+router7.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56765,7 +62883,7 @@ router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -56778,7 +62896,7 @@ router6.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res, {
       allowPasswordChangeRequired: true
@@ -56810,7 +62928,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -56823,7 +62941,7 @@ router6.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router6.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router7.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56835,7 +62953,7 @@ router6.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56879,7 +62997,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -56900,7 +63018,7 @@ router6.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router7.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -56966,7 +63084,7 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -56984,7 +63102,7 @@ router6.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
     next(e);
   }
 });
-router6.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router7.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -57021,7 +63139,7 @@ router6.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -57034,7 +63152,7 @@ router6.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router7.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -57071,7 +63189,7 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID10(),
+      id: randomUUID17(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -57084,10 +63202,10 @@ router6.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
     next(e);
   }
 });
-var panelApi_default = router6;
+var panelApi_default = router7;
 
 // src/routes/fleetAuth.ts
-var import_express7 = __toESM(require_express2(), 1);
+var import_express8 = __toESM(require_express2(), 1);
 init_client();
 
 // src/lib/fleetDriverJwt.ts
@@ -57149,19 +63267,19 @@ function payloadToFleetDriverClaims(payload) {
 }
 
 // src/lib/fleetLoginRateLimit.ts
-var WINDOW_MS = 6e4;
-var MAX_ATTEMPTS = 25;
-var buckets = /* @__PURE__ */ new Map();
+var WINDOW_MS2 = 6e4;
+var MAX_ATTEMPTS2 = 25;
+var buckets2 = /* @__PURE__ */ new Map();
 function rateLimitFleetLogin(ip) {
   const k = ip.trim() || "unknown";
   const now = Date.now();
-  let b = buckets.get(k);
+  let b = buckets2.get(k);
   if (!b || now >= b.resetAt) {
-    b = { count: 0, resetAt: now + WINDOW_MS };
-    buckets.set(k, b);
+    b = { count: 0, resetAt: now + WINDOW_MS2 };
+    buckets2.set(k, b);
   }
   b.count += 1;
-  if (b.count > MAX_ATTEMPTS) {
+  if (b.count > MAX_ATTEMPTS2) {
     const retryAfterSec = Math.max(1, Math.ceil((b.resetAt - now) / 1e3));
     return { ok: false, retryAfterSec };
   }
@@ -57169,8 +63287,8 @@ function rateLimitFleetLogin(ip) {
 }
 
 // src/routes/fleetAuth.ts
-var router7 = (0, import_express7.Router)();
-router7.post("/fleet-auth/login", async (req, res) => {
+var router8 = (0, import_express8.Router)();
+router8.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitFleetLogin(ip);
   if (!rl.ok) {
@@ -57247,13 +63365,13 @@ router7.post("/fleet-auth/login", async (req, res) => {
     }
   });
 });
-router7.post("/fleet-auth/logout", (_req, res) => {
+router8.post("/fleet-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
-var fleetAuth_default = router7;
+var fleetAuth_default = router8;
 
 // src/routes/fleetDriverApi.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 init_client();
 init_accessCodesData();
 init_ridesData();
@@ -57298,8 +63416,8 @@ var requireFleetDriverAuth = async (req, res, next) => {
 };
 
 // src/routes/fleetDriverApi.ts
-var router8 = (0, import_express8.Router)();
-router8.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+var router9 = (0, import_express9.Router)();
+router9.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -57314,8 +63432,16 @@ router8.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     res.status(401).json({ error: "not_found" });
     return;
   }
+  const listRow = fleetDriverTableRowToList(row);
+  const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+  const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
+  const driverWorkflow = deriveDriverWorkflowLabel(listRow);
   res.json({
     ok: true,
+    einsatzbereit,
+    notFreigegebenMessage: einsatzbereit ? null : "Noch nicht freigegeben oder Voraussetzungen unvollst\xE4ndig \u2014 bitte wenden Sie sich ggf. an Ihr Unternehmen oder an Onroda.",
+    driverWorkflow,
+    ..."error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR },
     driver: {
       id: row.id,
       companyId: row.company_id,
@@ -57323,13 +63449,14 @@ router8.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       firstName: row.first_name,
       lastName: row.last_name,
       accessStatus: row.access_status,
+      approvalStatus: listRow.approvalStatus,
       mustChangePassword: row.must_change_password,
       vehicleLegalType: row.vehicle_legal_type,
       vehicleClass: row.vehicle_class
     }
   });
 });
-router8.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+router9.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -57341,12 +63468,28 @@ router8.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req,
       res.status(401).json({ error: "not_found" });
       return;
     }
+    const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+    if ("error" in readinessR) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    if (!readinessR.ready) {
+      res.json({
+        ok: true,
+        rides: [],
+        einsatzbereit: false,
+        readiness: readinessR,
+        message: "Noch nicht freigegeben oder Voraussetzungen unvollst\xE4ndig. Auftr\xE4ge sind gesperrt, bis alles erf\xFCllt ist."
+      });
+      return;
+    }
     const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
     if (!capability?.vehicleLegalType) {
       res.json({
         ok: true,
         rides: [],
-        message: "Keine Taxi-Rechtsart am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen."
+        einsatzbereit: false,
+        message: "Kein fahrbereites Fahrzeug: Zuweisung pr\xFCfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge)."
       });
       return;
     }
@@ -57369,6 +63512,7 @@ router8.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req,
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json({
       ok: true,
+      einsatzbereit: true,
       rides: withCodes,
       message: withCodes.length === 0 ? "Aktuell kein passendes Fahrzeug verf\xFCgbar" : null
     });
@@ -57376,7 +63520,7 @@ router8.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req,
     next(e);
   }
 });
-router8.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+router9.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -57388,12 +63532,28 @@ router8.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (r
       res.status(401).json({ error: "not_found" });
       return;
     }
+    const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
+    if ("error" in readinessR) {
+      res.status(401).json({ error: "not_found" });
+      return;
+    }
+    if (!readinessR.ready) {
+      res.json({
+        ok: true,
+        rides: [],
+        einsatzbereit: false,
+        readiness: readinessR,
+        message: "Noch nicht freigegeben oder Voraussetzungen unvollst\xE4ndig. Auftr\xE4ge sind gesperrt, bis alles erf\xFCllt ist."
+      });
+      return;
+    }
     const capability = await getFleetDriverCapability(a.fleetDriverId, a.companyId);
     if (!capability?.vehicleLegalType) {
       res.json({
         ok: true,
         rides: [],
-        message: "Keine Taxi-Rechtsart am aktiven Fahrzeug erkannt. Bitte im Partner-Panel Fahrzeug anlegen/zuweisen."
+        einsatzbereit: false,
+        message: "Kein fahrbereites Fahrzeug: Zuweisung pr\xFCfen und Freigabe durch Onroda abwarten (nur freigegebene Fahrzeuge)."
       });
       return;
     }
@@ -57409,6 +63569,7 @@ router8.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (r
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json({
       ok: true,
+      einsatzbereit: true,
       rides: withCodes,
       message: withCodes.length === 0 ? "Keine Vorbestellungen im Planer" : null
     });
@@ -57416,7 +63577,7 @@ router8.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (r
     next(e);
   }
 });
-router8.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+router9.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -57425,7 +63586,7 @@ router8.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) =
   await touchFleetDriverHeartbeat(a.fleetDriverId);
   res.json({ ok: true });
 });
-router8.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+router9.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -57456,168 +63617,29 @@ router8.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (
   }
   res.json({ ok: true });
 });
-var fleetDriverApi_default = router8;
+var fleetDriverApi_default = router9;
 
 // src/routes/fleetPanelApi.ts
-var import_express9 = __toESM(require_express2(), 1);
-init_drizzle_orm();
-import { randomUUID as randomUUID13 } from "node:crypto";
+var import_express10 = __toESM(require_express2(), 1);
+import { randomUUID as randomUUID18 } from "node:crypto";
 import fs from "node:fs/promises";
-import path3 from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import { createReadStream as createReadStream3 } from "node:fs";
+import path5 from "node:path";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 init_client();
-init_schema2();
-
-// src/db/fleetVehiclesData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID11 } from "node:crypto";
-function rowToVehicle(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    licensePlate: r.license_plate,
-    vin: r.vin,
-    color: r.color,
-    model: r.model,
-    vehicleType: r.vehicle_type,
-    vehicleLegalType: r.vehicle_legal_type,
-    vehicleClass: r.vehicle_class,
-    taxiOrderNumber: r.taxi_order_number,
-    nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
-    isActive: r.is_active,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString()
-  };
-}
-async function countActiveFleetVehicles(companyId) {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.company_id, companyId), eq(fleetVehiclesTable.is_active, true)));
-  return Number(rows[0]?.n ?? 0);
-}
-async function listFleetVehiclesForCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
-  return rows.map(rowToVehicle);
-}
-async function findFleetVehicleInCompany(id, companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId))).limit(1);
-  return rows[0] ?? null;
-}
-async function insertFleetVehicle(input) {
-  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const plate = input.licensePlate.trim();
-  if (!plate) return { ok: false, error: "license_plate_required" };
-  const id = `fv-${randomUUID11()}`;
-  await db2.insert(fleetVehiclesTable).values({
-    id,
-    company_id: input.companyId,
-    license_plate: plate,
-    vin: (input.vin ?? "").trim(),
-    color: (input.color ?? "").trim(),
-    model: (input.model ?? "").trim(),
-    vehicle_type: input.vehicleType,
-    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
-    vehicle_class: input.vehicleClass ?? "standard",
-    taxi_order_number: (input.taxiOrderNumber ?? "").trim(),
-    next_inspection_date: input.nextInspectionDate?.trim() || null,
-    is_active: input.isActive ?? true
-  });
-  return { ok: true, id };
-}
-async function patchFleetVehicle(id, companyId, patch) {
-  const cur = await findFleetVehicleInCompany(id, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  if (patch.licensePlate !== void 0) set.license_plate = patch.licensePlate.trim();
-  if (patch.vin !== void 0) set.vin = patch.vin.trim();
-  if (patch.color !== void 0) set.color = patch.color.trim();
-  if (patch.model !== void 0) set.model = patch.model.trim();
-  if (patch.vehicleType !== void 0) set.vehicle_type = patch.vehicleType;
-  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
-  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
-  if (patch.taxiOrderNumber !== void 0) set.taxi_order_number = patch.taxiOrderNumber.trim();
-  if (patch.nextInspectionDate !== void 0) {
-    set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
-  }
-  if (patch.isActive !== void 0) set.is_active = patch.isActive;
-  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
-  return { ok: true };
-}
-
-// src/db/fleetAssignmentsData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID12 } from "node:crypto";
-function toRow(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    driverId: r.driver_id,
-    vehicleId: r.vehicle_id,
-    assignedAt: r.assigned_at.toISOString()
-  };
-}
-async function listAssignmentsForCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.company_id, companyId));
-  return rows.map(toRow);
-}
-async function setDriverVehicleAssignment(input) {
-  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const dRows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, input.driverId), eq(fleetDriversTable.company_id, input.companyId))).limit(1);
-  if (!dRows[0]) return { ok: false, error: "driver_not_found" };
-  const vRows = await db2.select({ id: fleetVehiclesTable.id }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
-  if (!vRows[0]) return { ok: false, error: "vehicle_not_found" };
-  await db2.transaction(async (tx) => {
-    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
-    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
-    await tx.insert(driverVehicleAssignmentsTable).values({
-      id: `fva-${randomUUID12()}`,
-      company_id: input.companyId,
-      driver_id: input.driverId,
-      vehicle_id: input.vehicleId
-    });
-  });
-  return { ok: true };
-}
-async function clearDriverAssignment(driverId, companyId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.delete(driverVehicleAssignmentsTable).where(
-    and(
-      eq(driverVehicleAssignmentsTable.driver_id, driverId),
-      eq(driverVehicleAssignmentsTable.company_id, companyId)
-    )
-  ).returning({ id: driverVehicleAssignmentsTable.id });
-  return r.length > 0;
-}
-
-// src/routes/fleetPanelApi.ts
-var router9 = (0, import_express9.Router)();
-var pkgRoot = path3.join(path3.dirname(fileURLToPath2(import.meta.url)), "..", "..");
-var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path3.join(pkgRoot, "data", "fleet-uploads");
+var router10 = (0, import_express10.Router)();
+router10.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, private, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Vary", "Authorization");
+  next();
+});
+var pkgRoot = path5.join(path5.dirname(fileURLToPath3(import.meta.url)), "..", "..");
+var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path5.join(pkgRoot, "data", "fleet-uploads");
 var ALLOWED_VEHICLE_LEGAL_TYPES = ["taxi"];
 var ALLOWED_VEHICLE_CLASSES = ["standard", "xl", "wheelchair"];
-function enabledPanelModules2(panelModules) {
-  return resolveEffectivePanelModules(panelModules);
+function enabledPanelModules2(panelModules, companyKind) {
+  return resolveEffectivePanelModules(panelModules, companyKind);
 }
 async function assertFleetPanel(req, res) {
   if (!isPostgresConfigured()) {
@@ -57643,7 +63665,7 @@ async function assertFleetPanel(req, res) {
     res.status(403).json({ error: "fleet_only_taxi_company" });
     return null;
   }
-  if (!enabledPanelModules2(profile.panelModules).includes("taxi_fleet")) {
+  if (!enabledPanelModules2(profile.panelModules, kind).includes("taxi_fleet")) {
     res.status(403).json({ error: "module_not_enabled", module: "taxi_fleet" });
     return null;
   }
@@ -57660,7 +63682,7 @@ async function requireFleetProvisioningReady(companyId) {
   if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
   return { ok: true };
 }
-router9.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57685,13 +63707,13 @@ router9.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router9.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
     const onlyExpiring = String(req.query.pScheinExpiring ?? "") === "1";
-    let rows = await listFleetDriversForCompany(ctx.claims.companyId);
+    let rows = await getPanelFleetDriverViews(ctx.claims.companyId);
     if (onlyExpiring) {
       const today = /* @__PURE__ */ new Date();
       today.setUTCHours(0, 0, 0, 0);
@@ -57709,7 +63731,7 @@ router9.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57759,7 +63781,7 @@ router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID13(),
+      id: randomUUID18(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -57772,7 +63794,7 @@ router9.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router9.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+router10.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57807,7 +63829,7 @@ router9.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router9.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57818,7 +63840,7 @@ router9.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID13(),
+      id: randomUUID18(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -57831,7 +63853,7 @@ router9.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req
     next(e);
   }
 });
-router9.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57842,7 +63864,7 @@ router9.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID13(),
+      id: randomUUID18(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -57855,7 +63877,7 @@ router9.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (re
     next(e);
   }
 });
-router9.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57869,7 +63891,7 @@ router9.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, asy
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID13(),
+      id: randomUUID18(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -57882,10 +63904,10 @@ router9.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, asy
     next(e);
   }
 });
-router9.post(
+router10.post(
   "/panel/v1/fleet/drivers/:id/p-schein-doc",
   requirePanelAuth,
-  import_express9.default.raw({ type: "application/pdf", limit: "6mb" }),
+  import_express10.default.raw({ type: "application/pdf", limit: "6mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -57902,9 +63924,9 @@ router9.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path3.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID13()}.pdf`);
-      const dest = path3.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path3.dirname(dest), { recursive: true });
+      const rel = path5.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID18()}.pdf`);
+      const dest = path5.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path5.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const pr = await patchFleetDriverProfile(id, ctx.claims.companyId, { pScheinDocStorageKey: storageKey });
@@ -57918,21 +63940,21 @@ router9.post(
     }
   }
 );
-router9.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
     let rows = await listFleetVehiclesForCompany(ctx.claims.companyId);
     if (String(req.query.activeOnly ?? "") === "1") {
-      rows = rows.filter((v) => v.isActive);
+      rows = rows.filter((v) => v.approvalStatus === "approved");
     }
     res.json({ ok: true, vehicles: rows });
   } catch (e) {
     next(e);
   }
 });
-router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -57950,6 +63972,7 @@ router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
       return;
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
+    const konzessionRaw = typeof b.konzessionNumber === "string" ? b.konzessionNumber : typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "";
     const vehicleType = typeof b.vehicleType === "string" ? b.vehicleType : "sedan";
     const vehicleLegalType = "taxi";
     const vehicleClass = typeof b.vehicleClass === "string" ? b.vehicleClass : "standard";
@@ -57976,15 +63999,16 @@ router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
       vehicleLegalType,
       vehicleClass,
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
+      konzessionNumber: konzessionRaw,
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
-      isActive: typeof b.isActive === "boolean" ? b.isActive : true
+      approvalStatus: "draft"
     });
     if (!ins.ok) {
       res.status(400).json({ error: ins.error });
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID13(),
+      id: randomUUID18(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -57997,7 +64021,7 @@ router9.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router9.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+router10.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -58009,10 +64033,10 @@ router9.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res,
     if (typeof b.color === "string") patch.color = b.color;
     if (typeof b.model === "string") patch.model = b.model;
     if (typeof b.taxiOrderNumber === "string") patch.taxiOrderNumber = b.taxiOrderNumber;
+    if (typeof b.konzessionNumber === "string") patch.konzessionNumber = b.konzessionNumber;
     if (typeof b.nextInspectionDate === "string" || b.nextInspectionDate === null) {
       patch.nextInspectionDate = b.nextInspectionDate === null ? null : b.nextInspectionDate;
     }
-    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
     if (typeof b.vehicleLegalType === "string") {
       patch.vehicleLegalType = "taxi";
     }
@@ -58043,7 +64067,7 @@ router9.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router9.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -58054,7 +64078,7 @@ router9.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router9.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -58076,7 +64100,7 @@ router9.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router9.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+router10.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -58087,10 +64111,115 @@ router9.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async 
     next(e);
   }
 });
-router9.post(
+router10.post(
+  "/panel/v1/fleet/vehicles/:id/documents",
+  requirePanelAuth,
+  import_express10.default.raw({ type: "application/pdf", limit: "8mb" }),
+  async (req, res, next) => {
+    try {
+      const ctx = await assertFleetPanel(req, res);
+      if (!ctx) return;
+      if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+      const buf = req.body;
+      if (!buf || buf.length < 8) {
+        res.status(400).json({ error: "pdf_body_required" });
+        return;
+      }
+      const id = req.params.id;
+      const rel = path5.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID18()}.pdf`);
+      const dest = path5.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path5.dirname(dest), { recursive: true });
+      await fs.writeFile(dest, buf);
+      const storageKey = rel.replace(/\\/g, "/");
+      const ar = await appendFleetVehicleDocument(id, ctx.claims.companyId, storageKey);
+      if (!ar.ok) {
+        const code = ar.error;
+        res.status(code === "not_found" ? 404 : code === "documents_locked" ? 409 : 400).json({ error: code });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID18(),
+        companyId: ctx.claims.companyId,
+        actorPanelUserId: ctx.claims.panelUserId,
+        action: "fleet.vehicle_document_uploaded",
+        subjectType: "fleet_vehicle",
+        subjectId: id,
+        meta: {}
+      });
+      res.json({ ok: true, storageKey });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+router10.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
+    const sr = await submitFleetVehicleForApproval(req.params.id, ctx.claims.companyId);
+    if (!sr.ok) {
+      const m = {
+        not_found: 404,
+        invalid_state: 409,
+        konzession_number_required: 400,
+        license_plate_required: 400,
+        documents_required: 400
+      };
+      res.status(m[sr.error] ?? 400).json({ error: sr.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID18(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.vehicle_submitted_for_approval",
+      subjectType: "fleet_vehicle",
+      subjectId: req.params.id,
+      meta: {}
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router10.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertFleetPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.read")) return;
+    const storageKey = typeof req.query.storageKey === "string" ? req.query.storageKey.trim() : "";
+    if (!storageKey || storageKey.includes("..")) {
+      res.status(400).json({ error: "storage_key_invalid" });
+      return;
+    }
+    const keys = await listFleetVehicleDocumentStorageKeysInCompany(ctx.claims.companyId, req.params.id);
+    if (keys === null) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (!keys.includes(storageKey)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const abs = path5.resolve(path5.join(FLEET_UPLOAD_ROOT, storageKey));
+    const root = path5.resolve(path5.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
+    if (!abs.startsWith(root + path5.sep) && abs !== root) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/pdf");
+    createReadStream3(abs).on("error", () => {
+      if (!res.headersSent) res.status(404).end();
+    }).pipe(res);
+  } catch (e) {
+    next(e);
+  }
+});
+router10.post(
   "/panel/v1/fleet/compliance/:kind",
   requirePanelAuth,
-  import_express9.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express10.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -58106,20 +64235,32 @@ router9.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path3.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID13()}.pdf`);
-      const dest = path3.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path3.dirname(dest), { recursive: true });
+      const rel = path5.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID18()}.pdf`);
+      const dest = path5.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path5.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
-      const db2 = getDb();
-      if (!db2) {
+      if (!isPostgresConfigured()) {
         res.status(503).json({ error: "database_not_configured" });
         return;
       }
-      const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
-      await db2.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, ctx.claims.companyId));
+      try {
+        await insertComplianceDocumentUpload(
+          ctx.claims.companyId,
+          kind,
+          storageKey,
+          ctx.claims.panelUserId
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg === "database_not_configured") {
+          res.status(503).json({ error: "database_not_configured" });
+          return;
+        }
+        throw e;
+      }
       await insertPanelAuditLog({
-        id: randomUUID13(),
+        id: randomUUID18(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -58133,25 +64274,623 @@ router9.post(
     }
   }
 );
-var fleetPanelApi_default = router9;
+var fleetPanelApi_default = router10;
+
+// src/routes/insurerPanelApi.ts
+var import_express11 = __toESM(require_express2(), 1);
+init_client();
+import { randomUUID as randomUUID20 } from "node:crypto";
+import fs2 from "node:fs/promises";
+import { createReadStream as createReadStream4 } from "node:fs";
+import path6 from "node:path";
+import { fileURLToPath as fileURLToPath4 } from "node:url";
+
+// src/db/insurerPanelData.ts
+init_drizzle_orm();
+init_partnerBookingMeta();
+init_client();
+init_schema2();
+init_ridesData();
+import { randomUUID as randomUUID19 } from "node:crypto";
+var OPEN = [
+  "draft",
+  "scheduled",
+  "requested",
+  "searching_driver",
+  "offered",
+  "pending"
+];
+var ACTIVE = [
+  "accepted",
+  "driver_arriving",
+  "driver_waiting",
+  "passenger_onboard",
+  "in_progress",
+  "arrived"
+];
+function passengerDisplayFromMeta(meta, billingReference) {
+  const m = meta?.insurer?.passengerRef?.trim() || meta?.medical?.patientReference?.trim() || "";
+  if (m) return m;
+  const b = (billingReference ?? "").trim();
+  if (b) return b;
+  return "\u2014";
+}
+async function getInsurerDashboardStats(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    const rides = await listRidesForCompany(companyId);
+    const comp = (r) => r.status === "completed";
+    return {
+      openRides: rides.filter((r) => OPEN.includes(r.status)).length,
+      activeRides: rides.filter((r) => ACTIVE.includes(r.status)).length,
+      completedRides: rides.filter(comp).length
+    };
+  }
+  const cOpen = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, OPEN)));
+  const cAct = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, ACTIVE)));
+  const cDone = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.status, "completed")));
+  return {
+    openRides: Number(cOpen[0]?.n ?? 0),
+    activeRides: Number(cAct[0]?.n ?? 0),
+    completedRides: Number(cDone[0]?.n ?? 0)
+  };
+}
+async function listInsurerRideRows(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    const rides = await listRidesForCompany(companyId);
+    return rides.map((r) => {
+      const meta = r.partnerBookingMeta;
+      return {
+        id: r.id,
+        status: r.status,
+        createdAt: r.createdAt,
+        scheduledAt: r.scheduledAt ?? null,
+        fromLabel: r.from,
+        toLabel: r.to,
+        passengerLabel: passengerDisplayFromMeta(meta, r.billingReference ?? null),
+        costCenterId: meta?.insurer?.costCenterId ?? null,
+        costCenterCode: null,
+        costCenterLabel: null,
+        serviceProviderCompanyId: null,
+        serviceProviderCompanyName: null,
+        billingReference: r.billingReference ?? null
+      };
+    });
+  }
+  const rideRows = await db2.select().from(ridesTable).where(eq(ridesTable.company_id, companyId)).orderBy(desc(ridesTable.created_at));
+  const rideIds = rideRows.map((r) => r.id);
+  if (rideIds.length === 0) return [];
+  const allCc = await db2.select().from(insurerCostCentersTable).where(eq(insurerCostCentersTable.company_id, companyId));
+  const ccById = new Map(allCc.map((c) => [c.id, c]));
+  const finRows = await db2.select().from(rideFinancialsTable).where(inArray(rideFinancialsTable.ride_id, rideIds));
+  const finByRide = /* @__PURE__ */ new Map();
+  for (const f of finRows) {
+    if (!finByRide.has(f.ride_id)) finByRide.set(f.ride_id, f);
+  }
+  const spIds = [...new Set(finRows.map((f) => f.service_provider_company_id).filter((x) => Boolean(x)))];
+  const spNames = /* @__PURE__ */ new Map();
+  if (spIds.length > 0) {
+    const sps = await db2.select().from(adminCompaniesTable).where(inArray(adminCompaniesTable.id, spIds));
+    for (const s of sps) spNames.set(s.id, s.name);
+  }
+  return rideRows.map((r) => {
+    const meta = parsePartnerBookingMeta(r.partner_booking_meta) ?? null;
+    const costCenterId = meta?.insurer?.costCenterId?.trim() || null;
+    const cc = costCenterId ? ccById.get(costCenterId) : void 0;
+    const fin = finByRide.get(r.id);
+    const spId = fin?.service_provider_company_id ?? null;
+    return {
+      id: r.id,
+      status: r.status,
+      createdAt: r.created_at.toISOString(),
+      scheduledAt: r.scheduled_at ? r.scheduled_at.toISOString() : null,
+      fromLabel: r.from_label,
+      toLabel: r.to_label,
+      passengerLabel: passengerDisplayFromMeta(meta, r.billing_reference),
+      costCenterId,
+      costCenterCode: cc ? cc.code : null,
+      costCenterLabel: cc ? cc.label : null,
+      serviceProviderCompanyId: spId,
+      serviceProviderCompanyName: spId ? spNames.get(spId) ?? null : null,
+      billingReference: r.billing_reference
+    };
+  });
+}
+async function listInsurerCostCenters(companyId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(insurerCostCentersTable).where(eq(insurerCostCentersTable.company_id, companyId)).orderBy(desc(insurerCostCentersTable.created_at));
+  return rows.map((r) => ({
+    id: r.id,
+    code: r.code,
+    label: r.label,
+    isActive: r.is_active,
+    createdAt: r.created_at.toISOString()
+  }));
+}
+async function insertInsurerCostCenter(companyId, input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const code = input.code.trim();
+  if (!code) return { ok: false, error: "code_required" };
+  const id = randomUUID19();
+  const now = /* @__PURE__ */ new Date();
+  try {
+    await db2.insert(insurerCostCentersTable).values({
+      id,
+      company_id: companyId,
+      code,
+      label: (input.label ?? "").trim(),
+      is_active: true,
+      created_at: now,
+      updated_at: now
+    });
+  } catch {
+    return { ok: false, error: "code_duplicate_or_invalid" };
+  }
+  return {
+    ok: true,
+    row: {
+      id,
+      code,
+      label: (input.label ?? "").trim(),
+      isActive: true,
+      createdAt: now.toISOString()
+    }
+  };
+}
+async function patchInsurerCostCenter(companyId, id, patch) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  const setObj = { updated_at: now };
+  if (typeof patch.label === "string") setObj.label = patch.label;
+  if (typeof patch.isActive === "boolean") setObj.is_active = patch.isActive;
+  const u = await db2.update(insurerCostCentersTable).set(setObj).where(and(eq(insurerCostCentersTable.id, id), eq(insurerCostCentersTable.company_id, companyId))).returning({ id: insurerCostCentersTable.id });
+  if (u.length === 0) return { ok: false, error: "not_found" };
+  return { ok: true };
+}
+async function patchRideInsurerOrgMeta(companyId, rideId, input) {
+  const r = await findRide(rideId);
+  if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
+  if (input.costCenterId) {
+    const db2 = getDb();
+    if (db2) {
+      const cc = await db2.select({ id: insurerCostCentersTable.id }).from(insurerCostCentersTable).where(
+        and(
+          eq(insurerCostCentersTable.id, input.costCenterId),
+          eq(insurerCostCentersTable.company_id, companyId),
+          eq(insurerCostCentersTable.is_active, true)
+        )
+      ).limit(1);
+      if (!cc[0]) return { ok: false, error: "cost_center_invalid" };
+    }
+  }
+  const prev = r.partnerBookingMeta;
+  const base = prev ?? { flow: "medical_patient" };
+  const next = {
+    ...base,
+    insurer: {
+      ...base.insurer ?? {},
+      costCenterId: input.costCenterId,
+      passengerRef: input.passengerRef
+    }
+  };
+  const updated = await updateRide(rideId, { partnerBookingMeta: next });
+  if (!updated) return { ok: false, error: "update_failed" };
+  return { ok: true, ride: updated };
+}
+async function listTransportDocsForRide(companyId, rideId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const r = await findRide(rideId);
+  if (!r || (r.companyId ?? null) !== companyId) return [];
+  const rows = await db2.select().from(insurerRideTransportDocumentsTable).where(
+    and(
+      eq(insurerRideTransportDocumentsTable.company_id, companyId),
+      eq(insurerRideTransportDocumentsTable.ride_id, rideId)
+    )
+  ).orderBy(desc(insurerRideTransportDocumentsTable.created_at));
+  return rows.map((x) => ({
+    id: x.id,
+    rideId: x.ride_id,
+    originalFilename: x.original_filename,
+    contentType: x.content_type,
+    byteSize: x.byte_size,
+    createdAt: x.created_at.toISOString()
+  }));
+}
+async function insertInsurerTransportDocument(companyId, rideId, panelUserId, input) {
+  const r = await findRide(rideId);
+  if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const id = randomUUID19();
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(insurerRideTransportDocumentsTable).values({
+    id,
+    company_id: companyId,
+    ride_id: rideId,
+    storage_key: input.storageKey,
+    original_filename: input.originalFilename,
+    content_type: input.contentType,
+    byte_size: input.byteSize,
+    created_by_panel_user_id: panelUserId,
+    created_at: now
+  });
+  return { ok: true, id };
+}
+async function getInsurerTransportDocumentFile(companyId, docId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(insurerRideTransportDocumentsTable).where(
+    and(
+      eq(insurerRideTransportDocumentsTable.id, docId),
+      eq(insurerRideTransportDocumentsTable.company_id, companyId)
+    )
+  ).limit(1);
+  const d = rows[0];
+  if (!d) return null;
+  return {
+    storageKey: d.storage_key,
+    contentType: d.content_type,
+    originalFilename: d.original_filename
+  };
+}
+
+// src/routes/insurerPanelApi.ts
+var router11 = (0, import_express11.Router)();
+var pkgRoot2 = path6.join(path6.dirname(fileURLToPath4(import.meta.url)), "..", "..");
+var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path6.join(pkgRoot2, "uploads", "insurer-transport");
+router11.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, private, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Vary", "Authorization");
+  next();
+});
+function enabledInsurerPanelModules(panelModules, companyKind) {
+  return resolveEffectivePanelModules(panelModules, companyKind);
+}
+async function assertInsurerPanel(req, res) {
+  if (!isPostgresConfigured()) {
+    res.status(503).json({ error: "database_not_configured" });
+    return null;
+  }
+  const claims = req.panelAuth;
+  if (!claims) {
+    res.status(401).json({ error: "unauthorized" });
+    return null;
+  }
+  const profile = await findActivePanelUserProfileById(claims.panelUserId);
+  if (!profile || !isPanelRoleString(profile.role)) {
+    res.status(401).json({ error: "user_inactive_or_missing" });
+    return null;
+  }
+  if (profile.companyId !== claims.companyId) {
+    res.status(401).json({ error: "token_out_of_sync" });
+    return null;
+  }
+  const kind = await getCompanyKind(claims.companyId) || "";
+  if (kind !== "insurer") {
+    res.status(403).json({ error: "insurer_portal_only" });
+    return null;
+  }
+  return { claims, profile };
+}
+function denyUnlessInsurerModule(res, profile, mod) {
+  const e = enabledInsurerPanelModules(profile.panelModules, profile.companyKind);
+  if (!e.includes(mod)) {
+    res.status(403).json({ error: "module_disabled", hint: mod });
+    return false;
+  }
+  return true;
+}
+function denyUnlessInsurerPerm(res, role, perm) {
+  if (!denyUnlessPanelPermission(res, role, perm)) return false;
+  return true;
+}
+router11.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertInsurerPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+    if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.read")) return;
+    const metrics = await getInsurerDashboardStats(ctx.claims.companyId);
+    res.json({ ok: true, ...metrics });
+  } catch (e) {
+    next(e);
+  }
+});
+router11.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertInsurerPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+    if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.read")) return;
+    const rides = await listInsurerRideRows(ctx.claims.companyId);
+    res.json({ ok: true, rides });
+  } catch (e) {
+    next(e);
+  }
+});
+router11.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertInsurerPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+    if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.read")) return;
+    const costCenters = await listInsurerCostCenters(ctx.claims.companyId);
+    res.json({ ok: true, costCenters });
+  } catch (e) {
+    next(e);
+  }
+});
+router11.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertInsurerPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+    if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.create")) return;
+    const b = req.body ?? {};
+    const code = typeof b.code === "string" ? b.code : "";
+    const label = typeof b.label === "string" ? b.label : "";
+    const out = await insertInsurerCostCenter(ctx.claims.companyId, { code, label });
+    if (!out.ok) {
+      res.status(400).json({ error: out.error });
+      return;
+    }
+    res.status(201).json({ ok: true, costCenter: out.row });
+  } catch (e) {
+    next(e);
+  }
+});
+router11.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertInsurerPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+    if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.create")) return;
+    const b = req.body ?? {};
+    const patch = {};
+    if (typeof b.label === "string") patch.label = b.label;
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const out = await patchInsurerCostCenter(ctx.claims.companyId, req.params.id, patch);
+    if (!out.ok) {
+      res.status(out.error === "not_found" ? 404 : 400).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router11.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertInsurerPanel(req, res);
+    if (!ctx) return;
+    if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+    if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.create")) return;
+    const b = req.body ?? {};
+    const costCenterId = b.costCenterId === null || b.costCenterId === "" ? null : String(b.costCenterId);
+    const passengerRef = b.passengerRef === null || b.passengerRef === void 0 ? null : String(b.passengerRef);
+    const out = await patchRideInsurerOrgMeta(ctx.claims.companyId, req.params.rideId, {
+      costCenterId: costCenterId ?? null,
+      passengerRef
+    });
+    if (!out.ok) {
+      const s = out.error === "ride_not_found" ? 404 : 400;
+      res.status(s).json({ error: out.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID20(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "insurer.ride_org_meta_patched",
+      subjectType: "ride",
+      subjectId: req.params.rideId,
+      meta: { hasCostCenter: Boolean(costCenterId) }
+    });
+    res.json({ ok: true, ride: out.ride });
+  } catch (e) {
+    next(e);
+  }
+});
+router11.get(
+  "/panel/v1/insurer/rides/:rideId/transport-documents",
+  requirePanelAuth,
+  async (req, res, next) => {
+    try {
+      const ctx = await assertInsurerPanel(req, res);
+      if (!ctx) return;
+      if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+      if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.read")) return;
+      const docs = await listTransportDocsForRide(ctx.claims.companyId, req.params.rideId);
+      res.json({ ok: true, documents: docs });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+router11.post(
+  "/panel/v1/insurer/rides/:rideId/transport-documents",
+  requirePanelAuth,
+  import_express11.default.raw({ type: "*/*", limit: "8mb" }),
+  async (req, res, next) => {
+    try {
+      const ctx = await assertInsurerPanel(req, res);
+      if (!ctx) return;
+      if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+      if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.create")) return;
+      const buf = req.body;
+      if (!buf || buf.length < 8) {
+        res.status(400).json({ error: "file_body_required" });
+        return;
+      }
+      const ct = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+      const allowed = /* @__PURE__ */ new Set(["application/pdf", "image/jpeg", "image/png"]);
+      if (!allowed.has(ct)) {
+        res.status(400).json({ error: "unsupported_content_type" });
+        return;
+      }
+      const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
+      const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
+      const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
+      const rel = path6.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID20()}.${ext}`);
+      const dest = path6.join(INSURER_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path6.dirname(dest), { recursive: true });
+      await fs2.writeFile(dest, buf);
+      const storageKey = rel.replace(/\\/g, "/");
+      const out = await insertInsurerTransportDocument(
+        ctx.claims.companyId,
+        req.params.rideId,
+        ctx.claims.panelUserId,
+        {
+          storageKey,
+          originalFilename: safeName,
+          contentType: ct,
+          byteSize: buf.length
+        }
+      );
+      if (!out.ok) {
+        res.status(400).json({ error: out.error });
+        return;
+      }
+      res.status(201).json({ ok: true, id: out.id, storageKey });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+router11.get(
+  "/panel/v1/insurer/transport-documents/:docId/file",
+  requirePanelAuth,
+  async (req, res, next) => {
+    try {
+      const ctx = await assertInsurerPanel(req, res);
+      if (!ctx) return;
+      if (!denyUnlessInsurerModule(res, ctx.profile, "insurer_workspace")) return;
+      if (!denyUnlessInsurerPerm(res, ctx.profile.role, "rides.read")) return;
+      const meta = await getInsurerTransportDocumentFile(ctx.claims.companyId, req.params.docId);
+      if (!meta) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const full = path6.join(INSURER_UPLOAD_ROOT, meta.storageKey);
+      res.setHeader("Content-Type", meta.contentType);
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(meta.originalFilename)}"`);
+      createReadStream4(full).pipe(res);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+var insurerPanelApi_default = router11;
+
+// src/routes/publicHomepageApi.ts
+var import_express12 = __toESM(require_express2(), 1);
+init_client();
+var router12 = (0, import_express12.Router)();
+router12.get("/public/homepage-placeholders", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.json({ ok: true, items: [] });
+      return;
+    }
+    const items = await listHomepagePlaceholdersPublic();
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router12.get("/public/homepage-hints", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.json({ ok: true, items: [] });
+      return;
+    }
+    const items = await listHomepagePlaceholdersPublic();
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router12.get("/public/homepage-content", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.json({ ok: true, item: null });
+      return;
+    }
+    const item = await getHomepageContentPublic();
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+router12.get("/public/homepage-faq", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.json({ ok: true, items: [] });
+      return;
+    }
+    const items = await listHomepageFaqPublic();
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router12.get("/public/homepage-how", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.json({ ok: true, items: [] });
+      return;
+    }
+    const items = await listHomepageHowPublic();
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router12.get("/public/homepage-trust", async (_req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.json({ ok: true, items: [] });
+      return;
+    }
+    const items = await listHomepageTrustPublic();
+    res.setHeader("Cache-Control", "public, max-age=30");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+var publicHomepageApi_default = router12;
 
 // src/routes/index.ts
-var router10 = (0, import_express10.Router)();
-router10.use(health_default);
-router10.use(auth_default);
-router10.use(panelAuth_default);
-router10.use(fleetAuth_default);
-router10.use(fleetDriverApi_default);
-router10.use(fleetPanelApi_default);
-router10.use(panelApi_default);
-router10.use(adminApi_default);
-router10.use(rides_default);
-var routes_default = router10;
+var router13 = (0, import_express13.Router)();
+router13.use(health_default);
+router13.use(auth_default);
+router13.use(panelAuth_default);
+router13.use(fleetAuth_default);
+router13.use(fleetDriverApi_default);
+router13.use(fleetPanelApi_default);
+router13.use(insurerPanelApi_default);
+router13.use(publicHomepageApi_default);
+router13.use(panelApi_default);
+router13.use(adminApi_default);
+router13.use(rides_default);
+var routes_default = router13;
 
 // src/routes/admin.ts
-var import_express11 = __toESM(require_express2(), 1);
-var router11 = (0, import_express11.Router)();
-router11.get("/admin", (_req, res) => {
+var import_express14 = __toESM(require_express2(), 1);
+var router14 = (0, import_express14.Router)();
+router14.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -58171,10 +64910,10 @@ router11.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router11;
+var admin_default = router14;
 
 // src/app.ts
-var app = (0, import_express12.default)();
+var app = (0, import_express15.default)();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
@@ -58255,17 +64994,16 @@ app.use(
     maxAge: 86400
   })
 );
-app.use(import_express12.default.json());
-app.use(import_express12.default.urlencoded({ extended: true }));
+app.use(import_express15.default.json());
+app.use(import_express15.default.urlencoded({ extended: true }));
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
-app.use("/api/panel-auth", panelAuth_default);
-var __dirname2 = path4.dirname(fileURLToPath3(import.meta.url));
-var staticRoot = path4.join(__dirname2, "../static");
-var panelPublicRoot = path4.join(__dirname2, "../../partner-panel/dist");
+var __dirname2 = path7.dirname(fileURLToPath5(import.meta.url));
+var staticRoot = path7.join(__dirname2, "../static");
+var panelPublicRoot = path7.join(__dirname2, "../../partner-panel/dist");
 function resolvePublicRoot() {
-  return path4.join(__dirname2, "../../admin-panel/dist");
+  return path7.join(__dirname2, "../../admin-panel/dist");
 }
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -58275,7 +65013,7 @@ app.use((req, res, next) => {
 var adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
-  import_express12.default.static(adminPublicRoot)(req, res, (err) => {
+  import_express15.default.static(adminPublicRoot)(req, res, (err) => {
     if (err) return next(err);
     return next();
   });
@@ -58283,46 +65021,46 @@ app.use("/partners", (req, res, next) => {
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
-  res.sendFile(path4.join(adminPublicRoot, "index.html"), (err) => {
+  res.sendFile(path7.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
-  import_express12.default.static(panelPublicRoot)(req, res, next);
+  import_express15.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
   if (req.path.startsWith("/partners")) return next();
-  res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
+  res.sendFile(path7.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   const p = req.path;
   if (p === "/partners" || p.startsWith("/partners/")) return next();
-  import_express12.default.static(staticRoot, { index: false })(req, res, next);
+  import_express15.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path4.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path7.join(staticRoot, "index.html"));
   return next();
 });
 app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path4.join(staticRoot, "partner-status.html"), (err) => {
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path7.join(staticRoot, "partner-status.html"), (err) => {
     if (err) next(err);
   });
   return next();
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path4.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path7.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
     return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) return res.sendFile(path4.join(panelPublicRoot, "index.html"), (err) => {
+  if (isPanelBrowserHost(host)) return res.sendFile(path7.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
   if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");

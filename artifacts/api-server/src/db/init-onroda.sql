@@ -272,6 +272,10 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
   next_inspection_date DATE,
   is_active BOOLEAN NOT NULL DEFAULT FALSE,
   approval_status TEXT NOT NULL DEFAULT 'draft',
+  admin_internal_note TEXT NOT NULL DEFAULT '',
+  block_reason TEXT NOT NULL DEFAULT '',
+  model_year INTEGER,
+  passenger_seats INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_vehicles_type_chk CHECK (
