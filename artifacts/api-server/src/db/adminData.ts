@@ -4,6 +4,7 @@ import { getDb } from "./client";
 import {
   adminCompaniesTable,
   accessCodesTable,
+  billingAccountsTable,
   fareAreasTable,
   panelUsersTable,
   ridesTable,
@@ -576,6 +577,11 @@ export type AdminCompanyUpdateBody = Partial<{
   release_radius_km: number;
   /** Explizite Panel-Modul-Whitelist; `null` = alle (Legacy). */
   panel_modules?: string[] | null;
+  /**
+   * Synchronisiert `billing_accounts.billing_email` (erste aktive Zeile, sonst Insert mit Default).
+   * Nicht Teil von `CompanyRow` — nur Schreib-Seite.
+   */
+  billing_account_email?: string;
 }>;
 
 export async function findCompanyById(companyId: string): Promise<CompanyRow | null> {
@@ -835,13 +841,39 @@ export async function insertAdminCompany(
   return next;
 }
 
+async function syncCompanyBillingAccountEmail(companyId: string, email: string): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  const normalized = email.trim();
+  const [row] = await db
+    .select({ id: billingAccountsTable.id })
+    .from(billingAccountsTable)
+    .where(and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true)))
+    .limit(1);
+  const now = new Date();
+  if (row) {
+    await db
+      .update(billingAccountsTable)
+      .set({ billing_email: normalized, updated_at: now })
+      .where(eq(billingAccountsTable.id, row.id));
+    return;
+  }
+  await db.insert(billingAccountsTable).values({
+    id: `ba-${randomUUID()}`,
+    company_id: companyId,
+    account_name: "Partner-Abrechnung",
+    billing_email: normalized,
+  });
+}
+
 export async function updateAdminCompany(
   companyId: string,
   body: AdminCompanyUpdateBody,
 ): Promise<CompanyRow | null> {
+  const { billing_account_email: billingAccountEmail, ...patchBody } = body;
   const cur = await findCompanyById(companyId);
   if (!cur) return null;
-  const next = applyAdminCompanyPatch(cur, body);
+  const next = applyAdminCompanyPatch(cur, patchBody);
 
   const db = getDb();
   if (!db) {
@@ -851,6 +883,13 @@ export async function updateAdminCompany(
     return next;
   }
   await db.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  if (typeof billingAccountEmail === "string") {
+    try {
+      await syncCompanyBillingAccountEmail(companyId, billingAccountEmail);
+    } catch (e) {
+      logger.error({ err: e, companyId }, "syncCompanyBillingAccountEmail failed");
+    }
+  }
   return next;
 }
 

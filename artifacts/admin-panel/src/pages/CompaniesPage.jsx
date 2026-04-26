@@ -6,14 +6,51 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import { matchesCompanyKindListTab } from "../utils/panelModulesByCompanyKind.js";
 
 const KIND_COLORS = {
-  taxi: { bg: '#fff9c4', text: '#856404', label: 'TAXI' },
-  hotel: { bg: '#e1f5fe', text: '#01579b', label: 'HOTEL' },
-  insurer: { bg: '#c8e6c9', text: '#1b5e20', label: 'MEDICAL' },
-  general: { bg: '#f5f5f5', text: '#616161', label: 'SONSTIGE' }
+  taxi: { bg: "#eff6ff", border: "#93c5fd", text: "#1e3a8a", label: "Taxi" },
+  hotel: { bg: "#ecfeff", border: "#67e8f9", text: "#0e7490", label: "Hotel" },
+  insurer: { bg: "#f0fdf4", border: "#86efac", text: "#14532d", label: "Kasse" },
+  medical: { bg: "#f0fdf4", border: "#86efac", text: "#14532d", label: "Medizin" },
+  general: { bg: "#f8fafc", border: "#e2e8f0", text: "#334155", label: "Allgemein" },
 };
 
-function compStatusDe(verification, compliance, contract) {
-  return `${verification || "—"} · ${compliance || "—"} · ${contract || "—"}`;
+const VERIFY_BADGE = {
+  pending: { label: "Verif. ausstehend", cl: "admin-c-badge admin-c-badge--neutral" },
+  in_review: { label: "Verif. in Prüfung", cl: "admin-c-badge admin-c-badge--info" },
+  verified: { label: "Verifiziert", cl: "admin-c-badge admin-c-badge--ok" },
+  rejected: { label: "Verif. abgelehnt", cl: "admin-c-badge admin-c-badge--err" },
+};
+
+const COMPL_BADGE = {
+  pending: { label: "Compl. offen", cl: "admin-c-badge admin-c-badge--neutral" },
+  in_review: { label: "Compl. in Prüfung", cl: "admin-c-badge admin-c-badge--info" },
+  compliant: { label: "Compliant", cl: "admin-c-badge admin-c-badge--ok" },
+  non_compliant: { label: "Nicht compliant", cl: "admin-c-badge admin-c-badge--err" },
+};
+
+const CONTRACT_BADGE = {
+  inactive: { label: "Vertrag inaktiv", cl: "admin-c-badge admin-c-badge--neutral" },
+  active: { label: "Vertrag aktiv", cl: "admin-c-badge admin-c-badge--ok" },
+  suspended: { label: "Vertrag ausgesetzt", cl: "admin-c-badge admin-c-badge--warn" },
+  terminated: { label: "Vertrag beendet", cl: "admin-c-badge admin-c-badge--err" },
+};
+
+function StatusBadgeGroup({ v, c, t }) {
+  const vb = VERIFY_BADGE[v] || VERIFY_BADGE.pending;
+  const cb = COMPL_BADGE[c] || COMPL_BADGE.pending;
+  const kb = CONTRACT_BADGE[t] || CONTRACT_BADGE.inactive;
+  return (
+    <div className="admin-c-statusline">
+      <span className={vb.cl} title="Verifizierungsstatus">
+        {vb.label}
+      </span>
+      <span className={cb.cl} title="Compliance">
+        {cb.label}
+      </span>
+      <span className={kb.cl} title="Vertrag">
+        {kb.label}
+      </span>
+    </div>
+  );
 }
 
 export default function CompaniesPage({
@@ -24,6 +61,9 @@ export default function CompaniesPage({
   mandateDetailCompanyId = null,
   onOpenMandateDetail,
   onCloseMandateDetail,
+  expandWorkspaceCompanyId = null,
+  onExpandWorkspaceConsumed,
+  onRequestWorkspaceForCompany,
 }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +90,12 @@ export default function CompaniesPage({
     setActiveTab(listTab);
   }, [listTab]);
 
+  useEffect(() => {
+    if (expandWorkspaceCompanyId == null || expandWorkspaceCompanyId === "") return;
+    setSelectedId(expandWorkspaceCompanyId);
+    onExpandWorkspaceConsumed?.();
+  }, [expandWorkspaceCompanyId, onExpandWorkspaceConsumed]);
+
   const setTab = useCallback(
     (t) => {
       setActiveTab(t);
@@ -64,150 +110,186 @@ export default function CompaniesPage({
     if (!row) return;
     setActiveTab("all");
     onListTabChange?.("all");
-    setSelectedId(initialOpenCompanyId);
+    onOpenMandateDetail?.(initialOpenCompanyId);
     onInitialOpenCompanyConsumed?.();
-  }, [items, initialOpenCompanyId, onInitialOpenCompanyConsumed, onListTabChange]);
+  }, [items, initialOpenCompanyId, onInitialOpenCompanyConsumed, onListTabChange, onOpenMandateDetail]);
 
   const filteredItems = useMemo(() => {
-    const list = (items || []).filter(item => matchesCompanyKindListTab(item, activeTab));
+    const list = (items || []).filter((item) => matchesCompanyKindListTab(item, activeTab));
     return list.sort((a, b) => (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase()));
   }, [items, activeTab]);
+
+  const openMandate = (e, id) => {
+    e.stopPropagation();
+    onOpenMandateDetail?.(id);
+  };
+
+  const onRowClick = (id) => {
+    onOpenMandateDetail?.(id);
+  };
 
   if (mandateDetailCompanyId && onCloseMandateDetail) {
     return (
       <CompanyMandateDetailPage
         companyId={mandateDetailCompanyId}
         onBack={onCloseMandateDetail}
+        onRequestFullWorkspace={() => onRequestWorkspaceForCompany?.(mandateDetailCompanyId)}
       />
     );
   }
 
-  return (
-    <div className="admin-page" style={{ padding: "20px", fontFamily: "sans-serif" }}>
-      <h1 style={{ marginTop: 0 }}>Mandantenverwaltung</h1>
-      <p style={{ color: "#64748b", maxWidth: 720, lineHeight: 1.5, marginBottom: 16 }}>
-        <strong>Operativer Mandanten-Stand</strong> — IBAN, Verifizierung, Compliance und Vertrag gelten für den
-        laufenden Betrieb (Zahlungsverkehr, Freigaben). Nicht mit der Registrierungs-Queue (Onboarding) vermischen; dort die
-        Anfrage-Historie.
-      </p>
+  const TABS = [
+    { k: "all", label: "Alle" },
+    { k: "taxi", label: "Taxi" },
+    { k: "hotel", label: "Hotel" },
+    { k: "insurer", label: "Kasse" },
+    { k: "other", label: "Weitere" },
+  ];
 
-      <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-        {['all', 'taxi', 'hotel', 'insurer', 'other'].map(t => (
+  return (
+    <div className="admin-companies">
+      <div className="admin-companies__head">
+        <h1 className="admin-companies__title">Mandantenverwaltung</h1>
+        <p className="admin-companies__lead">
+          <strong>Operativer Mandanten-Stand</strong> — klicken Sie auf eine Zeile oder den Firmennamen für die
+          <strong> Mandantenzentrale</strong>. Werkzeug-Menü: erweiterte Flotten-/Kassen-Formulare in der Tabelle
+          &quot;Werkstatt öffnen&quot; (getrennt von der Zentrale).
+        </p>
+      </div>
+
+      <div className="admin-companies__tabs" role="tablist" aria-label="Mandantentyp-Filter">
+        {TABS.map((t) => (
           <button
-            key={t}
+            key={t.k}
             type="button"
-            onClick={() => setTab(t)}
-            style={{ padding: '10px 20px', cursor: 'pointer', background: activeTab === t ? '#333' : '#eee', color: activeTab === t ? '#fff' : '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
+            role="tab"
+            aria-selected={activeTab === t.k}
+            className={"admin-c-tab" + (activeTab === t.k ? " admin-c-tab--on" : "")}
+            onClick={() => setTab(t.k)}
           >
-            {t.toUpperCase()}
+            {t.label}
           </button>
         ))}
       </div>
 
       {loading && items.length === 0 ? <p className="admin-table-sub">Lade …</p> : null}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-            <th style={{ padding: "10px" }}>NAME</th>
-            <th>MODUS</th>
-            <th>STADT</th>
-            <th>IBAN (Auszahlung)</th>
-            <th>STATUS (Verif. / Compl. / Vertrag)</th>
-            <th style={{ textAlign: "right" }}>ZENTRALE</th>
-            <th style={{ textAlign: "right" }}>STAMMDATEN</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredItems.map((item) => {
-            const color = KIND_COLORS[item.company_kind] || KIND_COLORS.general;
-            const iban = (item.bank_iban && String(item.bank_iban).trim()) || "";
-            return (
-              <Fragment key={item.id}>
-                <tr style={{ borderBottom: "1px solid #eee", verticalAlign: "top" }}>
-                  <td style={{ padding: "15px 10px" }}>
-                    <strong>{item.name}</strong>
-                    {item.is_blocked ? (
+      <div className="admin-c-tablewrap">
+        <table className="admin-c-table">
+          <thead>
+            <tr>
+              <th className="admin-c-th admin-c-th--name">Mandant</th>
+              <th className="admin-c-th admin-c-th--sm">Modus</th>
+              <th className="admin-c-th">Ort</th>
+              <th className="admin-c-th admin-c-th--iban">IBAN</th>
+              <th className="admin-c-th admin-c-th--st">Status</th>
+              <th className="admin-c-th admin-c-th--act" aria-label="Aktionen" />
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.map((item) => {
+              const color = KIND_COLORS[item.company_kind] || KIND_COLORS.general;
+              const iban = (item.bank_iban && String(item.bank_iban).trim()) || "";
+              return (
+                <Fragment key={item.id}>
+                  <tr
+                    className={"admin-c-tr" + (item.is_blocked ? " admin-c-tr--blocked" : "")}
+                    onClick={() => onRowClick(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(item.id);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Mandantenzentrale: ${item.name || item.id}`}
+                  >
+                    <td className="admin-c-td">
+                      <div className="admin-c-mandant">
+                        <button
+                          type="button"
+                          className="admin-c-mandant__name"
+                          onClick={(e) => openMandate(e, item.id)}
+                        >
+                          {item.name}
+                        </button>
+                        {item.is_blocked ? (
+                          <span className="admin-c-mandant__blocked">Gesperrt</span>
+                        ) : !item.is_active ? (
+                          <span className="admin-c-mandant__off">inaktiv</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="admin-c-td">
                       <span
+                        className="admin-c-kind"
                         style={{
-                          marginLeft: 8,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: "#b91c1c",
+                          background: color.bg,
+                          borderColor: color.border,
+                          color: color.text,
                         }}
                       >
-                        GESPERRT
+                        {color.label}
                       </span>
-                    ) : null}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        background: color.bg,
-                        color: color.text,
-                        fontWeight: "bold",
-                        fontSize: "11px",
-                      }}
+                    </td>
+                    <td className="admin-c-td admin-c-td--muted">{item.city || "—"}</td>
+                    <td
+                      className="admin-c-td admin-c-td--mono"
+                      title={iban || "Keine IBAN hinterlegt"}
                     >
-                      {color.label}
-                    </span>
-                  </td>
-                  <td>{item.city || "-"}</td>
-                  <td
-                    style={{
-                      fontSize: 12,
-                      fontFamily: "ui-monospace, monospace",
-                      wordBreak: "break-all",
-                      maxWidth: 220,
-                    }}
-                    title={iban || "Keine IBAN hinterlegt"}
-                  >
-                    {iban || <span style={{ color: "#b45309" }}>— fehlt</span>}
-                  </td>
-                  <td style={{ fontSize: 12, lineHeight: 1.4 }}>
-                    {compStatusDe(item.verification_status, item.compliance_status, item.contract_status)}
-                    <div style={{ color: "#64748b", marginTop: 4 }}>
-                      {item.is_active ? "aktiv" : "inaktiv"}
-                      {item.partner_panel_profile_locked ? " · Panel-Stammdaten offen" : ""}
-                    </div>
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {onOpenMandateDetail ? (
-                      <button
-                        type="button"
-                        className="admin-btn-primary"
-                        onClick={() => onOpenMandateDetail(item.id)}
-                        style={{ padding: "6px 10px", fontSize: 12, whiteSpace: "nowrap" }}
-                      >
-                        Zentrale
-                      </button>
-                    ) : (
-                      <span className="admin-table-sub">—</span>
-                    )}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
-                      style={{ padding: "5px 10px" }}
-                    >
-                      {selectedId === item.id ? "ZU" : "BEARBEITEN"}
-                    </button>
-                  </td>
-                </tr>
-                {selectedId === item.id && (
-                  <tr>
-                    <td colSpan="7" style={{ padding: "20px", background: "#fcfcfc", border: "2px solid #ddd" }}>
-                      <CompanyWorkspaceForm company={item} onUpdate={loadData} />
+                      {iban || <span className="admin-c-iban-miss">fehlt</span>}
+                    </td>
+                    <td className="admin-c-td">
+                      <StatusBadgeGroup
+                        v={item.verification_status}
+                        c={item.compliance_status}
+                        t={item.contract_status}
+                      />
+                    </td>
+                    <td className="admin-c-td admin-c-td--actions" onClick={(e) => e.stopPropagation()}>
+                      <div className="admin-c-rowactions">
+                        {onOpenMandateDetail ? (
+                          <button
+                            type="button"
+                            className="admin-c-icow"
+                            title="Mandantenzentrale (gleiche Aktion wie Zeile)"
+                            aria-label="Zentrale"
+                            onClick={() => onOpenMandateDetail(item.id)}
+                          >
+                            <span className="admin-c-icow__sym" aria-hidden>
+                              ⎘
+                            </span>
+                            <span className="admin-c-icow__txt">Zentrale</span>
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="admin-c-btn-sec"
+                          onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                        >
+                          {selectedId === item.id ? "Werkstatt schließen" : "Werkstatt öffnen"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+                  {selectedId === item.id && (
+                    <tr className="admin-c-expand">
+                      <td colSpan="6" className="admin-c-expand__cell">
+                        <div className="admin-c-workspace">
+                          <p className="admin-table-sub" style={{ marginTop: 0 }}>
+                            Erweiterte Einstellungen (Flotte, Kasse, Module) — getrennt von der Mandantenzentrale.
+                          </p>
+                          <CompanyWorkspaceForm company={item} onUpdate={loadData} />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

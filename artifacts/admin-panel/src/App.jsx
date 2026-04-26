@@ -271,6 +271,8 @@ export default function App() {
   const [companiesInitialOpenId, setCompaniesInitialOpenId] = useState(null);
   const [companiesListTab, setCompaniesListTab] = useState("all");
   const [mandateDetailCompanyId, setMandateDetailCompanyId] = useState(null);
+  /** Nach Zurück von der Zentrale: Zeile in der Mandantenliste für Voll-Workspace (`CompanyWorkspaceForm`) aufklappen. */
+  const [companiesExpandWorkspaceCompanyId, setCompaniesExpandWorkspaceCompanyId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [narrowNav, setNarrowNav] = useState(false);
 
@@ -288,6 +290,7 @@ export default function App() {
     setAuthUser(null);
     setActive("dashboard");
     setMandateDetailCompanyId(null);
+    setCompaniesExpandWorkspaceCompanyId(null);
   }, []);
 
   const handlePickPage = useCallback(
@@ -296,6 +299,7 @@ export default function App() {
       if (pageKey === "companies") {
         setCompaniesListTab(opt?.companiesTab != null && opt.companiesTab !== "" ? opt.companiesTab : "all");
         setMandateDetailCompanyId(null);
+        setCompaniesExpandWorkspaceCompanyId(null);
       }
       setActive(pageKey);
       setMobileMenuOpen(false);
@@ -498,6 +502,12 @@ export default function App() {
             mandateDetailCompanyId={mandateDetailCompanyId}
             onOpenMandateDetail={setMandateDetailCompanyId}
             onCloseMandateDetail={() => setMandateDetailCompanyId(null)}
+            expandWorkspaceCompanyId={companiesExpandWorkspaceCompanyId}
+            onExpandWorkspaceConsumed={() => setCompaniesExpandWorkspaceCompanyId(null)}
+            onRequestWorkspaceForCompany={(id) => {
+              setMandateDetailCompanyId(null);
+              setCompaniesExpandWorkspaceCompanyId(id);
+            }}
           />
         );
       case "taxi-fleet-drivers":
