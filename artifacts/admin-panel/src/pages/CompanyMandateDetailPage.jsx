@@ -14,6 +14,39 @@ const KIND_LABEL = {
 
 const NA = "Noch nicht hinterlegt";
 
+/** Admin-interne Keys in `fare_permissions` (Merge beim Speichern, Partner-Keys bleiben erhalten). */
+const FP_ADMIN = {
+  block: "admin_platform_block_reason",
+  hotelBookingContact: "hotel_booking_contact",
+  hotelVoucherInfo: "hotel_voucher_info",
+};
+
+/** Optional dokumentierte Admin-Hinweise in `insurer_permissions` (Merge). */
+const IP_ADMIN = {
+  defaultBillingRef: "default_billing_reference",
+  costCentersNote: "cost_centers_admin_note",
+  bookingTypesNote: "allowed_booking_types_admin_note",
+};
+
+function asObj(v) {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  return { ...v };
+}
+
+function strFromRec(rec, k) {
+  const v = rec[k];
+  return typeof v === "string" ? v : "";
+}
+
+function costCenterFromFp(fp) {
+  for (const k of ["cost_center", "costCenter", "kostenstelle", "Kostenstelle"]) {
+    const v = fp[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  }
+  return "";
+}
+
 function s(v) {
   if (v == null) return "";
   if (typeof v === "string") return v.trim();
@@ -76,6 +109,8 @@ function fmtAuditMeta(meta) {
 }
 
 function formFromCompany(c, billingAccountEmail) {
+  const fp = asObj(c.fare_permissions);
+  const ip = asObj(c.insurer_permissions);
   return {
     name: c.name ?? "",
     contact_name: c.contact_name ?? "",
@@ -101,9 +136,7 @@ function formFromCompany(c, billingAccountEmail) {
     bank_bic: c.bank_bic ?? "",
     support_email: c.support_email ?? "",
     dispo_phone: c.dispo_phone ?? "",
-    concession_number: c.concession_number ?? "",
-    legal_form: c.legal_form ?? "",
-    owner_name: c.owner_name ?? "",
+    opening_hours: c.opening_hours ?? "",
     billing_account_email: billingAccountEmail ?? "",
     verification_status: c.verification_status ?? "pending",
     compliance_status: c.compliance_status ?? "pending",
@@ -111,6 +144,15 @@ function formFromCompany(c, billingAccountEmail) {
     is_active: Boolean(c.is_active),
     is_blocked: Boolean(c.is_blocked),
     business_notes: c.business_notes ?? "",
+    max_drivers: Number.isFinite(Number(c.max_drivers)) ? Number(c.max_drivers) : 100,
+    max_vehicles: Number.isFinite(Number(c.max_vehicles)) ? Number(c.max_vehicles) : 100,
+    block_platform_reason: strFromRec(fp, FP_ADMIN.block),
+    cost_center: costCenterFromFp(fp),
+    hotel_booking_contact: strFromRec(fp, FP_ADMIN.hotelBookingContact),
+    hotel_voucher_info: strFromRec(fp, FP_ADMIN.hotelVoucher),
+    insurer_def_ref: strFromRec(ip, IP_ADMIN.defaultBillingRef),
+    insurer_cost_note: strFromRec(ip, IP_ADMIN.costCentersNote),
+    insurer_booking_types_note: strFromRec(ip, IP_ADMIN.bookingTypesNote),
   };
 }
 
@@ -162,7 +204,14 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
   const c = data?.company;
   const f = data?.financials;
   const isInsurerLike = c && (c.company_kind === "insurer" || c.company_kind === "medical");
+  const isHotel = c && (c.company_kind === "hotel" || c.company_kind === "corporate");
+  const isTaxi = c && c.company_kind === "taxi";
   const docs = data?.documents;
+
+  const fpRO = c ? asObj(c.fare_permissions) : {};
+  const ipRO = c ? asObj(c.insurer_permissions) : {};
+  const costCenterRO = c ? costCenterFromFp(fpRO) : "";
+  const blockReasonRO = strFromRec(fpRO, FP_ADMIN.block);
 
   useEffect(() => {
     if (!c || !data) return;
@@ -173,14 +222,42 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
   const fVal = (k) => (form ? form[k] : "");
 
   const onField = (k) => (e) => {
-    const v = e.target.type === "checkbox" ? e.target.checked : e.target.value;
-    setForm((prev) => (prev ? { ...prev, [k]: v } : prev));
+    if (e.target.type === "checkbox") {
+      const v = e.target.checked;
+      setForm((prev) => (prev ? { ...prev, [k]: v } : prev));
+      return;
+    }
+    if (e.target.type === "number") {
+      const n = parseInt(e.target.value, 10);
+      setForm((prev) => (prev ? { ...prev, [k]: Number.isFinite(n) ? n : 0 } : prev));
+      return;
+    }
+    setForm((prev) => (prev ? { ...prev, [k]: e.target.value } : prev));
   };
 
   const onSave = useCallback(() => {
-    if (!form || !companyId) return;
+    if (!form || !c || !companyId) return;
     setSaveErr("");
     setSaving(true);
+
+    const nextFp = { ...asObj(c.fare_permissions) };
+    nextFp[FP_ADMIN.block] = String(form.block_platform_reason ?? "").trim();
+    if (c.company_kind === "hotel" || c.company_kind === "corporate") {
+      const cc = String(form.cost_center ?? "").trim();
+      if (cc) nextFp.cost_center = cc;
+      else delete nextFp.cost_center;
+    }
+    if (c.company_kind === "hotel") {
+      nextFp[FP_ADMIN.hotelBookingContact] = String(form.hotel_booking_contact ?? "").trim();
+      nextFp[FP_ADMIN.hotelVoucherInfo] = String(form.hotel_voucher_info ?? "").trim();
+    }
+    const nextIp = { ...asObj(c.insurer_permissions) };
+    if (c.company_kind === "insurer" || c.company_kind === "medical") {
+      nextIp[IP_ADMIN.defaultBillingRef] = String(form.insurer_def_ref ?? "").trim();
+      nextIp[IP_ADMIN.costCentersNote] = String(form.insurer_cost_note ?? "").trim();
+      nextIp[IP_ADMIN.bookingTypesNote] = String(form.insurer_booking_types_note ?? "").trim();
+    }
+
     fetch(`${API_BASE}/admin/companies/${encodeURIComponent(companyId)}`, {
       method: "PATCH",
       headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
@@ -209,9 +286,7 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
         bank_bic: form.bank_bic,
         support_email: form.support_email,
         dispo_phone: form.dispo_phone,
-        concession_number: form.concession_number,
-        legal_form: form.legal_form,
-        owner_name: form.owner_name,
+        opening_hours: form.opening_hours,
         billing_account_email: form.billing_account_email,
         verification_status: form.verification_status,
         compliance_status: form.compliance_status,
@@ -219,6 +294,10 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
         is_active: form.is_active,
         is_blocked: form.is_blocked,
         business_notes: form.business_notes,
+        max_drivers: form.max_drivers,
+        max_vehicles: form.max_vehicles,
+        fare_permissions: nextFp,
+        insurer_permissions: nextIp,
       }),
     })
       .then(async (res) => {
@@ -232,7 +311,7 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
       })
       .catch(() => setSaveErr("Netzwerkfehler."))
       .finally(() => setSaving(false));
-  }, [form, companyId, loadMandate]);
+  }, [c, form, companyId, loadMandate]);
 
   const headBadges = useMemo(() => {
     if (!c) return null;
@@ -274,8 +353,8 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                 <h1 className="admin-m-hero__title">{c.name || "Mandantenzentrale"}</h1>
                 {headBadges}
                 <p className="admin-m-hero__hint">
-                  Zentrale für Kennzahlen und Fahrten; Plattform-Perspektive (keine klinischen Inhalte). Unternehmensart:{" "}
-                  <code>{c.company_kind}</code>
+                  Plattform-Mandantenzentrale: Stammdaten, Status, Abrechnung (einheitliches Layout für alle
+                  Unternehmensarten; technische <code>company_kind</code>: {c.company_kind}).
                 </p>
               </div>
               <div className="admin-m-hero__actions">
@@ -284,26 +363,30 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                     type="button"
                     className="admin-c-btn-sec"
                     onClick={() => onRequestFullWorkspace()}
-                    title="Erweiterte Werkstatt-Formulare (Flotte, Kasse) in der Mandantenliste"
+                    title="Werkstatt-Flotte/Kasse in der Mandantenliste öffnen (Fahrer, Fahrzeuge, Kasse — Tabs dort)"
                   >
-                    Werkstatt in Liste öffnen
+                    Flotte & Werkstatt
                   </button>
                 ) : null}
                 <button
                   type="button"
-                  className={showEdit ? "admin-c-btn-sec" : "admin-m-btn-pri"}
+                  className={showEdit ? "admin-c-btn-sec" : "admin-m-btn-bearb"}
                   onClick={() => {
                     setSaveErr("");
+                    if (showEdit) {
+                      setForm(formFromCompany(c, data.billingAccountEmail));
+                    }
                     setShowEdit((v) => !v);
                   }}
                 >
-                  {showEdit ? "Ansicht" : "Stammdaten bearbeiten"}
+                  {showEdit ? "Zurück zur Ansicht" : "Bearbeiten"}
                 </button>
                 <button
                   type="button"
                   className="admin-m-btn-gh"
                   onClick={() => loadMandate()}
                   disabled={loading}
+                  aria-label="Aktualisieren"
                 >
                   ⟳
                 </button>
@@ -314,15 +397,17 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
           {saveErr ? <div className="admin-error-banner" style={{ marginBottom: 12 }}>{saveErr}</div> : null}
 
           {showEdit && form ? (
-            <section className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
+            <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 16 }}>
               <div className="admin-m-card__h">
                 <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                  Stammdaten, Status & Notizen
+                  Mandant bearbeiten
                 </span>
                 <span className="admin-table-sub" style={{ margin: 0 }}>
-                  Speichern über <code>PATCH /admin/companies/:id</code> (kein Wechsel der Unternehmensart)
+                  <code>PATCH /admin/companies/:id</code> — Unternehmensart (<code>company_kind</code>) wechselt
+                  nur über Vorgang im Backoffice, nicht über dieses Formular.
                 </span>
               </div>
+              <h3 className="admin-m-sec">1. Stammdaten</h3>
               <div className="admin-m-form">
                 <label className="admin-m-lbl">
                   Firmenname
@@ -345,20 +430,13 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                   <input className="admin-m-inp" value={fVal("dispo_phone")} onChange={onField("dispo_phone")} />
                 </label>
                 <label className="admin-m-lbl">
-                  Konzession / Ordnungsnr.
+                  Support- / Buchungs-E-Mail
                   <input
                     className="admin-m-inp"
-                    value={fVal("concession_number")}
-                    onChange={onField("concession_number")}
+                    type="email"
+                    value={fVal("support_email")}
+                    onChange={onField("support_email")}
                   />
-                </label>
-                <label className="admin-m-lbl">
-                  Rechtsform
-                  <input className="admin-m-inp" value={fVal("legal_form")} onChange={onField("legal_form")} />
-                </label>
-                <label className="admin-m-lbl">
-                  Inhaber / Ansprechrecht
-                  <input className="admin-m-inp" value={fVal("owner_name")} onChange={onField("owner_name")} />
                 </label>
                 <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
                   Adresse: Zeile 1
@@ -380,14 +458,84 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                   Land
                   <input className="admin-m-inp" value={fVal("country")} onChange={onField("country")} />
                 </label>
-                <label className="admin-m-lbl">
-                  USt-Id
-                  <input className="admin-m-inp" value={fVal("vat_id")} onChange={onField("vat_id")} />
+                <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                  Erreichbarkeit / Öffnungszeiten (Text)
+                  <input className="admin-m-inp" value={fVal("opening_hours")} onChange={onField("opening_hours")} />
+                </label>
+                <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1" }}>
+                  Unternehmensart: <strong>{KIND_LABEL[c.company_kind] || c.company_kind}</strong> (
+                  {c.company_kind})
+                </p>
+              </div>
+              <h3 className="admin-m-sec">2. Status &amp; Freigaben</h3>
+              <div className="admin-m-form">
+                <label className="admin-m-lbl admin-m-lbl--check" style={{ gridColumn: "1 / -1" }}>
+                  <input type="checkbox" checked={!!form.is_active} onChange={onField("is_active")} /> Mandant aktiv
+                </label>
+                <label className="admin-m-lbl admin-m-lbl--check" style={{ gridColumn: "1 / -1" }}>
+                  <input type="checkbox" checked={!!form.is_blocked} onChange={onField("is_blocked")} /> Plattform-Sperre
                 </label>
                 <label className="admin-m-lbl">
-                  Steuer-Nr.
-                  <input className="admin-m-inp" value={fVal("tax_id")} onChange={onField("tax_id")} />
+                  Verifizierungsstatus
+                  <select
+                    className="admin-m-inp"
+                    value={fVal("verification_status")}
+                    onChange={onField("verification_status")}
+                  >
+                    <option value="pending">Ausstehend (pending)</option>
+                    <option value="in_review">In Prüfung (in_review)</option>
+                    <option value="verified">Verifiziert (verified)</option>
+                    <option value="rejected">Abgelehnt (rejected)</option>
+                  </select>
                 </label>
+                <label className="admin-m-lbl">
+                  Compliance-Status
+                  <select
+                    className="admin-m-inp"
+                    value={fVal("compliance_status")}
+                    onChange={onField("compliance_status")}
+                  >
+                    <option value="pending">Offen (pending)</option>
+                    <option value="in_review">In Prüfung (in_review)</option>
+                    <option value="compliant">Erfüllt (compliant)</option>
+                    <option value="non_compliant">Nicht erfüllt (non_compliant)</option>
+                  </select>
+                </label>
+                <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                  Vertragsstatus
+                  <select
+                    className="admin-m-inp"
+                    value={fVal("contract_status")}
+                    onChange={onField("contract_status")}
+                  >
+                    <option value="inactive">Inaktiv</option>
+                    <option value="active">Aktiv</option>
+                    <option value="suspended">Ausgesetzt (suspended)</option>
+                    <option value="terminated">Beendet (terminated)</option>
+                  </select>
+                </label>
+                <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                  Sperrgrund (intern, sichtbar für Plattform-Admins)
+                  <textarea
+                    className="admin-m-ta"
+                    rows={2}
+                    placeholder="Kurzgrund, warum der Mandant gesperrt ist — wird in `fare_permissions` abgelegt"
+                    value={fVal("block_platform_reason")}
+                    onChange={onField("block_platform_reason")}
+                  />
+                </label>
+                <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                  Admin-Notiz (intern, `business_notes`)
+                  <textarea
+                    className="admin-m-ta"
+                    rows={3}
+                    value={fVal("business_notes")}
+                    onChange={onField("business_notes")}
+                  />
+                </label>
+              </div>
+              <h3 className="admin-m-sec">3. Abrechnung</h3>
+              <div className="admin-m-form">
                 <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
                   Rechnungsempfänger / Rechnungsname
                   <input className="admin-m-inp" value={fVal("billing_name")} onChange={onField("billing_name")} />
@@ -429,23 +577,6 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                   />
                 </label>
                 <label className="admin-m-lbl">
-                  IBAN
-                  <input className="admin-m-inp" value={fVal("bank_iban")} onChange={onField("bank_iban")} />
-                </label>
-                <label className="admin-m-lbl">
-                  BIC
-                  <input className="admin-m-inp" value={fVal("bank_bic")} onChange={onField("bank_bic")} />
-                </label>
-                <label className="admin-m-lbl">
-                  Support-/Buchungs-E-Mail (Stamm)
-                  <input
-                    className="admin-m-inp"
-                    type="email"
-                    value={fVal("support_email")}
-                    onChange={onField("support_email")}
-                  />
-                </label>
-                <label className="admin-m-lbl">
                   Rechnungs-E-Mail (Abrechnungskonto)
                   <input
                     className="admin-m-inp"
@@ -455,56 +586,164 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                   />
                 </label>
                 <label className="admin-m-lbl">
-                  Verifizierungsstatus
-                  <select
-                    className="admin-m-inp"
-                    value={fVal("verification_status")}
-                    onChange={onField("verification_status")}
-                  >
-                    <option value="pending">pending</option>
-                    <option value="in_review">in_review</option>
-                    <option value="verified">verified</option>
-                    <option value="rejected">rejected</option>
-                  </select>
+                  IBAN
+                  <input className="admin-m-inp" value={fVal("bank_iban")} onChange={onField("bank_iban")} autoComplete="off" />
                 </label>
                 <label className="admin-m-lbl">
-                  Compliance-Status
-                  <select
-                    className="admin-m-inp"
-                    value={fVal("compliance_status")}
-                    onChange={onField("compliance_status")}
-                  >
-                    <option value="pending">pending</option>
-                    <option value="in_review">in_review</option>
-                    <option value="compliant">compliant</option>
-                    <option value="non_compliant">non_compliant</option>
-                  </select>
+                  BIC
+                  <input className="admin-m-inp" value={fVal("bank_bic")} onChange={onField("bank_bic")} autoComplete="off" />
                 </label>
                 <label className="admin-m-lbl">
-                  Vertragsstatus
-                  <select className="admin-m-inp" value={fVal("contract_status")} onChange={onField("contract_status")}>
-                    <option value="inactive">inactive</option>
-                    <option value="active">active</option>
-                    <option value="suspended">suspended</option>
-                    <option value="terminated">terminated</option>
-                  </select>
+                  USt-Id
+                  <input className="admin-m-inp" value={fVal("vat_id")} onChange={onField("vat_id")} />
                 </label>
-                <label className="admin-m-lbl admin-m-lbl--check">
-                  <input type="checkbox" checked={!!form.is_active} onChange={onField("is_active")} /> Mandant aktiv
+                <label className="admin-m-lbl">
+                  Steuer-Nr.
+                  <input className="admin-m-inp" value={fVal("tax_id")} onChange={onField("tax_id")} />
                 </label>
-                <label className="admin-m-lbl admin-m-lbl--check">
-                  <input type="checkbox" checked={!!form.is_blocked} onChange={onField("is_blocked")} /> Plattform-Sperre
-                </label>
-                <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
-                  Admin-Notiz / Sperrgrund-Referenz (`business_notes`, intern)
-                  <textarea
-                    className="admin-m-ta"
-                    rows={4}
-                    value={fVal("business_notes")}
-                    onChange={onField("business_notes")}
-                  />
-                </label>
+                <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1" }}>
+                  Zahlungs-/Sammelstatus der Abrechnung: später über Finanz-Module; hier nur Stammdaten fürs Konto.
+                </p>
               </div>
+              {isTaxi && form ? (
+                <>
+                  <h3 className="admin-m-sec">4. Taxi: Rahmen (Flotte separat)</h3>
+                  <div className="admin-m-form">
+                    <label className="admin-m-lbl">
+                      Konzession / Ordnungsnr.
+                      <input
+                        className="admin-m-inp"
+                        value={fVal("concession_number")}
+                        onChange={onField("concession_number")}
+                      />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Rechtsform
+                      <input className="admin-m-inp" value={fVal("legal_form")} onChange={onField("legal_form")} />
+                    </label>
+                    <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                      Inhaber / Ansprechrecht
+                      <input className="admin-m-inp" value={fVal("owner_name")} onChange={onField("owner_name")} />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Max. Fahrer
+                      <input
+                        className="admin-m-inp"
+                        type="number"
+                        min={0}
+                        value={form.max_drivers}
+                        onChange={onField("max_drivers")}
+                      />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Max. Fahrzeuge
+                      <input
+                        className="admin-m-inp"
+                        type="number"
+                        min={0}
+                        value={form.max_vehicles}
+                        onChange={onField("max_vehicles")}
+                      />
+                    </label>
+                    <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1" }}>
+                      Fahrer- und Fahrzeugverwaltung: in der <strong>Mandantenliste</strong> über „Flotte &amp; Werkstatt“
+                      bzw. dortige Fahrer-/Fahrzeug-Tabs.
+                    </p>
+                  </div>
+                </>
+              ) : null}
+              {isHotel && form ? (
+                <>
+                  <h3 className="admin-m-sec">4. Hotel &amp; Unternehmen: Kostenstelle, Buchung</h3>
+                  <div className="admin-m-form">
+                    <label className="admin-m-lbl">
+                      Kostenstelle (für Fahrten / Panel)
+                      <input className="admin-m-inp" value={fVal("cost_center")} onChange={onField("cost_center")} />
+                    </label>
+                    {c.company_kind === "hotel" ? (
+                      <>
+                        <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                          Ansprechpartner Buchung (optional)
+                          <input
+                            className="admin-m-inp"
+                            value={fVal("hotel_booking_contact")}
+                            onChange={onField("hotel_booking_contact")}
+                          />
+                        </label>
+                        <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                          Gutschein- / Voucher-Hinweise (kein Ersatz fürs Tarif-Backend)
+                          <textarea
+                            className="admin-m-ta"
+                            rows={2}
+                            value={fVal("hotel_voucher_info")}
+                            onChange={onField("hotel_voucher_info")}
+                          />
+                        </label>
+                      </>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
+              {isInsurerLike && form ? (
+                <>
+                  <h3 className="admin-m-sec">4. Krankenkasse: Abrechnung (ohne Diagnosen)</h3>
+                  <p className="admin-m-sec__hint" style={{ margin: "0 14px 8px" }}>
+                    Fachinhalte zu Krankenfahrten: keine Befunde oder Diagnosen in dieser Oberfläche. Nur
+                    abrechnungsrelevante Verwaltungsstichworte.
+                  </p>
+                  <div className="admin-m-form">
+                    <label className="admin-m-lbl">
+                      Vorgabe Abrechnungsreferenz
+                      <input
+                        className="admin-m-inp"
+                        value={fVal("insurer_def_ref")}
+                        onChange={onField("insurer_def_ref")}
+                      />
+                    </label>
+                    <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                      Kostenstellen / interne Stichworte
+                      <textarea
+                        className="admin-m-ta"
+                        rows={2}
+                        value={fVal("insurer_cost_note")}
+                        onChange={onField("insurer_cost_note")}
+                      />
+                    </label>
+                    <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                      Erlaubte Buchungsarten (Freitext-Hinweis, z. B. Krankenfahrt, Transport)
+                      <textarea
+                        className="admin-m-ta"
+                        rows={2}
+                        value={fVal("insurer_booking_types_note")}
+                        onChange={onField("insurer_booking_types_note")}
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : null}
+              {!isTaxi && !isHotel && !isInsurerLike && c ? (
+                <>
+                  <h3 className="admin-m-sec">4. Weitere / Sonstige Stammdaten</h3>
+                  <div className="admin-m-form">
+                    <label className="admin-m-lbl">
+                      Konzession / Ordnungsnr. (falls zutreffend)
+                      <input
+                        className="admin-m-inp"
+                        value={fVal("concession_number")}
+                        onChange={onField("concession_number")}
+                      />
+                    </label>
+                    <label className="admin-m-lbl">
+                      Rechtsform
+                      <input className="admin-m-inp" value={fVal("legal_form")} onChange={onField("legal_form")} />
+                    </label>
+                    <label className="admin-m-lbl" style={{ gridColumn: "1 / -1" }}>
+                      Inhaber
+                      <input className="admin-m-inp" value={fVal("owner_name")} onChange={onField("owner_name")} />
+                    </label>
+                  </div>
+                </>
+              ) : null}
               <div className="admin-m-form__foot">
                 <button type="button" className="admin-m-btn-pri" onClick={onSave} disabled={saving}>
                   {saving ? "Speichern …" : "Speichern"}
@@ -525,133 +764,265 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
           ) : null}
 
           {!showEdit ? (
-            <section className="admin-panel-card admin-m-card" style={{ marginBottom: 16 }}>
-              <div className="admin-m-card__h">
-                <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                  Stammdaten
-                </span>
-              </div>
-            <div className="admin-mandate-grid admin-mandate-grid--dense">
-              <div>
-                <div className="admin-table-sub">Firmenname</div>
-                <div style={{ fontWeight: 600 }}>{fmtText(c.name)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Unternehmensart (company_kind)</div>
-                <div>{KIND_LABEL[c.company_kind] || fmtText(c.company_kind)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Vertragsstatus</div>
-                <div>{fmtText(c.contract_status)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Verifizierungsstatus</div>
-                <div>{fmtText(c.verification_status)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Compliance-Status</div>
-                <div>{fmtText(c.compliance_status)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Aktiv / Plattform-Sperre</div>
-                <div>
-                  {boolJaNein(c.is_active)} / <span style={{ color: c.is_blocked ? "#b91c1c" : "inherit" }}>{c.is_blocked ? "Gesperrt" : "Nicht gesperrt"}</span>
+            <>
+              <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                <div className="admin-m-card__h">
+                  <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                    1. Stammdaten
+                  </span>
                 </div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Ansprechpartner</div>
-                <div>{fmtText(c.contact_name)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">E-Mail (Stamm)</div>
-                <div>{fmtText(c.email)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Support-/Buchungs-E-Mail</div>
-                <div>{fmtText(c.support_email)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">E-Mail (Abrechnungskonto, falls gepflegt)</div>
-                <div>{data.billingAccountEmail ? data.billingAccountEmail : NA}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Telefon (Stamm)</div>
-                <div>{fmtText(c.phone)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Disponent (Telefon)</div>
-                <div>{fmtText(c.dispo_phone)}</div>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div className="admin-table-sub">Adresse</div>
-                <div>
-                  {(() => {
-                    const parts = [c.address_line1, c.address_line2, c.postal_code, c.city, c.country]
-                      .map(s)
-                      .filter(Boolean);
-                    if (!parts.length) return NA;
-                    return parts.join(", ");
-                  })()}
-                </div>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div className="admin-table-sub">Rechnungsadresse</div>
-                <div>
-                  {(() => {
-                    const name = s(c.billing_name);
-                    const a1 = s(c.billing_address_line1);
-                    const a2 = s(c.billing_address_line2);
-                    const pc = s(c.billing_postal_code);
-                    const city = s(c.billing_city);
-                    const ctry = s(c.billing_country);
-                    const line = [name, a1, a2, [pc, city].filter(Boolean).join(" "), ctry]
-                      .filter(Boolean)
-                      .join(", ");
-                    return line || NA;
-                  })()}
-                </div>
-              </div>
-              <div>
-                <div className="admin-table-sub">USt-Id / Steuer-ID</div>
-                <div>
-                  {s(c.vat_id) || NA}
-                  {s(c.tax_id) ? (
-                    <span>
-                      {s(c.vat_id) ? " · " : ""}
-                      St.-Nr.: {c.tax_id}
-                    </span>
+                <div className="admin-mandate-grid admin-mandate-grid--dense">
+                  <div>
+                    <div className="admin-table-sub">Firmenname</div>
+                    <div style={{ fontWeight: 600 }}>{fmtText(c.name)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Unternehmensart</div>
+                    <div>
+                      {KIND_LABEL[c.company_kind] || fmtText(c.company_kind)} ({c.company_kind})
+                    </div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Ansprechpartner</div>
+                    <div>{fmtText(c.contact_name)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">E-Mail (Stamm)</div>
+                    <div>{fmtText(c.email)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Support- / Buchungs-E-Mail</div>
+                    <div>{fmtText(c.support_email)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Telefon (Stamm)</div>
+                    <div>{fmtText(c.phone)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Disponent (Telefon)</div>
+                    <div>{fmtText(c.dispo_phone)}</div>
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div className="admin-table-sub">Adresse</div>
+                    <div>
+                      {(() => {
+                        const parts = [c.address_line1, c.address_line2, c.postal_code, c.city, c.country]
+                          .map(s)
+                          .filter(Boolean);
+                        if (!parts.length) return NA;
+                        return parts.join(", ");
+                      })()}
+                    </div>
+                  </div>
+                  {s(c.opening_hours) ? (
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <div className="admin-table-sub">Erreichbarkeit / Öffnungszeiten</div>
+                      <div style={{ whiteSpace: "pre-wrap" }}>{c.opening_hours}</div>
+                    </div>
                   ) : null}
                 </div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Konzessions-/Ordnungsnr. (Stamm)</div>
-                <div>{fmtText(c.concession_number)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">Rechtsform / Inhaber</div>
-                <div>
-                  {s(c.legal_form) || NA}
-                  {s(c.owner_name) ? ` · Inhaber: ${c.owner_name}` : ""}
+              </section>
+
+              <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                <div className="admin-m-card__h">
+                  <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                    2. Status &amp; Freigaben
+                  </span>
                 </div>
-              </div>
-              <div>
-                <div className="admin-table-sub">IBAN (Auszahlung)</div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{fmtText(c.bank_iban)}</div>
-              </div>
-              <div>
-                <div className="admin-table-sub">BIC</div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{fmtText(c.bank_bic)}</div>
-              </div>
-            </div>
-            {c.business_notes ? (
-              <div style={{ marginTop: 16, padding: 12, background: "#f8fafc", borderRadius: 8 }}>
-                <div className="admin-table-sub" style={{ marginBottom: 6 }}>
-                  Betriebsnotiz
+                <div className="admin-mandate-grid admin-mandate-grid--dense">
+                  <div>
+                    <div className="admin-table-sub">Aktiv</div>
+                    <div>{boolJaNein(c.is_active)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Plattform-Sperre</div>
+                    <div style={{ color: c.is_blocked ? "#b91c1c" : undefined }}>
+                      {c.is_blocked ? "Gesperrt" : "Nicht gesperrt"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Vertragsstatus</div>
+                    <div>{fmtText(c.contract_status)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Verifizierung</div>
+                    <div>{fmtText(c.verification_status)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Compliance</div>
+                    <div>{fmtText(c.compliance_status)}</div>
+                  </div>
                 </div>
-                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{c.business_notes}</div>
-              </div>
-            ) : null}
-            </section>
+                {blockReasonRO ? (
+                  <div className="admin-m-ro-note">
+                    <div className="admin-table-sub" style={{ marginBottom: 6 }}>
+                      Sperrgrund (intern)
+                    </div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>{blockReasonRO}</div>
+                  </div>
+                ) : null}
+                {c.business_notes ? (
+                  <div className="admin-m-ro-note">
+                    <div className="admin-table-sub" style={{ marginBottom: 6 }}>
+                      Admin-Notiz
+                    </div>
+                    <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{c.business_notes}</div>
+                  </div>
+                ) : null}
+              </section>
+
+              <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                <div className="admin-m-card__h">
+                  <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                    3. Abrechnung
+                  </span>
+                </div>
+                <div className="admin-mandate-grid admin-mandate-grid--dense">
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div className="admin-table-sub">Rechnungsadresse / Rechnungsempfänger</div>
+                    <div>
+                      {(() => {
+                        const name = s(c.billing_name);
+                        const a1 = s(c.billing_address_line1);
+                        const a2 = s(c.billing_address_line2);
+                        const pc = s(c.billing_postal_code);
+                        const city = s(c.billing_city);
+                        const ctry = s(c.billing_country);
+                        const line = [name, a1, a2, [pc, city].filter(Boolean).join(" "), ctry]
+                          .filter(Boolean)
+                          .join(", ");
+                        return line || NA;
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">Rechnungs-E-Mail (Konto)</div>
+                    <div>{data.billingAccountEmail ? data.billingAccountEmail : NA}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">USt-Id / Steuer-ID</div>
+                    <div>
+                      {s(c.vat_id) || NA}
+                      {s(c.tax_id) ? (
+                        <span>
+                          {s(c.vat_id) ? " · " : ""}
+                          St.-Nr.: {c.tax_id}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">IBAN</div>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{fmtText(c.bank_iban)}</div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">BIC</div>
+                    <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 13 }}>{fmtText(c.bank_bic)}</div>
+                  </div>
+                </div>
+              </section>
+
+              {isTaxi || isHotel || isInsurerLike ? (
+                <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      4. Zusatz je Mandantentyp
+                    </span>
+                  </div>
+                  <div className="admin-mandate-grid admin-mandate-grid--dense">
+                    {isTaxi ? (
+                      <>
+                        <div>
+                          <div className="admin-table-sub">Konzession / Ordnungsnr.</div>
+                          <div>{fmtText(c.concession_number)}</div>
+                        </div>
+                        <div>
+                          <div className="admin-table-sub">Rechtsform / Inhaber</div>
+                          <div>
+                            {s(c.legal_form) || NA}
+                            {s(c.owner_name) ? ` · Inhaber: ${c.owner_name}` : ""}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="admin-table-sub">Kontingent (max.)</div>
+                          <div>
+                            Fahrer: {c.max_drivers ?? "—"} · Fahrzeuge: {c.max_vehicles ?? "—"}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                    {isHotel ? (
+                      <div>
+                        <div className="admin-table-sub">Kostenstelle</div>
+                        <div>{costCenterRO || NA}</div>
+                      </div>
+                    ) : null}
+                    {c.company_kind === "hotel" && (strFromRec(fpRO, FP_ADMIN.hotelBookingContact) || strFromRec(fpRO, FP_ADMIN.hotelVoucherInfo)) ? (
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <div className="admin-table-sub">Buchung / Gutschein (Hinweistexte)</div>
+                        {strFromRec(fpRO, FP_ADMIN.hotelBookingContact) ? (
+                          <div>Ansprechpartner Buchung: {strFromRec(fpRO, FP_ADMIN.hotelBookingContact)}</div>
+                        ) : null}
+                        {strFromRec(fpRO, FP_ADMIN.hotelVoucherInfo) ? (
+                          <div style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>
+                            {strFromRec(fpRO, FP_ADMIN.hotelVoucherInfo)}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {isInsurerLike ? (
+                      <>
+                        {strFromRec(ipRO, IP_ADMIN.defaultBillingRef) ? (
+                          <div>
+                            <div className="admin-table-sub">Vorgabe Abrechnungsreferenz</div>
+                            <div>{strFromRec(ipRO, IP_ADMIN.defaultBillingRef)}</div>
+                          </div>
+                        ) : null}
+                        {strFromRec(ipRO, IP_ADMIN.costCentersNote) || strFromRec(ipRO, IP_ADMIN.bookingTypesNote) ? (
+                          <div style={{ gridColumn: "1 / -1" }}>
+                            {strFromRec(ipRO, IP_ADMIN.costCentersNote) ? (
+                              <div style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
+                                <span className="admin-table-sub">Kostenstellen-Notiz: </span>
+                                {strFromRec(ipRO, IP_ADMIN.costCentersNote)}
+                              </div>
+                            ) : null}
+                            {strFromRec(ipRO, IP_ADMIN.bookingTypesNote) ? (
+                              <div style={{ whiteSpace: "pre-wrap" }}>
+                                <span className="admin-table-sub">Buchungsarten: </span>
+                                {strFromRec(ipRO, IP_ADMIN.bookingTypesNote)}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <p className="admin-m-sec__hint" style={{ gridColumn: "1 / -1", margin: 0 }}>
+                          Keine Diagnosen; nur Verwaltungshinweise. Fahrten-Details siehe Tabelle unten.
+                        </p>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+              ) : !isTaxi && !isHotel && !isInsurerLike ? (
+                <section className="admin-panel-card admin-m-card admin-m-card--unified" style={{ marginBottom: 12 }}>
+                  <div className="admin-m-card__h">
+                    <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                      4. Weitere Angaben
+                    </span>
+                  </div>
+                  <div className="admin-mandate-grid admin-mandate-grid--dense">
+                    <div>
+                      <div className="admin-table-sub">Konzession / Rechtsform</div>
+                      <div>
+                        {fmtText(c.concession_number)} · {s(c.legal_form) || NA}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="admin-table-sub">Inhaber</div>
+                      <div>{fmtText(c.owner_name)}</div>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
+            </>
           ) : null}
 
           <section className="admin-panel-card admin-m-card admin-m-card--kpi" style={{ marginBottom: 16 }}>
@@ -730,7 +1101,7 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
 
           {data.taxi ? (
             <section
-              className="admin-panel-card admin-m-card admin-m-silo admin-m-silo--taxi"
+              className="admin-panel-card admin-m-card admin-m-card--unified"
               style={{ marginBottom: 16 }}
             >
               <div className="admin-m-card__h">
@@ -777,7 +1148,7 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
 
           {data.hotel ? (
             <section
-              className="admin-panel-card admin-m-card admin-m-silo admin-m-silo--hotel"
+              className="admin-panel-card admin-m-card admin-m-card--unified"
               style={{ marginBottom: 16 }}
             >
               <div className="admin-m-card__h">
@@ -804,7 +1175,7 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
 
           {data.insurer ? (
             <section
-              className="admin-panel-card admin-m-card admin-m-silo admin-m-silo--kasse"
+              className="admin-panel-card admin-m-card admin-m-card--unified"
               style={{ marginBottom: 16 }}
             >
               <div className="admin-m-card__h">

@@ -3184,6 +3184,67 @@ ul.admin-mandate-doclist {
   background: #fafbfc;
 }
 
+/* Mandantenzentrale: einheitliche Karten, kein Taxi-Gelb/Schwarz-„Silo“-Look */
+.admin-m-card--unified {
+  border: 1px solid #d1dae6;
+}
+
+.admin-m-btn-bearb {
+  min-height: 40px;
+  padding: 10px 20px;
+  background: #0f172a;
+  color: #fff;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 800;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.admin-m-btn-bearb:hover {
+  background: #1e293b;
+}
+
+.admin-m-sec {
+  margin: 16px 0 0;
+  padding: 0 14px 8px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #475569;
+  border-bottom: 1px solid #e8edf4;
+  clear: both;
+}
+
+.admin-m-sec + .admin-m-form {
+  padding-top: 10px;
+}
+
+.admin-m-sec__hint {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #5c6470;
+  margin: 0 0 2px 0;
+}
+
+.admin-m-sec__hint strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.admin-m-ro-note {
+  margin: 8px 14px 0;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 .admin-m-silo {
   border-left: 4px solid #0d9488;
 }
