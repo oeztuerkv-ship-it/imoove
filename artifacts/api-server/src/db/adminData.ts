@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, count, eq, gte, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   adminCompaniesTable,
@@ -500,7 +500,7 @@ export async function getCompanyKpis(companyId: string, now = new Date()): Promi
     db
       .select({ n: count() })
       .from(ridesTable)
-      .where(and(eq(ridesTable.company_id, companyId), sql`${ridesTable.status} = any(${openStatuses})`)),
+      .where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, openStatuses))),
     db
       .select({
         remaining: sql<string>`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`,

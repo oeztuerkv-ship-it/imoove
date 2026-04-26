@@ -1,8 +1,9 @@
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import { listAccessCodesForCompany } from "./accessCodesData";
+import { logger } from "../lib/logger";
 import type { CompanyRow } from "../routes/adminApi.types";
-import { findCompanyById, getCompanyKpis } from "./adminData";
+import { findCompanyById, getCompanyKpis, type CompanyKpis } from "./adminData";
 import { listAdminTaxiFleetDriverRows } from "./fleetDriverReadiness";
 import { listFleetVehiclesForCompany } from "./fleetVehiclesData";
 import { listPanelAuditForCompany, type PanelAuditLogRow } from "./panelAuditData";
@@ -70,9 +71,15 @@ export type CompanyMandateDocuments = {
   insuranceFilePresent: boolean;
 };
 
+const KPI_FALLBACK: CompanyKpis = {
+  monthlyRevenue: 0,
+  openRides: 0,
+  voucherLimitAvailable: null,
+};
+
 export type CompanyMandateRead = {
   company: CompanyRow;
-  kpi: Awaited<ReturnType<typeof getCompanyKpis>>;
+  kpi: CompanyKpis;
   rides: CompanyMandateReadRides;
   financials: CompanyMandateReadFinancials;
   taxi: CompanyMandateTaxiBlock | null;
@@ -123,7 +130,13 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
   const company = await findCompanyById(companyId);
   if (!company) return null;
 
-  const kpi = await getCompanyKpis(companyId);
+  let kpi: CompanyKpis;
+  try {
+    kpi = await getCompanyKpis(companyId);
+  } catch (err) {
+    logger.error({ err, companyId }, "getCompanyKpis failed in mandate-read; using zero KPIs");
+    kpi = KPI_FALLBACK;
+  }
 
   if (!isPostgresConfigured() || !getDb()) {
     const { rides: rsum, sampleBillingRefs } = await memPathRidesSummary(companyId);
