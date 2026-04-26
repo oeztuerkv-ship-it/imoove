@@ -29,10 +29,14 @@
       return "https://api.onroda.de/api";
     }
 
-    function toneClass(tone) {
-      var raw = String(tone || "info").toLowerCase();
-      if (raw === "warning" || raw === "success" || raw === "neutral") return raw;
-      return "info";
+    function hintTypeMeta(item) {
+      var raw = item && (item.type != null && item.type !== "" ? item.type : item.tone);
+      raw = String(raw || "info").toLowerCase();
+      if (raw === "neutral") raw = "info";
+      if (raw === "success") return { cls: "success", icon: "✅" };
+      if (raw === "warning") return { cls: "warning", icon: "⚠️" };
+      if (raw === "important") return { cls: "important", icon: "❗" };
+      return { cls: "info", icon: "ℹ️" };
     }
 
     function setMultilineText(target, text) {
@@ -47,10 +51,17 @@
     }
 
     function buildPlaceholderNode(item) {
+      var meta = hintTypeMeta(item);
       var wrap = document.createElement("article");
-      wrap.className = "hp-dynamic-placeholder hp-dynamic-placeholder--" + toneClass(item.tone);
+      wrap.className = "hp-dynamic-placeholder hp-dynamic-placeholder--" + meta.cls;
       var line = document.createElement("p");
       line.className = "hp-dynamic-placeholder__line";
+
+      var icon = document.createElement("span");
+      icon.className = "hp-dynamic-placeholder__icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = meta.icon;
+      line.appendChild(icon);
 
       var title = document.createElement("strong");
       title.className = "hp-dynamic-placeholder__title";
@@ -148,7 +159,7 @@
             noticeRoot.setAttribute("aria-live", "polite");
             noticeRoot.appendChild(
               buildPlaceholderNode({
-                tone: "info",
+                type: "info",
                 message: String(cmsItem.noticeText || ""),
                 title: "Hinweis",
               }),
@@ -167,7 +178,7 @@
             noticeRoot.setAttribute("aria-live", "polite");
             noticeRoot.appendChild(
               buildPlaceholderNode({
-                tone: "info",
+                type: "info",
                 message: String(cmsItem.noticeText || ""),
                 title: "Hinweis",
               }),

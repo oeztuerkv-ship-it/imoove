@@ -714,6 +714,7 @@ CREATE TABLE IF NOT EXISTS homepage_placeholders (
   message TEXT NOT NULL DEFAULT '',
   cta_label TEXT,
   cta_url TEXT,
+  -- Öffentliche API liefert Feld "type"; erlaubt: info | success | warning | important (Spaltenname tone)
   tone TEXT NOT NULL DEFAULT 'info',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order INTEGER NOT NULL DEFAULT 0,

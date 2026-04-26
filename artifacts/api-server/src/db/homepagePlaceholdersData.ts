@@ -3,7 +3,20 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "./client";
 import { homepagePlaceholdersTable } from "./schema";
 
+export type HomepageHintType = "info" | "success" | "warning" | "important";
+
 type PlaceholderRow = typeof homepagePlaceholdersTable.$inferSelect;
+
+/** DB-Spalte `tone`: erlaubte Werte für öffentliche/admin DTOs als `type`. */
+export function normalizeHomepageHintType(raw: string | null | undefined): HomepageHintType {
+  const t = String(raw ?? "")
+    .trim()
+    .toLowerCase();
+  if (t === "success") return "success";
+  if (t === "warning") return "warning";
+  if (t === "important") return "important";
+  return "info";
+}
 
 function rowToAdminDto(r: PlaceholderRow) {
   return {
@@ -12,7 +25,7 @@ function rowToAdminDto(r: PlaceholderRow) {
     message: r.message,
     ctaLabel: r.cta_label,
     ctaUrl: r.cta_url,
-    tone: r.tone,
+    type: normalizeHomepageHintType(r.tone),
     isActive: r.is_active,
     sortOrder: r.sort_order,
     visibleFrom: r.visible_from ? r.visible_from.toISOString() : null,
@@ -30,7 +43,7 @@ function rowToPublicDto(r: PlaceholderRow) {
     message: r.message,
     ctaLabel: r.cta_label,
     ctaUrl: r.cta_url,
-    tone: r.tone,
+    type: normalizeHomepageHintType(r.tone),
     dismissKey: r.dismiss_key || r.id,
   };
 }
@@ -75,7 +88,7 @@ export async function createHomepagePlaceholder(input: {
   message: string;
   ctaLabel?: string | null;
   ctaUrl?: string | null;
-  tone: string;
+  type: HomepageHintType;
   isActive: boolean;
   sortOrder: number;
   visibleFrom?: Date | null;
@@ -87,13 +100,14 @@ export async function createHomepagePlaceholder(input: {
   if (!db) return null;
   const now = new Date();
   const id = `hpb-${randomUUID()}`;
+  const storedType = normalizeHomepageHintType(input.type);
   await db.insert(homepagePlaceholdersTable).values({
     id,
     title: input.title,
     message: input.message,
     cta_label: input.ctaLabel ?? null,
     cta_url: input.ctaUrl ?? null,
-    tone: input.tone,
+    tone: storedType,
     is_active: input.isActive,
     sort_order: input.sortOrder,
     visible_from: input.visibleFrom ?? null,
@@ -115,7 +129,7 @@ export async function patchHomepagePlaceholder(
     message?: string;
     ctaLabel?: string | null;
     ctaUrl?: string | null;
-    tone?: string;
+    type?: HomepageHintType;
     isActive?: boolean;
     sortOrder?: number;
     visibleFrom?: Date | null;
@@ -134,7 +148,7 @@ export async function patchHomepagePlaceholder(
   if (typeof input.message === "string") patch.message = input.message;
   if (input.ctaLabel !== undefined) patch.cta_label = input.ctaLabel ?? null;
   if (input.ctaUrl !== undefined) patch.cta_url = input.ctaUrl ?? null;
-  if (typeof input.tone === "string") patch.tone = input.tone;
+  if (input.type !== undefined) patch.tone = normalizeHomepageHintType(input.type);
   if (typeof input.isActive === "boolean") patch.is_active = input.isActive;
   if (typeof input.sortOrder === "number") patch.sort_order = input.sortOrder;
   if (input.visibleFrom !== undefined) patch.visible_from = input.visibleFrom ?? null;
@@ -144,4 +158,3 @@ export async function patchHomepagePlaceholder(
   const rows = await db.select().from(homepagePlaceholdersTable).where(eq(homepagePlaceholdersTable.id, id)).limit(1);
   return rows[0] ? rowToAdminDto(rows[0]) : null;
 }
-

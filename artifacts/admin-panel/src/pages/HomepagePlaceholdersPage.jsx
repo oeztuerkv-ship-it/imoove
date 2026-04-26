@@ -5,11 +5,11 @@ import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 const LIST_URL = `${API_BASE}/admin/homepage-placeholders`;
 const CREATE_URL = `${API_BASE}/admin/homepage-placeholders`;
 
-const TONE_OPTIONS = [
-  { value: "info", label: "Info" },
-  { value: "warning", label: "Warnung" },
-  { value: "success", label: "Erfolg" },
-  { value: "neutral", label: "Neutral" },
+const HINT_TYPE_OPTIONS = [
+  { value: "info", label: "ℹ️ Info (neutral)" },
+  { value: "success", label: "✅ Erfolg (grün)" },
+  { value: "warning", label: "⚠️ Warnung (gelb)" },
+  { value: "important", label: "❗ Wichtig (rot)" },
 ];
 
 function normalizeForm(form) {
@@ -18,7 +18,7 @@ function normalizeForm(form) {
     message: form.message.trim(),
     ctaLabel: form.ctaLabel.trim(),
     ctaUrl: form.ctaUrl.trim(),
-    tone: form.tone,
+    type: form.type,
     isActive: !!form.isActive,
     sortOrder: Number.isFinite(Number(form.sortOrder)) ? Number(form.sortOrder) : 0,
     visibleFrom: form.visibleFrom.trim(),
@@ -35,6 +35,16 @@ function toDatetimeLocalInput(v) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function coerceHintType(item) {
+  const r = String(item.type || item.tone || "info")
+    .trim()
+    .toLowerCase();
+  if (r === "success") return "success";
+  if (r === "warning") return "warning";
+  if (r === "important") return "important";
+  return "info";
+}
+
 export default function HomepagePlaceholdersPage() {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -46,7 +56,7 @@ export default function HomepagePlaceholdersPage() {
     message: "",
     ctaLabel: "",
     ctaUrl: "",
-    tone: "info",
+    type: "info",
     isActive: true,
     sortOrder: "0",
     visibleFrom: "",
@@ -86,7 +96,11 @@ export default function HomepagePlaceholdersPage() {
         throw new Error("Titel und Nachricht sind Pflichtfelder.");
       }
       const body = {
-        ...normalized,
+        title: normalized.title,
+        message: normalized.message,
+        type: normalized.type,
+        isActive: normalized.isActive,
+        sortOrder: normalized.sortOrder,
         ctaLabel: normalized.ctaLabel || null,
         ctaUrl: normalized.ctaUrl || null,
         visibleFrom: normalized.visibleFrom ? new Date(normalized.visibleFrom).toISOString() : null,
@@ -109,7 +123,7 @@ export default function HomepagePlaceholdersPage() {
         message: "",
         ctaLabel: "",
         ctaUrl: "",
-        tone: "info",
+        type: "info",
         isActive: true,
         sortOrder: "0",
         visibleFrom: "",
@@ -130,7 +144,7 @@ export default function HomepagePlaceholdersPage() {
       message: item.message || "",
       ctaLabel: item.ctaLabel || "",
       ctaUrl: item.ctaUrl || "",
-      tone: item.tone || "info",
+      type: coerceHintType(item),
       isActive: item.isActive !== false,
       sortOrder: String(item.sortOrder ?? 0),
       visibleFrom: toDatetimeLocalInput(item.visibleFrom),
@@ -146,7 +160,7 @@ export default function HomepagePlaceholdersPage() {
       message: "",
       ctaLabel: "",
       ctaUrl: "",
-      tone: "info",
+      type: "info",
       isActive: true,
       sortOrder: "0",
       visibleFrom: "",
@@ -200,9 +214,9 @@ export default function HomepagePlaceholdersPage() {
           </div>
           <div className="admin-form-grid-2">
             <label className="admin-form-pair">
-              <span className="admin-field-label">Ton</span>
-              <select className="admin-select" value={form.tone} onChange={(e) => setForm((p) => ({ ...p, tone: e.target.value }))}>
-                {TONE_OPTIONS.map((o) => (
+              <span className="admin-field-label">Typ</span>
+              <select className="admin-select" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}>
+                {HINT_TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -274,7 +288,7 @@ export default function HomepagePlaceholdersPage() {
                 <div className="admin-table-sub">#{item.id}</div>
               </div>
               <div>{item.message}</div>
-              <div>{item.tone || "info"}</div>
+              <div>{item.type || "info"}</div>
               <div>{item.isActive ? "aktiv" : "inaktiv"}</div>
               <div className="admin-table-sub">
                 {item.visibleFrom || "sofort"} - {item.visibleUntil || "offen"}

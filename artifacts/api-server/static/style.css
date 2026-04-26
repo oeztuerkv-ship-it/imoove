@@ -207,7 +207,9 @@
     .hp-dynamic-placeholder--info,
     .hp-dynamic-placeholder--warning,
     .hp-dynamic-placeholder--success,
-    .hp-dynamic-placeholder--neutral { background: transparent; }
+    .hp-dynamic-placeholder--important {
+      background: transparent;
+    }
 
     .hp-dynamic-placeholder::before {
       content: "";
@@ -215,9 +217,25 @@
       left: 0;
       top: 2px;
       bottom: 2px;
-      width: 2px;
-      background: rgba(232, 24, 65, 0.9);
+      width: 3px;
       border-radius: 2px;
+      background: #64748b;
+    }
+
+    .hp-dynamic-placeholder--info::before {
+      background: #64748b;
+    }
+
+    .hp-dynamic-placeholder--success::before {
+      background: #16a34a;
+    }
+
+    .hp-dynamic-placeholder--warning::before {
+      background: #ca8a04;
+    }
+
+    .hp-dynamic-placeholder--important::before {
+      background: #dc2626;
     }
 
     .hp-dynamic-placeholder__line {
@@ -225,6 +243,7 @@
       display: flex;
       align-items: flex-start;
       flex-wrap: wrap;
+      gap: 6px;
       min-width: 0;
       color: #3f3f46;
       font-size: 14px;
@@ -232,22 +251,46 @@
       white-space: normal;
     }
 
+    .hp-dynamic-placeholder__icon {
+      flex: 0 0 auto;
+      font-size: 1rem;
+      line-height: 1.35;
+      user-select: none;
+    }
+
     .hp-dynamic-placeholder__title {
-      margin: 0 4px 0 0;
+      margin: 0;
       font-size: 14px;
       font-weight: 700;
       letter-spacing: 0;
       text-transform: none;
-      color: #3f3f46;
+      color: #334155;
       flex: 0 0 auto;
     }
 
     .hp-dynamic-placeholder__msg {
-      color: #3f3f46;
+      color: #334155;
       line-height: 1.35;
       font-size: 14px;
       white-space: normal;
       overflow-wrap: anywhere;
+      flex: 1 1 12rem;
+      min-width: 0;
+    }
+
+    .hp-dynamic-placeholder--success .hp-dynamic-placeholder__title,
+    .hp-dynamic-placeholder--success .hp-dynamic-placeholder__msg {
+      color: #14532d;
+    }
+
+    .hp-dynamic-placeholder--warning .hp-dynamic-placeholder__title,
+    .hp-dynamic-placeholder--warning .hp-dynamic-placeholder__msg {
+      color: #713f12;
+    }
+
+    .hp-dynamic-placeholder--important .hp-dynamic-placeholder__title,
+    .hp-dynamic-placeholder--important .hp-dynamic-placeholder__msg {
+      color: #7f1d1d;
     }
 
     .hp-dynamic-placeholder__cta {

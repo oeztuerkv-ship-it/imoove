@@ -675,6 +675,7 @@ export const homepagePlaceholdersTable = pgTable("homepage_placeholders", {
   message: text("message").notNull().default(""),
   cta_label: text("cta_label"),
   cta_url: text("cta_url"),
+  /** Visueller Hinweis-Typ in API als `type`: info | success | warning | important (Legacy-Spaltenname). */
   tone: text("tone").notNull().default("info"),
   is_active: boolean("is_active").notNull().default(true),
   sort_order: integer("sort_order").notNull().default(0),

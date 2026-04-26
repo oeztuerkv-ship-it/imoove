@@ -1052,10 +1052,12 @@ function parseOptionalIsoTs(v: unknown): Date | null | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
-function normalizeHomepageTone(v: unknown): string | null {
+/** Request-Feld `type` (optional Legacy: `tone`). Ungültig → null. */
+function normalizeHomepageHintTypeBody(v: unknown): string | null {
   const raw = typeof v === "string" ? v.trim().toLowerCase() : "";
-  if (!raw) return "info";
-  return ["info", "warning", "success", "neutral"].includes(raw) ? raw : null;
+  if (!raw || raw === "neutral") return "info";
+  if (raw === "info" || raw === "success" || raw === "warning" || raw === "important") return raw;
+  return null;
 }
 
 adminJson.get("/homepage-placeholders", async (req, res, next) => {
@@ -1525,9 +1527,10 @@ adminJson.post("/homepage-placeholders", async (req, res, next) => {
       res.status(400).json({ error: "title_message_required" });
       return;
     }
-    const tone = normalizeHomepageTone(b.tone);
-    if (!tone) {
-      res.status(400).json({ error: "tone_invalid" });
+    const typeRaw = b.type !== undefined ? b.type : b.tone;
+    const hintType = normalizeHomepageHintTypeBody(typeRaw);
+    if (!hintType) {
+      res.status(400).json({ error: "type_invalid" });
       return;
     }
     const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
@@ -1542,7 +1545,7 @@ adminJson.post("/homepage-placeholders", async (req, res, next) => {
       message,
       ctaLabel: typeof b.ctaLabel === "string" ? b.ctaLabel.trim() : null,
       ctaUrl: typeof b.ctaUrl === "string" ? b.ctaUrl.trim() : null,
-      tone,
+      type: hintType as "info" | "success" | "warning" | "important",
       isActive: b.isActive !== false,
       sortOrder,
       visibleFrom,
@@ -1576,9 +1579,12 @@ adminJson.patch("/homepage-placeholders/:id", async (req, res, next) => {
       return;
     }
     const b = (req.body ?? {}) as Record<string, unknown>;
-    const tone = b.tone === undefined ? undefined : normalizeHomepageTone(b.tone);
-    if (tone === null) {
-      res.status(400).json({ error: "tone_invalid" });
+    const typeRaw =
+      b.type !== undefined ? b.type : b.tone !== undefined ? b.tone : undefined;
+    const hintType =
+      typeRaw === undefined ? undefined : normalizeHomepageHintTypeBody(typeRaw);
+    if (hintType === null) {
+      res.status(400).json({ error: "type_invalid" });
       return;
     }
     const visibleFrom = parseOptionalIsoTs(b.visibleFrom);
@@ -1592,7 +1598,7 @@ adminJson.patch("/homepage-placeholders/:id", async (req, res, next) => {
       message: typeof b.message === "string" ? b.message.trim() : undefined,
       ctaLabel: b.ctaLabel === undefined ? undefined : typeof b.ctaLabel === "string" ? b.ctaLabel.trim() : null,
       ctaUrl: b.ctaUrl === undefined ? undefined : typeof b.ctaUrl === "string" ? b.ctaUrl.trim() : null,
-      tone: tone ?? undefined,
+      type: hintType as "info" | "success" | "warning" | "important" | undefined,
       isActive: typeof b.isActive === "boolean" ? b.isActive : undefined,
       sortOrder: Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : undefined,
       visibleFrom,
