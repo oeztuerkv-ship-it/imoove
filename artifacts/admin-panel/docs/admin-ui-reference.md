@@ -4,6 +4,16 @@
 
 Ziel: **keine** neuen Fremd- oder Einzellayouts, **keine** isolierten Sonderdesigns — neue und erweiterte Seiten sollen **dieselbe** visuelle und strukturelle Sprache nutzen.
 
+## ONRODA Admin-Standard (Leitbild)
+
+1. **Einheitliches helles Layout** — `admin-shell` / helle Inhaltsflächen, keine dunklen Vollbild-„Cockpits“ als neues Standard-Layout; Kontrast über Karten, nicht über Sonderhintergründe pro Seite.
+2. **Karten statt Fremd-Design** — inhaltlich relevante Blöcke als `admin-m-card` (mit `admin-m-card--unified` wo vorgesehen), nicht als freistehendes Layout-Raster in Inline-Farben oder fremden CSS-Gittern.
+3. **Mandantenzentrale als Hauptansicht** — Blick auf einen Mandanten folgt dem Muster `CompanyMandateDetailPage`: nummerierte Sektionen (Stammdaten, Status, Abrechnung, ggf. typbezogen), Hero mit Rück-Navigation.
+4. **„Bearbeiten“ direkt in der Zentrale** — derselbe Ablauf wie in der Referenz: umschaltbares Formular in der Karte (Button `admin-m-btn-bearb`), kein zwingend separater Vollbild-Editor-Modus, wo die Zentrale dasselbe leistet.
+5. **Typ-spezifische Zusatzfelder getrennt** — gemeinsame Stammdaten/Status/Abrechnung zuerst; Sektion **4** (Taxi, Hotel, Krankenkasse, sonst) nur Zusätze, keine doppelte Logik und keine Vermischung mit globalen Blöcken.
+6. **TaxiMaster Schwarz/Gelb ist kein Admin-Standard** — die alte `TaxiMasterPanel`-Optik (dunkle Sidebar, Gelb) ist **kein** Vorbild für neuen oder refaktorierten Admin-UI-Code. Wo die Komponente vorerst noch technisch nötig ist, bleibt sie hinter klarer „Werkstatt“-Einordnung; **neu** baut der Admin nur noch auf hellem Karten-Layout.
+7. **Gleiche Tragfähigkeit aller Unternehmensarten** — **Taxi, Hotel, Krankenkasse, Sonstige** nutzen **dieselbe** Seiten- und Sektionslogik; Unterschiede nur in den sichtbaren/aktiven Feldern der Sektion 4 und den Daten (`company_kind` / PATCH-Body), nicht in einem eigenen Layout-„Skin“ pro Branche.
+
 ## Referenz-Dateien (Source of Truth)
 
 | Bereich        | Beispiel / Definition |
@@ -60,7 +70,7 @@ Keine ad-hoc `style={{ background: '#f1c40f' }}` oder fremde Farb-„Themes“ i
 ## Was nicht tun
 
 - Keine **neuen** vollseitigen Layout-Experimente neben dem Shell- und Card-Muster, wenn dieselbe Information auch in Karten+Form darstellbar wäre.
-- Keine **duplizierten** Design-Systeme im Ordner (kein zweites „Taxi Master“-Theme).
+- Keine **duplizierten** Design-Systeme im Ordner (kein zweites **TaxiMaster**-Theme als Admin-Referenz; siehe ONRODA Admin-Standard oben).
 - Keine harten **Einzelfarben** für Sektionen, die im Rest des Admin-Panels nicht vorkommen — bei Bedarf zuerst `onroda-brand.css` / Variablen prüfen, dann ggf. **eine** Erweiterung in `admin-ui.css` committen, die für alle wiederverwendet werden kann.
 
 ## Änderungsprozess

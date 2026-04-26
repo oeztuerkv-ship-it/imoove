@@ -32,7 +32,7 @@ Jede inhaltliche Änderung: in PR- oder Commit-Beschreibung (bzw. Plan) eine **k
 - **`scripts/verify-onroda-nginx-example-invariants.sh`** — wird von `verify-onroda-repo-invariants.sh` aufgerufen; hält `artifacts/deploy/nginx-onroda.example.conf` gegen harte Routing-Regressionen (Admin/Panel/API müssen `proxy_pass` haben, kein Panel→Admin-301)
 - `.cursor/rules/imoove-product-architecture.mdc` — Schichten Marketing / API / Mobile / Panel
 - `.cursor/rules/imoove-panel-ux-separation.mdc` — **Admin = Plattform-Konsole**, **Partner = Unternehmens-Panel** (Sprache, Farben, Navigation, kein UI-Mix)
-- **Admin-Panel innerhalb `artifacts/admin-panel/`:** `artifacts/admin-panel/docs/admin-ui-reference.md` + `.cursor/rules/imoove-admin-panel-ui-reference.mdc` — einheitliche Karten/Buttons/Badges (Mandantenzentrale-Referenz), keine Sonderlayouts
+- **ONRODA Admin-Standard** (`artifacts/admin-panel/`): `docs/admin-ui-reference.md` + `.cursor/rules/imoove-admin-panel-ui-reference.mdc` — helles Karten-Layout, Mandantenzentrale-Referenz, Bearbeiten in der Zentrale, typgetrennte Zusatzsektionen, kein TaxiMaster-Design; gleiche Tragfähigkeit aller `company_kind`
 
 ## Datenbank
 

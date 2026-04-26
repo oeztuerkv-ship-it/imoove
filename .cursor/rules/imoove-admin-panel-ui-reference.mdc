@@ -1,12 +1,17 @@
 ---
-description: Admin-Panel (artifacts/admin-panel) — UI an Mandantenzentrale-Referenz ausrichten; keine isolierten Sonderlayouts
+description: ONRODA Admin-Standard — helles Karten-Layout, Mandantenzentrale, kein TaxiMaster-Design; Artifacts admin-panel
 globs: artifacts/admin-panel/**
 alwaysApply: false
 ---
 
-# Onroda: Admin-Panel UI-Referenz (Mandantenzentrale)
+# ONRODA Admin-Standard (Kurz)
 
-**Muster:** Seiten wie die Mandantenzentrale (`CompanyMandateDetailPage.jsx`) und `admin-ui.css` (Mandantenliste `CompaniesPage.jsx` für Tabelle/Filter, wo passend). Volltext: **`artifacts/admin-panel/docs/admin-ui-reference.md`**.
+Volltext und Klassenliste: **`artifacts/admin-panel/docs/admin-ui-reference.md`**.
+
+- **Helles, einheitliches Layout** — Shell + helle Inhalte; Karten statt Fremd-Designs.
+- **Mandantenzentrale = Referenz** (`CompanyMandateDetailPage.jsx`) **als Hauptmuster** für Mandantenkontext; **Bearbeiten in der Zentrale** (Button `admin-m-btn-bearb`), kein neuer Vollbild-Standard, wenn Karte+Form reichen.
+- **Typ-Zusätze (Taxi, Hotel, Krankenkasse, Sonstige)** in **eigener, klar getrennter Sektion** — dieselbe Seitenlogik, nur andere Felder/Sichtbarkeit, **kein** anderes Layout-„Skin“ pro Branche.
+- **TaxiMaster Schwarz/Gelb** (`TaxiMasterPanel` und ähnliches) **nicht** als Vorbild für neues/refaktorisiertes Admin-UI; Admin bleibt helle Karten-ONRODA-Optik.
 
 ## Verbindlich für Agenten (neue/erweiterte Seiten in `admin-panel/`)
 
@@ -14,7 +19,7 @@ alwaysApply: false
 - **Gleiche Buttons** (z. B. `admin-m-btn-bearb`, `admin-c-btn-sec`, `admin-m-btn-pri`, `admin-m-btn-gh`); kein fremdes Farb-Theme, keine one-off-Button-Stile in Inline-CSS.
 - **Gleiche Abstände** (Struktur wie die Referenz: Sektionen, `admin-m-sec`, typische 12–16px zwischen Blöcken).
 - **Gleiche Status-Badges** (`admin-c-badge` + die bestehenden `--neutral|--info|--ok|--warn|--err`).
-- **Keine neuen Fremd-Layouts** (kein eigenes Mini-Design-System, kein Klon alter „Taxi Master“-Oberfläche).
+- **Keine neuen Fremd-Layouts** (kein eigenes Mini-Design-System) und **kein TaxiMaster-UI-Klon** als Plattform-Look.
 - **Keine isolierten Sonderdesigns**; wenn etwas wiederverwendbar fehlt: Klassen zentral in `admin-ui.css` ergänzen, dann in der Doku-Referenz erwähnen.
 
 ## Abgrenzung

@@ -4,7 +4,7 @@ Web-Admin für Betrieb/Backoffice. **Offizieller Ort im Monorepo:** `artifacts/a
 
 **Visuelle Marke:** Farben, Typografie und Komponenten-Abstände folgen der ONRODA-Homepage. Die gemeinsame Datei ist **`artifacts/api-server/static/onroda-brand.css`** (wird vom Admin-Panel per `@import` eingebunden und von der Marketing-`index.html` per `<link>` geladen).
 
-**Konsistenz im Admin-Panel (Plattform-Konsole):** Zukünftige Seiten richten sich an der **Mandantenzentrale** und `src/admin-ui.css` aus — Karten, Buttons, Abstände, Status-Badges. Verbindliche Kurzregeln und Klassenliste: **`docs/admin-ui-reference.md`**. (Cursor: `imoove-admin-panel-ui-reference.mdc` bei Änderungen unter `artifacts/admin-panel/`.)
+**ONRODA Admin-Standard:** helles, einheitliches Layout; **Karten** statt Fremd-Design; **Mandantenzentrale** als Muster; **Bearbeiten** in der Zentrale; **typ-spezifische Zusatzfelder** klar abgetrennt; **TaxiMaster Schwarz/Gelb** kein Vorbild für neues Admin-UI; **gleiche Logik** für Taxi, Hotel, Krankenkasse, Sonstige. Detailliert: **`docs/admin-ui-reference.md`**. (Cursor: `imoove-admin-panel-ui-reference.mdc` bei `artifacts/admin-panel/**`.)
 
 ## Antworten auf die Repo-/Server-Fragen
 
