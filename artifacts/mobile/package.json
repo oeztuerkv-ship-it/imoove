@@ -7,13 +7,15 @@
   },
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "npx expo start . --port 8081 --clear",
-    "dev:localhost": "npx expo start . --localhost --port 8081 --clear",
-    "dev:replit": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx expo start . --port 8081 --clear",
+    "dev": "node scripts/assert-port-8081-free.mjs && npx expo start . --port 8081 --clear --lan",
+    "dev:go": "node scripts/assert-port-8081-free.mjs && npx expo start . --port 8081 --clear --lan --go",
+    "dev:ios": "node scripts/assert-port-8081-free.mjs && npx expo start . --port 8081 --clear --lan --ios",
+    "dev:tunnel": "node scripts/assert-port-8081-free.mjs && npx expo start . --port 8081 --clear --tunnel",
+    "dev:localhost": "node scripts/assert-port-8081-free.mjs && npx expo start . --localhost --port 8081 --clear",
+    "dev:replit": "node scripts/assert-port-8081-free.mjs && EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN npx expo start . --port 8081 --clear --lan",
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev:local": "npx expo start . --port 8081 --clear"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",

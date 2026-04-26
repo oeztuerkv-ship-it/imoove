@@ -16,9 +16,12 @@ alwaysApply: true
 ## Expo Go, Port, Metro — **nicht** über App-Einstellungen lösen
 
 - **Nicht** `app.json` / `app.config.*` / iOS-Android-Blocks ändern, um Metro-Port oder „Expo Go verbindet nicht“ zu fixen — das erzeugt nur Nebenwirkungen (Scheme, Native-IDs, Keys).
-- **Stattdessen** nur die Skripte in `artifacts/mobile/package.json` nutzen:
-  - **`pnpm run dev`** — fester **Port 8081**, LAN-tauglich für **Expo Go** (kein `--localhost`).
-  - **`pnpm run dev:localhost`** — nur Metro auf Loopback (Simulator/fokussierter lokal).
+- **Stattdessen** nur die Skripte in `artifacts/mobile/package.json` nutzen (Details: **`artifacts/mobile/README.md`**):
+  - **`pnpm run dev`** — **Port 8081**, **`--lan`** für zuverlässigeren QR-Modus; vor Start prüft `scripts/assert-port-8081-free.mjs`, dass **8081 frei** ist (kein Wechsel auf 8082).
+  - **`pnpm run dev:ios`** — iOS-Simulator + Metro auf **8081** / LAN.
+  - **`pnpm run dev:tunnel`** — wenn QR/LAN instabil (langsamer, oft zuverlässiger).
+  - **`pnpm run dev:go`** — Expo Go starten, wo die CLI das unterstützt.
+  - **`pnpm run dev:localhost`** — Metro auf Loopback (Simulator/fokussierter lokal).
   - **`pnpm run dev:replit`** — Replit mit denselben Domain-/Proxy-Variablen wie bisher, Port **8081**.
 - Kein dynamisches `PORT=` / kein `sh -c`-Gerüst für den normalen lokalen Start.
 

@@ -45,5 +45,5 @@ Erst **danach** Commit und Push:
 
 ## 5. Debugging-Reihenfolge
 
-1. Port **8081** frei / blockiert? (`lsof -i :8081`)
-2. Skripte aus Mobile-`package.json` — **nicht** `app.json` / Manifest für Port oder Metro-Workarounds missbrauchen (Details: **`imoove-mobile-backup-expo-dev.mdc`**).
+1. Port **8081** frei / blockiert? (`lsof -i :8081`) — die Dev-Skripte brechen mit Hinweis ab, wenn **8081** belegt ist.
+2. Skripte aus Mobile-`package.json` — **nicht** `app.json` / Manifest für Port oder Metro-Workarounds missbrauchen (Details: **`imoove-mobile-backup-expo-dev.mdc`**, Einstieg **`artifacts/mobile/README.md`**).
