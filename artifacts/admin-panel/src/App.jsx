@@ -270,16 +270,24 @@ export default function App() {
   const [ridesInitialDetailId, setRidesInitialDetailId] = useState(null);
   const [companiesInitialOpenId, setCompaniesInitialOpenId] = useState(null);
   const [companiesListTab, setCompaniesListTab] = useState("all");
+  const [mandateDetailCompanyId, setMandateDetailCompanyId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [narrowNav, setNarrowNav] = useState(false);
 
-  const current = PAGE_META[active] || PAGE_META.dashboard;
+  const current =
+    active === "companies" && mandateDetailCompanyId
+      ? {
+          title: "Mandantenzentrale",
+          subtitle: "Stammdaten, Kennzahlen, Fahrten und Plattform-Verlauf (lesend).",
+        }
+      : PAGE_META[active] || PAGE_META.dashboard;
   const userRole = authUser?.role ?? "admin";
 
   const onLogout = useCallback(() => {
     setAdminSessionToken("");
     setAuthUser(null);
     setActive("dashboard");
+    setMandateDetailCompanyId(null);
   }, []);
 
   const handlePickPage = useCallback(
@@ -287,6 +295,7 @@ export default function App() {
       if (!isAdminPageAllowed(pageKey, userRole)) return;
       if (pageKey === "companies") {
         setCompaniesListTab(opt?.companiesTab != null && opt.companiesTab !== "" ? opt.companiesTab : "all");
+        setMandateDetailCompanyId(null);
       }
       setActive(pageKey);
       setMobileMenuOpen(false);
@@ -456,6 +465,7 @@ export default function App() {
               if (!isAdminPageAllowed(pageKey, userRole)) return;
               if (pageKey === "companies") {
                 setCompaniesListTab("all");
+                setMandateDetailCompanyId(null);
               }
               setActive(pageKey);
             }}
@@ -465,6 +475,7 @@ export default function App() {
             }}
             onOpenCompany={(id) => {
               setCompaniesInitialOpenId(id);
+              setMandateDetailCompanyId(null);
               setActive("companies");
             }}
           />
@@ -484,6 +495,9 @@ export default function App() {
             onInitialOpenCompanyConsumed={() => setCompaniesInitialOpenId(null)}
             listTab={companiesListTab}
             onListTabChange={setCompaniesListTab}
+            mandateDetailCompanyId={mandateDetailCompanyId}
+            onOpenMandateDetail={setMandateDetailCompanyId}
+            onCloseMandateDetail={() => setMandateDetailCompanyId(null)}
           />
         );
       case "taxi-fleet-drivers":
@@ -537,6 +551,7 @@ export default function App() {
               if (!isAdminPageAllowed(pageKey, userRole)) return;
               if (pageKey === "companies") {
                 setCompaniesListTab("all");
+                setMandateDetailCompanyId(null);
               }
               setActive(pageKey);
             }}
@@ -546,6 +561,7 @@ export default function App() {
             }}
             onOpenCompany={(id) => {
               setCompaniesInitialOpenId(id);
+              setMandateDetailCompanyId(null);
               setActive("companies");
             }}
           />

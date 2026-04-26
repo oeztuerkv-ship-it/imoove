@@ -2302,3 +2302,45 @@
 .tab-section {
   padding: 15px 0;
 }
+
+/* Mandantenzentrale (Admin, Lese-Modell) */
+.admin-mandate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px 20px;
+}
+
+.admin-mandate-kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.admin-mandate-kpi__cell {
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.admin-mandate-kpi__val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--onroda-text-dark, #0f172a);
+  line-height: 1.2;
+}
+
+.admin-mandate-kpi__lbl {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 4px;
+  line-height: 1.35;
+}

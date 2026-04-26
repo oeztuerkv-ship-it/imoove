@@ -87,6 +87,7 @@ import {
   patchHomepagePlaceholder,
 } from "../db/homepagePlaceholdersData";
 import { getAdminOperatorSnapshot } from "../db/adminOperatorSnapshotData";
+import { getCompanyMandateRead } from "../db/adminMandateDetailData";
 import {
   addPartnerRegistrationDocument,
   addPartnerRegistrationMessage,
@@ -1060,6 +1061,31 @@ adminJson.get("/companies", async (req, res, next) => {
     const filtered =
       role === "hotel" && scope ? items.filter((c) => c.id === scope) : items;
     res.json({ ok: true, items: filtered, panelModuleCatalog: PANEL_MODULE_DEFINITIONS });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Plattform-Admin: Mandantenzentrale (Lese-Modell, ein Objekt; kein PII/keine Diagnosen). */
+adminJson.get("/companies/:companyId/mandate-read", async (req, res, next) => {
+  try {
+    const role = adminConsoleRole(req);
+    if (!canReadAdminCompaniesList(role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const scope = req.adminAuth?.scopeCompanyId?.trim();
+    if (role === "hotel" && scope && companyId !== scope) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const data = await getCompanyMandateRead(companyId);
+    if (!data) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ...data });
   } catch (e) {
     next(e);
   }

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, useCallback } from "react";
 import CompanyWorkspaceForm from "../components/CompanyWorkspaceForm.jsx";
+import CompanyMandateDetailPage from "./CompanyMandateDetailPage.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 import { matchesCompanyKindListTab } from "../utils/panelModulesByCompanyKind.js";
@@ -20,6 +21,9 @@ export default function CompaniesPage({
   onInitialOpenCompanyConsumed,
   listTab = "all",
   onListTabChange,
+  mandateDetailCompanyId = null,
+  onOpenMandateDetail,
+  onCloseMandateDetail,
 }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +73,15 @@ export default function CompaniesPage({
     return list.sort((a, b) => (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase()));
   }, [items, activeTab]);
 
+  if (mandateDetailCompanyId && onCloseMandateDetail) {
+    return (
+      <CompanyMandateDetailPage
+        companyId={mandateDetailCompanyId}
+        onBack={onCloseMandateDetail}
+      />
+    );
+  }
+
   return (
     <div className="admin-page" style={{ padding: "20px", fontFamily: "sans-serif" }}>
       <h1 style={{ marginTop: 0 }}>Mandantenverwaltung</h1>
@@ -100,7 +113,8 @@ export default function CompaniesPage({
             <th>STADT</th>
             <th>IBAN (Auszahlung)</th>
             <th>STATUS (Verif. / Compl. / Vertrag)</th>
-            <th style={{ textAlign: "right" }}>AKTION</th>
+            <th style={{ textAlign: "right" }}>ZENTRALE</th>
+            <th style={{ textAlign: "right" }}>STAMMDATEN</th>
           </tr>
         </thead>
         <tbody>
@@ -159,6 +173,20 @@ export default function CompaniesPage({
                     </div>
                   </td>
                   <td style={{ textAlign: "right" }}>
+                    {onOpenMandateDetail ? (
+                      <button
+                        type="button"
+                        className="admin-btn-primary"
+                        onClick={() => onOpenMandateDetail(item.id)}
+                        style={{ padding: "6px 10px", fontSize: 12, whiteSpace: "nowrap" }}
+                      >
+                        Zentrale
+                      </button>
+                    ) : (
+                      <span className="admin-table-sub">—</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
                     <button
                       type="button"
                       onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
@@ -170,7 +198,7 @@ export default function CompaniesPage({
                 </tr>
                 {selectedId === item.id && (
                   <tr>
-                    <td colSpan="6" style={{ padding: "20px", background: "#fcfcfc", border: "2px solid #ddd" }}>
+                    <td colSpan="7" style={{ padding: "20px", background: "#fcfcfc", border: "2px solid #ddd" }}>
                       <CompanyWorkspaceForm company={item} onUpdate={loadData} />
                     </td>
                   </tr>
