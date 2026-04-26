@@ -29,6 +29,7 @@
 --   039 → homepage_content.section2_title, homepage_content.section2_cards
 --   040 → homepage_content (services_*, manifest_*)
 --   041 → insurer_cost_centers, insurer_ride_transport_documents
+--   042 → homepage_faq_items, homepage_how_steps, homepage_trust_metrics
 
 DO $$
 DECLARE
@@ -502,6 +503,27 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'insurer_ride_transport_documents'
   ) THEN
     errs := array_append(errs, 'table insurer_ride_transport_documents (Migration 041)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'homepage_faq_items'
+  ) THEN
+    errs := array_append(errs, 'table homepage_faq_items (Migration 042)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'homepage_how_steps'
+  ) THEN
+    errs := array_append(errs, 'table homepage_how_steps (Migration 042)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'homepage_trust_metrics'
+  ) THEN
+    errs := array_append(errs, 'table homepage_trust_metrics (Migration 042)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

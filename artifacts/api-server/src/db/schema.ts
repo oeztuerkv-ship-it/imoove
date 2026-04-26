@@ -780,3 +780,56 @@ export const insurerRideTransportDocumentsTable = pgTable("insurer_ride_transpor
   }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Homepage CMS: FAQ-Liste (modular getrennt von homepage_content). */
+export const homepageFaqItemsTable = pgTable("homepage_faq_items", {
+  id: text("id").primaryKey(),
+  question: text("question").notNull().default(""),
+  answer: text("answer").notNull().default(""),
+  sort_order: integer("sort_order").notNull().default(0),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Homepage CMS: "So funktioniert ONRODA" (3 editierbare Schritte, DB-seitig nicht hart limitiert). */
+export const homepageHowStepsTable = pgTable("homepage_how_steps", {
+  id: text("id").primaryKey(),
+  icon: text("icon").notNull().default(""),
+  title: text("title").notNull().default(""),
+  body: text("body").notNull().default(""),
+  sort_order: integer("sort_order").notNull().default(0),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Homepage CMS: Trust-KPI-Kacheln. */
+export const homepageTrustMetricsTable = pgTable("homepage_trust_metrics", {
+  id: text("id").primaryKey(),
+  value: text("value").notNull().default(""),
+  label: text("label").notNull().default(""),
+  description: text("description").notNull().default(""),
+  sort_order: integer("sort_order").notNull().default(0),
+  is_active: boolean("is_active").notNull().default(true),
+  created_by_admin_user_id: text("created_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  updated_by_admin_user_id: text("updated_by_admin_user_id").references(() => adminAuthUsersTable.id, {
+    onDelete: "set null",
+  }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

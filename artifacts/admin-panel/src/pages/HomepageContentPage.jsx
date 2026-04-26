@@ -3,6 +3,9 @@ import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
 
 const URL = `${API_BASE}/admin/homepage-content`;
+const FAQ_URL = `${API_BASE}/admin/homepage-faq`;
+const HOW_URL = `${API_BASE}/admin/homepage-how`;
+const TRUST_URL = `${API_BASE}/admin/homepage-trust`;
 
 const defaultSection2 = () => [
   { icon: "🚕", title: "", body: "", ctaText: "", ctaLink: "", isActive: true },
@@ -96,6 +99,18 @@ export default function HomepageContentPage() {
     noticeText: "",
     noticeActive: false,
   });
+  const [faqItems, setFaqItems] = useState([]);
+  const [howItems, setHowItems] = useState([]);
+  const [trustItems, setTrustItems] = useState([]);
+  const [faqDraft, setFaqDraft] = useState({ question: "", answer: "", sortOrder: 10, isActive: true });
+  const [howDraft, setHowDraft] = useState({ icon: "1", title: "", body: "", sortOrder: 10, isActive: true });
+  const [trustDraft, setTrustDraft] = useState({
+    value: "",
+    label: "",
+    description: "",
+    sortOrder: 10,
+    isActive: true,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,9 +147,57 @@ export default function HomepageContentPage() {
     }
   }, []);
 
+  const loadModules = useCallback(async () => {
+    try {
+      const [faqRes, howRes, trustRes] = await Promise.all([
+        fetch(FAQ_URL, { headers: adminApiHeaders() }),
+        fetch(HOW_URL, { headers: adminApiHeaders() }),
+        fetch(TRUST_URL, { headers: adminApiHeaders() }),
+      ]);
+      const faq = await faqRes.json().catch(() => ({}));
+      const how = await howRes.json().catch(() => ({}));
+      const trust = await trustRes.json().catch(() => ({}));
+      if (faqRes.ok && faq?.ok && Array.isArray(faq.items)) setFaqItems(faq.items);
+      if (howRes.ok && how?.ok && Array.isArray(how.items)) setHowItems(how.items);
+      if (trustRes.ok && trust?.ok && Array.isArray(trust.items)) setTrustItems(trust.items);
+    } catch {
+      // keep page editable even if module endpoints fail
+    }
+  }, []);
+
+  async function createModuleItem(url, payload) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: adminApiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) throw new Error(data?.error || `Erstellen fehlgeschlagen (${res.status})`);
+  }
+
+  async function patchModuleItem(url, id, payload) {
+    const res = await fetch(`${url}/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: adminApiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) throw new Error(data?.error || `Speichern fehlgeschlagen (${res.status})`);
+  }
+
+  async function deleteModuleItem(url, id) {
+    const res = await fetch(`${url}/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: adminApiHeaders(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) throw new Error(data?.error || `Löschen fehlgeschlagen (${res.status})`);
+  }
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadModules();
+  }, [load, loadModules]);
 
   async function onSave(e) {
     e.preventDefault();
@@ -589,6 +652,199 @@ export default function HomepageContentPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Homepage FAQ (modular)</div>
+        <div className="admin-form-vertical">
+          {faqItems.map((item) => (
+            <div key={item.id} className="admin-panel-card" style={{ padding: 12 }}>
+              <div className="admin-form-grid-2">
+                <label className="admin-form-pair">
+                  <span className="admin-field-label">Reihenfolge</span>
+                  <input
+                    className="admin-input"
+                    type="number"
+                    value={item.sortOrder ?? 0}
+                    onChange={(e) =>
+                      setFaqItems((p) => p.map((x) => (x.id === item.id ? { ...x, sortOrder: Number(e.target.value || 0) } : x)))
+                    }
+                  />
+                </label>
+                <label className="admin-inline-check">
+                  <input
+                    type="checkbox"
+                    checked={item.isActive !== false}
+                    onChange={(e) =>
+                      setFaqItems((p) => p.map((x) => (x.id === item.id ? { ...x, isActive: e.target.checked } : x)))
+                    }
+                  />
+                  <span>Aktiv</span>
+                </label>
+              </div>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Frage</span>
+                <input
+                  className="admin-input"
+                  value={item.question || ""}
+                  onChange={(e) => setFaqItems((p) => p.map((x) => (x.id === item.id ? { ...x, question: e.target.value } : x)))}
+                />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Antwort</span>
+                <textarea
+                  className="admin-textarea"
+                  rows={3}
+                  value={item.answer || ""}
+                  onChange={(e) => setFaqItems((p) => p.map((x) => (x.id === item.id ? { ...x, answer: e.target.value } : x)))}
+                />
+              </label>
+              <div className="admin-toolbar-row">
+                <button
+                  className="admin-btn-primary"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await patchModuleItem(FAQ_URL, item.id, item);
+                      setOkMsg("FAQ gespeichert.");
+                      await loadModules();
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "FAQ speichern fehlgeschlagen");
+                    }
+                  }}
+                >
+                  FAQ speichern
+                </button>
+                <button
+                  className="admin-btn-refresh"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await deleteModuleItem(FAQ_URL, item.id);
+                      await loadModules();
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "FAQ löschen fehlgeschlagen");
+                    }
+                  }}
+                >
+                  Löschen
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className="admin-panel-card" style={{ padding: 12 }}>
+            <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Neue FAQ</div>
+            <label className="admin-form-pair">
+              <span className="admin-field-label">Frage</span>
+              <input className="admin-input" value={faqDraft.question} onChange={(e) => setFaqDraft((p) => ({ ...p, question: e.target.value }))} />
+            </label>
+            <label className="admin-form-pair">
+              <span className="admin-field-label">Antwort</span>
+              <textarea className="admin-textarea" rows={3} value={faqDraft.answer} onChange={(e) => setFaqDraft((p) => ({ ...p, answer: e.target.value }))} />
+            </label>
+            <button
+              className="admin-btn-primary"
+              type="button"
+              onClick={async () => {
+                try {
+                  await createModuleItem(FAQ_URL, faqDraft);
+                  setFaqDraft({ question: "", answer: "", sortOrder: 10, isActive: true });
+                  await loadModules();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "FAQ erstellen fehlgeschlagen");
+                }
+              }}
+            >
+              FAQ hinzufügen
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">So funktioniert ONRODA (3 Schritte)</div>
+        <div className="admin-form-vertical">
+          {howItems.map((item) => (
+            <div key={item.id} className="admin-panel-card" style={{ padding: 12 }}>
+              <div className="admin-form-grid-2">
+                <label className="admin-form-pair">
+                  <span className="admin-field-label">Icon</span>
+                  <input className="admin-input" value={item.icon || ""} onChange={(e) => setHowItems((p) => p.map((x) => (x.id === item.id ? { ...x, icon: e.target.value } : x)))} />
+                </label>
+                <label className="admin-form-pair">
+                  <span className="admin-field-label">Reihenfolge</span>
+                  <input className="admin-input" type="number" value={item.sortOrder ?? 0} onChange={(e) => setHowItems((p) => p.map((x) => (x.id === item.id ? { ...x, sortOrder: Number(e.target.value || 0) } : x)))} />
+                </label>
+              </div>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Titel</span>
+                <input className="admin-input" value={item.title || ""} onChange={(e) => setHowItems((p) => p.map((x) => (x.id === item.id ? { ...x, title: e.target.value } : x)))} />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Text</span>
+                <textarea className="admin-textarea" rows={2} value={item.body || ""} onChange={(e) => setHowItems((p) => p.map((x) => (x.id === item.id ? { ...x, body: e.target.value } : x)))} />
+              </label>
+              <label className="admin-inline-check">
+                <input type="checkbox" checked={item.isActive !== false} onChange={(e) => setHowItems((p) => p.map((x) => (x.id === item.id ? { ...x, isActive: e.target.checked } : x)))} />
+                <span>Aktiv</span>
+              </label>
+              <div className="admin-toolbar-row">
+                <button className="admin-btn-primary" type="button" onClick={async () => { try { await patchModuleItem(HOW_URL, item.id, item); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "Schritt speichern fehlgeschlagen"); } }}>Schritt speichern</button>
+                <button className="admin-btn-refresh" type="button" onClick={async () => { try { await deleteModuleItem(HOW_URL, item.id); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "Schritt löschen fehlgeschlagen"); } }}>Löschen</button>
+              </div>
+            </div>
+          ))}
+          <div className="admin-panel-card" style={{ padding: 12 }}>
+            <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Neuer Schritt</div>
+            <div className="admin-form-grid-2">
+              <input className="admin-input" value={howDraft.icon} onChange={(e) => setHowDraft((p) => ({ ...p, icon: e.target.value }))} />
+              <input className="admin-input" type="number" value={howDraft.sortOrder} onChange={(e) => setHowDraft((p) => ({ ...p, sortOrder: Number(e.target.value || 0) }))} />
+            </div>
+            <input className="admin-input" value={howDraft.title} onChange={(e) => setHowDraft((p) => ({ ...p, title: e.target.value }))} />
+            <textarea className="admin-textarea" rows={2} value={howDraft.body} onChange={(e) => setHowDraft((p) => ({ ...p, body: e.target.value }))} />
+            <button className="admin-btn-primary" type="button" onClick={async () => { try { await createModuleItem(HOW_URL, howDraft); setHowDraft({ icon: "1", title: "", body: "", sortOrder: 10, isActive: true }); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "Schritt erstellen fehlgeschlagen"); } }}>Schritt hinzufügen</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="admin-panel-card">
+        <div className="admin-panel-card__title">Trust-Zahlen (KPI-Kacheln)</div>
+        <div className="admin-form-vertical">
+          {trustItems.map((item) => (
+            <div key={item.id} className="admin-panel-card" style={{ padding: 12 }}>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Zahl / Value</span>
+                <input className="admin-input" value={item.value || ""} onChange={(e) => setTrustItems((p) => p.map((x) => (x.id === item.id ? { ...x, value: e.target.value } : x)))} />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Label</span>
+                <input className="admin-input" value={item.label || ""} onChange={(e) => setTrustItems((p) => p.map((x) => (x.id === item.id ? { ...x, label: e.target.value } : x)))} />
+              </label>
+              <label className="admin-form-pair">
+                <span className="admin-field-label">Beschreibung</span>
+                <textarea className="admin-textarea" rows={2} value={item.description || ""} onChange={(e) => setTrustItems((p) => p.map((x) => (x.id === item.id ? { ...x, description: e.target.value } : x)))} />
+              </label>
+              <div className="admin-form-grid-2">
+                <input className="admin-input" type="number" value={item.sortOrder ?? 0} onChange={(e) => setTrustItems((p) => p.map((x) => (x.id === item.id ? { ...x, sortOrder: Number(e.target.value || 0) } : x)))} />
+                <label className="admin-inline-check">
+                  <input type="checkbox" checked={item.isActive !== false} onChange={(e) => setTrustItems((p) => p.map((x) => (x.id === item.id ? { ...x, isActive: e.target.checked } : x)))} />
+                  <span>Aktiv</span>
+                </label>
+              </div>
+              <div className="admin-toolbar-row">
+                <button className="admin-btn-primary" type="button" onClick={async () => { try { await patchModuleItem(TRUST_URL, item.id, item); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "KPI speichern fehlgeschlagen"); } }}>KPI speichern</button>
+                <button className="admin-btn-refresh" type="button" onClick={async () => { try { await deleteModuleItem(TRUST_URL, item.id); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "KPI löschen fehlgeschlagen"); } }}>Löschen</button>
+              </div>
+            </div>
+          ))}
+          <div className="admin-panel-card" style={{ padding: 12 }}>
+            <div className="admin-panel-card__title" style={{ fontSize: 13 }}>Neue KPI</div>
+            <input className="admin-input" value={trustDraft.value} placeholder="Zahl / Wert" onChange={(e) => setTrustDraft((p) => ({ ...p, value: e.target.value }))} />
+            <input className="admin-input" value={trustDraft.label} placeholder="Label" onChange={(e) => setTrustDraft((p) => ({ ...p, label: e.target.value }))} />
+            <textarea className="admin-textarea" rows={2} value={trustDraft.description} placeholder="Beschreibung" onChange={(e) => setTrustDraft((p) => ({ ...p, description: e.target.value }))} />
+            <button className="admin-btn-primary" type="button" onClick={async () => { try { await createModuleItem(TRUST_URL, trustDraft); setTrustDraft({ value: "", label: "", description: "", sortOrder: 10, isActive: true }); await loadModules(); } catch (e) { setError(e instanceof Error ? e.message : "KPI erstellen fehlgeschlagen"); } }}>KPI hinzufügen</button>
+          </div>
+        </div>
       </div>
     </div>
   );

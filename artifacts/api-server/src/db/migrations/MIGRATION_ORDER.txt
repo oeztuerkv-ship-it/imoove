@@ -52,6 +52,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Homepage-CMS Section 2 (Für wen Boxen editierbar)                  → 039_homepage_content_section2_cards.sql
   Homepage-CMS Leistungen + Manifest                                    → 040_homepage_content_services_manifest.sql
   Krankenkassen-Panel V1: Kostenstellen + Transportschein-Metadaten      → 041_insurer_panel_cost_centers_and_transport.sql
+  Homepage-CMS Module FAQ + How + Trust                                 → 042_homepage_modules_faq_how_trust.sql
 
 Nach Migrationen Schema prüfen:
 

@@ -75,7 +75,64 @@
         wrap.appendChild(cta);
       }
 
+      if (item.dismissKey) {
+        var closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "hp-dynamic-placeholder__dismiss";
+        closeBtn.setAttribute("aria-label", "Hinweis ausblenden");
+        closeBtn.textContent = "✕";
+        closeBtn.addEventListener("click", function () {
+          try {
+            localStorage.setItem("onroda:hint:dismissed:" + String(item.dismissKey), "1");
+          } catch (_e) {
+            // ignore storage failures
+          }
+          wrap.remove();
+        });
+        wrap.appendChild(closeBtn);
+      }
+
       return wrap;
+    }
+
+    function hintDismissed(item) {
+      if (!item || !item.dismissKey) return false;
+      try {
+        return localStorage.getItem("onroda:hint:dismissed:" + String(item.dismissKey)) === "1";
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    function loadHomepageHints() {
+      var host = window.location.hostname;
+      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
+        return;
+      }
+      var noticeRoot = document.getElementById("homepage-placeholders-root");
+      if (!noticeRoot) return;
+      fetch(publicApiBase() + "/public/homepage-hints", { method: "GET", credentials: "omit" })
+        .then(function (res) {
+          if (!res.ok) return { ok: false, items: [] };
+          return res.json().catch(function () { return { ok: false, items: [] }; });
+        })
+        .then(function (data) {
+          var items = data && data.ok && Array.isArray(data.items) ? data.items : [];
+          if (!items.length) return;
+          noticeRoot.innerHTML = "";
+          if (!noticeRoot.classList.contains("hp-dynamic-placeholders")) {
+            noticeRoot.classList.add("hp-dynamic-placeholders");
+          }
+          noticeRoot.setAttribute("aria-live", "polite");
+          for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (hintDismissed(item)) continue;
+            noticeRoot.appendChild(buildPlaceholderNode(item));
+          }
+        })
+        .catch(function () {
+          // keep homepage usable when endpoint is unavailable
+        });
     }
 
     function loadHomepageContent() {
@@ -250,7 +307,116 @@
         });
     }
 
+    function loadHomepageModules() {
+      var host = window.location.hostname;
+      if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
+        return;
+      }
+      fetch(publicApiBase() + "/public/homepage-how", { method: "GET", credentials: "omit" })
+        .then(function (r) {
+          if (!r.ok) return { ok: false, items: [] };
+          return r.json().catch(function () { return { ok: false, items: [] }; });
+        })
+        .then(function (j) {
+          var items = j && j.ok && Array.isArray(j.items) ? j.items : [];
+          for (var i = 1; i <= 3; i++) {
+            var wrap = document.getElementById("how-card-" + i);
+            var icon = document.getElementById("how-card-" + i + "-icon");
+            var title = document.getElementById("how-card-" + i + "-title");
+            var body = document.getElementById("how-card-" + i + "-body");
+            if (!wrap || !icon || !title || !body) continue;
+            var dIcon = icon.textContent || "";
+            var dTitle = title.textContent || "";
+            var dBody = body.textContent || "";
+            var it = items[i - 1] || null;
+            var active = it ? it.isActive !== false : true;
+            if (!active) {
+              wrap.setAttribute("hidden", "hidden");
+              continue;
+            }
+            wrap.removeAttribute("hidden");
+            icon.textContent = String(it && it.icon ? it.icon : dIcon);
+            title.textContent = String(it && it.title ? it.title : dTitle);
+            body.textContent = String(it && it.body ? it.body : dBody);
+          }
+        })
+        .catch(function () {});
+
+      fetch(publicApiBase() + "/public/homepage-trust", { method: "GET", credentials: "omit" })
+        .then(function (r) {
+          if (!r.ok) return { ok: false, items: [] };
+          return r.json().catch(function () { return { ok: false, items: [] }; });
+        })
+        .then(function (j) {
+          var items = j && j.ok && Array.isArray(j.items) ? j.items : [];
+          for (var i = 1; i <= 4; i++) {
+            var wrap = document.getElementById("trust-card-" + i);
+            var value = document.getElementById("trust-card-" + i + "-value");
+            var label = document.getElementById("trust-card-" + i + "-label");
+            var desc = document.getElementById("trust-card-" + i + "-desc");
+            if (!wrap || !value || !label || !desc) continue;
+            var dVal = value.textContent || "";
+            var dLbl = label.textContent || "";
+            var dDesc = desc.textContent || "";
+            var it = items[i - 1] || null;
+            var active = it ? it.isActive !== false : true;
+            if (!active) {
+              wrap.setAttribute("hidden", "hidden");
+              continue;
+            }
+            wrap.removeAttribute("hidden");
+            value.textContent = String(it && it.value ? it.value : dVal);
+            label.textContent = String(it && it.label ? it.label : dLbl);
+            desc.textContent = String(it && it.description ? it.description : dDesc);
+          }
+        })
+        .catch(function () {});
+
+      fetch(publicApiBase() + "/public/homepage-faq", { method: "GET", credentials: "omit" })
+        .then(function (r) {
+          if (!r.ok) return { ok: false, items: [] };
+          return r.json().catch(function () { return { ok: false, items: [] }; });
+        })
+        .then(function (j) {
+          var items = j && j.ok && Array.isArray(j.items) ? j.items : [];
+          for (var i = 1; i <= 8; i++) {
+            var wrap = document.getElementById("faq-item-" + i);
+            var q = document.getElementById("faq-item-" + i + "-question");
+            var a = document.getElementById("faq-item-" + i + "-answer");
+            var it = items[i - 1] || null;
+            if (!wrap && it) {
+              var root = document.getElementById("faq-list-root");
+              if (!root) continue;
+              wrap = document.createElement("details");
+              wrap.className = "hp-faq-item";
+              wrap.id = "faq-item-" + i;
+              q = document.createElement("summary");
+              q.id = "faq-item-" + i + "-question";
+              a = document.createElement("p");
+              a.id = "faq-item-" + i + "-answer";
+              wrap.appendChild(q);
+              wrap.appendChild(a);
+              root.appendChild(wrap);
+            }
+            if (!wrap || !q || !a) continue;
+            var dQ = q.textContent || "";
+            var dA = a.textContent || "";
+            var active = it ? it.isActive !== false : true;
+            if (!active) {
+              wrap.setAttribute("hidden", "hidden");
+              continue;
+            }
+            wrap.removeAttribute("hidden");
+            q.textContent = String(it && it.question ? it.question : dQ);
+            a.textContent = String(it && it.answer ? it.answer : dA);
+          }
+        })
+        .catch(function () {});
+    }
+
+    loadHomepageHints();
     loadHomepageContent();
+    loadHomepageModules();
 
     function syncPartnerTaxiSection() {
       var wrap = document.getElementById("partner-taxi-fields");

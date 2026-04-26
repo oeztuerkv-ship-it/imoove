@@ -68,6 +68,20 @@ import {
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
+  createHomepageFaqItem,
+  createHomepageHowStep,
+  createHomepageTrustMetric,
+  deleteHomepageFaqItem,
+  deleteHomepageHowStep,
+  deleteHomepageTrustMetric,
+  listHomepageFaqAdmin,
+  listHomepageHowAdmin,
+  listHomepageTrustAdmin,
+  patchHomepageFaqItem,
+  patchHomepageHowStep,
+  patchHomepageTrustMetric,
+} from "../db/homepageModulesData";
+import {
   createHomepagePlaceholder,
   listHomepagePlaceholdersAdmin,
   patchHomepagePlaceholder,
@@ -1168,6 +1182,327 @@ adminJson.patch("/homepage-content", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/homepage-faq", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepageFaqAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/homepage-faq", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const question = typeof b.question === "string" ? b.question.trim() : "";
+    const answer = typeof b.answer === "string" ? b.answer.trim() : "";
+    if (!question || !answer) {
+      res.status(400).json({ error: "question_answer_required" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const item = await createHomepageFaqItem({
+      question,
+      answer,
+      sortOrder,
+      isActive: b.isActive !== false,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null,
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/homepage-faq/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const patch: {
+      question?: string;
+      answer?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    } = {};
+    if (typeof b.question === "string") patch.question = b.question.trim();
+    if (typeof b.answer === "string") patch.answer = b.answer.trim();
+    if (Number.isFinite(Number(b.sortOrder))) patch.sortOrder = Number(b.sortOrder);
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const item = await patchHomepageFaqItem(req.params.id, patch, req.adminAuth?.adminUserId ?? null);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.delete("/homepage-faq/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const ok = await deleteHomepageFaqItem(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/homepage-how", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepageHowAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/homepage-how", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!title || !body) {
+      res.status(400).json({ error: "title_body_required" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const item = await createHomepageHowStep({
+      icon: typeof b.icon === "string" ? b.icon.trim() : "",
+      title,
+      body,
+      sortOrder,
+      isActive: b.isActive !== false,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null,
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/homepage-how/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const patch: {
+      icon?: string;
+      title?: string;
+      body?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    } = {};
+    if (typeof b.icon === "string") patch.icon = b.icon.trim();
+    if (typeof b.title === "string") patch.title = b.title.trim();
+    if (typeof b.body === "string") patch.body = b.body.trim();
+    if (Number.isFinite(Number(b.sortOrder))) patch.sortOrder = Number(b.sortOrder);
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const item = await patchHomepageHowStep(req.params.id, patch, req.adminAuth?.adminUserId ?? null);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.delete("/homepage-how/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const ok = await deleteHomepageHowStep(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/homepage-trust", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listHomepageTrustAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/homepage-trust", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const value = typeof b.value === "string" ? b.value.trim() : "";
+    const label = typeof b.label === "string" ? b.label.trim() : "";
+    if (!value || !label) {
+      res.status(400).json({ error: "value_label_required" });
+      return;
+    }
+    const sortOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : 0;
+    const item = await createHomepageTrustMetric({
+      value,
+      label,
+      description: typeof b.description === "string" ? b.description.trim() : "",
+      sortOrder,
+      isActive: b.isActive !== false,
+      actorAdminUserId: req.adminAuth?.adminUserId ?? null,
+    });
+    if (!item) {
+      res.status(503).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/homepage-trust/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const patch: {
+      value?: string;
+      label?: string;
+      description?: string;
+      sortOrder?: number;
+      isActive?: boolean;
+    } = {};
+    if (typeof b.value === "string") patch.value = b.value.trim();
+    if (typeof b.label === "string") patch.label = b.label.trim();
+    if (typeof b.description === "string") patch.description = b.description.trim();
+    if (Number.isFinite(Number(b.sortOrder))) patch.sortOrder = Number(b.sortOrder);
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    const item = await patchHomepageTrustMetric(req.params.id, patch, req.adminAuth?.adminUserId ?? null);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.delete("/homepage-trust/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const ok = await deleteHomepageTrustMetric(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }
