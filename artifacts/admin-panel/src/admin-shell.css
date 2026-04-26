@@ -201,6 +201,8 @@
   padding: var(--onroda-padding-content-y) var(--onroda-padding-content-x);
   min-width: 0;
   max-width: 100%;
+  font-size: 1.04rem;
+  line-height: 1.52;
 }
 
 .admin-placeholder {

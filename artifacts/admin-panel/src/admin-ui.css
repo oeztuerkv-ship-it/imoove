@@ -2459,9 +2459,9 @@ ul.admin-mandate-doclist {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  min-height: 52px;
-  padding: 14px 18px;
-  font-size: 1.06rem;
+  min-height: 56px;
+  padding: 16px 20px;
+  font-size: 1.1rem;
   line-height: 1.35;
   color: #0f172a;
   background: #fff;
@@ -2491,6 +2491,15 @@ ul.admin-mandate-doclist {
 }
 
 /* Filter-Chips (unter Suche) */
+.admin-c-filter-legend {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 8px;
+}
+
 .admin-companies__chips,
 .admin-companies__tabs {
   display: flex;
@@ -2498,6 +2507,10 @@ ul.admin-mandate-doclist {
   gap: 8px 10px;
   margin-bottom: 16px;
   align-items: center;
+}
+
+.admin-companies__chips--toggle {
+  margin-bottom: 14px;
 }
 
 .admin-c-chip,
@@ -2525,6 +2538,129 @@ ul.admin-mandate-doclist {
   color: #f8fafc;
   border-color: #1e293b;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+/* Zusatz-Filter: Toggle (nicht Tab) */
+.admin-c-fchip {
+  border: 1px dashed #b8c4d3;
+  background: #fff;
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
+}
+
+.admin-c-fchip:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  border-style: solid;
+}
+
+.admin-c-fchip--on {
+  background: #0f172a;
+  color: #f1f5f9;
+  border: 1px solid #0f172a;
+  border-style: solid;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.admin-c-filter-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px 12px;
+  margin-bottom: 20px;
+}
+
+.admin-c-filter-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.admin-c-select-lbl {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5c6b7e;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.admin-c-select {
+  min-width: min(100%, 300px);
+  max-width: 100%;
+  padding: 9px 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  border: 1px solid #c9d1dd;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.admin-c-hint {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #64748b;
+  max-width: 520px;
+  flex: 1 1 200px;
+}
+
+.admin-c-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.admin-c-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  max-width: 100%;
+}
+
+.admin-c-pill--subtle {
+  background: #e8f4fc;
+  border-color: #93c5ee;
+  color: #0c3d66;
+}
+
+.admin-c-pill__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  min-height: 1.3rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.1rem;
+  line-height: 1;
+  font-weight: 800;
+  cursor: pointer;
+  margin: 0 0 0 2px;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+.admin-c-pill__x:hover {
+  background: rgba(15, 23, 42, 0.1);
+  color: #0f172a;
 }
 
 .admin-c-muted {
@@ -2584,6 +2720,42 @@ ul.admin-mandate-doclist {
   min-width: 140px;
   text-align: right;
   padding-right: 18px;
+}
+
+.admin-c-th--sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+}
+
+.admin-c-th--sortable:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.admin-c-th--sortable .admin-c-th__txt,
+.admin-c-th--sortable .admin-c-sort-ind {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.admin-c-th__txt {
+  margin-right: 4px;
+}
+
+.admin-c-sort-ind {
+  font-size: 0.65em;
+  opacity: 0.8;
+  margin-left: 2px;
+  position: relative;
+  top: -0.1em;
+}
+
+.admin-c-th--sorted--asc,
+.admin-c-th--sorted--desc {
+  color: #0c3d66;
+  background: linear-gradient(180deg, #e8f4fc 0%, #dbeafe 100%);
+  border-bottom-color: #7cb8e4;
 }
 
 .admin-c-tr {
@@ -2825,6 +2997,25 @@ ul.admin-mandate-doclist {
   background: #f4f6f9;
   border-color: #98a3b3;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.admin-c-btn-edit {
+  min-height: 34px;
+  padding: 6px 12px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid #c9d1dd;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.admin-c-btn-edit:hover {
+  background: #f4f6f9;
+  border-color: #98a3b3;
 }
 
 .admin-c-btn-sec {
