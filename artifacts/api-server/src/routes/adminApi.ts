@@ -122,12 +122,6 @@ import {
 } from "../db/adminAuthData";
 import { isPostgresConfigured } from "../db/client";
 import {
-  getRideSupportTicketAdmin,
-  listRideSupportTicketsAdminPage,
-  listRideSupportTicketsByRideId,
-  updateRideSupportTicketAdmin,
-} from "../db/rideSupportData";
-import {
   adminPreviousDayBounds,
   adminReleaseRide,
   countRidesAdmin,
@@ -3332,12 +3326,11 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
       return;
     }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
-    const [events, panelAudit, supportTickets] = await Promise.all([
+    const [events, panelAudit] = await Promise.all([
       listAdminRideEventsByRideId(id),
       row.companyId
         ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 })
         : Promise.resolve([]),
-      listRideSupportTicketsByRideId(id),
     ]);
     const auditAsc = [...panelAudit].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const meta = (row as { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
@@ -3354,106 +3347,12 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
       ride,
       events,
       panelAudit: auditAsc,
-      supportTickets,
       links: {
         billingReference: row.billingReference ?? null,
         supportTicketId: supportTicketId || null,
         supportThreadId: supportThreadId || null,
       },
     });
-  } catch (e) {
-    next(e);
-  }
-});
-
-adminJson.get("/ride-support-tickets", async (req, res, next) => {
-  try {
-    if (!isPostgresConfigured()) {
-      res.status(503).json({ error: "admin_store_unavailable" });
-      return;
-    }
-    const role = adminConsoleRole(req);
-    const page = Math.min(500, Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1));
-    const pageSize = Math.min(100, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
-    const status = typeof req.query.status === "string" ? req.query.status.trim() : "";
-    const q = typeof req.query.q === "string" ? req.query.q : "";
-    const { total, items } = await listRideSupportTicketsAdminPage({
-      role,
-      scopeCompanyId: req.adminAuth?.scopeCompanyId ?? null,
-      page,
-      pageSize,
-      status: status || undefined,
-      q: String(q).trim() || undefined,
-    });
-    res.json({ ok: true, total, page, pageSize, items });
-  } catch (e) {
-    next(e);
-  }
-});
-
-adminJson.get("/ride-support-tickets/:id", async (req, res, next) => {
-  try {
-    if (!isPostgresConfigured()) {
-      res.status(503).json({ error: "admin_store_unavailable" });
-      return;
-    }
-    const id = String(req.params.id ?? "").trim();
-    if (!id) {
-      res.status(400).json({ error: "ticket_id_required" });
-      return;
-    }
-    const role = adminConsoleRole(req);
-    const row = await getRideSupportTicketAdmin(id, role, req.adminAuth?.scopeCompanyId);
-    if (!row) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    res.json({ ok: true, ticket: row });
-  } catch (e) {
-    next(e);
-  }
-});
-
-adminJson.patch("/ride-support-tickets/:id", async (req, res, next) => {
-  try {
-    if (!isPostgresConfigured()) {
-      res.status(503).json({ error: "admin_store_unavailable" });
-      return;
-    }
-    const id = String(req.params.id ?? "").trim();
-    if (!id) {
-      res.status(400).json({ error: "ticket_id_required" });
-      return;
-    }
-    const body = req.body as { status?: unknown; internalNote?: unknown };
-    const statusStr = typeof body.status === "string" ? body.status.trim() : undefined;
-    const hasNote = Object.prototype.hasOwnProperty.call(body, "internalNote");
-    const internalNote = hasNote
-      ? typeof body.internalNote === "string" || body.internalNote === null
-        ? body.internalNote
-        : undefined
-      : undefined;
-    if (statusStr === undefined && !hasNote) {
-      res.status(400).json({ error: "no_changes" });
-      return;
-    }
-    const role = adminConsoleRole(req);
-    const row = await updateRideSupportTicketAdmin(
-      id,
-      {
-        ...(statusStr && (statusStr === "open" || statusStr === "in_progress" || statusStr === "resolved")
-          ? { status: statusStr }
-          : {}),
-        ...(hasNote ? { internalNote: internalNote === undefined ? null : (internalNote as string | null) } : {}),
-      },
-      role,
-      req.adminAuth?.scopeCompanyId,
-    );
-    if (!row) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    res.json({ ok: true, ticket: row });
   } catch (e) {
     next(e);
   }

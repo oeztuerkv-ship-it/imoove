@@ -57,7 +57,6 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Taxi fleet_drivers.approval_status (Einsatzbereitschaft / Plattform-Freigabe)     → 044_fleet_drivers_approval_status.sql
   Taxi fleet_drivers: Sperrgrund + Admin-Notiz (Plattform)                         → 045_fleet_drivers_admin_note_suspension.sql
   Taxi fleet_vehicles: Sperrgrund, Admin-Notiz, Baujahr, Sitzplätze                → 046_fleet_vehicles_admin_fields.sql
-  Kund*innen-Support-Tickets (Fahrtkontext-Snapshot)                                 → 047_ride_support_tickets.sql
   Taxi fleet_drivers: System-Readiness-Override (Operator-Tests trotz fehlender Unterlagen) → 048_fleet_drivers_readiness_override_system.sql
 
 Nach Migrationen Schema prüfen:

@@ -450,27 +450,6 @@ export const rideEventsTable = pgTable("ride_events", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Kund*innen-Support (MVP): Ticket + fester Fahrtkontext zum Erfassungszeitpunkt. */
-export const rideSupportTicketsTable = pgTable("ride_support_tickets", {
-  id: text("id").primaryKey(),
-  ride_id: text("ride_id")
-    .notNull()
-    .references(() => ridesTable.id, { onDelete: "cascade" }),
-  passenger_id: text("passenger_id").notNull(),
-  category: text("category").notNull(),
-  message: text("message"),
-  status: text("status").notNull().default("open"),
-  internal_note: text("internal_note"),
-  ride_context_snapshot: jsonb("ride_context_snapshot")
-    .$type<Record<string, unknown>>()
-    .notNull()
-    .default({}),
-  snapshot_schema_version: integer("snapshot_schema_version").notNull().default(1),
-  snapshot_captured_at: timestamp("snapshot_captured_at", { withTimezone: true }).notNull(),
-  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
 /** Abrechnungskonto pro Unternehmen/Rolle (Partner, Betreiber, Zahler, Leistungserbringer). */
 export const billingAccountsTable = pgTable("billing_accounts", {
   id: text("id").primaryKey(),
