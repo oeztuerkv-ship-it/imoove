@@ -24,7 +24,6 @@ import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
-import RideSupportTicketsPage from "./pages/RideSupportTicketsPage.jsx";
 import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
 import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.jsx";
 import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
@@ -596,8 +595,16 @@ export default function App() {
         return <TaxiFleetVehiclesPage />;
       case "support-inbox":
         return <SupportInboxPage />;
-      case "ride-support":
-        return <RideSupportTicketsPage />;
+      case "ride-support": {
+        const m = PAGE_META["ride-support"];
+        return (
+          <AdminPlaceholderPage
+            title={m.title}
+            intro={`${m.subtitle} (Support-Ticket-UI folgt mit gesonderter API/PR.)`}
+            bullets={[]}
+          />
+        );
+      }
       case "fleet-vehicles-review":
         return <FleetVehiclesReviewPage />;
       case "company-registration-requests":
