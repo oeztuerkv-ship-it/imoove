@@ -1707,7 +1707,7 @@ export default function DriverDashboard() {
     }
     if (!driver.einsatzbereit) {
       Alert.alert(
-        "Noch nicht einsatzbereit",
+        driver.blockBannerTitle || "Einschränkung aktiv",
         driver.notFreigegebenMessage ||
           "Sie sind noch nicht für den Auftragsmarkt freigegeben. Bitte wenden Sie sich an Ihr Unternehmen.",
       );
@@ -1721,6 +1721,15 @@ export default function DriverDashboard() {
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const code = e instanceof Error ? e.message.trim() : "";
+      if (code === "driver_not_einsatzbereit") {
+        await refreshEinsatzbereit?.();
+        Alert.alert(
+          "Annahme nicht möglich",
+          driver.notFreigegebenMessage ||
+            "Sie sind derzeit nicht einsatzbereit. Bitte wenden Sie sich an Ihr Unternehmen.",
+        );
+        return;
+      }
       if (code === "no_matching_vehicle_available") {
         await refreshRequests?.();
         Alert.alert(
@@ -1932,16 +1941,16 @@ export default function DriverDashboard() {
         <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              if (!driver.einsatzbereit) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                void refreshEinsatzbereit();
-                Alert.alert(
-                  "Noch nicht einsatzbereit",
-                  driver.notFreigegebenMessage ||
-                    "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
-                );
-                return;
-              }
+      if (!driver.einsatzbereit) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        void refreshEinsatzbereit();
+        Alert.alert(
+          driver.blockBannerTitle || "Einschränkung aktiv",
+          driver.notFreigegebenMessage ||
+            "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
+        );
+        return;
+      }
               setAvailable(!driver.isAvailable);
             }}
             style={[
@@ -1985,7 +1994,7 @@ export default function DriverDashboard() {
           }}
         >
           <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#FBBF24", marginBottom: 4 }}>
-            Auftragsmarkt gesperrt
+            {driver.blockBannerTitle || "Auftragsmarkt gesperrt"}
           </Text>
           <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: "#E2E8F0", lineHeight: 19 }}>
             {driver.notFreigegebenMessage}

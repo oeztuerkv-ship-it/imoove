@@ -122,7 +122,7 @@ function workflowPill(driver) {
 }
 
 function workflowKeyToTone(key) {
-  if (key === "suspended") return "missing";
+  if (key === "inactive" || key === "suspended") return "missing";
   if (key === "rejected") return "missing";
   if (key === "in_review" || key === "pending") return "review";
   if (key === "approved") return "neutral";
@@ -722,7 +722,7 @@ export default function FleetPage() {
                   drivers.map((d) => {
                     const wMeta = workflowPill(d);
                     const ready = Boolean(d.readiness?.ready);
-                    const firstHint = d.readiness?.blockReasons?.[0]?.message;
+                    const blockLines = (d.readiness?.blockReasons ?? []).map((b) => b.message).filter(Boolean);
                     const pSchein = pScheinMeta(d.pScheinExpiry);
                     return (
                     <tr key={d.id}>
@@ -744,10 +744,22 @@ export default function FleetPage() {
                       </td>
                       <td
                         className="partner-muted"
-                        style={{ maxWidth: 280, fontSize: 12, lineHeight: 1.4 }}
-                        title={d.readiness?.blockReasons?.map((b) => b.message).join("\n") || ""}
+                        style={{ maxWidth: 360, fontSize: 12, lineHeight: 1.4 }}
+                        title={blockLines.join("\n") || ""}
                       >
-                        {ready ? "—" : firstHint || "Nicht einsatzbereit."}
+                        {ready ? (
+                          "—"
+                        ) : blockLines.length ? (
+                          <ul style={{ margin: 0, paddingLeft: 16, maxWidth: 340 }}>
+                            {blockLines.map((line, idx) => (
+                              <li key={idx} style={{ marginBottom: 4 }}>
+                                {line}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          "Nicht einsatzbereit."
+                        )}
                       </td>
                       <td>
                         <span className={`partner-pill partner-pill--${pSchein.tone}`}>{pSchein.label}</span>
@@ -1001,6 +1013,11 @@ export default function FleetPage() {
                                 {v.rejectionReason}
                               </span>
                             ) : null}
+                            {v.approvalStatus === "blocked" && v.blockReason ? (
+                              <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
+                                Sperrgrund: {v.blockReason}
+                              </span>
+                            ) : null}
                             {canManage && (v.approvalStatus === "draft" || v.approvalStatus === "rejected") ? (
                               <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                                 <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
@@ -1030,19 +1047,26 @@ export default function FleetPage() {
                         <td>{v.nextInspectionDate || "—"}</td>
                         <td>
                           {drv ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                              <span className="partner-pill partner-pill--soft">Fahrer</span>
-                              <span>
-                                {drv.firstName} {drv.lastName}
-                              </span>
-                              {canManage ? (
-                                <button
-                                  type="button"
-                                  className="partner-btn-secondary partner-btn-secondary--sm partner-btn-secondary--muted"
-                                  onClick={() => clearAssignment(drv.id)}
-                                >
-                                  Zuweisung löschen
-                                </button>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span className="partner-pill partner-pill--soft">Fahrer</span>
+                                <span>
+                                  {drv.firstName} {drv.lastName}
+                                </span>
+                                {canManage ? (
+                                  <button
+                                    type="button"
+                                    className="partner-btn-secondary partner-btn-secondary--sm partner-btn-secondary--muted"
+                                    onClick={() => clearAssignment(drv.id)}
+                                  >
+                                    Zuweisung löschen
+                                  </button>
+                                ) : null}
+                              </div>
+                              {v.approvalStatus !== "approved" && drv.readiness?.ready === false ? (
+                                <span className="partner-muted" style={{ fontSize: 11, maxWidth: 280, lineHeight: 1.35 }}>
+                                  Zugeordneter Fahrer ist nicht einsatzbereit, solange dieses Fahrzeug nicht freigegeben ist oder gesperrt bleibt (Details siehe Fahrerliste, Spalte „Hinweis“).
+                                </span>
                               ) : null}
                             </div>
                           ) : (

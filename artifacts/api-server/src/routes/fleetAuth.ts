@@ -53,8 +53,8 @@ router.post("/fleet-auth/login", async (req, res) => {
     return;
   }
 
-  if (!row.is_active || row.access_status !== "active") {
-    res.status(403).json({ error: "driver_suspended" });
+  if (!row.is_active) {
+    res.status(403).json({ error: "driver_account_inactive" });
     return;
   }
 

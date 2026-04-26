@@ -24,6 +24,8 @@ function fleetLoginUserMessage(errorCode: string): string {
       return "Fahrer-Login steht nur Taxi-Unternehmen zur Verfügung.";
     case "driver_suspended":
       return "Ihr Fahrer-Zugang ist pausiert. Bitte den Betrieb kontaktieren.";
+    case "driver_account_inactive":
+      return "Ihr Fahrerkonto ist deaktiviert. Bitte Ihr Unternehmen oder den Support kontaktieren.";
     case "rate_limited":
       return "Zu viele Anmeldeversuche. Bitte einen Moment warten und erneut versuchen.";
     case "email_and_password_required":
@@ -51,6 +53,12 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
       : einsatzbereit
         ? ""
         : DEFAULT_NICHT_FREI_MSG;
+  const blockBannerTitle =
+    typeof me.blockBannerTitle === "string" && me.blockBannerTitle.trim()
+      ? me.blockBannerTitle.trim()
+      : "";
+  const driverBlockKind =
+    typeof me.driverBlockKind === "string" && me.driverBlockKind.trim() ? me.driverBlockKind.trim() : "";
   const accessStatus = String(d.accessStatus ?? "");
   return {
     ...prev,
@@ -65,6 +73,8 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     einsatzbereit,
     isAvailable: einsatzbereit ? prev.isAvailable : false,
     notFreigegebenMessage,
+    blockBannerTitle: einsatzbereit ? "" : blockBannerTitle,
+    driverBlockKind: einsatzbereit ? "" : driverBlockKind,
   };
 }
 
@@ -88,6 +98,8 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     blockedUntil: typeof p.blockedUntil === "string" || p.blockedUntil === null ? (p.blockedUntil as string | null) : null,
     einsatzbereit: p.einsatzbereit === true,
     notFreigegebenMessage: typeof p.notFreigegebenMessage === "string" ? p.notFreigegebenMessage : "",
+    blockBannerTitle: typeof p.blockBannerTitle === "string" ? p.blockBannerTitle : "",
+    driverBlockKind: typeof p.driverBlockKind === "string" ? p.driverBlockKind : "",
   };
 }
 
@@ -106,6 +118,10 @@ export interface DriverProfile {
   /** Wahr, wenn alle Einsatzbereit-Bedingungen erfüllt sind (siehe API `/fleet-driver/v1/me`). */
   einsatzbereit: boolean;
   notFreigegebenMessage: string;
+  /** Kurztitel fürs Sperr-Banner (API). */
+  blockBannerTitle: string;
+  /** z. B. access_suspended | vehicle | compliance | other */
+  driverBlockKind: string;
 }
 
 interface DriverContextValue {
@@ -230,6 +246,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         blockedUntil: null,
         einsatzbereit: false,
         notFreigegebenMessage: DEFAULT_NICHT_FREI_MSG,
+        blockBannerTitle: "",
+        driverBlockKind: "",
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));

@@ -14,7 +14,7 @@ function bearerToken(req: Request): string | null {
 }
 
 /**
- * Fleet-Fahrer-Session: JWT + Abgleich `session_version` und `access_status` in der DB (Sperre = sofort 401).
+ * Fleet-Fahrer-Session: JWT + `session_version`. Sperrung (Zugang / Einsatzbereitschaft) in `/fleet-driver/v1/me` + Readiness, nicht 403 hier.
  */
 export const requireFleetDriverAuth: RequestHandler = async (
   req: Request,
@@ -36,8 +36,8 @@ export const requireFleetDriverAuth: RequestHandler = async (
       res.status(401).json({ error: "invalid_token" });
       return;
     }
-    if (!row.is_active || row.access_status !== "active") {
-      res.status(403).json({ error: "driver_suspended" });
+    if (!row.is_active) {
+      res.status(403).json({ error: "driver_account_inactive" });
       return;
     }
     if (row.session_version !== claims.sessionVersion) {

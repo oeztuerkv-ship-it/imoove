@@ -7,7 +7,7 @@ import {
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
-import { deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
+import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
 import { listRides } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
@@ -35,13 +35,22 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
   const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
   const driverWorkflow = deriveDriverWorkflowLabel(listRow);
+  const hints =
+    "error" in readinessR
+      ? {
+          notFreigegebenMessage: "Einsatzbereitschaft konnte nicht geladen werden.",
+          blockBannerTitle: "Hinweis",
+          driverBlockKind: "other" as const,
+        }
+      : einsatzbereit
+        ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
+        : buildFleetDriverMeClientHints(readinessR, listRow);
   res.json({
     ok: true,
     einsatzbereit,
-    notFreigegebenMessage:
-      einsatzbereit
-        ? null
-        : "Noch nicht freigegeben oder Voraussetzungen unvollständig — bitte wenden Sie sich ggf. an Ihr Unternehmen oder an Onroda.",
+    notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
+    blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
+    driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
     driverWorkflow,
     ...("error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR }),
     driver: {

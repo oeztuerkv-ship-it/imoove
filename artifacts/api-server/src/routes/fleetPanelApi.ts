@@ -168,7 +168,11 @@ router.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) =
         return d.pScheinExpiry >= t0 && d.pScheinExpiry <= t1;
       });
     }
-    res.json({ ok: true, drivers: rows });
+    const publicRows = rows.map((d) => {
+      const { adminInternalNote: _a, ...rest } = d as typeof d & { adminInternalNote?: string };
+      return rest;
+    });
+    res.json({ ok: true, drivers: publicRows });
   } catch (e) {
     next(e);
   }
@@ -404,7 +408,11 @@ router.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) 
     if (String((req.query as { activeOnly?: string }).activeOnly ?? "") === "1") {
       rows = rows.filter((v) => v.approvalStatus === "approved");
     }
-    res.json({ ok: true, vehicles: rows });
+    const publicV = rows.map((v) => {
+      const { adminInternalNote: _a, ...rest } = v as typeof v & { adminInternalNote?: string };
+      return rest;
+    });
+    res.json({ ok: true, vehicles: publicV });
   } catch (e) {
     next(e);
   }

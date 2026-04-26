@@ -267,7 +267,7 @@ export async function suspendFleetDriver(id: string, companyId: string): Promise
     .update(fleetDriversTable)
     .set({
       access_status: "suspended",
-      is_active: false,
+      is_active: true,
       updated_at: new Date(),
       session_version: sql`${fleetDriversTable.session_version} + 1`,
     })
@@ -344,7 +344,7 @@ export async function adminSuspendFleetDriver(
     .update(fleetDriversTable)
     .set({
       access_status: "suspended",
-      is_active: false,
+      is_active: true,
       suspension_reason: reason,
       updated_at: new Date(),
       session_version: sql`${fleetDriversTable.session_version} + 1`,
