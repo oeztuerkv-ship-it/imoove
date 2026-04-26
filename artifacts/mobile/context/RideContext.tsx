@@ -7,7 +7,8 @@ import React, {
   useState,
 } from "react";
 
-import { calculateFare, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
+import { calculateFareFromAppConfig, appTariffFromRecord, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
 
@@ -241,7 +242,8 @@ export function effectivePricingModeForCustomerRide(_input: {
   return "taxi_tariff";
 }
 
-export function RideProvider({ children }: { children: React.ReactNode }) {
+function RideProviderInner({ children }: { children: React.ReactNode }) {
+  const { config: appCfg } = useOnrodaAppConfig();
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
   const [destination, setDestination] = useState<GeoLocation | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
@@ -288,7 +290,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      const onrodaFixAllowed = false;
+      const tcfg = appTariffFromRecord(appCfg.tariffs as Record<string, unknown>);
       if (API_BASE) {
         try {
           const u = new URL(`${API_BASE}/fare-estimate`);
@@ -310,7 +312,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
             return;
           }
         } catch {
-          /* fallback auf lokale Berechnung */
+          /* fallback auf Konfig-Parameter */
         }
       }
       const vehicle = VEHICLES.find((v) => v.id === selectedVehicle);
@@ -318,7 +320,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      const breakdown = calculateFare(result.distanceKm);
+      const breakdown = calculateFareFromAppConfig(result.distanceKm, 0, tcfg);
       const ESTIMATE_BUFFER = 1.08; // +8% Puffer über Taxameter (Schätzpreis)
       const adjusted: FareBreakdown = {
         ...breakdown,
@@ -332,7 +334,7 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingRoute(false);
     }
-  }, [origin, destination, selectedVehicle]);
+  }, [origin, destination, selectedVehicle, appCfg]);
 
   const startRide = useCallback(() => {
     if (!fareBreakdown) return;
@@ -421,6 +423,11 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
       {children}
     </RideContext.Provider>
   );
+}
+
+/** Muss unter `AppConfigProvider` stehen (Tarif-Fallback aus `GET /api/app/config`). */
+export function RideProvider({ children }: { children: React.ReactNode }) {
+  return <RideProviderInner>{children}</RideProviderInner>;
 }
 
 export function useRide(): RideContextValue {

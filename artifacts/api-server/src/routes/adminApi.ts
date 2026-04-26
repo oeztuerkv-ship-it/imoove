@@ -68,6 +68,13 @@ import {
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
+  getOperationalConfigPayload,
+  insertServiceRegion,
+  listServiceRegionsForApi,
+  updateOperationalConfigPayload,
+  updateServiceRegionById,
+} from "../db/appOperationalData";
+import {
   createHomepageFaqItem,
   createHomepageHowStep,
   createHomepageTrustMetric,
@@ -2213,6 +2220,127 @@ adminJson.patch("/homepage-placeholders/:id", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/app-operational", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const [config, serviceRegions] = await Promise.all([
+      getOperationalConfigPayload(),
+      listServiceRegionsForApi(),
+    ]);
+    res.json({ ok: true, config, serviceRegions });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/app-operational", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const before = await getOperationalConfigPayload();
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    if (body.messages !== undefined) patch.messages = body.messages as Record<string, unknown>;
+    if (body.commission !== undefined) patch.commission = body.commission as Record<string, unknown>;
+    if (body.tariffs !== undefined) patch.tariffs = body.tariffs as Record<string, unknown>;
+    if (body.dispatch !== undefined) patch.dispatch = body.dispatch as Record<string, unknown>;
+    if (body.features !== undefined) patch.features = body.features as Record<string, unknown>;
+    if (body.driverRules !== undefined) patch.driverRules = body.driverRules as Record<string, unknown>;
+    if (body.bookingRules !== undefined) patch.bookingRules = body.bookingRules as Record<string, unknown>;
+    if (body.system !== undefined) patch.system = body.system as Record<string, unknown>;
+    if (body.version !== undefined) patch.version = body.version;
+    const out = await updateOperationalConfigPayload(patch);
+    if ("error" in out) {
+      res.status(503).json({ error: "unavailable" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.config_patched",
+      meta: { before, after: out, keys: Object.keys(patch) },
+    });
+    res.json({ ok: true, config: out });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/app-operational/service-regions/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const beforeList = await listServiceRegionsForApi();
+    const before = beforeList.find((r) => r.id === id) ?? null;
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const matchTerms =
+      b.matchTerms !== undefined
+        ? Array.isArray(b.matchTerms)
+          ? b.matchTerms.map((x) => (typeof x === "string" ? x.trim() : String(x))).filter((s) => s.length > 0)
+          : undefined
+        : undefined;
+    const upd = await updateServiceRegionById(id, {
+      label: typeof b.label === "string" ? b.label : undefined,
+      matchTerms,
+      isActive: typeof b.isActive === "boolean" ? b.isActive : undefined,
+      sortOrder: Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : undefined,
+    });
+    if (!upd) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const after = (await listServiceRegionsForApi()).find((r) => r.id === id) ?? null;
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.service_region_patched",
+      meta: { id, before, after },
+    });
+    res.json({ ok: true, serviceRegion: after });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/app-operational/service-regions", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const label = typeof b.label === "string" ? b.label.trim() : "";
+    const matchTerms = Array.isArray(b.matchTerms)
+      ? b.matchTerms.map((x) => (typeof x === "string" ? x.trim() : String(x))).filter((s) => s.length > 0)
+      : [];
+    if (!label || matchTerms.length === 0) {
+      res.status(400).json({ error: "label_and_matchTerms_required" });
+      return;
+    }
+    const id = await insertServiceRegion({ label, matchTerms, isActive: b.isActive !== false });
+    const serviceRegions = await listServiceRegionsForApi();
+    const serviceRegion = serviceRegions.find((r) => r.id === id) ?? null;
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.service_region_created",
+      meta: { id, serviceRegion },
+    });
+    res.status(201).json({ ok: true, id, serviceRegion });
   } catch (e) {
     next(e);
   }

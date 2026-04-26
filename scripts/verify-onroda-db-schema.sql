@@ -34,6 +34,7 @@
 --   045 → fleet_drivers.suspension_reason, admin_internal_note
 --   046 → fleet_vehicles.admin_internal_note, block_reason, model_year, passenger_seats
 --   048 → fleet_drivers.readiness_override_system (Operator-Tests)
+--   049 → app_operational_config, app_service_regions (App/Betrieb MVP)
 
 DO $$
 DECLARE
@@ -563,6 +564,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'homepage_trust_metrics'
   ) THEN
     errs := array_append(errs, 'table homepage_trust_metrics (Migration 042)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'app_operational_config'
+  ) THEN
+    errs := array_append(errs, 'table app_operational_config (Migration 049)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'app_service_regions'
+  ) THEN
+    errs := array_append(errs, 'table app_service_regions (Migration 049)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

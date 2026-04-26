@@ -23,6 +23,7 @@ const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
+import { userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { useColors } from "@/hooks/useColors";
 
 type GeoResult = { display_name: string; lat: string; lon: string };
@@ -391,14 +392,22 @@ export default function NewBookingScreen() {
       origin: originGeo,
       destination: destGeo,
     });
+    const fromFull = from.fullName || from.name;
+    const toFull = to.fullName || to.name;
     try {
+      const area = await validateServiceAreaForBooking(fromFull, toFull);
+      if (!area.ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Buchung nicht möglich", area.message);
+        return;
+      }
       await addRequest({
         from: from.name,
-        fromFull: from.fullName || from.name,
+        fromFull,
         fromLat: from.lat || undefined,
         fromLon: from.lon || undefined,
         to: to.name,
-        toFull: to.fullName || to.name,
+        toFull,
         toLat: to.lat || undefined,
         toLon: to.lon || undefined,
         distanceKm: 0,
@@ -415,9 +424,8 @@ export default function NewBookingScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/my-rides");
     } catch (e) {
-      const code = e instanceof Error ? e.message : "request_failed";
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Buchung", accessCodeErrorMessage(code));
+      Alert.alert("Buchung", userFacingBookingErrorMessage(e, accessCodeErrorMessage));
     } finally {
       setSubmitting(false);
     }

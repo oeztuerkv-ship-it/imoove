@@ -10,10 +10,12 @@ import fleetDriverApiRouter from "./fleetDriverApi";
 import fleetPanelApiRouter from "./fleetPanelApi";
 import insurerPanelApiRouter from "./insurerPanelApi";
 import publicHomepageApiRouter from "./publicHomepageApi";
+import appConfigApiRouter from "./appConfigApi";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(appConfigApiRouter);
 router.use(authRouter);
 router.use(panelAuthRouter);
 router.use(fleetAuthRouter);

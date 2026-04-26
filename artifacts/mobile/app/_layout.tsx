@@ -20,6 +20,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AppConfigProvider } from "@/context/AppConfigContext";
 import { DriverProvider } from "@/context/DriverContext";
 import { RideProvider } from "@/context/RideContext";
 import { RideRequestProvider } from "@/context/RideRequestContext";
@@ -100,13 +101,15 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <UserProvider>
-                <DriverProvider>
-                  <RideRequestProvider>
-                    <RideProvider>
-                      <RootLayoutNav />
-                    </RideProvider>
-                  </RideRequestProvider>
-                </DriverProvider>
+                <AppConfigProvider>
+                  <DriverProvider>
+                    <RideRequestProvider>
+                      <RideProvider>
+                        <RootLayoutNav />
+                      </RideProvider>
+                    </RideRequestProvider>
+                  </DriverProvider>
+                </AppConfigProvider>
               </UserProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

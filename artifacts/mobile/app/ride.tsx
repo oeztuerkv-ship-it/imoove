@@ -29,6 +29,7 @@ import {
 import { useRideRequests } from "@/context/RideRequestContext";
 import { rs, rf } from "@/utils/scale";
 import { useUser } from "@/context/UserContext";
+import { userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
@@ -189,6 +190,13 @@ export default function RideScreen() {
     ]).start(() => {
       void (async () => {
         try {
+          if (!destination) return;
+          const area = await validateServiceAreaForBooking(origin.displayName, destination.displayName);
+          if (!area.ok) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert("Buchung nicht möglich", area.message);
+            return;
+          }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           const paymentLabel =
             pm === "cash" ? "Bar" :
@@ -237,8 +245,10 @@ export default function RideScreen() {
           router.replace({ pathname: "/status", params: { rideId: rideRequestId } } as any);
         } catch (err) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          const code = err instanceof Error ? err.message : "request_failed";
-          Alert.alert("Buchung fehlgeschlagen", accessCodeBookingErrorMessage(code));
+          Alert.alert(
+            "Buchung fehlgeschlagen",
+            userFacingBookingErrorMessage(err, accessCodeBookingErrorMessage),
+          );
         }
       })();
     });

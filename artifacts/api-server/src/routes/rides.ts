@@ -33,6 +33,11 @@ import {
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
+import {
+  checkCustomerRideServiceArea,
+  getOperationalConfigPayload,
+  getOutOfServiceAreaMessage,
+} from "../db/appOperationalData";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -448,6 +453,52 @@ router.post("/rides", async (req, res, next) => {
       raw.pricingMode !== "taxi_tariff"
     ) {
       res.status(400).json({ error: "pricing_mode_invalid" });
+      return;
+    }
+    const fromFull = String((raw as { fromFull?: string }).fromFull ?? (raw as { from?: string }).from ?? "").trim();
+    const toFull = String((raw as { toFull?: string }).toFull ?? (raw as { to?: string }).to ?? "").trim();
+    if (!fromFull || !toFull) {
+      res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const sys = opPayload.system as {
+      emergencyShutdown?: boolean;
+      maintenanceMode?: boolean;
+      allowCustomerApp?: boolean;
+      blockNewBookings?: boolean;
+    } | undefined;
+    const opMsg = opPayload.messages as { customerAppClosedDe?: string; bookingBlockedDe?: string } | undefined;
+    if (sys?.emergencyShutdown) {
+      const m = opMsg?.customerAppClosedDe;
+      res.status(503).json({
+        error: "app_unavailable",
+        message: m && m.trim() ? m.trim() : "Dienst nicht verfügbar.",
+      });
+      return;
+    }
+    if (sys?.maintenanceMode && sys?.allowCustomerApp === false) {
+      const m = opMsg?.customerAppClosedDe;
+      res.status(503).json({
+        error: "app_unavailable",
+        message: m && m.trim() ? m.trim() : "Kunden-App in Wartung.",
+      });
+      return;
+    }
+    if (sys?.blockNewBookings) {
+      const m = opMsg?.bookingBlockedDe;
+      res.status(400).json({
+        error: "bookings_blocked",
+        message: m && m.trim() ? m.trim() : "Neue Buchungen derzeit deaktiviert.",
+      });
+      return;
+    }
+    const area = await checkCustomerRideServiceArea(fromFull, toFull);
+    if (!area.ok) {
+      res.status(400).json({
+        error: "service_area_not_covered",
+        message: getOutOfServiceAreaMessage(opPayload),
+      });
       return;
     }
     const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;

@@ -73,6 +73,97 @@ export function calculateFare(
 }
 
 /** Onroda Fixpreis: 3,50 € Basis + 2,20 € pro km (lt. Produktvorgabe). */
+/** Werte aus `GET /api/app/config` → `tariffs` (Backend-Steuerung). */
+export type AppTariffConfig = {
+  baseFare: number;
+  rateFirstPerKm: number;
+  rateAfterPerKm: number;
+  thresholdKm: number;
+  waitingPerHour: number;
+  onrodaFixBase: number;
+  onrodaFixPerKm: number;
+};
+
+const FALLBACK_TARIFF: AppTariffConfig = {
+  baseFare: 4.3,
+  rateFirstPerKm: 3.0,
+  rateAfterPerKm: 2.5,
+  thresholdKm: 4,
+  waitingPerHour: 38,
+  onrodaFixBase: 3.5,
+  onrodaFixPerKm: 2.2,
+};
+
+function num(v: unknown, d: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : d;
+}
+
+export function appTariffFromRecord(raw: Record<string, unknown> | null | undefined): AppTariffConfig {
+  if (!raw || typeof raw !== "object") return { ...FALLBACK_TARIFF };
+  return {
+    baseFare: num(raw.baseFare, FALLBACK_TARIFF.baseFare),
+    rateFirstPerKm: num(raw.rateFirstPerKm, FALLBACK_TARIFF.rateFirstPerKm),
+    rateAfterPerKm: num(raw.rateAfterPerKm, FALLBACK_TARIFF.rateAfterPerKm),
+    thresholdKm: num(raw.thresholdKm, FALLBACK_TARIFF.thresholdKm),
+    waitingPerHour: num(raw.waitingPerHour, FALLBACK_TARIFF.waitingPerHour),
+    onrodaFixBase: num(raw.onrodaFixBase, FALLBACK_TARIFF.onrodaFixBase),
+    onrodaFixPerKm: num(raw.onrodaFixPerKm, FALLBACK_TARIFF.onrodaFixPerKm),
+  };
+}
+
+/**
+ * Schätzpreis (Taxameter-Logik) aus plattformgesteuerten Tarifparametern — ersetzt fest im Code hinterlegte Konstanten.
+ */
+export function calculateFareFromAppConfig(
+  distanceKm: number,
+  waitingMinutes: number,
+  tariffs: AppTariffConfig,
+): FareBreakdown {
+  const t = tariffs;
+  const waitPerMin = t.waitingPerHour / 60;
+  if (distanceKm <= 0) {
+    return {
+      baseFare: t.baseFare,
+      distanceCharge: 0,
+      waitingCharge: 0,
+      total: t.baseFare,
+      distanceKm: 0,
+      fareKind: "taxameter",
+    };
+  }
+  let distanceCharge: number;
+  if (distanceKm <= t.thresholdKm) {
+    distanceCharge = distanceKm * t.rateFirstPerKm;
+  } else {
+    distanceCharge = t.thresholdKm * t.rateFirstPerKm + (distanceKm - t.thresholdKm) * t.rateAfterPerKm;
+  }
+  const waitingCharge = waitingMinutes * waitPerMin;
+  const total = t.baseFare + distanceCharge + waitingCharge;
+  return {
+    baseFare: t.baseFare,
+    distanceCharge: ceilToTenth(distanceCharge),
+    waitingCharge: ceilToTenth(waitingCharge),
+    total: ceilToTenth(total),
+    distanceKm: Math.round(distanceKm * 100) / 100,
+    fareKind: "taxameter",
+  };
+}
+
+export function calculateOnrodaFixFareConfig(distanceKm: number, tariffs: AppTariffConfig): FareBreakdown {
+  const d = Math.max(0, distanceKm);
+  const distanceCharge = ceilToTenth(d * tariffs.onrodaFixPerKm);
+  const total = ceilToEuro(tariffs.onrodaFixBase + distanceCharge);
+  return {
+    baseFare: tariffs.onrodaFixBase,
+    distanceCharge,
+    waitingCharge: 0,
+    total,
+    distanceKm: Math.round(d * 100) / 100,
+    fareKind: "onroda_fix",
+  };
+}
+
 export function calculateOnrodaFixFare(distanceKm: number): FareBreakdown {
   const BASE = 3.5;
   const PER_KM = 2.2;

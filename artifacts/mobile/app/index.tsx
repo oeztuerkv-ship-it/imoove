@@ -34,6 +34,7 @@ import {
   useRide,
 } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
@@ -238,6 +239,31 @@ export default function HomeScreen() {
 
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests.length;
+
+  const { config: platformConfig } = useOnrodaAppConfig();
+  const preBookingOn = (platformConfig.features as { preBooking?: boolean } | undefined)?.preBooking !== false;
+  const sys = platformConfig.system as {
+    emergencyShutdown?: boolean;
+    maintenanceMode?: boolean;
+    allowCustomerApp?: boolean;
+    globalNoticeDe?: string;
+  } | undefined;
+  const customerAppBlocked = !!sys?.emergencyShutdown || !!(sys?.maintenanceMode && sys?.allowCustomerApp === false);
+  const globalNoticeDe = typeof sys?.globalNoticeDe === "string" ? sys.globalNoticeDe.trim() : "";
+
+  const goToReserve = useCallback(() => {
+    if (customerAppBlocked) {
+      const m = platformConfig.messages?.customerAppClosedDe;
+      Alert.alert("Hinweis", typeof m === "string" && m.trim() ? m : "Kunden-App derzeit nicht verfügbar.");
+      return;
+    }
+    if (!preBookingOn) {
+      Alert.alert("Hinweis", "Vorbestellungen sind in der App derzeit deaktiviert.");
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/reserve-ride");
+  }, [customerAppBlocked, platformConfig.messages, preBookingOn]);
 
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
@@ -736,21 +762,37 @@ export default function HomeScreen() {
                 Wohin soll's gehen?
               </Text>
             </Pressable>
+            {preBookingOn ? (
             <Pressable
               style={[styles.spaeterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setScheduledTime(null);
-                router.push("/reserve-ride");
+                goToReserve();
               }}
             >
               <Feather name="calendar" size={14} color={colors.foreground} />
               <Text style={[styles.spaeterText, { color: colors.foreground }]}>Fahrt buchen</Text>
             </Pressable>
+            ) : null}
           </View>
         )}
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" style={styles.sheetScroll}>
+          {globalNoticeDe.length > 0 ? (
+            <View
+              style={{
+                marginHorizontal: 20,
+                marginBottom: 10,
+                padding: 12,
+                borderRadius: 10,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}>{globalNoticeDe}</Text>
+            </View>
+          ) : null}
           {!destination ? (
             <>
               {/* Quick destinations */}
@@ -832,16 +874,14 @@ export default function HomeScreen() {
                 />
 
                 {/* ── Erweiterung unter den 4 Cards ── */}
+                {preBookingOn ? (
                 <View style={styles.homeExtraWrap}>
                   <Pressable
                     style={({ pressed }) => [
                       styles.homeReserveRow,
                       { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.96 : 1 },
                     ]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push("/reserve-ride");
-                    }}
+                    onPress={goToReserve}
                   >
                     <View style={[styles.homeReserveIcon, { backgroundColor: "#F3F4F6" }]}>
                       <Feather name="calendar" size={16} color={colors.foreground} />
@@ -855,6 +895,7 @@ export default function HomeScreen() {
                     <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
                   </Pressable>
                 </View>
+                ) : null}
               </View>
             </>
           ) : (

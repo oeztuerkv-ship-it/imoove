@@ -850,3 +850,20 @@ export const homepageTrustMetricsTable = pgTable("homepage_trust_metrics", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Zentral: App/Betrieb (MVP) — JSON-Payload, Singleton id=default. */
+export const appOperationalConfigTable = pgTable("app_operational_config", {
+  id: text("id").primaryKey(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Einfahrgebiete: Substrings in Start-/Zieladresse. */
+export const appServiceRegionsTable = pgTable("app_service_regions", {
+  id: text("id").primaryKey(),
+  label: text("label").notNull(),
+  match_terms: jsonb("match_terms").$type<string[]>().notNull().default([]),
+  is_active: boolean("is_active").notNull().default(true),
+  sort_order: integer("sort_order").notNull().default(0),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

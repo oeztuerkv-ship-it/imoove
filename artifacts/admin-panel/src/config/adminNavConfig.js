@@ -42,6 +42,7 @@ export const ADMIN_PAGE_ROLES = {
   "taxi-fleet-vehicles": ["admin", "service", "taxi"],
   "company-registration-requests": ["admin", "service"],
   "support-inbox": ["admin", "service"],
+  "ride-support": ["admin", "service", "taxi", "insurance", "hotel"],
   "fleet-vehicles-review": ["admin", "service"],
 
   "drivers-overview": ["admin", "service", "taxi"],
@@ -58,6 +59,15 @@ export const ADMIN_PAGE_ROLES = {
   "access-codes": ["admin", "service", "taxi"],
   "homepage-placeholders": ["admin", "service"],
   "homepage-content": ["admin", "service"],
+
+  "app-op-tariffs": ["admin", "service"],
+  "app-op-regions": ["admin", "service"],
+  "app-op-commission": ["admin", "service"],
+  "app-op-dispatch": ["admin", "service"],
+  "app-op-features": ["admin", "service"],
+  "app-op-driver-rules": ["admin", "service"],
+  "app-op-booking-rules": ["admin", "service"],
+  "app-op-system": ["admin", "service"],
 
   settings: ["admin", "service", "taxi", "insurance", "hotel"],
   "settings-api": ["admin"],
@@ -82,6 +92,22 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: R.all,
     items: [
       { pageKey: "dashboard", label: "Plattform-Cockpit", icon: "pulse", roles: R.all },
+    ],
+  },
+  {
+    id: "app-betrieb",
+    label: "App / Betrieb",
+    icon: "pulse",
+    roles: R.adminSvc,
+    items: [
+      { pageKey: "app-op-tariffs", label: "Tarife & Preise", icon: "map", navOrder: 1, roles: R.adminSvc },
+      { pageKey: "app-op-regions", label: "Gebiete & Zonen", icon: "map", navOrder: 2, roles: R.adminSvc },
+      { pageKey: "app-op-commission", label: "Provision", icon: "wallet", navOrder: 3, roles: R.adminSvc },
+      { pageKey: "app-op-dispatch", label: "Dispatch", icon: "rides", navOrder: 4, roles: R.adminSvc },
+      { pageKey: "app-op-features", label: "Funktionen", icon: "key", navOrder: 5, roles: R.adminSvc },
+      { pageKey: "app-op-driver-rules", label: "Fahrer-Regeln", icon: "driver", navOrder: 6, roles: R.adminSvc },
+      { pageKey: "app-op-booking-rules", label: "Buchungsregeln", icon: "document", navOrder: 7, roles: R.adminSvc },
+      { pageKey: "app-op-system", label: "System", icon: "cog", navOrder: 8, roles: R.adminSvc },
     ],
   },
   {
@@ -168,6 +194,7 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "taxi-fleet-vehicles", label: "Taxi · Fahrzeuge", icon: "rides", roles: ["admin", "service", "taxi"] },
       { pageKey: "company-registration-requests", label: "Registrierungsanfragen", icon: "document", roles: R.adminSvc },
       { pageKey: "support-inbox", label: "Partner-Anfragen", icon: "document", roles: R.adminSvc },
+      { pageKey: "ride-support", label: "Fahrt-Support (Kund*innen)", icon: "document", roles: ["admin", "service", "taxi", "insurance", "hotel"] },
       { pageKey: "fleet-vehicles-review", label: "Fahrzeuge prüfen", icon: "rides", roles: R.adminSvc },
     ],
   },
@@ -226,9 +253,10 @@ const ADMIN_NAV_GROUPS_RAW = [
 ];
 
 function sortItemsAz(items) {
-  return [...items].sort((a, b) =>
-    a.label.localeCompare(b.label, "de", { sensitivity: "base" }),
-  );
+  if (items.some((x) => typeof x.navOrder === "number")) {
+    return [...items].sort((a, b) => (a.navOrder ?? 999) - (b.navOrder ?? 999));
+  }
+  return [...items].sort((a, b) => a.label.localeCompare(b.label, "de", { sensitivity: "base" }));
 }
 
 export function getAdminNavGroupsForRole(role) {
@@ -298,6 +326,23 @@ const ADMIN_TOP_NAV = [
     roles: R.all,
   },
   {
+    id: "tn-app-betrieb",
+    kind: "section",
+    label: "App / Betrieb",
+    roles: R.adminSvc,
+    defaultTarget: { pageKey: "app-op-tariffs" },
+    children: [
+      { pageKey: "app-op-tariffs", label: "Tarife & Preise" },
+      { pageKey: "app-op-regions", label: "Gebiete & Zonen" },
+      { pageKey: "app-op-commission", label: "Provision" },
+      { pageKey: "app-op-dispatch", label: "Dispatch" },
+      { pageKey: "app-op-features", label: "Funktionen" },
+      { pageKey: "app-op-driver-rules", label: "Fahrer-Regeln" },
+      { pageKey: "app-op-booking-rules", label: "Buchungsregeln" },
+      { pageKey: "app-op-system", label: "System" },
+    ],
+  },
+  {
     id: "tn-companies",
     kind: "section",
     label: "Unternehmen",
@@ -314,6 +359,7 @@ const ADMIN_TOP_NAV = [
       { pageKey: "taxi-fleet-vehicles", label: "Taxi · Fahrzeuge" },
       { pageKey: "company-registration-requests", label: "Registrierungsanfragen" },
       { pageKey: "support-inbox", label: "Partner-Anfragen" },
+      { pageKey: "ride-support", label: "Fahrt-Support" },
       { pageKey: "fleet-vehicles-review", label: "Fahrzeuge prüfen" },
     ],
   },
@@ -325,6 +371,7 @@ const ADMIN_TOP_NAV = [
     defaultTarget: { pageKey: "rides" },
     children: [
       { pageKey: "rides", label: "Alle Fahrten" },
+      { pageKey: "ride-support", label: "Fahrt-Support (Kund*innen)" },
       { pageKey: "ride-new", label: "Neue Fahrt" },
       { pageKey: "docs-hub", label: "Dokumente & PDF" },
       { pageKey: "fares", label: "Tarife & Preise" },

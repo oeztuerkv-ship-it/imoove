@@ -580,10 +580,13 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       });
       const created = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const code = typeof (created as { error?: string }).error === "string"
-          ? (created as { error: string }).error
-          : "request_failed";
-        throw new Error(code);
+        const body = created as { error?: string; message?: string };
+        const code = typeof body.error === "string" ? body.error : "request_failed";
+        const err = new Error(code) as Error & { userMessage?: string };
+        if (typeof body.message === "string" && body.message.trim()) {
+          err.userMessage = body.message.trim();
+        }
+        throw err;
       }
       const id = (created as { id?: string }).id as string;
       setLastAddedRequestId(id);

@@ -24,9 +24,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
 import { type DriverProfile, useDriver } from "@/context/DriverContext";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
+import { userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
@@ -1529,6 +1531,8 @@ export default function DriverDashboard() {
   const bottomPad = isWeb ? 34 : insets.bottom;
 
   const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit } = useDriver();
+  const { config: appPlatformConfig } = useOnrodaAppConfig();
+  const allowDriverApp = (appPlatformConfig.system as { allowDriverApp?: boolean } | undefined)?.allowDriverApp !== false;
   const { history } = useRide();
   const {
     requests,
@@ -1847,6 +1851,12 @@ export default function DriverDashboard() {
     if (!driver) return;
     setCodeRideSubmitting(true);
     try {
+      const area = await validateServiceAreaForBooking(from, to);
+      if (!area.ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Codefahrt", area.message);
+        return;
+      }
       await addRequest({
         from,
         fromFull: from,
@@ -1868,9 +1878,8 @@ export default function DriverDashboard() {
       setActiveTab("auftraege");
       Alert.alert("Codefahrt", "Code akzeptiert. Die Fahrt wurde erstellt.");
     } catch (e) {
-      const code = e instanceof Error ? e.message : "request_failed";
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Codefahrt", accessCodeErrorMessage(code));
+      Alert.alert("Codefahrt", userFacingBookingErrorMessage(e, accessCodeErrorMessage));
     } finally {
       setCodeRideSubmitting(false);
     }
@@ -1880,6 +1889,16 @@ export default function DriverDashboard() {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color="#DC2626" />
+      </View>
+    );
+  }
+
+  if (!allowDriverApp) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", padding: 24, paddingTop: topPad }}>
+        <Text style={{ fontSize: 16, fontFamily: "Inter_500Medium", textAlign: "center", color: colors.foreground, lineHeight: 24 }}>
+          Die Fahrer-App ist in den Plattform-Einstellungen deaktiviert. Bitte später erneut versuchen.
+        </Text>
       </View>
     );
   }

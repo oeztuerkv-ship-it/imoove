@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
+import { getOperationalConfigPayload, listServiceRegionsForApi } from "../db/appOperationalData";
 import { getHomepageContentPublic } from "../db/homepageContentData";
 import { listHomepageFaqPublic, listHomepageHowPublic, listHomepageTrustPublic } from "../db/homepageModulesData";
 import { listHomepagePlaceholdersPublic } from "../db/homepagePlaceholdersData";
@@ -86,6 +87,20 @@ router.get("/public/homepage-trust", async (_req, res, next) => {
     const items = await listHomepageTrustPublic();
     res.setHeader("Cache-Control", "public, max-age=30");
     res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Kunden-App: zentrale Betriebs-Regeln + Einfahrt-Gebiete (ohne Login, kurz cachen). */
+router.get("/public/app-operational", async (_req, res, next) => {
+  try {
+    const [config, serviceRegions] = await Promise.all([
+      getOperationalConfigPayload(),
+      listServiceRegionsForApi(),
+    ]);
+    res.setHeader("Cache-Control", "public, max-age=15");
+    res.json({ ok: true, config, serviceRegions });
   } catch (e) {
     next(e);
   }

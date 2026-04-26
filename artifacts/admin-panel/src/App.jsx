@@ -24,6 +24,7 @@ import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
+import RideSupportTicketsPage from "./pages/RideSupportTicketsPage.jsx";
 import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
 import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.jsx";
 import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
@@ -31,6 +32,9 @@ import InsurerRidesPage from "./pages/InsurerRidesPage.jsx";
 import InsurerExportsPage from "./pages/InsurerExportsPage.jsx";
 import HomepageContentPage from "./pages/HomepageContentPage.jsx";
 import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
+import AppOperationalTariffsPage from "./pages/AppOperationalTariffsPage.jsx";
+import AppOperationalRegionsPage from "./pages/AppOperationalRegionsPage.jsx";
+import AppOperationalCommissionPage from "./pages/AppOperationalCommissionPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
@@ -124,6 +128,43 @@ const PAGE_META = {
     title: "Tarife & Gebiete",
     subtitle: "Preisregeln, Zonen und Zuschläge",
   },
+  "app-op-tariffs": {
+    title: "App / Betrieb — Tarife & Preise",
+    subtitle: "Kunden-App: künftige Tarifparameter ohne App-Update; vorbereitende Vorschau",
+  },
+  "app-op-regions": {
+    title: "App / Betrieb — Gebiete & Zonen",
+    subtitle: "Erlaubte Einfahrt-Regionen: Buchung blockieren, wenn Start/Ziel keinem aktiven Gebiet entspricht",
+  },
+  "app-op-commission": {
+    title: "App / Betrieb — Provision",
+    subtitle: "Globale Standard-Provision (MVP), Erweiterung: je Stadt, Partner, Fahrtart",
+  },
+  "app-op-dispatch": {
+    title: "App / Betrieb — Dispatch",
+    subtitle: "Zuordnung: eigene Fahrer zuerst, Open Market, Weitergabe — Ausbau geplant",
+    placeholder: true,
+  },
+  "app-op-features": {
+    title: "App / Betrieb — Funktionen",
+    subtitle: "Feature-Toggles (Vorbestellung, Krankenfahrt, Zahlwege, …) — Ausbau geplant",
+    placeholder: true,
+  },
+  "app-op-driver-rules": {
+    title: "App / Betrieb — Fahrer-Regeln",
+    subtitle: "P-Schein, Dokumente, Plattform-Freigabe — Ausbau geplant",
+    placeholder: true,
+  },
+  "app-op-booking-rules": {
+    title: "App / Betrieb — Buchungsregeln",
+    subtitle: "Vorlauf, Maximalstrecke, Pflichtfelder, Storno — Ausbau geplant",
+    placeholder: true,
+  },
+  "app-op-system": {
+    title: "App / Betrieb — System",
+    subtitle: "Wartungsmodus, Sperrungen, globale Hinweise — Ausbau geplant",
+    placeholder: true,
+  },
   "health-overview": {
     title: "Krankenfahrten — Übersicht",
     subtitle: "Gefilterte Sicht auf Kostenträger Krankenkasse (Kennzahlen folgen).",
@@ -181,6 +222,10 @@ const PAGE_META = {
   "support-inbox": {
     title: "Partner-Anfragen",
     subtitle: "Support-Threads aller Mandanten: lesen, antworten, Status steuern",
+  },
+  "ride-support": {
+    title: "Fahrt-Support",
+    subtitle: "Kund*innen-Meldungen je Fahrt mit unveränderbarem Kontext (Snapshot) — Plattform-Bearbeitung, keine E-Mail, kein Chat",
   },
   "fleet-vehicles-review": {
     title: "Fahrzeuge prüfen",
@@ -551,6 +596,8 @@ export default function App() {
         return <TaxiFleetVehiclesPage />;
       case "support-inbox":
         return <SupportInboxPage />;
+      case "ride-support":
+        return <RideSupportTicketsPage />;
       case "fleet-vehicles-review":
         return <FleetVehiclesReviewPage />;
       case "company-registration-requests":
@@ -578,6 +625,62 @@ export default function App() {
         return <HomepagePlaceholdersPage />;
       case "homepage-content":
         return <HomepageContentPage />;
+      case "app-op-tariffs":
+        return <AppOperationalTariffsPage />;
+      case "app-op-regions":
+        return <AppOperationalRegionsPage />;
+      case "app-op-commission":
+        return <AppOperationalCommissionPage />;
+      case "app-op-dispatch": {
+        const m = PAGE_META["app-op-dispatch"];
+        return (
+          <AdminPlaceholderPage
+            title="Dispatch"
+            intro={m.subtitle}
+            bullets={["Exklusivzeit, Radius, Markt, Priorisierung, Sperrlogik — an Server-Konfiguration anbinden"]}
+          />
+        );
+      }
+      case "app-op-features": {
+        const m = PAGE_META["app-op-features"];
+        return (
+          <AdminPlaceholderPage
+            title="Funktionen"
+            intro={m.subtitle}
+            bullets={["Schalter pro Produktlinie / Zahlweg / Tracking — mit Public-Config ausliefern"]}
+          />
+        );
+      }
+      case "app-op-driver-rules": {
+        const m = PAGE_META["app-op-driver-rules"];
+        return (
+          <AdminPlaceholderPage
+            title="Fahrer-Regeln"
+            intro={m.subtitle}
+            bullets={["Dokumenten- und Freigabelogik; nur Plattform-Scope (kein Mix mit Partner-Panel)"]}
+          />
+        );
+      }
+      case "app-op-booking-rules": {
+        const m = PAGE_META["app-op-booking-rules"];
+        return (
+          <AdminPlaceholderPage
+            title="Buchungsregeln"
+            intro={m.subtitle}
+            bullets={["Validierung in API und Kunden-App; Krankenfahrt-Metadaten getrennt halten"]}
+          />
+        );
+      }
+      case "app-op-system": {
+        const m = PAGE_META["app-op-system"];
+        return (
+          <AdminPlaceholderPage
+            title="System"
+            intro={m.subtitle}
+            bullets={["Wartungs-Flags und globale Texte; mit Bestätigung und Audit (nächste Iteration)"]}
+          />
+        );
+      }
       case "finance-dashboard":
         return <FinanceDashboardPage />;
       case "finance-ride-financials":
