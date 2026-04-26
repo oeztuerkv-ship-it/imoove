@@ -14,24 +14,24 @@ const KIND_COLORS = {
 };
 
 const VERIFY_BADGE = {
-  pending: { label: "Verif. ausstehend", cl: "admin-c-badge admin-c-badge--neutral" },
-  in_review: { label: "Verif. in Prüfung", cl: "admin-c-badge admin-c-badge--info" },
-  verified: { label: "Verifiziert", cl: "admin-c-badge admin-c-badge--ok" },
-  rejected: { label: "Verif. abgelehnt", cl: "admin-c-badge admin-c-badge--err" },
+  pending: { label: "Verifizierung: ausstehend", short: "Ausstehend", cl: "admin-c-badge admin-c-badge--neutral" },
+  in_review: { label: "Verifizierung: in Prüfung", short: "In Prüfung", cl: "admin-c-badge admin-c-badge--info" },
+  verified: { label: "Verifizierung: bestätigt", short: "Verifiziert", cl: "admin-c-badge admin-c-badge--ok" },
+  rejected: { label: "Verifizierung: abgelehnt", short: "Abgelehnt", cl: "admin-c-badge admin-c-badge--err" },
 };
 
 const COMPL_BADGE = {
-  pending: { label: "Compl. offen", cl: "admin-c-badge admin-c-badge--neutral" },
-  in_review: { label: "Compl. in Prüfung", cl: "admin-c-badge admin-c-badge--info" },
-  compliant: { label: "Compliant", cl: "admin-c-badge admin-c-badge--ok" },
-  non_compliant: { label: "Nicht compliant", cl: "admin-c-badge admin-c-badge--err" },
+  pending: { label: "Compliance: offen", short: "Offen", cl: "admin-c-badge admin-c-badge--neutral" },
+  in_review: { label: "Compliance: in Prüfung", short: "In Prüfung", cl: "admin-c-badge admin-c-badge--info" },
+  compliant: { label: "Compliance: erfüllt", short: "Erfüllt", cl: "admin-c-badge admin-c-badge--ok" },
+  non_compliant: { label: "Compliance: nicht erfüllt", short: "Nicht erfüllt", cl: "admin-c-badge admin-c-badge--err" },
 };
 
 const CONTRACT_BADGE = {
-  inactive: { label: "Vertrag inaktiv", cl: "admin-c-badge admin-c-badge--neutral" },
-  active: { label: "Vertrag aktiv", cl: "admin-c-badge admin-c-badge--ok" },
-  suspended: { label: "Vertrag ausgesetzt", cl: "admin-c-badge admin-c-badge--warn" },
-  terminated: { label: "Vertrag beendet", cl: "admin-c-badge admin-c-badge--err" },
+  inactive: { label: "Vertrag: inaktiv", short: "Inaktiv", cl: "admin-c-badge admin-c-badge--neutral" },
+  active: { label: "Vertrag: aktiv", short: "Aktiv", cl: "admin-c-badge admin-c-badge--ok" },
+  suspended: { label: "Vertrag: ausgesetzt", short: "Ausgesetzt", cl: "admin-c-badge admin-c-badge--warn" },
+  terminated: { label: "Vertrag: beendet", short: "Beendet", cl: "admin-c-badge admin-c-badge--err" },
 };
 
 function StatusBadgeGroup({ v, c, t }) {
@@ -39,18 +39,27 @@ function StatusBadgeGroup({ v, c, t }) {
   const cb = COMPL_BADGE[c] || COMPL_BADGE.pending;
   const kb = CONTRACT_BADGE[t] || CONTRACT_BADGE.inactive;
   return (
-    <div className="admin-c-statusline">
-      <span className={vb.cl} title="Verifizierungsstatus">
-        {vb.label}
+    <div className="admin-c-statuscol" role="group" aria-label="Status">
+      <span className={vb.cl} title={vb.label}>
+        {vb.short}
       </span>
-      <span className={cb.cl} title="Compliance">
-        {cb.label}
+      <span className={cb.cl} title={cb.label}>
+        {cb.short}
       </span>
-      <span className={kb.cl} title="Vertrag">
-        {kb.label}
+      <span className={kb.cl} title={kb.label}>
+        {kb.short}
       </span>
     </div>
   );
+}
+
+function companyMatchesSearch(item, q) {
+  if (!q || !String(q).trim()) return true;
+  const s = String(q).trim().toLowerCase();
+  const hay = [item.name, item.city, item.email, item.contact_name]
+    .map((x) => (x == null ? "" : String(x).toLowerCase()))
+    .join(" ");
+  return hay.includes(s);
 }
 
 export default function CompaniesPage({
@@ -69,6 +78,7 @@ export default function CompaniesPage({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(listTab);
   const [selectedId, setSelectedId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -119,6 +129,11 @@ export default function CompaniesPage({
     return list.sort((a, b) => (a.name || "").toLowerCase().localeCompare((b.name || "").toLowerCase()));
   }, [items, activeTab]);
 
+  const visibleItems = useMemo(
+    () => filteredItems.filter((item) => companyMatchesSearch(item, searchQuery)),
+    [filteredItems, searchQuery],
+  );
+
   const openMandate = (e, id) => {
     e.stopPropagation();
     onOpenMandateDetail?.(id);
@@ -147,24 +162,47 @@ export default function CompaniesPage({
   ];
 
   return (
-    <div className="admin-companies">
+    <div className="admin-companies admin-companies--wide">
       <div className="admin-companies__head">
         <h1 className="admin-companies__title">Mandantenverwaltung</h1>
         <p className="admin-companies__lead">
-          <strong>Operativer Mandanten-Stand</strong> — klicken Sie auf eine Zeile oder den Firmennamen für die
-          <strong> Mandantenzentrale</strong>. Werkzeug-Menü: erweiterte Flotten-/Kassen-Formulare in der Tabelle
-          &quot;Werkstatt öffnen&quot; (getrennt von der Zentrale).
+          <strong>Operativer Mandanten-Stand</strong> — <strong>Zeile oder Firmenname</strong> öffnet die
+          Mandantenzentrale. Rechts <strong>Werkstatt</strong> für Flotte, Kasse und erweiterte Einstellungen.
         </p>
       </div>
 
-      <div className="admin-companies__tabs" role="tablist" aria-label="Mandantentyp-Filter">
+      <div className="admin-c-search">
+        <div className="admin-c-search__row">
+          <div className="admin-c-search__field">
+            <label className="admin-c-search__lbl" htmlFor="admin-companies-search">
+              Mandanten durchsuchen
+            </label>
+            <input
+              id="admin-companies-search"
+              className="admin-c-search__inp"
+              type="search"
+              autoComplete="off"
+              placeholder="Firma, Ort, E-Mail, Ansprechpartner …"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {searchQuery.trim() ? (
+            <div className="admin-c-search__meta" aria-live="polite">
+              {visibleItems.length} {visibleItems.length === 1 ? "Treffer" : "Treffer"}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="admin-companies__chips" role="tablist" aria-label="Mandantentyp-Filter">
         {TABS.map((t) => (
           <button
             key={t.k}
             type="button"
             role="tab"
             aria-selected={activeTab === t.k}
-            className={"admin-c-tab" + (activeTab === t.k ? " admin-c-tab--on" : "")}
+            className={"admin-c-chip" + (activeTab === t.k ? " admin-c-chip--on" : "")}
             onClick={() => setTab(t.k)}
           >
             {t.label}
@@ -172,7 +210,7 @@ export default function CompaniesPage({
         ))}
       </div>
 
-      {loading && items.length === 0 ? <p className="admin-table-sub">Lade …</p> : null}
+      {loading && items.length === 0 ? <p className="admin-c-muted">Lade …</p> : null}
       <div className="admin-c-tablewrap">
         <table className="admin-c-table">
           <thead>
@@ -186,7 +224,14 @@ export default function CompaniesPage({
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((item) => {
+            {!loading && visibleItems.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="admin-c-td admin-c-td--empty">
+                  {searchQuery.trim() ? "Keine Mandanten passend zur Suche." : "Keine Mandanten in diesem Filter."}
+                </td>
+              </tr>
+            ) : null}
+            {visibleItems.map((item) => {
               const color = KIND_COLORS[item.company_kind] || KIND_COLORS.general;
               const iban = (item.bank_iban && String(item.bank_iban).trim()) || "";
               return (
@@ -251,23 +296,22 @@ export default function CompaniesPage({
                         {onOpenMandateDetail ? (
                           <button
                             type="button"
-                            className="admin-c-icow"
-                            title="Mandantenzentrale (gleiche Aktion wie Zeile)"
-                            aria-label="Zentrale"
+                            className="admin-c-openhint"
+                            title="Zur Mandantenzentrale (wie Zeilenklick)"
+                            aria-label="Mandantenzentrale in neuem Kontext"
                             onClick={() => onOpenMandateDetail(item.id)}
                           >
-                            <span className="admin-c-icow__sym" aria-hidden>
-                              ⎘
+                            <span className="admin-c-openhint__i" aria-hidden>
+                              ↗
                             </span>
-                            <span className="admin-c-icow__txt">Zentrale</span>
                           </button>
                         ) : null}
                         <button
                           type="button"
-                          className="admin-c-btn-sec"
+                          className="admin-c-btn-werk"
                           onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
                         >
-                          {selectedId === item.id ? "Werkstatt schließen" : "Werkstatt öffnen"}
+                          {selectedId === item.id ? "Schließen" : "Werkstatt"}
                         </button>
                       </div>
                     </td>
