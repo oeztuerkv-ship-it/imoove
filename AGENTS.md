@@ -32,6 +32,7 @@ Jede inhaltliche Änderung: in PR- oder Commit-Beschreibung (bzw. Plan) eine **k
 - **`scripts/verify-onroda-nginx-example-invariants.sh`** — wird von `verify-onroda-repo-invariants.sh` aufgerufen; hält `artifacts/deploy/nginx-onroda.example.conf` gegen harte Routing-Regressionen (Admin/Panel/API müssen `proxy_pass` haben, kein Panel→Admin-301)
 - `.cursor/rules/imoove-product-architecture.mdc` — Schichten Marketing / API / Mobile / Panel
 - `.cursor/rules/imoove-panel-ux-separation.mdc` — **Admin = Plattform-Konsole**, **Partner = Unternehmens-Panel** (Sprache, Farben, Navigation, kein UI-Mix)
+- **Admin-Panel innerhalb `artifacts/admin-panel/`:** `artifacts/admin-panel/docs/admin-ui-reference.md` + `.cursor/rules/imoove-admin-panel-ui-reference.mdc` — einheitliche Karten/Buttons/Badges (Mandantenzentrale-Referenz), keine Sonderlayouts
 
 ## Datenbank
 
@@ -50,7 +51,7 @@ Jede inhaltliche Änderung: in PR- oder Commit-Beschreibung (bzw. Plan) eine **k
 
 ## Frontends
 
-- **`admin.onroda.de`:** `artifacts/admin-panel` (Base `/partners/`).
+- **`admin.onroda.de`:** `artifacts/admin-panel` (Base `/partners/`). **UI-Referenz** (Karten, Buttons, Abstände, Status-Badges): `artifacts/admin-panel/docs/admin-ui-reference.md` — Mandantenzentrale und `admin-ui.css` als Muster; Cursor-Regel `imoove-admin-panel-ui-reference.mdc` (gilt bei Arbeit unter `artifacts/admin-panel/**`). Keine isolierten Sonderlayouts neben dieser Linie.
 - **`panel.onroda.de`:** `artifacts/partner-panel` — **eigenes** Build (`pnpm --filter partner-panel run build` vom Repo-Root), unabhängig vom Admin-Panel. Nicht mit Admin-Shell vermischen.
 
 **Dauerhafte UX-Linie (verbindlich):** Admin wirkt immer wie **Operator- / Plattform-Konsole** (global, alle Mandanten, Control-Chrome). Partner wirkt immer wie **eigenes Unternehmens-Panel** (Ihr/Mein, nur eigener Mandant, Arbeitsplatz-Chrome). Neue Seiten und Features müssen diese Trennung in **Sprache, Navigation, Einstieg und Farbwelt** fortsetzen — **keine** gemeinsamen Panel-Komponenten und kein „Vereinheitlichen“ der beiden Oberflächen. Details: **`imoove-panel-ux-separation.mdc`**.

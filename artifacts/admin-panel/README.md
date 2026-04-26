@@ -4,6 +4,8 @@ Web-Admin für Betrieb/Backoffice. **Offizieller Ort im Monorepo:** `artifacts/a
 
 **Visuelle Marke:** Farben, Typografie und Komponenten-Abstände folgen der ONRODA-Homepage. Die gemeinsame Datei ist **`artifacts/api-server/static/onroda-brand.css`** (wird vom Admin-Panel per `@import` eingebunden und von der Marketing-`index.html` per `<link>` geladen).
 
+**Konsistenz im Admin-Panel (Plattform-Konsole):** Zukünftige Seiten richten sich an der **Mandantenzentrale** und `src/admin-ui.css` aus — Karten, Buttons, Abstände, Status-Badges. Verbindliche Kurzregeln und Klassenliste: **`docs/admin-ui-reference.md`**. (Cursor: `imoove-admin-panel-ui-reference.mdc` bei Änderungen unter `artifacts/admin-panel/`.)
+
 ## Antworten auf die Repo-/Server-Fragen
 
 1. **Wo liegt der echte Source des live laufenden Panels?**  
