@@ -1,0 +1,49 @@
+---
+description: Mobile Expo/Metro/pnpm — Port 8081, Push-Pflicht vor Mobile-Commits, Scope, keine blinden Installs
+alwaysApply: true
+---
+
+# Mobile: Expo, Metro, pnpm (verbindlich)
+
+Ziel: **`artifacts/mobile`** jederzeit **ohne Debugging** startbar — reproduzierbar, kein „Push und hoffen“.
+
+## Technische Ursache (dauerhaft merken)
+
+- **pnpm** legt viele Pakete nur unter `node_modules/.pnpm/…/…/node_modules/…` ab.
+- Metro mit **`disableHierarchicalLookup: true`** hat diese Transitives **nicht** zuverlässig aufgelöst → Kette **„Unable to resolve …“** (z. B. `expo-modules-core`, `expo-asset`, `@babel/runtime`, `invariant`, React Navigation, `abort-controller`, …).
+- **Fix im Repo:** `artifacts/mobile/metro.config.js` — **`disableHierarchicalLookup: false`**, dazu **`extraNodeModules` / `resolveRequest`** für **`react`**, **`react-dom`**, **`@expo/metro-runtime`**, optional `scheduler`, `use-sync-external-store` (gegen doppeltes React / „Invalid hook call“). Kurzreferenz auch: **`.cursor/rules/imoove-onroda-operational-runbook.mdc`** (Metro-Abschnitt).
+
+## 1. Port
+
+- Dev-Packager: **fix Port 8081** — nur die Skripte in **`artifacts/mobile/package.json`** (`pnpm run dev` / Workspace: `pnpm --filter @workspace/mobile run dev`).
+- **Nicht** automatisch auf **8082** wechseln. Bei Konflikt: **`lsof -i :8081`**, Prozess prüfen (`ps -p <PID> -o args=`), nur wenn klar **alter Expo/Metro** → beenden, dann erneut auf **8081** starten.
+
+## 2. Vor jedem Commit + Push (Pflicht, wenn Mobile betroffen ist)
+
+Erst **danach** Commit und Push:
+
+1. **`pnpm --filter @workspace/mobile run dev`** läuft, Metro wartet auf **http://localhost:8081** (bzw. gleichwertig aus `artifacts/mobile`).
+2. Im Metro-Log: **keine** `Unable to resolve` / **kein** `Bundling failed`.
+3. **App öffnet** (Expo Go und/oder Simulator), **kein** roter Fehler-Screen.
+4. Wo sinnvoll: im Mobile-Ordner **`npx expo install --check`** grün; bei Metro/Deps-Themen zusätzlich **`npx expo export --platform ios`** als Bundle-Smoke.
+
+**Workflow:** Fix → **lokal testen** → läuft → **dann** Commit + Push — **kein** Push ohne diese Bestätigung.
+
+## 3. Dependencies
+
+- **Keine** blinden Massen-`pnpm add` / „einzeln nachinstallieren bis es weggeht“.
+- Expo-Pakete: **`npx expo install <paket>`** (passend zur **Expo-SDK-Version** des Projekts).
+- Was zur Auflösung / Klarheit nötig ist: **direkt** in **`artifacts/mobile/package.json`** deklarieren; **`pnpm-lock.yaml`** mitführen und committen, wenn sich die Lock-Datei ändert.
+
+## 4. Scope (Mobile-Fixes)
+
+Änderungen, die nur **Mobile** betreffen (Metro, Mobile-`package.json`, Mobile-`app.json` nur wenn nötig, App unter `artifacts/mobile/`), **dürfen nicht** vermischen:
+
+- **Admin-Panel**, **API-Server**, **Partner-Panel**
+- **`artifacts/api-server/dist/*`** (Build-Artefakte)
+- ohne **expliziten** Auftrag keine fremden Workspace-Änderungen „mitnehmen“.
+
+## 5. Debugging-Reihenfolge
+
+1. Port **8081** frei / blockiert? (`lsof -i :8081`)
+2. Skripte aus Mobile-`package.json` — **nicht** `app.json` / Manifest für Port oder Metro-Workarounds missbrauchen (Details: **`imoove-mobile-backup-expo-dev.mdc`**).

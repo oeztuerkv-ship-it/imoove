@@ -31,6 +31,10 @@ Wenn eine **explizit neue** Datei (z. B. `partner-status.html`) dort nach Pull
 
 - **Gepusht** allein = Remote hat den Stand; **Live** = zusätzlich Server-`git pull`, ggf. **rsync** Static, Nginx, API-Restart laut Runbook (`AGENTS.md`, `imoove-git-deployment-workflow.mdc`).
 
+## 5. Mobile (`artifacts/mobile`) — wenn Commit/Push Mobile betrifft
+
+Vor **Commit + Push**, die Mobile-App ändern: Pflicht-Checkliste in **`.cursor/rules/imoove-mobile-expo-pnpm-workflow.mdc`** (u. a. **`pnpm --filter @workspace/mobile run dev`** auf **8081**, kein `Unable to resolve`, App öffnet ohne roten Screen). **Kein** Push ohne diese lokale Bestätigung.
+
 ## Für Agents
 
 Vor Abschlussantworten wie „fertig“, „implementiert“, „kann live“: obenstehende Checks **wirklich ausführen** (Terminal) oder klar sagen, was **bewusst** offen bleibt (z. B. nur Entwurf ohne Commit).

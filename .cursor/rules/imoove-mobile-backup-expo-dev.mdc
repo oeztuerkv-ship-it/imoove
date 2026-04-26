@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Mobile: Backup & Expo / Metro
 
+**Verbindliche Expo/Metro/pnpm- und Push-Regeln** (Port 8081, Pre-Push-Pflicht, Scope): **`.cursor/rules/imoove-mobile-expo-pnpm-workflow.mdc`**.
+
 ## Stabiler Zeitpunkt (Backup)
 
 - **Ordner:** `artifacts/mobile/_backup-2026-04-07-stable/`
