@@ -15,10 +15,15 @@ function compStatusDe(verification, compliance, contract) {
   return `${verification || "—"} · ${compliance || "—"} · ${contract || "—"}`;
 }
 
-export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompanyConsumed }) {
+export default function CompaniesPage({
+  initialOpenCompanyId,
+  onInitialOpenCompanyConsumed,
+  listTab = "all",
+  onListTabChange,
+}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(listTab);
   const [selectedId, setSelectedId] = useState(null);
 
   const loadData = useCallback(() => {
@@ -38,13 +43,26 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
   }, [loadData]);
 
   useEffect(() => {
+    setActiveTab(listTab);
+  }, [listTab]);
+
+  const setTab = useCallback(
+    (t) => {
+      setActiveTab(t);
+      onListTabChange?.(t);
+    },
+    [onListTabChange],
+  );
+
+  useEffect(() => {
     if (!initialOpenCompanyId || items.length === 0) return;
     const row = items.find((c) => c.id === initialOpenCompanyId);
     if (!row) return;
     setActiveTab("all");
+    onListTabChange?.("all");
     setSelectedId(initialOpenCompanyId);
     onInitialOpenCompanyConsumed?.();
-  }, [items, initialOpenCompanyId, onInitialOpenCompanyConsumed]);
+  }, [items, initialOpenCompanyId, onInitialOpenCompanyConsumed, onListTabChange]);
 
   const filteredItems = useMemo(() => {
     const list = (items || []).filter(item => matchesCompanyKindListTab(item, activeTab));
@@ -62,7 +80,12 @@ export default function CompaniesPage({ initialOpenCompanyId, onInitialOpenCompa
 
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         {['all', 'taxi', 'hotel', 'insurer', 'other'].map(t => (
-          <button key={t} onClick={() => setActiveTab(t)} style={{ padding: '10px 20px', cursor: 'pointer', background: activeTab === t ? '#333' : '#eee', color: activeTab === t ? '#fff' : '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            style={{ padding: '10px 20px', cursor: 'pointer', background: activeTab === t ? '#333' : '#eee', color: activeTab === t ? '#fff' : '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
+          >
             {t.toUpperCase()}
           </button>
         ))}

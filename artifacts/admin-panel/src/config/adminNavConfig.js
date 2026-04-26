@@ -267,3 +267,296 @@ export function findNavGroupIdForPage(pageKey) {
   }
   return null;
 }
+
+/** Trennlinie / passiver Abschnittskopf in Top-/Sub-Navigation. */
+const TOP_NAV_DIVIDER = "divider";
+const TOP_NAV_SUBHEAD = "subheading";
+
+/**
+ * Eine Aktion: Seite wählen, optional `companies`-Listen-Tab in der Mandanten-Liste.
+ * `companiesTab`: all | taxi | hotel | insurer | other (nur sichtbar mit pageKey "companies").
+ */
+function isCompaniesTabChild(it) {
+  return Boolean(it && it.pageKey === "companies" && it.companiesTab);
+}
+
+/**
+ * @typedef {{ pageKey: string, label: string, companiesTab?: string, type?: string, labelText?: string }} TopNavItem
+ * @typedef {{ id: string, kind: "link" | "section", label: string, pageKey?: string, roles: string[], children?: any[], defaultTarget?: { pageKey: string, companiesTab?: string } }} TopNavSection
+ */
+
+const ADMIN_TOP_NAV = [
+  {
+    id: "tn-dashboard",
+    kind: "link",
+    label: "Dashboard",
+    pageKey: "dashboard",
+    roles: R.all,
+  },
+  {
+    id: "tn-companies",
+    kind: "section",
+    label: "Unternehmen",
+    roles: R.adminSvcTaxi,
+    defaultTarget: { pageKey: "companies", companiesTab: "all" },
+    children: [
+      { pageKey: "companies", label: "Alle Mandanten", companiesTab: "all" },
+      { pageKey: "companies", label: "Taxi", companiesTab: "taxi" },
+      { pageKey: "companies", label: "Hotels", companiesTab: "hotel" },
+      { pageKey: "companies", label: "Krankenkassen", companiesTab: "insurer" },
+      { pageKey: "companies", label: "Sonstige", companiesTab: "other" },
+      { type: TOP_NAV_DIVIDER },
+      { pageKey: "taxi-fleet-drivers", label: "Taxi · Fahrer" },
+      { pageKey: "company-registration-requests", label: "Registrierungsanfragen" },
+      { pageKey: "support-inbox", label: "Partner-Anfragen" },
+      { pageKey: "fleet-vehicles-review", label: "Fahrzeuge prüfen" },
+    ],
+  },
+  {
+    id: "tn-rides",
+    kind: "section",
+    label: "Fahrten",
+    roles: ["admin", "service", "taxi", "insurance", "hotel"],
+    defaultTarget: { pageKey: "rides" },
+    children: [
+      { pageKey: "rides", label: "Alle Fahrten" },
+      { pageKey: "ride-new", label: "Neue Fahrt" },
+      { pageKey: "docs-hub", label: "Dokumente & PDF" },
+      { pageKey: "fares", label: "Tarife & Preise" },
+    ],
+  },
+  {
+    id: "tn-drivers",
+    kind: "section",
+    label: "Fahrer",
+    roles: ["admin", "service", "taxi"],
+    defaultTarget: { pageKey: "drivers-overview" },
+    children: [
+      { pageKey: "drivers-overview", label: "Fahrerübersicht" },
+      { pageKey: "drivers-revenue", label: "Umsatz je Fahrer" },
+      { pageKey: "drivers-rides", label: "Fahrten je Fahrer" },
+      { pageKey: "drivers-status", label: "Status" },
+    ],
+  },
+  {
+    id: "tn-billing",
+    kind: "section",
+    label: "Abrechnung",
+    roles: ["admin", "service", "taxi", "insurance", "hotel"],
+    defaultTarget: { pageKey: "finance-dashboard" },
+    children: [
+      { type: TOP_NAV_SUBHEAD, labelText: "B2B Krankenkasse" },
+      { pageKey: "insurer-overview", label: "Kasse · Übersicht" },
+      { pageKey: "insurer-rides", label: "Kasse · Fahrten" },
+      { pageKey: "insurer-exports", label: "Kasse · Exporte" },
+      { type: TOP_NAV_DIVIDER },
+      { pageKey: "billing-credits", label: "Gutschriften" },
+      { pageKey: "billing-invoices", label: "Rechnungen" },
+      { pageKey: "billing-open", label: "Offene Zahlungen" },
+      { pageKey: "billing-cycles", label: "Wochen- / Monatsabrechnung" },
+      { pageKey: "billing-hotel", label: "Buchungen (Hotel)" },
+      { type: TOP_NAV_DIVIDER },
+      { pageKey: "finance-audit", label: "Finanzen · Audit" },
+      { pageKey: "finance-dashboard", label: "Finanzen · Dashboard" },
+      { pageKey: "finance-invoices", label: "Finanzen · Invoices" },
+      { pageKey: "finance-ride-financials", label: "Finanzen · Ride Financials" },
+    ],
+  },
+  {
+    id: "tn-settings",
+    kind: "section",
+    label: "Einstellungen",
+    roles: ["admin", "service", "taxi", "insurance", "hotel"],
+    defaultTarget: { pageKey: "settings" },
+    children: [
+      { type: TOP_NAV_SUBHEAD, labelText: "Krankenfahrten" },
+      { pageKey: "health-approvals", label: "Genehmigungen" },
+      { pageKey: "health-bulk", label: "Sammelabrechnung" },
+      { pageKey: "health-insurers", label: "Krankenkassen (Fahrten)" },
+      { pageKey: "health-overview", label: "Übersicht" },
+      { pageKey: "health-prescriptions", label: "Verordnungen" },
+      { type: TOP_NAV_DIVIDER },
+      { type: TOP_NAV_SUBHEAD, labelText: "Benutzer & Erweiterungen" },
+      { pageKey: "access-codes", label: "Zugangscodes" },
+      { pageKey: "export-hub", label: "Export" },
+      { pageKey: "users-admin", label: "Admin-Zugänge" },
+      { pageKey: "users-panel", label: "Partner-Zugänge" },
+      { pageKey: "users-roles", label: "Rollen & Rechte" },
+      { pageKey: "homepage-content", label: "Homepage-Inhalte" },
+      { pageKey: "homepage-placeholders", label: "Homepage-Hinweise" },
+      { type: TOP_NAV_DIVIDER },
+      { type: TOP_NAV_SUBHEAD, labelText: "Konsole" },
+      { pageKey: "settings", label: "Konto & Sicherheit" },
+      { pageKey: "settings-api", label: "API & Token" },
+      { pageKey: "settings-branding", label: "Branding (PDF)" },
+      { pageKey: "settings-payments", label: "Zahlungsarten" },
+      { pageKey: "settings-system", label: "System" },
+    ],
+  },
+];
+
+function filterTopNavItem(it, role) {
+  if (!it) return null;
+  if (it.type === TOP_NAV_DIVIDER || it.type === TOP_NAV_SUBHEAD) {
+    return it;
+  }
+  if (isCompaniesTabChild(it)) {
+    return isAdminPageAllowed("companies", role) ? it : null;
+  }
+  if (it.pageKey && isAdminPageAllowed(it.pageKey, role)) {
+    return it;
+  }
+  return null;
+}
+
+function isNavTargetAllowed(t, role) {
+  if (!t?.pageKey) return false;
+  if (t.pageKey === "companies" && t.companiesTab) {
+    if (!isAdminPageAllowed("companies", role)) return false;
+    return String(t.companiesTab).length > 0;
+  }
+  return isAdminPageAllowed(t.pageKey, role);
+}
+
+function toNavTarget(c) {
+  if (!c || c.type === TOP_NAV_DIVIDER || c.type === TOP_NAV_SUBHEAD) {
+    return null;
+  }
+  if (isCompaniesTabChild(c)) {
+    return { pageKey: "companies", companiesTab: c.companiesTab || "all" };
+  }
+  if (c.pageKey) {
+    return { pageKey: c.pageKey, companiesTab: undefined };
+  }
+  return null;
+}
+
+/**
+ * Doppelte Trennlinien entfernen, führende/schließende Trennlinien.
+ */
+function normalizeDividersAndSubheads(list) {
+  if (!list || list.length === 0) return [];
+  const out = list.filter((x) => x);
+  const res = [];
+  for (const x of out) {
+    if (x.type === TOP_NAV_DIVIDER) {
+      if (res.length === 0) continue;
+      if (res[res.length - 1].type === TOP_NAV_DIVIDER) continue;
+      res.push(x);
+    } else if (x.type === TOP_NAV_SUBHEAD) {
+      if (res.length > 0 && res[res.length - 1].type === TOP_NAV_SUBHEAD) {
+        res[res.length - 1] = x;
+      } else {
+        res.push(x);
+      }
+    } else {
+      res.push(x);
+    }
+  }
+  while (res.length > 0 && res[0].type === TOP_NAV_DIVIDER) res.shift();
+  while (res.length > 0 && res[res.length - 1].type === TOP_NAV_DIVIDER) res.pop();
+  return res;
+}
+
+function firstAllowedFromChildren(children, role) {
+  const filtered = children.map((c) => filterTopNavItem(c, role)).filter((c) => c);
+  for (const c of filtered) {
+    if (c.type === TOP_NAV_DIVIDER || c.type === TOP_NAV_SUBHEAD) continue;
+    if (c.pageKey) {
+      if (isCompaniesTabChild(c)) {
+        if (isAdminPageAllowed("companies", role)) return c;
+        continue;
+      }
+      if (isAdminPageAllowed(c.pageKey, role)) {
+        return c;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Sichtbare Top-Navigation (Zeile 1) und Filter für Sektionen.
+ */
+export function getTopNavForRole(role) {
+  const out = [];
+  for (const sec of ADMIN_TOP_NAV) {
+    if (!sec.roles.includes(role)) continue;
+    if (sec.kind === "link") {
+      if (!sec.pageKey || !isAdminPageAllowed(sec.pageKey, role)) continue;
+      out.push({ id: sec.id, kind: "link", label: sec.label, pageKey: sec.pageKey });
+    } else {
+      const children = normalizeDividersAndSubheads(
+        (sec.children || [])
+          .map((c) => filterTopNavItem(c, role))
+          .filter((c) => c),
+      );
+      if (children.length === 0) continue;
+      const first = firstAllowedFromChildren(sec.children || [], role);
+      if (!first) continue;
+      const firstT = toNavTarget(first);
+      if (!firstT) continue;
+      let defaultTarget;
+      if (sec.defaultTarget?.pageKey) {
+        if (isCompaniesTabChild({ pageKey: sec.defaultTarget.pageKey, companiesTab: sec.defaultTarget.companiesTab })) {
+          const dt = { pageKey: "companies", companiesTab: sec.defaultTarget.companiesTab || "all" };
+          defaultTarget = isNavTargetAllowed(dt, role) ? dt : firstT;
+        } else {
+          const dt = { pageKey: sec.defaultTarget.pageKey, companiesTab: undefined };
+          defaultTarget = isNavTargetAllowed(dt, role) ? dt : firstT;
+        }
+      } else {
+        defaultTarget = firstT;
+      }
+      out.push({
+        id: sec.id,
+        kind: "section",
+        label: sec.label,
+        children,
+        defaultTarget,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Sektion ab aktiver Seite / Mandanten-Tab; `null` wenn unklar.
+ */
+export function getTopNavSectionIdForState(active, companiesListTab, role) {
+  const tab = companiesListTab != null && companiesListTab !== "" ? companiesListTab : "all";
+  const sections = getTopNavForRole(role);
+  for (const sec of sections) {
+    if (sec.kind === "link" && sec.pageKey === active) {
+      return sec.id;
+    }
+    if (sec.kind !== "section" || !sec.children) continue;
+    for (const c of sec.children) {
+      if (c.type === TOP_NAV_DIVIDER || c.type === TOP_NAV_SUBHEAD) continue;
+      if (active === "companies" && c.pageKey === "companies") {
+        if ((c.companiesTab || "all") === tab) {
+          return sec.id;
+        }
+        continue;
+      }
+      if (c.pageKey === active) {
+        return sec.id;
+      }
+    }
+  }
+  if (active === "companies" && isAdminPageAllowed("companies", role)) {
+    return "tn-companies";
+  }
+  return null;
+}
+
+/**
+ * Sichtbare Unter-Navigation (Zeile 2) als Rohliste inkl. Trennlinie / Subhead.
+ */
+export function getTopNavSubRowForState(active, companiesListTab, role) {
+  const id = getTopNavSectionIdForState(active, companiesListTab, role);
+  if (!id) return [];
+  const sec = getTopNavForRole(role).find((s) => s.id === id);
+  if (!sec || sec.kind !== "section" || !sec.children) return [];
+  return sec.children;
+}

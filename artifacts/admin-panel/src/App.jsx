@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminApiAuthBanner from "./components/AdminApiAuthBanner.jsx";
-import Sidebar from "./components/Sidebar";
+import TopNav from "./components/TopNav.jsx";
 import {
   firstAllowedAdminPage,
   isAdminPageAllowed,
@@ -269,7 +269,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [ridesInitialDetailId, setRidesInitialDetailId] = useState(null);
   const [companiesInitialOpenId, setCompaniesInitialOpenId] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [companiesListTab, setCompaniesListTab] = useState("all");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [narrowNav, setNarrowNav] = useState(false);
 
   const current = PAGE_META[active] || PAGE_META.dashboard;
@@ -280,6 +281,18 @@ export default function App() {
     setAuthUser(null);
     setActive("dashboard");
   }, []);
+
+  const handlePickPage = useCallback(
+    (pageKey, opt) => {
+      if (!isAdminPageAllowed(pageKey, userRole)) return;
+      if (pageKey === "companies") {
+        setCompaniesListTab(opt?.companiesTab != null && opt.companiesTab !== "" ? opt.companiesTab : "all");
+      }
+      setActive(pageKey);
+      setMobileMenuOpen(false);
+    },
+    [userRole],
+  );
 
   /** Inaktivität: `document`+capture und `wheel`, damit Scroll in Shell-`overflow:auto` zählt; Tab-Wechsel per visibility. */
   useEffect(() => {
@@ -440,7 +453,11 @@ export default function App() {
           <DashboardPage
             userRole={userRole}
             onNavigate={(pageKey) => {
-              if (isAdminPageAllowed(pageKey, userRole)) setActive(pageKey);
+              if (!isAdminPageAllowed(pageKey, userRole)) return;
+              if (pageKey === "companies") {
+                setCompaniesListTab("all");
+              }
+              setActive(pageKey);
             }}
             onOpenRide={(id) => {
               setRidesInitialDetailId(id);
@@ -463,9 +480,10 @@ export default function App() {
       case "companies":
         return (
           <CompaniesPage
-            adminRole={userRole}
             initialOpenCompanyId={companiesInitialOpenId}
             onInitialOpenCompanyConsumed={() => setCompaniesInitialOpenId(null)}
+            listTab={companiesListTab}
+            onListTabChange={setCompaniesListTab}
           />
         );
       case "taxi-fleet-drivers":
@@ -516,7 +534,11 @@ export default function App() {
           <DashboardPage
             userRole={userRole}
             onNavigate={(pageKey) => {
-              if (isAdminPageAllowed(pageKey, userRole)) setActive(pageKey);
+              if (!isAdminPageAllowed(pageKey, userRole)) return;
+              if (pageKey === "companies") {
+                setCompaniesListTab("all");
+              }
+              setActive(pageKey);
             }}
             onOpenRide={(id) => {
               setRidesInitialDetailId(id);
@@ -598,41 +620,20 @@ export default function App() {
 
   return (
     <div className="admin-app">
-      {narrowNav && sidebarOpen ? (
-        <div
-          className="admin-sidebar-backdrop"
-          role="presentation"
-          onClick={() => setSidebarOpen(false)}
-        />
-      ) : null}
-
-      <div
-        className={
-          "admin-app__sidebar-col" + (narrowNav && sidebarOpen ? " admin-app__sidebar-col--open" : "")
-        }
-      >
-        <Sidebar
-          active={active}
-          onChange={setActive}
-          role={authUser?.role}
-          onCloseMobile={() => setSidebarOpen(false)}
-        />
-      </div>
-
       <div className="admin-app__main">
+        <TopNav
+          active={active}
+          companiesListTab={companiesListTab}
+          onPickPage={handlePickPage}
+          role={userRole}
+          narrow={narrowNav}
+          mobileOpen={mobileMenuOpen}
+          onOpenMobile={() => setMobileMenuOpen(true)}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+        />
         <AdminApiAuthBanner />
         <header className="admin-app__topbar">
           <div className="admin-app__topbar-left">
-            {narrowNav ? (
-              <button
-                type="button"
-                className="admin-nav-menu-btn"
-                aria-label="Menü öffnen"
-                onClick={() => setSidebarOpen(true)}
-              >
-                Menü
-              </button>
-            ) : null}
             <h1 className="admin-app__title">{current.title}</h1>
             <p className="admin-app__subtitle">{current.subtitle}</p>
           </div>
