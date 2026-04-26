@@ -45,6 +45,13 @@ export async function listHomepagePlaceholdersAdmin() {
   return rows.map(rowToAdminDto);
 }
 
+/**
+ * Öffentliche Hinweis-Liste: nur sichtbar wenn aktiv und (optional) im Datumsfenster.
+ * - is_active = false → nie
+ * - is_active = true, kein ab/bis → dauerhaft
+ * - is_active = true, nur ab oder nur bis → entsprechender Teil der Range
+ * - abgelaufen (now außerhalb des Fensters) → ausgeschlossen
+ */
 export async function listHomepagePlaceholdersPublic() {
   const db = getDb();
   if (!db) return [];

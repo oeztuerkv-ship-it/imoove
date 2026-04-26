@@ -177,6 +177,17 @@ export default function HomepagePlaceholdersPage() {
               onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
             />
           </label>
+          <label className="admin-inline-check" style={{ marginBottom: 4 }}>
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
+            />
+            <span style={{ fontWeight: 600 }}>Aktiv (auf der Homepage sichtbar)</span>
+          </label>
+          <p className="admin-table-sub" style={{ margin: "0 0 12px" }}>
+            Wenn inaktiv, erscheint der Hinweis nicht — kein Löschen nötig. Optional unten den Zeitraum einschränken.
+          </p>
           <div className="admin-form-grid-2">
             <label className="admin-form-pair">
               <span className="admin-field-label">CTA-Label</span>
@@ -226,14 +237,6 @@ export default function HomepagePlaceholdersPage() {
           <label className="admin-form-pair">
             <span className="admin-field-label">Dismiss-Key (optional)</span>
             <input className="admin-input" value={form.dismissKey} onChange={(e) => setForm((p) => ({ ...p, dismissKey: e.target.value }))} />
-          </label>
-          <label className="admin-inline-check">
-            <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
-            />
-            <span>Aktiv</span>
           </label>
           <div className="admin-toolbar-row">
             <button className="admin-btn-primary" type="submit" disabled={saving}>

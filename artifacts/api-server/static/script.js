@@ -104,7 +104,18 @@
       }
     }
 
-    function loadHomepageHints() {
+    function clearHomepageBannerRoot(noticeRoot) {
+      if (!noticeRoot) return;
+      noticeRoot.innerHTML = "";
+      noticeRoot.classList.remove("hp-dynamic-placeholders");
+      noticeRoot.removeAttribute("aria-live");
+    }
+
+    /**
+     * Bündelt API-Hinweise (homepage-hints) und optionalen CMS-Hinweis (homepage-content.notice*).
+     * Läuft nach homepage-content, damit nichts asynchron die Zone überschreibt. Kein leerer Banner, wenn beides leer.
+     */
+    function renderHomepageBanners(cmsItem) {
       var host = window.location.hostname;
       if (host !== "onroda.de" && host !== "www.onroda.de" && host !== "localhost" && host !== "127.0.0.1") {
         return;
@@ -118,20 +129,50 @@
         })
         .then(function (data) {
           var items = data && data.ok && Array.isArray(data.items) ? data.items : [];
-          if (!items.length) return;
-          noticeRoot.innerHTML = "";
-          if (!noticeRoot.classList.contains("hp-dynamic-placeholders")) {
-            noticeRoot.classList.add("hp-dynamic-placeholders");
-          }
-          noticeRoot.setAttribute("aria-live", "polite");
+          clearHomepageBannerRoot(noticeRoot);
+          var added = 0;
           for (var i = 0; i < items.length; i++) {
             var item = items[i];
             if (hintDismissed(item)) continue;
+            if (!noticeRoot.classList.contains("hp-dynamic-placeholders")) {
+              noticeRoot.classList.add("hp-dynamic-placeholders");
+            }
+            noticeRoot.setAttribute("aria-live", "polite");
             noticeRoot.appendChild(buildPlaceholderNode(item));
+            added += 1;
+          }
+          if (cmsItem && cmsItem.noticeActive && String(cmsItem.noticeText || "").trim()) {
+            if (!noticeRoot.classList.contains("hp-dynamic-placeholders")) {
+              noticeRoot.classList.add("hp-dynamic-placeholders");
+            }
+            noticeRoot.setAttribute("aria-live", "polite");
+            noticeRoot.appendChild(
+              buildPlaceholderNode({
+                tone: "info",
+                message: String(cmsItem.noticeText || ""),
+                title: "Hinweis",
+              }),
+            );
+            added += 1;
+          }
+          if (added === 0) {
+            clearHomepageBannerRoot(noticeRoot);
           }
         })
         .catch(function () {
-          // keep homepage usable when endpoint is unavailable
+          if (!noticeRoot) return;
+          clearHomepageBannerRoot(noticeRoot);
+          if (cmsItem && cmsItem.noticeActive && String(cmsItem.noticeText || "").trim()) {
+            noticeRoot.classList.add("hp-dynamic-placeholders");
+            noticeRoot.setAttribute("aria-live", "polite");
+            noticeRoot.appendChild(
+              buildPlaceholderNode({
+                tone: "info",
+                message: String(cmsItem.noticeText || ""),
+                title: "Hinweis",
+              }),
+            );
+          }
         });
     }
 
@@ -144,7 +185,6 @@
       var sublineEl = document.getElementById("hero-subline");
       var cta1El = document.getElementById("hero-cta1");
       var cta2El = document.getElementById("hero-cta2");
-      var noticeRoot = document.getElementById("homepage-placeholders-root");
       var section2TitleEl = document.getElementById("fuer-wen-heading");
       var defaultHeadline = headlineEl ? headlineEl.innerText || "" : "";
       var defaultSubline = sublineEl ? sublineEl.textContent || "" : "";
@@ -174,22 +214,6 @@
           if (cta2El) {
             cta2El.textContent = (item && item.cta2Text ? item.cta2Text : defaultCta2Text).trim();
             cta2El.setAttribute("href", (item && item.cta2Link ? item.cta2Link : defaultCta2Link) || "#services");
-          }
-          if (noticeRoot) {
-            noticeRoot.innerHTML = "";
-            if (item && item.noticeActive && String(item.noticeText || "").trim()) {
-              if (!noticeRoot.classList.contains("hp-dynamic-placeholders")) {
-                noticeRoot.classList.add("hp-dynamic-placeholders");
-              }
-              noticeRoot.setAttribute("aria-live", "polite");
-              noticeRoot.appendChild(
-                buildPlaceholderNode({
-                  tone: "info",
-                  message: String(item.noticeText || ""),
-                  title: "Hinweis",
-                }),
-              );
-            }
           }
           if (section2TitleEl) {
             section2TitleEl.textContent = (item && item.section2Title ? item.section2Title : defaultSection2Title).trim();
@@ -301,9 +325,10 @@
             mCta.textContent = String(mc && mc.ctaText ? mc.ctaText : dMCt);
             mCta.setAttribute("href", String(mc && mc.ctaLink ? mc.ctaLink : dMCh));
           }
+          renderHomepageBanners(item);
         })
         .catch(function () {
-          // keep homepage usable when endpoint is unavailable
+          renderHomepageBanners(null);
         });
     }
 
@@ -414,7 +439,6 @@
         .catch(function () {});
     }
 
-    loadHomepageHints();
     loadHomepageContent();
     loadHomepageModules();
 
