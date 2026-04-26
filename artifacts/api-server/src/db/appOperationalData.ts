@@ -374,6 +374,15 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
   if (typeof msgMerged.outOfServiceAreaDe !== "string" || !String(msgMerged.outOfServiceAreaDe).trim()) {
     msgMerged.outOfServiceAreaDe = defMsg.outOfServiceAreaDe;
   }
+
+  /** Vollständige Sektionen (Defaults + DB/Admin) — die App darf auf alle Keys zählen. */
+  const section = (key: "tariffs" | "dispatch" | "features" | "driverRules" | "bookingRules" | "system") => {
+    const def = (DEFAULT_PAYLOAD[key] as Record<string, unknown>) ?? {};
+    const p = payload[key];
+    if (!isPlainObject(p)) return { ...def };
+    return { ...def, ...p };
+  };
+
   return {
     ok: true,
     version: typeof v === "number" && Number.isFinite(v) ? v : 1,
@@ -381,12 +390,12 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     activeCities,
     serviceRegions: regions,
     messages: msgMerged as AppConfigPublic["messages"],
-    tariffs: { ...(isPlainObject(payload.tariffs) ? (payload.tariffs as Record<string, unknown>) : {}) },
+    tariffs: section("tariffs"),
     provision,
-    dispatch: { ...(isPlainObject(payload.dispatch) ? (payload.dispatch as Record<string, unknown>) : {}) },
-    features: { ...(isPlainObject(payload.features) ? (payload.features as Record<string, unknown>) : {}) },
-    driverRules: { ...(isPlainObject(payload.driverRules) ? (payload.driverRules as Record<string, unknown>) : {}) },
-    bookingRules: { ...(isPlainObject(payload.bookingRules) ? (payload.bookingRules as Record<string, unknown>) : {}) },
-    system: { ...(isPlainObject(payload.system) ? (payload.system as Record<string, unknown>) : {}) },
+    dispatch: section("dispatch"),
+    features: section("features"),
+    driverRules: section("driverRules"),
+    bookingRules: section("bookingRules"),
+    system: section("system"),
   };
 }
