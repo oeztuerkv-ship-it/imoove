@@ -2344,3 +2344,40 @@
   margin-top: 4px;
   line-height: 1.35;
 }
+
+.admin-mandate-grid--dense {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.admin-mandate-th {
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.admin-mandate-td,
+.admin-mandate-tdMono {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+  vertical-align: top;
+}
+
+.admin-mandate-tdMono {
+  font-size: 0.82rem;
+  max-width: 200px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+ul.admin-mandate-doclist {
+  margin: 0;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
