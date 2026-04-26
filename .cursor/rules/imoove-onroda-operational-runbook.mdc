@@ -26,7 +26,7 @@ Wenn etwas „nicht startet“ oder 401 zeigt: zuerst diese Checkliste, nicht am
 ## Mobile (`artifacts/mobile`)
 
 - **Pfad:** Repo-Ordner **`artifacts/mobile`** (nicht `mobile-app`).
-- **Start:** `pnpm run dev` (Script mit `expo start` + `--clear`), nicht blind `pnpm start` erwarten.
+- **Start:** `pnpm run dev` (`expo start` mit **`--go`** für Expo Go, **`--clear`**, Port **8081**); Development Build lokal: `pnpm run dev:dev-client`. Nicht blind `pnpm start` erwarten.
 - **`Invalid hook call` / `useState` of null** oft: **doppeltes React** (pnpm/Monorepo) **oder** `useFonts` aus `@expo-google-fonts/inter`.
 - **Stabiler Font-Weg:** in `app/_layout.tsx` **`Font.loadAsync`** (`expo-font`) für die Inter-/Icon-Maps nutzen — **`useFonts` aus `@expo-google-fonts/inter` nicht** im Root-Layout.
 - **Layout:** **Kein** frühes `return null` für die ganze App wegen Fonts — sonst fehlen kurz `UserProvider` etc. (`useUser` bricht). Splash per `SplashScreen.hideAsync()` nach Font-Laden/Fehler; **Navigation/Provider trotzdem sofort mounten** (siehe Kommentar in `_layout.tsx`).

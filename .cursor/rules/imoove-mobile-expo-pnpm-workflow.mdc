@@ -15,7 +15,7 @@ Ziel: **`artifacts/mobile`** jederzeit **ohne Debugging** startbar — reproduzi
 
 ## 1. Port
 
-- Dev-Packager: **fix Port 8081** — nur die Skripte in **`artifacts/mobile/package.json`** (`pnpm run dev` / Workspace: `pnpm --filter @workspace/mobile run dev`).
+- Dev-Packager: **fix Port 8081** — nur die Skripte in **`artifacts/mobile/package.json`** (`pnpm run dev` / Workspace: `pnpm --filter @workspace/mobile run dev`). **`dev`** nutzt **`--go`** (Expo Go), weil mit installiertem **`expo-dev-client`** `expo start` sonst standardmäßig den **Development-Build**-Modus wählt und der QR-Code nicht zuverlässig in Expo Go öffnet.
 - **Nicht** automatisch auf **8082** wechseln. Bei Konflikt: **`lsof -i :8081`**, Prozess prüfen (`ps -p <PID> -o args=`), nur wenn klar **alter Expo/Metro** → beenden, dann erneut auf **8081** starten.
 
 ## 2. Vor jedem Commit + Push (Pflicht, wenn Mobile betroffen ist)

@@ -17,12 +17,12 @@ alwaysApply: true
 
 - **Nicht** `app.json` / `app.config.*` / iOS-Android-Blocks ändern, um Metro-Port oder „Expo Go verbindet nicht“ zu fixen — das erzeugt nur Nebenwirkungen (Scheme, Native-IDs, Keys).
 - **Stattdessen** nur die Skripte in `artifacts/mobile/package.json` nutzen (Details: **`artifacts/mobile/README.md`**):
-  - **`pnpm run dev`** — **Port 8081**, **`--lan`** für zuverlässigeren QR-Modus; vor Start prüft `scripts/assert-port-8081-free.mjs`, dass **8081 frei** ist (kein Wechsel auf 8082).
-  - **`pnpm run dev:ios`** — iOS-Simulator + Metro auf **8081** / LAN.
-  - **`pnpm run dev:tunnel`** — wenn QR/LAN instabil (langsamer, oft zuverlässiger).
-  - **`pnpm run dev:go`** — Expo Go starten, wo die CLI das unterstützt.
-  - **`pnpm run dev:localhost`** — Metro auf Loopback (Simulator/fokussierter lokal).
-  - **`pnpm run dev:replit`** — Replit mit denselben Domain-/Proxy-Variablen wie bisher, Port **8081**.
+  - **`pnpm run dev`** / **`pnpm run dev:go`** — **Port 8081**, **`--lan`**, **`--go`** (Expo Go; QR mit `exp://…`, nicht Development-Build-`exp+://…`). Vor Start prüft `scripts/assert-port-8081-free.mjs`, dass **8081 frei** ist (kein Wechsel auf 8082).
+  - **`pnpm run dev:dev-client`** — Metro für ein **eigenes Development Build** (`expo-dev-client`); QR/Deep-Link richten sich auf die installierte Dev-App, nicht auf Expo Go.
+  - **`pnpm run dev:ios`** — iOS-Simulator + Metro auf **8081** / LAN, **`--go`**.
+  - **`pnpm run dev:tunnel`** — wenn QR/LAN instabil (langsamer, oft zuverlässiger), **`--go`**.
+  - **`pnpm run dev:localhost`** — Metro auf Loopback (Simulator/fokussierter lokal), **`--go`**.
+  - **`pnpm run dev:replit`** — Replit mit denselben Domain-/Proxy-Variablen wie bisher, Port **8081**, **`--go`**.
 - Kein dynamisches `PORT=` / kein `sh -c`-Gerüst für den normalen lokalen Start.
 
 ## Wenn der Agent etwas „repariert“
