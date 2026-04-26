@@ -162,7 +162,12 @@ flowchart LR
 
 **Nicht** Ziel: eine Fahrtakte, die heimlich Admin-Globalstatistik oder fremde Mandanten-Fahrten erscheinen lässt.
 
-**Status:** *Offen / Zielbild* — Umfang (welche Ereignisse, wie tief, Retention) explizit je Release planen. **Keine** Ersatzdefinition für geltende Storno-Policy; nur ergänzende Sicht.
+**Umsetzung (Stand, nur Plattform-Admin, read-only):**
+
+- **API:** `GET /api/admin/rides/:id/record` — liefert `ride`, `events` (`ride_events` chronologisch), `panelAudit` (Mandant, `subject_id` = Fahrt) und `links` (`billing_reference`, optionale Vorbereitung `supportTicketId` / `supportThreadId` aus `partner_booking_meta`).
+- **UI:** Seite **Fahrtakte** in `admin-panel` (Einstieg: Fahrtenliste → „Fahrtakte (Ereignisse)“ oder Tages-Agenda; gleiche Sichtbarkeit wie Fahrten nach Rolle).
+
+**Status (Erweiterungen):** *teils offen* — tiefere Ereignis-Typen, fachlich einheitliche Beschriftungen, Partner-/Kund\*innen-Sicht separat. **Keine** Ersatzdefinition für geltende Storno-Policy.
 
 ---
 

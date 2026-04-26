@@ -128,6 +128,7 @@ import {
   findRideAdminById,
   listAdminPartnerDayStats,
   listAdminRidesAgendaForDay,
+  listAdminRideEventsByRideId,
   listRidesAdminPage,
   parseAdminDashboardDayBounds,
   type AdminRideListQuery,
@@ -3258,6 +3259,60 @@ adminJson.get("/rides", async (req, res, next) => {
     ]);
     const items = await attachAccessCodeSummariesToRides(rows);
     res.json({ ok: true, items, total, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Fahrtakte: Ride + `ride_events` (chronologisch) + `panel_audit_log` (Mandant, `subject_id` = ride id) + Verknüpfungen.
+ * Read-only; keine Fachlogik-Änderung.
+ */
+adminJson.get("/rides/:id/record", async (req, res, next) => {
+  try {
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const row = await findRideAdminById(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const [ride] = await attachAccessCodeSummariesToRides([row]);
+    const [events, panelAudit] = await Promise.all([
+      listAdminRideEventsByRideId(id),
+      row.companyId
+        ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 })
+        : Promise.resolve([]),
+    ]);
+    const auditAsc = [...panelAudit].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const meta = (row as { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
+    const supportThreadId =
+      meta && typeof meta === "object" && typeof (meta as { supportThreadId?: string }).supportThreadId === "string"
+        ? (meta as { supportThreadId: string }).supportThreadId
+        : null;
+    const supportTicketId =
+      meta && typeof meta === "object" && typeof (meta as { supportTicketId?: string }).supportTicketId === "string"
+        ? (meta as { supportTicketId: string }).supportTicketId
+        : null;
+    res.json({
+      ok: true,
+      ride,
+      events,
+      panelAudit: auditAsc,
+      links: {
+        billingReference: row.billingReference ?? null,
+        supportTicketId: supportTicketId || null,
+        supportThreadId: supportThreadId || null,
+      },
+    });
   } catch (e) {
     next(e);
   }

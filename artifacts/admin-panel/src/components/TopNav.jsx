@@ -215,7 +215,7 @@ export default function TopNav({
               const tab = companiesListTab != null && companiesListTab !== "" ? companiesListTab : "all";
               const subActive = isCompanies
                 ? active === "companies" && (c.companiesTab || "all") === tab
-                : active === c.pageKey;
+                : active === c.pageKey || (c.pageKey === "rides" && active === "ride-detail");
               const queueN = isCompanies ? 0 : navBadgeForPageKey(c.pageKey, queueBadges);
               const subA11y =
                 queueN > 0 ? `${c.label}, ${queueN} offen` : c.label;

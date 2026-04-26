@@ -11,6 +11,7 @@ import { adminApiHeaders, setAdminSessionToken } from "./lib/adminApiHeaders.js"
 import DashboardPage from "./pages/DashboardPage";
 import FaresPage from "./pages/FaresPage";
 import RidesPage from "./pages/RidesPage";
+import RideDetailPage from "./pages/RideDetailPage.jsx";
 import CompaniesPage from "./pages/CompaniesPage";
 import PanelUsersPage from "./pages/PanelUsersPage.jsx";
 import AccessCodesPage from "./pages/AccessCodesPage.jsx";
@@ -59,6 +60,10 @@ const PAGE_META = {
   rides: {
     title: "Fahrten",
     subtitle: "Alle Aufträge durchsuchen, filtern, exportieren",
+  },
+  "ride-detail": {
+    title: "Fahrtakte",
+    subtitle: "Ereignisverlauf, Status, Audit (read-only, ride_events + Mandanten-Log)",
   },
   "ride-new": {
     title: "Neue Fahrt",
@@ -273,6 +278,8 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [ridesInitialDetailId, setRidesInitialDetailId] = useState(null);
+  /** Volle Fahrtakte-Seite (Ziel: ride_events + Audit). */
+  const [rideRecordId, setRideRecordId] = useState(null);
   const [companiesInitialOpenId, setCompaniesInitialOpenId] = useState(null);
   const [companiesListTab, setCompaniesListTab] = useState("all");
   const [mandateDetailCompanyId, setMandateDetailCompanyId] = useState(null);
@@ -287,7 +294,9 @@ export default function App() {
           title: "Mandantenzentrale",
           subtitle: "Stammdaten, Kennzahlen, Fahrten und Plattform-Verlauf (lesend).",
         }
-      : PAGE_META[active] || PAGE_META.dashboard;
+      : active === "ride-detail" && rideRecordId
+        ? { title: "Fahrtakte", subtitle: `Fahrt ${rideRecordId}` }
+        : PAGE_META[active] || PAGE_META.dashboard;
   const userRole = authUser?.role ?? "admin";
 
   const onLogout = useCallback(() => {
@@ -296,6 +305,7 @@ export default function App() {
     setActive("dashboard");
     setMandateDetailCompanyId(null);
     setCompaniesExpandWorkspaceCompanyId(null);
+    setRideRecordId(null);
   }, []);
 
   const handlePickPage = useCallback(
@@ -306,6 +316,7 @@ export default function App() {
         setMandateDetailCompanyId(null);
         setCompaniesExpandWorkspaceCompanyId(null);
       }
+      if (pageKey !== "ride-detail") setRideRecordId(null);
       setActive(pageKey);
       setMobileMenuOpen(false);
     },
@@ -479,8 +490,8 @@ export default function App() {
               setActive(pageKey);
             }}
             onOpenRide={(id) => {
-              setRidesInitialDetailId(id);
-              setActive("rides");
+              setRideRecordId(id);
+              setActive("ride-detail");
             }}
             onOpenCompany={(id) => {
               setCompaniesInitialOpenId(id);
@@ -489,11 +500,30 @@ export default function App() {
             }}
           />
         );
+      case "ride-detail": {
+        const can = isAdminPageAllowed("ride-detail", userRole) && isAdminPageAllowed("rides", userRole);
+        if (!can) {
+          return <AdminPlaceholderPage title="Kein Zugriff" intro="Diese Seite ist für Ihre Rolle nicht freigeschaltet." bullets={[]} />;
+        }
+        return (
+          <RideDetailPage
+            rideId={rideRecordId}
+            onBack={() => {
+              setRideRecordId(null);
+              setActive("rides");
+            }}
+          />
+        );
+      }
       case "rides":
         return (
           <RidesPage
             initialDetailRideId={ridesInitialDetailId}
             onInitialDetailRideConsumed={() => setRidesInitialDetailId(null)}
+            onOpenRideRecord={(id) => {
+              setRideRecordId(id);
+              setActive("ride-detail");
+            }}
             userRole={userRole}
           />
         );
@@ -573,8 +603,8 @@ export default function App() {
               setActive(pageKey);
             }}
             onOpenRide={(id) => {
-              setRidesInitialDetailId(id);
-              setActive("rides");
+              setRideRecordId(id);
+              setActive("ride-detail");
             }}
             onOpenCompany={(id) => {
               setCompaniesInitialOpenId(id);

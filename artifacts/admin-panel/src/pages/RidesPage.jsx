@@ -133,7 +133,7 @@ function emptyStats() {
   };
 }
 
-export default function RidesPage({ initialDetailRideId, onInitialDetailRideConsumed, userRole }) {
+export default function RidesPage({ initialDetailRideId, onInitialDetailRideConsumed, onOpenRideRecord, userRole }) {
   const [rides, setRides] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -774,6 +774,15 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                               ⋯
                             </summary>
                             <div className="admin-overflow-menu__panel">
+                              {typeof onOpenRideRecord === "function" ? (
+                                <button
+                                  type="button"
+                                  className="admin-overflow-menu__item"
+                                  onClick={() => onOpenRideRecord(ride.id)}
+                                >
+                                  Fahrtakte (Ereignisse)
+                                </button>
+                              ) : null}
                               <button type="button" className="admin-overflow-menu__item" onClick={() => void loadDetail(ride.id)}>
                                 Details
                               </button>
@@ -823,6 +832,17 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
               </button>
             </div>
             <div className="admin-modal__body">
+              {typeof onOpenRideRecord === "function" && detailId ? (
+                <p style={{ margin: "0 0 12px" }}>
+                  <button
+                    type="button"
+                    className="admin-c-btn-sec"
+                    onClick={() => onOpenRideRecord(detailId)}
+                  >
+                    Vollständige Fahrtakte öffnen
+                  </button>
+                </p>
+              ) : null}
               {detailLoading ? <p>Lade Detail …</p> : null}
               {detailError ? <div className="admin-error-banner">{detailError}</div> : null}
               {!detailLoading && detailRide ? (

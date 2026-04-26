@@ -10,6 +10,8 @@ export const ADMIN_PAGE_ROLES = {
   dashboard: ["admin", "service", "taxi", "insurance", "hotel"],
 
   rides: ["admin", "service", "taxi", "insurance", "hotel"],
+  /** Fahrtakte-Detail: gleiche Mandanten-/Fahrtsichtbarkeit wie Fahrtenliste */
+  "ride-detail": ["admin", "service", "taxi", "insurance", "hotel"],
   "ride-new": ["admin", "service", "taxi", "insurance", "hotel"],
 
   "billing-invoices": ["admin", "service", "taxi", "insurance"],
@@ -527,6 +529,9 @@ export function getTopNavForRole(role) {
  * Sektion ab aktiver Seite / Mandanten-Tab; `null` wenn unklar.
  */
 export function getTopNavSectionIdForState(active, companiesListTab, role) {
+  if (active === "ride-detail" && isAdminPageAllowed("rides", role)) {
+    return "tn-rides";
+  }
   const tab = companiesListTab != null && companiesListTab !== "" ? companiesListTab : "all";
   const sections = getTopNavForRole(role);
   for (const sec of sections) {

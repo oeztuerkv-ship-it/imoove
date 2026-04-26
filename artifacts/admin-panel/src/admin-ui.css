@@ -3691,3 +3691,101 @@ ul.admin-mandate-doclist {
   word-break: break-all;
   max-width: 100%;
 }
+
+/* Fahrtakte (Admin) — Karten + Timeline */
+.admin-ride-rec-kv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px 0;
+  padding: 0 16px 16px;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 700px) {
+  .admin-ride-rec-kv {
+    grid-template-columns: 180px 1fr;
+  }
+}
+
+.admin-ride-rec-kv__k {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-top: 2px;
+}
+
+.admin-ride-rec-kv__v {
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.admin-ride-rec-muted {
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.admin-ride-rec-tl {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 16px 30px;
+  border-left: 2px solid #e2e8f0;
+  margin-left: 12px;
+}
+
+.admin-ride-rec-tl__row {
+  position: relative;
+  padding: 0 0 16px 8px;
+}
+
+.admin-ride-rec-tl__row::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #bae6fd;
+}
+
+.admin-ride-rec-tl__time {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-ride-rec-tl__text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.admin-ride-rec-tl__sub {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.admin-ride-rec-tl__payload {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #334155;
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
