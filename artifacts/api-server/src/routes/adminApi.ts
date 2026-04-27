@@ -75,6 +75,12 @@ import {
   updateServiceRegionById,
 } from "../db/appOperationalData";
 import {
+  estimateTaxiFromMergedTariff,
+  isPlainTariffObject,
+  mergeTariffsForServiceRegion,
+  mergedTariffToPublicProfile,
+} from "../lib/operationalTariffEngine";
+import {
   createHomepageFaqItem,
   createHomepageHowStep,
   createHomepageTrustMetric,
@@ -2341,6 +2347,66 @@ adminJson.post("/app-operational/service-regions", async (req, res, next) => {
       meta: { id, serviceRegion },
     });
     res.status(201).json({ ok: true, id, serviceRegion });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Vorschau-Rechnung: gleiche Engine wie GET /api/fare-estimate, ungespeichertes
+ * `regionTariff` (optional) auf globalen Tarif mergen.
+ */
+adminJson.post("/app-operational/preview-tariff-estimate", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const op = await getOperationalConfigPayload();
+    const tRaw = (op as { tariffs?: unknown }).tariffs;
+    const tSec: Record<string, unknown> = isPlainTariffObject(tRaw) ? tRaw : {};
+    const regionT = b.regionTariff;
+    const merged = mergeTariffsForServiceRegion(
+      tSec,
+      isPlainTariffObject(regionT) ? (regionT as Record<string, unknown>) : null,
+    );
+    const atStr = typeof b.at === "string" ? b.at.trim() : "";
+    const at = atStr ? new Date(atStr) : new Date();
+    const n0 = (v: unknown) => {
+      const x = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(x) ? x : 0;
+    };
+    const distanceKm = n0(b.distanceKm);
+    const tripMinutes = n0(b.tripMinutes);
+    const waitingMinutes = n0(b.waitingMinutes);
+    const vehicle = typeof b.vehicle === "string" && b.vehicle.trim() ? b.vehicle.trim().toLowerCase() : "standard";
+    const serviceRegionId = typeof b.serviceRegionId === "string" && b.serviceRegionId.trim() ? b.serviceRegionId.trim() : null;
+    const applyHolidaySurcharge = b.applyHolidaySurcharge === true;
+    const applyAirportFlat = b.applyAirportFlat === true;
+    const est = estimateTaxiFromMergedTariff(merged, {
+      distanceKm: Math.max(0, distanceKm),
+      tripMinutes: Math.max(0, tripMinutes),
+      waitingMinutes: Math.max(0, waitingMinutes),
+      vehicle,
+      at: Number.isFinite(at.getTime()) ? at : new Date(),
+      applyHolidaySurcharge,
+      applyAirportFlat,
+    });
+    const regions = await listServiceRegionsForApi();
+    const label = serviceRegionId ? (regions.find((r) => r.id === serviceRegionId)?.label ?? "Region") : "Vorschau";
+    const profile = mergedTariffToPublicProfile(merged, serviceRegionId, label, null);
+    res.json({
+      ok: true,
+      profile,
+      estimate: {
+        total: est.finalRounded,
+        taxiTotal: est.finalRounded,
+        onrodaTotal: est.finalRounded,
+        breakdown: est.breakdown,
+        engine: { subtotal: est.subtotal, afterMinFare: est.afterMinFare, afterSurcharges: est.afterSurcharges },
+      },
+    });
   } catch (e) {
     next(e);
   }

@@ -24,6 +24,19 @@ function n(v: unknown, fallback: number): number {
   return Number.isFinite(x) ? x : fallback;
 }
 
+/**
+ * Fahrtminuten-Preis (Routenzeit, kein Warten).
+ * `perMin` 0 würde fälschlich ein gesetztes `pricePerMinute` (Legacy/Admin) überschatten;
+ * deshalb: positiver Wert in `perMin` gewinnt, sonst `pricePerMinute`, sonst 0.
+ */
+export function resolveTripEurPerRouteMinute(merged: Record<string, unknown>): number {
+  const a = n(merged.perMin, 0);
+  const b = n(merged.pricePerMinute, 0);
+  if (a > 0) return a;
+  if (b > 0) return b;
+  return 0;
+}
+
 /** Deckt globalen tariffs-Abschnitt und optionalen Eintrag in tariffs.byServiceRegion ab. */
 export function mergeTariffsForServiceRegion(
   globalTariff: Record<string, unknown>,
@@ -124,13 +137,17 @@ export function applyRounding(raw: number, mode: string | undefined): number {
 
 export type EstimateInputs = {
   distanceKm: number;
-  /** Fahrt-/Routenminuten (Fahrpreis-Min) */
+  /** Fahrt-/Routenminuten (Fahrtminutenzuschlag / Zeitkomponente — nicht Warten am Rand) */
   tripMinutes: number;
-  /** reine Wartezeit */
+  /** reine Wartezeit (€/h aus `waitingPerHour` → €/min) */
   waitingMinutes: number;
   /** Klasse, z. B. standard, xl, wheelchair, onroda */
   vehicle: string;
   at: Date;
+  /** Test-Preview: Feiertagszuschlag (kein behördliches Feiertagskalender-Modell) */
+  applyHolidaySurcharge?: boolean;
+  /** Flughafen-Pauschale aus `airportFlatEur`, sofern Tarif > 0 */
+  applyAirportFlat?: boolean;
 };
 
 /**
@@ -150,7 +167,10 @@ export function estimateTaxiFromMergedTariff(
     baseFare: number;
     distanceCharge: number;
     tripMinutesCharge: number;
+    /** Wartezeit (€) — aus €/h, nicht aus Fahrtminuten */
     waitingCharge: number;
+    /** optional Pauschale, nur wenn `applyAirportFlat` */
+    airportFlatEur: number;
     minFare: number;
     surcharges: { type: string; amount: number }[];
     vehicleClassMultiplier: number;
@@ -181,6 +201,7 @@ export function estimateTaxiFromMergedTariff(
         distanceCharge: 0,
         tripMinutesCharge: 0,
         waitingCharge: 0,
+        airportFlatEur: 0,
         minFare: 0,
         surcharges: [],
         vehicleClassMultiplier: vehicleClassMultiplier,
@@ -207,16 +228,14 @@ export function estimateTaxiFromMergedTariff(
   }
 
   const waitPerH = n(m.waitingPerHour, 0);
-  const perMin = n(
-    m.perMin,
-    n(m.pricePerMinute, 0),
-  );
+  const tripEurPerMin = resolveTripEurPerRouteMinute(m);
   const waitMin = Math.max(0, in_.waitingMinutes);
   const tripMin = Math.max(0, in_.tripMinutes);
   const waitingCharge = (waitPerH / 60) * waitMin;
-  const tripMinutesCharge = perMin * tripMin;
+  const tripMinutesCharge = tripEurPerMin * tripMin;
+  const airportFlat = in_.applyAirportFlat ? n(m.airportFlatEur, 0) : 0;
 
-  let subtotal = baseFare + distanceCharge + tripMinutesCharge + waitingCharge;
+  let subtotal = baseFare + distanceCharge + tripMinutesCharge + waitingCharge + airportFlat;
   const minFare = n(m.minFare, n(m.minPrice, 0));
   const afterMinFare = minFare > 0 && subtotal < minFare ? minFare : subtotal;
   const sur: { type: string; amount: number }[] = [];
@@ -244,6 +263,18 @@ export function estimateTaxiFromMergedTariff(
     withExtra += a;
     sur.push({ type: "weekend", amount: a });
   }
+  const hasStructHol = sroot.holiday && typeof sroot.holiday === "object";
+  if (in_.applyHolidaySurcharge) {
+    if (hasStructHol && sroot.holiday?.enabled && n(sroot.holiday?.percent, 0) > 0) {
+      const a = (afterMinFare * n(sroot.holiday?.percent, 0)) / 100;
+      withExtra += a;
+      sur.push({ type: "holiday", amount: a });
+    } else if (!hasStructHol && n(m.holidaySurchargePercent, 0) > 0) {
+      const a = (afterMinFare * n(m.holidaySurchargePercent, 0)) / 100;
+      withExtra += a;
+      sur.push({ type: "holiday", amount: a });
+    }
+  }
 
   const withVehicle = withExtra * vehicleClassMultiplier;
   const rounding = typeof m.rounding === "string" ? m.rounding : "ceil_tenth";
@@ -257,6 +288,7 @@ export function estimateTaxiFromMergedTariff(
       distanceCharge,
       tripMinutesCharge,
       waitingCharge,
+      airportFlatEur: airportFlat,
       minFare,
       surcharges: sur,
       vehicleClassMultiplier,
@@ -307,7 +339,7 @@ export function mergedTariffToPublicProfile(
       onrodaPerKmEur: n(merged.onrodaFixPerKm, perKm),
       onrodaMinFareEur: n(merged.minFare, n(merged.minPrice, 0)),
       manualFixedPriceEur: null,
-      pricePerMinute: n(merged.perMin, n(merged.pricePerMinute, 0)),
+      pricePerMinute: resolveTripEurPerRouteMinute(merged),
     };
   }
   return {
@@ -324,7 +356,7 @@ export function mergedTariffToPublicProfile(
     onrodaPerKmEur: n(merged.onrodaFixPerKm, 2.2),
     onrodaMinFareEur: n(merged.minFare, 0),
     manualFixedPriceEur: null,
-    pricePerMinute: n(merged.perMin, n(merged.pricePerMinute, 0.63)),
+    pricePerMinute: resolveTripEurPerRouteMinute(merged),
   };
 }
 

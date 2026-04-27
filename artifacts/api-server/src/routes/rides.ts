@@ -227,12 +227,16 @@ router.get("/fare-estimate", async (req, res, next) => {
     const atRaw = req.query.at;
     const at =
       typeof atRaw === "string" && atRaw.trim() ? new Date(atRaw.trim()) : new Date();
+    const applyHolidaySurcharge = String(req.query.holiday ?? req.query.assumeHoliday ?? "") === "1";
+    const applyAirportFlat = String(req.query.airport ?? req.query.airportStop ?? "") === "1";
     const est = estimateTaxiFromMergedTariff(merged, {
       distanceKm,
       tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
       waitingMinutes: Math.max(0, waitingMinutes),
       vehicle,
       at,
+      applyHolidaySurcharge,
+      applyAirportFlat,
     });
     const profile = await getPublicFareProfile(fromFullQ || null);
     const total = est.finalRounded;

@@ -67,7 +67,6 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     shortTripRule: "none",
     /** Einheitspreis pro km (wenn > 0, optional kmPricingModel \"single\"). */
     perKm: 0,
-    perMin: 0,
     minFare: 0,
     kmPricingModel: "two_tier" as const,
     vehicleClassMultipliers: { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 } as Record<string, number>,
