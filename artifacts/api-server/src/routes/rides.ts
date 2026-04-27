@@ -242,6 +242,8 @@ router.get("/fare-estimate", async (req, res, next) => {
     const total = est.finalRounded;
     res.json({
       ok: true,
+      /** 2+ = Fahrtmin: resolveTripEurPerRouteMinute + breakdown.airportFlatEur; Deploy-Check */
+      engineSchemaVersion: 2,
       serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null,
       profile: { ...profile, serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null },
       estimate: {

@@ -49,7 +49,28 @@ export function mergeTariffsForServiceRegion(
   }
   const r = { ...regionOverride };
   delete (r as { byServiceRegion?: unknown }).byServiceRegion;
-  return { ...g, ...r };
+  const out: Record<string, unknown> = { ...g, ...r };
+
+  /**
+   * Wenn in der Region `pricePerMinute: 0` bzw. `perMin: 0` (gespeichert / Admin-Form) das globale
+   * `pricePerMinute: 0.63` überschreibt, ist `resolveTripEurPerRouteMinute(merged) === 0` — Bug.
+   * Ausnahme: Region explizit mit *beiden* Werten 0, dann als „wirklich aus“ werten, kein Fallback.
+   */
+  const gTrip = resolveTripEurPerRouteMinute(g as Record<string, unknown>);
+  const oTrip = resolveTripEurPerRouteMinute(out);
+  if (gTrip > 0 && oTrip === 0) {
+    const explicitPerMin0 =
+      "perMin" in r && n((r as Record<string, unknown>).perMin) === 0;
+    const explicitPpm0 =
+      "pricePerMinute" in r && n((r as Record<string, unknown>).pricePerMinute) === 0;
+    const bothExplicitlyZeroed = explicitPerMin0 && explicitPpm0;
+    if (!bothExplicitlyZeroed) {
+      (out as { pricePerMinute: unknown }).pricePerMinute = (g as Record<string, unknown>).pricePerMinute;
+      (out as { perMin: unknown }).perMin = (g as Record<string, unknown>).perMin;
+    }
+  }
+
+  return out;
 }
 
 /**

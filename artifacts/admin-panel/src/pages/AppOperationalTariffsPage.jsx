@@ -178,7 +178,8 @@ export default function AppOperationalTariffsPage() {
     const f = form;
     const isTwo = f.kmMode === "two_tier";
     const sur = f.surcharges;
-    return {
+    const ppm = n(f.pricePerMinute);
+    const out = {
       active: f.active !== false,
       baseFare: n(f.baseFare),
       kmPricingModel: isTwo ? "two_tier" : "single",
@@ -186,7 +187,6 @@ export default function AppOperationalTariffsPage() {
       rateFirstPerKm: isTwo ? n(f.rateFirstPerKm) : n(f.perKm),
       rateAfterPerKm: isTwo ? n(f.rateAfterPerKm) : n(f.perKm),
       thresholdKm: isTwo ? n(f.thresholdKm) : n(f.thresholdKm),
-      pricePerMinute: n(f.pricePerMinute),
       waitingPerHour: n(f.waitingPerHour),
       minFare: n(f.minFare),
       cancellationFeeEur: n(f.cancellationFeeEur),
@@ -203,6 +203,8 @@ export default function AppOperationalTariffsPage() {
       holidaySurchargePercent: sur.holiday?.enabled ? n(sur.holiday?.percent) : 0,
       rounding: "ceil_tenth",
     };
+    if (ppm > 0) (out).pricePerMinute = ppm;
+    return out;
   };
 
   const save = async () => {
