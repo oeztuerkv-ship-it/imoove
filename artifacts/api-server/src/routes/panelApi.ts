@@ -56,6 +56,16 @@ import {
   listRidesForCompanyFiltered,
   type CompanyRideListFilters,
 } from "../db/ridesData";
+import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
+import {
+  assertCustomerRideOperational,
+  assertPlatformNewRideAllowed,
+  checkCustomerRideServiceArea,
+  getOperationalConfigPayload,
+  getOutOfServiceAreaMessage,
+  listServiceRegionsForApi,
+  resolveFinancePricingContextFromOperational,
+} from "../db/appOperationalData";
 import { initialPanelRideStatus } from "../lib/dispatchStatus";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
@@ -113,6 +123,41 @@ async function assertActivePanelProfile(
     return null;
   }
   return { claims, profile };
+}
+
+async function assertOperationalGateForPanelRoutes(
+  res: Response,
+  checks: { fromFull: string; toFull: string; raw: Record<string, unknown> }[],
+): Promise<boolean> {
+  const opPayload = await getOperationalConfigPayload();
+  const gate = assertPlatformNewRideAllowed(opPayload);
+  if (!gate.ok) {
+    res.status(gate.status).json({ error: gate.error, message: gate.message });
+    return false;
+  }
+  for (const c of checks) {
+    const area = await checkCustomerRideServiceArea(c.fromFull, c.toFull);
+    if (!area.ok) {
+      res.status(400).json({
+        error: "service_area_not_covered",
+        message: getOutOfServiceAreaMessage(opPayload),
+      });
+      return false;
+    }
+    const op = assertCustomerRideOperational(c.raw, opPayload);
+    if (!op.ok) {
+      res.status(400).json({ error: op.error, message: op.message });
+      return false;
+    }
+  }
+  return true;
+}
+
+async function upsertFinanceAfterPartnerRideCreated(ride: RideRequest): Promise<void> {
+  const opPayload = await getOperationalConfigPayload();
+  const regions = await listServiceRegionsForApi();
+  const pc = resolveFinancePricingContextFromOperational(ride, opPayload, regions);
+  void upsertRideFinancialSnapshot({ ride, pricingContext: pc, reason: "ride_created" });
 }
 
 function enabledPanelModules(profile: PanelUserProfileRow): PanelModuleId[] {
@@ -1051,6 +1096,36 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       }
       const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
       const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
+      const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+      const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+      const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
+      const customerPhonePanel =
+        typeof body.customerPhone === "string"
+          ? body.customerPhone.trim()
+          : typeof body.passengerPhone === "string"
+            ? body.passengerPhone.trim()
+            : "";
+      const rawOperational: Record<string, unknown> = {
+        rideKind,
+        payerKind,
+        customerName,
+        customerPhone: customerPhonePanel,
+        distanceKm,
+        durationMinutes,
+        estimatedFare,
+        paymentMethod,
+        vehicle,
+        scheduledAt: scheduledAtVal,
+        fromFull,
+        toFull,
+        from,
+        to,
+        voucherCode: voucherCode ?? undefined,
+        billingReference: billingReference ?? undefined,
+        accessCode: typeof body.accessCode === "string" ? body.accessCode : undefined,
+      };
+      if (!(await assertOperationalGateForPanelRoutes(res, [{ fromFull, toFull, raw: rawOperational }]))) return;
+
       const g = await getCompanyGovernanceGate(ctx.claims.companyId);
       const gov = checkCompanyBookingGovernance(g, {
         rideKind,
@@ -1061,10 +1136,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         res.status(403).json({ error: gov.error });
         return;
       }
-      const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-      const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
-      const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
       const newReq: RideRequest = {
         id: reqRideId(),
         companyId: ctx.claims.companyId,
@@ -1075,6 +1147,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         rejectedBy: [],
         driverId: null,
         customerName,
+        customerPhone: customerPhonePanel || null,
         ...(passengerId ? { passengerId } : {}),
         from,
         fromFull,
@@ -1120,6 +1193,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       }
       const saved = await findRide(newReq.id);
       const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0]! : newReq;
+      if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
       await insertPanelAuditLog({
         id: randomUUID(),
         companyId: ctx.claims.companyId,
@@ -1187,6 +1261,34 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
     }
     const rideKind = parseRideKind(rawRk) ?? "standard";
     const payerKind = parsePayerKind(rawPk) ?? "company";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const guestPhone =
+      typeof body.customerPhone === "string"
+        ? body.customerPhone.trim()
+        : typeof body.guestPhone === "string"
+          ? body.guestPhone.trim()
+          : "";
+    const rawHotel: Record<string, unknown> = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName: guestName,
+      customerPhone: guestPhone,
+      distanceKm: leg.distanceKm,
+      durationMinutes: leg.durationMinutes,
+      estimatedFare: leg.estimatedFare,
+      paymentMethod: leg.paymentMethod,
+      vehicle: leg.vehicle,
+      scheduledAt: leg.scheduledAt,
+      fromFull: leg.fromFull,
+      toFull: leg.toFull,
+      billingReference: billingReference ?? undefined,
+      voucherCode: voucherCode ?? undefined,
+    };
+    if (!(await assertOperationalGateForPanelRoutes(res, [{ fromFull: leg.fromFull, toFull: leg.toFull, raw: rawHotel }])))
+      return;
+
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -1197,8 +1299,6 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
     const partnerBookingMeta: PartnerBookingMeta = {
       flow: "hotel_guest",
@@ -1220,6 +1320,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       rejectedBy: [],
       driverId: null,
       customerName: guestName,
+      customerPhone: guestPhone || null,
       ...(passengerId ? { passengerId } : {}),
       from: leg.from,
       fromFull: leg.fromFull,
@@ -1266,6 +1367,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
     }
     const saved = await findRide(newReq.id);
     const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0]! : newReq;
+    if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId: ctx.claims.companyId,
@@ -1331,6 +1433,56 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const medPhone =
+      typeof body.customerPhone === "string"
+        ? body.customerPhone.trim()
+        : typeof body.passengerPhone === "string"
+          ? body.passengerPhone.trim()
+          : "";
+    const rawOutMed: Record<string, unknown> = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: medPhone,
+      distanceKm: outLeg.distanceKm,
+      durationMinutes: outLeg.durationMinutes,
+      estimatedFare: outLeg.estimatedFare,
+      paymentMethod: outLeg.paymentMethod,
+      vehicle: outLeg.vehicle,
+      scheduledAt: outLeg.scheduledAt,
+      fromFull: outLeg.fromFull,
+      toFull: outLeg.toFull,
+      billingReference: billingReference ?? undefined,
+      voucherCode: voucherCode ?? undefined,
+    };
+    const rawRetMed: Record<string, unknown> = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: medPhone,
+      distanceKm: retLeg.distanceKm,
+      durationMinutes: retLeg.durationMinutes,
+      estimatedFare: retLeg.estimatedFare,
+      paymentMethod: retLeg.paymentMethod,
+      vehicle: retLeg.vehicle,
+      scheduledAt: retLeg.scheduledAt,
+      fromFull: retLeg.fromFull,
+      toFull: retLeg.toFull,
+      billingReference: billingReference ?? undefined,
+      voucherCode: voucherCode ?? undefined,
+    };
+    if (
+      !(await assertOperationalGateForPanelRoutes(res, [
+        { fromFull: outLeg.fromFull, toFull: outLeg.toFull, raw: rawOutMed },
+        { fromFull: retLeg.fromFull, toFull: retLeg.toFull, raw: rawRetMed },
+      ]))
+    )
+      return;
+
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -1344,8 +1496,6 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
     const idOut = reqRideId();
     const idRet = reqRideId();
@@ -1358,6 +1508,7 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       rejectedBy: [] as string[],
       driverId: null as string | null,
       customerName,
+      customerPhone: medPhone || null,
       rideKind,
       payerKind,
       voucherCode,
@@ -1451,6 +1602,9 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     const enriched = await enrichPanelRidesForResponse(
       [savedOut, savedRet].filter((x): x is RideRequest => Boolean(x)),
     );
+    for (const r of [savedOut, savedRet]) {
+      if (r) await upsertFinanceAfterPartnerRideCreated(r);
+    }
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId: ctx.claims.companyId,
@@ -1540,6 +1694,33 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const seriesPhone =
+      typeof body.customerPhone === "string"
+        ? body.customerPhone.trim()
+        : typeof body.passengerPhone === "string"
+          ? body.passengerPhone.trim()
+          : "";
+    const rawSeriesLeg: Record<string, unknown> = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: seriesPhone,
+      distanceKm: leg.distanceKm,
+      durationMinutes: leg.durationMinutes,
+      estimatedFare: leg.estimatedFare,
+      paymentMethod: leg.paymentMethod,
+      vehicle: leg.vehicle,
+      scheduledAt: leg.scheduledAt,
+      fromFull: leg.fromFull,
+      toFull: leg.toFull,
+      billingReference: billingReference ?? undefined,
+      voucherCode: voucherCode ?? undefined,
+    };
+    if (!(await assertOperationalGateForPanelRoutes(res, [{ fromFull: leg.fromFull, toFull: leg.toFull, raw: rawSeriesLeg }]))) return;
+
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -1550,8 +1731,6 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
 
     const seriesRow = await insertPartnerRideSeries({
       companyId: ctx.claims.companyId,
@@ -1580,6 +1759,7 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
         rejectedBy: [],
         driverId: null,
         customerName,
+        customerPhone: seriesPhone || null,
         from: leg.from,
         fromFull: leg.fromFull,
         fromLat: leg.fromLat,
@@ -1640,6 +1820,9 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
 
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
     const enriched = await enrichPanelRidesForResponse(loaded.filter((x): x is RideRequest => Boolean(x)));
+    for (const r of loaded) {
+      if (r) await upsertFinanceAfterPartnerRideCreated(r);
+    }
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId: ctx.claims.companyId,

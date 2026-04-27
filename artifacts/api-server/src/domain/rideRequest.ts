@@ -73,6 +73,8 @@ export interface RideRequest {
   vehicle: string;
   pricingMode?: "taxi_tariff" | null;
   customerName: string;
+  /** Kunden-Telefon bei Buchung; Pflicht wenn bookingRules.requirePhone. */
+  customerPhone?: string | null;
   passengerId?: string;
   driverId?: string | null;
   rejectedBy: string[];

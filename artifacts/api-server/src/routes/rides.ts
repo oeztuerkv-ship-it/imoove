@@ -34,9 +34,14 @@ import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import {
+  assertCustomerRideOperational,
+  assertPlatformNewRideAllowed,
   checkCustomerRideServiceArea,
+  evaluateCustomerCancellationFeeEur,
   getOperationalConfigPayload,
   getOutOfServiceAreaMessage,
+  listServiceRegionsForApi,
+  resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
 
 export type { RideRequest } from "../domain/rideRequest";
@@ -187,6 +192,17 @@ router.get("/fare-config", async (_req, res, next) => {
 
 router.get("/fare-estimate", async (req, res, next) => {
   try {
+    const opPayloadEst = await getOperationalConfigPayload();
+    const gateEst = assertPlatformNewRideAllowed(opPayloadEst);
+    if (!gateEst.ok) {
+      res.status(gateEst.status).json({ error: gateEst.error, message: gateEst.message });
+      return;
+    }
+    const tEst = opPayloadEst.tariffs as { active?: boolean } | undefined;
+    if (tEst?.active === false) {
+      res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
+      return;
+    }
     const distanceKm = Number(req.query.distanceKm ?? 0);
     const waitingMinutes = Number(req.query.waitingMinutes ?? 0);
     const vehicle = String(req.query.vehicle ?? "standard").trim().toLowerCase();
@@ -462,35 +478,9 @@ router.post("/rides", async (req, res, next) => {
       return;
     }
     const opPayload = await getOperationalConfigPayload();
-    const sys = opPayload.system as {
-      emergencyShutdown?: boolean;
-      maintenanceMode?: boolean;
-      allowCustomerApp?: boolean;
-      blockNewBookings?: boolean;
-    } | undefined;
-    const opMsg = opPayload.messages as { customerAppClosedDe?: string; bookingBlockedDe?: string } | undefined;
-    if (sys?.emergencyShutdown) {
-      const m = opMsg?.customerAppClosedDe;
-      res.status(503).json({
-        error: "app_unavailable",
-        message: m && m.trim() ? m.trim() : "Dienst nicht verfügbar.",
-      });
-      return;
-    }
-    if (sys?.maintenanceMode && sys?.allowCustomerApp === false) {
-      const m = opMsg?.customerAppClosedDe;
-      res.status(503).json({
-        error: "app_unavailable",
-        message: m && m.trim() ? m.trim() : "Kunden-App in Wartung.",
-      });
-      return;
-    }
-    if (sys?.blockNewBookings) {
-      const m = opMsg?.bookingBlockedDe;
-      res.status(400).json({
-        error: "bookings_blocked",
-        message: m && m.trim() ? m.trim() : "Neue Buchungen derzeit deaktiviert.",
-      });
+    const sysGate = assertPlatformNewRideAllowed(opPayload);
+    if (!sysGate.ok) {
+      res.status(sysGate.status).json({ error: sysGate.error, message: sysGate.message });
       return;
     }
     const area = await checkCustomerRideServiceArea(fromFull, toFull);
@@ -501,11 +491,22 @@ router.post("/rides", async (req, res, next) => {
       });
       return;
     }
+    const opCheck = assertCustomerRideOperational(req.body as Record<string, unknown>, opPayload);
+    if (!opCheck.ok) {
+      res.status(400).json({ error: opCheck.error, message: opCheck.message });
+      return;
+    }
     const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
     const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const authorizationSource =
       parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
     const scheduledAtNormalized = pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>);
+    const customerPhoneClean = String(
+      (raw as { customerPhone?: unknown }).customerPhone ??
+        (raw as { passengerPhone?: unknown }).passengerPhone ??
+        (raw as { phone?: unknown }).phone ??
+        "",
+    ).trim();
     const newReq: RideRequest = {
       ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
@@ -514,6 +515,7 @@ router.post("/rides", async (req, res, next) => {
       scheduledAt: scheduledAtNormalized,
       rejectedBy: [],
       driverId: null,
+      customerPhone: customerPhoneClean || null,
       rideKind,
       payerKind,
       voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
@@ -555,6 +557,13 @@ router.post("/rides", async (req, res, next) => {
       res.status(500).json({ error: "ride_insert_inconsistent" });
       return;
     }
+    const regionsCreated = await listServiceRegionsForApi();
+    const pcCreated = resolveFinancePricingContextFromOperational(created, opPayload, regionsCreated);
+    void upsertRideFinancialSnapshot({
+      ride: created,
+      pricingContext: pcCreated,
+      reason: "ride_created",
+    });
     const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
     res.status(201).json(withSummary);
   } catch (e) {
@@ -625,9 +634,34 @@ router.patch("/rides/:id/status", async (req, res, next) => {
         return;
       }
     }
+
+    let finalFareForPatch: number | undefined = parsedFinalFare;
+    let customerCancelFeeAudit: { feeEur: number; reason: string } | null = null;
+    if (nextStatus === "cancelled_by_customer") {
+      const opPayloadCancel = await getOperationalConfigPayload();
+      const ev = evaluateCustomerCancellationFeeEur(
+        { status: cur.status, scheduledAt: cur.scheduledAt ?? null, createdAt: cur.createdAt },
+        opPayloadCancel,
+      );
+      customerCancelFeeAudit = ev;
+      if (ev.feeEur > 0) {
+        const chosen = parsedFinalFare !== undefined ? parsedFinalFare : ev.feeEur;
+        if (chosen < ev.feeEur - 1e-9) {
+          res.status(400).json({
+            error: "cancel_fee_too_low",
+            message: `Für dieses Storno ist mindestens ${ev.feeEur.toFixed(2)} EUR als Endpreis vorgesehen.`,
+            minFinalFareEur: ev.feeEur,
+          });
+          return;
+        }
+        const cap = Math.max(cur.estimatedFare ?? 0, ev.feeEur);
+        finalFareForPatch = Math.min(Math.max(chosen, ev.feeEur), cap);
+      }
+    }
+
     const updated = await updateRide(id, {
       status: nextStatus,
-      ...(parsedFinalFare !== undefined ? { finalFare: parsedFinalFare } : {}),
+      ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
       ...(driverId != null ? { driverId } : {}),
     });
     if (!updated) {
@@ -656,7 +690,17 @@ router.patch("/rides/:id/status", async (req, res, next) => {
           toStatus: nextStatus,
           actorType: crActor.actorType,
           actorId: crActor.actorId,
-          payload: { reason: cancelReasonClean, nextStatus },
+          payload: {
+            reason: cancelReasonClean,
+            nextStatus,
+            ...(nextStatus === "cancelled_by_customer" && customerCancelFeeAudit
+              ? {
+                  cancellationFeeEur: customerCancelFeeAudit.feeEur,
+                  cancellationFeeRule: customerCancelFeeAudit.reason,
+                  appliedFinalFareEur: finalFareForPatch ?? null,
+                }
+              : {}),
+          },
         });
       }
     }
@@ -664,8 +708,12 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       customerCancelReasons.set(id, cancelReasonClean);
     }
     if (nextStatus === "completed") {
+      const opPayloadComplete = await getOperationalConfigPayload();
+      const regionsComplete = await listServiceRegionsForApi();
+      const pcComplete = resolveFinancePricingContextFromOperational(updated, opPayloadComplete, regionsComplete);
       const finance = await upsertRideFinancialSnapshot({
         ride: updated,
+        pricingContext: pcComplete,
         reason: "ride_completed_status_transition",
       });
       if (!finance.ok) {

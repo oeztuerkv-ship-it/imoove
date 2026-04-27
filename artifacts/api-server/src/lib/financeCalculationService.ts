@@ -32,6 +32,8 @@ export interface FinancePricingContext {
   vatRate?: number | null;
   commissionType?: FinanceCommissionType | null;
   commissionValue?: number | null;
+  /** Mindest-Provision in EUR (Plattform-Konfig), nach %-Berechnung. */
+  minCommissionEur?: number | null;
 }
 
 export interface FinanceCalculationInput {
@@ -125,12 +127,17 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
     pricingContext?.commissionValue ?? DEFAULT_COMMISSION_VALUE,
     DEFAULT_COMMISSION_VALUE,
   );
-  const commissionAmount =
+  let commissionAmount =
     commissionType === "fixed"
       ? roundMoney(commissionValue)
       : commissionType === "none"
         ? 0
         : roundMoney(grossAmount * commissionValue);
+  const minComm = pricingContext?.minCommissionEur;
+  if (typeof minComm === "number" && Number.isFinite(minComm) && minComm > 0 && commissionType !== "none") {
+    commissionAmount = roundMoney(Math.max(commissionAmount, minComm));
+  }
+  commissionAmount = roundMoney(Math.min(commissionAmount, grossAmount));
   const operatorPayoutAmount = roundMoney(Math.max(0, grossAmount - commissionAmount));
 
   return {

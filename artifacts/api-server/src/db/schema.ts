@@ -428,6 +428,8 @@ export const ridesTable = pgTable("rides", {
   }),
   /** Kopie des normalisierten Codes bei Einlösung (Audit / Verlauf). */
   access_code_normalized_snapshot: text("access_code_normalized_snapshot"),
+  /** Optional: Kunden-Telefon bei Buchung (bookingRules.requirePhone). */
+  customer_phone: text("customer_phone"),
   /** Hotel/Medizin/Serien — nur Panel; nicht in öffentlichem Ride-Pool ausliefern. */
   partner_booking_meta: jsonb("partner_booking_meta")
     .$type<Record<string, unknown>>()
@@ -863,6 +865,10 @@ export const appServiceRegionsTable = pgTable("app_service_regions", {
   id: text("id").primaryKey(),
   label: text("label").notNull(),
   match_terms: jsonb("match_terms").$type<string[]>().notNull().default([]),
+  /** substring (Default) | geofence — Geofence-Auswertung folgt. */
+  match_mode: text("match_mode").notNull().default("substring"),
+  /** Optional: Kreis/Polygon für spätere serverseitige Prüfung (JSON). */
+  geo_fence_json: jsonb("geo_fence_json").$type<Record<string, unknown> | null>(),
   is_active: boolean("is_active").notNull().default(true),
   sort_order: integer("sort_order").notNull().default(0),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

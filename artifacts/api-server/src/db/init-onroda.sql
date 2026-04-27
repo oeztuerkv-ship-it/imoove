@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS rides (
   scheduled_at TIMESTAMPTZ,
   status TEXT NOT NULL,
   customer_name TEXT NOT NULL,
+  customer_phone TEXT,
   passenger_id TEXT,
   driver_id TEXT,
   from_label TEXT NOT NULL,
@@ -859,6 +860,8 @@ CREATE TABLE IF NOT EXISTS app_service_regions (
   id TEXT PRIMARY KEY,
   label TEXT NOT NULL,
   match_terms JSONB NOT NULL DEFAULT '[]',
+  match_mode TEXT NOT NULL DEFAULT 'substring',
+  geo_fence_json JSONB,
   is_active BOOLEAN NOT NULL DEFAULT true,
   sort_order INTEGER NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

@@ -35,6 +35,7 @@
 --   046 → fleet_vehicles.admin_internal_note, block_reason, model_year, passenger_seats
 --   048 → fleet_drivers.readiness_override_system (Operator-Tests)
 --   049 → app_operational_config, app_service_regions (App/Betrieb MVP)
+--   050 → rides.customer_phone, app_service_regions.match_mode, geo_fence_json
 
 DO $$
 DECLARE
@@ -578,6 +579,27 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'app_service_regions'
   ) THEN
     errs := array_append(errs, 'table app_service_regions (Migration 049)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'customer_phone'
+  ) THEN
+    errs := array_append(errs, 'rides.customer_phone (Migration 050)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_service_regions' AND column_name = 'match_mode'
+  ) THEN
+    errs := array_append(errs, 'app_service_regions.match_mode (Migration 050)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_service_regions' AND column_name = 'geo_fence_json'
+  ) THEN
+    errs := array_append(errs, 'app_service_regions.geo_fence_json (Migration 050)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
