@@ -76,6 +76,30 @@ function toSafeNonNegative(value: number | null | undefined, fallback: number): 
   return Math.max(0, value);
 }
 
+/** Buchungs-snapshot: gültiger Bruttobetrag, wenn `finalPriceEur` gesetzt. */
+function readTariffSnapshotGrossEur(ride: RideRequest): number | null {
+  const snap = ride.tariffSnapshot;
+  if (snap == null || typeof snap !== "object") return null;
+  const v = Number((snap as { finalPriceEur?: unknown }).finalPriceEur);
+  if (!Number.isFinite(v) || v < 0) return null;
+  return roundMoney(v);
+}
+
+/**
+ * Bruttobetrag für Finance: bei vorhandenem `tariffSnapshot` ausschließlich `finalPriceEur` (Buchung),
+ * kein nachträglicher Taxischätz-Override. Sonst `finalFare` bzw. `estimatedFare` (Legacy).
+ */
+export function effectiveTaxiGrossEur(ride: RideRequest): number {
+  const fromSnap = readTariffSnapshotGrossEur(ride);
+  if (fromSnap !== null) return fromSnap;
+  return roundMoney(
+    toSafeNonNegative(
+      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
+      0,
+    ),
+  );
+}
+
 function derivePayerType(ride: RideRequest): FinancePayerType {
   if (ride.partnerBookingMeta?.flow === "hotel_guest") return "hotel";
   if (ride.payerKind === "insurance") return "insurance";
@@ -111,12 +135,8 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
   const { ride } = input;
   const pricingContext = input.pricingContext ?? null;
 
-  const grossAmount = roundMoney(
-    toSafeNonNegative(
-      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
-      0,
-    ),
-  );
+  const grossFromSnapshot = readTariffSnapshotGrossEur(ride) !== null;
+  const grossAmount = effectiveTaxiGrossEur(ride);
 
   const vatRate = toSafeNonNegative(pricingContext?.vatRate ?? DEFAULT_VAT_RATE, DEFAULT_VAT_RATE);
   const netAmount = roundMoney(grossAmount / (1 + vatRate));
@@ -162,6 +182,9 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
       payerKind: ride.payerKind,
       initialBillingStatus: deriveInitialBillingStatus(ride),
       initialSettlementStatus: deriveInitialSettlementStatus(ride),
+      grossSource: grossFromSnapshot
+        ? "tariff_snapshot"
+        : ("legacy_final_or_estimate" as const),
       ...(ride.tariffSnapshot && typeof ride.tariffSnapshot === "object"
         ? { tariffSnapshot: ride.tariffSnapshot }
         : {}),

@@ -26,6 +26,7 @@ import {
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
+import { effectiveTaxiGrossEur } from "../lib/financeCalculationService";
 import { verifyAccessCode } from "../db/accessCodesData";
 import {
   getFleetDriverCapability,
@@ -331,7 +332,7 @@ function buildReceiptHtmlFromRide(r: RideRequest): string {
   const date = new Date(r.createdAt);
   const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-  const amount = r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : Number(r.estimatedFare ?? 0);
+  const amount = effectiveTaxiGrossEur(r);
   const rideNr = String(r.id).slice(0, 8).toUpperCase();
   return `<!DOCTYPE html>
 <html lang="de">
@@ -747,6 +748,24 @@ router.patch("/rides/:id/status", async (req, res, next) => {
         const cap = Math.max(cur.estimatedFare ?? 0, ev.feeEur);
         finalFareForPatch = Math.min(Math.max(chosen, ev.feeEur), cap);
       }
+    } else if (nextStatus === "completed") {
+      if (cur.tariffSnapshot) {
+        const v = Number(cur.tariffSnapshot.finalPriceEur);
+        if (!Number.isFinite(v) || v < 0) {
+          res.status(400).json({ error: "tariff_snapshot_invalid" });
+          return;
+        }
+      }
+      const mergedFinal =
+        parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
+          ? parsedFinalFare
+          : cur.finalFare != null && Number.isFinite(Number(cur.finalFare))
+            ? Number(cur.finalFare)
+            : undefined;
+      finalFareForPatch = effectiveTaxiGrossEur({
+        ...cur,
+        finalFare: mergedFinal,
+      } as RideRequest);
     }
 
     const updated = await updateRide(id, {
