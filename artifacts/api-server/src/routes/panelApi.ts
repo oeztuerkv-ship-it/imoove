@@ -127,7 +127,15 @@ async function assertActivePanelProfile(
 
 async function assertOperationalGateForPanelRoutes(
   res: Response,
-  checks: { fromFull: string; toFull: string; raw: Record<string, unknown> }[],
+  checks: {
+    fromFull: string;
+    toFull: string;
+    fromLat?: number | null;
+    fromLon?: number | null;
+    toLat?: number | null;
+    toLon?: number | null;
+    raw: Record<string, unknown>;
+  }[],
 ): Promise<boolean> {
   const opPayload = await getOperationalConfigPayload();
   const gate = assertPlatformNewRideAllowed(opPayload);
@@ -136,7 +144,12 @@ async function assertOperationalGateForPanelRoutes(
     return false;
   }
   for (const c of checks) {
-    const area = await checkCustomerRideServiceArea(c.fromFull, c.toFull);
+    const area = await checkCustomerRideServiceArea(c.fromFull, c.toFull, {
+      fromLat: c.fromLat,
+      fromLon: c.fromLon,
+      toLat: c.toLat,
+      toLon: c.toLon,
+    });
     if (!area.ok) {
       res.status(400).json({
         error: "service_area_not_covered",
@@ -1124,7 +1137,20 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         billingReference: billingReference ?? undefined,
         accessCode: typeof body.accessCode === "string" ? body.accessCode : undefined,
       };
-      if (!(await assertOperationalGateForPanelRoutes(res, [{ fromFull, toFull, raw: rawOperational }]))) return;
+      if (
+        !(await assertOperationalGateForPanelRoutes(res, [
+          {
+            fromFull,
+            toFull,
+            fromLat: optNum("fromLat") ?? null,
+            fromLon: optNum("fromLon") ?? null,
+            toLat: optNum("toLat") ?? null,
+            toLon: optNum("toLon") ?? null,
+            raw: rawOperational,
+          },
+        ]))
+      )
+        return;
 
       const g = await getCompanyGovernanceGate(ctx.claims.companyId);
       const gov = checkCompanyBookingGovernance(g, {
@@ -1286,7 +1312,19 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       billingReference: billingReference ?? undefined,
       voucherCode: voucherCode ?? undefined,
     };
-    if (!(await assertOperationalGateForPanelRoutes(res, [{ fromFull: leg.fromFull, toFull: leg.toFull, raw: rawHotel }])))
+    if (
+      !(await assertOperationalGateForPanelRoutes(res, [
+        {
+          fromFull: leg.fromFull,
+          toFull: leg.toFull,
+          fromLat: leg.fromLat ?? null,
+          fromLon: leg.fromLon ?? null,
+          toLat: leg.toLat ?? null,
+          toLon: leg.toLon ?? null,
+          raw: rawHotel,
+        },
+      ]))
+    )
       return;
 
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
@@ -1477,8 +1515,24 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     };
     if (
       !(await assertOperationalGateForPanelRoutes(res, [
-        { fromFull: outLeg.fromFull, toFull: outLeg.toFull, raw: rawOutMed },
-        { fromFull: retLeg.fromFull, toFull: retLeg.toFull, raw: rawRetMed },
+        {
+          fromFull: outLeg.fromFull,
+          toFull: outLeg.toFull,
+          fromLat: outLeg.fromLat ?? null,
+          fromLon: outLeg.fromLon ?? null,
+          toLat: outLeg.toLat ?? null,
+          toLon: outLeg.toLon ?? null,
+          raw: rawOutMed,
+        },
+        {
+          fromFull: retLeg.fromFull,
+          toFull: retLeg.toFull,
+          fromLat: retLeg.fromLat ?? null,
+          fromLon: retLeg.fromLon ?? null,
+          toLat: retLeg.toLat ?? null,
+          toLon: retLeg.toLon ?? null,
+          raw: rawRetMed,
+        },
       ]))
     )
       return;
@@ -1719,7 +1773,20 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
       billingReference: billingReference ?? undefined,
       voucherCode: voucherCode ?? undefined,
     };
-    if (!(await assertOperationalGateForPanelRoutes(res, [{ fromFull: leg.fromFull, toFull: leg.toFull, raw: rawSeriesLeg }]))) return;
+    if (
+      !(await assertOperationalGateForPanelRoutes(res, [
+        {
+          fromFull: leg.fromFull,
+          toFull: leg.toFull,
+          fromLat: leg.fromLat ?? null,
+          fromLon: leg.fromLon ?? null,
+          toLat: leg.toLat ?? null,
+          toLon: leg.toLon ?? null,
+          raw: rawSeriesLeg,
+        },
+      ]))
+    )
+      return;
 
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {

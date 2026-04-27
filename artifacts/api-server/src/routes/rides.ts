@@ -27,6 +27,7 @@ import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { effectiveTaxiGrossEur } from "../lib/financeCalculationService";
+import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
 import { verifyAccessCode } from "../db/accessCodesData";
 import {
   getFleetDriverCapability,
@@ -184,6 +185,15 @@ function initialCustomerRideStatus(scheduledAt: string | null): RideRequest["sta
   return isFarFutureReservation(scheduledAt) ? "scheduled" : "searching_driver";
 }
 
+function optCoord(v: unknown): number | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = String(v).trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 router.get("/fare-config", async (_req, res, next) => {
   try {
     const profile = await getPublicFareProfile();
@@ -218,6 +228,24 @@ router.get("/fare-estimate", async (req, res, next) => {
       return;
     }
     const regions = await listServiceRegionsForApi();
+    const fromLatQ = optCoord(
+      (req.query as { fromLat?: unknown; from_lat?: unknown; pickupLat?: unknown }).fromLat ??
+        (req.query as { from_lat?: unknown }).from_lat ??
+        (req.query as { pickupLat?: unknown }).pickupLat,
+    );
+    const fromLngQ = optCoord(
+      (req.query as { fromLng?: unknown; from_lon?: unknown; pickupLng?: unknown; pickupLon?: unknown }).fromLng ??
+        (req.query as { from_lon?: unknown }).from_lon ??
+        (req.query as { pickupLng?: unknown }).pickupLng ??
+        (req.query as { pickupLon?: unknown }).pickupLon,
+    );
+    if (anyActiveRegionRequiresClientCoordinates(regions) && (fromLatQ == null || fromLngQ == null)) {
+      res.status(400).json({
+        error: "pickup_coordinates_required",
+        message: "Für die Einfahrt-Regionen (Radius) werden Startkoordinaten benötigt: fromLat, fromLng (Query).",
+      });
+      return;
+    }
     const atRaw = req.query.at;
     const at =
       typeof atRaw === "string" && atRaw.trim() ? new Date(atRaw.trim()) : new Date();
@@ -225,6 +253,8 @@ router.get("/fare-estimate", async (req, res, next) => {
     const applyAirportFlat = String(req.query.airport ?? req.query.airportStop ?? "") === "1";
     const { serviceRegionId, est } = computeTaxiPriceLikeFareEstimate(opPayloadEst, regions, {
       fromFull: fromFullQ || "",
+      fromLat: fromLatQ,
+      fromLon: fromLngQ,
       distanceKm,
       tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
       waitingMinutes: Math.max(0, waitingMinutes),
@@ -233,7 +263,7 @@ router.get("/fare-estimate", async (req, res, next) => {
       applyHolidaySurcharge,
       applyAirportFlat,
     });
-    const profile = await getPublicFareProfile(fromFullQ || null);
+    const profile = await getPublicFareProfile(fromFullQ || null, { lat: fromLatQ, lon: fromLngQ });
     const total = est.finalRounded;
     res.json({
       ok: true,
@@ -497,6 +527,18 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "from_to_required" });
       return;
     }
+    const fromLatB = optCoord(
+      (raw as { fromLat?: unknown; from_lat?: unknown }).fromLat ?? (raw as { from_lat?: unknown }).from_lat,
+    );
+    const fromLonB = optCoord(
+      (raw as { fromLon?: unknown; from_lon?: unknown }).fromLon ?? (raw as { from_lon?: unknown }).from_lon,
+    );
+    const toLatB = optCoord(
+      (raw as { toLat?: unknown; to_lat?: unknown }).toLat ?? (raw as { to_lat?: unknown }).to_lat,
+    );
+    const toLonB = optCoord(
+      (raw as { toLon?: unknown; to_lon?: unknown }).toLon ?? (raw as { to_lon?: unknown }).to_lon,
+    );
     const opPayload = await getOperationalConfigPayload();
     const sysGate = assertPlatformNewRideAllowed(opPayload);
     if (!sysGate.ok) {
@@ -504,12 +546,22 @@ router.post("/rides", async (req, res, next) => {
       return;
     }
     const regions = await listServiceRegionsForApi();
-    const regGate = assertCustomerFromFullInActiveServiceRegion(fromFull, opPayload, regions);
+    if (
+      anyActiveRegionRequiresClientCoordinates(regions) &&
+      (fromLatB == null || fromLonB == null || toLatB == null || toLonB == null)
+    ) {
+      res.status(400).json({
+        error: "ride_coordinates_required",
+        message: "Für Einfahrt-Regionen (Radius) sind fromLat, fromLon, toLat und toLon erforderlich.",
+      });
+      return;
+    }
+    const regGate = assertCustomerFromFullInActiveServiceRegion(fromFull, opPayload, regions, { lat: fromLatB, lon: fromLonB });
     if (!regGate.ok) {
       res.status(400).json({ error: regGate.error, message: regGate.message });
       return;
     }
-    const area = await checkCustomerRideServiceArea(fromFull, toFull);
+    const area = await checkCustomerRideServiceArea(fromFull, toFull, { fromLat: fromLatB, fromLon: fromLonB, toLat: toLatB, toLon: toLonB });
     if (!area.ok) {
       res.status(400).json({
         error: "service_area_not_covered",
@@ -543,6 +595,8 @@ router.post("/rides", async (req, res, next) => {
     const atBooking = new Date();
     const { serviceRegionId, est: estBook } = computeTaxiPriceLikeFareEstimate(opPayload, regions, {
       fromFull,
+      fromLat: fromLatB,
+      fromLon: fromLonB,
       distanceKm: distanceKmB,
       tripMinutes: tripMinutesB,
       waitingMinutes: waitingMinutesB,

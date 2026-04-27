@@ -28,7 +28,7 @@ import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
-import { userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
+import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
@@ -40,6 +40,8 @@ function isKrankenkasseRide(paymentMethod: string) {
 
 function accessCodeErrorMessage(code: string): string {
   const m: Record<string, string> = {
+    pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
+    ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
     access_code_invalid: "Der eingegebene Code ist ungueltig oder unbekannt.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
     access_code_not_yet_valid: "Dieser Code ist noch nicht gueltig (Startdatum/Zeit der Freigabe).",

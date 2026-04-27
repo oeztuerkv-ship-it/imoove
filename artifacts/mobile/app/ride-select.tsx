@@ -41,7 +41,10 @@ export default function RideSelectScreen() {
   const vehiclePrices = useMemo(() => {
     const km = route?.distanceKm ?? 0;
     if (!km) return new Map<string, string>();
-    const tRaw = pickTariffForStartAddress(appCfg, origin.displayName ?? "");
+    const tRaw = pickTariffForStartAddress(appCfg, origin.displayName ?? "", {
+      lat: origin.lat,
+      lon: origin.lon,
+    });
     const tcfg = appTariffFromRecord(tRaw);
     const baseTaxi = calculateFareFromAppConfig(km, 0, tcfg).total;
     return new Map(

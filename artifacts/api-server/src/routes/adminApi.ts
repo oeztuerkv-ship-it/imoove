@@ -2301,11 +2301,21 @@ adminJson.patch("/app-operational/service-regions/:id", async (req, res, next) =
           ? b.matchTerms.map((x) => (typeof x === "string" ? x.trim() : String(x))).filter((s) => s.length > 0)
           : undefined
         : undefined;
+    const pickNum = (k: string): number | null | undefined => {
+      if (!(k in b)) return undefined;
+      if (b[k] === null) return null;
+      const n = Number(b[k]);
+      return Number.isFinite(n) ? n : undefined;
+    };
     const upd = await updateServiceRegionById(id, {
       label: typeof b.label === "string" ? b.label : undefined,
       matchTerms,
       isActive: typeof b.isActive === "boolean" ? b.isActive : undefined,
       sortOrder: Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : undefined,
+      matchMode: typeof b.matchMode === "string" ? b.matchMode : undefined,
+      centerLat: pickNum("centerLat"),
+      centerLng: pickNum("centerLng"),
+      radiusKm: pickNum("radiusKm"),
     });
     if (!upd) {
       res.status(404).json({ error: "not_found" });
@@ -2334,11 +2344,33 @@ adminJson.post("/app-operational/service-regions", async (req, res, next) => {
     const matchTerms = Array.isArray(b.matchTerms)
       ? b.matchTerms.map((x) => (typeof x === "string" ? x.trim() : String(x))).filter((s) => s.length > 0)
       : [];
-    if (!label || matchTerms.length === 0) {
+    const matchMode = typeof b.matchMode === "string" && b.matchMode.trim() ? b.matchMode.trim() : "substring";
+    const cLat = b.centerLat != null && Number.isFinite(Number(b.centerLat)) ? Number(b.centerLat) : null;
+    const cLng = b.centerLng != null && Number.isFinite(Number(b.centerLng)) ? Number(b.centerLng) : null;
+    const rKm = b.radiusKm != null && Number.isFinite(Number(b.radiusKm)) ? Number(b.radiusKm) : null;
+    const isRadius = matchMode === "radius";
+    if (!label) {
+      res.status(400).json({ error: "label_required" });
+      return;
+    }
+    if (isRadius) {
+      if (cLat == null || cLng == null || rKm == null || rKm <= 0) {
+        res.status(400).json({ error: "radius_region_requires_center_and_radius" });
+        return;
+      }
+    } else if (matchTerms.length === 0) {
       res.status(400).json({ error: "label_and_matchTerms_required" });
       return;
     }
-    const id = await insertServiceRegion({ label, matchTerms, isActive: b.isActive !== false });
+    const id = await insertServiceRegion({
+      label,
+      matchTerms,
+      isActive: b.isActive !== false,
+      matchMode,
+      centerLat: cLat,
+      centerLng: cLng,
+      radiusKm: rKm,
+    });
     const serviceRegions = await listServiceRegionsForApi();
     const serviceRegion = serviceRegions.find((r) => r.id === id) ?? null;
     await insertAdminAuthAuditLog({

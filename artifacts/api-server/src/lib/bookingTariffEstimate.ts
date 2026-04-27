@@ -13,6 +13,8 @@ export function computeTaxiPriceLikeFareEstimate(
   regions: ServiceRegionPublic[],
   p: {
     fromFull: string;
+    fromLat?: number | null;
+    fromLon?: number | null;
     distanceKm: number;
     tripMinutes: number;
     waitingMinutes: number;
@@ -26,7 +28,10 @@ export function computeTaxiPriceLikeFareEstimate(
   merged: Record<string, unknown>;
   est: ReturnType<typeof estimateTaxiFromMergedTariff>;
 } {
-  const { merged, serviceRegionId } = resolveMergedTariff(opPayload, regions, p.fromFull);
+  const { merged, serviceRegionId } = resolveMergedTariff(opPayload, regions, p.fromFull, {
+    lat: p.fromLat != null && Number.isFinite(Number(p.fromLat)) ? Number(p.fromLat) : null,
+    lon: p.fromLon != null && Number.isFinite(Number(p.fromLon)) ? Number(p.fromLon) : null,
+  });
   const est = estimateTaxiFromMergedTariff(merged, {
     distanceKm: p.distanceKm,
     tripMinutes: p.tripMinutes,

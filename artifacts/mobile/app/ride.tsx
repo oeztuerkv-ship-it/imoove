@@ -29,7 +29,7 @@ import {
 import { useRideRequests } from "@/context/RideRequestContext";
 import { rs, rf } from "@/utils/scale";
 import { useUser } from "@/context/UserContext";
-import { userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
+import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
@@ -46,6 +46,8 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
 
 function accessCodeBookingErrorMessage(code: string): string {
   const m: Record<string, string> = {
+    pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
+    ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
     access_code_invalid: "Code unbekannt oder ungültig.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
     access_code_not_yet_valid:
@@ -191,7 +193,12 @@ export default function RideScreen() {
       void (async () => {
         try {
           if (!destination) return;
-          const area = await validateServiceAreaForBooking(origin.displayName, destination.displayName);
+          const area = await validateServiceAreaForBooking(origin.displayName, destination.displayName, {
+            fromLat: origin.lat,
+            fromLon: origin.lon,
+            toLat: destination.lat,
+            toLon: destination.lon,
+          });
           if (!area.ok) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert("Buchung nicht möglich", area.message);

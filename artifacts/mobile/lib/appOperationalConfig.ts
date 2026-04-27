@@ -7,6 +7,7 @@ export {
   fetchAppConfig as fetchAppOperationalConfig,
   getDefaultAppConfig,
   getOutOfServiceDe as getOutOfServiceAreaDe,
+  MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
   userFacingBookingErrorMessage,
   validateServiceAreaForBooking,
 } from "./appConfig";

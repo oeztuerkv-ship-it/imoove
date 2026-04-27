@@ -284,7 +284,10 @@ function asMoney(v: unknown, fallback: number): number {
   return n;
 }
 
-export async function getPublicFareProfile(fromFull?: string | null): Promise<PublicFareProfile> {
+export async function getPublicFareProfile(
+  fromFull?: string | null,
+  pickup?: { lat?: number | null; lon?: number | null } | null,
+): Promise<PublicFareProfile> {
   const { getOperationalConfigPayload, listServiceRegionsForApi } = await import("./appOperationalData");
   const { mergeTariffsForServiceRegion, mergedTariffToPublicProfile, resolveMergedTariff } = await import(
     "../lib/operationalTariffEngine"
@@ -295,8 +298,10 @@ export async function getPublicFareProfile(fromFull?: string | null): Promise<Pu
     : {};
   const regions = await listServiceRegionsForApi();
   const from = fromFull && String(fromFull).trim() ? String(fromFull).trim() : "";
+  const lat0 = pickup?.lat != null && Number.isFinite(Number(pickup.lat)) ? Number(pickup.lat) : null;
+  const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
   const { merged, serviceRegionId } = from
-    ? resolveMergedTariff(op, regions, from)
+    ? resolveMergedTariff(op, regions, from, { lat: lat0, lon: lon0 })
     : { merged: mergeTariffsForServiceRegion(tSec, null), serviceRegionId: null as string | null };
   const regLabel = serviceRegionId ? (regions.find((r) => r.id === serviceRegionId)?.label ?? "Standard") : "Standard";
   const p = mergedTariffToPublicProfile(merged, serviceRegionId, regLabel, null);

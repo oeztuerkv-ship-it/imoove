@@ -9,6 +9,11 @@ import {
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getDb, isPostgresConfigured } from "./client";
 import { appOperationalConfigTable, appServiceRegionsTable } from "./schema";
+import {
+  findServiceRegionIdForPickup,
+  regionCoversPointOrAddress,
+  validateServiceAreaForRidePoints,
+} from "../lib/serviceRegionMatch";
 
 const DEFAULT_ID = "default";
 
@@ -159,35 +164,6 @@ function deepMergePayload(base: Record<string, unknown>, over: Record<string, un
   return out;
 }
 
-const MEM_REGIONS: {
-  id: string;
-  label: string;
-  matchTerms: string[];
-  isActive: boolean;
-  sortOrder: number;
-  matchMode: string;
-  geoFence: Record<string, unknown> | null;
-}[] = [
-  {
-    id: "asr-stuttgart",
-    label: "Stuttgart",
-    matchTerms: ["stuttgart"],
-    isActive: true,
-    sortOrder: 1,
-    matchMode: "substring",
-    geoFence: null,
-  },
-  {
-    id: "asr-esslingen",
-    label: "Esslingen",
-    matchTerms: ["esslingen", "esslingen am neckar"],
-    isActive: true,
-    sortOrder: 2,
-    matchMode: "substring",
-    geoFence: null,
-  },
-];
-
 let memPayload: Record<string, unknown> = {};
 
 function normalizeMatchTerms(raw: unknown): string[] {
@@ -204,11 +180,45 @@ export type ServiceRegionPublic = {
   isActive: boolean;
   sortOrder: number;
   matchMode: string;
+  /** WGS84 — für match_mode=radius */
+  centerLat: number | null;
+  centerLng: number | null;
+  radiusKm: number | null;
   geoFence: Record<string, unknown> | null;
 };
 
+const MEM_REGIONS: ServiceRegionPublic[] = [
+  {
+    id: "asr-stuttgart",
+    label: "Stuttgart",
+    matchTerms: ["stuttgart"],
+    isActive: true,
+    sortOrder: 1,
+    matchMode: "substring",
+    centerLat: null,
+    centerLng: null,
+    radiusKm: null,
+    geoFence: null,
+  },
+  {
+    id: "asr-esslingen",
+    label: "Esslingen",
+    matchTerms: ["esslingen", "esslingen am neckar"],
+    isActive: true,
+    sortOrder: 2,
+    matchMode: "substring",
+    centerLat: null,
+    centerLng: null,
+    radiusKm: null,
+    geoFence: null,
+  },
+];
+
 function rowToRegion(r: typeof appServiceRegionsTable.$inferSelect): ServiceRegionPublic {
   const gf = r.geo_fence_json;
+  const cLat = r.center_lat;
+  const cLng = r.center_lng;
+  const rKm = r.radius_km;
   return {
     id: r.id,
     label: r.label,
@@ -216,6 +226,9 @@ function rowToRegion(r: typeof appServiceRegionsTable.$inferSelect): ServiceRegi
     isActive: r.is_active,
     sortOrder: r.sort_order,
     matchMode: typeof r.match_mode === "string" && r.match_mode.trim() ? r.match_mode.trim() : "substring",
+    centerLat: cLat != null && Number.isFinite(Number(cLat)) ? Number(cLat) : null,
+    centerLng: cLng != null && Number.isFinite(Number(cLng)) ? Number(cLng) : null,
+    radiusKm: rKm != null && Number.isFinite(Number(rKm)) ? Number(rKm) : null,
     geoFence: isPlainObject(gf) ? (gf as Record<string, unknown>) : null,
   };
 }
@@ -249,25 +262,17 @@ export async function getOperationalConfigPayload(): Promise<Record<string, unkn
   return deepMergePayload({ ...DEFAULT_PAYLOAD }, r.payload as Record<string, unknown>);
 }
 
-export function addressMatchesServiceTerms(address: string, terms: string[]): boolean {
-  if (!address || terms.length === 0) return false;
-  const a = address.toLowerCase();
-  for (const t of terms) {
-    const s = String(t).trim().toLowerCase();
-    if (s && a.includes(s)) return true;
-  }
-  return false;
-}
+export { addressMatchesServiceTerms } from "../lib/serviceRegionMatch";
 
-/** Erste passende Einfahrt-Region (Reihenfolge wie API), inkl. inaktiver — für Startadress-Prüfung. */
+/** Erste passende Einfahrt-Region (Reihenfolge wie Tabelle), inkl. inaktiver — Prüfung deaktivierte Zonen. */
 export function findFirstServiceRegionMatchForAddress(
   address: string,
+  fromLat: number | null,
+  fromLng: number | null,
   regions: ServiceRegionPublic[],
 ): ServiceRegionPublic | null {
-  const a = String(address ?? "").trim();
-  if (!a) return null;
   for (const r of regions) {
-    if (addressMatchesServiceTerms(a, r.matchTerms)) return r;
+    if (regionCoversPointOrAddress(r, address, fromLat, fromLng)) return r;
   }
   return null;
 }
@@ -277,37 +282,44 @@ export function assertCustomerFromFullInActiveServiceRegion(
   fromFull: string,
   opPayload: Record<string, unknown>,
   regions: ServiceRegionPublic[],
+  pickup?: { lat: number | null; lon: number | null },
 ): { ok: true } | { ok: false; error: string; message: string } {
-  const m = findFirstServiceRegionMatchForAddress(fromFull, regions);
+  const m = findFirstServiceRegionMatchForAddress(
+    fromFull,
+    pickup?.lat != null && Number.isFinite(pickup.lat) ? pickup.lat : null,
+    pickup?.lon != null && Number.isFinite(pickup.lon) ? pickup.lon : null,
+    regions,
+  );
   if (m && !m.isActive) {
     return { ok: false, error: "service_region_inactive", message: getOutOfServiceAreaMessage(opPayload) };
   }
   return { ok: true };
 }
 
-/**
- * Wenn mindestens ein aktives Gebiet existiert, müssen Start- und Ziel
- * je mindestens ein aktives Gebiet matchen. Ohne aktive Gebiete: kein Einschränk (Fail-open).
- */
-export function validateServiceAreaForRide(fromFull: string, toFull: string, activeRegions: { matchTerms: string[] }[]): boolean {
-  const from = String(fromFull ?? "").trim();
-  const to = String(toFull ?? "").trim();
-  if (activeRegions.length === 0) return true;
-  return (
-    activeRegions.some((r) => addressMatchesServiceTerms(from, r.matchTerms)) &&
-    activeRegions.some((r) => addressMatchesServiceTerms(to, r.matchTerms))
-  );
-}
-
 export type ServiceAreaBlock =
   | { ok: true }
   | { ok: false; code: "service_area_not_covered" };
 
-export async function checkCustomerRideServiceArea(fromFull: string, toFull: string): Promise<ServiceAreaBlock> {
+export type ServiceAreaCoords = {
+  fromLat?: number | null;
+  fromLon?: number | null;
+  toLat?: number | null;
+  toLon?: number | null;
+};
+
+export async function checkCustomerRideServiceArea(
+  fromFull: string,
+  toFull: string,
+  loc?: ServiceAreaCoords | null,
+): Promise<ServiceAreaBlock> {
   const all = await listServiceRegionsForApi();
   const active = all.filter((r) => r.isActive);
   if (active.length === 0) return { ok: true };
-  const ok = validateServiceAreaForRide(fromFull, toFull, active);
+  const fromLat = loc?.fromLat != null && Number.isFinite(Number(loc.fromLat)) ? Number(loc.fromLat) : null;
+  const fromLng = loc?.fromLon != null && Number.isFinite(Number(loc.fromLon)) ? Number(loc.fromLon) : null;
+  const toLat = loc?.toLat != null && Number.isFinite(Number(loc.toLat)) ? Number(loc.toLat) : null;
+  const toLng = loc?.toLon != null && Number.isFinite(Number(loc.toLon)) ? Number(loc.toLon) : null;
+  const ok = validateServiceAreaForRidePoints(fromFull, toFull, fromLat, fromLng, toLat, toLng, all);
   if (ok) return { ok: true };
   return { ok: false, code: "service_area_not_covered" };
 }
@@ -498,7 +510,14 @@ function deepMergeTariffs(
  * Storno-Gebühr kommt aus dem der Startadresse zugeordneten Tarif (byServiceRegion), sonst global.
  */
 export async function evaluateCustomerCancellationFeeEur(
-  ride: { status: string; scheduledAt?: string | null; createdAt: string; fromFull?: string | null },
+  ride: {
+    status: string;
+    scheduledAt?: string | null;
+    createdAt: string;
+    fromFull?: string | null;
+    fromLat?: number | null;
+    fromLon?: number | null;
+  },
   opPayload: Record<string, unknown>,
   nowMs: number = Date.now(),
 ): Promise<{ feeEur: number; reason: string }> {
@@ -508,8 +527,10 @@ export async function evaluateCustomerCancellationFeeEur(
   const tGlobal = { ...defT, ...(isPlainObject(opPayload.tariffs) ? opPayload.tariffs : {}) };
   const regions = await listServiceRegionsForApi();
   const from = String(ride.fromFull ?? "").trim();
+  const pLat = ride.fromLat != null && Number.isFinite(Number(ride.fromLat)) ? Number(ride.fromLat) : null;
+  const pLon = ride.fromLon != null && Number.isFinite(Number(ride.fromLon)) ? Number(ride.fromLon) : null;
   const merged = from
-    ? resolveMergedTariff(opPayload, regions, from).merged
+    ? resolveMergedTariff(opPayload, regions, from, { lat: pLat, lon: pLon }).merged
     : mergeTariffsForServiceRegion(tGlobal, null);
   const windowMin =
     typeof b.cancellationWindowMinutes === "number" && Number.isFinite(b.cancellationWindowMinutes)
@@ -548,9 +569,9 @@ export async function evaluateCustomerCancellationFeeEur(
 
 /** Provision für ride_financials aus App/Betrieb-Konfig (Firma > Region Start > Fahrtart > Default). */
 export function resolveFinancePricingContextFromOperational(
-  ride: { rideKind: string; companyId?: string | null; fromFull?: string | null },
+  ride: { rideKind: string; companyId?: string | null; fromFull?: string | null; fromLat?: number | null; fromLon?: number | null },
   opPayload: Record<string, unknown>,
-  serviceRegions: { id: string; matchTerms: string[]; isActive: boolean }[],
+  serviceRegions: ServiceRegionPublic[],
 ): FinancePricingContext {
   const defC = DEFAULT_PAYLOAD.commission as Record<string, unknown>;
   const c = { ...defC, ...(isPlainObject(opPayload.commission) ? opPayload.commission : {}) };
@@ -566,15 +587,16 @@ export function resolveFinancePricingContextFromOperational(
     if (typeof row.defaultRate === "number" && Number.isFinite(row.defaultRate)) rate = row.defaultRate;
   }
   const fromFull = String(ride.fromFull ?? "");
-  for (const reg of serviceRegions.filter((r) => r.isActive)) {
-    if (!addressMatchesServiceTerms(fromFull, reg.matchTerms)) continue;
+  const pLat = ride.fromLat != null && Number.isFinite(Number(ride.fromLat)) ? Number(ride.fromLat) : null;
+  const pLon = ride.fromLon != null && Number.isFinite(Number(ride.fromLon)) ? Number(ride.fromLon) : null;
+  const regId = findServiceRegionIdForPickup(fromFull, pLat, pLon, serviceRegions);
+  if (regId) {
     const bySr = c.byServiceRegion as Record<string, unknown> | undefined;
-    if (isPlainObject(bySr) && isPlainObject(bySr[reg.id])) {
-      const br = bySr[reg.id] as { defaultRate?: unknown; active?: unknown };
+    if (isPlainObject(bySr) && isPlainObject(bySr[regId])) {
+      const br = bySr[regId] as { defaultRate?: unknown; active?: unknown };
       if (br.active === false) return { commissionType: "none", commissionValue: 0, minCommissionEur: null };
       if (typeof br.defaultRate === "number" && Number.isFinite(br.defaultRate)) rate = br.defaultRate;
     }
-    break;
   }
   const rkr = c.rideKindRates as Record<string, { rate?: unknown; active?: unknown }> | undefined;
   const rk = rkr?.[ride.rideKind];
@@ -615,10 +637,18 @@ export async function updateOperationalConfigPayload(
   return next;
 }
 
-export async function updateServiceRegionById(
-  id: string,
-  input: { label?: string; matchTerms?: string[]; isActive?: boolean; sortOrder?: number },
-): Promise<boolean> {
+export type UpdateServiceRegionInput = {
+  label?: string;
+  matchTerms?: string[];
+  isActive?: boolean;
+  sortOrder?: number;
+  matchMode?: string;
+  centerLat?: number | null;
+  centerLng?: number | null;
+  radiusKm?: number | null;
+};
+
+export async function updateServiceRegionById(id: string, input: UpdateServiceRegionInput): Promise<boolean> {
   if (!isPostgresConfigured()) {
     const i = MEM_REGIONS.findIndex((x) => x.id === id);
     if (i < 0) return false;
@@ -629,7 +659,10 @@ export async function updateServiceRegionById(
       matchTerms: input.matchTerms !== undefined ? [...input.matchTerms] : cur.matchTerms,
       isActive: input.isActive !== undefined ? input.isActive : cur.isActive,
       sortOrder: input.sortOrder !== undefined ? input.sortOrder : cur.sortOrder,
-      matchMode: cur.matchMode,
+      matchMode: input.matchMode !== undefined ? input.matchMode : cur.matchMode,
+      centerLat: input.centerLat !== undefined ? input.centerLat : cur.centerLat,
+      centerLng: input.centerLng !== undefined ? input.centerLng : cur.centerLng,
+      radiusKm: input.radiusKm !== undefined ? input.radiusKm : cur.radiusKm,
       geoFence: cur.geoFence,
     };
     return true;
@@ -641,6 +674,10 @@ export async function updateServiceRegionById(
   if (input.matchTerms !== undefined) set.match_terms = input.matchTerms;
   if (input.isActive !== undefined) set.is_active = input.isActive;
   if (input.sortOrder !== undefined) set.sort_order = input.sortOrder;
+  if (input.matchMode !== undefined) set.match_mode = input.matchMode;
+  if (input.centerLat !== undefined) set.center_lat = input.centerLat;
+  if (input.centerLng !== undefined) set.center_lng = input.centerLng;
+  if (input.radiusKm !== undefined) set.radius_km = input.radiusKm;
   const u = await db
     .update(appServiceRegionsTable)
     .set(set)
@@ -649,31 +686,38 @@ export async function updateServiceRegionById(
   return u.length > 0;
 }
 
-export async function insertServiceRegion(input: { label: string; matchTerms: string[]; isActive?: boolean }): Promise<string> {
+export type InsertServiceRegionInput = {
+  label: string;
+  matchTerms: string[];
+  isActive?: boolean;
+  matchMode?: string;
+  centerLat?: number | null;
+  centerLng?: number | null;
+  radiusKm?: number | null;
+};
+
+export async function insertServiceRegion(input: InsertServiceRegionInput): Promise<string> {
   const id = `asr-${randomUUID()}`;
+  const mode = typeof input.matchMode === "string" && input.matchMode.trim() ? input.matchMode.trim() : "substring";
+  const next: ServiceRegionPublic = {
+    id,
+    label: input.label,
+    matchTerms: [...input.matchTerms],
+    isActive: input.isActive !== false,
+    sortOrder: Math.max(0, ...MEM_REGIONS.map((x) => x.sortOrder)) + 1,
+    matchMode: mode,
+    centerLat: input.centerLat != null && Number.isFinite(Number(input.centerLat)) ? Number(input.centerLat) : null,
+    centerLng: input.centerLng != null && Number.isFinite(Number(input.centerLng)) ? Number(input.centerLng) : null,
+    radiusKm: input.radiusKm != null && Number.isFinite(Number(input.radiusKm)) ? Number(input.radiusKm) : null,
+    geoFence: null,
+  };
   if (!isPostgresConfigured()) {
-    MEM_REGIONS.push({
-      id,
-      label: input.label,
-      matchTerms: [...input.matchTerms],
-      isActive: input.isActive !== false,
-      sortOrder: Math.max(0, ...MEM_REGIONS.map((x) => x.sortOrder)) + 1,
-      matchMode: "substring",
-      geoFence: null,
-    });
+    MEM_REGIONS.push(next);
     return id;
   }
   const db = getDb();
   if (!db) {
-    MEM_REGIONS.push({
-      id,
-      label: input.label,
-      matchTerms: [...input.matchTerms],
-      isActive: true,
-      sortOrder: 99,
-      matchMode: "substring",
-      geoFence: null,
-    });
+    MEM_REGIONS.push({ ...next, sortOrder: 99 });
     return id;
   }
   const sortOrder =
@@ -682,9 +726,13 @@ export async function insertServiceRegion(input: { label: string; matchTerms: st
     ]?.n ?? 0;
   await db.insert(appServiceRegionsTable).values({
     id,
-    label: input.label.trim(),
-    match_terms: input.matchTerms,
-    is_active: input.isActive !== false,
+    label: next.label.trim(),
+    match_terms: next.matchTerms,
+    match_mode: next.matchMode,
+    center_lat: next.centerLat,
+    center_lng: next.centerLng,
+    radius_km: next.radiusKm,
+    is_active: next.isActive,
     sort_order: Number(sortOrder) + 1,
   });
   return id;
@@ -696,13 +744,7 @@ export type AppConfigPublic = {
   version: number;
   updatedAt: string | null;
   activeCities: string[];
-  serviceRegions: {
-    id: string;
-    label: string;
-    matchTerms: string[];
-    isActive: boolean;
-    sortOrder: number;
-  }[];
+  serviceRegions: ServiceRegionPublic[];
   messages: {
     outOfServiceAreaDe: string;
     bookingBlockedDe?: string;

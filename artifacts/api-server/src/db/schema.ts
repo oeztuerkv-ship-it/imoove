@@ -865,14 +865,17 @@ export const appOperationalConfigTable = pgTable("app_operational_config", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Einfahrgebiete: Substrings in Start-/Zieladresse. */
+/** Einfahrgebiete: Substring in Adresse ODER Mittelpunkt+Radius (match_mode=radius). */
 export const appServiceRegionsTable = pgTable("app_service_regions", {
   id: text("id").primaryKey(),
   label: text("label").notNull(),
   match_terms: jsonb("match_terms").$type<string[]>().notNull().default([]),
-  /** substring (Default) | geofence — Geofence-Auswertung folgt. */
+  /** substring (Default) | radius | geofence/polygon (vorbereitet) */
   match_mode: text("match_mode").notNull().default("substring"),
-  /** Optional: Kreis/Polygon für spätere serverseitige Prüfung (JSON). */
+  center_lat: doublePrecision("center_lat"),
+  center_lng: doublePrecision("center_lng"),
+  radius_km: doublePrecision("radius_km"),
+  /** Optional: erweiterte Geometrie; Radius nutzt bevorzugt center_* + radius_km. */
   geo_fence_json: jsonb("geo_fence_json").$type<Record<string, unknown> | null>(),
   is_active: boolean("is_active").notNull().default(true),
   sort_order: integer("sort_order").notNull().default(0),

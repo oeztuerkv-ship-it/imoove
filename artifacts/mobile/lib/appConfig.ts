@@ -6,6 +6,10 @@ export type OnrodaServiceRegion = {
   matchTerms: string[];
   isActive: boolean;
   sortOrder: number;
+  matchMode?: string;
+  centerLat?: number | null;
+  centerLng?: number | null;
+  radiusKm?: number | null;
 };
 
 export type OnrodaAppConfig = {
@@ -46,8 +50,15 @@ const DEFAULT: OnrodaAppConfig = {
   updatedAt: null,
   activeCities: ["Stuttgart", "Esslingen"],
   serviceRegions: [
-    { id: "asr-stuttgart", label: "Stuttgart", matchTerms: ["stuttgart"], isActive: true, sortOrder: 1 },
-    { id: "asr-esslingen", label: "Esslingen", matchTerms: ["esslingen", "esslingen am neckar"], isActive: true, sortOrder: 2 },
+    { id: "asr-stuttgart", label: "Stuttgart", matchTerms: ["stuttgart"], isActive: true, sortOrder: 1, matchMode: "substring" },
+    {
+      id: "asr-esslingen",
+      label: "Esslingen",
+      matchTerms: ["esslingen", "esslingen am neckar"],
+      isActive: true,
+      sortOrder: 2,
+      matchMode: "substring",
+    },
   ],
   messages: {
     outOfServiceAreaDe: "ONRODA ist in deiner Stadt momentan noch nicht verfügbar.",
@@ -176,28 +187,22 @@ export function getOutOfServiceDe(cfg: OnrodaAppConfig): string {
   return typeof t === "string" && t.trim() ? t.trim() : DEFAULT.messages.outOfServiceAreaDe;
 }
 
-/**
- * Wählt den für die Startadresse vorgemergten Tarif (serverseitig gleiche Logik wie /fare-estimate).
- */
-export function pickTariffForStartAddress(cfg: OnrodaAppConfig, fromText: string): Record<string, unknown> {
-  const from = String(fromText ?? "").trim();
-  if (!from) {
-    return { ...cfg.tariffs };
-  }
-  const by = cfg.tariffsPerServiceRegion || {};
-  for (const r of cfg.serviceRegions || []) {
-    if (!r.isActive) continue;
-    for (const term of r.matchTerms || []) {
-      if (from.toLowerCase().includes(String(term).trim().toLowerCase())) {
-        const row = by[r.id];
-        if (row && typeof row === "object" && !Array.isArray(row)) {
-          return { ...cfg.tariffs, ...(row as object) } as Record<string, unknown>;
-        }
-        return { ...cfg.tariffs };
-      }
-    }
-  }
-  return { ...cfg.tariffs };
+/** Keine Koords / Radius-Region: Nutzer sollen Vorschläge wählen (Client-Vorprüfung + API-Code-Map). */
+export const MESSAGE_ADDRESS_PICK_SUGGESTION_DE =
+  "Adresse konnte nicht eindeutig geprüft werden. Bitte Adresse aus Vorschlägen auswählen.";
+
+const BOOKING_PREFER_MAP_OVER_API_MESSAGE = new Set(["ride_coordinates_required", "pickup_coordinates_required"]);
+
+const EARTH_RADIUS_KM = 6371;
+
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 function addressMatchesServiceTerms(address: string, terms: string[]): boolean {
@@ -209,10 +214,44 @@ function addressMatchesServiceTerms(address: string, terms: string[]): boolean {
   return false;
 }
 
+function isRadiusConfig(r: OnrodaServiceRegion): boolean {
+  return (
+    String(r.matchMode || "").toLowerCase() === "radius" &&
+    r.centerLat != null &&
+    r.centerLng != null &&
+    r.radiusKm != null &&
+    r.radiusKm > 0 &&
+    Number.isFinite(r.centerLat) &&
+    Number.isFinite(r.centerLng)
+  );
+}
+
+/**
+ * Eine Kachel (Abhol- oder Zielort) matcht die Region, wenn Substring- oder Radius-Regel erfüllt.
+ */
+function pointMatchesRegion(
+  r: OnrodaServiceRegion,
+  address: string,
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): boolean {
+  if (!r.isActive) return false;
+  if (isRadiusConfig(r)) {
+    if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    return haversineKm(lat, lng, r.centerLat as number, r.centerLng as number) <= (r.radiusKm as number) + 1e-6;
+  }
+  return addressMatchesServiceTerms(String(address ?? "").trim(), r.matchTerms || []);
+}
+
+export function anyActiveServiceRegionRequiresCoordinates(cfg: OnrodaAppConfig): boolean {
+  return (cfg.serviceRegions || []).some((r) => r.isActive && isRadiusConfig(r));
+}
+
 export function clientCheckServiceArea(
   fromFull: string,
   toFull: string,
   cfg: OnrodaAppConfig,
+  loc?: { fromLat?: number | null; fromLon?: number | null; toLat?: number | null; toLon?: number | null } | null,
 ): { ok: true } | { ok: false; message: string } {
   const from = String(fromFull ?? "").trim();
   const to = String(toFull ?? "").trim();
@@ -220,8 +259,23 @@ export function clientCheckServiceArea(
   if (active.length === 0) {
     return { ok: true };
   }
-  const startOk = active.some((r) => addressMatchesServiceTerms(from, r.matchTerms));
-  const endOk = active.some((r) => addressMatchesServiceTerms(to, r.matchTerms));
+  if (anyActiveServiceRegionRequiresCoordinates(cfg)) {
+    if (
+      loc == null ||
+      loc.fromLat == null ||
+      loc.fromLon == null ||
+      loc.toLat == null ||
+      loc.toLon == null
+    ) {
+      return { ok: false, message: MESSAGE_ADDRESS_PICK_SUGGESTION_DE };
+    }
+  }
+  const fl = loc?.fromLat != null && Number.isFinite(Number(loc.fromLat)) ? Number(loc.fromLat) : null;
+  const fn = loc?.fromLon != null && Number.isFinite(Number(loc.fromLon)) ? Number(loc.fromLon) : null;
+  const tl = loc?.toLat != null && Number.isFinite(Number(loc.toLat)) ? Number(loc.toLat) : null;
+  const tn = loc?.toLon != null && Number.isFinite(Number(loc.toLon)) ? Number(loc.toLon) : null;
+  const startOk = active.some((r) => pointMatchesRegion(r, from, fl, fn));
+  const endOk = active.some((r) => pointMatchesRegion(r, to, tl, tn));
   if (startOk && endOk) return { ok: true };
   return { ok: false, message: getOutOfServiceDe(cfg) };
 }
@@ -229,16 +283,49 @@ export function clientCheckServiceArea(
 export async function validateServiceAreaForBooking(
   fromFull: string,
   toFull: string,
+  loc?: { fromLat?: number | null; fromLon?: number | null; toLat?: number | null; toLon?: number | null } | null,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const cfg = await fetchAppConfig();
-  return clientCheckServiceArea(fromFull, toFull, cfg);
+  return clientCheckServiceArea(fromFull, toFull, cfg, loc);
+}
+
+/**
+ * Wählt den für die Startadresse vorgemergten Tarif (serverseitig gleiche Logik wie /fare-estimate).
+ * Optional `pickup` für Einfahrt-Regionen mit match_mode=radius.
+ */
+export function pickTariffForStartAddress(
+  cfg: OnrodaAppConfig,
+  fromText: string,
+  pickup?: { lat?: number; lon?: number } | null,
+): Record<string, unknown> {
+  const from = String(fromText ?? "").trim();
+  const plat = pickup?.lat != null && Number.isFinite(pickup.lat) ? pickup.lat : null;
+  const plon = pickup?.lon != null && Number.isFinite(pickup.lon) ? pickup.lon : null;
+  if (!from && plat == null) {
+    return { ...cfg.tariffs };
+  }
+  const by = cfg.tariffsPerServiceRegion || {};
+  for (const r of cfg.serviceRegions || []) {
+    if (!r.isActive) continue;
+    if (pointMatchesRegion(r, from, plat, plon)) {
+      const row = by[r.id];
+      if (row && typeof row === "object" && !Array.isArray(row)) {
+        return { ...cfg.tariffs, ...(row as object) } as Record<string, unknown>;
+      }
+      return { ...cfg.tariffs };
+    }
+  }
+  return { ...cfg.tariffs };
 }
 
 export function userFacingBookingErrorMessage(err: unknown, mapCode: (code: string) => string): string {
+  const code = err instanceof Error ? err.message : "request_failed";
+  if (BOOKING_PREFER_MAP_OVER_API_MESSAGE.has(code)) {
+    return mapCode(code);
+  }
   if (err && typeof err === "object" && "userMessage" in err) {
     const m = (err as { userMessage?: unknown }).userMessage;
     if (typeof m === "string" && m.trim()) return m.trim();
   }
-  const code = err instanceof Error ? err.message : "request_failed";
   return mapCode(code);
 }

@@ -291,13 +291,22 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      const tcfg = appTariffFromRecord(pickTariffForStartAddress(appCfg, origin.displayName ?? ""));
+      const tcfg = appTariffFromRecord(
+        pickTariffForStartAddress(appCfg, origin.displayName ?? "", {
+          lat: origin.lat,
+          lon: origin.lon,
+        }),
+      );
       if (API_BASE) {
         try {
           const u = new URL(`${API_BASE}/fare-estimate`);
           u.searchParams.set("distanceKm", String(result.distanceKm));
           u.searchParams.set("vehicle", selectedVehicle);
           u.searchParams.set("fromFull", String(origin.displayName ?? ""));
+          if (Number.isFinite(origin.lat) && Number.isFinite(origin.lon)) {
+            u.searchParams.set("fromLat", String(origin.lat));
+            u.searchParams.set("fromLng", String(origin.lon));
+          }
           if (destination?.displayName) u.searchParams.set("toFull", String(destination.displayName));
           u.searchParams.set("tripMinutes", String(result.durationMinutes));
           const res = await fetch(u.toString(), { cache: "no-store" });

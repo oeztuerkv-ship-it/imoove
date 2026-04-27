@@ -1,3 +1,5 @@
+import { findServiceRegionIdForPickup, type ServiceRegionMatchable } from "./serviceRegionMatch";
+
 export type SurchargeBlock = { enabled?: boolean; percent?: number };
 export type TariffSurcharges = {
   night?: SurchargeBlock;
@@ -5,15 +7,7 @@ export type TariffSurcharges = {
   holiday?: SurchargeBlock;
 };
 
-function addressMatchesServiceTermsLocal(address: string, terms: string[]): boolean {
-  if (!address || terms.length === 0) return false;
-  const a = address.toLowerCase();
-  for (const t of terms) {
-    const s = String(t).trim().toLowerCase();
-    if (s && a.includes(s)) return true;
-  }
-  return false;
-}
+export type { ServiceRegionMatchable } from "./serviceRegionMatch";
 
 export function isPlainTariffObject(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === "object" && !Array.isArray(x);
@@ -74,26 +68,14 @@ export function mergeTariffsForServiceRegion(
 }
 
 /**
- * Wählt die erste passende Einfahrt-Region (wie Provisions-Logik).
- * `fromFull` muss i. d. R. vollständige Adresse (Start) sein.
+ * Wählt die erste passende Einfahrt-Region (Reihenfolge wie in der API).
+ * Optional: `pickup` für match_mode=radius; sonst Substring in `fromFull` (oder Polygon später).
  */
-export function findServiceRegionIdForFrom(
-  fromFull: string,
-  serviceRegions: { id: string; matchTerms: string[]; isActive: boolean }[],
-): string | null {
-  const from = String(fromFull ?? "").trim();
-  for (const reg of serviceRegions.filter((r) => r.isActive)) {
-    if (addressMatchesServiceTermsLocal(from, reg.matchTerms)) {
-      return reg.id;
-    }
-  }
-  return null;
-}
-
 export function resolveMergedTariff(
   opPayload: Record<string, unknown>,
-  serviceRegions: { id: string; matchTerms: string[]; isActive: boolean }[],
+  serviceRegions: ServiceRegionMatchable[],
   fromFull: string,
+  pickup?: { lat: number | null | undefined; lon: number | null | undefined } | null,
 ): { merged: Record<string, unknown>; serviceRegionId: string | null } {
   const defT: Record<string, unknown> = {};
   const t = {
@@ -101,7 +83,9 @@ export function resolveMergedTariff(
     ...(isPlainTariffObject(opPayload.tariffs) ? (opPayload.tariffs as Record<string, unknown>) : {}),
   };
   const bySr = isPlainTariffObject(t.byServiceRegion) ? (t.byServiceRegion as Record<string, unknown>) : {};
-  const id = findServiceRegionIdForFrom(fromFull, serviceRegions);
+  const lat0 = pickup?.lat != null && Number.isFinite(Number(pickup.lat)) ? Number(pickup.lat) : null;
+  const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
+  const id = findServiceRegionIdForPickup(String(fromFull ?? "").trim(), lat0, lon0, serviceRegions);
   const reg = id && isPlainTariffObject(bySr[id]) ? (bySr[id] as Record<string, unknown>) : null;
   const merged = mergeTariffsForServiceRegion(t, reg);
   return { merged, serviceRegionId: id };

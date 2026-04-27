@@ -36,6 +36,7 @@
 --   048 → fleet_drivers.readiness_override_system (Operator-Tests)
 --   049 → app_operational_config, app_service_regions (App/Betrieb MVP)
 --   050 → rides.customer_phone, app_service_regions.match_mode, geo_fence_json
+--   052 → app_service_regions center_lat, center_lng, radius_km
 
 DO $$
 DECLARE
@@ -607,6 +608,25 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'tariff_snapshot_json'
   ) THEN
     errs := array_append(errs, 'rides.tariff_snapshot_json (Migration 051)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_service_regions' AND column_name = 'center_lat'
+  ) THEN
+    errs := array_append(errs, 'app_service_regions.center_lat (Migration 052)');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_service_regions' AND column_name = 'center_lng'
+  ) THEN
+    errs := array_append(errs, 'app_service_regions.center_lng (Migration 052)');
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_service_regions' AND column_name = 'radius_km'
+  ) THEN
+    errs := array_append(errs, 'app_service_regions.radius_km (Migration 052)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN
