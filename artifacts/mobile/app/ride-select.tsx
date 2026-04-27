@@ -6,9 +6,11 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { VEHICLES, useRide } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
-import { calculateFare, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
+import { pickTariffForStartAddress } from "@/lib/appConfig";
+import { appTariffFromRecord, calculateFareFromAppConfig, ceilToTenth, formatEuro } from "@/utils/fareCalculator";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -16,6 +18,7 @@ const WHEELCHAIR_ICON_COLOR = "#0369A1";
 export default function RideSelectScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { config: appCfg } = useOnrodaAppConfig();
   const mapRef = useRef<MapView>(null);
   const {
     origin,
@@ -38,14 +41,16 @@ export default function RideSelectScreen() {
   const vehiclePrices = useMemo(() => {
     const km = route?.distanceKm ?? 0;
     if (!km) return new Map<string, string>();
-    const baseTaxi = calculateFare(km).total;
+    const tRaw = pickTariffForStartAddress(appCfg, origin.displayName ?? "");
+    const tcfg = appTariffFromRecord(tRaw);
+    const baseTaxi = calculateFareFromAppConfig(km, 0, tcfg).total;
     return new Map(
       VEHICLES.map((v) => {
         const total = ceilToTenth(baseTaxi * v.multiplier);
         return [v.id, formatEuro(total)];
       }),
     );
-  }, [route?.distanceKm]);
+  }, [route?.distanceKm, appCfg, origin.displayName]);
 
   if (!destination) {
     return (

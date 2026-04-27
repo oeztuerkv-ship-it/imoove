@@ -25,6 +25,7 @@ import {
 } from "../domain/rideAuthorization";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
+import { estimateTaxiFromMergedTariff, mergeTariffsForServiceRegion, resolveMergedTariff } from "../lib/operationalTariffEngine";
 import { verifyAccessCode } from "../db/accessCodesData";
 import {
   getFleetDriverCapability,
@@ -205,31 +206,50 @@ router.get("/fare-estimate", async (req, res, next) => {
     }
     const distanceKm = Number(req.query.distanceKm ?? 0);
     const waitingMinutes = Number(req.query.waitingMinutes ?? 0);
+    const tripMinutes = Number(
+      (req.query.tripMinutes as string) ?? (req.query.durationMinutes as string) ?? (req.query.routeMinutes as string) ?? 0,
+    );
     const vehicle = String(req.query.vehicle ?? "standard").trim().toLowerCase();
+    const fromFullQ = String(req.query.fromFull ?? req.query.from ?? "").trim();
     if (!Number.isFinite(distanceKm) || distanceKm < 0) {
       res.status(400).json({ error: "distance_km_invalid" });
       return;
     }
-    const profile = await getPublicFareProfile();
-    const waitPerMinute = profile.waitingPerHourEur / 60;
-    const firstKm = Math.min(distanceKm, profile.thresholdKm);
-    const restKm = Math.max(0, distanceKm - profile.thresholdKm);
-    const distanceCharge = firstKm * profile.rateFirstKmEur + restKm * profile.rateAfterKmEur;
-    const waitingCharge = Math.max(0, waitingMinutes) * waitPerMinute;
-    const taxiTotal = ceilToTenth(profile.baseFareEur + distanceCharge + waitingCharge + profile.serviceFeeEur);
-    const multipliers: Record<string, number> = { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 };
-    const adjustedTaxi = ceilToTenth(taxiTotal * (multipliers[vehicle] ?? 1));
-    const estimate = adjustedTaxi;
+    const regions = await listServiceRegionsForApi();
+    const tPayload = (
+      opPayloadEst.tariffs && typeof opPayloadEst.tariffs === "object" && !Array.isArray(opPayloadEst.tariffs)
+        ? (opPayloadEst.tariffs as Record<string, unknown>)
+        : {}
+    ) as Record<string, unknown>;
+    const { merged, serviceRegionId } = fromFullQ
+      ? resolveMergedTariff(opPayloadEst, regions, fromFullQ)
+      : { merged: mergeTariffsForServiceRegion(tPayload, null), serviceRegionId: null as string | null };
+    const atRaw = req.query.at;
+    const at =
+      typeof atRaw === "string" && atRaw.trim() ? new Date(atRaw.trim()) : new Date();
+    const est = estimateTaxiFromMergedTariff(merged, {
+      distanceKm,
+      tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
+      waitingMinutes: Math.max(0, waitingMinutes),
+      vehicle,
+      at,
+    });
+    const profile = await getPublicFareProfile(fromFullQ || null);
+    const total = est.finalRounded;
     res.json({
       ok: true,
-      profile,
+      serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null,
+      profile: { ...profile, serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null },
       estimate: {
         distanceKm,
         waitingMinutes,
+        tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
         vehicle,
-        total: estimate,
-        taxiTotal: adjustedTaxi,
-        onrodaTotal: adjustedTaxi,
+        total,
+        taxiTotal: total,
+        onrodaTotal: total,
+        breakdown: est.breakdown,
+        engine: { subtotal: est.subtotal, afterMinFare: est.afterMinFare },
       },
     });
   } catch (e) {
@@ -639,8 +659,13 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     let customerCancelFeeAudit: { feeEur: number; reason: string } | null = null;
     if (nextStatus === "cancelled_by_customer") {
       const opPayloadCancel = await getOperationalConfigPayload();
-      const ev = evaluateCustomerCancellationFeeEur(
-        { status: cur.status, scheduledAt: cur.scheduledAt ?? null, createdAt: cur.createdAt },
+      const ev = await evaluateCustomerCancellationFeeEur(
+        {
+          status: cur.status,
+          scheduledAt: cur.scheduledAt ?? null,
+          createdAt: cur.createdAt,
+          fromFull: cur.fromFull,
+        },
         opPayloadCancel,
       );
       customerCancelFeeAudit = ev;

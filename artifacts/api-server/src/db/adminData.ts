@@ -262,6 +262,8 @@ function rowToFareArea(r: typeof fareAreasTable.$inferSelect): FareAreaRow {
 export type PublicFareProfile = {
   areaId: string | null;
   areaName: string;
+  /** Zugeordnete App-Einfahrt-Region (Tarife & Preise) */
+  serviceRegionId?: string | null;
   baseFareEur: number;
   rateFirstKmEur: number;
   rateAfterKmEur: number;
@@ -272,6 +274,8 @@ export type PublicFareProfile = {
   onrodaPerKmEur: number;
   onrodaMinFareEur: number;
   manualFixedPriceEur: number | null;
+  /** Fahrt-Minutenpreis (pro Routen-Minute) aus Config */
+  pricePerMinute?: number;
 };
 
 function asMoney(v: unknown, fallback: number): number {
@@ -280,42 +284,33 @@ function asMoney(v: unknown, fallback: number): number {
   return n;
 }
 
-export async function getPublicFareProfile(): Promise<PublicFareProfile> {
-  const defaults: PublicFareProfile = {
-    areaId: null,
-    areaName: "Standard",
-    baseFareEur: 4.3,
-    rateFirstKmEur: 3.0,
-    rateAfterKmEur: 2.5,
-    thresholdKm: 4,
-    waitingPerHourEur: 38,
-    serviceFeeEur: 0,
-    onrodaBaseFareEur: 3.5,
-    onrodaPerKmEur: 2.2,
-    onrodaMinFareEur: 0,
-    manualFixedPriceEur: null,
-  };
+export async function getPublicFareProfile(fromFull?: string | null): Promise<PublicFareProfile> {
+  const { getOperationalConfigPayload, listServiceRegionsForApi } = await import("./appOperationalData");
+  const { mergeTariffsForServiceRegion, mergedTariffToPublicProfile, resolveMergedTariff } = await import(
+    "../lib/operationalTariffEngine"
+  );
+  const op = await getOperationalConfigPayload();
+  const tSec = isPlainObject2((op as { tariffs?: unknown }).tariffs)
+    ? ((op as { tariffs: Record<string, unknown> }).tariffs as Record<string, unknown>)
+    : {};
+  const regions = await listServiceRegionsForApi();
+  const from = fromFull && String(fromFull).trim() ? String(fromFull).trim() : "";
+  const { merged, serviceRegionId } = from
+    ? resolveMergedTariff(op, regions, from)
+    : { merged: mergeTariffsForServiceRegion(tSec, null), serviceRegionId: null as string | null };
+  const regLabel = serviceRegionId ? (regions.find((r) => r.id === serviceRegionId)?.label ?? "Standard") : "Standard";
+  const p = mergedTariffToPublicProfile(merged, serviceRegionId, regLabel, null);
   const areas = await listFareAreas();
   const active = areas.filter((x) => x.status === "aktiv");
   const row = active.find((x) => x.isDefault) ?? active[0] ?? areas[0];
-  if (!row) return defaults;
-  return {
-    areaId: row.id,
-    areaName: row.name,
-    baseFareEur: asMoney(row.baseFareEur, defaults.baseFareEur),
-    rateFirstKmEur: asMoney(row.rateFirstKmEur, defaults.rateFirstKmEur),
-    rateAfterKmEur: asMoney(row.rateAfterKmEur, defaults.rateAfterKmEur),
-    thresholdKm: asMoney(row.thresholdKm, defaults.thresholdKm),
-    waitingPerHourEur: asMoney(row.waitingPerHourEur, defaults.waitingPerHourEur),
-    serviceFeeEur: asMoney(row.serviceFeeEur, defaults.serviceFeeEur),
-    onrodaBaseFareEur: asMoney(row.onrodaBaseFareEur, defaults.onrodaBaseFareEur),
-    onrodaPerKmEur: asMoney(row.onrodaPerKmEur, defaults.onrodaPerKmEur),
-    onrodaMinFareEur: asMoney(row.onrodaMinFareEur, defaults.onrodaMinFareEur),
-    manualFixedPriceEur:
-      row.manualFixedPriceEur != null && Number.isFinite(Number(row.manualFixedPriceEur))
-        ? Number(row.manualFixedPriceEur)
-        : null,
-  };
+  if (row) {
+    return { ...p, areaId: row.id, areaName: p.areaName };
+  }
+  return p;
+}
+
+function isPlainObject2(x: unknown): x is Record<string, unknown> {
+  return x !== null && typeof x === "object" && !Array.isArray(x);
 }
 
 const ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"] as const;

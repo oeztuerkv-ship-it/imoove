@@ -8,6 +8,7 @@ import React, {
 } from "react";
 
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
+import { pickTariffForStartAddress } from "@/lib/appConfig";
 import { calculateFareFromAppConfig, appTariffFromRecord, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
@@ -290,12 +291,15 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
         setFareBreakdown(null);
         return;
       }
-      const tcfg = appTariffFromRecord(appCfg.tariffs as Record<string, unknown>);
+      const tcfg = appTariffFromRecord(pickTariffForStartAddress(appCfg, origin.displayName ?? ""));
       if (API_BASE) {
         try {
           const u = new URL(`${API_BASE}/fare-estimate`);
           u.searchParams.set("distanceKm", String(result.distanceKm));
           u.searchParams.set("vehicle", selectedVehicle);
+          u.searchParams.set("fromFull", String(origin.displayName ?? ""));
+          if (destination?.displayName) u.searchParams.set("toFull", String(destination.displayName));
+          u.searchParams.set("tripMinutes", String(result.durationMinutes));
           const res = await fetch(u.toString(), { cache: "no-store" });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data?.ok && Number.isFinite(data?.estimate?.total)) {

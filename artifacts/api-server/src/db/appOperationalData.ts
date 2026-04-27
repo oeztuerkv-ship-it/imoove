@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { asc, desc, eq } from "drizzle-orm";
 import type { FinancePricingContext } from "../lib/financeCalculationService";
+import {
+  getCancellationFeeEurFromMerged,
+  mergeTariffsForServiceRegion,
+  resolveMergedTariff,
+} from "../lib/operationalTariffEngine";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { getDb, isPostgresConfigured } from "./client";
 import { appOperationalConfigTable, appServiceRegionsTable } from "./schema";
@@ -60,6 +65,17 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     onrodaFixBase: 3.5,
     onrodaFixPerKm: 2.2,
     shortTripRule: "none",
+    /** Einheitspreis pro km (wenn > 0, optional kmPricingModel \"single\"). */
+    perKm: 0,
+    perMin: 0,
+    minFare: 0,
+    kmPricingModel: "two_tier" as const,
+    vehicleClassMultipliers: { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 } as Record<string, number>,
+    surcharges: {
+      night: { enabled: false, percent: 0 },
+      weekend: { enabled: false, percent: 0 },
+    },
+    serviceFee: 0,
     rounding: "ceil_tenth",
     taxiMandatoryArea: false,
     forbidUnlawfulFixedPriceInMandatoryArea: true,
@@ -423,19 +439,53 @@ export function assertPlatformNewRideAllowed(
   return { ok: true };
 }
 
+function deepMergeTariffs(
+  current: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const base = (current && isPlainObject(current) ? current : (DEFAULT_PAYLOAD.tariffs as object)) as Record<
+    string,
+    unknown
+  >;
+  const pSrIn = isPlainObject(patch.byServiceRegion) ? (patch.byServiceRegion as Record<string, unknown>) : null;
+  const bSr0 = isPlainObject(base.byServiceRegion) ? ({ ...(base.byServiceRegion as object) } as Record<string, unknown>) : {};
+  const out: Record<string, unknown> = { ...base, ...patch };
+  if (pSrIn) {
+    const nextSr: Record<string, unknown> = { ...bSr0 };
+    for (const [k, v] of Object.entries(pSrIn)) {
+      if (v == null) continue;
+      if (isPlainObject(v) && isPlainObject(nextSr[k])) {
+        nextSr[k] = { ...(nextSr[k] as object), ...(v as object) };
+      } else {
+        nextSr[k] = v;
+      }
+    }
+    out.byServiceRegion = nextSr;
+  } else if (base.byServiceRegion !== undefined) {
+    out.byServiceRegion = bSr0;
+  }
+  return out;
+}
+
 /**
  * Kunden-Storno: Gebühr abhängig von Zeit vor Abholung (scheduled) bzw. nach Fahrerzuweisung.
  * Ohne geplante Abholzeit: vor Zuweisung kostenfrei, danach Gebühr (Tarif + Buchungsregel max).
+ * Storno-Gebühr kommt aus dem der Startadresse zugeordneten Tarif (byServiceRegion), sonst global.
  */
-export function evaluateCustomerCancellationFeeEur(
-  ride: { status: string; scheduledAt?: string | null; createdAt: string },
+export async function evaluateCustomerCancellationFeeEur(
+  ride: { status: string; scheduledAt?: string | null; createdAt: string; fromFull?: string | null },
   opPayload: Record<string, unknown>,
   nowMs: number = Date.now(),
-): { feeEur: number; reason: string } {
+): Promise<{ feeEur: number; reason: string }> {
   const defB = DEFAULT_PAYLOAD.bookingRules as Record<string, unknown>;
   const defT = DEFAULT_PAYLOAD.tariffs as Record<string, unknown>;
   const b = { ...defB, ...(isPlainObject(opPayload.bookingRules) ? opPayload.bookingRules : {}) };
-  const t = { ...defT, ...(isPlainObject(opPayload.tariffs) ? opPayload.tariffs : {}) };
+  const tGlobal = { ...defT, ...(isPlainObject(opPayload.tariffs) ? opPayload.tariffs : {}) };
+  const regions = await listServiceRegionsForApi();
+  const from = String(ride.fromFull ?? "").trim();
+  const merged = from
+    ? resolveMergedTariff(opPayload, regions, from).merged
+    : mergeTariffsForServiceRegion(tGlobal, null);
   const windowMin =
     typeof b.cancellationWindowMinutes === "number" && Number.isFinite(b.cancellationWindowMinutes)
       ? b.cancellationWindowMinutes
@@ -444,8 +494,7 @@ export function evaluateCustomerCancellationFeeEur(
     typeof b.cancellationFeeAfterWindowEur === "number" && Number.isFinite(b.cancellationFeeAfterWindowEur)
       ? b.cancellationFeeAfterWindowEur
       : 0;
-  const feeTariff =
-    typeof t.cancellationFeeEur === "number" && Number.isFinite(t.cancellationFeeEur) ? t.cancellationFeeEur : 0;
+  const feeTariff = getCancellationFeeEurFromMerged(merged);
   const fee = Math.max(Number(feeBooking) || 0, Number(feeTariff) || 0);
 
   const pickupRaw = ride.scheduledAt && String(ride.scheduledAt).trim() ? String(ride.scheduledAt).trim() : "";
@@ -519,7 +568,15 @@ export async function updateOperationalConfigPayload(
   patch: Record<string, unknown>,
 ): Promise<Record<string, unknown> | { error: "unavailable" }> {
   const cur = await getOperationalConfigPayload();
-  const next = deepMergePayload(cur, patch);
+  let effPatch = patch;
+  if (isPlainObject(patch.tariffs)) {
+    const curT = isPlainObject(cur.tariffs) ? (cur.tariffs as Record<string, unknown>) : undefined;
+    effPatch = {
+      ...patch,
+      tariffs: deepMergeTariffs(curT, patch.tariffs as Record<string, unknown>),
+    };
+  }
+  const next = deepMergePayload(cur, effPatch);
   if (!isPostgresConfigured()) {
     memPayload = next;
     return next;
@@ -643,6 +700,8 @@ export type AppConfigPublic = {
   driverRules: Record<string, unknown>;
   bookingRules: Record<string, unknown>;
   system: Record<string, unknown>;
+  /** Volle Tarife pro Einfahrt-Region (Defaults + byServiceRegion[id] gemerged). */
+  tariffsPerServiceRegion: Record<string, unknown>;
 };
 
 export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
@@ -712,6 +771,14 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     return { ...def, ...p };
   };
 
+  const tSec = section("tariffs");
+  const bsr = isPlainObject(tSec.byServiceRegion) ? (tSec.byServiceRegion as Record<string, unknown>) : {};
+  const tariffsPerServiceRegion: Record<string, unknown> = {};
+  for (const r of regions) {
+    const o = bsr[r.id];
+    tariffsPerServiceRegion[r.id] = mergeTariffsForServiceRegion(tSec, isPlainObject(o) ? o : null);
+  }
+
   return {
     ok: true,
     version: typeof v === "number" && Number.isFinite(v) ? v : 1,
@@ -719,7 +786,8 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     activeCities,
     serviceRegions: regions,
     messages: msgMerged as AppConfigPublic["messages"],
-    tariffs: section("tariffs"),
+    tariffs: tSec,
+    tariffsPerServiceRegion,
     provision,
     dispatch: section("dispatch"),
     features: section("features"),
