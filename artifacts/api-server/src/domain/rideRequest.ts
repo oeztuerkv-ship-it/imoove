@@ -7,6 +7,31 @@ export type { AccessCodeType, AuthorizationSource, PayerKind, RideKind };
 export type { AccessCodeDefinitionState, AccessCodeTripOutcome };
 export type { PartnerBookingMeta };
 
+/** DB/API: `tariff_snapshot_json` */
+export type TariffBookingSnapshotV1 = {
+  engineSchemaVersion: number;
+  serviceRegionId: string | null;
+  /** Gerundeter Gesamt-Schätzpreis = `estimatedFare` bei Buchung */
+  finalPriceEur: number;
+  subtotal: number;
+  afterMinFare: number;
+  breakdown: {
+    baseFare: number;
+    distanceCharge: number;
+    tripMinutesCharge: number;
+    waitingCharge: number;
+    airportFlatEur: number;
+    minFare: number;
+    surcharges: { type: string; amount: number }[];
+    vehicleClassMultiplier: number;
+  };
+  distanceKm: number;
+  tripMinutes: number;
+  waitingMinutes: number;
+  vehicle: string;
+  at: string;
+};
+
 export interface RideRequest {
   id: string;
   /**
@@ -66,7 +91,14 @@ export interface RideRequest {
   toLon?: number;
   distanceKm: number;
   durationMinutes: number;
+  /**
+   * Geschätzter Fahrpreis bei Buchung — nur serverseitig (operationalTariffEngine), kein Client-Override.
+   */
   estimatedFare: number;
+  /**
+   * Snapshot der Tarif-Engine (POST /rides): gleiche Logik wie /fare-estimate, bei Abschluss nicht neu berechnen.
+   */
+  tariffSnapshot?: TariffBookingSnapshotV1 | null;
   /** Tatsächlicher Preis nach Fahrtende — Abrechnungsbetrag gegen Kostenträger bei Code-/Firmenlogik. */
   finalFare?: number | null;
   paymentMethod: string;

@@ -435,6 +435,11 @@ export const ridesTable = pgTable("rides", {
     .$type<Record<string, unknown>>()
     .notNull()
     .default({}),
+  /** Tarif-Engine-Snapshot bei Buchung (Merge + Breakdown; freeze). */
+  tariff_snapshot_json: jsonb("tariff_snapshot_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
 });
 
 /** Event-Historie pro Fahrt (Statuswechsel, Matching, Storno, Abschluss, etc.). */

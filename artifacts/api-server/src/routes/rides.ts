@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { RideRequest } from "../domain/rideRequest";
+import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest";
 import {
   DEFAULT_PAYER_KIND,
   DEFAULT_RIDE_KIND,
@@ -25,7 +25,7 @@ import {
 } from "../domain/rideAuthorization";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
-import { estimateTaxiFromMergedTariff, mergeTariffsForServiceRegion, resolveMergedTariff } from "../lib/operationalTariffEngine";
+import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { verifyAccessCode } from "../db/accessCodesData";
 import {
   getFleetDriverCapability,
@@ -35,6 +35,7 @@ import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import {
+  assertCustomerFromFullInActiveServiceRegion,
   assertCustomerRideOperational,
   assertPlatformNewRideAllowed,
   checkCustomerRideServiceArea,
@@ -216,20 +217,13 @@ router.get("/fare-estimate", async (req, res, next) => {
       return;
     }
     const regions = await listServiceRegionsForApi();
-    const tPayload = (
-      opPayloadEst.tariffs && typeof opPayloadEst.tariffs === "object" && !Array.isArray(opPayloadEst.tariffs)
-        ? (opPayloadEst.tariffs as Record<string, unknown>)
-        : {}
-    ) as Record<string, unknown>;
-    const { merged, serviceRegionId } = fromFullQ
-      ? resolveMergedTariff(opPayloadEst, regions, fromFullQ)
-      : { merged: mergeTariffsForServiceRegion(tPayload, null), serviceRegionId: null as string | null };
     const atRaw = req.query.at;
     const at =
       typeof atRaw === "string" && atRaw.trim() ? new Date(atRaw.trim()) : new Date();
     const applyHolidaySurcharge = String(req.query.holiday ?? req.query.assumeHoliday ?? "") === "1";
     const applyAirportFlat = String(req.query.airport ?? req.query.airportStop ?? "") === "1";
-    const est = estimateTaxiFromMergedTariff(merged, {
+    const { serviceRegionId, est } = computeTaxiPriceLikeFareEstimate(opPayloadEst, regions, {
+      fromFull: fromFullQ || "",
       distanceKm,
       tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
       waitingMinutes: Math.max(0, waitingMinutes),
@@ -242,8 +236,7 @@ router.get("/fare-estimate", async (req, res, next) => {
     const total = est.finalRounded;
     res.json({
       ok: true,
-      /** 2+ = Fahrtmin: resolveTripEurPerRouteMinute + breakdown.airportFlatEur; Deploy-Check */
-      engineSchemaVersion: 2,
+      engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
       serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null,
       profile: { ...profile, serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null },
       estimate: {
@@ -509,6 +502,12 @@ router.post("/rides", async (req, res, next) => {
       res.status(sysGate.status).json({ error: sysGate.error, message: sysGate.message });
       return;
     }
+    const regions = await listServiceRegionsForApi();
+    const regGate = assertCustomerFromFullInActiveServiceRegion(fromFull, opPayload, regions);
+    if (!regGate.ok) {
+      res.status(400).json({ error: regGate.error, message: regGate.message });
+      return;
+    }
     const area = await checkCustomerRideServiceArea(fromFull, toFull);
     if (!area.ok) {
       res.status(400).json({
@@ -517,7 +516,50 @@ router.post("/rides", async (req, res, next) => {
       });
       return;
     }
-    const opCheck = assertCustomerRideOperational(req.body as Record<string, unknown>, opPayload);
+    const tBook = opPayload.tariffs as { active?: boolean } | undefined;
+    if (tBook?.active === false) {
+      res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
+      return;
+    }
+    const distanceKmB = Number((raw as { distanceKm?: unknown }).distanceKm ?? (raw as { distance_km?: unknown }).distance_km);
+    if (!Number.isFinite(distanceKmB) || distanceKmB < 0) {
+      res.status(400).json({ error: "distance_km_invalid" });
+      return;
+    }
+    const tripMRaw = Number(
+      (raw as { tripMinutes?: unknown }).tripMinutes ??
+        (raw as { trip_minutes?: unknown }).trip_minutes ??
+        (raw as { durationMinutes?: unknown }).durationMinutes ??
+        (raw as { duration_minutes?: unknown }).duration_minutes ??
+        0,
+    );
+    const tripMinutesB = Number.isFinite(tripMRaw) ? Math.max(0, tripMRaw) : 0;
+    const waitMRaw = Number(
+      (raw as { waitingMinutes?: unknown }).waitingMinutes ?? (raw as { waiting_minutes?: unknown }).waiting_minutes ?? 0,
+    );
+    const waitingMinutesB = Number.isFinite(waitMRaw) ? Math.max(0, waitMRaw) : 0;
+    const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
+    const atBooking = new Date();
+    const { serviceRegionId, est: estBook } = computeTaxiPriceLikeFareEstimate(opPayload, regions, {
+      fromFull,
+      distanceKm: distanceKmB,
+      tripMinutes: tripMinutesB,
+      waitingMinutes: waitingMinutesB,
+      vehicle: vehicleB,
+      at: atBooking,
+    });
+    const finalPriceB = estBook.finalRounded;
+    const durationInt = Math.max(0, Math.round(tripMinutesB));
+    const bodyForAssert: Record<string, unknown> = {
+      ...(raw as object as Record<string, unknown>),
+      estimatedFare: finalPriceB,
+      estimated_fare: finalPriceB,
+      distanceKm: distanceKmB,
+      distance_km: distanceKmB,
+      durationMinutes: durationInt,
+      duration_minutes: durationInt,
+    };
+    const opCheck = assertCustomerRideOperational(bodyForAssert, opPayload);
     if (!opCheck.ok) {
       res.status(400).json({ error: opCheck.error, message: opCheck.message });
       return;
@@ -533,6 +575,19 @@ router.post("/rides", async (req, res, next) => {
         (raw as { phone?: unknown }).phone ??
         "",
     ).trim();
+    const snapB: TariffBookingSnapshotV1 = {
+      engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
+      serviceRegionId,
+      finalPriceEur: finalPriceB,
+      subtotal: estBook.subtotal,
+      afterMinFare: estBook.afterMinFare,
+      breakdown: { ...estBook.breakdown },
+      distanceKm: distanceKmB,
+      tripMinutes: tripMinutesB,
+      waitingMinutes: waitingMinutesB,
+      vehicle: vehicleB,
+      at: atBooking.toISOString(),
+    };
     const newReq: RideRequest = {
       ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
@@ -549,6 +604,11 @@ router.post("/rides", async (req, res, next) => {
       authorizationSource,
       accessCodeId: null,
       pricingMode: "taxi_tariff",
+      distanceKm: distanceKmB,
+      durationMinutes: durationInt,
+      estimatedFare: finalPriceB,
+      vehicle: vehicleB,
+      tariffSnapshot: snapB,
     };
     const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : undefined;
@@ -583,8 +643,7 @@ router.post("/rides", async (req, res, next) => {
       res.status(500).json({ error: "ride_insert_inconsistent" });
       return;
     }
-    const regionsCreated = await listServiceRegionsForApi();
-    const pcCreated = resolveFinancePricingContextFromOperational(created, opPayload, regionsCreated);
+    const pcCreated = resolveFinancePricingContextFromOperational(created, opPayload, regions);
     void upsertRideFinancialSnapshot({
       ride: created,
       pricingContext: pcCreated,

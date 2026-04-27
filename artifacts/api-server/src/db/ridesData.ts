@@ -16,7 +16,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import type { PanelCompanyKind } from "./panelCompanyData";
-import type { RideRequest } from "../domain/rideRequest";
+import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest";
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
 import { metaToJson, parsePartnerBookingMeta } from "../domain/partnerBookingMeta";
@@ -89,6 +89,11 @@ function stripEphemeral(r: RideRequest): RideRequest {
   return rest;
 }
 
+function parseTariffSnapshotFromRow(raw: unknown): TariffBookingSnapshotV1 | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw as TariffBookingSnapshotV1;
+}
+
 function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
   const rk = r.ride_kind;
   const pk = r.payer_kind;
@@ -123,6 +128,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     distanceKm: r.distance_km,
     durationMinutes: r.duration_minutes,
     estimatedFare: r.estimated_fare,
+    tariffSnapshot: parseTariffSnapshotFromRow(r.tariff_snapshot_json) ?? null,
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
@@ -169,6 +175,9 @@ function rideToUpdate(r: RideRequest) {
       string,
       unknown
     >,
+    tariff_snapshot_json: (r.tariffSnapshot
+      ? (r.tariffSnapshot as unknown as Record<string, unknown>)
+      : {}) as Record<string, unknown>,
   };
 }
 
@@ -211,6 +220,9 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
       string,
       unknown
     >,
+    tariff_snapshot_json: (r.tariffSnapshot
+      ? (r.tariffSnapshot as unknown as Record<string, unknown>)
+      : {}) as Record<string, unknown>,
   };
 }
 

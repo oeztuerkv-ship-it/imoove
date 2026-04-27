@@ -162,6 +162,9 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
       payerKind: ride.payerKind,
       initialBillingStatus: deriveInitialBillingStatus(ride),
       initialSettlementStatus: deriveInitialSettlementStatus(ride),
+      ...(ride.tariffSnapshot && typeof ride.tariffSnapshot === "object"
+        ? { tariffSnapshot: ride.tariffSnapshot }
+        : {}),
     },
   };
 }

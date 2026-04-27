@@ -259,6 +259,32 @@ export function addressMatchesServiceTerms(address: string, terms: string[]): bo
   return false;
 }
 
+/** Erste passende Einfahrt-Region (Reihenfolge wie API), inkl. inaktiver — für Startadress-Prüfung. */
+export function findFirstServiceRegionMatchForAddress(
+  address: string,
+  regions: ServiceRegionPublic[],
+): ServiceRegionPublic | null {
+  const a = String(address ?? "").trim();
+  if (!a) return null;
+  for (const r of regions) {
+    if (addressMatchesServiceTerms(a, r.matchTerms)) return r;
+  }
+  return null;
+}
+
+/** Abholung darf nicht in einem definierten, aber deaktivierten Gebiet liegen (sonst fälschlich globaler Tarif). */
+export function assertCustomerFromFullInActiveServiceRegion(
+  fromFull: string,
+  opPayload: Record<string, unknown>,
+  regions: ServiceRegionPublic[],
+): { ok: true } | { ok: false; error: string; message: string } {
+  const m = findFirstServiceRegionMatchForAddress(fromFull, regions);
+  if (m && !m.isActive) {
+    return { ok: false, error: "service_region_inactive", message: getOutOfServiceAreaMessage(opPayload) };
+  }
+  return { ok: true };
+}
+
 /**
  * Wenn mindestens ein aktives Gebiet existiert, müssen Start- und Ziel
  * je mindestens ein aktives Gebiet matchen. Ohne aktive Gebiete: kein Einschränk (Fail-open).

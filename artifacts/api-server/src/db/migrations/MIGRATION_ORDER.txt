@@ -60,6 +60,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Taxi fleet_drivers: System-Readiness-Override (Operator-Tests trotz fehlender Unterlagen) → 048_fleet_drivers_readiness_override_system.sql
   App / Betrieb (Kunden-App-Regeln, Einfahrt-Gebiete) → 049_app_operational_mvp.sql
   rides.customer_phone + app_service_regions Geofence-Struktur → 050_rides_customer_phone_and_geo_fence_prep.sql
+  rides.tariff_snapshot_json (Tarif-Engine bei Buchung)         → 051_rides_tariff_snapshot_json.sql
 
 Nach Migrationen Schema prüfen:
 
