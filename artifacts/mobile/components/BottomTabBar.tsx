@@ -16,9 +16,10 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests?.length ?? 0;
 
-  const tabs: { id: Exclude<BottomTab, "buchen">; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
+  const tabs: { id: BottomTab; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
     { id: "start",      icon: "home",        label: "Start",     onPress: () => router.replace("/") },
     { id: "fahrten",    icon: "calendar",    label: "Fahrten",   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
+    { id: "buchen",     icon: "plus",        label: "+",         onPress: () => router.replace("/booking-center") },
     { id: "geldborse",  icon: "credit-card", label: "Geldbörse", onPress: () => router.replace("/wallet") },
     { id: "account",    icon: "user",        label: "Account",   onPress: () => router.replace("/profile") },
   ];
@@ -28,30 +29,37 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
       <View style={[styles.bar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
       {tabs.map((tab) => {
         const isActive = tab.id === active;
+        const isPlusTab = tab.id === "buchen";
+        const iconBg = isPlusTab
+          ? (isActive ? "#DC2626" : "#ffffff")
+          : (isActive ? "#DC2626" : colors.muted);
+        const iconColor = isPlusTab
+          ? (isActive ? "#ffffff" : "#DC2626")
+          : (isActive ? "#fff" : "#111111");
+        const labelColor = isPlusTab
+          ? "#DC2626"
+          : (isActive ? "#DC2626" : "#111111");
         return (
           <Pressable key={tab.id} style={styles.item} onPress={tab.onPress}>
-            <View style={[styles.iconWrap, { backgroundColor: isActive ? "#DC2626" : colors.muted }]}>
-              <Feather name={tab.icon} size={rs(13)} color={isActive ? "#fff" : "#111111"} />
+            <View
+              style={[
+                styles.iconWrap,
+                isPlusTab && styles.plusTabIconWrap,
+                { backgroundColor: iconBg, borderColor: isPlusTab ? "#DC2626" : "transparent" },
+              ]}
+            >
+              <Feather name={tab.icon} size={isPlusTab ? rs(16) : rs(13)} color={iconColor} />
               {tab.badge != null && tab.badge > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
                 </View>
               )}
             </View>
-            <Text style={[styles.label, { color: isActive ? "#DC2626" : "#111111" }]}>{tab.label}</Text>
+            <Text style={[styles.label, isPlusTab && styles.plusTabLabel, { color: labelColor }]}>{tab.label}</Text>
           </Pressable>
         );
       })}
       </View>
-      <Pressable
-        style={styles.plusWrap}
-        onPress={() => router.replace("/booking-center")}
-        accessibilityLabel="Buchungszentrale öffnen"
-      >
-        <View style={[styles.plusBtn, { backgroundColor: "#16A34A", borderColor: colors.surface }]}>
-          <Feather name="plus" size={rs(18)} color="#fff" />
-        </View>
-      </Pressable>
     </View>
   );
 }
@@ -77,6 +85,11 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   label: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
+  plusTabLabel: { fontFamily: "Inter_700Bold", fontSize: rf(12), marginTop: -1 },
+  plusTabIconWrap: {
+    borderWidth: 2,
+    borderRadius: rs(10),
+  },
   badge: {
     position: "absolute", top: -5, right: -8,
     minWidth: rs(17), height: rs(17), borderRadius: rs(9),
@@ -85,23 +98,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs(3),
   },
   badgeText: { fontSize: rf(10), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(13) },
-  plusWrap: {
-    position: "absolute",
-    left: "50%",
-    top: -rs(18),
-    marginLeft: -rs(26),
-  },
-  plusBtn: {
-    width: rs(52),
-    height: rs(52),
-    borderRadius: rs(26),
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
-  },
 });

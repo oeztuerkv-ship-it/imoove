@@ -155,6 +155,7 @@ export default function RideScreen() {
   const { profile } = useUser();
   const btnScale = useRef(new Animated.Value(1)).current;
   const rideScrollRef = useRef<ScrollView>(null);
+  const accessibilityScrollRef = useRef<ScrollView>(null);
 
   const [noTokenVisible, setNoTokenVisible] = useState(false);
   const [preAuthLoading, setPreAuthLoading] = useState(false);
@@ -170,6 +171,12 @@ export default function RideScreen() {
   const [elevatorAvailable, setElevatorAvailable] = useState(false);
   const [stairsPresent, setStairsPresent] = useState(false);
   const [accessibilityNote, setAccessibilityNote] = useState("");
+
+  const handleAccessibilityNoteFocus = (e: any) => {
+    const target = e?.target;
+    if (!target || !accessibilityScrollRef.current) return;
+    accessibilityScrollRef.current.scrollResponderScrollNativeHandleToKeyboard(target, 110, true);
+  };
 
   useEffect(() => {
     if (paymentMethod == null) setPaymentMethod("cash");
@@ -668,7 +675,12 @@ export default function RideScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={[styles.noTokenTitle, { color: colors.foreground }]}>Rollstuhl-Details</Text>
-            <ScrollView style={{ alignSelf: "stretch" }} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+            <ScrollView
+              ref={accessibilityScrollRef}
+              style={{ alignSelf: "stretch" }}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ gap: 10, paddingBottom: 4 }}
+            >
               <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Hilfe benötigt?</Text>
               {([
                 ["boarding", "Ich brauche Hilfe beim Einsteigen"],
@@ -730,6 +742,7 @@ export default function RideScreen() {
               <TextInput
                 value={accessibilityNote}
                 onChangeText={setAccessibilityNote}
+                onFocus={handleAccessibilityNoteFocus}
                 placeholder="Hinweis an Fahrer (optional)"
                 placeholderTextColor={colors.mutedForeground}
                 multiline

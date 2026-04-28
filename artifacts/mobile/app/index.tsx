@@ -257,13 +257,9 @@ export default function HomeScreen() {
       Alert.alert("Hinweis", typeof m === "string" && m.trim() ? m : "Kunden-App derzeit nicht verfügbar.");
       return;
     }
-    if (!preBookingOn) {
-      Alert.alert("Hinweis", "Vorbestellungen sind in der App derzeit deaktiviert.");
-      return;
-    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/reserve-ride");
-  }, [customerAppBlocked, platformConfig.messages, preBookingOn]);
+    router.push("/booking-center");
+  }, [customerAppBlocked, platformConfig.messages]);
 
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;

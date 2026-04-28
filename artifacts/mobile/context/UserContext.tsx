@@ -33,6 +33,18 @@ export interface UserProfile {
   notfallName: string;
   notfallTelefon: string;
   patientNotiz: string;
+  /** Fahrtrelevante Rollstuhl-Standardwerte (keine Diagnose- oder Behandlungsdaten). */
+  wheelchairDefaults?: {
+    wheelchairType: "foldable" | "electric";
+    assistanceLevel: "boarding" | "to_door" | "to_apartment" | "none";
+    canTransfer: boolean;
+    companionCount: 0 | 1 | 2;
+    rampRequired: boolean;
+    carryChairRequired: boolean;
+    elevatorAvailable: boolean;
+    stairsPresent: boolean;
+    driverNote?: string | null;
+  } | null;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -58,6 +70,7 @@ const DEFAULT_PROFILE: UserProfile = {
   notfallName: "",
   notfallTelefon: "",
   patientNotiz: "",
+  wheelchairDefaults: null,
 };
 
 interface UserContextValue {

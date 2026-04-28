@@ -292,14 +292,7 @@ export default function MyRidesScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
         <View style={{ width: 40 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meine Fahrten</Text>
-        <Pressable
-          style={styles.backBtn}
-          hitSlop={12}
-          onPress={() => router.push("/reserve-ride")}
-          accessibilityLabel="Neue Buchung – Reservieren"
-        >
-          <Feather name="plus-circle" size={24} color="#DC2626" />
-        </Pressable>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -636,7 +629,7 @@ export default function MyRidesScreen() {
                 : "Plane deine nächste Fahrt direkt hier."}
             </Text>
             {(activeTab === "alle" || activeTab === "abgeschlossen") && (
-              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/reserve-ride")}>
+              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/booking-center")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
               </Pressable>

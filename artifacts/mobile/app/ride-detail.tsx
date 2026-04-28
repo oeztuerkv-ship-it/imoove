@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Platform,
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { useRide, VEHICLES } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
@@ -21,22 +22,23 @@ import { downloadReceipt } from "@/utils/receipt";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { rs } from "@/utils/scale";
 
+/** Muss mit API / DB `ride_support_tickets.category` übereinstimmen. */
 type SupportCategory =
-  | "price"
-  | "driver"
-  | "vehicle"
-  | "route"
-  | "cancel"
-  | "lost_item"
+  | "driver_not_arrived"
+  | "wrong_price"
+  | "wrong_address"
+  | "cancel_or_issue"
+  | "payment_receipt"
+  | "special_request"
   | "other";
 
 const SUPPORT_CATEGORIES: { id: SupportCategory; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
-  { id: "price", label: "Preis / Abrechnung", icon: "cash" },
-  { id: "driver", label: "Fahrer", icon: "account" },
-  { id: "vehicle", label: "Fahrzeug", icon: "car" },
-  { id: "route", label: "Route / Strecke", icon: "map-marker-path" },
-  { id: "cancel", label: "Storno", icon: "close-circle" },
-  { id: "lost_item", label: "Gegenstand vergessen", icon: "bag-suitcase" },
+  { id: "driver_not_arrived", label: "Fahrer nicht da", icon: "account-alert" },
+  { id: "wrong_price", label: "Falscher Preis", icon: "cash" },
+  { id: "wrong_address", label: "Falsche Adresse", icon: "map-marker-path" },
+  { id: "cancel_or_issue", label: "Storno / Problem", icon: "close-circle" },
+  { id: "payment_receipt", label: "Zahlung / Beleg", icon: "file-document" },
+  { id: "special_request", label: "Sonderwunsch", icon: "tune" },
   { id: "other", label: "Sonstiges", icon: "help-circle" },
 ];
 
@@ -92,8 +94,40 @@ export default function RideDetailScreen() {
   const [category, setCategory] = useState<SupportCategory>("other");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [previewLines, setPreviewLines] = useState<string[] | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const apiBase = getApiBaseUrl();
+  const { profile } = useUser();
+  const sessionToken = profile?.sessionToken?.trim();
+
+  const loadSupportPreview = useCallback(async () => {
+    if (!apiBase || !rideId || !sessionToken) {
+      setPreviewLines(null);
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const res = await fetch(
+        `${apiBase}/rides/${encodeURIComponent(rideId)}/support/preview`,
+        { headers: { Authorization: `Bearer ${sessionToken}` } },
+      );
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; summary?: { lines?: string[] } };
+      if (res.ok && data?.ok && Array.isArray(data?.summary?.lines)) {
+        setPreviewLines(data.summary.lines);
+      } else {
+        setPreviewLines(null);
+      }
+    } catch {
+      setPreviewLines(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [apiBase, rideId, sessionToken]);
+
+  useEffect(() => {
+    void loadSupportPreview();
+  }, [loadSupportPreview]);
 
   const title = enrichedHistRide
     ? enrichedHistRide.status === "completed"
@@ -130,9 +164,13 @@ export default function RideDetailScreen() {
 
   async function submitSupport() {
     if (!rideId) return;
+    if (!sessionToken) {
+      Alert.alert("Anmeldung nötig", "Bitte anmelden, damit wir deine Fahrt zuordnen können.");
+      return;
+    }
     const text = message.trim();
-    if (text.length < 5) {
-      Alert.alert("Bitte ergänzen", "Beschreibe das Problem kurz (mind. 5 Zeichen).");
+    if (text.length > 0 && text.length < 3) {
+      Alert.alert("Bitte ergänzen", "Ergänze den Text oder lass das Feld leer (nur Kategorie).");
       return;
     }
     if (!apiBase) {
@@ -143,19 +181,30 @@ export default function RideDetailScreen() {
     try {
       const res = await fetch(`${apiBase}/rides/${encodeURIComponent(rideId)}/support`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
         body: JSON.stringify({
           category,
-          message: text,
-          source: "mobile_customer",
+          ...(text.length > 0 ? { message: text } : {}),
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; ticketId?: string; error?: string };
+      if (res.status === 403 || res.status === 401) {
+        Alert.alert("Nicht erlaubt", "Diese Fahrt gehört nicht zu deinem Konto.");
+        return;
+      }
+      if (res.status === 503) {
+        Alert.alert("Dienst nicht verfügbar", "Server-Datenbank nicht erreichbar. Bitte später erneut.");
+        return;
+      }
       if (!res.ok || !data?.ok) {
-        Alert.alert("Senden fehlgeschlagen", "Bitte später erneut versuchen.");
+        Alert.alert("Senden fehlgeschlagen", typeof data?.error === "string" ? data.error : "Bitte später erneut versuchen.");
         return;
       }
       setMessage("");
+      void loadSupportPreview();
       Alert.alert("Gesendet", `Danke! Referenz: ${data.ticketId ?? "—"}`);
     } catch {
       Alert.alert("Netzwerkfehler", "Bitte später erneut versuchen.");
@@ -230,7 +279,35 @@ export default function RideDetailScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Problem melden</Text>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>Hilfe zu dieser Fahrt</Text>
+          <Text style={[styles.hint, { color: colors.mutedForeground, marginBottom: 10 }]}>
+            Es wird ein Support-Ticket mit fahrtbezogenem Kontext (Stand jetzt) angelegt — kein reines Kontaktformular.
+          </Text>
+          {sessionToken ? null : (
+            <Text style={[styles.hint, { color: "#B45309", marginBottom: 8 }]}>
+              Bitte anmelden, um Hilfe anzufragen.
+            </Text>
+          )}
+
+          {sessionToken && (
+            <View
+              style={[
+                styles.previewBox,
+                { backgroundColor: colors.background, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[styles.k, { color: colors.mutedForeground, marginBottom: 6 }]}>Vorschau (Server)</Text>
+              {previewLoading ? (
+                <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Lade Kurzübersicht …</Text>
+              ) : previewLines && previewLines.length > 0 ? (
+                previewLines.map((line, i) => (
+                  <Text key={i} style={{ color: colors.foreground, fontSize: 12, marginBottom: 4 }}>{line}</Text>
+                ))
+              ) : (
+                <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>Kurzübersicht derzeit nicht verfügbar.</Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.categoryWrap}>
             {SUPPORT_CATEGORIES.map((c) => {
@@ -257,7 +334,7 @@ export default function RideDetailScreen() {
           <TextInput
             value={message}
             onChangeText={setMessage}
-            placeholder="Beschreibe kurz, was passiert ist …"
+            placeholder="Optional: Was ist passiert? (leer = nur Kategorie)"
             placeholderTextColor={colors.mutedForeground}
             multiline
             style={[
@@ -270,8 +347,8 @@ export default function RideDetailScreen() {
           />
 
           <Pressable
-            style={[styles.secondaryBtn, { opacity: submitting ? 0.7 : 1 }]}
-            disabled={submitting}
+            style={[styles.secondaryBtn, { opacity: submitting || !sessionToken ? 0.5 : 1 }]}
+            disabled={submitting || !sessionToken}
             onPress={() => void submitSupport()}
           >
             <Feather name="send" size={14} color="#DC2626" />
@@ -325,6 +402,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   chipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  previewBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
   textArea: {
     borderWidth: 1,
     borderRadius: 12,
