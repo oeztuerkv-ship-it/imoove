@@ -62,6 +62,9 @@ function RootLayoutNav() {
       <Stack.Screen name="wallet" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="reserve-ride" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="fahrt-reservieren" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="booking-center" options={{ headerShown: false }} />
+      <Stack.Screen name="booking-medical" options={{ headerShown: false }} />
+      <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
       <Stack.Screen name="driver/login" options={{ headerShown: false }} />

@@ -106,6 +106,52 @@ function wheelchairInfoLine(req: RideRequest): string | null {
   return parts.join(" · ");
 }
 
+type MedicalStep = { label: string; done: boolean };
+
+function approvalStatusDe(v: string): string {
+  const map: Record<string, string> = {
+    missing: "Genehmigung fehlt",
+    pending: "Genehmigung in Prüfung",
+    approved: "Genehmigt",
+    rejected: "Abgelehnt",
+  };
+  return map[v] ?? v;
+}
+
+function transportDocumentStatusDe(v: string): string {
+  const map: Record<string, string> = {
+    missing: "Transportschein fehlt",
+    uploaded: "Transportschein hochgeladen",
+    verified: "Transportschein geprüft",
+    rejected: "Transportschein abgelehnt",
+  };
+  return map[v] ?? v;
+}
+
+function medicalSteps(req: RideRequest): MedicalStep[] | null {
+  const metaRaw = (req as RideRequest & { partnerBookingMeta?: any }).partnerBookingMeta;
+  if (!metaRaw || typeof metaRaw !== "object") return null;
+  if (metaRaw.medical_ride !== true) return null;
+  const approval = typeof metaRaw.approval_status === "string" ? metaRaw.approval_status.toLowerCase() : "pending";
+  const doc = typeof metaRaw.transport_document_status === "string" ? metaRaw.transport_document_status.toLowerCase() : "missing";
+  const hasInsurance = typeof metaRaw.insurance_name === "string" && metaRaw.insurance_name.trim().length > 0;
+  const hasCostCenter = typeof metaRaw.cost_center === "string" && metaRaw.cost_center.trim().length > 0;
+  const signatureRequired = metaRaw.signature_required === true;
+  const signatureDone = metaRaw.signature_done === true;
+  const qrRequired = metaRaw.qr_required === true;
+  const qrDone = metaRaw.qr_done === true;
+  return [
+    { label: `QR (${!qrRequired ? "nicht erforderlich" : qrDone ? "erledigt" : "erforderlich"})`, done: !qrRequired || qrDone },
+    {
+      label: `Unterschrift (${!signatureRequired ? "nicht erforderlich" : signatureDone ? "erledigt" : "erforderlich"})`,
+      done: !signatureRequired || signatureDone,
+    },
+    { label: transportDocumentStatusDe(doc), done: doc === "uploaded" || doc === "verified" || doc === "provided" },
+    { label: approvalStatusDe(approval), done: approval === "approved" },
+    { label: "Kasse/Kostenstelle", done: hasInsurance && hasCostCenter },
+  ];
+}
+
 function parseEuroDriverInput(text: string): number | null {
   const n = parseFloat(text.replace(/\s/g, "").replace(",", "."));
   return Number.isFinite(n) ? n : null;
@@ -215,6 +261,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const { date, time } = fmt(req.createdAt);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
+  const medicalChecklist = medicalSteps(req);
   const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
   const modeBadge = rideTypeBadge(req);
   const hasTaxiEstimate = hasTaxiEstimateBadge(req);
@@ -334,6 +381,35 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           </Text>
         </View>
       ) : null}
+      {medicalChecklist ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <MaterialCommunityIcons name="hospital-box-outline" size={14} color="#2563EB" />
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>Krankenfahrt-Check</Text>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {medicalChecklist.map((step) => (
+              <View
+                key={step.label}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  backgroundColor: step.done ? "#DCFCE7" : "#FEE2E2",
+                }}
+              >
+                <Feather name={step.done ? "check-circle" : "alert-circle"} size={12} color={step.done ? "#166534" : "#B91C1C"} />
+                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: step.done ? "#166534" : "#B91C1C" }}>
+                  {step.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
         <Feather name="user" size={15} color="#334155" />
@@ -389,6 +465,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
+  const medicalChecklist = medicalSteps(req);
   const modeBadge = rideTypeBadge(req);
   const hasTaxiEstimate = hasTaxiEstimateBadge(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
@@ -500,6 +577,35 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
           <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#0369A1" }} numberOfLines={3}>
             {wheelchairLine}
           </Text>
+        </View>
+      ) : null}
+      {medicalChecklist ? (
+        <View style={{ marginHorizontal: 14, marginBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <MaterialCommunityIcons name="hospital-box-outline" size={14} color="#2563EB" />
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>Krankenfahrt-Check</Text>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {medicalChecklist.map((step) => (
+              <View
+                key={step.label}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  backgroundColor: step.done ? "#DCFCE7" : "#FEE2E2",
+                }}
+              >
+                <Feather name={step.done ? "check-circle" : "alert-circle"} size={12} color={step.done ? "#166534" : "#B91C1C"} />
+                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: step.done ? "#166534" : "#B91C1C" }}>
+                  {step.label}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -947,6 +1053,7 @@ function ActiveRideScreen({
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
+  const medicalChecklist = medicalSteps(req);
   const [kkEigenOpen, setKkEigenOpen] = useState(false);
   const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
     req.estimatedFare.toFixed(2).replace(".", ","),
@@ -1221,9 +1328,33 @@ function ActiveRideScreen({
             <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={4}>
               {codeLine ? `${codeLine}\n` : ""}
               {wheelchairLine ? `${wheelchairLine}\n` : ""}
+              {medicalChecklist ? "Krankenfahrt-Check aktiv\n" : ""}
               {req.vehicle} · {isKK ? "Krankenkasse" : req.paymentMethod}
             </Text>
           </View>
+        {medicalChecklist ? (
+          <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {medicalChecklist.map((step) => (
+              <View
+                key={step.label}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  backgroundColor: step.done ? "#DCFCE7" : "#FEE2E2",
+                }}
+              >
+                <Feather name={step.done ? "check-circle" : "alert-circle"} size={12} color={step.done ? "#166534" : "#B91C1C"} />
+                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: step.done ? "#166534" : "#B91C1C" }}>
+                  {step.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
           <View style={activeStyles.fareBox}>
             <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
             <Text style={activeStyles.fareValue}>{formatEuro(req.estimatedFare)}</Text>

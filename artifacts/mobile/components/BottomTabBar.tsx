@@ -8,7 +8,7 @@ import { useColors } from "@/hooks/useColors";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { rs, rf } from "@/utils/scale";
 
-export type BottomTab = "start" | "fahrten" | "geldborse" | "account";
+export type BottomTab = "start" | "fahrten" | "buchen" | "geldborse" | "account";
 
 export function BottomTabBar({ active }: { active: BottomTab }) {
   const colors = useColors();
@@ -16,7 +16,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests?.length ?? 0;
 
-  const tabs: { id: BottomTab; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
+  const tabs: { id: Exclude<BottomTab, "buchen">; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
     { id: "start",      icon: "home",        label: "Start",     onPress: () => router.replace("/") },
     { id: "fahrten",    icon: "calendar",    label: "Fahrten",   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
     { id: "geldborse",  icon: "credit-card", label: "Geldbörse", onPress: () => router.replace("/wallet") },
@@ -24,7 +24,8 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
   ];
 
   return (
-    <View style={[styles.bar, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: insets.bottom }]}>
+    <View style={[styles.wrap, { paddingBottom: insets.bottom }]}>
+      <View style={[styles.bar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
       {tabs.map((tab) => {
         const isActive = tab.id === active;
         return (
@@ -41,11 +42,24 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
           </Pressable>
         );
       })}
+      </View>
+      <Pressable
+        style={styles.plusWrap}
+        onPress={() => router.replace("/booking-center")}
+        accessibilityLabel="Buchungszentrale öffnen"
+      >
+        <View style={[styles.plusBtn, { backgroundColor: "#16A34A", borderColor: colors.surface }]}>
+          <Feather name="plus" size={rs(18)} color="#fff" />
+        </View>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: {
+    position: "relative",
+  },
   bar: {
     flexDirection: "row",
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -71,4 +85,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs(3),
   },
   badgeText: { fontSize: rf(10), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(13) },
+  plusWrap: {
+    position: "absolute",
+    left: "50%",
+    top: -rs(18),
+    marginLeft: -rs(26),
+  },
+  plusBtn: {
+    width: rs(52),
+    height: rs(52),
+    borderRadius: rs(26),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+  },
 });

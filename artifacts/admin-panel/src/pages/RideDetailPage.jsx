@@ -126,6 +126,73 @@ function accessibilitySummaryDe(ao) {
   return parts.join(" · ");
 }
 
+function medicalMetaViewModel(meta) {
+  if (!meta || typeof meta !== "object" || meta.medical_ride !== true) return null;
+  const approvalStatusMap = {
+    missing: "Genehmigung fehlt",
+    pending: "Genehmigung in Prüfung",
+    approved: "Genehmigt",
+    rejected: "Abgelehnt",
+  };
+  const docStatusMap = {
+    missing: "Transportschein fehlt",
+    uploaded: "Transportschein hochgeladen",
+    verified: "Transportschein geprüft",
+    rejected: "Transportschein abgelehnt",
+  };
+  const missingReasonMap = {
+    missing_transport_document: "Transportschein fehlt",
+    missing_signature: "Unterschrift fehlt",
+    missing_approval: "Genehmigung fehlt",
+    missing_insurance: "Krankenkasse fehlt",
+    missing_cost_center: "Kostenstelle/Vorgang fehlt",
+  };
+  const approval = typeof meta.approval_status === "string" ? meta.approval_status : "pending";
+  const payer = typeof meta.payer_kind === "string" ? meta.payer_kind : "insurance";
+  const insurance = typeof meta.insurance_name === "string" ? meta.insurance_name.trim() : "";
+  const costCenter = typeof meta.cost_center === "string" ? meta.cost_center.trim() : "";
+  const authRef = typeof meta.authorization_reference === "string" ? meta.authorization_reference.trim() : "";
+  const doc = typeof meta.transport_document_status === "string" ? meta.transport_document_status : "missing";
+  const sigReq = meta.signature_required === true;
+  const sigDone = meta.signature_done === true;
+  const qrReq = meta.qr_required === true;
+  const qrDone = meta.qr_done === true;
+  const missing = Array.isArray(meta.billing_missing_reasons) ? meta.billing_missing_reasons : [];
+  const billingReady = meta.billing_ready === true;
+  const grid = [
+    ["approval_status", approvalStatusMap[approval] || approval],
+    ["payer_kind", payer],
+    ["insurance_name", insurance || "—"],
+    ["cost_center", costCenter || "—"],
+    ["authorization_reference", authRef || "—"],
+    ["transport_document_status", docStatusMap[doc] || doc],
+    ["signature_required", sigReq ? "ja" : "nein"],
+    ["signature_done", sigDone ? "ja" : "nein"],
+    ["qr_required", qrReq ? "ja" : "nein"],
+    ["qr_done", qrDone ? "ja" : "nein"],
+    ["billing_ready", billingReady ? "ja" : "nein"],
+    [
+      "billing_missing_reasons",
+      missing.length
+        ? missing
+            .map((reason) => {
+              const key = typeof reason === "string" ? reason : String(reason);
+              return missingReasonMap[key] || key;
+            })
+            .join(", ")
+        : "—",
+    ],
+  ];
+  const ampel = [
+    { label: "Vollständig", done: billingReady && missing.length === 0 },
+    { label: "Nachweis fehlt", done: !missing.includes("missing_transport_document") },
+    { label: "Genehmigung fehlt", done: !missing.includes("missing_approval") },
+    { label: "Unterschrift fehlt", done: !missing.includes("missing_signature") },
+    { label: "Bereit zur Abrechnung", done: billingReady },
+  ];
+  return { grid, ampel };
+}
+
 export default function RideDetailPage({ rideId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -166,6 +233,7 @@ export default function RideDetailPage({ rideId, onBack }) {
   const supportTickets = data?.supportTickets ?? [];
   const links = data?.links;
   const accessibilitySummary = accessibilitySummaryDe(r?.accessibilityOptions);
+  const medicalMeta = medicalMetaViewModel(r?.partnerBookingMeta);
 
   return (
     <div className="admin-page admin-taxi-fv-page">
@@ -248,6 +316,34 @@ export default function RideDetailPage({ rideId, onBack }) {
               <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px", whiteSpace: "pre-wrap" }}>
                 {accessibilitySummary}
               </p>
+            </section>
+          ) : null}
+
+          {medicalMeta ? (
+            <section className="admin-panel-card admin-m-card admin-m-card--unified">
+              <div className="admin-m-card__h">
+                <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                  Krankenfahrt-Meta
+                </span>
+              </div>
+              <div style={{ padding: "0 16px 10px", display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {medicalMeta.ampel.map((item) => (
+                  <span
+                    key={item.label}
+                    className={`admin-c-badge ${item.done ? "admin-c-badge--ok" : "admin-c-badge--warn"}`}
+                  >
+                    {item.done ? "OK" : "Fehlt"} · {item.label}
+                  </span>
+                ))}
+              </div>
+              <div className="admin-ride-rec-kv" style={{ paddingBottom: 12 }}>
+                {medicalMeta.grid.map(([k, v]) => (
+                  <div key={k}>
+                    <span className="admin-ride-rec-kv__k">{k}</span>
+                    <span className="admin-ride-rec-kv__v">{v}</span>
+                  </div>
+                ))}
+              </div>
             </section>
           ) : null}
 

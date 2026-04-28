@@ -66,6 +66,7 @@ export interface RideRequest {
   accessCodeSummary?: AccessCodeSummary | null;
   voucherCode?: string | null;
   billingReference?: string | null;
+  partnerBookingMeta?: Record<string, unknown> | null;
   from: string;
   fromFull: string;
   fromLat?: number;
@@ -116,7 +117,6 @@ interface RideRequestContextValue {
       | "authorizationSource"
       | "accessCodeId"
       | "accessCodeSummary"
-      | "accessibilityOptions"
     > & {
       rideKind?: RideKind;
       payerKind?: PayerKind;
@@ -290,6 +290,12 @@ function normalizeRequest(r: any): RideRequest {
       (r.billingReference ?? r.billing_reference) != null
         ? String(r.billingReference ?? r.billing_reference)
         : null,
+    partnerBookingMeta:
+      r.partnerBookingMeta && typeof r.partnerBookingMeta === "object"
+        ? (r.partnerBookingMeta as Record<string, unknown>)
+        : r.partner_booking_meta && typeof r.partner_booking_meta === "object"
+          ? (r.partner_booking_meta as Record<string, unknown>)
+          : null,
     from: r.from ?? r.from_location ?? fromFull,
     fromFull,
     fromLat: r.fromLat ?? r.from_lat ?? undefined,
@@ -521,7 +527,6 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         | "authorizationSource"
         | "accessCodeId"
         | "accessCodeSummary"
-        | "accessibilityOptions"
       > & {
         rideKind?: RideKind;
         payerKind?: PayerKind;

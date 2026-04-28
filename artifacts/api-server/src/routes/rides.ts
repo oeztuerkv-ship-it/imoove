@@ -48,6 +48,7 @@ import {
   listServiceRegionsForApi,
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
+import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -234,6 +235,32 @@ function parseAccessibilityOptionsFromBody(raw: unknown): RideAccessibilityOptio
     stairsPresent: Boolean(src.stairsPresent),
     driverNote: noteRaw ? noteRaw.slice(0, 500) : null,
   };
+}
+
+function pickMedicalMeta(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const src = raw as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  const copyString = (k: string) => {
+    const v = src[k];
+    if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, 256);
+  };
+  const copyBool = (k: string) => {
+    const v = src[k];
+    if (typeof v === "boolean") out[k] = v;
+  };
+  copyString("approval_status");
+  copyString("insurance_name");
+  copyString("cost_center");
+  copyString("authorization_reference");
+  copyString("transport_document_status");
+  copyBool("signature_required");
+  copyBool("qr_required");
+  copyBool("billing_ready");
+  copyBool("return_ride");
+  copyString("return_time");
+  copyString("transport_document_uri");
+  return out;
 }
 
 router.get("/fare-config", async (_req, res, next) => {
@@ -695,6 +722,38 @@ router.post("/rides", async (req, res, next) => {
         (raw as { phone?: unknown }).phone ??
         "",
     ).trim();
+    const partnerMetaRaw =
+      (raw as { partnerBookingMeta?: unknown; partner_booking_meta?: unknown; medicalMeta?: unknown })
+        .partnerBookingMeta ??
+      (raw as { partner_booking_meta?: unknown }).partner_booking_meta ??
+      (raw as { medicalMeta?: unknown }).medicalMeta;
+    const medicalMeta = pickMedicalMeta(partnerMetaRaw);
+    const normalizedPartnerMeta: Record<string, unknown> =
+      rideKind === "medical"
+        ? {
+            ...medicalMeta,
+            medical_ride: true,
+            approval_status:
+              typeof medicalMeta.approval_status === "string" ? medicalMeta.approval_status : "pending",
+            payer_kind:
+              payerKind === "insurance" || payerKind === "passenger" || payerKind === "company"
+                ? payerKind
+                : "insurance",
+            signature_required:
+              typeof medicalMeta.signature_required === "boolean" ? medicalMeta.signature_required : true,
+            qr_required: typeof medicalMeta.qr_required === "boolean" ? medicalMeta.qr_required : true,
+            billing_ready: typeof medicalMeta.billing_ready === "boolean" ? medicalMeta.billing_ready : false,
+            transport_document_status:
+              typeof medicalMeta.transport_document_status === "string"
+                ? medicalMeta.transport_document_status
+                : "missing",
+          }
+        : {};
+    if (rideKind === "medical") {
+      const ready = calculateMedicalBillingReadiness(normalizedPartnerMeta);
+      normalizedPartnerMeta.billing_ready = ready.billingReady;
+      normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
+    }
     const snapB: TariffBookingSnapshotV1 = {
       engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
       serviceRegionId,
@@ -717,6 +776,7 @@ router.post("/rides", async (req, res, next) => {
       rejectedBy: [],
       driverId: null,
       customerPhone: customerPhoneClean || null,
+      partnerBookingMeta: normalizedPartnerMeta,
       rideKind,
       payerKind,
       voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
