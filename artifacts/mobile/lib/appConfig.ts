@@ -191,7 +191,14 @@ export function getOutOfServiceDe(cfg: OnrodaAppConfig): string {
 export const MESSAGE_ADDRESS_PICK_SUGGESTION_DE =
   "Adresse konnte nicht eindeutig geprüft werden. Bitte Adresse aus Vorschlägen auswählen.";
 
-const BOOKING_PREFER_MAP_OVER_API_MESSAGE = new Set(["ride_coordinates_required", "pickup_coordinates_required"]);
+export const MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE =
+  "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.";
+
+const BOOKING_PREFER_MAP_OVER_API_MESSAGE = new Set([
+  "ride_coordinates_required",
+  "pickup_coordinates_required",
+  "address_house_number_required",
+]);
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -245,6 +252,26 @@ function pointMatchesRegion(
 
 export function anyActiveServiceRegionRequiresCoordinates(cfg: OnrodaAppConfig): boolean {
   return (cfg.serviceRegions || []).some((r) => r.isActive && isRadiusConfig(r));
+}
+
+function hasHouseNumberInFirstAddressPart(address: string): boolean {
+  const firstPart = String(address ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  if (!firstPart) return false;
+  // Beispiele: "Hauptstraße 12", "Musterweg 7a", "Bahnhofstr. 12-14"
+  return /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(firstPart);
+}
+
+export function validateAddressCompletenessForBooking(
+  fromFull: string,
+  toFull: string,
+): { ok: true } | { ok: false; message: string } {
+  if (!hasHouseNumberInFirstAddressPart(fromFull) || !hasHouseNumberInFirstAddressPart(toFull)) {
+    return { ok: false, message: MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE };
+  }
+  return { ok: true };
 }
 
 export function clientCheckServiceArea(

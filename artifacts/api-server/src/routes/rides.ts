@@ -194,6 +194,19 @@ function optCoord(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE =
+  "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.";
+
+function hasHouseNumberInFirstAddressPart(address: string): boolean {
+  const firstPart = String(address ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  if (!firstPart) return false;
+  // Beispiele: "Hauptstraße 12", "Musterweg 7a", "Bahnhofstr. 12-14"
+  return /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(firstPart);
+}
+
 router.get("/fare-config", async (_req, res, next) => {
   try {
     const profile = await getPublicFareProfile();
@@ -525,6 +538,13 @@ router.post("/rides", async (req, res, next) => {
     const toFull = String((raw as { toFull?: string }).toFull ?? (raw as { to?: string }).to ?? "").trim();
     if (!fromFull || !toFull) {
       res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    if (!hasHouseNumberInFirstAddressPart(fromFull) || !hasHouseNumberInFirstAddressPart(toFull)) {
+      res.status(400).json({
+        error: "address_house_number_required",
+        message: ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE,
+      });
       return;
     }
     const fromLatB = optCoord(

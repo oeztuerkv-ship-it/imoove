@@ -42,6 +42,8 @@ function accessCodeErrorMessage(code: string): string {
   const m: Record<string, string> = {
     pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
     ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
+    address_house_number_required:
+      "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.",
     access_code_invalid: "Der eingegebene Code ist ungueltig oder unbekannt.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
     access_code_not_yet_valid: "Dieser Code ist noch nicht gueltig (Startdatum/Zeit der Freigabe).",

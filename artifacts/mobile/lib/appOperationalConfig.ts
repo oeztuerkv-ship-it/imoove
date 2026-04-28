@@ -8,6 +8,8 @@ export {
   getDefaultAppConfig,
   getOutOfServiceDe as getOutOfServiceAreaDe,
   MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
+  MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
   userFacingBookingErrorMessage,
+  validateAddressCompletenessForBooking,
   validateServiceAreaForBooking,
 } from "./appConfig";

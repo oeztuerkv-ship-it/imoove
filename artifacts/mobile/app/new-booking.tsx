@@ -23,7 +23,13 @@ const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
-import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
+import {
+  MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
+  MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
+  userFacingBookingErrorMessage,
+  validateAddressCompletenessForBooking,
+  validateServiceAreaForBooking,
+} from "@/lib/appOperationalConfig";
 import { useColors } from "@/hooks/useColors";
 
 type GeoResult = { display_name: string; lat: string; lon: string };
@@ -355,6 +361,7 @@ export default function NewBookingScreen() {
     const m: Record<string, string> = {
       pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
       ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
+      address_house_number_required: MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
       access_code_invalid: "Der eingegebene Code ist ungültig oder unbekannt.",
       access_code_inactive: "Dieser Code ist deaktiviert.",
       access_code_not_yet_valid:
@@ -397,6 +404,12 @@ export default function NewBookingScreen() {
     const fromFull = from.fullName || from.name;
     const toFull = to.fullName || to.name;
     try {
+      const addressCheck = validateAddressCompletenessForBooking(fromFull, toFull);
+      if (!addressCheck.ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Buchung nicht möglich", addressCheck.message);
+        return;
+      }
       const area = await validateServiceAreaForBooking(fromFull, toFull, {
         fromLat: from.lat,
         fromLon: from.lon,

@@ -64,6 +64,9 @@ export default function AppOperationalRegionsPage() {
   const [newCenterLng, setNewCenterLng] = useState("9.3048");
   const [newRadiusKm, setNewRadiusKm] = useState("25");
   const [addBusy, setAddBusy] = useState(false);
+  const [configPreviewBusy, setConfigPreviewBusy] = useState(false);
+  const [configPreviewError, setConfigPreviewError] = useState("");
+  const [configPreviewRegions, setConfigPreviewRegions] = useState([]);
   const [testFrom, setTestFrom] = useState("Hauptbahnhof, Stuttgart");
   const [testTo, setTestTo] = useState("Am Schillerplatz, Esslingen am Neckar");
   const [testFromLat, setTestFromLat] = useState("48.7833");
@@ -97,6 +100,29 @@ export default function AppOperationalRegionsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadConfigPreview = useCallback(async () => {
+    setConfigPreviewBusy(true);
+    setConfigPreviewError("");
+    try {
+      const res = await fetch(`${API_BASE}/app/config`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data || typeof data !== "object") {
+        throw new Error("GET /app/config fehlgeschlagen");
+      }
+      const rows = Array.isArray(data.serviceRegions) ? data.serviceRegions : [];
+      setConfigPreviewRegions(rows);
+    } catch (e) {
+      setConfigPreviewError(e instanceof Error ? e.message : "Live-Config konnte nicht geladen werden.");
+      setConfigPreviewRegions([]);
+    } finally {
+      setConfigPreviewBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadConfigPreview();
+  }, [loadConfigPreview]);
 
   const saveMessage = async () => {
     setSavingMsg(true);
@@ -285,6 +311,36 @@ export default function AppOperationalRegionsPage() {
           Modus. Tarif-Zuordnung: Tarife → Region (byServiceRegion).
         </p>
         <div className="admin-form-vertical" style={{ maxWidth: 520, marginTop: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              className="admin-btn admin-btn--small"
+              onClick={() => {
+                setNewMode("radius");
+                setNewLabel("Landkreis Esslingen");
+                setNewCenterLat("48.7665");
+                setNewCenterLng("9.3048");
+                setNewRadiusKm("25");
+                setNewTerms("");
+              }}
+            >
+              Vorlage: Landkreis Esslingen
+            </button>
+            <button
+              type="button"
+              className="admin-btn admin-btn--small"
+              onClick={() => {
+                setNewMode("radius");
+                setNewLabel("Landkreis Tübingen");
+                setNewCenterLat("48.5216");
+                setNewCenterLng("9.0576");
+                setNewRadiusKm("25");
+                setNewTerms("");
+              }}
+            >
+              Vorlage: Landkreis Tübingen
+            </button>
+          </div>
           <label className="admin-form-label" htmlFor="nmode">
             Modus
           </label>
@@ -377,6 +433,7 @@ export default function AppOperationalRegionsPage() {
                 setNewTerms("");
                 setOkMsg(`Region „${label}“ angelegt.`);
                 await load();
+                await loadConfigPreview();
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Fehler");
               } finally {
@@ -409,12 +466,67 @@ export default function AppOperationalRegionsPage() {
               </thead>
               <tbody>
                 {regions.map((r) => (
-                  <AppRegionRow key={r.id} initial={r} onSave={(row) => void saveRegion(row)} />
+                  <AppRegionRow
+                    key={r.id}
+                    initial={r}
+                    onSave={async (row) => {
+                      await saveRegion(row);
+                      await loadConfigPreview();
+                    }}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
         )}
+      </div>
+
+      <div className="admin-panel-card" style={{ marginTop: 16 }}>
+        <div className="admin-panel-card__title">Live-Ansicht /api/app/config</div>
+        <p className="admin-table-sub">
+          Kontrolliert, ob gespeicherte Regionen direkt in der öffentlichen App-Konfiguration sichtbar sind.
+        </p>
+        <button
+          type="button"
+          className="admin-btn admin-btn--small"
+          onClick={() => void loadConfigPreview()}
+          disabled={configPreviewBusy}
+          style={{ marginTop: 8 }}
+        >
+          {configPreviewBusy ? "Aktualisiert …" : "Live-Config neu laden"}
+        </button>
+        {configPreviewError ? (
+          <div className="admin-info-banner admin-info-banner--error" style={{ marginTop: 10 }}>
+            {configPreviewError}
+          </div>
+        ) : null}
+        <div className="admin-table-wrap" style={{ marginTop: 10, overflowX: "auto" }}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Modus</th>
+                <th>Aktiv</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(configPreviewRegions || []).map((r) => (
+                <tr key={r.id}>
+                  <td>{r.label || r.id}</td>
+                  <td>{r.matchMode || "substring"}</td>
+                  <td>{r.isActive ? "ja" : "nein"}</td>
+                </tr>
+              ))}
+              {!configPreviewBusy && (!configPreviewRegions || configPreviewRegions.length === 0) ? (
+                <tr>
+                  <td colSpan={3} className="admin-table-sub">
+                    Keine Regionen in Live-Config gefunden.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
