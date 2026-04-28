@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest";
+import type { RideAccessibilityOptions } from "../domain/rideRequest";
 import {
   DEFAULT_PAYER_KIND,
   DEFAULT_RIDE_KIND,
@@ -205,6 +206,34 @@ function hasHouseNumberInFirstAddressPart(address: string): boolean {
   if (!firstPart) return false;
   // Beispiele: "Hauptstraße 12", "Musterweg 7a", "Bahnhofstr. 12-14"
   return /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(firstPart);
+}
+
+function parseAccessibilityOptionsFromBody(raw: unknown): RideAccessibilityOptions | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  const level = String(src.assistanceLevel ?? "").trim();
+  const wheelchairType = String(src.wheelchairType ?? "").trim();
+  const companionCountRaw = Number(src.companionCount);
+  const canTransferRaw = src.canTransfer;
+  const wheelchairStaysRaw = src.wheelchairStaysOccupied;
+  const allowedLevels = new Set(["boarding", "to_door", "to_apartment", "none"]);
+  const allowedTypes = new Set(["foldable", "electric"]);
+  if (!allowedLevels.has(level) || !allowedTypes.has(wheelchairType)) return null;
+  if (![0, 1, 2].includes(companionCountRaw)) return null;
+  if (typeof canTransferRaw !== "boolean" || typeof wheelchairStaysRaw !== "boolean") return null;
+  const noteRaw = typeof src.driverNote === "string" ? src.driverNote.trim() : "";
+  return {
+    assistanceLevel: level as RideAccessibilityOptions["assistanceLevel"],
+    wheelchairType: wheelchairType as RideAccessibilityOptions["wheelchairType"],
+    wheelchairStaysOccupied: wheelchairStaysRaw,
+    canTransfer: canTransferRaw,
+    companionCount: companionCountRaw as 0 | 1 | 2,
+    rampRequired: Boolean(src.rampRequired),
+    carryChairRequired: Boolean(src.carryChairRequired),
+    elevatorAvailable: Boolean(src.elevatorAvailable),
+    stairsPresent: Boolean(src.stairsPresent),
+    driverNote: noteRaw ? noteRaw.slice(0, 500) : null,
+  };
 }
 
 router.get("/fare-config", async (_req, res, next) => {
@@ -612,6 +641,22 @@ router.post("/rides", async (req, res, next) => {
     );
     const waitingMinutesB = Number.isFinite(waitMRaw) ? Math.max(0, waitMRaw) : 0;
     const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
+    const accessibilityRaw = (raw as { accessibilityOptions?: unknown; accessibility_options?: unknown })
+      .accessibilityOptions ?? (raw as { accessibility_options?: unknown }).accessibility_options;
+    let accessibilityOptions: RideAccessibilityOptions | null = null;
+    if (accessibilityRaw != null) {
+      accessibilityOptions = parseAccessibilityOptionsFromBody(accessibilityRaw);
+      if (!accessibilityOptions) {
+        res.status(400).json({ error: "accessibility_options_invalid" });
+        return;
+      }
+    }
+    if (vehicleB.includes("rollstuhl") || vehicleB.includes("wheelchair")) {
+      if (!accessibilityOptions) {
+        res.status(400).json({ error: "accessibility_options_required_for_wheelchair" });
+        return;
+      }
+    }
     const atBooking = new Date();
     const { serviceRegionId, est: estBook } = computeTaxiPriceLikeFareEstimate(opPayload, regions, {
       fromFull,
@@ -683,6 +728,7 @@ router.post("/rides", async (req, res, next) => {
       durationMinutes: durationInt,
       estimatedFare: finalPriceB,
       vehicle: vehicleB,
+      accessibilityOptions,
       tariffSnapshot: snapB,
     };
     const accessCodeRaw = (raw as { accessCode?: unknown }).accessCode;

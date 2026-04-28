@@ -32,6 +32,24 @@ export type TariffBookingSnapshotV1 = {
   at: string;
 };
 
+export type RideAccessibilityAssistanceLevel = "boarding" | "to_door" | "to_apartment" | "none";
+export type RideAccessibilityWheelchairType = "foldable" | "electric";
+export type RideAccessibilityCompanionCount = 0 | 1 | 2;
+
+/** Fahrtrelevante Rollstuhl-/Barrierefrei-Infos (ohne Medizin-/Diagnosedaten). */
+export type RideAccessibilityOptions = {
+  assistanceLevel: RideAccessibilityAssistanceLevel;
+  wheelchairType: RideAccessibilityWheelchairType;
+  wheelchairStaysOccupied: boolean;
+  canTransfer: boolean;
+  companionCount: RideAccessibilityCompanionCount;
+  rampRequired: boolean;
+  carryChairRequired: boolean;
+  elevatorAvailable: boolean;
+  stairsPresent: boolean;
+  driverNote?: string | null;
+};
+
 export interface RideRequest {
   id: string;
   /**
@@ -71,6 +89,8 @@ export interface RideRequest {
   accessCodeNormalizedSnapshot?: string | null;
   /** Hotel / Medizin / Serien — nur Panel-Mandantensicht; nicht öffentlich. */
   partnerBookingMeta?: PartnerBookingMeta | null;
+  /** Barrierefrei-/Rollstuhl-Zusatzinfos für Disposition, Fahrer und Admin-Akte. */
+  accessibilityOptions?: RideAccessibilityOptions | null;
   /**
    * Nur API-Antworten (Fahrer/Kunde): Typ + Anzeigename — **ohne** Klartext-Code.
    * Nicht in der DB speichern.

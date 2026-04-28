@@ -37,6 +37,7 @@
 --   049 → app_operational_config, app_service_regions (App/Betrieb MVP)
 --   050 → rides.customer_phone, app_service_regions.match_mode, geo_fence_json
 --   052 → app_service_regions center_lat, center_lng, radius_km
+--   053 → rides.accessibility_options_json
 
 DO $$
 DECLARE
@@ -125,6 +126,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'partner_booking_meta'
   ) THEN
     errs := array_append(errs, 'rides.partner_booking_meta (Migration 013)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'accessibility_options_json'
+  ) THEN
+    errs := array_append(errs, 'rides.accessibility_options_json (Migration 053)');
   END IF;
 
   IF NOT EXISTS (

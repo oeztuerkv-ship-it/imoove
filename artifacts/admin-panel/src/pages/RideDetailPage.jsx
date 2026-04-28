@@ -96,6 +96,36 @@ function formatMoney(v) {
   return `${n.toFixed(2)} €`;
 }
 
+function accessibilitySummaryDe(ao) {
+  if (!ao || typeof ao !== "object") return null;
+  const assistanceMap = {
+    boarding: "Hilfe beim Einsteigen",
+    to_door: "Hilfe bis Haustür",
+    to_apartment: "Hilfe bis Wohnung",
+    none: "Keine Hilfe nötig",
+  };
+  const wheelchairTypeMap = {
+    foldable: "faltbarer Rollstuhl",
+    electric: "elektrischer Rollstuhl",
+  };
+  const companionMap = { 0: "keine Begleitperson", 1: "1 Begleitperson", 2: "2 Begleitpersonen" };
+  const flags = [];
+  if (ao.rampRequired) flags.push("Rampe erforderlich");
+  if (ao.carryChairRequired) flags.push("Tragestuhl erforderlich");
+  if (ao.elevatorAvailable) flags.push("Aufzug vorhanden");
+  if (ao.stairsPresent) flags.push("Treppen vorhanden");
+  const parts = [
+    "Rollstuhl",
+    assistanceMap[ao.assistanceLevel] || "Hilfe-Info",
+    wheelchairTypeMap[ao.wheelchairType] || "Rollstuhl-Typ",
+    ao.canTransfer ? "Patient kann umsteigen" : "Rollstuhl bleibt genutzt",
+    companionMap[ao.companionCount] || "Begleitperson n. a.",
+    ...(flags.length ? [flags.join(", ")] : []),
+  ];
+  if (typeof ao.driverNote === "string" && ao.driverNote.trim()) parts.push(`Hinweis: ${ao.driverNote.trim()}`);
+  return parts.join(" · ");
+}
+
 export default function RideDetailPage({ rideId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -133,7 +163,9 @@ export default function RideDetailPage({ rideId, onBack }) {
   const r = data?.ride;
   const evs = data?.events ?? [];
   const audits = data?.panelAudit ?? [];
+  const supportTickets = data?.supportTickets ?? [];
   const links = data?.links;
+  const accessibilitySummary = accessibilitySummaryDe(r?.accessibilityOptions);
 
   return (
     <div className="admin-page admin-taxi-fv-page">
@@ -205,6 +237,19 @@ export default function RideDetailPage({ rideId, onBack }) {
               </div>
             </div>
           </section>
+
+          {accessibilitySummary ? (
+            <section className="admin-panel-card admin-m-card admin-m-card--unified">
+              <div className="admin-m-card__h">
+                <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                  Barrierefrei / Rollstuhl
+                </span>
+              </div>
+              <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px", whiteSpace: "pre-wrap" }}>
+                {accessibilitySummary}
+              </p>
+            </section>
+          ) : null}
 
           <section className="admin-panel-card admin-m-card admin-m-card--unified">
             <div className="admin-m-card__h">
@@ -287,6 +332,39 @@ export default function RideDetailPage({ rideId, onBack }) {
                 </span>
               </div>
             </div>
+          </section>
+
+          <section className="admin-panel-card admin-m-card admin-m-card--unified">
+            <div className="admin-m-card__h">
+              <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                Fahrt-Support (Kund*innen)
+              </span>
+              <span className="admin-table-sub" style={{ margin: 0 }}>
+                {supportTickets.length} Ticket(s) · mit Snapshot zum Meldezeitpunkt
+              </span>
+            </div>
+            {supportTickets.length === 0 ? (
+              <p className="admin-ride-rec-muted" style={{ padding: "0 16px 16px" }}>
+                Noch kein Kund*innen-Support-Ticket (PostgreSQL, Migration 047).
+              </p>
+            ) : (
+              <ol className="admin-ride-rec-tl" style={{ listStyle: "none", padding: "0 16px 16px" }}>
+                {supportTickets.map((t) => (
+                  <li key={t.id} className="admin-ride-rec-tl__row" style={{ borderBottom: "1px solid var(--onroda-border-subtle, #e2e8f0)" }}>
+                    <div className="admin-ride-rec-tl__time">[{formatDt(t.createdAt)}]</div>
+                    <div className="admin-ride-rec-tl__text">
+                      <code style={{ fontSize: "0.9em" }}>{t.id}</code> — {t.category} — {t.status}
+                      {t.message ? <span style={{ display: "block", marginTop: 6, whiteSpace: "pre-wrap" }}>{t.message}</span> : null}
+                    </div>
+                    {t.internalNote ? (
+                      <div className="admin-ride-rec-tl__sub" style={{ color: "var(--onroda-text-muted, #64748b)" }}>
+                        Notiz: {t.internalNote}
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <section className="admin-panel-card admin-m-card admin-m-card--unified">

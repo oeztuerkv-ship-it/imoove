@@ -203,6 +203,9 @@ CREATE INDEX IF NOT EXISTS rides_created_by_panel_user_id_idx ON rides (created_
 ALTER TABLE rides
   ADD COLUMN IF NOT EXISTS partner_booking_meta JSONB NOT NULL DEFAULT '{}'::jsonb;
 
+ALTER TABLE rides
+  ADD COLUMN IF NOT EXISTS accessibility_options_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+
 CREATE TABLE IF NOT EXISTS partner_ride_series (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL REFERENCES admin_companies (id) ON DELETE CASCADE,

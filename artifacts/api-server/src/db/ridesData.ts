@@ -135,6 +135,10 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     pricingMode: r.pricing_mode === "taxi_tariff" ? "taxi_tariff" : null,
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
     partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null,
+    accessibilityOptions:
+      r.accessibility_options_json && typeof r.accessibility_options_json === "object"
+        ? (r.accessibility_options_json as RideRequest["accessibilityOptions"])
+        : null,
   };
 }
 
@@ -175,6 +179,7 @@ function rideToUpdate(r: RideRequest) {
       string,
       unknown
     >,
+    accessibility_options_json: (r.accessibilityOptions ?? {}) as Record<string, unknown>,
     tariff_snapshot_json: (r.tariffSnapshot
       ? (r.tariffSnapshot as unknown as Record<string, unknown>)
       : {}) as Record<string, unknown>,
@@ -220,6 +225,7 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
       string,
       unknown
     >,
+    accessibility_options_json: (r.accessibilityOptions ?? {}) as Record<string, unknown>,
     tariff_snapshot_json: (r.tariffSnapshot
       ? (r.tariffSnapshot as unknown as Record<string, unknown>)
       : {}) as Record<string, unknown>,

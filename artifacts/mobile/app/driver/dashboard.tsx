@@ -44,6 +44,8 @@ function accessCodeErrorMessage(code: string): string {
     ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
     address_house_number_required:
       "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.",
+    accessibility_options_required_for_wheelchair: "Für Rollstuhl-Fahrten sind Details erforderlich.",
+    accessibility_options_invalid: "Rollstuhl-Details sind ungültig.",
     access_code_invalid: "Der eingegebene Code ist ungueltig oder unbekannt.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
     access_code_not_yet_valid: "Dieser Code ist noch nicht gueltig (Startdatum/Zeit der Freigabe).",
@@ -72,6 +74,36 @@ function accessCodeRideLine(req: RideRequest): string | null {
   const s = req.accessCodeSummary;
   if (s?.label) return `Freigabe · ${s.label} (${accessCodeTypeDe(s.codeType)})`;
   return "Freigabe · Zugangscode (gültig)";
+}
+
+function wheelchairInfoLine(req: RideRequest): string | null {
+  const ao = (req as RideRequest & { accessibilityOptions?: any }).accessibilityOptions;
+  if (!ao || typeof ao !== "object") return null;
+  const assistanceMap: Record<string, string> = {
+    boarding: "Hilfe beim Einsteigen",
+    to_door: "Hilfe bis Haustür",
+    to_apartment: "Hilfe bis Wohnung",
+    none: "Keine Hilfe",
+  };
+  const companionMap: Record<number, string> = {
+    0: "keine Begleitperson",
+    1: "1 Begleitperson",
+    2: "2 Begleitpersonen",
+  };
+  const flags: string[] = [];
+  if (ao.rampRequired) flags.push("Rampe");
+  if (ao.carryChairRequired) flags.push("Tragestuhl");
+  if (ao.stairsPresent) flags.push("Treppen");
+  if (ao.elevatorAvailable) flags.push("Aufzug");
+  const parts = [
+    "Rollstuhl",
+    assistanceMap[String(ao.assistanceLevel)] || "Hilfe-Info",
+    ao.canTransfer === true ? "kann umsteigen" : "bleibt im Rollstuhl",
+    companionMap[Number(ao.companionCount)] || "Begleitperson unklar",
+    ...(flags.length ? [flags.join(", ")] : []),
+  ];
+  if (typeof ao.driverNote === "string" && ao.driverNote.trim()) parts.push(`Hinweis: ${ao.driverNote.trim()}`);
+  return parts.join(" · ");
 }
 
 function parseEuroDriverInput(text: string): number | null {
@@ -182,6 +214,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       : null;
   const { date, time } = fmt(req.createdAt);
   const codeLine = accessCodeRideLine(req);
+  const wheelchairLine = wheelchairInfoLine(req);
   const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
   const modeBadge = rideTypeBadge(req);
   const hasTaxiEstimate = hasTaxiEstimateBadge(req);
@@ -293,6 +326,14 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           </Text>
         </View>
       ) : null}
+      {wheelchairLine ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+          <MaterialCommunityIcons name="wheelchair-accessibility" size={14} color="#0EA5E9" />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#0369A1" }} numberOfLines={3}>
+            {wheelchairLine}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
         <Feather name="user" size={15} color="#334155" />
@@ -347,6 +388,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 /* ─── Scheduled Request Card ─── */
 function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const codeLine = accessCodeRideLine(req);
+  const wheelchairLine = wheelchairInfoLine(req);
   const modeBadge = rideTypeBadge(req);
   const hasTaxiEstimate = hasTaxiEstimateBadge(req);
   const { date, time } = fmt(new Date(req.scheduledAt!));
@@ -449,6 +491,14 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
           <Feather name="shield" size={14} color="#16A34A" />
           <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#15803D" }} numberOfLines={2}>
             {codeLine}
+          </Text>
+        </View>
+      ) : null}
+      {wheelchairLine ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginBottom: 6 }}>
+          <MaterialCommunityIcons name="wheelchair-accessibility" size={14} color="#0EA5E9" />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#0369A1" }} numberOfLines={3}>
+            {wheelchairLine}
           </Text>
         </View>
       ) : null}
@@ -896,6 +946,7 @@ function ActiveRideScreen({
   const [finalPriceInput, setFinalPriceInput] = useState(req.estimatedFare.toFixed(2).replace(".", ","));
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
+  const wheelchairLine = wheelchairInfoLine(req);
   const [kkEigenOpen, setKkEigenOpen] = useState(false);
   const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
     req.estimatedFare.toFixed(2).replace(".", ","),
@@ -1169,6 +1220,7 @@ function ActiveRideScreen({
             <Text style={[activeStyles.customerName, { color: colors.foreground }]}>{req.customerName}</Text>
             <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={4}>
               {codeLine ? `${codeLine}\n` : ""}
+              {wheelchairLine ? `${wheelchairLine}\n` : ""}
               {req.vehicle} · {isKK ? "Krankenkasse" : req.paymentMethod}
             </Text>
           </View>

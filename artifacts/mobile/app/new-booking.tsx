@@ -362,6 +362,8 @@ export default function NewBookingScreen() {
       pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
       ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
       address_house_number_required: MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
+      accessibility_options_required_for_wheelchair: "Bitte Rollstuhl-Details vollständig angeben.",
+      accessibility_options_invalid: "Rollstuhl-Details sind unvollständig oder ungültig.",
       access_code_invalid: "Der eingegebene Code ist ungültig oder unbekannt.",
       access_code_inactive: "Dieser Code ist deaktiviert.",
       access_code_not_yet_valid:

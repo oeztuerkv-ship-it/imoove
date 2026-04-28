@@ -40,6 +40,7 @@ import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
+import type { RideAccessibilityOptions } from "@/context/RideRequestContext";
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   cash: "Bar",
@@ -55,6 +56,8 @@ function accessCodeBookingErrorMessage(code: string): string {
     pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
     ride_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
     address_house_number_required: MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
+    accessibility_options_required_for_wheelchair: "Bitte Rollstuhl-Details vollständig angeben.",
+    accessibility_options_invalid: "Rollstuhl-Details sind unvollständig oder ungültig.",
     access_code_invalid: "Code unbekannt oder ungültig.",
     access_code_inactive: "Dieser Code ist deaktiviert.",
     access_code_not_yet_valid:
@@ -105,6 +108,29 @@ const SERVICE_CLASS_LABELS = {
   taxi: "Taxi",
 } as const;
 
+type AssistanceLevel = RideAccessibilityOptions["assistanceLevel"];
+type WheelchairType = RideAccessibilityOptions["wheelchairType"];
+type CompanionCount = RideAccessibilityOptions["companionCount"];
+
+function assistanceLabel(level: AssistanceLevel): string {
+  const m: Record<AssistanceLevel, string> = {
+    boarding: "Ich brauche Hilfe beim Einsteigen",
+    to_door: "Ich brauche Hilfe bis zur Haustür",
+    to_apartment: "Ich brauche Hilfe bis in die Wohnung",
+    none: "Keine Hilfe nötig",
+  };
+  return m[level];
+}
+
+function companionLabel(v: CompanionCount): string {
+  const m: Record<CompanionCount, string> = {
+    0: "keine Begleitperson",
+    1: "1 Begleitperson",
+    2: "2 Begleitpersonen",
+  };
+  return m[v];
+}
+
 export default function RideScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -134,6 +160,16 @@ export default function RideScreen() {
   const [preAuthLoading, setPreAuthLoading] = useState(false);
   const [tokenErrorMethod, setTokenErrorMethod] = useState<PaymentMethod | null>(null);
   const [accessCodeInput, setAccessCodeInput] = useState("");
+  const [accessibilityOpen, setAccessibilityOpen] = useState(false);
+  const [assistanceLevel, setAssistanceLevel] = useState<AssistanceLevel | null>(null);
+  const [wheelchairType, setWheelchairType] = useState<WheelchairType | null>(null);
+  const [canTransfer, setCanTransfer] = useState<boolean | null>(null);
+  const [companionCount, setCompanionCount] = useState<CompanionCount | null>(null);
+  const [rampRequired, setRampRequired] = useState(false);
+  const [carryChairRequired, setCarryChairRequired] = useState(false);
+  const [elevatorAvailable, setElevatorAvailable] = useState(false);
+  const [stairsPresent, setStairsPresent] = useState(false);
+  const [accessibilityNote, setAccessibilityNote] = useState("");
 
   useEffect(() => {
     if (paymentMethod == null) setPaymentMethod("cash");
@@ -167,6 +203,20 @@ export default function RideScreen() {
     if (paymentMethod === "access_code" && !accessCodeInput.trim()) {
       Alert.alert("Code fehlt", "Bitte geben Sie den Gutschein- oder Freigabe-Code ein.");
       return;
+    }
+    const isWheelchair = selectedVehicle === "wheelchair";
+    if (isWheelchair) {
+      if (assistanceLevel == null || canTransfer == null || companionCount == null) {
+        Alert.alert(
+          "Rollstuhl-Details fehlen",
+          "Bitte wähle mindestens Hilfe, Umsteigen (ja/nein) und Begleitperson aus.",
+        );
+        return;
+      }
+      if (wheelchairType == null) {
+        Alert.alert("Rollstuhl-Details fehlen", "Bitte Rollstuhl-Typ auswählen.");
+        return;
+      }
     }
 
     const pm = paymentMethod;
@@ -261,6 +311,22 @@ export default function RideScreen() {
             ...(pm === "access_code" && accessCodeInput.trim()
               ? { accessCode: accessCodeInput.trim() }
               : {}),
+            ...(isWheelchair
+              ? {
+                  accessibilityOptions: {
+                    assistanceLevel: assistanceLevel as AssistanceLevel,
+                    wheelchairType: wheelchairType as WheelchairType,
+                    wheelchairStaysOccupied: canTransfer === false,
+                    canTransfer: canTransfer as boolean,
+                    companionCount: companionCount as CompanionCount,
+                    rampRequired,
+                    carryChairRequired,
+                    elevatorAvailable,
+                    stairsPresent,
+                    driverNote: accessibilityNote.trim() || null,
+                  } satisfies RideAccessibilityOptions,
+                }
+              : {}),
           });
           router.replace({ pathname: "/status", params: { rideId: rideRequestId } } as any);
         } catch (err) {
@@ -351,6 +417,24 @@ export default function RideScreen() {
             </View>
           </View>
         </View>
+        {selectedVehicle === "wheelchair" ? (
+          <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#86EFAC", backgroundColor: "#F0FDF4", padding: 14, gap: 8 }}>
+            <Pressable
+              onPress={() => setAccessibilityOpen(true)}
+              style={{ borderRadius: 12, backgroundColor: "#16A34A", paddingVertical: 12, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+            >
+              <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: rf(14) }}>
+                Rollstuhl-Details angeben
+              </Text>
+              <Feather name="chevron-right" size={18} color="#fff" />
+            </Pressable>
+            <Text style={{ fontSize: rf(12), color: "#166534", fontFamily: "Inter_500Medium" }}>
+              {assistanceLevel && canTransfer != null && companionCount != null
+                ? `${assistanceLabel(assistanceLevel)} · ${canTransfer ? "Patient kann umsteigen" : "Rollstuhl bleibt genutzt"} · ${companionLabel(companionCount)}`
+                : "Pflicht für Rollstuhl-Fahrten: Hilfe, Umsteigen (ja/nein), Begleitperson."}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.statsRow}>
           {[
@@ -572,6 +656,93 @@ export default function RideScreen() {
       </View>
 
       {/* ── Kein Zahlungsmittel hinterlegt ── */}
+      <Modal
+        visible={accessibilityOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAccessibilityOpen(false)}
+      >
+        <Pressable style={styles.noTokenOverlay} onPress={() => setAccessibilityOpen(false)}>
+          <Pressable
+            style={[styles.noTokenCard, { backgroundColor: colors.surface, borderColor: colors.border, gap: 10, maxHeight: "88%" }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={[styles.noTokenTitle, { color: colors.foreground }]}>Rollstuhl-Details</Text>
+            <ScrollView style={{ alignSelf: "stretch" }} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Hilfe benötigt?</Text>
+              {([
+                ["boarding", "Ich brauche Hilfe beim Einsteigen"],
+                ["to_door", "Ich brauche Hilfe bis zur Haustür"],
+                ["to_apartment", "Ich brauche Hilfe bis in die Wohnung"],
+                ["none", "Keine Hilfe nötig"],
+              ] as const).map(([id, label]) => (
+                <Pressable key={id} onPress={() => setAssistanceLevel(id)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name={assistanceLevel === id ? "check-circle" : "circle"} size={16} color={assistanceLevel === id ? "#16A34A" : colors.mutedForeground} />
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>{label}</Text>
+                </Pressable>
+              ))}
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Rollstuhl-Typ</Text>
+              {([
+                ["foldable", "faltbarer Rollstuhl"],
+                ["electric", "elektrischer Rollstuhl"],
+              ] as const).map(([id, label]) => (
+                <Pressable key={id} onPress={() => setWheelchairType(id)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name={wheelchairType === id ? "check-circle" : "circle"} size={16} color={wheelchairType === id ? "#16A34A" : colors.mutedForeground} />
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>{label}</Text>
+                </Pressable>
+              ))}
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Fahrtposition</Text>
+              <Pressable onPress={() => setCanTransfer(false)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Feather name={canTransfer === false ? "check-circle" : "circle"} size={16} color={canTransfer === false ? "#16A34A" : colors.mutedForeground} />
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>Rollstuhl bleibt während der Fahrt genutzt</Text>
+              </Pressable>
+              <Pressable onPress={() => setCanTransfer(true)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Feather name={canTransfer === true ? "check-circle" : "circle"} size={16} color={canTransfer === true ? "#16A34A" : colors.mutedForeground} />
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>Patient kann umsteigen</Text>
+              </Pressable>
+              <Pressable onPress={() => setCanTransfer(false)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Feather name={canTransfer === false ? "check-circle" : "circle"} size={16} color={canTransfer === false ? "#16A34A" : colors.mutedForeground} />
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>Patient kann nicht umsteigen</Text>
+              </Pressable>
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Begleitperson</Text>
+              {([
+                [0, "keine Begleitperson"],
+                [1, "1 Begleitperson"],
+                [2, "2 Begleitpersonen"],
+              ] as const).map(([val, label]) => (
+                <Pressable key={val} onPress={() => setCompanionCount(val)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name={companionCount === val ? "check-circle" : "circle"} size={16} color={companionCount === val ? "#16A34A" : colors.mutedForeground} />
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>{label}</Text>
+                </Pressable>
+              ))}
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Besonderheiten</Text>
+              {([
+                [rampRequired, setRampRequired, "Rampe erforderlich"],
+                [carryChairRequired, setCarryChairRequired, "Tragestuhl erforderlich"],
+                [elevatorAvailable, setElevatorAvailable, "Aufzug vorhanden"],
+                [stairsPresent, setStairsPresent, "Treppen vorhanden"],
+              ] as const).map(([flag, setter, label]) => (
+                <Pressable key={label} onPress={() => setter(!flag)} style={{ paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name={flag ? "check-square" : "square"} size={16} color={flag ? "#16A34A" : colors.mutedForeground} />
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium", fontSize: rf(13) }}>{label}</Text>
+                </Pressable>
+              ))}
+              <TextInput
+                value={accessibilityNote}
+                onChangeText={setAccessibilityNote}
+                placeholder="Hinweis an Fahrer (optional)"
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10, color: colors.foreground, minHeight: 72 }}
+              />
+            </ScrollView>
+            <Pressable style={[styles.noTokenBtn, { backgroundColor: "#16A34A" }]} onPress={() => setAccessibilityOpen(false)}>
+              <Text style={styles.noTokenBtnText}>Übernehmen</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal
         visible={noTokenVisible}
         transparent

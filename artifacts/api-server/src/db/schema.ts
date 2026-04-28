@@ -440,6 +440,11 @@ export const ridesTable = pgTable("rides", {
     .$type<Record<string, unknown>>()
     .notNull()
     .default({}),
+  /** Rollstuhl-/Barrierefrei-Infos (fahrtrelevant, keine Diagnose). */
+  accessibility_options_json: jsonb("accessibility_options_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
 });
 
 /** Event-Historie pro Fahrt (Statuswechsel, Matching, Storno, Abschluss, etc.). */

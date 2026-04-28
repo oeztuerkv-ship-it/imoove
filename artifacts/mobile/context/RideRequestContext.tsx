@@ -41,6 +41,18 @@ export type PayerKind = "passenger" | "company" | "insurance" | "voucher" | "thi
 export type AuthorizationSource = "passenger_direct" | "access_code" | "partner";
 
 export type AccessCodeSummary = { codeType: string; label: string };
+export type RideAccessibilityOptions = {
+  assistanceLevel: "boarding" | "to_door" | "to_apartment" | "none";
+  wheelchairType: "foldable" | "electric";
+  wheelchairStaysOccupied: boolean;
+  canTransfer: boolean;
+  companionCount: 0 | 1 | 2;
+  rampRequired: boolean;
+  carryChairRequired: boolean;
+  elevatorAvailable: boolean;
+  stairsPresent: boolean;
+  driverNote?: string | null;
+};
 
 export interface RideRequest {
   id: string;
@@ -70,6 +82,7 @@ export interface RideRequest {
   paymentMethod: string;
   vehicle: string;
   customerName: string;
+  accessibilityOptions?: RideAccessibilityOptions | null;
   passengerId?: string;
   driverId?: string | null;
   cancelReason?: string | null;
@@ -103,6 +116,7 @@ interface RideRequestContextValue {
       | "authorizationSource"
       | "accessCodeId"
       | "accessCodeSummary"
+      | "accessibilityOptions"
     > & {
       rideKind?: RideKind;
       payerKind?: PayerKind;
@@ -254,6 +268,11 @@ function normalizeRequest(r: any): RideRequest {
       accessCodeSummary = { codeType: ct, label: lb };
     }
   }
+  const accessibilityRaw = r.accessibilityOptions ?? r.accessibility_options;
+  const accessibilityOptions =
+    accessibilityRaw && typeof accessibilityRaw === "object" && !Array.isArray(accessibilityRaw)
+      ? (accessibilityRaw as RideAccessibilityOptions)
+      : null;
 
   return {
     ...r,
@@ -265,6 +284,7 @@ function normalizeRequest(r: any): RideRequest {
     authorizationSource,
     accessCodeId: (r.accessCodeId ?? r.access_code_id) != null ? String(r.accessCodeId ?? r.access_code_id) : null,
     accessCodeSummary,
+    accessibilityOptions,
     voucherCode: (r.voucherCode ?? r.voucher_code) != null ? String(r.voucherCode ?? r.voucher_code) : null,
     billingReference:
       (r.billingReference ?? r.billing_reference) != null
@@ -501,6 +521,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         | "authorizationSource"
         | "accessCodeId"
         | "accessCodeSummary"
+        | "accessibilityOptions"
       > & {
         rideKind?: RideKind;
         payerKind?: PayerKind;
