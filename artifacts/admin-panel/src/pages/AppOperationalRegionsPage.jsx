@@ -437,6 +437,12 @@ function AppRegionRow({ initial, onSave }) {
   const [termsStr, setTermsStr] = useState((initial.matchTerms || []).join(", "));
   const [isActive, setIsActive] = useState(initial.isActive);
   const [sortOrder, setSortOrder] = useState(String(initial.sortOrder));
+  const [centerQuery, setCenterQuery] = useState(
+    (initial.label || "").trim() || String((initial.matchTerms || [])[0] || "").trim(),
+  );
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoMsg, setGeoMsg] = useState("");
+  const [rowError, setRowError] = useState("");
 
   return (
     <tr>
@@ -470,6 +476,52 @@ function AppRegionRow({ initial, onSave }) {
               value={radiusKm}
               onChange={(e) => setRadiusKm(e.target.value)}
             />
+            <input
+              className="admin-input"
+              placeholder="Mittelpunkt aus Adresse, z. B. Esslingen"
+              value={centerQuery}
+              onChange={(e) => setCenterQuery(e.target.value)}
+            />
+            <button
+              type="button"
+              className="admin-btn admin-btn--small"
+              disabled={geoBusy}
+              onClick={async () => {
+                const q = centerQuery.trim() || label.trim();
+                if (!q) {
+                  setGeoMsg("Bitte eine Adresse oder Ortsbezeichnung eingeben.");
+                  return;
+                }
+                setGeoBusy(true);
+                setGeoMsg("");
+                try {
+                  const u = new URL("https://nominatim.openstreetmap.org/search");
+                  u.searchParams.set("format", "jsonv2");
+                  u.searchParams.set("limit", "1");
+                  u.searchParams.set("q", q);
+                  const res = await fetch(u.toString(), {
+                    headers: { Accept: "application/json" },
+                  });
+                  const rows = await res.json().catch(() => []);
+                  const first = Array.isArray(rows) ? rows[0] : null;
+                  const lat = first?.lat != null ? Number(first.lat) : NaN;
+                  const lon = first?.lon != null ? Number(first.lon) : NaN;
+                  if (!res.ok || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+                    throw new Error("not_found");
+                  }
+                  setCenterLat(String(Math.round(lat * 1e6) / 1e6));
+                  setCenterLng(String(Math.round(lon * 1e6) / 1e6));
+                  setGeoMsg("Mittelpunkt wurde aus der Adresse übernommen.");
+                } catch {
+                  setGeoMsg("Adresse konnte nicht aufgelöst werden. Bitte Koordinaten manuell eintragen.");
+                } finally {
+                  setGeoBusy(false);
+                }
+              }}
+            >
+              {geoBusy ? "Suche …" : "Mittelpunkt aus Adresse setzen"}
+            </button>
+            {geoMsg ? <span className="admin-table-sub">{geoMsg}</span> : null}
           </div>
         ) : (
           <span className="admin-table-sub">—</span>
@@ -480,8 +532,9 @@ function AppRegionRow({ initial, onSave }) {
           className="admin-input"
           value={termsStr}
           onChange={(e) => setTermsStr(e.target.value)}
-          placeholder="nur Text-Modus"
+          placeholder={mode === "radius" ? "Bei Radius optional / nicht relevant" : "nur Text-Modus"}
           style={{ minWidth: 180 }}
+          disabled={mode === "radius"}
         />
       </td>
       <td>
@@ -496,34 +549,65 @@ function AppRegionRow({ initial, onSave }) {
         />
       </td>
       <td>
+        {rowError ? (
+          <div className="admin-info-banner admin-info-banner--error" style={{ marginBottom: 6 }}>
+            {rowError}
+          </div>
+        ) : null}
         <button
           type="button"
           className="admin-btn admin-btn--small"
           onClick={() => {
+            setRowError("");
             const matchTerms = termsStr
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean);
             const so = Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : initial.sortOrder;
+            const safeLabel = label.trim();
+            if (!safeLabel) {
+              setRowError("Bezeichnung darf nicht leer sein.");
+              return;
+            }
             if (mode === "radius") {
+              if (!String(centerLat).trim()) {
+                setRowError("Für Radius bitte centerLat ausfüllen.");
+                return;
+              }
+              if (!String(centerLng).trim()) {
+                setRowError("Für Radius bitte centerLng ausfüllen.");
+                return;
+              }
+              if (!String(radiusKm).trim()) {
+                setRowError("Für Radius bitte radiusKm ausfüllen.");
+                return;
+              }
               const cla = Number(String(centerLat).replace(",", "."));
               const clg = Number(String(centerLng).replace(",", "."));
               const rkm = Number(String(radiusKm).replace(",", "."));
+              if (!Number.isFinite(cla) || !Number.isFinite(clg)) {
+                setRowError("centerLat und centerLng müssen gültige Zahlen sein.");
+                return;
+              }
+              if (!Number.isFinite(rkm) || rkm < 1) {
+                setRowError("radiusKm muss mindestens 1 km sein.");
+                return;
+              }
               onSave({
                 ...initial,
-                label: label.trim(),
+                label: safeLabel,
                 isActive,
                 matchMode: "radius",
-                matchTerms: [],
-                centerLat: Number.isFinite(cla) ? cla : null,
-                centerLng: Number.isFinite(clg) ? clg : null,
-                radiusKm: Number.isFinite(rkm) ? rkm : null,
+                matchTerms,
+                centerLat: cla,
+                centerLng: clg,
+                radiusKm: rkm,
                 sortOrder: so,
               });
             } else {
               onSave({
                 ...initial,
-                label: label.trim(),
+                label: safeLabel,
                 isActive,
                 matchMode: "substring",
                 matchTerms,
