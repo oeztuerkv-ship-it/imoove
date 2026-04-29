@@ -870,6 +870,18 @@ export const appOperationalConfigTable = pgTable("app_operational_config", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Einmal-Codes zur E-Mail-Verifizierung (Kunden-App); Klartext nie in der DB. */
+export const emailVerificationCodesTable = pgTable("email_verification_codes", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  code_hash: text("code_hash").notNull(),
+  purpose: text("purpose").notNull(),
+  expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  consumed_at: timestamp("consumed_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Einfahrgebiete: Substring in Adresse ODER Mittelpunkt+Radius (match_mode=radius). */
 export const appServiceRegionsTable = pgTable("app_service_regions", {
   id: text("id").primaryKey(),

@@ -2,8 +2,8 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { BottomTabBar } from "@/components/BottomTabBar";
+import React, { useCallback, useEffect, useState } from "react";
+import { BottomTabBar, mainTabScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +26,7 @@ import { NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { EMAIL_VERIFICATION_PURPOSE, mapEmailVerificationApiError } from "@/utils/emailVerificationErrors";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
@@ -68,7 +69,6 @@ function GoogleGLogo({ size = 22 }: { size?: number }) {
 }
 
 const API_URL = getApiBaseUrl();
-const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
 
 function isPlausibleEmail(s: string): boolean {
   const t = s.trim();
@@ -499,16 +499,25 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
-  const bottomPad = isWeb ? 20 : insets.bottom;
 
   const { profile, loginWithGoogle, updateProfile, logout, registerLocalCustomer } = useUser();
 
   const [profileStep, setProfileStep] = useState<"social" | "register">("social");
-  const [regSubStep, setRegSubStep] = useState<"form" | "verify">("form");
+  const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile">("email");
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
-  const [regSms, setRegSms] = useState("");
+  const [regOtpDigits, setRegOtpDigits] = useState("");
+  const [pendingEmailProofToken, setPendingEmailProofToken] = useState<string | undefined>(undefined);
+  const [cooldownSecs, setCooldownSecs] = useState(0);
+  const [emailStartLoading, setEmailStartLoading] = useState(false);
+  const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+
+  useEffect(() => {
+    if (cooldownSecs <= 0) return undefined;
+    const id = setTimeout(() => setCooldownSecs((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [cooldownSecs]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
@@ -573,35 +582,133 @@ export default function ProfileScreen() {
     setRegName("");
     setRegEmail("");
     setRegPhone("");
-    setRegSms("");
-    setRegSubStep("form");
+    setRegOtpDigits("");
+    setPendingEmailProofToken(undefined);
+    setCooldownSecs(0);
+    setRegSubStep("email");
     setProfileStep("register");
   };
 
-  const handleRegisterRequestSms = () => {
-    const name = regName.trim();
-    const email = regEmail.trim();
-    const phone = regPhone.trim();
-    if (!name || !phone || !isPlausibleEmail(email)) {
-      Alert.alert("Hinweis", "Bitte gültigen Namen, E-Mail und Telefonnummer eingeben.");
+  const submitEmailStart = useCallback(async () => {
+    const email = regEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_email"));
       return;
     }
-    setRegSms("");
-    setRegSubStep("verify");
-  };
+    if (!API_URL?.trim()) {
+      Alert.alert("Hinweis", "Keine API-URL (EXPO_PUBLIC_API_URL).");
+      return;
+    }
+    setEmailStartLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/email/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: EMAIL_VERIFICATION_PURPOSE }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        retryAfterSeconds?: number;
+      };
+      if (!res.ok || data?.ok === false) {
+        Alert.alert(
+          res.status === 429 ? "Bitte warten" : "Hinweis",
+          typeof data?.retryAfterSeconds === "number" && data.retryAfterSeconds > 30
+            ? `${mapEmailVerificationApiError(data?.error)}\n\nIn ca. ${Math.ceil(data.retryAfterSeconds / 60)} Min. erneut.`
+            : mapEmailVerificationApiError(data?.error),
+        );
+        return;
+      }
+      setRegOtpDigits("");
+      setPendingEmailProofToken(undefined);
+      setCooldownSecs(60);
+      setRegSubStep("verify");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte API-Adresse prüfen.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  }, [regEmail]);
+
+  const submitEmailResend = useCallback(async () => {
+    const email = regEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email) || cooldownSecs > 0 || !API_URL?.trim()) return;
+    setEmailStartLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/email/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: EMAIL_VERIFICATION_PURPOSE }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || data?.ok === false) {
+        Alert.alert(res.status === 429 ? "Bitte warten" : "Hinweis", mapEmailVerificationApiError(data?.error));
+        return;
+      }
+      setCooldownSecs(60);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  }, [API_URL, cooldownSecs, regEmail]);
+
+  const submitEmailVerifyContinue = useCallback(async () => {
+    const email = regEmail.trim().toLowerCase();
+    const digits = regOtpDigits.replace(/\D/g, "").slice(0, 6);
+    if (!isPlausibleEmail(email) || digits.length !== 6) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_params"));
+      return;
+    }
+    setEmailVerifyLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/email/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: digits, purpose: EMAIL_VERIFICATION_PURPOSE }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        proofToken?: string;
+      };
+      if (!res.ok || data?.ok === false) {
+        Alert.alert(
+          data?.error === "too_many_attempts" ? "Gesperrt" : "Hinweis",
+          mapEmailVerificationApiError(data?.error),
+        );
+        return;
+      }
+      setPendingEmailProofToken(typeof data.proofToken === "string" ? data.proofToken : undefined);
+      setRegEmail(email);
+      setRegSubStep("profile");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setEmailVerifyLoading(false);
+    }
+  }, [API_URL, regEmail, regOtpDigits]);
 
   const handleRegisterComplete = () => {
-    if (regSms.trim() !== DEV_SMS_CODE) {
-      Alert.alert("Falscher Code", "Der eingegebene Code ist ungültig.");
+    const email = regEmail.trim().toLowerCase();
+    const name = regName.trim();
+    const phone = regPhone.trim();
+    if (!name || !phone || !isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", "Bitte Namen und Telefon ausfüllen.");
       return;
     }
-    registerLocalCustomer({
-      name: regName.trim(),
-      email: regEmail.trim(),
-      phone: regPhone.trim(),
-    });
+    registerLocalCustomer(
+      { name, email, phone },
+      pendingEmailProofToken?.trim()
+        ? { emailVerificationProofToken: pendingEmailProofToken.trim() }
+        : undefined,
+    );
     setProfileStep("social");
-    setRegSubStep("form");
+    setRegSubStep("email");
   };
 
   return (
@@ -618,8 +725,12 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 40 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: mainTabScrollPaddingBottom(insets.bottom, rs(40)) },
+        ]}
       >
         {profile.isLoggedIn ? (
           /* ══ LOGGED IN ══ */
@@ -874,30 +985,17 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
                 </>
-              ) : regSubStep === "form" ? (
+              ) : regSubStep === "email" ? (
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("social")}>
                     <Feather name="arrow-left" size={16} color={colors.foreground} />
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
                   </Pressable>
 
-                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>Konto erstellen</Text>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>E-Mail-Adresse</Text>
                   <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
-                    Name, E-Mail und Telefon – anschließend bestätigst du per SMS-Code (Testphase).
+                    Bestätigungscode per E-Mail (ca. 10 Minuten gültig).
                   </Text>
-
-                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                    <Feather name="user" size={16} color={colors.mutedForeground} />
-                    <TextInput
-                      style={[styles.inputField, { color: colors.foreground }]}
-                      placeholder="Vor- und Nachname"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={regName}
-                      onChangeText={setRegName}
-                      autoCapitalize="words"
-                      returnKeyType="next"
-                    />
-                  </View>
 
                   <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
                     <Feather name="mail" size={16} color={colors.mutedForeground} />
@@ -910,6 +1008,111 @@ export default function ProfileScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      returnKeyType="done"
+                      editable={!emailStartLoading}
+                    />
+                  </View>
+
+                  <Pressable
+                    style={[styles.registerBtn, {
+                      backgroundColor: isPlausibleEmail(regEmail) ? "#111111" : colors.muted,
+                    }]}
+                    onPress={() => void submitEmailStart()}
+                    disabled={!isPlausibleEmail(regEmail) || emailStartLoading}
+                  >
+                    {emailStartLoading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Feather name="send" size={18} color={isPlausibleEmail(regEmail) ? "#fff" : colors.mutedForeground} />
+                    )}
+                    <Text style={[styles.registerBtnText, {
+                      color: isPlausibleEmail(regEmail) ? "#fff" : colors.mutedForeground,
+                    }]}
+                    >
+                      Code senden
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : regSubStep === "verify" ? (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setRegSubStep("email")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>Bestätigungscode</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
+                    E-Mail <Text style={{ fontFamily: "Inter_600SemiBold" }}>{regEmail.trim()}</Text>
+                  </Text>
+
+                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Feather name="hash" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground, letterSpacing: 3 }]}
+                      placeholder="6-stelliger Code"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={regOtpDigits}
+                      onChangeText={(t) => setRegOtpDigits(t.replace(/\D/g, "").slice(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      returnKeyType="done"
+                      editable={!emailVerifyLoading}
+                    />
+                  </View>
+
+                  <Pressable
+                    style={[styles.registerBtn, {
+                      backgroundColor: regOtpDigits.trim().length === 6 ? "#111111" : colors.muted,
+                    }]}
+                    onPress={() => void submitEmailVerifyContinue()}
+                    disabled={regOtpDigits.trim().length !== 6 || emailVerifyLoading}
+                  >
+                    {emailVerifyLoading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Feather name="check" size={18} color={regOtpDigits.trim().length === 6 ? "#fff" : colors.mutedForeground} />
+                    )}
+                    <Text style={[styles.registerBtnText, { color: regOtpDigits.trim().length === 6 ? "#fff" : colors.mutedForeground }]}>
+                      Code prüfen & weiter
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={{ alignSelf: "center", paddingVertical: 10 }}
+                    onPress={() => void submitEmailResend()}
+                    disabled={cooldownSecs > 0 || emailStartLoading}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      fontFamily: "Inter_500Medium",
+                      color: cooldownSecs > 0 ? colors.mutedForeground : colors.primary,
+                    }}
+                    >
+                      {cooldownSecs > 0 ? `Erneut senden in ${cooldownSecs}s` : "Code erneut senden"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setRegSubStep("verify")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>Profil</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
+                    E-Mail bestätigt. Name und Telefon für Buchungen angeben.
+                  </Text>
+
+                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                    <Feather name="user" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground }]}
+                      placeholder="Vor- und Nachname"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={regName}
+                      onChangeText={setRegName}
+                      autoCapitalize="words"
                       returnKeyType="next"
                     />
                   </View>
@@ -930,57 +1133,20 @@ export default function ProfileScreen() {
                   <Pressable
                     style={[styles.registerBtn, {
                       backgroundColor:
-                        regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? "#111111" : colors.muted,
+                        regName.trim() && regPhone.trim() ? "#111111" : colors.muted,
                     }]}
-                    onPress={handleRegisterRequestSms}
-                    disabled={!regName.trim() || !regPhone.trim() || !isPlausibleEmail(regEmail)}
+                    onPress={handleRegisterComplete}
+                    disabled={!regName.trim() || !regPhone.trim()}
                   >
                     <Feather
-                      name="message-circle"
+                      name="check"
                       size={18}
-                      color={regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? "#fff" : colors.mutedForeground}
+                      color={regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground}
                     />
                     <Text style={[styles.registerBtnText, {
-                      color: regName.trim() && regPhone.trim() && isPlausibleEmail(regEmail) ? "#fff" : colors.mutedForeground,
+                      color: regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground,
                     }]}
                     >
-                      SMS-Code anfordern
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.signInBlock}>
-                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setRegSubStep("form")}>
-                    <Feather name="arrow-left" size={16} color={colors.foreground} />
-                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
-                  </Pressable>
-
-                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>SMS-Bestätigung</Text>
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 8 }}>
-                    Echte SMS folgt mit Backend (Twilio / Firebase Phone Auth). Testcode: {DEV_SMS_CODE}
-                  </Text>
-
-                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
-                    <Feather name="hash" size={16} color={colors.mutedForeground} />
-                    <TextInput
-                      style={[styles.inputField, { color: colors.foreground, letterSpacing: 3 }]}
-                      placeholder="6-stelliger Code"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={regSms}
-                      onChangeText={(t) => setRegSms(t.replace(/\D/g, "").slice(0, 6))}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      returnKeyType="done"
-                    />
-                  </View>
-
-                  <Pressable
-                    style={[styles.registerBtn, { backgroundColor: regSms.trim().length === 6 ? "#111111" : colors.muted }]}
-                    onPress={handleRegisterComplete}
-                    disabled={regSms.trim().length !== 6}
-                  >
-                    <Feather name="check" size={18} color={regSms.trim().length === 6 ? "#fff" : colors.mutedForeground} />
-                    <Text style={[styles.registerBtnText, { color: regSms.trim().length === 6 ? "#fff" : colors.mutedForeground }]}>
                       Registrierung abschließen
                     </Text>
                   </Pressable>

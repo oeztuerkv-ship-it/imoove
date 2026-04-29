@@ -38,6 +38,7 @@
 --   050 → rides.customer_phone, app_service_regions.match_mode, geo_fence_json
 --   052 → app_service_regions center_lat, center_lng, radius_km
 --   053 → rides.accessibility_options_json
+--   054 → email_verification_codes (Kunden-E-Mail-Codes)
 
 DO $$
 DECLARE
@@ -635,6 +636,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'app_service_regions' AND column_name = 'radius_km'
   ) THEN
     errs := array_append(errs, 'app_service_regions.radius_km (Migration 052)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'email_verification_codes'
+  ) THEN
+    errs := array_append(errs, 'table email_verification_codes (Migration 054)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'email_verification_codes' AND column_name = 'code_hash'
+  ) THEN
+    errs := array_append(errs, 'email_verification_codes.code_hash (Migration 054)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

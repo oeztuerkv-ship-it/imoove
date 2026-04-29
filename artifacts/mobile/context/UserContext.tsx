@@ -17,6 +17,8 @@ export interface UserProfile {
   googleAccessTokenExpiresAt?: number;
   /** Session-JWT von der API nach Google-OAuth (`?token=`). */
   sessionToken?: string;
+  /** Nach E-Mail-Otp (`/auth/email/verify`); optional für spätere API-Nutzung. */
+  emailVerificationProofToken?: string | null;
   /* Patienten-Profil */
   krankenkasse: string;
   versichertennummer: string;
@@ -78,8 +80,11 @@ interface UserContextValue {
   updateProfile: (updates: Partial<UserProfile>) => void;
   logout: () => void;
   loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => void;
-  /** Registrierung ohne Google (lokal); echte SMS-Verifizierung folgt über Backend/Firebase. */
-  registerLocalCustomer: (data: { name: string; email: string; phone: string }) => void;
+  /** Registrierung ohne Google (lokal); E-Mail-Verifizierung vorher über `/api/auth/email/*`. */
+  registerLocalCustomer: (
+    data: { name: string; email: string; phone: string },
+    options?: { emailVerificationProofToken?: string },
+  ) => void;
   /** Telefonnummer-Flow: Profil anlegen/aktualisieren, angemeldet. */
   loginWithPhone: (data: {
     phone: string;
@@ -130,17 +135,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     save(merged);
   }, [save]);
 
-  const registerLocalCustomer = useCallback((data: { name: string; email: string; phone: string }) => {
-    const updated: UserProfile = {
-      ...DEFAULT_PROFILE,
-      name: data.name.trim(),
-      email: data.email.trim(),
-      phone: data.phone.trim(),
-      isLoggedIn: true,
-      photoUri: null,
-    };
-    save(updated);
-  }, [save]);
+  const registerLocalCustomer = useCallback(
+    (data: { name: string; email: string; phone: string }, options?: { emailVerificationProofToken?: string }) => {
+      const pt = typeof options?.emailVerificationProofToken === "string"
+        ? options.emailVerificationProofToken.trim() || undefined
+        : undefined;
+      const updated: UserProfile = {
+        ...DEFAULT_PROFILE,
+        name: data.name.trim(),
+        email: data.email.trim(),
+        phone: data.phone.trim(),
+        isLoggedIn: true,
+        photoUri: null,
+        ...(pt ? { emailVerificationProofToken: pt } : {}),
+      };
+      save(updated);
+    },
+    [save],
+  );
 
   const loginWithPhone = useCallback(
     (data: { phone: string; firstName: string; lastName: string; email?: string }) => {

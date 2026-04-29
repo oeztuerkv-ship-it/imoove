@@ -10,6 +10,8 @@
     "test:access-code": "node ./scripts/test-access-code-booking.mjs",
     "test:admin-auth": "node ./scripts/test-admin-auth-flow.mjs",
     "test:admin-password-reset": "node ./scripts/test-admin-password-reset-flow.mjs",
+    "test:email-verification-unit": "pnpm run build && node ./dist/scripts/emailVerificationSelftest.mjs",
+    "test:email-verification-http": "node ./scripts/test-email-verification-http.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

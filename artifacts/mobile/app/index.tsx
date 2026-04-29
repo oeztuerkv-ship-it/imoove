@@ -2,7 +2,7 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { Redirect, router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useFocusEffect, useLocalSearchParams, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
+import { BottomTabBar, BOTTOM_TAB_BAR_INNER_HEIGHT } from "@/components/BottomTabBar";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { type ServiceId } from "@/constants/services";
@@ -41,6 +42,7 @@ import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { EMAIL_VERIFICATION_PURPOSE, mapEmailVerificationApiError } from "@/utils/emailVerificationErrors";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
@@ -49,9 +51,6 @@ import { rs, rf } from "@/utils/scale";
 WebBrowser.maybeCompleteAuthSession();
 
 const API_URL = getApiBaseUrl();
-
-/** Platzhalter bis SMS über Backend (z. B. Twilio) oder Firebase Phone Auth angebunden ist. */
-const DEV_SMS_CODE = process.env.EXPO_PUBLIC_DEV_SMS_CODE ?? "123456";
 
 function isPlausibleEmail(s: string): boolean {
   const t = s.trim();
@@ -203,7 +202,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
   }
 }
 
-const TAB_HEIGHT = 56;
+const TAB_HEIGHT = BOTTOM_TAB_BAR_INNER_HEIGHT;
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -258,18 +257,29 @@ export default function HomeScreen() {
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/booking-center");
+    router.push("/booking-center" as Href);
   }, [customerAppBlocked, platformConfig.messages]);
 
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
 
-  type OnboardingCustomerStep = "social" | "register" | "verify";
+  type OnboardingCustomerStep = "social" | "email_enter" | "verify" | "register_details";
   const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
   const [obRegName, setObRegName] = useState("");
   const [obRegEmail, setObRegEmail] = useState("");
   const [obRegPhone, setObRegPhone] = useState("");
-  const [obRegSms, setObRegSms] = useState("");
+  const [emailOtpDigits, setEmailOtpDigits] = useState("");
+  /** Nach `/auth/email/verify`; optional gespeichert mit der Konto-Anlage */
+  const [pendingEmailProofToken, setPendingEmailProofToken] = useState<string | undefined>(undefined);
+  const [cooldownSecs, setCooldownSecs] = useState(0);
+  const [emailStartLoading, setEmailStartLoading] = useState(false);
+  const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+
+  useEffect(() => {
+    if (cooldownSecs <= 0) return undefined;
+    const id = setTimeout(() => setCooldownSecs((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [cooldownSecs]);
 
   useEffect(() => {
     if (!showOnboarding) {
@@ -277,25 +287,38 @@ export default function HomeScreen() {
       setObRegName("");
       setObRegEmail("");
       setObRegPhone("");
-      setObRegSms("");
+      setEmailOtpDigits("");
+      setPendingEmailProofToken(undefined);
+      setCooldownSecs(0);
+      setEmailStartLoading(false);
+      setEmailVerifyLoading(false);
     }
   }, [showOnboarding]);
 
   /* ── After driver login, navigate to dashboard ── */
   useEffect(() => {
     if (isDriverLoggedIn) {
-      router.replace(driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard");
+      router.replace(
+        (driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard") as Href,
+      );
     }
   }, [isDriverLoggedIn, driverProfile?.mustChangePassword]);
 
   /* ── Search overlay state ── */
   const [isSearchActive, setIsSearchActive] = useState(false);
 
-  /* ── Auto-open search when navigated with ?search=1 ── */
+  /* ── Auto-open search when navigated with ?search=1 (z. B. Sofortfahrt aus Buchungszentrale) ── */
   const { search: searchParam } = useLocalSearchParams<{ search?: string }>();
   useEffect(() => {
     if (searchParam === "1") {
       setIsSearchActive(true);
+      requestAnimationFrame(() => {
+        try {
+          router.setParams({ search: undefined });
+        } catch {
+          /* ignore */
+        }
+      });
     }
   }, [searchParam]);
   const [isEditingOrigin, setIsEditingOrigin] = useState(false);
@@ -434,31 +457,138 @@ export default function HomeScreen() {
     }
   }, [loginWithGoogle]);
 
-  const handleOnboardingRequestSms = useCallback(() => {
+  const submitEmailVerificationStart = useCallback(async () => {
+    const email = obRegEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_email"));
+      return;
+    }
+    if (!API_URL?.trim()) {
+      Alert.alert("Hinweis", "Keine API-URL (EXPO_PUBLIC_API_URL). Bitte Umgebungsvariablen prüfen.");
+      return;
+    }
+    setEmailStartLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/email/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: EMAIL_VERIFICATION_PURPOSE }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        retryAfterSeconds?: number;
+      };
+      if (!res.ok || data?.ok === false) {
+        const msg = mapEmailVerificationApiError(data?.error);
+        Alert.alert(
+          res.status === 429 ? "Bitte warten" : "Hinweis",
+          typeof data?.retryAfterSeconds === "number" && data.retryAfterSeconds > 5
+            ? `${msg}\n\nBitte etwa ${Math.ceil(data.retryAfterSeconds / 60)} Min. später erneut.`
+            : msg,
+        );
+        return;
+      }
+      setEmailOtpDigits("");
+      setPendingEmailProofToken(undefined);
+      setCooldownSecs(60);
+      setOnboardingCustomerStep("verify");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte Verbindung und API-Adresse prüfen.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  }, [obRegEmail]);
+
+  const submitEmailVerificationResend = useCallback(async () => {
+    const email = obRegEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email) || cooldownSecs > 0 || !API_URL?.trim()) return;
+    setEmailStartLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/email/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, purpose: EMAIL_VERIFICATION_PURPOSE }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        retryAfterSeconds?: number;
+      };
+      if (!res.ok || data?.ok === false) {
+        Alert.alert(
+          res.status === 429 ? "Bitte warten" : "Hinweis",
+          mapEmailVerificationApiError(data?.error),
+        );
+        return;
+      }
+      setCooldownSecs(60);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte erneut versuchen.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  }, [API_URL, cooldownSecs, obRegEmail]);
+
+  const submitEmailCodeVerifyAndContinue = useCallback(async () => {
+    const email = obRegEmail.trim().toLowerCase();
+    const digits = emailOtpDigits.replace(/\D/g, "").slice(0, 6);
+    if (!isPlausibleEmail(email) || digits.length !== 6) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_params"));
+      return;
+    }
+    setEmailVerifyLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/email/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: digits, purpose: EMAIL_VERIFICATION_PURPOSE }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        proofToken?: string;
+      };
+      if (!res.ok || data?.ok === false) {
+        Alert.alert(
+          data?.error === "too_many_attempts" ? "Gesperrt" : "Hinweis",
+          mapEmailVerificationApiError(data?.error),
+        );
+        return;
+      }
+      setPendingEmailProofToken(typeof data.proofToken === "string" ? data.proofToken : undefined);
+      setObRegEmail(email);
+      setOnboardingCustomerStep("register_details");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte Verbindung und API-Adresse prüfen.");
+    } finally {
+      setEmailVerifyLoading(false);
+    }
+  }, [emailOtpDigits, obRegEmail]);
+
+  const completeLocalRegistrationDetails = useCallback(() => {
+    const email = obRegEmail.trim().toLowerCase();
     const name = obRegName.trim();
-    const email = obRegEmail.trim();
     const phone = obRegPhone.trim();
     if (!name || !phone || !isPlausibleEmail(email)) {
-      Alert.alert("Hinweis", "Bitte gültigen Namen, E-Mail und Telefonnummer eingeben.");
+      Alert.alert("Hinweis", "Bitte Namen und Telefonnummer ausfüllen (E-Mail ist bereits bestätigt).");
       return;
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setObRegSms("");
-    setOnboardingCustomerStep("verify");
-  }, [obRegName, obRegEmail, obRegPhone]);
-
-  const handleOnboardingCompleteRegister = useCallback(() => {
-    if (obRegSms.trim() !== DEV_SMS_CODE) {
-      Alert.alert("Falscher Code", "Der eingegebene Code ist ungültig.");
-      return;
-    }
-    registerLocalCustomer({
-      name: obRegName.trim(),
-      email: obRegEmail.trim(),
-      phone: obRegPhone.trim(),
-    });
+    registerLocalCustomer(
+      {
+        name,
+        email,
+        phone,
+      },
+      pendingEmailProofToken?.trim()
+        ? { emailVerificationProofToken: pendingEmailProofToken.trim() }
+        : undefined,
+    );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [obRegSms, obRegName, obRegEmail, obRegPhone, registerLocalCustomer]);
+  }, [obRegEmail, obRegName, obRegPhone, pendingEmailProofToken, registerLocalCustomer]);
 
   /* ── Route fetch: nach Ziel- und Fahrzeugwahl Preis live neu berechnen ── */
   useEffect(() => {
@@ -565,7 +695,7 @@ export default function HomeScreen() {
     setDestResults([]);
     setIsSearchActive(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/ride-select" as any);
+    router.push("/ride-select" as Href);
   };
 
   const closeSearch = () => {
@@ -583,7 +713,7 @@ export default function HomeScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setSelectedVehicle(service.vehicleType);
       setSelectedServiceClass(service.serviceClass);
-      router.push({ pathname: "/service-detail", params: { type: service.detailType } } as any);
+      router.push({ pathname: "/service-detail", params: { type: service.detailType } } as Href);
     },
     [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, setSelectedServiceClass, showComboHint],
   );
@@ -602,7 +732,7 @@ export default function HomeScreen() {
     if (bookingMode === "immediate") {
       setScheduledTime(null);
     }
-    router.push("/ride");
+    router.push("/ride" as Href);
   }, [selectedVehicle, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
 
   /* ── GPS ── */
@@ -646,7 +776,11 @@ export default function HomeScreen() {
   }
   /* Nur auf dem fokussierten Home-Screen umleiten — sonst stört <Redirect> andere Routen (z. B. Modals). */
   if (isDriverLoggedIn && isHomeFocused) {
-    return <Redirect href={driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard"} />;
+    return (
+      <Redirect
+        href={(driverProfile?.mustChangePassword ? "/driver/change-password" : "/driver/dashboard") as Href}
+      />
+    );
   }
   if (isDriverLoggedIn && !isHomeFocused) {
     return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
@@ -759,16 +893,16 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
             {preBookingOn ? (
-            <Pressable
-              style={[styles.spaeterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => {
-                setScheduledTime(null);
-                goToReserve();
-              }}
-            >
-              <Feather name="calendar" size={14} color={colors.foreground} />
-              <Text style={[styles.spaeterText, { color: colors.foreground }]}>Fahrt buchen</Text>
-            </Pressable>
+              <Pressable
+                style={[styles.spaeterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => {
+                  setScheduledTime(null);
+                  goToReserve();
+                }}
+              >
+                <Feather name="calendar" size={14} color={colors.foreground} />
+                <Text style={[styles.spaeterText, { color: colors.foreground }]}>Reservieren</Text>
+              </Pressable>
             ) : null}
           </View>
         )}
@@ -1049,45 +1183,7 @@ export default function HomeScreen() {
       </View>
 
       {/* ── BOTTOM TAB BAR ── */}
-      <View
-        style={[
-          styles.tabBar,
-          {
-            backgroundColor: !destination ? "#F3F4F6" : colors.surface,
-            borderTopColor: !destination ? "#E5E7EB" : colors.border,
-            paddingBottom: bottomPad,
-            height: TAB_HEIGHT + bottomPad,
-            paddingTop: 0,
-            ...(destination
-              ? null
-              : {
-                  shadowOpacity: 0,
-                  shadowRadius: 0,
-                  shadowOffset: { width: 0, height: 0 },
-                  elevation: 0,
-                }),
-          },
-        ]}
-      >
-        {[
-          { icon: "home" as const, label: "Start", active: true, badge: 0, onPress: () => {} },
-          { icon: "calendar" as const, label: "Fahrten", active: false, badge: ridesBadge, onPress: () => router.replace("/my-rides") },
-          { icon: "credit-card" as const, label: "Geldbörse", active: false, badge: 0, onPress: () => router.replace("/wallet") },
-          { icon: "user" as const, label: "Account", active: false, badge: 0, onPress: () => router.replace("/profile") },
-        ].map((tab) => (
-          <Pressable key={tab.label} style={styles.tabItem} onPress={tab.onPress}>
-            <View style={[styles.tabIconWrap, { backgroundColor: tab.active ? colors.primary : colors.muted }]}>
-              <Feather name={tab.icon} size={13} color={tab.active ? "#fff" : "#111111"} />
-              {tab.badge > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={[styles.tabLabel, { color: tab.active ? colors.primary : "#111111" }]}>{tab.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <BottomTabBar active="start" />
 
       {/* ══════════════════════════════════════════════════
           ── VOLLBILD-SUCH-OVERLAY ──
@@ -1419,8 +1515,10 @@ export default function HomeScreen() {
                       setObRegName("");
                       setObRegEmail("");
                       setObRegPhone("");
-                      setObRegSms("");
-                      setOnboardingCustomerStep("register");
+                      setEmailOtpDigits("");
+                      setPendingEmailProofToken(undefined);
+                      setCooldownSecs(0);
+                      setOnboardingCustomerStep("email_enter");
                     }}
                   />
                   <View style={{ gap: isSmallScreen ? 8 : 10 }}>
@@ -1503,7 +1601,7 @@ export default function HomeScreen() {
                     })}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push("/driver/login");
+                      router.push("/driver/login" as Href);
                     }}
                   >
                     <Feather name="log-in" size={22} color="#FFFFFF" />
@@ -1515,7 +1613,7 @@ export default function HomeScreen() {
               </>
             ) : (
             <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
-              {onboardingCustomerStep === "register" ? (
+              {onboardingCustomerStep === "email_enter" ? (
                 <>
                   <Pressable
                     style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
@@ -1524,9 +1622,123 @@ export default function HomeScreen() {
                     <Feather name="arrow-left" size={18} color={colors.foreground} />
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
                   </Pressable>
-                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Konto erstellen</Text>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>E-Mail-Adresse</Text>
                   <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
-                    Mit E-Mail und SMS-Code (Testphase). Anschließend kannst du Fahrten buchen.
+                    Wir schicken einen 6-stelligen Bestätigungscode — Code ist etwa 10 Minuten gültig.
+                  </Text>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="mail" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground }]}
+                      placeholder="E-Mail-Adresse eingeben"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obRegEmail}
+                      onChangeText={setObRegEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                      editable={!emailStartLoading}
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: "#111111",
+                      borderColor: "#111111",
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                      opacity: emailStartLoading ? 0.72 : 1,
+                    }]}
+                    onPress={() => void submitEmailVerificationStart()}
+                    disabled={emailStartLoading}
+                  >
+                    {emailStartLoading
+                      ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                      <Feather name="send" size={20} color="#fff" />
+                      )}
+                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                      Bestätigungscode senden
+                    </Text>
+                  </Pressable>
+                </>
+              ) : onboardingCustomerStep === "verify" ? (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("email_enter")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Bestätigungscode</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    Code eingeben, den wir gerade an <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{obRegEmail.trim() || "deine E-Mail"}</Text> gesendet haben.
+                  </Text>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="hash" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground, letterSpacing: 4 }]}
+                      placeholder="6-stelliger Code"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={emailOtpDigits}
+                      onChangeText={(t) => setEmailOtpDigits(t.replace(/\D/g, "").slice(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      returnKeyType="done"
+                      editable={!emailVerifyLoading}
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: emailOtpDigits.trim().length === 6 ? "#111111" : colors.muted,
+                      borderColor: emailOtpDigits.trim().length === 6 ? "#111111" : colors.border,
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                      opacity: emailVerifyLoading ? 0.75 : 1,
+                    }]}
+                    onPress={() => void submitEmailCodeVerifyAndContinue()}
+                    disabled={emailOtpDigits.trim().length !== 6 || emailVerifyLoading}
+                  >
+                    {emailVerifyLoading ? (
+                      <ActivityIndicator size="small" color={emailOtpDigits.trim().length === 6 ? "#fff" : colors.mutedForeground} />
+                    ) : (
+                      <Feather name="check" size={20} color={emailOtpDigits.trim().length === 6 ? "#fff" : colors.mutedForeground} />
+                    )}
+                    <Text style={[styles.socialBtnText, {
+                      color: emailOtpDigits.trim().length === 6 ? "#fff" : colors.mutedForeground,
+                      fontSize: isSmallScreen ? 15 : 16,
+                    }]}
+                    >
+                      Code prüfen & weiter
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={{ alignSelf: "center", paddingVertical: 10 }}
+                    onPress={() => void submitEmailVerificationResend()}
+                    disabled={cooldownSecs > 0 || emailStartLoading}
+                  >
+                    <Text style={{
+                      fontSize: 14,
+                      fontFamily: "Inter_500Medium",
+                      color: cooldownSecs > 0 ? colors.mutedForeground : colors.primary,
+                    }}
+                    >
+                      {cooldownSecs > 0 ? `Erneut senden in ${cooldownSecs}s` : "Code erneut senden"}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("verify")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Profil</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    E-Mail ist bestätigt. Bitte Namen und Telefon für die Buchung angeben.
                   </Text>
                   <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                     <Feather name="user" size={18} color={colors.mutedForeground} />
@@ -1541,24 +1753,10 @@ export default function HomeScreen() {
                     />
                   </View>
                   <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                    <Feather name="mail" size={18} color={colors.mutedForeground} />
-                    <TextInput
-                      style={[styles.onboardingInputField, { color: colors.foreground }]}
-                      placeholder="E-Mail"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={obRegEmail}
-                      onChangeText={setObRegEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      returnKeyType="next"
-                    />
-                  </View>
-                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                     <Feather name="phone" size={18} color={colors.mutedForeground} />
                     <TextInput
                       style={[styles.onboardingInputField, { color: colors.foreground }]}
-                      placeholder="Telefonnummer (für SMS-Code)"
+                      placeholder="Telefonnummer"
                       placeholderTextColor={colors.mutedForeground}
                       value={obRegPhone}
                       onChangeText={setObRegPhone}
@@ -1572,56 +1770,10 @@ export default function HomeScreen() {
                       borderColor: "#111111",
                       paddingVertical: isSmallScreen ? 13 : 16,
                     }]}
-                    onPress={handleOnboardingRequestSms}
+                    onPress={completeLocalRegistrationDetails}
                   >
-                    <Feather name="message-circle" size={20} color="#fff" />
+                    <Feather name="check" size={20} color="#fff" />
                     <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
-                      SMS-Code anfordern
-                    </Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
-                    onPress={() => setOnboardingCustomerStep("register")}
-                  >
-                    <Feather name="arrow-left" size={18} color={colors.foreground} />
-                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
-                  </Pressable>
-                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>SMS-Bestätigung</Text>
-                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
-                    Echte SMS-Versendung folgt mit Server-Anbindung (z. B. Twilio oder Firebase Phone Auth von Google).{"\n\n"}
-                    Testcode: <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>{DEV_SMS_CODE}</Text>
-                  </Text>
-                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                    <Feather name="hash" size={18} color={colors.mutedForeground} />
-                    <TextInput
-                      style={[styles.onboardingInputField, { color: colors.foreground, letterSpacing: 4 }]}
-                      placeholder="6-stelliger Code"
-                      placeholderTextColor={colors.mutedForeground}
-                      value={obRegSms}
-                      onChangeText={(t) => setObRegSms(t.replace(/\D/g, "").slice(0, 6))}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      returnKeyType="done"
-                    />
-                  </View>
-                  <Pressable
-                    style={[styles.socialBtn, {
-                      backgroundColor: obRegSms.trim().length === 6 ? "#111111" : colors.muted,
-                      borderColor: obRegSms.trim().length === 6 ? "#111111" : colors.border,
-                      paddingVertical: isSmallScreen ? 13 : 16,
-                    }]}
-                    onPress={handleOnboardingCompleteRegister}
-                    disabled={obRegSms.trim().length !== 6}
-                  >
-                    <Feather name="check" size={20} color={obRegSms.trim().length === 6 ? "#fff" : colors.mutedForeground} />
-                    <Text style={[styles.socialBtnText, {
-                      color: obRegSms.trim().length === 6 ? "#fff" : colors.mutedForeground,
-                      fontSize: isSmallScreen ? 15 : 16,
-                    }]}
-                    >
                       Registrierung abschließen
                     </Text>
                   </Pressable>
@@ -1642,7 +1794,7 @@ export default function HomeScreen() {
                   padding={isSmallScreen ? 12 : 14}
                   onAnmeldenPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push("/driver/login");
+                    router.push("/driver/login" as Href);
                   }}
                 />
               </>
@@ -1832,6 +1984,16 @@ const styles = StyleSheet.create({
 
   /* Search pill */
   searchRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6, gap: 10 },
+  spaeterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(5),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
+    borderRadius: rs(50),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  spaeterText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   searchPlaceholder: {
     flex: 1, flexDirection: "row", alignItems: "center",
     gap: 10, paddingHorizontal: 12, paddingVertical: 13,
@@ -1839,9 +2001,6 @@ const styles = StyleSheet.create({
   },
   searchIconCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
   searchPlaceholderText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
-  spaeterBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 50, borderWidth: 1 },
-  spaeterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-
   /* Route card (Option B – zwei Zeilen mit Trennlinie) */
   routeCard: {
     marginHorizontal: 16, marginTop: 10, marginBottom: 2,
