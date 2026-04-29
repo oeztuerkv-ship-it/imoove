@@ -387,7 +387,7 @@ export default function RideDetailScreen() {
                   Dokument vorhanden: {medicalStepStatus.documentPresent ? "Ja" : "Nein"}
                 </Text>
                 <Text style={{ color: colors.foreground, fontSize: 12 }}>
-                  Unterschrift: {medicalStepStatus.signatureDone ? "Ja" : "Nein"}
+                  Unterschrift: {medicalStepStatus.signatureDone ? "bestätigt" : "offen"}
                 </Text>
               </View>
             ) : null}

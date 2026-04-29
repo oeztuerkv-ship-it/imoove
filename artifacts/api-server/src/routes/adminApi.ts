@@ -3584,6 +3584,59 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
   }
 });
 
+adminJson.get("/rides/:id/medical-signature-file", async (req, res, next) => {
+  try {
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const row = await findRideAdminById(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const meta = (row as { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
+    const key =
+      meta && typeof meta === "object" && typeof meta.signature_file_key === "string"
+        ? meta.signature_file_key.trim()
+        : "";
+    if (!key) {
+      res.status(404).json({ error: "signature_not_found" });
+      return;
+    }
+    const uploadRoot = path.resolve(process.cwd(), "uploads", "medical-rides");
+    const normalized = path.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
+    const filePath = path.resolve(uploadRoot, normalized);
+    if (!filePath.startsWith(uploadRoot + path.sep) && filePath !== uploadRoot) {
+      res.status(400).json({ error: "invalid_signature_key" });
+      return;
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "";
+    if (!contentType) {
+      res.status(415).json({ error: "unsupported_signature_type" });
+      return;
+    }
+    try {
+      await readFile(filePath);
+    } catch {
+      res.status(404).json({ error: "signature_not_found" });
+      return;
+    }
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "private, max-age=60");
+    res.sendFile(filePath);
+  } catch (e) {
+    next(e);
+  }
+});
+
 adminJson.get("/rides/:id", async (req, res, next) => {
   try {
     const row = await findRideAdminById(req.params.id);

@@ -27,7 +27,7 @@ import {
   normalizeAccessCodeInput,
   parseAuthorizationSource,
 } from "../domain/rideAuthorization";
-import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
+import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
 import { effectiveTaxiGrossEur } from "../lib/financeCalculationService";
@@ -417,7 +417,7 @@ router.get("/rides", async (_req, res, next) => {
         });
       }
     }
-    const publicRows = rows.map(stripPartnerOnlyRideFields);
+    const publicRows = rows.map((ride) => toCustomerRideView(stripPartnerOnlyRideFields(ride)));
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
   } catch (e) {
@@ -621,6 +621,94 @@ router.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, asy
       payload: { fileKey: rel },
     });
     res.json({ ok: true, fileKey: rel });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    const body = req.body as { imageBase64?: unknown };
+    const b64 = typeof body.imageBase64 === "string" ? body.imageBase64.trim() : "";
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    if (!b64) {
+      res.status(400).json({ ok: false, error: "image_base64_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const companyId = (ride.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(403).json({ ok: false, error: "ride_company_required" });
+      return;
+    }
+    if (companyId !== auth.companyId) {
+      res.status(403).json({ ok: false, error: "wrong_company" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver) {
+      res.status(403).json({ ok: false, error: "driver_not_assigned" });
+      return;
+    }
+    if (assignedDriver !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta) {
+      res.status(400).json({ ok: false, error: "no_medical_meta" });
+      return;
+    }
+    if (meta.signature_done === true) {
+      res.status(409).json({ ok: false, error: "signature_already_saved" });
+      return;
+    }
+    const decoded = decodeValidatedMedicalTransportImage(b64);
+    if (!decoded.ok) {
+      const code = decoded.error;
+      const status = code === "payload_too_large" ? 413 : 400;
+      res.status(status).json({ ok: false, error: code });
+      return;
+    }
+    const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const rel = path.join(companyKey, "rides", rideId, `signature-${randomUUID()}.${decoded.ext}`).replace(/\\/g, "/");
+    const dest = path.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
+    await mkdir(path.dirname(dest), { recursive: true });
+    await writeFile(dest, decoded.buffer);
+    const signedAt = new Date().toISOString();
+    const merged = mergeMedicalPartnerMeta(ride, {
+      signature_done: true,
+      signature_file_key: rel,
+      signature_signed_at: signedAt,
+      signature_signed_by_driver_id: auth.fleetDriverId,
+    });
+    const nextRide = await updateRide(rideId, {
+      partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
+    });
+    if (!nextRide) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "medical_signature_captured",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: { fileKey: rel },
+    });
+    res.json({ ok: true, fileKey: rel, signedAt });
   } catch (e) {
     next(e);
   }

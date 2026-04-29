@@ -7,6 +7,7 @@ import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import SignatureScreen from "react-native-signature-canvas";
 import {
   ActivityIndicator,
   Alert,
@@ -1045,6 +1046,7 @@ function MedicalRideProofActions({
 }) {
   const meta = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
   const [camOpen, setCamOpen] = useState(false);
+  const [signatureOpen, setSignatureOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [perm, requestPerm] = useCameraPermissions();
   const scannedRef = useRef(false);
@@ -1054,6 +1056,7 @@ function MedicalRideProofActions({
   }, [camOpen]);
 
   if (!meta || meta.medical_ride !== true) return null;
+  const signatureDone = meta.signature_done === true;
 
   async function postVerifyToken(token: string, rideId: string) {
     const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(rideId)}/medical/verify-qr`, {
@@ -1148,6 +1151,38 @@ function MedicalRideProofActions({
     }
   }
 
+  async function saveSignature(imageBase64: string) {
+    const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(req.id)}/medical/signature`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fleetAuthToken}`,
+      },
+      body: JSON.stringify({ imageBase64 }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!res.ok || !data.ok) {
+      throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+    }
+  }
+
+  async function onSignatureOk(sigBase64: string) {
+    if (!sigBase64 || busy || signatureDone) return;
+    setBusy(true);
+    try {
+      const dataUrl = sigBase64.startsWith("data:image/") ? sigBase64 : `data:image/png;base64,${sigBase64}`;
+      await saveSignature(dataUrl);
+      setSignatureOpen(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await onUpdated();
+      Alert.alert("Unterschrift", "Unterschrift gespeichert.");
+    } catch (e) {
+      Alert.alert("Unterschrift", e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
@@ -1182,18 +1217,25 @@ function MedicalRideProofActions({
             <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>Transportschein fotografieren</Text>
           </Pressable>
           <Pressable
-            onPress={() =>
-              Alert.alert("Unterschrift", "Unterschrift holen — folgt als nächster Schritt.", [{ text: "OK" }])
-            }
+            onPress={() => {
+              if (signatureDone) {
+                Alert.alert("Unterschrift", "Unterschrift ist bereits erledigt.");
+                return;
+              }
+              setSignatureOpen(true);
+            }}
+            disabled={busy}
             style={({ pressed }) => ({
-              backgroundColor: "#E2E8F0",
+              backgroundColor: signatureDone ? "#DCFCE7" : "#E2E8F0",
               paddingVertical: 10,
               paddingHorizontal: 14,
               borderRadius: 10,
-              opacity: pressed ? 0.9 : 1,
+              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
             })}
           >
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#475569" }}>Unterschrift holen</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: signatureDone ? "#166534" : "#475569" }}>
+              {signatureDone ? "Unterschrift erledigt" : "Unterschrift holen"}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -1220,6 +1262,50 @@ function MedicalRideProofActions({
             }}
           >
             <Text style={{ fontFamily: "Inter_700Bold", color: "#111" }}>Schließen</Text>
+          </Pressable>
+        </View>
+      </Modal>
+      <Modal visible={signatureOpen} animationType="slide" onRequestClose={() => setSignatureOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+          <View style={{ paddingTop: 18, paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#CBD5E1" }}>
+            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A" }}>Unterschrift holen</Text>
+            <Text style={{ marginTop: 4, fontSize: 12, color: "#475569", fontFamily: "Inter_500Medium" }}>
+              Fahrgast unterschreibt auf dem Display (nur Nachweis, keine medizinischen Inhalte).
+            </Text>
+          </View>
+          <View style={{ flex: 1, margin: 12, borderRadius: 12, overflow: "hidden", backgroundColor: "#fff", borderWidth: 1, borderColor: "#CBD5E1" }}>
+            <SignatureScreen
+              onOK={(sig) => {
+                void onSignatureOk(sig);
+              }}
+              onEmpty={() => Alert.alert("Unterschrift", "Bitte zuerst unterschreiben.")}
+              webStyle={`
+                .m-signature-pad { box-shadow: none; border: none; }
+                .m-signature-pad--body { border: none; }
+                .m-signature-pad--footer { display: flex; gap: 8px; padding: 10px; }
+                button { background: #e2e8f0; color: #0f172a; border: none; border-radius: 8px; font-size: 13px; }
+                button.save { background: #16a34a; color: #fff; }
+              `}
+              descriptionText=""
+              clearText="Löschen"
+              confirmText="Speichern"
+              autoClear={true}
+              imageType="image/png"
+            />
+          </View>
+          <Pressable
+            onPress={() => setSignatureOpen(false)}
+            style={{
+              margin: 12,
+              backgroundColor: "#fff",
+              paddingVertical: 12,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: "#CBD5E1",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ fontFamily: "Inter_700Bold", color: "#0F172A" }}>Schließen</Text>
           </Pressable>
         </View>
       </Modal>

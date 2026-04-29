@@ -213,6 +213,7 @@ export default function RideDetailPage({ rideId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState("");
 
   const load = useCallback(async () => {
     if (!rideId?.trim()) {
@@ -242,6 +243,49 @@ export default function RideDetailPage({ rideId, onBack }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let revoked = false;
+    const ride = data?.ride;
+    const signatureKey =
+      ride?.partnerBookingMeta &&
+      typeof ride.partnerBookingMeta === "object" &&
+      typeof ride.partnerBookingMeta.signature_file_key === "string"
+        ? ride.partnerBookingMeta.signature_file_key.trim()
+        : "";
+    if (!ride?.id || !signatureKey) {
+      setSignaturePreviewUrl("");
+      return () => {
+        revoked = true;
+      };
+    }
+    void (async () => {
+      try {
+        const res = await fetch(`${RIDES_LIST_URL}/${encodeURIComponent(ride.id)}/medical-signature-file`, {
+          headers: adminApiHeaders(),
+        });
+        if (!res.ok) {
+          setSignaturePreviewUrl("");
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        if (revoked) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setSignaturePreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return url;
+        });
+      } catch {
+        setSignaturePreviewUrl("");
+      }
+    })();
+    return () => {
+      revoked = true;
+    };
+  }, [data?.ride]);
 
   const r = data?.ride;
   const evs = data?.events ?? [];
@@ -360,6 +404,18 @@ export default function RideDetailPage({ rideId, onBack }) {
                   </div>
                 ))}
               </div>
+              {signaturePreviewUrl ? (
+                <div style={{ padding: "0 16px 16px" }}>
+                  <p className="admin-ride-rec-kv__k" style={{ marginBottom: 8 }}>
+                    Signaturbild
+                  </p>
+                  <img
+                    src={signaturePreviewUrl}
+                    alt="Signatur Krankenfahrt"
+                    style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid #cbd5e1", background: "#fff" }}
+                  />
+                </div>
+              ) : null}
             </section>
           ) : null}
 

@@ -77,6 +77,13 @@ function seriesHint(ride) {
   return `Serie ${String(m.seriesId).slice(0, 12)}… (${seq}/${tot})`;
 }
 
+function signaturePartnerStatus(ride) {
+  const meta = ride?.partnerBookingMeta;
+  if (!meta || typeof meta !== "object") return "—";
+  if (meta.medical_ride !== true) return "—";
+  return meta.signature_done === true ? "Unterschrift vorhanden" : "Unterschrift offen";
+}
+
 function formatMoney(v) {
   if (v == null || v === "") return "—";
   const n = Number(v);
@@ -342,6 +349,7 @@ export default function CompanyRidesPage() {
                   <th>Preis</th>
                   <th>Final</th>
                   <th>Referenz</th>
+                  <th>Nachweis</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,6 +366,7 @@ export default function CompanyRidesPage() {
                     <td>{formatMoney(r.estimatedFare)}</td>
                     <td className="panel-table__muted">{formatMoney(r.finalFare)}</td>
                     <td className="panel-table__muted">{r.billingReference || "—"}</td>
+                    <td className="panel-table__muted">{signaturePartnerStatus(r)}</td>
                   </tr>
                 ))}
               </tbody>

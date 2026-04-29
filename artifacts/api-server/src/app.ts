@@ -113,7 +113,9 @@ app.use(
 app.use((req, res, next) => {
   const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
   const medicalUpload =
-    req.method === "POST" && u.includes("/rides/") && u.includes("/medical/transport-document");
+    req.method === "POST" &&
+    u.includes("/rides/") &&
+    (u.includes("/medical/transport-document") || u.includes("/medical/signature"));
   const limit = medicalUpload ? "6mb" : "200kb";
   express.json({ limit })(req, res, next);
 });
