@@ -11,6 +11,7 @@ import fleetPanelApiRouter from "./fleetPanelApi";
 import insurerPanelApiRouter from "./insurerPanelApi";
 import publicHomepageApiRouter from "./publicHomepageApi";
 import appConfigApiRouter from "./appConfigApi";
+import customerApiRouter from "./customerApi";
 
 const router: IRouter = Router();
 
@@ -25,6 +26,7 @@ router.use(insurerPanelApiRouter);
 router.use(publicHomepageApiRouter);
 router.use(panelApiRouter);
 router.use(adminApiRouter);
+router.use(customerApiRouter);
 router.use(ridesRouter);
 
 export default router;

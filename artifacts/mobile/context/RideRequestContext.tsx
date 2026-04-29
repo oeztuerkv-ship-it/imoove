@@ -168,6 +168,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
 const API_BASE = getApiBaseUrl();
 const PASSENGER_ID_KEY = "@Onroda_passenger_id";
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
+const USER_PROFILE_KEY = "@taxi24_user_profile";
 const ENABLE_STORNO_TRACE = true;
 
 function uuid(): string {
@@ -384,6 +385,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     const ridesFromPayload = (payload: unknown): RideRequest[] => {
       const data: any[] = Array.isArray(payload)
         ? payload
+        : Array.isArray((payload as { items?: unknown })?.items)
+          ? ((payload as { items: any[] }).items ?? [])
+          : (payload as { item?: unknown })?.item && typeof (payload as { item?: unknown }).item === "object"
+            ? [((payload as { item: any }).item)]
         : Array.isArray((payload as { rides?: unknown })?.rides)
           ? ((payload as { rides: any[] }).rides ?? [])
           : [];
@@ -433,7 +438,30 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         return;
       }
 
-      const res = await fetch(`${API_BASE}/rides`, { cache: "no-store" });
+      const rawUserProfile = await AsyncStorage.getItem(USER_PROFILE_KEY).catch(() => null);
+      let customerSessionToken: string | null = null;
+      if (rawUserProfile) {
+        try {
+          const parsed = JSON.parse(rawUserProfile) as { sessionToken?: string };
+          if (typeof parsed.sessionToken === "string" && parsed.sessionToken.trim().length > 0) {
+            customerSessionToken = parsed.sessionToken.trim();
+          }
+        } catch {
+          /* ignore invalid profile json */
+        }
+      }
+      if (!customerSessionToken) {
+        // Kein Kunden-Token: keine customer-gebundenen Fahrten laden.
+        setRequests([]);
+        setScheduledPoolRequests([]);
+        setIsConnected(true);
+        lastCountRef.current = 0;
+        return;
+      }
+      const res = await fetch(`${API_BASE}/customer/v1/rides`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${customerSessionToken}` },
+      });
       if (!res.ok) throw new Error("fetch failed");
       const normalized = ridesFromPayload(await res.json());
       setRequests(normalized);

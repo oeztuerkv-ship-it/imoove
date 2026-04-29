@@ -355,6 +355,25 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
   return rows.map(rowToRide);
 }
 
+/** Kunde: nur eigene Fahrten über `passenger_id`. */
+export async function listRidesForPassenger(passengerId: string): Promise<RideRequest[]> {
+  const pid = passengerId.trim();
+  if (!pid) return [];
+  const db = getDb();
+  if (!db) {
+    return memoryRides
+      .filter((r) => (r.passengerId ?? "").trim() === pid)
+      .slice()
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+  const rows = await db
+    .select()
+    .from(ridesTable)
+    .where(eq(ridesTable.passenger_id, pid))
+    .orderBy(desc(ridesTable.created_at));
+  return rows.map(rowToRide);
+}
+
 /** Letzte Fahrt des Fahrers im Mandanten (Näherung: kein Fahrzeug-FK auf rides). */
 export type LastRideSummary = {
   id: string;
@@ -542,6 +561,25 @@ export async function findRide(id: string): Promise<RideRequest | null> {
     return memoryRides.find((x) => x.id === id) ?? null;
   }
   const rows = await db.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
+  return rows[0] ? rowToRide(rows[0]) : null;
+}
+
+/** Kunde: Einzel-Fahrt, nur wenn sie dem Passenger gehört. */
+export async function findRideForPassenger(id: string, passengerId: string): Promise<RideRequest | null> {
+  const rideId = id.trim();
+  const pid = passengerId.trim();
+  if (!rideId || !pid) return null;
+  const db = getDb();
+  if (!db) {
+    const row = memoryRides.find((x) => x.id === rideId);
+    if (!row) return null;
+    return (row.passengerId ?? "").trim() === pid ? row : null;
+  }
+  const rows = await db
+    .select()
+    .from(ridesTable)
+    .where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid)))
+    .limit(1);
   return rows[0] ? rowToRide(rows[0]) : null;
 }
 

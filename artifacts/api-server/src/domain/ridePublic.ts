@@ -40,3 +40,121 @@ export function stripPartnerOnlyRideFields(r: RideRequest): RideRequest {
     partnerBookingMeta: driverVisibleMedicalMeta,
   } as RideRequest;
 }
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  return v as Record<string, unknown>;
+}
+
+function medicalStepStatus(meta: Record<string, unknown> | null) {
+  const qrDone = meta?.qr_done === true;
+  const signatureDone = meta?.signature_done === true;
+  const documentPresent =
+    meta?.transport_document_status === "uploaded" ||
+    (typeof meta?.transport_document_file_key === "string" &&
+      meta.transport_document_file_key.trim().length > 0);
+  return {
+    qrConfirmed: qrDone,
+    documentPresent,
+    signatureDone,
+  };
+}
+
+function withoutBillingFields(r: RideRequest): RideRequest {
+  const {
+    estimatedFare: _estimatedFare,
+    finalFare: _finalFare,
+    billingReference: _billingReference,
+    tariffSnapshot: _tariffSnapshot,
+    ...rest
+  } = r;
+  return {
+    ...rest,
+    // Fahrer-/Kundenansicht bekommt keine Abrechnungsdetails.
+    estimatedFare: 0,
+    finalFare: null,
+    billingReference: null,
+    tariffSnapshot: null,
+  } as RideRequest;
+}
+
+/** Kunde: nur medizinische Schritt-Status, keine internen Prüf-/Billing-Daten. */
+export function toCustomerRideView(r: RideRequest): RideRequest {
+  const base = stripPartnerOnlyRideFields(withoutBillingFields(r));
+  const {
+    companyId: _companyId,
+    createdByPanelUserId: _createdByPanelUserId,
+    accessCodeId: _accessCodeId,
+    accessCodeNormalizedSnapshot: _accessCodeNormalizedSnapshot,
+    accessCodeSummary: _accessCodeSummary,
+    accessCodeTripOutcome: _accessCodeTripOutcome,
+    accessCodeDefinitionState: _accessCodeDefinitionState,
+    ...publicBase
+  } = base;
+  const meta = asRecord(base.partnerBookingMeta);
+  if (!meta || meta.medical_ride !== true) return publicBase as RideRequest;
+  return {
+    ...publicBase,
+    partnerBookingMeta: {
+      medical_ride: true,
+      stepStatus: medicalStepStatus(meta),
+    },
+  } as RideRequest;
+}
+
+/** Fahrer: Schrittstatus sichtbar, aber keine Abrechnungsdetails. */
+export function toDriverRideView(r: RideRequest): RideRequest {
+  const base = stripPartnerOnlyRideFields(withoutBillingFields(r));
+  const meta = asRecord(base.partnerBookingMeta);
+  if (!meta || meta.medical_ride !== true) return base;
+  return {
+    ...base,
+    partnerBookingMeta: {
+      medical_ride: true,
+      stepStatus: medicalStepStatus(meta),
+    },
+  } as RideRequest;
+}
+
+/** Partner: nur eigene Fahrten (Route-Filter), plus Validierungs-Log und Billing-Status. */
+export function toPartnerRideView(r: RideRequest): RideRequest {
+  const meta = asRecord(r.partnerBookingMeta);
+  if (!meta || meta.medical_ride !== true) return r;
+  const validationLog = [
+    meta.qr_verified_at
+      ? {
+          type: "qr_verified",
+          at: meta.qr_verified_at,
+          by: meta.qr_verified_by_driver_id ?? null,
+        }
+      : null,
+    meta.transport_document_uploaded_at
+      ? {
+          type: "transport_document_uploaded",
+          at: meta.transport_document_uploaded_at,
+          by: meta.transport_document_uploaded_by_driver_id ?? null,
+        }
+      : null,
+    meta.signature_signed_at
+      ? {
+          type: "signature_captured",
+          at: meta.signature_signed_at,
+          by: meta.signature_signed_by_driver_id ?? null,
+        }
+      : null,
+  ].filter(Boolean);
+  return {
+    ...r,
+    partnerBookingMeta: {
+      ...meta,
+      validationLog,
+      billingStatus: {
+        ready: meta.billing_ready === true,
+        missingReasons: Array.isArray(meta.billing_missing_reasons)
+          ? meta.billing_missing_reasons
+          : [],
+      },
+      exportEligible: meta.billing_ready === true,
+    },
+  } as RideRequest;
+}

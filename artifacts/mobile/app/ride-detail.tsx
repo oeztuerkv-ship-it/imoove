@@ -106,6 +106,22 @@ export default function RideDetailScreen() {
       ),
     [reqForMedical],
   );
+  const medicalStepStatus = useMemo(() => {
+    const meta =
+      reqForMedical?.partnerBookingMeta && typeof reqForMedical.partnerBookingMeta === "object"
+        ? (reqForMedical.partnerBookingMeta as Record<string, unknown>)
+        : null;
+    const raw =
+      meta && meta.stepStatus && typeof meta.stepStatus === "object"
+        ? (meta.stepStatus as Record<string, unknown>)
+        : null;
+    if (!raw) return null;
+    return {
+      qrConfirmed: raw.qrConfirmed === true,
+      documentPresent: raw.documentPresent === true,
+      signatureDone: raw.signatureDone === true,
+    };
+  }, [reqForMedical]);
 
   const [category, setCategory] = useState<SupportCategory>("other");
   const [message, setMessage] = useState("");
@@ -360,6 +376,21 @@ export default function RideDetailScreen() {
             ) : (
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>QR derzeit nicht verfügbar.</Text>
             )}
+
+            {medicalStepStatus ? (
+              <View style={[styles.previewBox, { backgroundColor: colors.background, borderColor: colors.border, marginTop: 12 }]}>
+                <Text style={[styles.k, { color: colors.mutedForeground, marginBottom: 6 }]}>Nachweisstatus</Text>
+                <Text style={{ color: colors.foreground, fontSize: 12, marginBottom: 4 }}>
+                  QR bestätigt: {medicalStepStatus.qrConfirmed ? "Ja" : "Nein"}
+                </Text>
+                <Text style={{ color: colors.foreground, fontSize: 12, marginBottom: 4 }}>
+                  Dokument vorhanden: {medicalStepStatus.documentPresent ? "Ja" : "Nein"}
+                </Text>
+                <Text style={{ color: colors.foreground, fontSize: 12 }}>
+                  Unterschrift: {medicalStepStatus.signatureDone ? "Ja" : "Nein"}
+                </Text>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
