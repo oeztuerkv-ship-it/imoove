@@ -84,6 +84,19 @@ function signaturePartnerStatus(ride) {
   return meta.signature_done === true ? "Unterschrift vorhanden" : "Unterschrift offen";
 }
 
+function invoiceStatusLabel(ride) {
+  const meta = ride?.partnerBookingMeta;
+  if (!meta || typeof meta !== "object" || meta.medical_ride !== true) return "—";
+  const s = typeof meta.invoice_status === "string" ? meta.invoice_status : "draft";
+  const map = {
+    draft: "Entwurf",
+    created: "Rechnung erstellt",
+    sent: "Versendet",
+    paid: "Bezahlt",
+  };
+  return map[s] ?? s;
+}
+
 function formatMoney(v) {
   if (v == null || v === "") return "—";
   const n = Number(v);
@@ -114,6 +127,7 @@ export default function CompanyRidesPage() {
   const [payerKind, setPayerKind] = useState("company");
   const [q, setQ] = useState("");
   const [billingReference, setBillingReference] = useState("");
+  const [busyInvoiceRideId, setBusyInvoiceRideId] = useState("");
 
   const filtersRef = useRef({
     createdFrom,
@@ -240,6 +254,40 @@ export default function CompanyRidesPage() {
     URL.revokeObjectURL(url);
   }, [rides, createdFrom, createdTo]);
 
+  const onCreateInvoice = useCallback(
+    async (rideId) => {
+      if (!token || !rideId) return;
+      setBusyInvoiceRideId(rideId);
+      setErr("");
+      setInfo("");
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides/${encodeURIComponent(rideId)}/create-invoice`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          const code = typeof data?.error === "string" ? data.error : "";
+          if (code === "ride_not_ready_for_billing") {
+            setErr("Fahrt ist noch nicht abrechnungsbereit.");
+          } else if (code === "invoice_already_created") {
+            setErr("Für diese Fahrt wurde bereits eine Rechnung erstellt.");
+          } else {
+            setErr(`Rechnung konnte nicht erstellt werden (HTTP ${res.status}).`);
+          }
+          return;
+        }
+        setInfo(`Rechnung erstellt: ${data?.invoice?.number ?? "OK"}`);
+        await loadRides();
+      } catch {
+        setErr("Netzwerkfehler beim Erstellen der Rechnung.");
+      } finally {
+        setBusyInvoiceRideId("");
+      }
+    },
+    [token, loadRides],
+  );
+
   const empty = !loading && rides.length === 0 && !err;
 
   const companyLine = useMemo(() => user?.companyName || "Ihr Unternehmen", [user?.companyName]);
@@ -350,6 +398,7 @@ export default function CompanyRidesPage() {
                   <th>Final</th>
                   <th>Referenz</th>
                   <th>Nachweis</th>
+                  <th>Rechnung</th>
                 </tr>
               </thead>
               <tbody>
@@ -367,6 +416,25 @@ export default function CompanyRidesPage() {
                     <td className="panel-table__muted">{formatMoney(r.finalFare)}</td>
                     <td className="panel-table__muted">{r.billingReference || "—"}</td>
                     <td className="panel-table__muted">{signaturePartnerStatus(r)}</td>
+                    <td className="panel-table__muted">
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <span>{invoiceStatusLabel(r)}</span>
+                        {r?.partnerBookingMeta?.medical_ride === true && r?.partnerBookingMeta?.billing_ready === true ? (
+                          <button
+                            type="button"
+                            className="panel-btn-secondary"
+                            disabled={busyInvoiceRideId === r.id || ["created", "sent", "paid"].includes(r?.partnerBookingMeta?.invoice_status)}
+                            onClick={() => void onCreateInvoice(r.id)}
+                          >
+                            {["created", "sent", "paid"].includes(r?.partnerBookingMeta?.invoice_status)
+                              ? "Rechnung erstellt"
+                              : busyInvoiceRideId === r.id
+                                ? "Erstelle …"
+                                : "Rechnung erstellen"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

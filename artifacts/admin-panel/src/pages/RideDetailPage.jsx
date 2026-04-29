@@ -147,6 +147,7 @@ function medicalMetaViewModel(meta) {
     missing_approval: "Genehmigung fehlt",
     missing_insurance: "Krankenkasse fehlt",
     missing_cost_center: "Kostenstelle/Vorgang fehlt",
+    approval_proof_pending: "Genehmigungsnachweis später nachreichen",
   };
   const approval = typeof meta.approval_status === "string" ? meta.approval_status : "pending";
   const payer = typeof meta.payer_kind === "string" ? meta.payer_kind : "insurance";
@@ -165,6 +166,12 @@ function medicalMetaViewModel(meta) {
   const docUploadedAt = typeof meta.transport_document_uploaded_at === "string" ? meta.transport_document_uploaded_at.trim() : "";
   const sigKey = typeof meta.signature_file_key === "string" ? meta.signature_file_key.trim() : "";
   const sigSignedAt = typeof meta.signature_signed_at === "string" ? meta.signature_signed_at.trim() : "";
+  const invoiceStatus = typeof meta.invoice_status === "string" ? meta.invoice_status.trim() : "draft";
+  const invoiceNumber = typeof meta.invoice_number === "string" ? meta.invoice_number.trim() : "";
+  const invoiceCreatedAt = typeof meta.invoice_created_at === "string" ? meta.invoice_created_at.trim() : "";
+  const invoiceSentAt = typeof meta.invoice_sent_at === "string" ? meta.invoice_sent_at.trim() : "";
+  const invoicePaidAt = typeof meta.invoice_paid_at === "string" ? meta.invoice_paid_at.trim() : "";
+  const invoiceFileKey = typeof meta.invoice_pdf_file_key === "string" ? meta.invoice_pdf_file_key.trim() : "";
   const missing = Array.isArray(meta.billing_missing_reasons) ? meta.billing_missing_reasons : [];
   const billingReady = meta.billing_ready === true;
   const grid = [
@@ -181,6 +188,12 @@ function medicalMetaViewModel(meta) {
     ["signature_done", sigDone ? "ja" : "nein"],
     ["signature_file_key", sigKey || "—"],
     ["signature_signed_at", sigSignedAt || "—"],
+    ["invoice_status", invoiceStatus || "draft"],
+    ["invoice_number", invoiceNumber || "—"],
+    ["invoice_created_at", invoiceCreatedAt || "—"],
+    ["invoice_sent_at", invoiceSentAt || "—"],
+    ["invoice_paid_at", invoicePaidAt || "—"],
+    ["invoice_pdf_file_key", invoiceFileKey || "—"],
     ["qr_required", qrReq ? "ja" : "nein"],
     ["qr_done", qrDone ? "ja" : "nein"],
     ["qr_verified_at", qrVerifiedAt || "—"],

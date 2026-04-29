@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Router, type IRouter, type Response } from "express";
 import type { RideRequest } from "../domain/rideRequest";
 import {
@@ -55,6 +57,7 @@ import {
   listRidesForCompany,
   listRidesForCompanyFiltered,
   type CompanyRideListFilters,
+  updateRide,
 } from "../db/ridesData";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
@@ -70,6 +73,7 @@ import { initialPanelRideStatus } from "../lib/dispatchStatus";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
 import { DEFAULT_AUTHORIZATION_SOURCE } from "../domain/rideAuthorization";
+import { toPartnerRideView } from "../domain/ridePublic";
 import type { PanelModuleId } from "../domain/panelModules";
 import { accessCodeTripOutcomeFromRide, computeAccessCodeDefinitionState } from "../domain/accessCodeTrace";
 import { resolveEffectivePanelModules } from "../domain/panelModules";
@@ -86,6 +90,61 @@ import { denyUnlessPanelPermission } from "../middleware/panelAccess";
 import { requirePanelAuth, type PanelAuthRequest } from "../middleware/requirePanelAuth";
 
 const router: IRouter = Router();
+const INVOICE_UPLOAD_ROOT =
+  (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() ||
+  path.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
+
+function invoiceLine(text: string): string {
+  return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function buildSimpleInvoicePdf(lines: string[]): Buffer {
+  const content = [
+    "BT",
+    "/F1 11 Tf",
+    "50 780 Td",
+    ...lines.flatMap((line, idx) =>
+      idx === 0 ? [`(${invoiceLine(line)}) Tj`] : ["0 -16 Td", `(${invoiceLine(line)}) Tj`],
+    ),
+    "ET",
+  ].join("\n");
+  const contentBytes = Buffer.from(content, "utf8");
+  const objects = [
+    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj",
+    `4 0 obj << /Length ${contentBytes.length} >> stream\n${content}\nendstream endobj`,
+    "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [0];
+  for (const obj of objects) {
+    offsets.push(Buffer.byteLength(pdf, "utf8"));
+    pdf += `${obj}\n`;
+  }
+  const xrefOffset = Buffer.byteLength(pdf, "utf8");
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let i = 1; i < offsets.length; i += 1) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  return Buffer.from(pdf, "utf8");
+}
+
+function nextInvoiceNumber(existing: string[], date = new Date()): string {
+  const year = date.getUTCFullYear();
+  const prefix = `ONR-${year}-`;
+  let maxSeq = 0;
+  for (const item of existing) {
+    const t = item.trim();
+    if (!t.startsWith(prefix)) continue;
+    const seqPart = t.slice(prefix.length);
+    const n = Number(seqPart);
+    if (Number.isFinite(n) && n > maxSeq) maxSeq = n;
+  }
+  return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
+}
 
 /** Kein Browser-/Proxy-Caching: sonst 304 + veraltete Firmen-/Session-Daten trotz neuem JWT-Inhalt. */
 router.use((_req, res, next) => {
@@ -958,7 +1017,7 @@ router.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const ridesOut = rides.map((r) => ({
       ...r,
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
-    }));
+    })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({ ok: true, rides: withTrace });
   } catch (e) {
@@ -986,12 +1045,129 @@ router.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) =
     const ridesOut = list.map((r) => ({
       ...r,
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
-    }));
+    })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({
       ok: true,
       filters: parsed.filters,
       rides: withTrace,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride || ride.companyId !== ctx.claims.companyId) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const meta =
+      ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object"
+        ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
+        : {};
+    if (meta.medical_ride !== true) {
+      res.status(400).json({ error: "ride_not_medical" });
+      return;
+    }
+    if (meta.billing_ready !== true) {
+      res.status(409).json({ error: "ride_not_ready_for_billing" });
+      return;
+    }
+    const existingStatus = typeof meta.invoice_status === "string" ? meta.invoice_status : "";
+    if (existingStatus === "created" || existingStatus === "sent" || existingStatus === "paid") {
+      res.status(409).json({ error: "invoice_already_created" });
+      return;
+    }
+    const allCompanyRides = await listRidesForCompany(ctx.claims.companyId);
+    const usedInvoiceNumbers = allCompanyRides
+      .map((r) =>
+        r.partnerBookingMeta && typeof r.partnerBookingMeta === "object"
+          ? (r.partnerBookingMeta as Record<string, unknown>).invoice_number
+          : null,
+      )
+      .filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+    const invoiceNumber = nextInvoiceNumber(usedInvoiceNumbers);
+    const createdAt = new Date().toISOString();
+    const gross = Number(meta.gross_ride_amount ?? ride.finalFare ?? ride.estimatedFare ?? 0);
+    const commissionRate = Number(meta.onroda_commission_rate ?? 0.07);
+    const commissionAmount = Number(
+      meta.onroda_commission_amount ?? Math.round((gross * commissionRate + Number.EPSILON) * 100) / 100,
+    );
+    const payoutAmount = Number(meta.partner_payout_amount ?? Math.max(0, gross - commissionAmount));
+    const insurer = typeof meta.insurance_name === "string" ? meta.insurance_name : "";
+    const costCenter = typeof meta.cost_center === "string" ? meta.cost_center : "";
+    const companyName = ctx.profile.companyName || "Taxiunternehmen";
+    const companyAddress = "siehe Partner-Stammdaten";
+    const pdfLines = [
+      `Rechnung ${invoiceNumber}`,
+      `Unternehmen: ${companyName}`,
+      `Adresse: ${companyAddress || "n. a."}`,
+      `Fahrgast: ${ride.customerName || "n. a."}`,
+      `Datum: ${ride.scheduledAt || ride.createdAt}`,
+      `Strecke: ${ride.from} -> ${ride.to}`,
+      `Preis: ${gross.toFixed(2)} EUR`,
+      `Krankenkasse: ${insurer || "n. a."}`,
+      `Kostenstelle: ${costCenter || "n. a."}`,
+      `Nachweis/Ride-ID: ${ride.id}`,
+      `ONRODA Provision: ${(commissionRate * 100).toFixed(2)} %`,
+      `Provision Betrag: ${commissionAmount.toFixed(2)} EUR`,
+      `Auszahlung: ${payoutAmount.toFixed(2)} EUR`,
+      "Hinweis: Rechnung im Namen des Taxiunternehmens, ohne automatische Kassen-Übermittlung.",
+    ];
+    const companyKey = ctx.claims.companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const relKey = path.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+    const absPath = path.join(INVOICE_UPLOAD_ROOT, relKey);
+    await mkdir(path.dirname(absPath), { recursive: true });
+    await writeFile(absPath, buildSimpleInvoicePdf(pdfLines));
+    const nextMeta: Record<string, unknown> = {
+      ...meta,
+      gross_ride_amount: gross,
+      onroda_commission_rate: commissionRate,
+      onroda_commission_amount: commissionAmount,
+      partner_payout_amount: payoutAmount,
+      invoice_status: "created",
+      invoice_number: invoiceNumber,
+      invoice_created_at: createdAt,
+      invoice_pdf_file_key: relKey,
+      invoice_sent_at: typeof meta.invoice_sent_at === "string" ? meta.invoice_sent_at : "",
+      invoice_paid_at: typeof meta.invoice_paid_at === "string" ? meta.invoice_paid_at : "",
+    };
+    const updated = await updateRide(ride.id, {
+      partnerBookingMeta: nextMeta as RideRequest["partnerBookingMeta"],
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "billing.invoice_created",
+      subjectType: "ride",
+      subjectId: ride.id,
+      meta: { invoiceNumber },
+    });
+    res.json({
+      ok: true,
+      invoice: {
+        status: "created",
+        number: invoiceNumber,
+        createdAt,
+        pdfFileKey: relKey,
+      },
     });
   } catch (e) {
     next(e);
@@ -1218,7 +1394,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         return;
       }
       const saved = await findRide(newReq.id);
-      const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0]! : newReq;
+      const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]!) : toPartnerRideView(newReq);
       if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
       await insertPanelAuditLog({
         id: randomUUID(),
@@ -1404,7 +1580,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       return;
     }
     const saved = await findRide(newReq.id);
-    const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0]! : newReq;
+    const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]!) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
       id: randomUUID(),
@@ -1653,9 +1829,9 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
     }
 
     const [savedOut, savedRet] = await Promise.all([findRide(idOut), findRide(idRet)]);
-    const enriched = await enrichPanelRidesForResponse(
+    const enriched = (await enrichPanelRidesForResponse(
       [savedOut, savedRet].filter((x): x is RideRequest => Boolean(x)),
-    );
+    )).map(toPartnerRideView);
     for (const r of [savedOut, savedRet]) {
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
@@ -1886,7 +2062,9 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
     }
 
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
-    const enriched = await enrichPanelRidesForResponse(loaded.filter((x): x is RideRequest => Boolean(x)));
+    const enriched = (await enrichPanelRidesForResponse(loaded.filter((x): x is RideRequest => Boolean(x)))).map(
+      toPartnerRideView,
+    );
     for (const r of loaded) {
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
@@ -1931,7 +2109,7 @@ router.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) =
     const ridesOut = list.map((r) => ({
       ...r,
       createdByUsername: r.createdByPanelUserId ? (names[r.createdByPanelUserId] ?? null) : null,
-    }));
+    })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({
       ok: true,
