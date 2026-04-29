@@ -56,6 +56,17 @@ export async function signAdminSessionJwt(input: { username: string; role: Admin
     .sign(secret);
 }
 
+/** Für Ride- oder andere Bearer-Checks ohne gesamtes `requireAdminApiBearer`-Middleware-Stack (gleiche Tokens wie `/api/admin/*`). */
+export async function tryResolveAdminApiAuthPrincipal(bearerToken: string): Promise<AdminAuthPrincipal | null> {
+  const t = (bearerToken ?? "").trim();
+  if (!t) return null;
+  const staticToken = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
+  if (staticToken && t === staticToken) {
+    return { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
+  }
+  return verifyAdminSessionJwt(t);
+}
+
 async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal | null> {
   try {
     const secret = getAdminSessionSecret();

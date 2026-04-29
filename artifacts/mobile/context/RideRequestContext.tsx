@@ -171,6 +171,54 @@ const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const USER_PROFILE_KEY = "@taxi24_user_profile";
 const ENABLE_STORNO_TRACE = true;
 
+async function readStoredDriverAuthToken(): Promise<string | null> {
+  const raw = await AsyncStorage.getItem(DRIVER_SESSION_KEY).catch(() => null);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { authToken?: string };
+    const t = typeof parsed.authToken === "string" ? parsed.authToken.trim() : "";
+    return t.length > 0 ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readStoredCustomerSessionToken(): Promise<string | null> {
+  const raw = await AsyncStorage.getItem(USER_PROFILE_KEY).catch(() => null);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { sessionToken?: string };
+    const t = typeof parsed.sessionToken === "string" ? parsed.sessionToken.trim() : "";
+    return t.length > 0 ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+/** API verlangt Bearer: Kunden-Storno nur mit Session-JWT; Fahrer-Übergänge mit Fleet-JWT. */
+async function headersForRideStatusPatch(nextStatus: RequestStatus): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const driverTok = await readStoredDriverAuthToken();
+  const customerTok = await readStoredCustomerSessionToken();
+  if (nextStatus === "cancelled_by_customer") {
+    if (customerTok) headers.Authorization = `Bearer ${customerTok}`;
+    return headers;
+  }
+  if (driverTok) {
+    headers.Authorization = `Bearer ${driverTok}`;
+    return headers;
+  }
+  if (customerTok) headers.Authorization = `Bearer ${customerTok}`;
+  return headers;
+}
+
+async function headersForFleetRidePost(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const driverTok = await readStoredDriverAuthToken();
+  if (driverTok) headers.Authorization = `Bearer ${driverTok}`;
+  return headers;
+}
+
 function uuid(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -509,7 +557,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           : undefined;
       const res = await fetch(`${API_BASE}/rides/${id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: await headersForRideStatusPatch(status),
         body: JSON.stringify({
           status,
           ...(finalFare != null ? { finalFare } : {}),
@@ -662,7 +710,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       if (!API_BASE) return;
       await fetch(`${API_BASE}/rides/${id}/reject`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await headersForFleetRidePost(),
         body: JSON.stringify({ driverId }),
       });
       await fetchAll();
@@ -704,7 +752,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       if (!API_BASE) return;
       await fetch(`${API_BASE}/rides/${id}/driver-cancel`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await headersForFleetRidePost(),
         body: JSON.stringify({ driverId }),
       });
       await fetchAll();

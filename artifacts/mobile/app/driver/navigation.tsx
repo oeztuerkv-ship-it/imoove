@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
@@ -29,7 +30,23 @@ import {
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 
 const API_BASE = getApiBaseUrl();
+const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const START_SLIDER_HANDLE = 52;
+
+async function fleetAuthHeadersJson(): Promise<Record<string, string>> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const raw = await AsyncStorage.getItem(DRIVER_SESSION_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { authToken?: string };
+      const tok = typeof parsed.authToken === "string" ? parsed.authToken.trim() : "";
+      if (tok) h.Authorization = `Bearer ${tok}`;
+    }
+  } catch {
+    /* ignore */
+  }
+  return h;
+}
 
 const NIGHT_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -236,7 +253,7 @@ export default function DriverNavigationScreen() {
     if (!params.rideId) return;
     const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: await fleetAuthHeadersJson(),
       body: JSON.stringify({ status: newStatus, ...(finalFare != null ? { finalFare } : {}) }),
     });
     if (!res.ok) {
@@ -361,16 +378,17 @@ export default function DriverNavigationScreen() {
     const timer = setInterval(async () => {
       if (cancelHandledRef.current) return;
       try {
-        const res = await fetch(`${API_BASE}/rides`, { cache: "no-store" });
+        const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(params.rideId)}/fleet-snapshot`, {
+          cache: "no-store",
+          headers: await fleetAuthHeadersJson(),
+        });
         if (!res.ok) return;
-        const rides = await res.json() as Array<{ id: string; status: string; cancelReason?: string | null }>;
-        const ride = rides.find((r) => r.id === params.rideId);
-        if (!ride) return;
-        if (ride.status !== "cancelled_by_customer") return;
+        const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
+        if (payload.status !== "cancelled_by_customer") return;
         cancelHandledRef.current = true;
         Alert.alert(
           "Kunde hat storniert",
-          ride.cancelReason ? `Grund: ${ride.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
+          payload.cancelReason ? `Grund: ${payload.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
           [{ text: "OK", onPress: () => router.replace("/driver/dashboard") }],
         );
       } catch {
@@ -438,11 +456,18 @@ export default function DriverNavigationScreen() {
 
           socketSendDriver(latitude, longitude);
           if (params.rideId) {
-            fetch(`${API_BASE}/rides/${params.rideId}/driver-location`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lat: latitude, lon: longitude }),
-            }).catch(() => {});
+            void (async () => {
+              try {
+                const headers = await fleetAuthHeadersJson();
+                await fetch(`${API_BASE}/rides/${params.rideId}/driver-location`, {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({ lat: latitude, lon: longitude }),
+                });
+              } catch {
+                /* ignore */
+              }
+            })();
           }
 
           mapRef.current?.animateCamera({

@@ -13,18 +13,15 @@ Stand: interne Notiz für Architektur und Tests (nicht Kunden-Doku).
 - **Partner-Portal** ist im Nutzerfluss **weiter:** Login, JWT, Rollen/Rechte, Firmenprofil (`/api/panel/v1/…`, `company_id` aus dem Token).
 - **Nicht vermischen:** Partner-Konzepte (Mandant, Panel-User) nicht in Admin-UI/API „nebenbei“ nutzen und umgekehrt keine globalen Admin-Stats in den Partner-Endpunkten anbieten.
 
-## 3. Bewusstes Risiko: `GET /rides` ohne Admin-Bearer
+## 3. Früheres Risiko `GET /rides` (behoben)
 
-| Thema | Inhalt |
+| Thema | Stand |
 |--------|--------|
-| **Endpoint** | `GET /rides` (und spiegelbildlich unter `/api/rides` je nach Mount) |
-| **Auth** | **Keine** — öffentlich erreichbar, wenn die API-URL erreichbar ist |
-| **Fachlich** | Die **Admin-Fahrtenliste** im gebauten Admin-Panel nutzt genau diese globale Liste (alle Fahrten). |
-| **Technisch** | **Kein** Schutz durch `ADMIN_API_BEARER_TOKEN`; Trennung „Admin sieht alles“ ist **nur** über die Annahme „URL nur für Betrieb“ gewährleistet. |
-| **Risiko** | Datenleck / Missbrauch, sobald die API öffentlich oder breit im Netz erreichbar ist. |
-| **Spätere Option** | Dedizierter **`GET /api/admin/rides`** (oder äquivalent) **nur** mit `requireAdminApiBearer`; `GET /rides` für Kunden/Mobile strikt eingeschränken oder absichern. |
+| **Früher** | `GET /rides` lieferte ohne Auth eine globale Liste (siehe Historie in Git). |
+| **Jetzt** | Globale Listen-Auslieferung erfolgt nur noch über **`GET /api/admin/rides`** mit `requireAdminApiBearer` (`adminJson`). Die öffentliche `GET /rides`-Liste wurde entfernt. |
+| **Hinweis** | Kundenfahrten weiterhin über **`GET /api/customer/v1/rides`** (Session-JWT); Taxi-Fahrer über **`GET /api/fleet-driver/v1/market-rides`** / **`scheduled-rides`** (Fleet-JWT). |
 
-Dieses Risiko ist **bekannt und akzeptiert für den jetzigen Stand**; vor Produktionsausbau oder Öffnung der API **erneut bewerten**.
+Weitere öffentliche Ride-Routen sollten weiterhin in Reviews (z. B. Schreibzugriffe auf `PATCH /rides/:id/status`) geprüft werden.
 
 ### Regression behoben (Admin-Bearer vs. `GET /rides`)
 
@@ -44,7 +41,7 @@ Voraussetzung: API mit **`DATABASE_URL`**, Migrationen, **`ADMIN_API_BEARER_TOKE
 - [ ] **`GET /api/admin/stats`** ohne Bearer oder falscher Token → **`401`** (wenn Token auf der API gesetzt).
 - [ ] **Produktion:** ohne `ADMIN_API_BEARER_TOKEN` → **`503`** auf `/admin/*`.
 - [ ] Dashboard im Browser: Zahlen und Umsatz-Zeitraum wie erwartet.
-- [ ] **Fahrtenliste:** lädt (aktuell über **`GET /rides`**); Inhalt = globale Liste.
+- [ ] **Fahrtenliste:** lädt über **`GET /api/admin/rides`** mit Bearer; Inhalt gemäß Rolle/Scope.
 - [ ] **Firmen:** `GET /api/admin/companies` mit Bearer; Suche/PRIO wie erwartet.
 
 ### Partner
@@ -57,7 +54,7 @@ Voraussetzung: API mit **`DATABASE_URL`**, Migrationen, **`ADMIN_API_BEARER_TOKE
 ### Trennung
 
 - [ ] Zwei Firmen: Partner A sieht **nicht** B; Admin sieht **beides** (Firmen + globale Fahrtenliste).
-- [ ] **`GET /rides`** ohne Auth bewusst als Risiko notiert (siehe oben); ggf. nur aus vertrauenswürdigem Netz erreichbar.
+- [ ] Kein anonymer globaler Fahrten-Dump mehr (`GET /rides` entfernt); Kunden/Taxi-Fahrer nutzen die jeweiligen Session-/Fleet-Endpunkte.
 
 ### Admin-Profil
 
@@ -73,6 +70,6 @@ Ohne `DATABASE_URL` (In-Memory), mit gesetztem **`ADMIN_API_BEARER_TOKEN`** (Sta
 |---------|-----------|
 | `GET /api/admin/stats` ohne `Authorization` | **401** `unauthorized` |
 | `GET /api/admin/stats` mit korrektem Bearer | **200**, `ok: true`, `stats` |
-| `GET /rides` ohne Auth | **200**, JSON-Array (kann leer sein) |
+| `GET /rides` | **Entfernt** (kein globaler Dump mehr; Admin: `GET /api/admin/rides` mit Bearer). |
 
 **Partner-Flows** (Login, `panel/v1/*`, Owner vs. Staff) erfordern **Postgres** + `PANEL_JWT_SECRET` und Testnutzer — bitte gegen Staging/DB manuell nach Checkliste oben.

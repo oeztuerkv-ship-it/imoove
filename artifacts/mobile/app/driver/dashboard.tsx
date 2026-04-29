@@ -1369,7 +1369,12 @@ function ActiveRideScreen({
     // HTTP fallback polling for customer location
     const poll = async () => {
       try {
-        const res = await fetch(`${API_BASE}/rides/${req.id}/customer-location`);
+        const res = await fetch(`${API_BASE}/rides/${req.id}/customer-location`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${fleetAuthToken}`,
+          },
+        });
         if (res.ok) {
           const loc = await res.json() as { lat: number; lon: number };
           setCustomerLiveMarker({ lat: loc.lat, lon: loc.lon });
@@ -1403,7 +1408,10 @@ function ActiveRideScreen({
           socketSendDriver(latitude, longitude);
           fetch(`${API_BASE}/rides/${req.id}/driver-location`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${fleetAuthToken}`,
+            },
             body: JSON.stringify({ lat: latitude, lon: longitude }),
           }).catch(() => {});
         },

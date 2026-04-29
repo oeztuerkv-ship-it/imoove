@@ -13,11 +13,9 @@ import {
 } from "../domain/rideBillingProfile";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import {
-  adminReleaseRide,
   findRide,
   insertRideWithOptionalAccessCode,
   insertSupplementalRideEvent,
-  listRides,
   resetRidesDemo,
   updateRide,
 } from "../db/ridesData";
@@ -54,6 +52,14 @@ import {
 import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
 import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
+import {
+  authorizePatchRideStatusForActor,
+  resolveRideMutateActor,
+  resolveCustomerActorOrNull,
+  resolveFleetActorOrNull,
+  extractBearerAuthorization,
+} from "../lib/rideRouteAuth";
+import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
 import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
@@ -80,6 +86,14 @@ const router = Router();
 const MEDICAL_RIDE_UPLOAD_ROOT =
   (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() ||
   path.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+
+/** Demo-Krankenfahrten: synthetische Kassenfelder nur für Schulung, keine echte Abrechnung. */
+const MEDICAL_DEMO_INSURANCE_LABEL = "Demonstration (KV-TEST)";
+const MEDICAL_DEMO_COST_CENTER_LABEL = "TEST — nicht zur Abrechnung";
+
+function loweredTrim(v: unknown): string {
+  return typeof v === "string" ? v.trim().toLowerCase() : "";
+}
 
 function asMedicalFlatMeta(ride: RideRequest): Record<string, unknown> | null {
   const m = ride.partnerBookingMeta;
@@ -121,21 +135,6 @@ function cleanupCodeVerifySessions(now = Date.now()): void {
     if (session.expiresAt <= now) codeVerifySessions.delete(key);
   }
 }
-
-const ACTIVE_RIDE_STATUSES: ReadonlySet<RideRequest["status"]> = new Set([
-  "scheduled",
-  "requested",
-  "searching_driver",
-  "offered",
-  "accepted",
-  "driver_arriving",
-  "driver_waiting",
-  "passenger_onboard",
-  "in_progress",
-  // Legacy compatibility
-  "pending",
-  "arrived",
-]);
 
 /** PATCH-Body: finalFare / final_fare / status_data (String mit Komma erlaubt). */
 function parseOptionalFinalFareFromBody(body: unknown): number | undefined {
@@ -315,6 +314,10 @@ function pickMedicalMeta(raw: unknown): Record<string, unknown> {
   copyBool("return_ride");
   copyString("return_time");
   copyString("transport_document_uri");
+  copyBool("medical_demo_mode");
+  if (typeof src.medical_demo_transport_source === "string" && src.medical_demo_transport_source.trim()) {
+    out.medical_demo_transport_source = src.medical_demo_transport_source.trim().slice(0, 48);
+  }
   return out;
 }
 
@@ -429,28 +432,34 @@ router.get("/fare-estimate", async (req, res, next) => {
   }
 });
 
-router.get("/rides", async (_req, res, next) => {
+/** Storno-Hinweis für Taxi-Fahrer (Navigation) ohne globale Ride-Liste. */
+router.get("/rides/:rideId/fleet-snapshot", requireFleetDriverAuth, async (req, res, next) => {
   try {
-    const query = _req.query as { driverId?: string; companyId?: string };
-    const driverId = typeof query.driverId === "string" ? query.driverId.trim() : "";
-    const companyId = typeof query.companyId === "string" ? query.companyId.trim() : "";
-    let rows = await listRides();
-    if (driverId && companyId) {
-      const capability = await getFleetDriverCapability(driverId, companyId);
-      if (!capability) {
-        rows = [];
-      } else {
-        rows = rows.filter((ride) => {
-          if (ride.driverId && ride.driverId !== driverId) return false;
-          if ((ride.rejectedBy ?? []).includes(driverId)) return false;
-          if (!ACTIVE_RIDE_STATUSES.has(ride.status)) return false;
-          return isRideCompatibleWithCapability(ride, capability);
-        });
-      }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
     }
-    const publicRows = rows.map((ride) => toCustomerRideView(stripPartnerOnlyRideFields(ride)));
-    const withCodes = await attachAccessCodeSummariesToRides(publicRows);
-    res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (assigned !== a.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.json({
+      id: ride.id,
+      status: ride.status,
+      cancelReason: customerCancelReasons.get(ride.id) ?? null,
+    });
   } catch (e) {
     next(e);
   }
@@ -633,10 +642,17 @@ router.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, asy
     await mkdir(path.dirname(dest), { recursive: true });
     await writeFile(dest, decoded.buffer);
     const uploadedAt = new Date().toISOString();
+    const demo = meta.medical_demo_mode === true;
     const merged = mergeMedicalPartnerMeta(ride, {
       transport_document_status: "uploaded",
       transport_document_file_key: rel,
       transport_document_uploaded_at: uploadedAt,
+      ...(demo
+        ? {
+            transport_document_not_for_billing: true,
+            transport_document_demo_label: "TESTDOKUMENT / NICHT ZUR ABRECHNUNG",
+          }
+        : {}),
     });
     const nextRide = await updateRide(rideId, {
       partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
@@ -1143,6 +1159,37 @@ router.post("/rides", async (req, res, next) => {
           }
         : {};
     if (rideKind === "medical") {
+      if (medicalMeta.medical_demo_mode === true) {
+        normalizedPartnerMeta.medical_demo_mode = true;
+        normalizedPartnerMeta.medical_billing_demo_disclaimer = "TESTDOKUMENT / NICHT ZUR ABRECHNUNG";
+        const insNow =
+          typeof normalizedPartnerMeta.insurance_name === "string" ? normalizedPartnerMeta.insurance_name.trim() : "";
+        const ccNow =
+          typeof normalizedPartnerMeta.cost_center === "string" ? normalizedPartnerMeta.cost_center.trim() : "";
+        if (!insNow) normalizedPartnerMeta.insurance_name = MEDICAL_DEMO_INSURANCE_LABEL;
+        if (!ccNow) normalizedPartnerMeta.cost_center = MEDICAL_DEMO_COST_CENTER_LABEL;
+
+        const demoSrcRaw = typeof medicalMeta.medical_demo_transport_source === "string" ? medicalMeta.medical_demo_transport_source : "";
+        const demoSrc = demoSrcRaw.trim().toLowerCase();
+        const wantsDriverUpload =
+          demoSrc === "driver_upload" || demoSrc === "driver_test_upload" || demoSrc === "test_upload";
+
+        if (wantsDriverUpload) {
+          normalizedPartnerMeta.medical_demo_transport_source =
+            demoSrc === "driver_test_upload" ? "driver_test_upload" : "driver_upload";
+          const ds = loweredTrim(normalizedPartnerMeta.transport_document_status);
+          if (!ds || ds === "missing") normalizedPartnerMeta.transport_document_status = "missing";
+        } else {
+          normalizedPartnerMeta.medical_demo_transport_source = demoSrcRaw.trim()
+            ? demoSrcRaw.trim().slice(0, 48)
+            : "synthetic_provided";
+          normalizedPartnerMeta.transport_document_status = "provided";
+          normalizedPartnerMeta.transport_document_provided_demo = true;
+        }
+
+        const appr = loweredTrim(normalizedPartnerMeta.approval_status);
+        if (!appr || appr === "pending") normalizedPartnerMeta.approval_status = "approved";
+      }
       const ready = calculateMedicalBillingReadiness(normalizedPartnerMeta);
       normalizedPartnerMeta.billing_ready = ready.billingReady;
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
@@ -1256,6 +1303,15 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     const cancelReasonClean = typeof cancelReason === "string" ? cancelReason.trim() : "";
     if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
       res.status(400).json({ error: "cancel_reason_required" });
+      return;
+    }
+    const bodyDriverIdTrim = typeof driverId === "string" ? driverId.trim() : "";
+    const actor = await resolveRideMutateActor(req);
+    const gate = authorizePatchRideStatusForActor(nextStatus, cur, actor, {
+      bodyDriverId: bodyDriverIdTrim.length > 0 ? bodyDriverIdTrim : null,
+    });
+    if (!gate.ok) {
+      res.status(gate.status).json({ error: gate.code });
       return;
     }
     let companyIdOnAccept: string | undefined;
@@ -1415,72 +1471,120 @@ router.patch("/rides/:id/status", async (req, res, next) => {
   }
 });
 
-/** Admin: Fahrt wieder auf Markt / zur Disposition (Fahrer entfernen, Status pending). */
-router.patch("/rides/:id/release", async (req, res, next) => {
+router.post("/rides/:id/driver-location", async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const updated = await adminReleaseRide(id);
-    if (!updated) {
-      res.status(404).json({ error: "not_found" });
+    const fleet = await resolveFleetActorOrNull(req);
+    if (!fleet) {
+      res.status(401).json({ error: "unauthorized", hint: "Fleet driver Bearer token required." });
       return;
     }
-    res.json(stripPartnerOnlyRideFields(updated));
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride || (ride.driverId ?? "").trim() !== fleet.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const { lat, lon } = req.body as { lat: number; lon: number };
+    if (typeof lat !== "number" || typeof lon !== "number") {
+      res.status(400).json({ error: "lat and lon required" });
+      return;
+    }
+    const loc: DriverLocation = { lat, lon, updatedAt: new Date().toISOString() };
+    driverLocations.set(id, loc);
+    res.json(loc);
   } catch (e) {
     next(e);
   }
 });
 
-router.post("/rides/:id/driver-location", (req, res) => {
-  const { id } = req.params;
-  const { lat, lon } = req.body as { lat: number; lon: number };
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    res.status(400).json({ error: "lat and lon required" });
-    return;
+router.get("/rides/:id/driver-location", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const loc = driverLocations.get(id);
+    if (!loc) {
+      res.status(404).json({ error: "no location yet" });
+      return;
+    }
+    const fleet = await resolveFleetActorOrNull(req);
+    const cust = await resolveCustomerActorOrNull(req);
+    const assignedDriver = (ride.driverId ?? "").trim();
+    const allowedFleet =
+      fleet != null && assignedDriver !== "" && assignedDriver === fleet.fleetDriverId;
+    const allowedPassenger = cust != null && passengerOwnsRide(ride, cust.passengerGoogleId);
+    if (!allowedFleet && !allowedPassenger) {
+      res.status(401).json({ error: "unauthorized", hint: "Fleet driver token or passenger session required." });
+      return;
+    }
+    res.json(loc);
+  } catch (e) {
+    next(e);
   }
-  const loc: DriverLocation = { lat, lon, updatedAt: new Date().toISOString() };
-  driverLocations.set(id, loc);
-  res.json(loc);
 });
 
-router.get("/rides/:id/driver-location", (req, res) => {
-  const { id } = req.params;
-  const loc = driverLocations.get(id);
-  if (!loc) {
-    res.status(404).json({ error: "no location yet" });
-    return;
+function passengerOwnsRide(ride: RideRequest, passengerGoogleId: string): boolean {
+  return (ride.passengerId ?? "").trim() === passengerGoogleId.trim();
+}
+
+router.post("/rides/:id/customer-location", async (req, res, next) => {
+  try {
+    const cust = await resolveCustomerActorOrNull(req);
+    if (!cust) {
+      res.status(401).json({ error: "unauthorized", hint: "Customer session Bearer required." });
+      return;
+    }
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride || !passengerOwnsRide(ride, cust.passengerGoogleId)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const { lat, lon } = req.body as { lat: number; lon: number };
+    if (typeof lat !== "number" || typeof lon !== "number") {
+      res.status(400).json({ error: "lat and lon required" });
+      return;
+    }
+    const loc: DriverLocation = { lat, lon, updatedAt: new Date().toISOString() };
+    customerLocations.set(id, loc);
+    res.json(loc);
+  } catch (e) {
+    next(e);
   }
-  res.json(loc);
 });
 
-router.post("/rides/:id/customer-location", (req, res) => {
-  const { id } = req.params;
-  const { lat, lon } = req.body as { lat: number; lon: number };
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    res.status(400).json({ error: "lat and lon required" });
-    return;
+router.get("/rides/:id/customer-location", async (req, res, next) => {
+  try {
+    const fleet = await resolveFleetActorOrNull(req);
+    const { id } = req.params;
+    const ride = await findRide(id);
+    const loc = customerLocations.get(id);
+    if (!loc) {
+      res.status(404).json({ error: "no location yet" });
+      return;
+    }
+    const assignedDriver = ride ? (ride.driverId ?? "").trim() : "";
+    if (!fleet || !assignedDriver || fleet.fleetDriverId !== assignedDriver) {
+      res.status(401).json({ error: "unauthorized", hint: "Assigned fleet driver Bearer required." });
+      return;
+    }
+    res.json(loc);
+  } catch (e) {
+    next(e);
   }
-  const loc: DriverLocation = { lat, lon, updatedAt: new Date().toISOString() };
-  customerLocations.set(id, loc);
-  res.json(loc);
 });
 
-router.get("/rides/:id/customer-location", (req, res) => {
-  const { id } = req.params;
-  const loc = customerLocations.get(id);
-  if (!loc) {
-    res.status(404).json({ error: "no location yet" });
-    return;
-  }
-  res.json(loc);
-});
-
-router.post("/rides/:id/reject", async (req, res, next) => {
+router.post("/rides/:id/reject", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const driverIdRaw = (req.body as { driverId?: unknown }).driverId;
     const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
-    if (!driverId) {
-      res.status(400).json({ error: "driver_id_required" });
+    const authFleet = (req as FleetDriverAuthRequest).fleetDriverAuth?.fleetDriverId;
+    if (!driverId || !authFleet || driverId !== authFleet) {
+      res.status(403).json({ error: "driver_actor_mismatch" });
       return;
     }
     const cur = await findRide(id);
@@ -1512,11 +1616,21 @@ router.post("/rides/:id/reject", async (req, res, next) => {
   }
 });
 
-router.post("/rides/:id/driver-cancel", async (req, res, next) => {
+router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const driverIdRaw = (req.body as { driverId?: unknown }).driverId;
-    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const driverFromBody = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const authFleet = (req as FleetDriverAuthRequest).fleetDriverAuth?.fleetDriverId;
+    if (!authFleet) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const driverId = driverFromBody || authFleet;
+    if (driverFromBody && driverFromBody !== authFleet) {
+      res.status(403).json({ error: "driver_actor_mismatch" });
+      return;
+    }
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
@@ -1554,11 +1668,21 @@ router.post("/rides/:id/driver-cancel", async (req, res, next) => {
   }
 });
 
-router.post("/rides/:id/driver-hard-cancel", async (req, res, next) => {
+router.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const driverIdRaw = (req.body as { driverId?: unknown }).driverId;
-    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const driverFromBody = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const authFleet = (req as FleetDriverAuthRequest).fleetDriverAuth?.fleetDriverId;
+    if (!authFleet) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const driverId = driverFromBody || authFleet;
+    if (driverFromBody && driverFromBody !== authFleet) {
+      res.status(403).json({ error: "driver_actor_mismatch" });
+      return;
+    }
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
@@ -1579,8 +1703,21 @@ router.post("/rides/:id/driver-hard-cancel", async (req, res, next) => {
   }
 });
 
-router.delete("/rides/demo", async (_req, res, next) => {
+router.delete("/rides/demo", async (req, res, next) => {
   try {
+    const bearer = extractBearerAuthorization(req);
+    let adminOk = Boolean(bearer && (await tryResolveAdminApiAuthPrincipal(bearer ?? "")));
+    if (
+      !adminOk &&
+      !String(process.env.ADMIN_API_BEARER_TOKEN ?? "").trim() &&
+      process.env.NODE_ENV !== "production"
+    ) {
+      adminOk = true;
+    }
+    if (!adminOk) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
     await resetRidesDemo([...DEMO]);
     driverLocations.clear();
     res.json({ ok: true });

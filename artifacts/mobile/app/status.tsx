@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
@@ -104,6 +105,21 @@ function ScallopRow({ backgroundColor }: { backgroundColor: string }) {
 }
 
 const API_BASE = getApiBaseUrl();
+const USER_PROFILE_KEY = "@taxi24_user_profile";
+
+async function customerSessionHeadersJson(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  try {
+    const raw = await AsyncStorage.getItem(USER_PROFILE_KEY);
+    if (!raw) return headers;
+    const parsed = JSON.parse(raw) as { sessionToken?: string };
+    const tok = typeof parsed.sessionToken === "string" ? parsed.sessionToken.trim() : "";
+    if (tok) headers.Authorization = `Bearer ${tok}`;
+  } catch {
+    /* ignore */
+  }
+  return headers;
+}
 
 /** Fahrer-Suche: eine volle Umdrehung, linear (Netflix-ähnlich). */
 const SEARCH_SPIN_DURATION_MS = 1300;
@@ -242,7 +258,9 @@ export default function StatusScreen() {
     // HTTP fallback polling every 5s
     const poll = async () => {
       try {
-        const res = await fetch(`${API_BASE}/rides/${rid}/driver-location`);
+        const res = await fetch(`${API_BASE}/rides/${rid}/driver-location`, {
+          headers: await customerSessionHeadersJson(),
+        });
         if (res.ok) {
           const loc = await res.json() as { lat: number; lon: number };
           setDriverMarker({ lat: loc.lat, lon: loc.lon });
@@ -267,11 +285,18 @@ export default function StatusScreen() {
         (loc) => {
           const { latitude, longitude } = loc.coords;
           sendCustomerLocation(latitude, longitude);
-          fetch(`${API_BASE}/rides/${rid}/customer-location`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: latitude, lon: longitude }),
-          }).catch(() => {});
+          void (async () => {
+            try {
+              const headers = await customerSessionHeadersJson();
+              await fetch(`${API_BASE}/rides/${rid}/customer-location`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ lat: latitude, lon: longitude }),
+              });
+            } catch {
+              /* ignore */
+            }
+          })();
         }
       );
     })();
