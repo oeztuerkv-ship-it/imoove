@@ -11,12 +11,15 @@ export function stripPartnerOnlyRideFields(r: RideRequest): RideRequest {
           payer_kind: (partnerMeta as Record<string, unknown>).payer_kind ?? "insurance",
           insurance_name: (partnerMeta as Record<string, unknown>).insurance_name ?? "",
           cost_center: (partnerMeta as Record<string, unknown>).cost_center ?? "",
+          transport_document_required: (partnerMeta as Record<string, unknown>).transport_document_required !== false,
           transport_document_status:
             (partnerMeta as Record<string, unknown>).transport_document_status ?? "missing",
           signature_required: (partnerMeta as Record<string, unknown>).signature_required === true,
           signature_done: (partnerMeta as Record<string, unknown>).signature_done === true,
-          qr_required: (partnerMeta as Record<string, unknown>).qr_required === true,
+          qr_required: (partnerMeta as Record<string, unknown>).qr_required !== false,
           qr_done: (partnerMeta as Record<string, unknown>).qr_done === true,
+          qr_verified_at: (partnerMeta as Record<string, unknown>).qr_verified_at ?? null,
+          qr_verified_by_driver_id: (partnerMeta as Record<string, unknown>).qr_verified_by_driver_id ?? null,
           billing_ready: (partnerMeta as Record<string, unknown>).billing_ready === true,
           billing_missing_reasons: Array.isArray(
             (partnerMeta as Record<string, unknown>).billing_missing_reasons,

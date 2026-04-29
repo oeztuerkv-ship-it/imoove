@@ -33,3 +33,9 @@ pnpm-debug.log*
 .turbo/
 .cache/
 coverage/
+
+# API-Bundle (Quelle: artifacts/api-server/src — Build auf dem Zielsystem)
+artifacts/api-server/dist/
+
+# Expo-Lokalcache (nicht versionieren)
+.expo/

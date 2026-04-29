@@ -478,7 +478,9 @@ export function getInvoiceEligibility(input: {
   const refRequired = input.ride.payerKind === "insurance" || input.ride.payerKind === "company";
   if (refRequired && !billingReference.trim()) pushBlocker(blockers, "missing_billing_reference");
   if (input.ride.rideKind === "medical") {
-    if (!input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
+    const pm = input.ride.partnerBookingMeta as Record<string, unknown> | null | undefined;
+    const isFlatMedicalRide = pm && typeof pm === "object" && pm.medical_ride === true;
+    if (!isFlatMedicalRide && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
       pushBlocker(blockers, "incomplete_medical_fields");
     }
   }
@@ -505,8 +507,12 @@ export function getSettlementEligibility(input: {
   if (input.snapshot && !["open", "calculated"].includes(input.snapshot.settlementStatus)) {
     pushBlocker(blockers, "settlement_status_not_eligible");
   }
-  if (input.ride.rideKind === "medical" && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
-    pushBlocker(blockers, "incomplete_medical_fields");
+  if (input.ride.rideKind === "medical") {
+    const pm = input.ride.partnerBookingMeta as Record<string, unknown> | null | undefined;
+    const isFlatMedicalRide = pm && typeof pm === "object" && pm.medical_ride === true;
+    if (!isFlatMedicalRide && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
+      pushBlocker(blockers, "incomplete_medical_fields");
+    }
   }
   return { eligible: blockers.length === 0, blockers };
 }

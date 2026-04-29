@@ -20,6 +20,7 @@ import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
 import { metaToJson, parsePartnerBookingMeta } from "../domain/partnerBookingMeta";
+import { parsePartnerBookingMetaFromRow, partnerBookingMetaToDbJson } from "../domain/medicalRidePartnerMeta";
 import {
   DEFAULT_PAYER_KIND,
   DEFAULT_RIDE_KIND,
@@ -134,7 +135,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     vehicle: r.vehicle,
     pricingMode: r.pricing_mode === "taxi_tariff" ? "taxi_tariff" : null,
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
-    partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null,
+    partnerBookingMeta: parsePartnerBookingMetaFromRow(r.partner_booking_meta, parsePartnerBookingMeta) ?? null,
     accessibilityOptions:
       r.accessibility_options_json && typeof r.accessibility_options_json === "object"
         ? (r.accessibility_options_json as RideRequest["accessibilityOptions"])
@@ -175,7 +176,7 @@ function rideToUpdate(r: RideRequest) {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
-    partner_booking_meta: (r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}) as Record<
+    partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson) as Record<
       string,
       unknown
     >,
@@ -221,7 +222,7 @@ function rideToInsert(r: RideRequest): typeof ridesTable.$inferInsert {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
-    partner_booking_meta: (r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}) as Record<
+    partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson) as Record<
       string,
       unknown
     >,
@@ -268,7 +269,14 @@ function applyMemoryRideFilters(list: RideRequest[], filters: CompanyRideListFil
     if (filters.accessCodeId && r.accessCodeId !== filters.accessCodeId) return false;
     if (filters.hasAccessCode === true && !r.accessCodeId) return false;
     if (filters.hasAccessCode === false && r.accessCodeId) return false;
-    if (filters.partnerFlow && r.partnerBookingMeta?.flow !== filters.partnerFlow) return false;
+    if (filters.partnerFlow?.trim()) {
+      const m = r.partnerBookingMeta;
+      const flow =
+        m && typeof m === "object" && !Array.isArray(m) && "flow" in m && typeof (m as { flow?: unknown }).flow === "string"
+          ? (m as { flow: string }).flow
+          : undefined;
+      if (flow !== filters.partnerFlow) return false;
+    }
     return true;
   });
 }

@@ -142,6 +142,7 @@ function medicalMetaViewModel(meta) {
   };
   const missingReasonMap = {
     missing_transport_document: "Transportschein fehlt",
+    missing_qr_verification: "QR-Nachweis fehlt",
     missing_signature: "Unterschrift fehlt",
     missing_approval: "Genehmigung fehlt",
     missing_insurance: "Krankenkasse fehlt",
@@ -155,8 +156,15 @@ function medicalMetaViewModel(meta) {
   const doc = typeof meta.transport_document_status === "string" ? meta.transport_document_status : "missing";
   const sigReq = meta.signature_required === true;
   const sigDone = meta.signature_done === true;
-  const qrReq = meta.qr_required === true;
+  const qrReq = meta.qr_required !== false;
   const qrDone = meta.qr_done === true;
+  const qrVerifiedAt = typeof meta.qr_verified_at === "string" ? meta.qr_verified_at.trim() : "";
+  const qrVerifiedBy = typeof meta.qr_verified_by_driver_id === "string" ? meta.qr_verified_by_driver_id.trim() : "";
+  const transportRequired = meta.transport_document_required !== false;
+  const docKey = typeof meta.transport_document_file_key === "string" ? meta.transport_document_file_key.trim() : "";
+  const docUploadedAt = typeof meta.transport_document_uploaded_at === "string" ? meta.transport_document_uploaded_at.trim() : "";
+  const sigKey = typeof meta.signature_file_key === "string" ? meta.signature_file_key.trim() : "";
+  const sigSignedAt = typeof meta.signature_signed_at === "string" ? meta.signature_signed_at.trim() : "";
   const missing = Array.isArray(meta.billing_missing_reasons) ? meta.billing_missing_reasons : [];
   const billingReady = meta.billing_ready === true;
   const grid = [
@@ -165,11 +173,18 @@ function medicalMetaViewModel(meta) {
     ["insurance_name", insurance || "—"],
     ["cost_center", costCenter || "—"],
     ["authorization_reference", authRef || "—"],
+    ["transport_document_required", transportRequired ? "ja" : "nein"],
     ["transport_document_status", docStatusMap[doc] || doc],
+    ["transport_document_file_key", docKey || "—"],
+    ["transport_document_uploaded_at", docUploadedAt || "—"],
     ["signature_required", sigReq ? "ja" : "nein"],
     ["signature_done", sigDone ? "ja" : "nein"],
+    ["signature_file_key", sigKey || "—"],
+    ["signature_signed_at", sigSignedAt || "—"],
     ["qr_required", qrReq ? "ja" : "nein"],
     ["qr_done", qrDone ? "ja" : "nein"],
+    ["qr_verified_at", qrVerifiedAt || "—"],
+    ["qr_verified_by_driver_id", qrVerifiedBy || "—"],
     ["billing_ready", billingReady ? "ja" : "nein"],
     [
       "billing_missing_reasons",
@@ -185,6 +200,7 @@ function medicalMetaViewModel(meta) {
   ];
   const ampel = [
     { label: "Vollständig", done: billingReady && missing.length === 0 },
+    { label: "QR fehlt", done: !missing.includes("missing_qr_verification") },
     { label: "Nachweis fehlt", done: !missing.includes("missing_transport_document") },
     { label: "Genehmigung fehlt", done: !missing.includes("missing_approval") },
     { label: "Unterschrift fehlt", done: !missing.includes("missing_signature") },

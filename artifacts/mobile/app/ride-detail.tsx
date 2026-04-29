@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useUser } from "@/context/UserContext";
@@ -91,6 +93,20 @@ export default function RideDetailScreen() {
   const activeRide = useMemo(() => myActiveRequests.find((r) => r.id === rideId) ?? null, [myActiveRequests, rideId]);
   const cancelledRide = useMemo(() => myCancelledRequests.find((r) => r.id === rideId) ?? null, [myCancelledRequests, rideId]);
 
+  const reqForMedical = useMemo(
+    () => activeRide ?? cancelledRide ?? requests.find((r) => r.id === rideId) ?? null,
+    [activeRide, cancelledRide, requests, rideId],
+  );
+  const isMedicalRide = useMemo(
+    () =>
+      reqForMedical?.rideKind === "medical" ||
+      Boolean(
+        (reqForMedical as { partnerBookingMeta?: { medical_ride?: boolean } } | null)?.partnerBookingMeta
+          ?.medical_ride,
+      ),
+    [reqForMedical],
+  );
+
   const [category, setCategory] = useState<SupportCategory>("other");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -100,6 +116,48 @@ export default function RideDetailScreen() {
   const apiBase = getApiBaseUrl();
   const { profile } = useUser();
   const sessionToken = profile?.sessionToken?.trim();
+
+  const [qrValue, setQrValue] = useState<string | null>(null);
+  const [qrDone, setQrDone] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrErr, setQrErr] = useState<string | null>(null);
+
+  const loadMedicalQr = useCallback(async () => {
+    if (!isMedicalRide || !apiBase || !rideId || !sessionToken) {
+      setQrValue(null);
+      setQrErr(null);
+      return;
+    }
+    setQrLoading(true);
+    setQrErr(null);
+    try {
+      const res = await fetch(`${apiBase}/rides/${encodeURIComponent(rideId)}/medical/qr-payload`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        qrValue?: string;
+        qrDone?: boolean;
+        error?: string;
+      };
+      if (res.ok && data.ok && typeof data.qrValue === "string") {
+        setQrValue(data.qrValue);
+        setQrDone(data.qrDone === true);
+      } else {
+        setQrValue(null);
+        setQrErr(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+      }
+    } catch {
+      setQrValue(null);
+      setQrErr("network");
+    } finally {
+      setQrLoading(false);
+    }
+  }, [isMedicalRide, apiBase, rideId, sessionToken]);
+
+  useEffect(() => {
+    void loadMedicalQr();
+  }, [loadMedicalQr]);
 
   const loadSupportPreview = useCallback(async () => {
     if (!apiBase || !rideId || !sessionToken) {
@@ -277,6 +335,33 @@ export default function RideDetailScreen() {
             Hinweis: Bei iOS/Android öffnet sich der Druckdialog (Speichern als PDF möglich).
           </Text>
         </View>
+
+        {isMedicalRide ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Fahrtnachweis (QR)</Text>
+            <Text style={[styles.hint, { color: colors.mutedForeground, marginBottom: 10 }]}>
+              Zeigen Sie diesen QR-Code dem Fahrer — nur fahrtbezogener Nachweis, keine medizinischen Angaben.
+            </Text>
+            {!sessionToken ? (
+              <Text style={[styles.hint, { color: "#B45309" }]}>Bitte anmelden, um den QR-Code zu laden.</Text>
+            ) : qrLoading ? (
+              <ActivityIndicator color={colors.foreground} style={{ marginVertical: 16 }} />
+            ) : qrErr ? (
+              <Text style={[styles.hint, { color: "#B91C1C" }]}>
+                {qrErr === "network" ? "Netzwerkfehler." : qrErr}
+              </Text>
+            ) : qrValue ? (
+              <View style={{ alignItems: "center", paddingVertical: 12 }}>
+                <QRCode value={qrValue} size={184} />
+                <Text style={[styles.hint, { color: colors.foreground, marginTop: 12, textAlign: "center" }]}>
+                  {qrDone ? "QR wurde bereits vom Fahrer bestätigt." : "Bitte QR dem Fahrer vor Fahrtbeginn zeigen."}
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.hint, { color: colors.mutedForeground }]}>QR derzeit nicht verfügbar.</Text>
+            )}
+          </View>
+        ) : null}
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>Hilfe zu dieser Fahrt</Text>

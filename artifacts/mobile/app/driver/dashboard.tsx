@@ -5,6 +5,8 @@ import { useKeepAwake } from "expo-keep-awake";
 import { router } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import {
   ActivityIndicator,
   Alert,
@@ -32,6 +34,7 @@ import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, vali
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
+import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 
 /** Krankenkassen-/Eigenanteil-Fahrten (vom Kunden gebucht). */
 function isKrankenkasseRide(paymentMethod: string) {
@@ -138,7 +141,7 @@ function medicalSteps(req: RideRequest): MedicalStep[] | null {
   const hasCostCenter = typeof metaRaw.cost_center === "string" && metaRaw.cost_center.trim().length > 0;
   const signatureRequired = metaRaw.signature_required === true;
   const signatureDone = metaRaw.signature_done === true;
-  const qrRequired = metaRaw.qr_required === true;
+  const qrRequired = metaRaw.qr_required !== false;
   const qrDone = metaRaw.qr_done === true;
   return [
     { label: `QR (${!qrRequired ? "nicht erforderlich" : qrDone ? "erledigt" : "erforderlich"})`, done: !qrRequired || qrDone },
@@ -1031,20 +1034,215 @@ function TabProfil({ driver, onLogout }: { driver: DriverProfile; onLogout: () =
   );
 }
 
+function MedicalRideProofActions({
+  req,
+  fleetAuthToken,
+  onUpdated,
+}: {
+  req: RideRequest;
+  fleetAuthToken: string;
+  onUpdated: () => void | Promise<void>;
+}) {
+  const meta = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
+  const [camOpen, setCamOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [perm, requestPerm] = useCameraPermissions();
+  const scannedRef = useRef(false);
+
+  useEffect(() => {
+    if (camOpen) scannedRef.current = false;
+  }, [camOpen]);
+
+  if (!meta || meta.medical_ride !== true) return null;
+
+  async function postVerifyToken(token: string, rideId: string) {
+    const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(rideId)}/medical/verify-qr`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${fleetAuthToken}`,
+      },
+      body: JSON.stringify({ token }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!res.ok || !data.ok) {
+      throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+    }
+  }
+
+  async function handleBarCode(data: string) {
+    if (busy || scannedRef.current) return;
+    const parsed = parseMedicalQrPayload(data);
+    if (!parsed) {
+      Alert.alert("QR-Code", "Ungültiger oder unbekannter QR-Code.");
+      return;
+    }
+    if (parsed.rideId !== req.id) {
+      Alert.alert("QR-Code", "Dieser QR gehört zu einer anderen Fahrt.");
+      return;
+    }
+    scannedRef.current = true;
+    setBusy(true);
+    try {
+      await postVerifyToken(parsed.token, req.id);
+      setCamOpen(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await onUpdated();
+      Alert.alert("QR", "Nachweis gespeichert.");
+    } catch (e) {
+      scannedRef.current = false;
+      Alert.alert("QR", e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onPressScan() {
+    if (Platform.OS === "web") {
+      Alert.alert("QR scannen", "Bitte in der nativen App (iOS/Android) scannen.");
+      return;
+    }
+    const p = perm?.granted ? perm : await requestPerm();
+    if (!p?.granted) {
+      Alert.alert("Kamera", "Kamerazugriff wird benötigt.");
+      return;
+    }
+    setCamOpen(true);
+  }
+
+  async function onPressTransportPhoto() {
+    const p = await ImagePicker.requestCameraPermissionsAsync();
+    if (!p.granted) {
+      Alert.alert("Kamera", "Kamerazugriff wird benötigt.");
+      return;
+    }
+    const r = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      base64: true,
+    });
+    if (r.canceled || !r.assets?.[0]?.base64) return;
+    const mime = r.assets[0].mimeType ?? "image/jpeg";
+    const b64url = `data:${mime};base64,${r.assets[0].base64}`;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(req.id)}/medical/transport-document`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${fleetAuthToken}`,
+        },
+        body: JSON.stringify({ imageBase64: b64url }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : `HTTP ${res.status}`);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await onUpdated();
+      Alert.alert("Transportschein", "Foto übermittelt.");
+    } catch (e) {
+      Alert.alert("Upload", e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#1D4ED8", marginBottom: 6 }}>
+          Nachweise (Krankenfahrt)
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <Pressable
+            onPress={() => void onPressScan()}
+            disabled={busy}
+            style={({ pressed }) => ({
+              backgroundColor: "#DBEAFE",
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>QR scannen</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void onPressTransportPhoto()}
+            disabled={busy}
+            style={({ pressed }) => ({
+              backgroundColor: "#DBEAFE",
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1E40AF" }}>Transportschein fotografieren</Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              Alert.alert("Unterschrift", "Unterschrift holen — folgt als nächster Schritt.", [{ text: "OK" }])
+            }
+            style={({ pressed }) => ({
+              backgroundColor: "#E2E8F0",
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              opacity: pressed ? 0.9 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#475569" }}>Unterschrift holen</Text>
+          </Pressable>
+        </View>
+      </View>
+      <Modal visible={camOpen} animationType="slide" onRequestClose={() => setCamOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: "#000" }}>
+          <CameraView
+            style={{ flex: 1 }}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={({ data }) => {
+              void handleBarCode(data);
+            }}
+          />
+          <Pressable
+            onPress={() => setCamOpen(false)}
+            style={{
+              position: "absolute",
+              bottom: 48,
+              alignSelf: "center",
+              backgroundColor: "#fff",
+              paddingVertical: 12,
+              paddingHorizontal: 20,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ fontFamily: "Inter_700Bold", color: "#111" }}>Schließen</Text>
+          </Pressable>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
 /* ─── Active Ride Screen (with final price modal) ─── */
 function ActiveRideScreen({
   req,
   onComplete,
   onCancel,
   driverId,
+  fleetAuthToken,
 }: {
   req: RideRequest;
   onComplete: (finalFare: number) => void;
   onCancel: () => void;
   driverId: string;
+  fleetAuthToken: string;
 }) {
   const colors = useColors();
-  const { startDriving, arriveAtCustomer, markDriverArriving } = useRideRequests();
+  const { startDriving, arriveAtCustomer, markDriverArriving, refreshRequests } = useRideRequests();
   const [phase, setPhase] = useState<ActivePhase>(
     req.status === "in_progress" || req.status === "passenger_onboard" ? "driving" : "pickup",
   );
@@ -1361,6 +1559,14 @@ function ActiveRideScreen({
             <Text style={activeStyles.fareBruttoHint}>inkl. MwSt.</Text>
           </View>
         </View>
+
+        {fleetAuthToken && (req.rideKind === "medical" || !!medicalChecklist) ? (
+          <MedicalRideProofActions
+            req={req}
+            fleetAuthToken={fleetAuthToken}
+            onUpdated={() => void refreshRequests()}
+          />
+        ) : null}
 
         {/* Route */}
         <View style={[activeStyles.routeCard, { backgroundColor: colors.muted }]}>
@@ -2216,6 +2422,7 @@ export default function DriverDashboard() {
             onComplete={(fare) => handleComplete(activeDriverRequest.id, fare)}
             onCancel={() => handleCancel(activeDriverRequest.id)}
             driverId={driverId}
+            fleetAuthToken={driver.authToken}
           />
         ) : (
           <>

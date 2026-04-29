@@ -109,8 +109,15 @@ app.use(
   }),
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+/** Größeres Body-Limit nur für Krankenfahrt-Transportschein (Base64 in JSON); übrige Routen bleiben klein. */
+app.use((req, res, next) => {
+  const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
+  const medicalUpload =
+    req.method === "POST" && u.includes("/rides/") && u.includes("/medical/transport-document");
+  const limit = medicalUpload ? "6mb" : "200kb";
+  express.json({ limit })(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: "200kb" }));
 
 app.use("/api", router);
 app.use(router);

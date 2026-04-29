@@ -1,3 +1,6 @@
+import { randomUUID, timingSafeEqual } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Router } from "express";
 import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest";
 import type { RideAccessibilityOptions } from "../domain/rideRequest";
@@ -48,7 +51,11 @@ import {
   listServiceRegionsForApi,
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
+import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
+import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
+import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
+import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 export type { RideRequest } from "../domain/rideRequest";
 
@@ -69,6 +76,40 @@ const customerSupportTickets = new Map<
 >();
 
 const router = Router();
+
+const MEDICAL_RIDE_UPLOAD_ROOT =
+  (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() ||
+  path.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+
+function asMedicalFlatMeta(ride: RideRequest): Record<string, unknown> | null {
+  const m = ride.partnerBookingMeta;
+  if (!m || typeof m !== "object" || Array.isArray(m)) return null;
+  const rec = m as Record<string, unknown>;
+  if (rec.medical_ride !== true) return null;
+  return { ...rec };
+}
+
+function timingSafeEqualUtf8(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+function mergeMedicalPartnerMeta(ride: RideRequest, patch: Record<string, unknown>): Record<string, unknown> {
+  const base = asMedicalFlatMeta(ride);
+  if (!base) {
+    throw Object.assign(new Error("not_medical_meta"), { code: "not_medical_meta" });
+  }
+  const merged = { ...base, ...patch };
+  const ready = calculateMedicalBillingReadiness(merged);
+  merged.billing_ready = ready.billingReady;
+  merged.billing_missing_reasons = ready.missingReasons;
+  return merged;
+}
+
 const CODE_VERIFY_TTL_MS = 5 * 60 * 1000;
 const codeVerifySessions = new Map<
   string,
@@ -256,6 +297,7 @@ function pickMedicalMeta(raw: unknown): Record<string, unknown> {
   copyString("transport_document_status");
   copyBool("signature_required");
   copyBool("qr_required");
+  copyBool("transport_document_required");
   copyBool("billing_ready");
   copyBool("return_ride");
   copyString("return_time");
@@ -378,6 +420,207 @@ router.get("/rides", async (_req, res, next) => {
     const publicRows = rows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
     res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/rides/:id/medical/qr-payload", requireCustomerSession, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const passenger = (ride.passengerId ?? "").trim();
+    if (!passenger || passenger !== customerPassengerId(sess)) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta || typeof meta.medical_qr_token !== "string" || !meta.medical_qr_token.trim()) {
+      res.status(503).json({ ok: false, error: "qr_token_missing" });
+      return;
+    }
+    const qrValue = formatMedicalQrPayload(ride.id, meta.medical_qr_token.trim());
+    res.json({
+      ok: true,
+      rideId: ride.id,
+      qrValue,
+      qrDone: meta.qr_done === true,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:id/medical/verify-qr", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const body = req.body as { token?: unknown };
+    const token = typeof body.token === "string" ? body.token.trim() : "";
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!rideId || !token || !auth) {
+      res.status(400).json({ ok: false, error: "ride_or_token_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta) {
+      res.status(400).json({ ok: false, error: "no_medical_meta" });
+      return;
+    }
+    const companyId = (ride.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(403).json({ ok: false, error: "ride_company_required" });
+      return;
+    }
+    if (companyId !== auth.companyId) {
+      res.status(403).json({ ok: false, error: "wrong_company" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver) {
+      res.status(403).json({ ok: false, error: "driver_not_assigned" });
+      return;
+    }
+    if (assignedDriver !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const expected = typeof meta.medical_qr_token === "string" ? meta.medical_qr_token.trim() : "";
+    if (!expected || !timingSafeEqualUtf8(token, expected)) {
+      res.status(400).json({ ok: false, error: "invalid_qr_token" });
+      return;
+    }
+    if (meta.qr_done === true) {
+      res.status(409).json({ ok: false, error: "qr_already_verified" });
+      return;
+    }
+    const merged = mergeMedicalPartnerMeta(ride, {
+      qr_done: true,
+      qr_verified_at: new Date().toISOString(),
+      qr_verified_by_driver_id: auth.fleetDriverId,
+    });
+    const nextRide = await updateRide(rideId, {
+      partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
+    });
+    if (!nextRide) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "medical_qr_verified",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: {},
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    const body = req.body as { imageBase64?: unknown };
+    const b64 = typeof body.imageBase64 === "string" ? body.imageBase64.trim() : "";
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    if (!b64) {
+      res.status(400).json({ ok: false, error: "image_base64_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const companyId = (ride.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(403).json({ ok: false, error: "ride_company_required" });
+      return;
+    }
+    if (companyId !== auth.companyId) {
+      res.status(403).json({ ok: false, error: "wrong_company" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver) {
+      res.status(403).json({ ok: false, error: "driver_not_assigned" });
+      return;
+    }
+    if (assignedDriver !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta) {
+      res.status(400).json({ ok: false, error: "no_medical_meta" });
+      return;
+    }
+    const decoded = decodeValidatedMedicalTransportImage(b64);
+    if (!decoded.ok) {
+      const code = decoded.error;
+      const status = code === "payload_too_large" ? 413 : 400;
+      res.status(status).json({ ok: false, error: code });
+      return;
+    }
+    const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const rel = path.join(companyKey, "rides", rideId, `${randomUUID()}.${decoded.ext}`).replace(/\\/g, "/");
+    const dest = path.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
+    await mkdir(path.dirname(dest), { recursive: true });
+    await writeFile(dest, decoded.buffer);
+    const uploadedAt = new Date().toISOString();
+    const merged = mergeMedicalPartnerMeta(ride, {
+      transport_document_status: "uploaded",
+      transport_document_file_key: rel,
+      transport_document_uploaded_at: uploadedAt,
+    });
+    const nextRide = await updateRide(rideId, {
+      partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
+    });
+    if (!nextRide) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "medical_transport_document_uploaded",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: { fileKey: rel },
+    });
+    res.json({ ok: true, fileKey: rel });
   } catch (e) {
     next(e);
   }
@@ -733,6 +976,7 @@ router.post("/rides", async (req, res, next) => {
         ? {
             ...medicalMeta,
             medical_ride: true,
+            medical_qr_token: createMedicalQrToken(),
             approval_status:
               typeof medicalMeta.approval_status === "string" ? medicalMeta.approval_status : "pending",
             payer_kind:
@@ -741,12 +985,21 @@ router.post("/rides", async (req, res, next) => {
                 : "insurance",
             signature_required:
               typeof medicalMeta.signature_required === "boolean" ? medicalMeta.signature_required : true,
+            signature_done: false,
+            signature_file_key: "",
+            signature_signed_at: "",
             qr_required: typeof medicalMeta.qr_required === "boolean" ? medicalMeta.qr_required : true,
-            billing_ready: typeof medicalMeta.billing_ready === "boolean" ? medicalMeta.billing_ready : false,
+            qr_done: false,
+            transport_document_required:
+              typeof medicalMeta.transport_document_required === "boolean"
+                ? medicalMeta.transport_document_required
+                : true,
             transport_document_status:
               typeof medicalMeta.transport_document_status === "string"
                 ? medicalMeta.transport_document_status
                 : "missing",
+            transport_document_file_key: "",
+            transport_document_uploaded_at: "",
           }
         : {};
     if (rideKind === "medical") {
@@ -865,6 +1118,7 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       res.status(400).json({ error: "cancel_reason_required" });
       return;
     }
+    let companyIdOnAccept: string | undefined;
     if (nextStatus === "accepted" && driverId) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
       const capabilityCompanyId = cur.companyId ?? driverAuth?.company_id ?? null;
@@ -899,6 +1153,7 @@ router.patch("/rides/:id/status", async (req, res, next) => {
         });
         return;
       }
+      companyIdOnAccept = capabilityCompanyId;
     }
 
     let finalFareForPatch: number | undefined = parsedFinalFare;
@@ -952,6 +1207,7 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       status: nextStatus,
       ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
       ...(driverId != null ? { driverId } : {}),
+      ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
     });
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
