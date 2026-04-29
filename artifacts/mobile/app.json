@@ -45,7 +45,15 @@
       "expo-router",
       "expo-font",
       "expo-web-browser",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Onroda nutzt die Kamera zum Scannen von Fahrt-QR-Codes (Krankenfahrt-Nachweis).",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
