@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -31,6 +32,7 @@ type PickerTarget =
   | "seriesFrom"
   | "seriesTo";
 type RecognitionStatus = "pending_recognition" | "recognized" | "unclear" | "rejected";
+type ApprovalProofMode = "uploaded" | "show_to_driver" | "later";
 
 const WEEKDAYS: { key: WeekdayKey; label: string; idx: number }[] = [
   { key: "mo", label: "Mo", idx: 1 },
@@ -115,6 +117,7 @@ export default function BookingMedicalScreen() {
   const [costCenter, setCostCenter] = useState("");
   const [authorizationReference, setAuthorizationReference] = useState("");
   const [approvalPresent, setApprovalPresent] = useState<boolean | null>(null);
+  const [approvalProofMode, setApprovalProofMode] = useState<ApprovalProofMode>("later");
   const [transportDocUri, setTransportDocUri] = useState<string | null>(null);
   const [driverNote, setDriverNote] = useState("");
 
@@ -136,6 +139,7 @@ export default function BookingMedicalScreen() {
   const [seriesWeekdays, setSeriesWeekdays] = useState<WeekdayKey[]>(["mo", "we", "fr"]);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
+  const [pickerDraftValue, setPickerDraftValue] = useState<Date | null>(null);
 
   function focusIntoView(e: any) {
     const target = e.target;
@@ -175,10 +179,11 @@ export default function BookingMedicalScreen() {
   function openPicker(target: PickerTarget, mode: "date" | "time") {
     setPickerTarget(target);
     setPickerMode(mode);
+    setPickerDraftValue(pickerValueForTarget(target));
   }
 
-  function pickerValue(): Date {
-    switch (pickerTarget) {
+  function pickerValueForTarget(target: PickerTarget | null): Date {
+    switch (target) {
       case "appointmentDate":
         return appointmentDate;
       case "seriesFrom":
@@ -202,17 +207,30 @@ export default function BookingMedicalScreen() {
   }
 
   function onPickerChange(event: DateTimePickerEvent, value?: Date) {
-    if (Platform.OS === "android") setPickerTarget(null);
     if (event.type === "dismissed" || !value || !pickerTarget) return;
-    if (pickerMode === "date") {
-      if (pickerTarget === "appointmentDate") setAppointmentDate(value);
-      if (pickerTarget === "seriesFrom") setSeriesFrom(value);
-      if (pickerTarget === "seriesTo") setSeriesTo(value);
+    setPickerDraftValue(value);
+  }
+
+  function cancelPicker() {
+    setPickerTarget(null);
+    setPickerDraftValue(null);
+  }
+
+  function confirmPicker() {
+    if (!pickerTarget || !pickerDraftValue) {
+      cancelPicker();
       return;
     }
-    const hhmm = formatTimeHHmm(value);
-    if (pickerTarget === "appointmentTime") setAppointmentTime(hhmm);
-    if (pickerTarget === "returnTime") setReturnTime(hhmm);
+    if (pickerMode === "date") {
+      if (pickerTarget === "appointmentDate") setAppointmentDate(pickerDraftValue);
+      if (pickerTarget === "seriesFrom") setSeriesFrom(pickerDraftValue);
+      if (pickerTarget === "seriesTo") setSeriesTo(pickerDraftValue);
+    } else {
+      const hhmm = formatTimeHHmm(pickerDraftValue);
+      if (pickerTarget === "appointmentTime") setAppointmentTime(hhmm);
+      if (pickerTarget === "returnTime") setReturnTime(hhmm);
+    }
+    cancelPicker();
   }
 
   async function pickTransportDocumentFrom(source: "camera" | "library") {
@@ -260,6 +278,9 @@ export default function BookingMedicalScreen() {
       return "Bitte Zieladresse vollständig ausfüllen (Straße, Hausnummer, PLZ, Stadt).";
     }
     if (approvalPresent == null) return "Bitte Genehmigung vorhanden: ja/nein auswählen.";
+    if (approvalPresent === true && approvalProofMode === "uploaded" && !transportDocUri) {
+      return "Bitte Genehmigung jetzt hochladen oder andere Nachweis-Option wählen.";
+    }
     if (needsAssistance && (assistanceLevel == null || canTransfer == null || companionCount == null)) {
       return "Bitte Hilfe, Umsteigen (ja/nein) und Begleitperson auswählen.";
     }
@@ -310,6 +331,12 @@ export default function BookingMedicalScreen() {
     }
 
     const recognitionStatus: RecognitionStatus | null = transportDocUri ? "pending_recognition" : null;
+    const transportDocumentStatus =
+      approvalPresent === true
+        ? approvalProofMode
+        : transportDocUri
+          ? "uploaded"
+          : "missing";
     const medicalMeta: Record<string, unknown> = {
       medical_ride: true,
       approval_status:
@@ -318,7 +345,8 @@ export default function BookingMedicalScreen() {
       insurance_name: insuranceName.trim() || "",
       cost_center: costCenter.trim() || "",
       authorization_reference: authorizationReference.trim() || "",
-      transport_document_status: transportDocUri ? "uploaded" : "missing",
+      approval_proof_mode: approvalPresent === true ? approvalProofMode : "none",
+      transport_document_status: transportDocumentStatus,
       transport_document_processing_status: recognitionStatus ?? "missing",
       transport_document_recognition_status: recognitionStatus,
       transport_document_recognition_result: null,
@@ -326,6 +354,14 @@ export default function BookingMedicalScreen() {
       signature_required: true,
       qr_required: true,
       billing_ready: false,
+      copayment_required: "unknown",
+      copayment_amount_estimated: 0,
+      copayment_collected_status: "open",
+      copayment_collection_method: "unknown",
+      onroda_commission_rate: 0.07,
+      onroda_commission_amount: 0,
+      gross_ride_amount: 0,
+      partner_payout_amount: 0,
       return_ride: returnRide,
       return_time: returnRide ? returnTime : null,
       transport_document_uri: transportDocUri ?? null,
@@ -482,6 +518,33 @@ export default function BookingMedicalScreen() {
               { id: "nein", label: "Nein", active: approvalPresent === false, onPress: () => setApprovalPresent(false) },
             ]}
           />
+          {approvalPresent === true ? (
+            <>
+              <ChoiceTitle text="Nachweis-Option" />
+              <ChoiceRow
+                choices={[
+                  {
+                    id: "approval-upload",
+                    label: "Jetzt hochladen",
+                    active: approvalProofMode === "uploaded",
+                    onPress: () => setApprovalProofMode("uploaded"),
+                  },
+                  {
+                    id: "approval-show-driver",
+                    label: "Vor Ort beim Fahrer zeigen",
+                    active: approvalProofMode === "show_to_driver",
+                    onPress: () => setApprovalProofMode("show_to_driver"),
+                  },
+                  {
+                    id: "approval-later",
+                    label: "Später nachreichen",
+                    active: approvalProofMode === "later",
+                    onPress: () => setApprovalProofMode("later"),
+                  },
+                ]}
+              />
+            </>
+          ) : null}
         </View>
 
         <Pressable style={styles.uploadBtn} onPress={pickTransportDocument}>
@@ -490,6 +553,9 @@ export default function BookingMedicalScreen() {
             {transportDocUri ? "Transportschein hochgeladen (Erkennung ausstehend)" : "Transportschein hochladen/fotografieren"}
           </Text>
         </Pressable>
+        <Text style={styles.profileHint}>
+          Eventuelle gesetzliche Zuzahlung wird nach geltenden Regeln berechnet.
+        </Text>
 
         <View style={styles.box}>
           <Text style={styles.boxTitle}>Rollstuhl / besondere Hilfe benötigt</Text>
@@ -630,15 +696,28 @@ export default function BookingMedicalScreen() {
           <Text style={styles.submitText}>{seriesMode ? "Serienfahrt erstellen" : "Krankenfahrt speichern"}</Text>
         </Pressable>
       </ScrollView>
-      {pickerTarget ? (
-        <DateTimePicker
-          value={pickerValue()}
-          mode={pickerMode}
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          is24Hour
-          onChange={onPickerChange}
-        />
-      ) : null}
+      <Modal visible={pickerTarget != null} transparent animationType="fade" onRequestClose={cancelPicker}>
+        <View style={styles.pickerModalBackdrop}>
+          <View style={styles.pickerModalCard}>
+            <Text style={styles.boxTitle}>{pickerMode === "date" ? "Datum wählen" : "Uhrzeit wählen"}</Text>
+            <DateTimePicker
+              value={pickerDraftValue ?? pickerValueForTarget(pickerTarget)}
+              mode={pickerMode}
+              display={"spinner"}
+              is24Hour
+              onChange={onPickerChange}
+            />
+            <View style={[styles.row, { justifyContent: "flex-end", marginTop: rs(8) }]}>
+              <Pressable style={styles.modalGhostBtn} onPress={cancelPicker}>
+                <Text style={styles.modalGhostBtnText}>Abbrechen</Text>
+              </Pressable>
+              <Pressable style={styles.modalPrimaryBtn} onPress={confirmPicker}>
+                <Text style={styles.modalPrimaryBtnText}>OK</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <BottomTabBar active="buchen" />
     </KeyboardAvoidingView>
   );
@@ -830,6 +909,44 @@ const styles = StyleSheet.create({
     fontSize: rf(14),
     fontFamily: "Inter_500Medium",
     color: "#0F172A",
+  },
+  pickerModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: rs(20),
+  },
+  pickerModalCard: {
+    width: "100%",
+    maxWidth: rs(360),
+    borderRadius: rs(14),
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: rs(12),
+  },
+  modalGhostBtn: {
+    paddingVertical: rs(9),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(10),
+    backgroundColor: "#E2E8F0",
+  },
+  modalGhostBtnText: {
+    fontSize: rf(13),
+    fontFamily: "Inter_700Bold",
+    color: "#334155",
+  },
+  modalPrimaryBtn: {
+    paddingVertical: rs(9),
+    paddingHorizontal: rs(14),
+    borderRadius: rs(10),
+    backgroundColor: "#16A34A",
+  },
+  modalPrimaryBtnText: {
+    fontSize: rf(13),
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
 });
 

@@ -290,11 +290,24 @@ function pickMedicalMeta(raw: unknown): Record<string, unknown> {
     const v = src[k];
     if (typeof v === "boolean") out[k] = v;
   };
+  const copyNumber = (k: string) => {
+    const v = src[k];
+    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  };
   copyString("approval_status");
   copyString("insurance_name");
   copyString("cost_center");
   copyString("authorization_reference");
   copyString("transport_document_status");
+  copyString("approval_proof_mode");
+  copyString("copayment_required");
+  copyString("copayment_collected_status");
+  copyString("copayment_collection_method");
+  copyNumber("copayment_amount_estimated");
+  copyNumber("gross_ride_amount");
+  copyNumber("onroda_commission_rate");
+  copyNumber("onroda_commission_amount");
+  copyNumber("partner_payout_amount");
   copyBool("signature_required");
   copyBool("qr_required");
   copyBool("transport_document_required");
@@ -303,6 +316,24 @@ function pickMedicalMeta(raw: unknown): Record<string, unknown> {
   copyString("return_time");
   copyString("transport_document_uri");
   return out;
+}
+
+function medicalFinanceSnapshot(gross: number): {
+  gross_ride_amount: number;
+  onroda_commission_rate: number;
+  onroda_commission_amount: number;
+  partner_payout_amount: number;
+} {
+  const grossSafe = Number.isFinite(gross) ? Math.max(0, gross) : 0;
+  const rate = 0.07;
+  const commission = Math.round(grossSafe * rate * 100) / 100;
+  const payout = Math.round((grossSafe - commission) * 100) / 100;
+  return {
+    gross_ride_amount: grossSafe,
+    onroda_commission_rate: rate,
+    onroda_commission_amount: commission,
+    partner_payout_amount: payout,
+  };
 }
 
 router.get("/fare-config", async (_req, res, next) => {
@@ -1086,8 +1117,29 @@ router.post("/rides", async (req, res, next) => {
               typeof medicalMeta.transport_document_status === "string"
                 ? medicalMeta.transport_document_status
                 : "missing",
+            approval_proof_mode:
+              typeof medicalMeta.approval_proof_mode === "string"
+                ? medicalMeta.approval_proof_mode
+                : "none",
             transport_document_file_key: "",
             transport_document_uploaded_at: "",
+            copayment_required:
+              typeof medicalMeta.copayment_required === "string"
+                ? medicalMeta.copayment_required
+                : "unknown",
+            copayment_amount_estimated:
+              typeof medicalMeta.copayment_amount_estimated === "number"
+                ? medicalMeta.copayment_amount_estimated
+                : 0,
+            copayment_collected_status:
+              typeof medicalMeta.copayment_collected_status === "string"
+                ? medicalMeta.copayment_collected_status
+                : "open",
+            copayment_collection_method:
+              typeof medicalMeta.copayment_collection_method === "string"
+                ? medicalMeta.copayment_collection_method
+                : "unknown",
+            ...medicalFinanceSnapshot(finalPriceB),
           }
         : {};
     if (rideKind === "medical") {

@@ -18,10 +18,12 @@ export function calculateMedicalBillingReadiness(meta: Record<string, unknown>):
   const qrRequired = meta.qr_required !== false;
   const qrDone = meta.qr_done === true;
   const transportDocRequired = meta.transport_document_required !== false;
+  const approvalProofMode = normalizeStatus(meta.approval_proof_mode);
 
   if (approval !== "approved") missing.push("missing_approval");
   if (qrRequired && !qrDone) missing.push("missing_qr_verification");
   if (transportDocRequired && doc !== "uploaded" && doc !== "provided") missing.push("missing_transport_document");
+  if (approvalProofMode === "later") missing.push("approval_proof_pending");
   if (signatureRequired && !signatureDone) missing.push("missing_signature");
   if (!insurance) missing.push("missing_insurance");
   if (!costCenter) missing.push("missing_cost_center");
