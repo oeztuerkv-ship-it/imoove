@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import DateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
@@ -16,13 +17,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from "@/components/BottomTabBar";
+import { BottomTabBar, mainTabScrollPaddingBottom } from "@/components/BottomTabBar";
 import { useRideRequests, type RideAccessibilityOptions } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { rf, rs } from "@/utils/scale";
 
 type WeekdayKey = "mo" | "tu" | "we" | "th" | "fr" | "sa" | "su";
+type PickerTarget =
+  | "appointmentDate"
+  | "appointmentTime"
+  | "returnTime"
+  | "seriesFrom"
+  | "seriesTo";
+type RecognitionStatus = "pending_recognition" | "recognized" | "unclear" | "rejected";
 
 const WEEKDAYS: { key: WeekdayKey; label: string; idx: number }[] = [
   { key: "mo", label: "Mo", idx: 1 },
@@ -58,6 +66,27 @@ function mergeDateAndTime(baseDate: Date, timeHHmm: string): Date {
   return out;
 }
 
+function formatDateIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateDe(d: Date): string {
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatTimeHHmm(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function joinAddress(street: string, house: string, postal: string, city: string): string {
+  const line1 = `${street.trim()} ${house.trim()}`.trim();
+  const line2 = `${postal.trim()} ${city.trim()}`.trim();
+  return `${line1}, ${line2}`.trim();
+}
+
 export default function BookingMedicalScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -69,9 +98,16 @@ export default function BookingMedicalScreen() {
   const formScrollRef = useRef<ScrollView>(null);
 
   const [patientName, setPatientName] = useState("");
-  const [pickupAddress, setPickupAddress] = useState("");
-  const [destinationAddress, setDestinationAddress] = useState("");
-  const [appointmentDate, setAppointmentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [pickupStreet, setPickupStreet] = useState("");
+  const [pickupHouseNumber, setPickupHouseNumber] = useState("");
+  const [pickupPostalCode, setPickupPostalCode] = useState("");
+  const [pickupCity, setPickupCity] = useState("");
+  const [destinationStreet, setDestinationStreet] = useState("");
+  const [destinationHouseNumber, setDestinationHouseNumber] = useState("");
+  const [destinationPostalCode, setDestinationPostalCode] = useState("");
+  const [destinationCity, setDestinationCity] = useState("");
+
+  const [appointmentDate, setAppointmentDate] = useState(new Date());
   const [appointmentTime, setAppointmentTime] = useState("08:00");
   const [returnRide, setReturnRide] = useState(false);
   const [returnTime, setReturnTime] = useState("12:00");
@@ -82,6 +118,7 @@ export default function BookingMedicalScreen() {
   const [transportDocUri, setTransportDocUri] = useState<string | null>(null);
   const [driverNote, setDriverNote] = useState("");
 
+  const [needsAssistance, setNeedsAssistance] = useState(false);
   const [assistanceLevel, setAssistanceLevel] = useState<RideAccessibilityOptions["assistanceLevel"] | null>(null);
   const [canTransfer, setCanTransfer] = useState<boolean | null>(null);
   const [wheelchairType, setWheelchairType] = useState<RideAccessibilityOptions["wheelchairType"] | null>(null);
@@ -94,9 +131,11 @@ export default function BookingMedicalScreen() {
     profile.wheelchairDefaults ? "profile" : "trip",
   );
 
-  const [seriesFrom, setSeriesFrom] = useState(new Date().toISOString().slice(0, 10));
-  const [seriesTo, setSeriesTo] = useState(new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10));
+  const [seriesFrom, setSeriesFrom] = useState(new Date());
+  const [seriesTo, setSeriesTo] = useState(new Date(Date.now() + 21 * 86400000));
   const [seriesWeekdays, setSeriesWeekdays] = useState<WeekdayKey[]>(["mo", "we", "fr"]);
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
+  const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
 
   function focusIntoView(e: any) {
     const target = e.target;
@@ -124,7 +163,73 @@ export default function BookingMedicalScreen() {
     [seriesWeekdays],
   );
 
-  async function pickTransportDocument() {
+  const pickupAddress = useMemo(
+    () => joinAddress(pickupStreet, pickupHouseNumber, pickupPostalCode, pickupCity),
+    [pickupStreet, pickupHouseNumber, pickupPostalCode, pickupCity],
+  );
+  const destinationAddress = useMemo(
+    () => joinAddress(destinationStreet, destinationHouseNumber, destinationPostalCode, destinationCity),
+    [destinationStreet, destinationHouseNumber, destinationPostalCode, destinationCity],
+  );
+
+  function openPicker(target: PickerTarget, mode: "date" | "time") {
+    setPickerTarget(target);
+    setPickerMode(mode);
+  }
+
+  function pickerValue(): Date {
+    switch (pickerTarget) {
+      case "appointmentDate":
+        return appointmentDate;
+      case "seriesFrom":
+        return seriesFrom;
+      case "seriesTo":
+        return seriesTo;
+      case "returnTime": {
+        const [hh, mm] = returnTime.split(":").map((x) => Number(x));
+        const d = new Date();
+        d.setHours(Number.isFinite(hh) ? hh : 12, Number.isFinite(mm) ? mm : 0, 0, 0);
+        return d;
+      }
+      case "appointmentTime":
+      default: {
+        const [hh, mm] = appointmentTime.split(":").map((x) => Number(x));
+        const d = new Date();
+        d.setHours(Number.isFinite(hh) ? hh : 8, Number.isFinite(mm) ? mm : 0, 0, 0);
+        return d;
+      }
+    }
+  }
+
+  function onPickerChange(event: DateTimePickerEvent, value?: Date) {
+    if (Platform.OS === "android") setPickerTarget(null);
+    if (event.type === "dismissed" || !value || !pickerTarget) return;
+    if (pickerMode === "date") {
+      if (pickerTarget === "appointmentDate") setAppointmentDate(value);
+      if (pickerTarget === "seriesFrom") setSeriesFrom(value);
+      if (pickerTarget === "seriesTo") setSeriesTo(value);
+      return;
+    }
+    const hhmm = formatTimeHHmm(value);
+    if (pickerTarget === "appointmentTime") setAppointmentTime(hhmm);
+    if (pickerTarget === "returnTime") setReturnTime(hhmm);
+  }
+
+  async function pickTransportDocumentFrom(source: "camera" | "library") {
+    if (source === "camera") {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (perm.status !== "granted") {
+        Alert.alert("Berechtigung fehlt", "Bitte Kamera erlauben.");
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.7,
+      });
+      if (!res.canceled && res.assets?.[0]?.uri) setTransportDocUri(res.assets[0].uri);
+      return;
+    }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== "granted") {
       Alert.alert("Berechtigung fehlt", "Bitte Fotobibliothek erlauben.");
@@ -135,22 +240,32 @@ export default function BookingMedicalScreen() {
       allowsEditing: false,
       quality: 0.7,
     });
-    if (!res.canceled && res.assets?.[0]?.uri) {
-      setTransportDocUri(res.assets[0].uri);
-    }
+    if (!res.canceled && res.assets?.[0]?.uri) setTransportDocUri(res.assets[0].uri);
+  }
+
+  async function pickTransportDocument() {
+    Alert.alert("Transportschein", "Bildquelle wählen", [
+      { text: "Kamera", onPress: () => void pickTransportDocumentFrom("camera") },
+      { text: "Galerie", onPress: () => void pickTransportDocumentFrom("library") },
+      { text: "Abbrechen", style: "cancel" },
+    ]);
   }
 
   function validateRequired(): string | null {
     if (!patientName.trim()) return "Bitte Patient/Fahrgast angeben.";
-    if (!pickupAddress.trim() || !destinationAddress.trim()) return "Bitte Abhol- und Zieladresse ausfüllen.";
-    if (!appointmentDate.trim() || !appointmentTime.trim()) return "Bitte Datum und Uhrzeit angeben.";
+    if (!pickupStreet.trim() || !pickupHouseNumber.trim() || !pickupCity.trim() || !pickupPostalCode.trim()) {
+      return "Bitte Abholadresse vollständig ausfüllen (Straße, Hausnummer, PLZ, Stadt).";
+    }
+    if (!destinationStreet.trim() || !destinationHouseNumber.trim() || !destinationCity.trim() || !destinationPostalCode.trim()) {
+      return "Bitte Zieladresse vollständig ausfüllen (Straße, Hausnummer, PLZ, Stadt).";
+    }
     if (approvalPresent == null) return "Bitte Genehmigung vorhanden: ja/nein auswählen.";
-    if (assistanceLevel == null || canTransfer == null || companionCount == null) {
+    if (needsAssistance && (assistanceLevel == null || canTransfer == null || companionCount == null)) {
       return "Bitte Hilfe, Umsteigen (ja/nein) und Begleitperson auswählen.";
     }
-    if (wheelchairType == null) return "Bitte Rollstuhl-Typ auswählen.";
+    if (needsAssistance && wheelchairType == null) return "Bitte Rollstuhl-Typ auswählen.";
     if (seriesMode) {
-      if (!seriesFrom || !seriesTo) return "Bitte Serien-Zeitraum ausfüllen.";
+      if (seriesFrom > seriesTo) return "Bitte Serien-Zeitraum prüfen (Start <= Ende).";
       if (seriesWeekdays.length === 0) return "Bitte mindestens einen Wochentag wählen.";
     }
     return null;
@@ -163,20 +278,22 @@ export default function BookingMedicalScreen() {
       return;
     }
 
-    const accessibilityOptions: RideAccessibilityOptions = {
-      assistanceLevel: assistanceLevel as RideAccessibilityOptions["assistanceLevel"],
-      wheelchairType: wheelchairType as RideAccessibilityOptions["wheelchairType"],
-      wheelchairStaysOccupied: canTransfer === false,
-      canTransfer: canTransfer as boolean,
-      companionCount: companionCount as 0 | 1 | 2,
-      rampRequired,
-      carryChairRequired,
-      elevatorAvailable,
-      stairsPresent,
-      driverNote: driverNote.trim() || null,
-    };
+    const accessibilityOptions: RideAccessibilityOptions | null = needsAssistance
+      ? {
+          assistanceLevel: assistanceLevel as RideAccessibilityOptions["assistanceLevel"],
+          wheelchairType: wheelchairType as RideAccessibilityOptions["wheelchairType"],
+          wheelchairStaysOccupied: canTransfer === false,
+          canTransfer: canTransfer as boolean,
+          companionCount: companionCount as 0 | 1 | 2,
+          rampRequired,
+          carryChairRequired,
+          elevatorAvailable,
+          stairsPresent,
+          driverNote: driverNote.trim() || null,
+        }
+      : null;
 
-    if (wheelchairDetailMode === "save_default") {
+    if (needsAssistance && wheelchairDetailMode === "save_default" && accessibilityOptions) {
       updateProfile({
         wheelchairDefaults: {
           wheelchairType: accessibilityOptions.wheelchairType,
@@ -192,6 +309,7 @@ export default function BookingMedicalScreen() {
       });
     }
 
+    const recognitionStatus: RecognitionStatus | null = transportDocUri ? "pending_recognition" : null;
     const medicalMeta: Record<string, unknown> = {
       medical_ride: true,
       approval_status:
@@ -201,6 +319,10 @@ export default function BookingMedicalScreen() {
       cost_center: costCenter.trim() || "",
       authorization_reference: authorizationReference.trim() || "",
       transport_document_status: transportDocUri ? "uploaded" : "missing",
+      transport_document_processing_status: recognitionStatus ?? "missing",
+      transport_document_recognition_status: recognitionStatus,
+      transport_document_recognition_result: null,
+      transport_document_recognition_next_states: ["recognized", "unclear", "rejected"],
       signature_required: true,
       qr_required: true,
       billing_ready: false,
@@ -211,47 +333,47 @@ export default function BookingMedicalScreen() {
 
     const createOne = async (dateObj: Date) => {
       await addRequest({
-        from: pickupAddress.split(",")[0].trim() || pickupAddress.trim(),
+        from: `${pickupStreet.trim()} ${pickupHouseNumber.trim()}`.trim(),
         fromFull: pickupAddress.trim(),
-        to: destinationAddress.split(",")[0].trim() || destinationAddress.trim(),
+        to: `${destinationStreet.trim()} ${destinationHouseNumber.trim()}`.trim(),
         toFull: destinationAddress.trim(),
         distanceKm: 0,
         durationMinutes: 0,
         estimatedFare: 0,
         paymentMethod: "Krankenkasse",
-        vehicle: "Rollstuhl",
+        vehicle: needsAssistance ? "Rollstuhl" : "Krankenfahrt",
         customerName: patientName.trim(),
         scheduledAt: dateObj,
         rideKind: "medical",
         payerKind: "insurance",
         billingReference: costCenter.trim() || authorizationReference.trim() || null,
         partnerBookingMeta: medicalMeta,
-        accessibilityOptions,
+        ...(accessibilityOptions ? { accessibilityOptions } : {}),
       });
       if (returnRide) {
         await addRequest({
-          from: destinationAddress.split(",")[0].trim() || destinationAddress.trim(),
+          from: `${destinationStreet.trim()} ${destinationHouseNumber.trim()}`.trim(),
           fromFull: destinationAddress.trim(),
-          to: pickupAddress.split(",")[0].trim() || pickupAddress.trim(),
+          to: `${pickupStreet.trim()} ${pickupHouseNumber.trim()}`.trim(),
           toFull: pickupAddress.trim(),
           distanceKm: 0,
           durationMinutes: 0,
           estimatedFare: 0,
           paymentMethod: "Krankenkasse",
-          vehicle: "Rollstuhl",
+          vehicle: needsAssistance ? "Rollstuhl" : "Krankenfahrt",
           customerName: patientName.trim(),
           scheduledAt: mergeDateAndTime(new Date(dateObj), returnTime),
           rideKind: "medical",
           payerKind: "insurance",
           billingReference: costCenter.trim() || authorizationReference.trim() || null,
           partnerBookingMeta: { ...medicalMeta, return_leg: true },
-          accessibilityOptions,
+          ...(accessibilityOptions ? { accessibilityOptions } : {}),
         });
       }
     };
 
     if (seriesMode) {
-      const dates = createSeriesDates(seriesFrom, seriesTo, seriesWeekdays).map((d) =>
+      const dates = createSeriesDates(formatDateIso(seriesFrom), formatDateIso(seriesTo), seriesWeekdays).map((d) =>
         mergeDateAndTime(d, appointmentTime),
       );
       if (dates.length === 0) {
@@ -292,18 +414,61 @@ export default function BookingMedicalScreen() {
       </View>
       <ScrollView
         ref={formScrollRef}
+        style={{ flex: 1 }}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: rs(16), gap: rs(12), paddingBottom: rs(120) }}
+        contentContainerStyle={{
+          padding: rs(16),
+          gap: rs(12),
+          paddingBottom: mainTabScrollPaddingBottom(insets.bottom, rs(120)),
+        }}
       >
         <Field label="Patient / Fahrgast" value={patientName} onChangeText={setPatientName} onFocus={focusIntoView} />
-        <Field label="Abholadresse" value={pickupAddress} onChangeText={setPickupAddress} onFocus={focusIntoView} />
-        <Field label="Zieladresse" value={destinationAddress} onChangeText={setDestinationAddress} onFocus={focusIntoView} />
+        <AddressCard
+          title="Abholung"
+          street={pickupStreet}
+          houseNumber={pickupHouseNumber}
+          postalCode={pickupPostalCode}
+          city={pickupCity}
+          onStreetChange={setPickupStreet}
+          onHouseNumberChange={setPickupHouseNumber}
+          onPostalCodeChange={setPickupPostalCode}
+          onCityChange={setPickupCity}
+          onFocus={focusIntoView}
+        />
+        <AddressCard
+          title="Ziel"
+          street={destinationStreet}
+          houseNumber={destinationHouseNumber}
+          postalCode={destinationPostalCode}
+          city={destinationCity}
+          onStreetChange={setDestinationStreet}
+          onHouseNumberChange={setDestinationHouseNumber}
+          onPostalCodeChange={setDestinationPostalCode}
+          onCityChange={setDestinationCity}
+          onFocus={focusIntoView}
+        />
         <View style={styles.row}>
-          <Field label="Datum" value={appointmentDate} onChangeText={setAppointmentDate} style={{ flex: 1 }} onFocus={focusIntoView} />
-          <Field label="Uhrzeit" value={appointmentTime} onChangeText={setAppointmentTime} style={{ flex: 1 }} onFocus={focusIntoView} />
+          <PickerField
+            label="Datum"
+            value={formatDateDe(appointmentDate)}
+            onPress={() => openPicker("appointmentDate", "date")}
+            style={{ flex: 1 }}
+          />
+          <PickerField
+            label="Uhrzeit"
+            value={appointmentTime}
+            onPress={() => openPicker("appointmentTime", "time")}
+            style={{ flex: 1 }}
+          />
         </View>
         <Toggle label="Hin- und Rückfahrt" value={returnRide} onPress={() => setReturnRide((v) => !v)} />
-        {returnRide ? <Field label="Uhrzeit Rückfahrt" value={returnTime} onChangeText={setReturnTime} onFocus={focusIntoView} /> : null}
+        {returnRide ? (
+          <PickerField
+            label="Uhrzeit Rückfahrt"
+            value={returnTime}
+            onPress={() => openPicker("returnTime", "time")}
+          />
+        ) : null}
 
         <Field label="Krankenkasse" value={insuranceName} onChangeText={setInsuranceName} onFocus={focusIntoView} />
         <Field label="Kostenstelle / Vorgangsnummer" value={costCenter} onChangeText={setCostCenter} onFocus={focusIntoView} />
@@ -322,12 +487,20 @@ export default function BookingMedicalScreen() {
         <Pressable style={styles.uploadBtn} onPress={pickTransportDocument}>
           <Feather name="upload" size={16} color="#fff" />
           <Text style={styles.uploadText}>
-            {transportDocUri ? "Transportschein-Foto gewählt" : "Transportschein Foto hochladen"}
+            {transportDocUri ? "Transportschein hochgeladen (Erkennung ausstehend)" : "Transportschein hochladen/fotografieren"}
           </Text>
         </Pressable>
 
         <View style={styles.box}>
-          <Text style={styles.boxTitle}>Rollstuhl / Hilfe / Begleitperson</Text>
+          <Text style={styles.boxTitle}>Rollstuhl / besondere Hilfe benötigt</Text>
+          <Toggle label="Rollstuhl / besondere Hilfe benötigt" value={needsAssistance} onPress={() => setNeedsAssistance((v) => !v)} />
+          {!needsAssistance ? (
+            <Text style={styles.profileHint}>
+              Krankenfahrt ohne Rollstuhl ist möglich. Zusätzliche Hilfefragen bleiben optional ausgeblendet.
+            </Text>
+          ) : null}
+          {needsAssistance ? (
+            <>
           <ChoiceTitle text="Verwendung der Rollstuhl-Details" />
           <ChoiceRow
             choices={[
@@ -402,14 +575,26 @@ export default function BookingMedicalScreen() {
             multiline
             onFocus={focusIntoView}
           />
+            </>
+          ) : null}
         </View>
 
         {seriesMode ? (
           <View style={styles.box}>
             <Text style={styles.boxTitle}>Serienfahrt</Text>
             <View style={styles.row}>
-              <Field label="Zeitraum von" value={seriesFrom} onChangeText={setSeriesFrom} style={{ flex: 1 }} onFocus={focusIntoView} />
-              <Field label="bis" value={seriesTo} onChangeText={setSeriesTo} style={{ flex: 1 }} onFocus={focusIntoView} />
+              <PickerField
+                label="Zeitraum von"
+                value={formatDateDe(seriesFrom)}
+                onPress={() => openPicker("seriesFrom", "date")}
+                style={{ flex: 1 }}
+              />
+              <PickerField
+                label="bis"
+                value={formatDateDe(seriesTo)}
+                onPress={() => openPicker("seriesTo", "date")}
+                style={{ flex: 1 }}
+              />
             </View>
             <ChoiceTitle text={`Wochentage: ${selectedDaysLabel || "keine"}`} />
             <ChoiceRow
@@ -423,6 +608,20 @@ export default function BookingMedicalScreen() {
                   ),
               }))}
             />
+            <View style={styles.row}>
+              <PickerField
+                label="Uhrzeit Hinfahrt"
+                value={appointmentTime}
+                onPress={() => openPicker("appointmentTime", "time")}
+                style={{ flex: 1 }}
+              />
+              <PickerField
+                label="Uhrzeit Rückfahrt (optional)"
+                value={returnTime}
+                onPress={() => openPicker("returnTime", "time")}
+                style={{ flex: 1 }}
+              />
+            </View>
           </View>
         ) : null}
 
@@ -431,8 +630,83 @@ export default function BookingMedicalScreen() {
           <Text style={styles.submitText}>{seriesMode ? "Serienfahrt erstellen" : "Krankenfahrt speichern"}</Text>
         </Pressable>
       </ScrollView>
+      {pickerTarget ? (
+        <DateTimePicker
+          value={pickerValue()}
+          mode={pickerMode}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          is24Hour
+          onChange={onPickerChange}
+        />
+      ) : null}
       <BottomTabBar active="buchen" />
     </KeyboardAvoidingView>
+  );
+}
+
+function AddressCard({
+  title,
+  street,
+  houseNumber,
+  postalCode,
+  city,
+  onStreetChange,
+  onHouseNumberChange,
+  onPostalCodeChange,
+  onCityChange,
+  onFocus,
+}: {
+  title: string;
+  street: string;
+  houseNumber: string;
+  postalCode: string;
+  city: string;
+  onStreetChange: (v: string) => void;
+  onHouseNumberChange: (v: string) => void;
+  onPostalCodeChange: (v: string) => void;
+  onCityChange: (v: string) => void;
+  onFocus?: (e: any) => void;
+}) {
+  return (
+    <View style={styles.addressBox}>
+      <Text style={styles.boxTitle}>{title}</Text>
+      <View style={styles.row}>
+        <Field label="Straße" value={street} onChangeText={onStreetChange} onFocus={onFocus} style={{ flex: 3 }} />
+        <Field
+          label="Hausnummer"
+          value={houseNumber}
+          onChangeText={onHouseNumberChange}
+          onFocus={onFocus}
+          style={{ flex: 1.4 }}
+        />
+      </View>
+      <View style={styles.row}>
+        <Field label="PLZ" value={postalCode} onChangeText={onPostalCodeChange} onFocus={onFocus} style={{ flex: 1 }} />
+        <Field label="Stadt" value={city} onChangeText={onCityChange} onFocus={onFocus} style={{ flex: 2 }} />
+      </View>
+    </View>
+  );
+}
+
+function PickerField({
+  label,
+  value,
+  onPress,
+  style,
+}: {
+  label: string;
+  value: string;
+  onPress: () => void;
+  style?: any;
+}) {
+  return (
+    <View style={style}>
+      <Text style={{ fontSize: rf(12), fontFamily: "Inter_600SemiBold", marginBottom: rs(6) }}>{label}</Text>
+      <Pressable onPress={onPress} style={styles.pickerField}>
+        <Text style={styles.pickerFieldValue}>{value}</Text>
+        <Feather name="calendar" size={15} color="#475569" />
+      </Pressable>
+    </View>
   );
 }
 
@@ -516,6 +790,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: rf(12), fontFamily: "Inter_400Regular", marginTop: rs(2) },
   row: { flexDirection: "row", gap: rs(8) },
   box: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: rs(12), padding: rs(10), gap: rs(4) },
+  addressBox: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: rs(12), padding: rs(10), gap: rs(8) },
   boxTitle: { fontSize: rf(13), fontFamily: "Inter_700Bold", marginBottom: rs(4) },
   uploadBtn: {
     backgroundColor: "#0EA5E9",
@@ -540,5 +815,21 @@ const styles = StyleSheet.create({
   },
   submitText: { color: "#fff", fontSize: rf(14), fontFamily: "Inter_700Bold" },
   profileHint: { fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#475569", marginBottom: rs(4) },
+  pickerField: {
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#fff",
+    borderRadius: rs(10),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(11),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  pickerFieldValue: {
+    fontSize: rf(14),
+    fontFamily: "Inter_500Medium",
+    color: "#0F172A",
+  },
 });
 
