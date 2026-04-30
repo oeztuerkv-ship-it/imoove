@@ -68,9 +68,7 @@ export async function sendAdminPasswordResetMail(input: {
   const logoSrcEsc = escapeHtml(logoSrc);
 
   const text = [
-    "Passwort zurücksetzen (Admin-Konsole)",
-    "",
-    "Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.",
+    "Du hast eine Anfrage zum Zurücksetzen deines Passworts für die Admin-Konsole gestellt.",
     "",
     `Marken-Logo (falls HTML blockiert): ${logoSrc}`,
     "",
@@ -80,13 +78,14 @@ export async function sendAdminPasswordResetMail(input: {
     `Zugang: ${input.username}`,
     "",
     "Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.",
-    "",
-    "Onroda",
   ].join("\n");
 
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
 <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
+  <div style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;">
+    Du hast eine Anfrage zum Zurücksetzen deines Passworts. Der Link ist nur begrenzt gültig.
+  </div>
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
     <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
       <div style="text-align:center;margin-bottom:20px;">
