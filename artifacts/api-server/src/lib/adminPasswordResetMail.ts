@@ -1,6 +1,11 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
 
+/** Öffentliches Mail-Logo (PNG); optional überschreibbar für Staging. */
+const ADMIN_PASSWORD_RESET_MAIL_LOGO_URL =
+  (process.env.ADMIN_AUTH_PASSWORD_RESET_MAIL_LOGO_URL ?? "https://onroda.de/static/logo-mail.png").trim() ||
+  "https://onroda.de/static/logo-mail.png";
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -82,7 +87,7 @@ export async function sendAdminPasswordResetMail(input: {
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
     <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
       <div style="text-align:center;">
-        <img src="https://onroda.de/logo.png" alt="ONRODA" width="120" height="40" style="height:40px;width:auto;max-width:160px;" />
+        <img src="${escapeHtml(ADMIN_PASSWORD_RESET_MAIL_LOGO_URL)}" alt="ONRODA" width="120" height="40" style="height:40px;width:auto;max-width:200px;display:inline-block;border:0;outline:none;text-decoration:none;" />
       </div>
       <h2 style="text-align:center;margin:24px 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
       <p style="margin:0 0 12px;line-height:1.5;color:#333;">Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
