@@ -89,17 +89,17 @@ export async function sendAdminPasswordResetMail(input: {
 <body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
     <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
-      <div style="text-align:center;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:28px;font-weight:800;letter-spacing:1px;color:#111111;line-height:1.2;">
+          <span style="color:#e30613;">ON</span>RODA
+        </div>
         <img src="${logoSrcEsc}"
-             alt="ONRODA — Passwort zurücksetzen"
-             width="160"
-             height="40"
+             alt="ONRODA"
+             width="220"
+             height="59"
              border="0"
              role="presentation"
-             style="display:block;margin:0 auto 6px;width:160px;max-width:160px;height:auto;line-height:0;font-size:0;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />
-        <div style="font-size:17px;font-weight:700;color:#111111;letter-spacing:0.04em;line-height:1.3;margin:0;padding:0;">
-          ONRODA
-        </div>
+             style="display:block;height:59px;width:auto;max-width:220px;margin:8px auto 0;border:0;outline:none;text-decoration:none;line-height:0;font-size:0;-ms-interpolation-mode:bicubic;" />
       </div>
       <h2 style="text-align:center;margin:24px 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
       <p style="margin:0 0 12px;line-height:1.5;color:#333;">Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
