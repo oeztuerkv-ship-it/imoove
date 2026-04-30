@@ -56,33 +56,50 @@ export async function sendAdminPasswordResetMail(input: {
     return { ok: false, reason: "smtp_not_configured" };
   }
 
-  const subject = "Onroda: Passwort für die Admin-Konsole zurücksetzen";
+  const subject = "ONRODA: Passwort zurücksetzen";
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
+  const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
+  const linkEsc = escapeHtml(input.resetLink);
+
   const text = [
-    "Guten Tag,",
+    "Passwort zurücksetzen (Admin-Konsole)",
     "",
-    `für den Zugang „${input.username}“ wurde ein Passwort-Reset angefordert.`,
+    "Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.",
     "",
-    "Bitte öffnen Sie den folgenden Link, um ein neues Passwort zu setzen (einmalig gültig):",
     input.resetLink,
     "",
-    `Der Link ist bis etwa ${until} (Europe/Berlin) gültig, sofern nicht bereits verwendet.`,
+    `Dieser Link ist etwa ${ttlMinutes} Minuten gültig (bis ${until}, Europe/Berlin), sofern nicht bereits verwendet.`,
+    `Zugang: ${input.username}`,
     "",
-    "Wenn Sie keinen Reset angefordert haben, ignorieren Sie diese Nachricht.",
+    "Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.",
     "",
-    "Mit freundlichen Grüßen",
-    "Onroda",
+    "ONRODA",
   ].join("\n");
 
   const html = `<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8" /></head>
-<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
-  <p>Guten Tag,</p>
-  <p>für den Zugang <strong>${escapeHtml(input.username)}</strong> wurde ein <strong>Passwort-Reset</strong> für die Admin-Konsole angefordert.</p>
-  <p><a href="${escapeHtml(input.resetLink)}">Neues Passwort setzen</a></p>
-  <p style="color:#6b7280;font-size:13px;">Der Link ist bis etwa ${escapeHtml(until)} (Europe/Berlin) gültig, sofern nicht bereits verwendet.</p>
-  <p style="color:#6b7280;font-size:13px;">Wenn Sie keinen Reset angefordert haben, ignorieren Sie diese Nachricht.</p>
-  <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
+<html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
+    <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
+      <div style="text-align:center;">
+        <img src="https://onroda.de/logo.png" alt="ONRODA" width="120" height="40" style="height:40px;width:auto;max-width:160px;" />
+      </div>
+      <h2 style="text-align:center;margin:24px 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
+      <p style="margin:0 0 12px;line-height:1.5;color:#333;">Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
+      <div style="text-align:center;margin:30px 0;">
+        <a href="${linkEsc}"
+           style="display:inline-block;background:#e30613;color:#ffffff;padding:15px 25px;text-decoration:none;border-radius:6px;font-weight:bold;">
+          Passwort zurücksetzen
+        </a>
+      </div>
+      <p style="font-size:12px;color:#888;margin:0;line-height:1.5;">
+        Dieser Link ist ${ttlMinutes} Minuten gültig (bis ${escapeHtml(until)}, Europe/Berlin).
+      </p>
+      <p style="font-size:12px;color:#888;margin:12px 0 0;line-height:1.5;">
+        Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.
+      </p>
+    </div>
+  </div>
 </body></html>`;
 
   try {
