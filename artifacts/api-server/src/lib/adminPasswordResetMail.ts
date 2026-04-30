@@ -56,7 +56,7 @@ export async function sendAdminPasswordResetMail(input: {
     return { ok: false, reason: "smtp_not_configured" };
   }
 
-  const subject = "Onroda: Passwort zurücksetzen";
+  const subject = "Passwort zurücksetzen";
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
   const linkEsc = escapeHtml(input.resetLink);
