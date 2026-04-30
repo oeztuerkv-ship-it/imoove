@@ -52,29 +52,29 @@ Optional:
 - `ADMIN_AUTH_TEST_PASSWORD_NEXT`
 - `ADMIN_AUTH_TEST_API_BASE` (Default `http://127.0.0.1:3000/api`)
 
-## Passwort-vergessen (Phase A)
+## Passwort-vergessen (E-Mail-Link)
 
-- Versandweg-Entscheidung: **E-Mail-Link**.
-- Phase A liefert persistente Reset-Mechanik:
+- `POST /api/admin/auth/password-reset/request`: Nutzer per **Benutzername oder E-Mail** (`identity`) auflösen, Token erzeugen, **Reset-Link** an die in der DB hinterlegte **E-Mail** senden (`sendMail` / Nodemailer). Die JSON-Antwort enthält **keinen** Token.
+- SMTP/Absender: `ADMIN_AUTH_MAIL_SMTP_URL` + `ADMIN_AUTH_MAIL_FROM`, sonst Fallback `PARTNER_REGISTRATION_SMTP_URL` + `PARTNER_REGISTRATION_MAIL_FROM`. Ohne Konfiguration: kein Versand (Log), Antwort trotzdem neutral.
+- Reset-Seiten-URL: `ADMIN_AUTH_PASSWORD_RESET_PAGE_URL` (Default `https://admin.onroda.de/partners/password-reset`).
+- Mechanik:
   - Tabelle `admin_auth_password_resets` (gehashte Tokens, expires_at, used_at)
-  - Audit in `admin_auth_audit_log`
+  - Audit in `admin_auth_audit_log` (u. a. `mailSent`, bei Fehlschlag `mailFailureReason`)
   - `session_version`-basierte Session-Invalidierung nach Passwortwechsel/Reset
-- Phase B bindet den echten Mailversand an.
 
 ## Verbindliche Produktions-Baseline (Admin-Passwort-Reset)
 
-Ab Release-Stand mit Fix **Enumeration-/Debug-Leak** (`password-reset/request` liefert in **Produktion** nie Debug-Felder; siehe `artifacts/api-server/src/routes/adminApi.ts`): Diese Zeile ist die **verbindliche Referenz** fuer Admin-Auth-Reset-Verhalten in Production. Aenderungen daran nur bewusst, mit Security-Review und erneuter Live-Abnahme.
+Verhalten und E-Mail-Versand sind in `artifacts/api-server/src/routes/adminApi.ts` und `src/lib/adminPasswordResetMail.ts` umgesetzt. Aenderungen nur bewusst, mit Security-Review und erneuter Live-Abnahme.
 
-### `POST /api/admin/auth/password-reset/request` (Production)
+### `POST /api/admin/auth/password-reset/request`
 
 - **HTTP 200** sowohl bei bekannter als auch bei unbekannter Identitaet (kein User-Existenz-Leak ueber Statuscode).
-- **Identische** Außen-`message` in beiden Faellen.
-- **Antwort-JSON** ausschliesslich `{ "ok": true, "message": "<fester Hinweistext>" }` — **keine** zusaetzlichen Keys, insbesondere **kein** `debugResetToken`, **kein** `debugResetExpiresAt`.
-- Debug-Token in der Response nur in **Nicht-Produktion** und nur bei gesetztem `ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE=1` (lokal/CI); **niemals** bei `NODE_ENV=production`, unabhaengig von anderen Env-Variablen.
+- **Identische** Außen-`message` in allen Faellen (bekannt/unbekannt, fehlende Nutzer-E-Mail, SMTP nicht konfiguriert).
+- **Antwort-JSON** ausschliesslich `{ "ok": true, "message": "<fester Hinweistext>" }` — **keine** zusaetzlichen Keys, **niemals** Reset-Token oder Ablaufzeit in der Response (auch nicht in Entwicklung).
 
 ### Reset-Flow (Live abgenommene Eigenschaften)
 
-- Reset-Anfrage persistiert Token/Audit wie spezifiziert; **keine Enumeration** nach aussen (siehe oben).
+- Bei gueltigem Nutzer mit hinterlegter E-Mail: Token in DB, Versandversuch, Audit (`mailSent` / `mailFailureReason`); **keine Enumeration** nach aussen (siehe oben). Ohne Nutzer-E-Mail: kein Token, nur Audit `password_reset_requested_no_recipient_email`.
 - Reset mit **gueltigem** Token: Erfolg; **einmalige** Gueltigkeit des Tokens (`used_at`).
 - **Abgelaufene/ungueltige** Tokens: erwarteter Fehlerpfad.
 - Nach erfolgreichem Reset: **altes Passwort** ungueltig; **`session_version`** erhoeht — **bestehende JWTs** ungueltig.

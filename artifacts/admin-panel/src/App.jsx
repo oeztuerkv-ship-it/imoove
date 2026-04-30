@@ -34,6 +34,11 @@ import HomepagePlaceholdersPage from "./pages/HomepagePlaceholdersPage.jsx";
 import AppOperationalTariffsPage from "./pages/AppOperationalTariffsPage.jsx";
 import AppOperationalRegionsPage from "./pages/AppOperationalRegionsPage.jsx";
 import AppOperationalCommissionPage from "./pages/AppOperationalCommissionPage.jsx";
+import AppOperationalDispatchPage from "./pages/AppOperationalDispatchPage.jsx";
+import AppOperationalFeaturesPage from "./pages/AppOperationalFeaturesPage.jsx";
+import AppOperationalDriverRulesPage from "./pages/AppOperationalDriverRulesPage.jsx";
+import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPage.jsx";
+import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
@@ -141,28 +146,23 @@ const PAGE_META = {
   },
   "app-op-dispatch": {
     title: "App / Betrieb — Dispatch",
-    subtitle: "Zuordnung: eigene Fahrer zuerst, Open Market, Weitergabe — Ausbau geplant",
-    placeholder: true,
+    subtitle: "Eigene Fahrer, Exklusivzeit, Radius, Open Market, Weitergabe (Konfig, Server + App)",
   },
   "app-op-features": {
     title: "App / Betrieb — Funktionen",
-    subtitle: "Feature-Toggles (Vorbestellung, Krankenfahrt, Zahlwege, …) — Ausbau geplant",
-    placeholder: true,
+    subtitle: "Toggles: Fahrtart, Vorbestellung, Zahlwege, Tracking; API-Validierung",
   },
   "app-op-driver-rules": {
     title: "App / Betrieb — Fahrer-Regeln",
-    subtitle: "P-Schein, Dokumente, Plattform-Freigabe — Ausbau geplant",
-    placeholder: true,
+    subtitle: "P-Schein, Fahrzeug, Dokumente, System-Override, Ablaufdaten",
   },
   "app-op-booking-rules": {
     title: "App / Betrieb — Buchungsregeln",
-    subtitle: "Vorlauf, Maximalstrecke, Pflichtfelder, Storno — Ausbau geplant",
-    placeholder: true,
+    subtitle: "Vorlauf, Distanz, Pflichtfelder, Krankenfahrt-Metadaten / Storno-Hinweise",
   },
   "app-op-system": {
     title: "App / Betrieb — System",
-    subtitle: "Wartungsmodus, Sperrungen, globale Hinweise — Ausbau geplant",
-    placeholder: true,
+    subtitle: "Wartung, Sperrungen, globale Texte, Mindestdversion, Notabschaltung",
   },
   "health-overview": {
     title: "Krankenfahrten — Übersicht",
@@ -504,7 +504,9 @@ export default function App() {
         setForgotMessage("Reset-Anfrage konnte nicht verarbeitet werden.");
         return;
       }
-      setForgotMessage(data?.message || "Wenn ein Konto existiert, wurde ein Reset gestartet.");
+      setForgotMessage(
+        data?.message || "Wenn ein Konto existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Zurücksetzen.",
+      );
     } catch {
       setForgotMessage("Reset-Anfrage konnte nicht verarbeitet werden.");
     } finally {
@@ -638,56 +640,16 @@ export default function App() {
         return <AppOperationalRegionsPage />;
       case "app-op-commission":
         return <AppOperationalCommissionPage />;
-      case "app-op-dispatch": {
-        const m = PAGE_META["app-op-dispatch"];
-        return (
-          <AdminPlaceholderPage
-            title="Dispatch"
-            intro={m.subtitle}
-            bullets={["Exklusivzeit, Radius, Markt, Priorisierung, Sperrlogik — an Server-Konfiguration anbinden"]}
-          />
-        );
-      }
-      case "app-op-features": {
-        const m = PAGE_META["app-op-features"];
-        return (
-          <AdminPlaceholderPage
-            title="Funktionen"
-            intro={m.subtitle}
-            bullets={["Schalter pro Produktlinie / Zahlweg / Tracking — mit Public-Config ausliefern"]}
-          />
-        );
-      }
-      case "app-op-driver-rules": {
-        const m = PAGE_META["app-op-driver-rules"];
-        return (
-          <AdminPlaceholderPage
-            title="Fahrer-Regeln"
-            intro={m.subtitle}
-            bullets={["Dokumenten- und Freigabelogik; nur Plattform-Scope (kein Mix mit Partner-Panel)"]}
-          />
-        );
-      }
-      case "app-op-booking-rules": {
-        const m = PAGE_META["app-op-booking-rules"];
-        return (
-          <AdminPlaceholderPage
-            title="Buchungsregeln"
-            intro={m.subtitle}
-            bullets={["Validierung in API und Kunden-App; Krankenfahrt-Metadaten getrennt halten"]}
-          />
-        );
-      }
-      case "app-op-system": {
-        const m = PAGE_META["app-op-system"];
-        return (
-          <AdminPlaceholderPage
-            title="System"
-            intro={m.subtitle}
-            bullets={["Wartungs-Flags und globale Texte; mit Bestätigung und Audit (nächste Iteration)"]}
-          />
-        );
-      }
+      case "app-op-dispatch":
+        return <AppOperationalDispatchPage />;
+      case "app-op-features":
+        return <AppOperationalFeaturesPage />;
+      case "app-op-driver-rules":
+        return <AppOperationalDriverRulesPage />;
+      case "app-op-booking-rules":
+        return <AppOperationalBookingRulesPage />;
+      case "app-op-system":
+        return <AppOperationalSystemPage />;
       case "finance-dashboard":
         return <FinanceDashboardPage />;
       case "finance-ride-financials":

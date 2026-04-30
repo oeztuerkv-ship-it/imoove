@@ -178,6 +178,7 @@ import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import type { PanelRole } from "../lib/panelJwt";
+import { buildAdminPasswordResetLink, sendAdminPasswordResetMail } from "../lib/adminPasswordResetMail";
 import {
   sendPartnerRegistrationAdminMessageEmail,
   sendPartnerRegistrationApprovedEmail,
@@ -457,11 +458,8 @@ router.post("/admin/auth/password-reset/request", async (req, res) => {
   const generic = {
     ok: true,
     message:
-      "Wenn ein passender Zugang existiert, wurde ein Passwort-Reset gestartet. Bitte Support/Administrator kontaktieren.",
+      "Wenn ein passender Zugang existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Zurücksetzen des Passworts.",
   };
-  const isProduction = process.env.NODE_ENV === "production";
-  const allowResetDebugResponse =
-    !isProduction && process.env.ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE === "1";
   if (!identity || !isPostgresConfigured()) {
     res.json(generic);
     return;
@@ -472,11 +470,17 @@ router.post("/admin/auth/password-reset/request", async (req, res) => {
       username: identity,
       action: "admin.auth.password_reset_requested_unknown_identity",
     });
-    res.json(
-      allowResetDebugResponse
-        ? { ...generic, debugResetToken: null, debugResetExpiresAt: null }
-        : generic,
-    );
+    res.json(generic);
+    return;
+  }
+  const recipient = (user.email ?? "").trim();
+  if (!recipient.includes("@")) {
+    await insertAdminAuthAuditLog({
+      adminUserId: user.id,
+      username: user.username,
+      action: "admin.auth.password_reset_requested_no_recipient_email",
+    });
+    res.json(generic);
     return;
   }
   const rawToken = randomBytes(32).toString("base64url");
@@ -494,16 +498,23 @@ router.post("/admin/auth/password-reset/request", async (req, res) => {
     tokenHash,
     expiresAt,
   });
+  const resetLink = buildAdminPasswordResetLink(rawToken);
+  const mailResult = await sendAdminPasswordResetMail({
+    to: recipient,
+    resetLink,
+    username: user.username,
+    expiresAt,
+  });
   await insertAdminAuthAuditLog({
     adminUserId: user.id,
     username: user.username,
     action: "admin.auth.password_reset_requested",
-    meta: { expiresAt: expiresAt.toISOString(), delivery: "email_link_phase_a" },
+    meta: {
+      expiresAt: expiresAt.toISOString(),
+      mailSent: mailResult.ok,
+      ...(mailResult.ok ? {} : { mailFailureReason: mailResult.reason }),
+    },
   });
-  if (allowResetDebugResponse) {
-    res.json({ ...generic, debugResetToken: rawToken, debugResetExpiresAt: expiresAt.toISOString() });
-    return;
-  }
   res.json(generic);
 });
 
