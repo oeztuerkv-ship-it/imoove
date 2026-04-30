@@ -1,11 +1,6 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
 
-/** Öffentliches Mail-Logo (PNG); optional überschreibbar für Staging. */
-const ADMIN_PASSWORD_RESET_MAIL_LOGO_URL =
-  (process.env.ADMIN_AUTH_PASSWORD_RESET_MAIL_LOGO_URL ?? "https://onroda.de/static/logo-mail.png").trim() ||
-  "https://onroda.de/static/logo-mail.png";
-
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -66,10 +61,18 @@ export async function sendAdminPasswordResetMail(input: {
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
   const linkEsc = escapeHtml(input.resetLink);
 
+  const logoUrl =
+    (process.env.ADMIN_AUTH_PASSWORD_RESET_MAIL_LOGO_URL || "").trim() ||
+    "https://onroda.de/static/logo-mail.png";
+  const logoSrc = `${logoUrl}${logoUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
+  const logoSrcEsc = escapeHtml(logoSrc);
+
   const text = [
     "Passwort zurücksetzen (Admin-Konsole)",
     "",
     "Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.",
+    "",
+    `Marken-Logo (falls HTML blockiert): ${logoSrc}`,
     "",
     input.resetLink,
     "",
@@ -87,7 +90,16 @@ export async function sendAdminPasswordResetMail(input: {
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
     <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
       <div style="text-align:center;">
-        <img src="${escapeHtml(ADMIN_PASSWORD_RESET_MAIL_LOGO_URL)}" alt="ONRODA" width="120" height="40" style="height:40px;width:auto;max-width:200px;display:inline-block;border:0;outline:none;text-decoration:none;" />
+        <img src="${logoSrcEsc}"
+             alt="ONRODA — Passwort zurücksetzen"
+             width="160"
+             height="40"
+             border="0"
+             role="presentation"
+             style="display:block;margin:0 auto 6px;width:160px;max-width:160px;height:auto;line-height:0;font-size:0;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />
+        <div style="font-size:17px;font-weight:700;color:#111111;letter-spacing:0.04em;line-height:1.3;margin:0;padding:0;">
+          ONRODA
+        </div>
       </div>
       <h2 style="text-align:center;margin:24px 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
       <p style="margin:0 0 12px;line-height:1.5;color:#333;">Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
