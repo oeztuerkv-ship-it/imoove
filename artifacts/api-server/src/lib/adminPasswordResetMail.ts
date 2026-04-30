@@ -56,7 +56,7 @@ export async function sendAdminPasswordResetMail(input: {
     return { ok: false, reason: "smtp_not_configured" };
   }
 
-  const subject = "ONRODA: Passwort zurücksetzen";
+  const subject = "Onroda: Passwort zurücksetzen";
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
   const linkEsc = escapeHtml(input.resetLink);
@@ -81,7 +81,7 @@ export async function sendAdminPasswordResetMail(input: {
     "",
     "Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.",
     "",
-    "ONRODA",
+    "Onroda",
   ].join("\n");
 
   const html = `<!DOCTYPE html>
@@ -90,11 +90,11 @@ export async function sendAdminPasswordResetMail(input: {
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
     <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:28px;font-weight:800;letter-spacing:1px;color:#111111;line-height:1.2;">
-          <span style="color:#e30613;">ON</span>RODA
+        <div style="font-size:28px;font-weight:800;letter-spacing:0.02em;line-height:1.2;">
+          <span style="color:#e30613;">On</span><span style="color:#111111;">roda</span>
         </div>
         <img src="${logoSrcEsc}"
-             alt="ONRODA"
+             alt="Onroda"
              width="220"
              height="59"
              border="0"
