@@ -25,10 +25,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { BottomTabBar, BOTTOM_TAB_BAR_INNER_HEIGHT } from "@/components/BottomTabBar";
 import { RealMapView } from "@/components/RealMapView";
+import {
+  HOME_SHEET_BG,
+  HOME_SHEET_DIVIDER,
+  HOME_SHEET_HANDLE,
+  HOME_SHEET_INNER,
+  HOME_SHEET_MUTED,
+  HOME_SHEET_PANEL,
+  HOME_SHEET_RIM,
+  HOME_SHEET_TEXT,
+} from "@/constants/homeSheetChrome";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
-import { type ServiceId } from "@/constants/services";
 import { useDriver } from "@/context/DriverContext";
 import {
+  type RideHistoryEntry,
   type RideServiceClass,
   type VehicleType,
   VEHICLES,
@@ -59,6 +69,14 @@ function isPlausibleEmail(s: string): boolean {
 
 const SEARCH_OVERLAY_BG = "#FFFFFF";
 
+/** Krankenfahrt auf dem Start-Sheet: Grün Gesundheit/Wellbeing (statt Krankenhaus-Blau). */
+const HOME_MEDICAL_GREEN = "#059669";
+const HOME_MEDICAL_GREEN_DARK = "#047857";
+const HOME_MEDICAL_SOFT_BG = "#ECFDF5";
+/** Rot-orange CTA „Taxi jetzt bestellen“ (nicht Primär-Grün). */
+const HOME_BOOKING_ORANGE = "#EA580C";
+const HOME_MEDICAL_OUTLINE_BORDER = "rgba(5, 150, 105, 0.38)";
+
 const VEHICLE_CAR_ICON = "#171717";
 
 const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: string; seats: string }> = {
@@ -66,81 +84,6 @@ const VEHICLE_ICON_CONFIG: Record<string, { icon: string; color: string; bg: str
   xl: { icon: "van-passenger", color: VEHICLE_CAR_ICON, bg: "#F3F4F6", seats: "bis zu 6 Personen" },
   wheelchair: { icon: "wheelchair-accessibility", color: "#0369A1", bg: "#E0F2FE", seats: "Rollstuhlgerecht" },
 };
-
-type HomeRequestOption = {
-  id: "taxi" | "xl" | "rollstuhl";
-  label: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  detailType: ServiceId;
-  vehicleType: VehicleType;
-  serviceClass: RideServiceClass;
-};
-
-const HOME_REQUEST_OPTIONS: HomeRequestOption[] = [
-  { id: "taxi", label: "Taxi", icon: "car", detailType: "standard", vehicleType: "standard", serviceClass: "taxi" },
-  { id: "xl", label: "XL", icon: "van-passenger", detailType: "xl", vehicleType: "xl", serviceClass: "xl" },
-  { id: "rollstuhl", label: "Rollstuhl", icon: "wheelchair-accessibility", detailType: "wheelchair", vehicleType: "wheelchair", serviceClass: "rollstuhl" },
-];
-
-function HomeServiceGrid({
-  colors,
-  selectedServiceClass,
-  selectedVehicle,
-  compact,
-  onPressService,
-}: {
-  colors: { foreground: string; mutedForeground: string; primary: string; border: string };
-  selectedServiceClass: RideServiceClass | null;
-  selectedVehicle: VehicleType | null;
-  compact: boolean;
-  onPressService: (service: HomeRequestOption) => void;
-}) {
-  return (
-    <View style={styles.homeServiceSection}>
-      <Text style={[styles.servicesTitle, styles.homeServiceTitleInGrid, { color: colors.foreground }]}>
-        Dienstleistungen
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.homeServiceGridRow}
-      >
-        {HOME_REQUEST_OPTIONS.map((service) => {
-          const active =
-            selectedServiceClass === service.serviceClass ||
-            false;
-          const isWheelchair = service.id === "rollstuhl";
-          const iconColor = isWheelchair ? "#60A5FA" : active ? colors.primary : "#111827";
-          return (
-            <Pressable
-              key={service.id}
-              style={({ pressed }) => [
-                styles.homeServiceCard,
-                compact ? styles.homeServiceCardCompact : null,
-                {
-                  backgroundColor: active ? "#F5F5F5" : "#FAFAFA",
-                  borderColor: active ? colors.primary : "#E5E7EB",
-                  borderWidth: active ? 2 : 1,
-                  opacity: pressed ? 0.96 : 1,
-                },
-              ]}
-              onPress={() => onPressService(service)}
-            >
-              <MaterialCommunityIcons
-                name={service.icon as any}
-                size={compact ? 26 : 30}
-                color={iconColor}
-              />
-              <Text style={[styles.homeServiceCardTitle, compact && styles.homeServiceCardTitleCompact, { color: colors.foreground }]} numberOfLines={2}>
-                {service.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
 
 function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   return (
@@ -151,37 +94,20 @@ function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-interface PresetLocation {
+const FAVORITES_STORAGE_KEY = "@Onroda_search_favorites_v1";
+/** Maximal gespeicherte Favoriten (Ziel-Suche). */
+const MAX_FAVORITES_STORED = 5;
+/** Auf dem Home-Sheet nur die ersten beiden der gespeicherten Reihenfolge. */
+const MAX_FAVORITES_ON_HOME = 2;
+/** Max. Verlauf-Einträge auf dem Home-Sheet. */
+const MAX_HOME_HISTORY = 2;
+
+interface SearchFavorite {
   id: string;
-  title: string;
-  subtitle: string;
-  icon: "airplane" | "train";
+  /** Freie Bezeichnung, z. B. „Oma“ oder „Praxis“ */
+  label: string;
   location: GeoLocation;
 }
-
-const PRESET_DESTINATIONS: PresetLocation[] = [
-  {
-    id: "airport-t12",
-    title: "Abflug Terminal 1–2",
-    subtitle: "Flughafen Stuttgart",
-    icon: "airplane",
-    location: { lat: 48.6900, lon: 9.2205, displayName: "Flughafen Stuttgart Terminal 1-2", city: "Stuttgart" },
-  },
-  {
-    id: "airport-t34",
-    title: "Abflug Terminal 3–4",
-    subtitle: "Flughafen Stuttgart",
-    icon: "airplane",
-    location: { lat: 48.6892, lon: 9.2222, displayName: "Flughafen Stuttgart Terminal 3-4", city: "Stuttgart" },
-  },
-  {
-    id: "hbf-stuttgart",
-    title: "Hauptbahnhof Stuttgart",
-    subtitle: "Arnulf-Klett-Platz 2, Stuttgart",
-    icon: "train",
-    location: { lat: 48.7842, lon: 9.1826, displayName: "Hauptbahnhof Stuttgart", city: "Stuttgart" },
-  },
-];
 
 async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
   try {
@@ -232,9 +158,14 @@ export default function HomeScreen() {
     origin, destination, selectedVehicle, paymentMethod,
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
     selectedServiceClass,
+    wheelchairHomeDraft,
     setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
-    setScheduledTime, fetchRoute, resetRide, history,
+    setScheduledTime, fetchRoute, resetRide, history, setWheelchairHomeDraft,
   } = useRide();
+
+  useEffect(() => {
+    if (selectedVehicle !== "wheelchair") setWheelchairHomeDraft(null);
+  }, [selectedVehicle, setWheelchairHomeDraft]);
 
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests.length;
@@ -250,15 +181,40 @@ export default function HomeScreen() {
   const customerAppBlocked = !!sys?.emergencyShutdown || !!(sys?.maintenanceMode && sys?.allowCustomerApp === false);
   const globalNoticeDe = typeof sys?.globalNoticeDe === "string" ? sys.globalNoticeDe.trim() : "";
 
-  const goToReserve = useCallback(() => {
+  const blockedCustomerAlert = useCallback(() => {
+    const m = platformConfig.messages?.customerAppClosedDe;
+    Alert.alert("Hinweis", typeof m === "string" && m.trim() ? m : "Kunden-App derzeit nicht verfügbar.");
+  }, [platformConfig.messages]);
+
+  const goBookingCenter = useCallback(() => {
     if (customerAppBlocked) {
-      const m = platformConfig.messages?.customerAppClosedDe;
-      Alert.alert("Hinweis", typeof m === "string" && m.trim() ? m : "Kunden-App derzeit nicht verfügbar.");
+      blockedCustomerAlert();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push("/booking-center" as Href);
-  }, [customerAppBlocked, platformConfig.messages]);
+  }, [customerAppBlocked, blockedCustomerAlert]);
+
+  const goReserveNewBooking = useCallback(() => {
+    if (customerAppBlocked) {
+      blockedCustomerAlert();
+      return;
+    }
+    setScheduledTime(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/new-booking" as Href);
+  }, [customerAppBlocked, blockedCustomerAlert, setScheduledTime]);
+
+  const goMedicalBooking = useCallback(() => {
+    if (customerAppBlocked) {
+      blockedCustomerAlert();
+      return;
+    }
+    /** Krankenfahrt nutzt keinen RideContext, nur RideRequest — Taxi-Entwurf leeren, damit nicht zwei parallele Buchungswelten wirken */
+    resetRide();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/booking-medical" as Href);
+  }, [customerAppBlocked, blockedCustomerAlert, resetRide]);
 
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
@@ -339,10 +295,17 @@ export default function HomeScreen() {
   /** Nach Zeitbestätigung: Suchmaske öffnen und zuerst Abholort fokussieren. */
   const focusPickupFieldOnSearchOpenRef = useRef(false);
 
-  /* ── Saved home / work ── */
-  const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
-  const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
-  const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
+  /* ── Gespeicherte Such-Favoriten (lokal pro Gerät) ── */
+  const [searchFavorites, setSearchFavorites] = useState<SearchFavorite[]>([]);
+  const [addFavoriteOpen, setAddFavoriteOpen] = useState(false);
+  const [favLabel, setFavLabel] = useState("");
+  const [favStreet, setFavStreet] = useState("");
+  const [favHouse, setFavHouse] = useState("");
+  const [favPostal, setFavPostal] = useState("");
+  const [favCity, setFavCity] = useState("");
+  const [favLookupResults, setFavLookupResults] = useState<GeoLocation[]>([]);
+  const [favPick, setFavPick] = useState<GeoLocation | null>(null);
+  const [favLookupLoading, setFavLookupLoading] = useState(false);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapCenterKey, setMapCenterKey] = useState(0);
@@ -354,48 +317,141 @@ export default function HomeScreen() {
     comboHintTimerRef.current = setTimeout(() => setComboHint(null), 4200);
   }, []);
 
-  /* ── Edit-Preset Modal ── */
-  const [editPreset, setEditPreset] = useState<"home" | "work" | null>(null);
-  const [editPresetQuery, setEditPresetQuery] = useState("");
-  const [editPresetResults, setEditPresetResults] = useState<GeoLocation[]>([]);
-  const [editPresetLoading, setEditPresetLoading] = useState(false);
-  const [selectedEditResult, setSelectedEditResult] = useState<GeoLocation | null>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem("@Onroda_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
-    AsyncStorage.getItem("@Onroda_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
+  const persistSearchFavorites = useCallback((next: SearchFavorite[]) => {
+    const capped = next.slice(0, MAX_FAVORITES_STORED);
+    setSearchFavorites(capped);
+    AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(capped)).catch(() => {});
   }, []);
 
-  const savePreset = (type: "home" | "work", loc: GeoLocation) => {
-    if (type === "home") {
-      setSavedHome(loc);
-      AsyncStorage.setItem("@Onroda_home", JSON.stringify(loc)).catch(() => {});
-    } else {
-      setSavedWork(loc);
-      AsyncStorage.setItem("@Onroda_work", JSON.stringify(loc)).catch(() => {});
-    }
-    setSavingPreset(null);
-    setIsSearchActive(false);
-    setDestQuery("");
-    setDestResults([]);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  /* Edit-Preset-Suche */
-  const editPresetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!editPreset) return;
-    if (editPresetDebounceRef.current) clearTimeout(editPresetDebounceRef.current);
-    if (editPresetQuery.length < 2) { setEditPresetResults([]); setSelectedEditResult(null); return; }
-    editPresetDebounceRef.current = setTimeout(async () => {
-      setEditPresetLoading(true);
-      try {
-        const locs = await searchLocation(editPresetQuery, userGps ?? undefined);
-        setEditPresetResults(locs);
-      } catch { setEditPresetResults([]); }
-      finally { setEditPresetLoading(false); }
-    }, 300);
-  }, [editPresetQuery, editPreset]);
+    AsyncStorage.getItem(FAVORITES_STORAGE_KEY)
+      .then((r) => {
+        if (!r) return;
+        try {
+          const parsed = JSON.parse(r) as unknown;
+          if (!Array.isArray(parsed)) return;
+          const ok = parsed.filter(
+            (x): x is SearchFavorite =>
+              typeof x === "object" &&
+              x !== null &&
+              typeof (x as SearchFavorite).id === "string" &&
+              typeof (x as SearchFavorite).label === "string" &&
+              typeof (x as SearchFavorite).location === "object" &&
+              (x as SearchFavorite).location !== null &&
+              typeof (x as SearchFavorite).location.displayName === "string",
+          );
+          const capped = ok.slice(0, MAX_FAVORITES_STORED);
+          setSearchFavorites(capped);
+          if (capped.length !== ok.length) {
+            AsyncStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(capped)).catch(() => {});
+          }
+        } catch {
+          /* ignore */
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const openAddFavoriteModal = useCallback(() => {
+    if (searchFavorites.length >= MAX_FAVORITES_STORED) {
+      Alert.alert(
+        "Limit erreicht",
+        `Es sind höchstens ${MAX_FAVORITES_STORED} Favoriten möglich. Bitte löschen Sie zuerst einen Eintrag.`,
+      );
+      return;
+    }
+    setFavLabel("");
+    setFavStreet("");
+    setFavHouse("");
+    setFavPostal("");
+    setFavCity("");
+    setFavLookupResults([]);
+    setFavPick(null);
+    setAddFavoriteOpen(true);
+  }, [searchFavorites.length]);
+
+  const closeAddFavoriteModal = useCallback(() => {
+    setAddFavoriteOpen(false);
+  }, []);
+
+  const runFavoriteAddressLookup = useCallback(async () => {
+    const street = favStreet.trim();
+    const house = favHouse.trim();
+    const postal = favPostal.trim();
+    const city = favCity.trim();
+    if (!street || !house || !city) {
+      Alert.alert("Angaben fehlen", "Bitte Straße, Hausnummer und Stadt ausfüllen (PLZ empfohlen).");
+      return;
+    }
+    const q = `${street} ${house}, ${postal ? `${postal} ` : ""}${city}`;
+    setFavLookupLoading(true);
+    setFavPick(null);
+    try {
+      const locs = await searchLocation(q, userGps ?? undefined);
+      setFavLookupResults(locs.slice(0, 8));
+      if (locs.length === 0) {
+        Alert.alert("Nicht gefunden", "Bitte Schreibweise prüfen oder PLZ ergänzen.");
+      }
+    } catch {
+      setFavLookupResults([]);
+      Alert.alert("Suche fehlgeschlagen", "Bitte später erneut versuchen.");
+    } finally {
+      setFavLookupLoading(false);
+    }
+  }, [favStreet, favHouse, favPostal, favCity, userGps]);
+
+  const confirmAddFavorite = useCallback(() => {
+    if (searchFavorites.length >= MAX_FAVORITES_STORED) {
+      Alert.alert(
+        "Limit erreicht",
+        `Es sind höchstens ${MAX_FAVORITES_STORED} Favoriten möglich. Bitte löschen Sie zuerst einen Eintrag.`,
+      );
+      return;
+    }
+    if (!favPick) {
+      Alert.alert("Adresse wählen", "Bitte zuerst „Adresse suchen“ und dann ein Treffer antippen.");
+      return;
+    }
+    const label = favLabel.trim() || `${favStreet.trim()} ${favHouse.trim()}`;
+    const id = `fav-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    persistSearchFavorites([...searchFavorites, { id, label, location: favPick }]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    closeAddFavoriteModal();
+  }, [favPick, favLabel, favStreet, favHouse, searchFavorites, persistSearchFavorites, closeAddFavoriteModal]);
+
+  const removeSearchFavorite = useCallback(
+    (id: string) => {
+      persistSearchFavorites(searchFavorites.filter((f) => f.id !== id));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [searchFavorites, persistSearchFavorites],
+  );
+
+  const moveSearchFavorite = useCallback(
+    (index: number, direction: -1 | 1) => {
+      const next = [...searchFavorites];
+      const j = index + direction;
+      if (j < 0 || j >= next.length) return;
+      const tmp = next[index];
+      next[index] = next[j]!;
+      next[j] = tmp!;
+      persistSearchFavorites(next);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [searchFavorites, persistSearchFavorites],
+  );
+
+  const applyDestinationAndContinue = useCallback(
+    (loc: GeoLocation) => {
+      setDestination(loc);
+      setDestQuery("");
+      setDestResults([]);
+      setIsSearchActive(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      router.push("/ride-select" as Href);
+    },
+    [setDestination],
+  );
 
   const [gpsLoading, setGpsLoading] = useState(false);
   const [googleSignInLoading, setGoogleSignInLoading] = useState(false);
@@ -685,22 +741,36 @@ export default function HomeScreen() {
     }, 300);
   }, [userGps]);
 
+  /** Verlauf: Suche öffnen, aktuellen Abholstandort beibehalten, Ziel wie damals laden. */
+  const openSearchWithHistoryEntry = useCallback(
+    async (entry: RideHistoryEntry) => {
+      setIsSearchActive(true);
+      setIsEditingOrigin(false);
+      setOriginQuery(origin.displayName);
+      setOriginResults([]);
+      setDestQuery(entry.destination);
+      setDestResults([]);
+      setIsSearchingDest(true);
+      try {
+        const locs = await searchLocation(entry.destination, userGps ?? undefined);
+        setDestResults(locs.slice(0, 6));
+      } catch {
+        setDestResults([]);
+      } finally {
+        setIsSearchingDest(false);
+      }
+      setTimeout(() => destInputRef.current?.focus(), 200);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [origin.displayName, userGps],
+  );
+
   const handleDestinationSelect = (loc: GeoLocation) => {
-    if (savingPreset) {
-      savePreset(savingPreset, loc);
-      return;
-    }
-    setDestination(loc);
-    setDestQuery("");
-    setDestResults([]);
-    setIsSearchActive(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/ride-select" as Href);
+    applyDestinationAndContinue(loc);
   };
 
   const closeSearch = () => {
     setIsSearchActive(false);
-    setSavingPreset(null);
     setDestQuery("");
     setDestResults([]);
     setOriginQuery("");
@@ -708,20 +778,13 @@ export default function HomeScreen() {
     setIsEditingOrigin(false);
   };
 
-  const handleHomeServicePress = useCallback(
-    (service: HomeRequestOption) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setSelectedVehicle(service.vehicleType);
-      setSelectedServiceClass(service.serviceClass);
-      router.push({ pathname: "/service-detail", params: { type: service.detailType } } as Href);
-    },
-    [destination, origin, paymentMethod, setPaymentMethod, setSelectedVehicle, setSelectedServiceClass, showComboHint],
-  );
-
-
   const goToDirectCheckout = useCallback(() => {
     if (!selectedVehicle) {
       Alert.alert("Fahrzeug wählen", "Bitte wählen Sie zuerst ein Fahrzeug aus.");
+      return;
+    }
+    if (selectedVehicle === "wheelchair" && !wheelchairHomeDraft) {
+      router.push("/ride-select" as Href);
       return;
     }
     if (isLoadingRoute || !fareBreakdown) {
@@ -733,7 +796,7 @@ export default function HomeScreen() {
       setScheduledTime(null);
     }
     router.push("/ride" as Href);
-  }, [selectedVehicle, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
+  }, [selectedVehicle, wheelchairHomeDraft, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
 
   /* ── GPS ── */
   const handleGpsLocate = async (silent = false) => {
@@ -755,10 +818,10 @@ export default function HomeScreen() {
 
   useEffect(() => { handleGpsLocate(true); }, []);
 
-  const recentDest = history[0];
+  const homeHistorySlice = history.slice(0, MAX_HOME_HISTORY);
   const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
   const showDestResults = !isEditingOrigin && destResults.length > 0;
-  const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
+  const showFavoriteBlock = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
   const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
   const mapEdgePaddingBottom = Math.round(
     destination
@@ -837,74 +900,95 @@ export default function HomeScreen() {
         style={[
           styles.sheet,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: HOME_SHEET_BG,
             maxHeight: destination ? "86%" : "66%",
             bottom: TAB_HEIGHT + bottomPad,
           },
         ]}
       >
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+        <View style={[styles.sheetHandle, { backgroundColor: HOME_SHEET_HANDLE }]} />
 
-        {/* Suche / Route-Anzeige */}
+        {/* Suche / Route (ohne Rahmen-im-Rahmen, dunkel wie MiniCar) */}
         {destination ? (
-          /* ── Zwei-Zeilen-Karte mit Trennlinie (Option B) ── */
           <Pressable
-            style={[styles.routeCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[styles.miniRouteCard]}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
           >
-            {/* Start-Zeile */}
-            <View style={styles.routeCardRow}>
+            <View style={styles.routeCardRowMini}>
               <View style={styles.routeCardDotOrigin} />
-              <Text style={[styles.routeCardText, { color: colors.mutedForeground }]} numberOfLines={1}>
+              <Text style={[styles.routeCardText, { color: HOME_SHEET_MUTED }]} numberOfLines={1}>
                 {origin.displayName}
               </Text>
             </View>
-            {/* Trennlinie */}
-            <View style={[styles.routeCardSep, { backgroundColor: colors.border }]} />
-            {/* Ziel-Zeile */}
-            <View style={styles.routeCardRow}>
+            <View style={[styles.routeCardSepMini, { backgroundColor: HOME_SHEET_DIVIDER }]} />
+            <View style={styles.routeCardRowMini}>
               <View style={[styles.routeCardDotDest, { backgroundColor: colors.primary }]} />
-              <Text style={[styles.routeCardText, { color: colors.foreground, fontFamily: "Inter_500Medium" }]} numberOfLines={1}>
+              <Text style={[styles.routeCardText, { color: HOME_SHEET_TEXT, fontFamily: "Inter_500Medium", flex: 1 }]} numberOfLines={1}>
                 {destination.displayName}
               </Text>
               <Pressable
                 hitSlop={12}
-                onPress={(e) => { e.stopPropagation(); resetRide(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  resetRide();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
                 style={styles.searchClearBtn}
               >
-                <View style={[styles.searchClearCircle, { backgroundColor: colors.mutedForeground + "30" }]}>
-                  <Feather name="x" size={12} color={colors.foreground} />
+                <View style={[styles.searchClearCircle, { backgroundColor: "rgba(0,0,0,0.06)" }]}>
+                  <Feather name="x" size={12} color={HOME_SHEET_TEXT} />
                 </View>
               </Pressable>
             </View>
           </Pressable>
         ) : (
-          /* ── Einzelne Such-Pille ── */
-          <View style={styles.searchRow}>
+          <>
             <Pressable
-              style={[styles.searchPlaceholder, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={styles.miniSearchPill}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
             >
               <View style={[styles.searchIconCircle, { backgroundColor: colors.primary }]}>
-                <Feather name="search" size={13} color="#fff" />
+                <Feather name="search" size={17} color="#fff" />
               </View>
-              <Text style={[styles.searchPlaceholderText, { color: "#888" }]} numberOfLines={1}>
-                Wohin soll's gehen?
+              <Text style={styles.miniSearchPlaceholderText} numberOfLines={1}>
+                Ziel eingeben…
               </Text>
+              <Feather name="chevron-right" size={18} color={HOME_SHEET_MUTED} />
             </Pressable>
-            {preBookingOn ? (
-              <Pressable
-                style={[styles.spaeterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => {
-                  setScheduledTime(null);
-                  goToReserve();
-                }}
-              >
-                <Feather name="calendar" size={14} color={colors.foreground} />
-                <Text style={[styles.spaeterText, { color: colors.foreground }]}>Reservieren</Text>
-              </Pressable>
-            ) : null}
-          </View>
+            <View style={styles.miniActionRow}>
+              {preBookingOn ? (
+                <>
+                  <Pressable style={[styles.miniBtnPrimaryRed, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
+                    <Feather name="calendar" size={16} color="#fff" />
+                    <Text style={styles.miniBtnPrimaryRedText} numberOfLines={1}>
+                      Reservieren
+                    </Text>
+                  </Pressable>
+                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnHalf]} onPress={goMedicalBooking}>
+                    <MaterialCommunityIcons name="medical-bag" size={17} color={HOME_MEDICAL_GREEN_DARK} />
+                    <Text style={styles.miniBtnMedicalOutlineText} numberOfLines={1}>
+                      Krankenfahrt
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable style={[styles.miniBtnSecondaryDark, styles.miniBtnHalf]} onPress={goBookingCenter}>
+                    <Feather name="layers" size={16} color={HOME_SHEET_TEXT} />
+                    <Text style={styles.miniBtnSecondaryDarkText} numberOfLines={1}>
+                      Buchungszentrale
+                    </Text>
+                  </Pressable>
+                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnHalf]} onPress={goMedicalBooking}>
+                    <MaterialCommunityIcons name="medical-bag" size={17} color={HOME_MEDICAL_GREEN_DARK} />
+                    <Text style={styles.miniBtnMedicalOutlineText} numberOfLines={1}>
+                      Krankenfahrt
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </>
         )}
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" style={styles.sheetScroll}>
@@ -915,134 +999,102 @@ export default function HomeScreen() {
                 marginBottom: 10,
                 padding: 12,
                 borderRadius: 10,
-                backgroundColor: colors.card,
+                backgroundColor: HOME_SHEET_PANEL,
                 borderWidth: 1,
-                borderColor: colors.border,
+                borderColor: HOME_SHEET_RIM,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: rs(3) },
+                shadowOpacity: 0.22,
+                shadowRadius: rs(8),
+                elevation: 8,
               }}
             >
-              <Text style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}>{globalNoticeDe}</Text>
+              <Text style={{ color: HOME_SHEET_TEXT, fontSize: 14, lineHeight: 19 }}>{globalNoticeDe}</Text>
             </View>
           ) : null}
           {!destination ? (
             <>
-              {/* Quick destinations */}
-              <View style={[styles.quickSection, { borderColor: colors.border }]}>
-                <Pressable
-                  style={styles.quickRow}
-                  onPress={() => {
-                    if (savedHome) { setDestination(savedHome); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }
-                    else { setSavingPreset("home"); setIsSearchActive(true); }
-                  }}
-                >
-                  <View style={[styles.quickIconWrap, { backgroundColor: savedHome ? "#FEF2F2" : colors.muted }]}>
-                    <Feather name="home" size={16} color={savedHome ? colors.primary : colors.foreground} />
-                  </View>
-                  <View style={styles.quickTextWrap}>
-                    <Text style={[styles.quickTitle, { color: colors.foreground }]}>Zuhause</Text>
-                    <Text style={[styles.quickSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      {savedHome ? savedHome.displayName.split(",")[0] : "Wohnadresse speichern"}
-                    </Text>
-                  </View>
-                  <Pressable
-                    hitSlop={12}
-                    onPress={(e) => { e.stopPropagation(); setEditPreset("home"); setEditPresetQuery(""); setEditPresetResults([]); setSelectedEditResult(null); }}
-                  >
-                    <Feather name="edit-2" size={14} color={colors.mutedForeground} />
-                  </Pressable>
-                </Pressable>
-                <View style={[styles.quickDivider, { backgroundColor: colors.border }]} />
-                <Pressable
-                  style={styles.quickRow}
-                  onPress={() => {
-                    if (savedWork) { setDestination(savedWork); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }
-                    else { setSavingPreset("work"); setIsSearchActive(true); }
-                  }}
-                >
-                  <View style={[styles.quickIconWrap, { backgroundColor: savedWork ? "#FEF2F2" : colors.muted }]}>
-                    <Feather name="briefcase" size={16} color={savedWork ? colors.primary : colors.foreground} />
-                  </View>
-                  <View style={styles.quickTextWrap}>
-                    <Text style={[styles.quickTitle, { color: colors.foreground }]}>Arbeit</Text>
-                    <Text style={[styles.quickSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      {savedWork ? savedWork.displayName.split(",")[0] : "Arbeitsadresse speichern"}
-                    </Text>
-                  </View>
-                  <Pressable
-                    hitSlop={12}
-                    onPress={(e) => { e.stopPropagation(); setEditPreset("work"); setEditPresetQuery(""); setEditPresetResults([]); setSelectedEditResult(null); }}
-                  >
-                    <Feather name="edit-2" size={14} color={colors.mutedForeground} />
-                  </Pressable>
-                </Pressable>
-                {recentDest && (
-                  <>
-                    <View style={[styles.quickDivider, { backgroundColor: colors.border }]} />
-                    <Pressable style={styles.quickRow} onPress={() => setIsSearchActive(true)}>
-                      <View style={[styles.quickIconWrap, { backgroundColor: colors.muted }]}>
-                        <Ionicons name="time-outline" size={16} color={colors.foreground} />
-                      </View>
-                      <View style={styles.quickTextWrap}>
-                        <Text style={[styles.quickTitle, { color: colors.foreground }]} numberOfLines={1}>
-                          {recentDest.destination.split(",")[0]}
-                        </Text>
-                        <Text style={[styles.quickSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                          {recentDest.destination.split(",").slice(1, 3).join(",").trim() || recentDest.origin.split(",")[0]}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  </>
-                )}
-              </View>
-
-              <View style={styles.vehicleSection}>
-                <HomeServiceGrid
-                  colors={colors}
-                  selectedServiceClass={selectedServiceClass}
-                  selectedVehicle={selectedVehicle}
-                  compact={isSmallScreen}
-                  onPressService={handleHomeServicePress}
-                />
-
-                {/* ── Erweiterung unter den 4 Cards ── */}
-                {preBookingOn ? (
-                <View style={styles.homeExtraWrap}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.homeReserveRow,
-                      { backgroundColor: "#FFFFFF", borderColor: colors.border, opacity: pressed ? 0.96 : 1 },
-                    ]}
-                    onPress={goToReserve}
-                  >
-                    <View style={[styles.homeReserveIcon, { backgroundColor: "#F3F4F6" }]}>
-                      <Feather name="calendar" size={16} color={colors.foreground} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.homeReserveTitle, { color: colors.foreground }]}>Reservieren</Text>
-                      <Text style={[styles.homeReserveSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        Plane deine Fahrt im Voraus
+              {(searchFavorites.length > 0 || homeHistorySlice.length > 0) ? (
+                <View style={styles.quickSection}>
+                  {searchFavorites.length > 0 ? (
+                    <>
+                      <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED }]}>
+                        Favoriten
                       </Text>
-                    </View>
-                    <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                  </Pressable>
+                      {searchFavorites.slice(0, MAX_FAVORITES_ON_HOME).map((fav, favIdx) => (
+                        <React.Fragment key={fav.id}>
+                          {favIdx > 0 ? <View style={[styles.quickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
+                          <View style={styles.quickRow}>
+                            <Pressable
+                              style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
+                              onPress={() => applyDestinationAndContinue(fav.location)}
+                            >
+                              <View style={[styles.quickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
+                                <Feather name="map-pin" size={16} color={colors.primary} />
+                              </View>
+                              <View style={styles.quickTextWrap}>
+                                <Text style={[styles.quickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>{fav.label}</Text>
+                                <Text style={[styles.quickSub, { color: HOME_SHEET_MUTED }]} numberOfLines={1}>
+                                  {fav.location.displayName}
+                                </Text>
+                              </View>
+                            </Pressable>
+                            <Pressable hitSlop={12} onPress={() => removeSearchFavorite(fav.id)}>
+                              <Feather name="trash-2" size={16} color={HOME_SHEET_MUTED} />
+                            </Pressable>
+                          </View>
+                        </React.Fragment>
+                      ))}
+                    </>
+                  ) : null}
+                  {homeHistorySlice.length > 0 ? (
+                    <>
+                      {searchFavorites.length > 0 ? <View style={[styles.quickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
+                      <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED }]}>
+                        Verlauf
+                      </Text>
+                      {homeHistorySlice.map((hItem, hi) => (
+                        <React.Fragment key={hItem.id}>
+                          {hi > 0 ? <View style={[styles.quickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
+                          <Pressable
+                            style={styles.quickRow}
+                            onPress={() => void openSearchWithHistoryEntry(hItem)}
+                          >
+                            <View style={[styles.quickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
+                              <Ionicons name="time-outline" size={16} color={HOME_SHEET_TEXT} />
+                            </View>
+                            <View style={styles.quickTextWrap}>
+                              <Text style={[styles.quickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>
+                                {hItem.destination.split(",")[0]}
+                              </Text>
+                              <Text style={[styles.quickSub, { color: HOME_SHEET_MUTED }]} numberOfLines={2}>
+                                {hItem.destination.split(",").slice(1, 3).join(",").trim() || hItem.origin.split(",")[0]}
+                              </Text>
+                            </View>
+                            <Feather name="search" size={16} color={HOME_SHEET_MUTED} />
+                          </Pressable>
+                        </React.Fragment>
+                      ))}
+                    </>
+                  ) : null}
                 </View>
-                ) : null}
-              </View>
+              ) : null}
             </>
           ) : (
             <View style={styles.fareSection}>
-              <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>BUCHUNG</Text>
+              <Text style={[styles.panelLabel, { color: HOME_SHEET_MUTED }]}>BUCHUNG</Text>
               <Text
                 style={{
-                  fontSize: 14,
+                  fontSize: 15,
                   fontFamily: "Inter_400Regular",
-                  color: colors.foreground,
-                  lineHeight: 20,
+                  color: HOME_SHEET_TEXT,
+                  lineHeight: 21,
                   marginBottom: 12,
                 }}
               >
                 Ziel gesetzt. Wähle jetzt dein Fahrzeug - der Preis wird direkt angezeigt.
               </Text>
-              <Text style={[styles.panelLabel, { color: colors.mutedForeground, marginTop: 4 }]}>FAHRZEUG</Text>
+              <Text style={[styles.panelLabel, { color: HOME_SHEET_MUTED, marginTop: 4 }]}>FAHRZEUG</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookingVehicleScroll}>
                 {VEHICLES.map((v) => {
                   const active = selectedVehicle === v.id;
@@ -1053,15 +1105,20 @@ export default function HomeScreen() {
                       style={[
                         styles.bookingVehicleChip,
                         {
-                          borderWidth: active ? 2 : 1.5,
-                          borderColor: active ? colors.primary : colors.border,
-                          backgroundColor: active ? colors.primary + "12" : colors.card,
+                          borderWidth: active ? 2.5 : 2,
+                          borderColor: active ? colors.primary : HOME_SHEET_RIM,
+                          backgroundColor: active ? colors.primary + "22" : HOME_SHEET_PANEL,
                         },
                       ]}
                       onPress={() => {
                         if (v.id === "wheelchair") {
                           setSelectedServiceClass("rollstuhl");
-                        } else if (v.id === "xl") {
+                          setSelectedVehicle(v.id);
+                          Haptics.selectionAsync();
+                          router.push("/ride-select" as Href);
+                          return;
+                        }
+                        if (v.id === "xl") {
                           setSelectedServiceClass("xl");
                         } else {
                           setSelectedServiceClass("taxi");
@@ -1073,7 +1130,7 @@ export default function HomeScreen() {
                       <View
                         style={[
                           styles.bookingVehicleIconCircle,
-                          { backgroundColor: active ? colors.primary + "20" : iconCfg.bg },
+                          { backgroundColor: active ? colors.primary + "28" : HOME_SHEET_INNER },
                         ]}
                       >
                         <MaterialCommunityIcons
@@ -1082,22 +1139,49 @@ export default function HomeScreen() {
                           color={iconCfg.color}
                         />
                       </View>
-                      <Text style={[styles.bookingVehicleName, { color: active ? colors.primary : colors.foreground }]}>
+                      <Text style={[styles.bookingVehicleName, { color: active ? colors.primary : HOME_SHEET_TEXT }]}>
                         {v.id === "standard" ? "Standard Taxi" : v.name}
                       </Text>
-                      <Text style={[styles.bookingVehicleSub, { color: colors.mutedForeground }]}>
+                      <Text style={[styles.bookingVehicleSub, { color: HOME_SHEET_MUTED }]}>
                         {iconCfg.seats}
                       </Text>
                     </Pressable>
                   );
                 })}
+                <Pressable
+                  style={[
+                    styles.bookingVehicleChip,
+                    {
+                      borderWidth: 2,
+                      borderColor: HOME_MEDICAL_GREEN,
+                      backgroundColor: HOME_MEDICAL_SOFT_BG,
+                    },
+                  ]}
+                  onPress={() => {
+                    resetRide();
+                    Haptics.selectionAsync();
+                    router.push("/booking-medical" as Href);
+                  }}
+                >
+                  <View
+                    style={[styles.bookingVehicleIconCircle, { backgroundColor: "rgba(5,150,105,0.15)" }]}
+                  >
+                    <MaterialCommunityIcons name="medical-bag" size={24} color={HOME_MEDICAL_GREEN_DARK} />
+                  </View>
+                  <Text style={[styles.bookingVehicleName, { color: HOME_MEDICAL_GREEN_DARK }]}>
+                    Krankenfahrt
+                  </Text>
+                  <Text style={[styles.bookingVehicleSub, { color: HOME_MEDICAL_GREEN }]}>
+                    Vermittlung
+                  </Text>
+                </Pressable>
               </ScrollView>
 
               {/* ── Service-Badges aus Patienten-Profil ── */}
               {(profile.rollator || profile.blindenhund || profile.sauerstoff || profile.begleitperson ||
                 profile.abholungTuer || profile.begleitungAnmeldung || profile.tragehilfe || profile.dialyse) && (
                 <View style={{ gap: 6, marginTop: 4 }}>
-                  <Text style={[styles.panelLabel, { color: colors.mutedForeground }]}>SERVICE</Text>
+                  <Text style={[styles.panelLabel, { color: HOME_SHEET_MUTED }]}>SERVICE</Text>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {profile.rollator && <ServiceBadge icon="walk" label="Rollator" />}
                     {profile.blindenhund && <ServiceBadge icon="dog" label="Assistenzhund" />}
@@ -1125,24 +1209,24 @@ export default function HomeScreen() {
               {isLoadingRoute ? (
                 <View style={[styles.loadingRow, { marginTop: 14 }]}>
                   <ActivityIndicator color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Route wird berechnet...</Text>
+                  <Text style={[styles.loadingText, { color: HOME_SHEET_MUTED }]}>Route wird berechnet...</Text>
                 </View>
               ) : routeError ? (
                 <View style={[styles.loadingRow, { marginTop: 14 }]}>
-                  <Feather name="alert-circle" size={18} color={colors.destructive} />
-                  <Text style={[styles.loadingText, { color: colors.destructive }]}>{routeError}</Text>
+                  <Feather name="alert-circle" size={18} color="#F87171" />
+                  <Text style={[styles.loadingText, { color: "#FCA5A5" }]}>{routeError}</Text>
                 </View>
               ) : route?.distanceKm != null ? (
-                <View style={[styles.routeStrip, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 14, alignItems: "stretch" }]}>
+                <View style={[styles.routeStrip, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, marginTop: 14, alignItems: "stretch" }]}>
                   <View style={[styles.routeStripItem, { justifyContent: "center" }]}>
-                    <Text style={[styles.routeStripDistance, { color: colors.mutedForeground }]}>
+                    <Text style={[styles.routeStripDistance, { color: HOME_SHEET_MUTED }]}>
                       {Number(route.distanceKm).toFixed(1)} km
                     </Text>
                   </View>
-                  <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: colors.border }]} />
-                  <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                    <Text style={[styles.routeStripLabel, { color: colors.mutedForeground, marginBottom: 2 }]}>Preis</Text>
-                    <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" }}>
+                  <View style={[styles.routeStripDivider, styles.routeStripDividerShort, { backgroundColor: HOME_SHEET_DIVIDER }]} />
+                  <View style={[styles.routeStripItem, styles.fareHighlight, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}>
+                    <Text style={[styles.routeStripLabel, { color: HOME_SHEET_MUTED, marginBottom: 2 }]}>Preis</Text>
+                    <Text style={{ fontSize: 21, fontFamily: "Inter_700Bold", color: HOME_SHEET_TEXT, textAlign: "center" }}>
                       {fareBreakdown ? formatEuro(fareBreakdown.total) : "—"}
                     </Text>
                   </View>
@@ -1154,27 +1238,26 @@ export default function HomeScreen() {
         </ScrollView>
 
         {destination && !isLoadingRoute && !routeError && route && (
-          <View style={[styles.stickyBookRow, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: 18 + bottomPad + 12 }]}>
+          <View style={[styles.stickyBookRow, { backgroundColor: HOME_SHEET_BG, paddingBottom: 18 + bottomPad + 12 }]}>
             <View style={styles.stickyBookCol}>
               <Pressable
                 style={[
                   styles.bookBtn,
                   {
-                    backgroundColor: "#16A34A",
-                    borderWidth: 2,
-                    borderColor: "#BBF7D0",
+                    backgroundColor: HOME_BOOKING_ORANGE,
+                    borderWidth: 0,
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 5,
-                    elevation: 3,
+                    shadowOpacity: 0.2,
+                    shadowRadius: 6,
+                    elevation: 4,
                   },
                 ]}
                 onPress={goToDirectCheckout}
               >
                 <Text style={[styles.bookBtnText, { color: "#fff" }]}>Taxi jetzt bestellen</Text>
               </Pressable>
-              <Text style={[styles.bookBtnHint, { color: colors.mutedForeground }]}>
+              <Text style={[styles.bookBtnHint, { color: HOME_SHEET_MUTED }]}>
                 Fahrzeug und Preis sind festgelegt. Im nächsten Schritt bestätigen Sie die Bestellung.
               </Text>
             </View>
@@ -1199,21 +1282,14 @@ export default function HomeScreen() {
                 <Feather name="arrow-left" size={22} color={colors.foreground} />
               </Pressable>
 
-              {savingPreset ? (
-                <View style={[styles.saveModeBanner, { backgroundColor: colors.primary + "14" }]}>
-                  <Feather name={savingPreset === "home" ? "home" : "briefcase"} size={13} color={colors.primary} />
-                  <Text style={[styles.saveModeBannerText, { color: colors.primary }]}>
-                    {savingPreset === "home" ? "Wohnadresse speichern" : "Arbeitsadresse speichern"}
-                  </Text>
-                </View>
-              ) : <View style={{ flex: 1 }} />}
+              <View style={{ flex: 1 }} />
 
               <Pressable style={styles.cancelBtn} onPress={closeSearch}>
                 <Text style={[styles.cancelBtnText, { color: colors.primary }]}>Abbrechen</Text>
               </Pressable>
             </View>
 
-            {scheduledTime && !savingPreset && (
+            {scheduledTime && (
               <View style={{ paddingHorizontal: 4, paddingBottom: 10 }}>
                 <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#B45309" }} numberOfLines={1}>
                   Vorbestellung · {scheduledTime.getHours().toString().padStart(2, "0")}:{scheduledTime.getMinutes().toString().padStart(2, "0")} Uhr
@@ -1286,54 +1362,6 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
-
-            {/* Favoriten im Such-Overlay: Zuhause / Arbeit */}
-            <View style={styles.searchFavouritesRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.searchFavouriteChip,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: "#FFF7ED",
-                    opacity: pressed ? 0.94 : 1,
-                  },
-                ]}
-                onPress={() => {
-                  if (savedHome) {
-                    handleDestinationSelect(savedHome);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  } else {
-                    setSavingPreset("home");
-                    setIsSearchActive(true);
-                  }
-                }}
-              >
-                <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
-                <Text style={[styles.searchFavouriteText, { color: colors.foreground }]}>Zuhause</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.searchFavouriteChip,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: "#EFF6FF",
-                    opacity: pressed ? 0.94 : 1,
-                  },
-                ]}
-                onPress={() => {
-                  if (savedWork) {
-                    handleDestinationSelect(savedWork);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  } else {
-                    setSavingPreset("work");
-                    setIsSearchActive(true);
-                  }
-                }}
-              >
-                <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
-                <Text style={[styles.searchFavouriteText, { color: colors.foreground }]}>Arbeit</Text>
-              </Pressable>
-            </View>
           </View>
 
           {/* Ergebnisliste — bleibt ÜBER der Tastatur dank KeyboardAvoidingView */}
@@ -1403,33 +1431,96 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* Preset-Vorschläge (sofort sichtbar) */}
-              {showPresets && (
+              {/* Persönliche Favoriten */}
+              {showFavoriteBlock && (
                 <>
-                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>BELIEBTE ZIELE</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4, marginBottom: 6 }}>
+                    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      MEINE ZIELE
+                    </Text>
+                    {searchFavorites.length < MAX_FAVORITES_STORED ? (
+                      <Pressable onPress={() => openAddFavoriteModal()} hitSlop={8}>
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.primary }}>+ Neu</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  {searchFavorites.length > 0 ? (
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "Inter_400Regular",
+                        color: colors.mutedForeground,
+                        paddingHorizontal: 4,
+                        marginBottom: 8,
+                        lineHeight: 15,
+                      }}
+                    >
+                      Oberste {MAX_FAVORITES_ON_HOME} erscheinen auf der Startseite. Mit ↑↓ die Reihenfolge ändern.
+                    </Text>
+                  ) : null}
                   <View style={[styles.resultGroup, { borderColor: colors.border }]}>
-                    {PRESET_DESTINATIONS.map((preset, i) => (
-                      <React.Fragment key={preset.id}>
-                        {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
-                        <Pressable
-                          style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
-                          onPress={() => handleDestinationSelect(preset.location)}
-                        >
-                          <View style={[styles.resultIcon, {
-                            backgroundColor: preset.icon === "airplane" ? "#EFF6FF" : "#F0FDF4",
-                          }]}>
-                            {preset.icon === "airplane"
-                              ? <Ionicons name="airplane" size={15} color="#3B82F6" />
-                              : <Ionicons name="train" size={15} color="#22C55E" />}
+                    {searchFavorites.length === 0 ? (
+                      <Pressable
+                        style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
+                        onPress={() => openAddFavoriteModal()}
+                      >
+                        <View style={[styles.resultIcon, { backgroundColor: "#F0F9FF" }]}>
+                          <Feather name="bookmark" size={15} color={colors.primary} />
+                        </View>
+                        <View style={styles.resultText}>
+                          <Text style={[styles.resultTitle, { color: colors.foreground }]}>Ersten Favoriten anlegen</Text>
+                          <Text style={[styles.resultSub, { color: colors.mutedForeground }]}>
+                            Straße, Hausnummer, PLZ und Stadt — dann Kartentreffer auswählen
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                      </Pressable>
+                    ) : (
+                      searchFavorites.map((fav, i) => (
+                        <React.Fragment key={fav.id}>
+                          {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
+                          <View style={styles.resultRow}>
+                            <Pressable
+                              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }, pressed && { backgroundColor: colors.muted, borderRadius: 10 }]}
+                              onPress={() => handleDestinationSelect(fav.location)}
+                            >
+                              <View style={[styles.resultIcon, { backgroundColor: colors.muted }]}>
+                                <Feather name="map-pin" size={15} color={colors.primary} />
+                              </View>
+                              <View style={styles.resultText}>
+                                <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={1}>
+                                  {fav.label}
+                                </Text>
+                                <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+                                  {fav.location.displayName}
+                                </Text>
+                              </View>
+                            </Pressable>
+                            <View style={styles.favReorderCol}>
+                              <Pressable
+                                hitSlop={8}
+                                disabled={i === 0}
+                                onPress={() => moveSearchFavorite(i, -1)}
+                                style={{ opacity: i === 0 ? 0.35 : 1 }}
+                              >
+                                <Feather name="chevron-up" size={20} color={colors.mutedForeground} />
+                              </Pressable>
+                              <Pressable
+                                hitSlop={8}
+                                disabled={i >= searchFavorites.length - 1}
+                                onPress={() => moveSearchFavorite(i, 1)}
+                                style={{ opacity: i >= searchFavorites.length - 1 ? 0.35 : 1 }}
+                              >
+                                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
+                              </Pressable>
+                            </View>
+                            <Pressable hitSlop={10} onPress={() => removeSearchFavorite(fav.id)} style={{ padding: 6 }}>
+                              <Feather name="trash-2" size={16} color={colors.mutedForeground} />
+                            </Pressable>
                           </View>
-                          <View style={styles.resultText}>
-                            <Text style={[styles.resultTitle, { color: colors.foreground }]}>{preset.title}</Text>
-                            <Text style={[styles.resultSub, { color: colors.mutedForeground }]}>{preset.subtitle}</Text>
-                          </View>
-                          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                        </Pressable>
-                      </React.Fragment>
-                    ))}
+                        </React.Fragment>
+                      ))
+                    )}
                   </View>
                 </>
               )}
@@ -1804,96 +1895,129 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── Adresse bearbeiten Modal ── */}
-      <Modal visible={!!editPreset} transparent animationType="fade" onRequestClose={() => setEditPreset(null)}>
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <Pressable style={styles.modalOverlay} onPress={() => setEditPreset(null)}>
+      {/* ── Favorit hinzufügen (Straße/Nr./PLZ/Stadt → Geocoding) ── */}
+      <Modal visible={addFavoriteOpen} transparent animationType="fade" onRequestClose={closeAddFavoriteModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+          <Pressable style={styles.modalOverlay} onPress={closeAddFavoriteModal}>
             <Pressable style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
               <View style={styles.modalTitleRow}>
-                <Feather name={editPreset === "home" ? "home" : "briefcase"} size={18} color={colors.primary} />
-                <Text style={[styles.modalTitle, { color: colors.foreground, marginLeft: 8 }]}>
-                  {editPreset === "home" ? "Wohnadresse" : "Arbeitsadresse"}
+                <Feather name="bookmark" size={18} color={colors.primary} />
+                <Text style={[styles.modalTitle, { color: colors.foreground, marginLeft: 8 }]} numberOfLines={1}>
+                  Favorit hinzufügen
                 </Text>
-                <Pressable onPress={() => setEditPreset(null)} style={[styles.modalCloseBtn, { marginLeft: "auto" }]}>
+                <Pressable onPress={closeAddFavoriteModal} style={[styles.modalCloseBtn, { marginLeft: "auto" }]}>
                   <Feather name="x" size={20} color={colors.mutedForeground} />
                 </Pressable>
               </View>
 
-              {/* Eingabefeld */}
-              <View style={[styles.editPresetInputWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Feather name="search" size={16} color={colors.mutedForeground} style={{ marginRight: 8 }} />
-                <TextInput
-                  autoFocus
-                  placeholder="Adresse eingeben…"
-                  placeholderTextColor={colors.mutedForeground}
-                  style={[styles.editPresetInput, { color: colors.foreground }]}
-                  value={editPresetQuery}
-                  onChangeText={setEditPresetQuery}
-                  returnKeyType="search"
-                />
-                {editPresetLoading && <ActivityIndicator size="small" color={colors.primary} />}
-                {editPresetQuery.length > 0 && !editPresetLoading && (
-                  <Pressable hitSlop={8} onPress={() => { setEditPresetQuery(""); setEditPresetResults([]); }}>
-                    <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-                  </Pressable>
-                )}
-              </View>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 10 }}>
+                Bezeichnung optional. Pflicht Straße, Hausnummer und Stadt (PLZ verbessert die Treffer).
+              </Text>
 
-              {/* Ergebnisliste */}
-              {editPresetResults.length > 0 && (
+              <TextInput
+                placeholder="Bezeichnung (z. B. Zuhause, Praxis)"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.favFormInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                value={favLabel}
+                onChangeText={setFavLabel}
+                autoCorrect={false}
+              />
+              <TextInput
+                placeholder="Straße"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.favFormInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                value={favStreet}
+                onChangeText={setFavStreet}
+                autoCorrect={false}
+              />
+              <View style={styles.favFormRow}>
+                <TextInput
+                  placeholder="Nr."
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.favFormInputHalf, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                  value={favHouse}
+                  onChangeText={setFavHouse}
+                  autoCorrect={false}
+                />
+                <TextInput
+                  placeholder="PLZ"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.favFormInputHalf, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                  value={favPostal}
+                  onChangeText={setFavPostal}
+                  keyboardType="number-pad"
+                />
+              </View>
+              <TextInput
+                placeholder="Stadt"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.favFormInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                value={favCity}
+                onChangeText={setFavCity}
+                autoCorrect={false}
+              />
+
+              <Pressable
+                style={[styles.modalBtnSecondary, { borderColor: colors.border, marginTop: 6 }]}
+                onPress={() => runFavoriteAddressLookup()}
+                disabled={favLookupLoading}
+              >
+                {favLookupLoading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="search" size={16} color={colors.primary} />
+                )}
+                <Text style={[styles.modalBtnSecondaryText, { color: colors.primary }]}>
+                  {favLookupLoading ? "Suche läuft…" : "Adresse suchen"}
+                </Text>
+              </Pressable>
+
+              {favLookupResults.length > 0 && (
                 <ScrollView
-                  style={{ maxHeight: 240 }}
-                  keyboardShouldPersistTaps="always"
+                  style={{ maxHeight: 220, marginTop: 10 }}
+                  keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="on-drag"
                   showsVerticalScrollIndicator={false}
                 >
-                  {editPresetResults.map((loc, idx) => {
-                    const isSelected = selectedEditResult?.displayName === loc.displayName;
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginBottom: 6 }}>
+                    MAPPTREFFER ANTIPPEN
+                  </Text>
+                  {favLookupResults.map((loc, idx) => {
+                    const picked = favPick?.displayName === loc.displayName && favPick.lat === loc.lat && favPick.lon === loc.lon;
                     return (
                       <Pressable
-                        key={idx}
+                        key={`${loc.displayName}-${idx}`}
                         style={[
                           styles.editPresetResult,
                           { borderColor: colors.border },
-                          isSelected && { backgroundColor: "#FEF2F2" },
+                          picked && { backgroundColor: "#FEF2F2" },
                         ]}
-                        onPress={() => setSelectedEditResult(loc)}
+                        onPress={() => setFavPick(loc)}
                       >
-                        <Feather name="map-pin" size={14} color={isSelected ? colors.primary : colors.mutedForeground} style={{ marginTop: 2 }} />
+                        <Feather name="map-pin" size={14} color={picked ? colors.primary : colors.mutedForeground} style={{ marginTop: 2 }} />
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: isSelected ? colors.primary : colors.foreground }} numberOfLines={1}>
-                            {loc.displayName.split(",")[0]}
-                          </Text>
-                          <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }} numberOfLines={1}>
-                            {loc.displayName.split(",").slice(1).join(",").trim()}
+                          <Text style={{ fontSize: 15, fontFamily: "Inter_500Medium", color: picked ? colors.primary : colors.foreground }} numberOfLines={2}>
+                            {loc.displayName}
                           </Text>
                         </View>
-                        {isSelected && <Feather name="check" size={16} color={colors.primary} />}
+                        {picked && <Feather name="check" size={16} color={colors.primary} />}
                       </Pressable>
                     );
                   })}
                 </ScrollView>
               )}
 
-              {/* Speichern-Button */}
               <Pressable
                 style={[
                   styles.modalBtnPrimary,
-                  { backgroundColor: selectedEditResult ? colors.success : colors.muted },
+                  { backgroundColor: favPick ? colors.success : colors.muted, marginTop: 14 },
                 ]}
-                disabled={!selectedEditResult}
-                onPress={() => {
-                  if (!selectedEditResult || !editPreset) return;
-                  savePreset(editPreset, selectedEditResult);
-                  setEditPreset(null);
-                  setEditPresetQuery("");
-                  setEditPresetResults([]);
-                  setSelectedEditResult(null);
-                }}
+                disabled={!favPick}
+                onPress={() => confirmAddFavorite()}
               >
-                <Feather name="check" size={16} color={selectedEditResult ? "#fff" : colors.mutedForeground} />
-                <Text style={[styles.modalBtnPrimaryText, { color: selectedEditResult ? "#fff" : colors.mutedForeground }]}>
+                <Feather name="check" size={16} color={favPick ? "#fff" : colors.mutedForeground} />
+                <Text style={[styles.modalBtnPrimaryText, { color: favPick ? "#fff" : colors.mutedForeground }]}>
                   Speichern
                 </Text>
               </Pressable>
@@ -1972,54 +2096,181 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   avatarLetter: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 
-  /* ── Bottom sheet ── */
+  /* ── Bottom sheet (Klammert sich von der Karte ab: Lichtkante + Schlagschatten) ── */
   sheet: {
     position: "absolute", bottom: TAB_HEIGHT + 12, left: 0, right: 0,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1, shadowRadius: 12, elevation: 16, maxHeight: "76%",
+    borderTopWidth: StyleSheet.hairlineWidth * 3,
+    borderTopColor: HOME_SHEET_RIM,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(-6) },
+    shadowOpacity: 0.12,
+    shadowRadius: rs(18),
+    elevation: 14,
+    maxHeight: "76%",
   },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 6, marginBottom: 2 },
+  sheetHandle: { width: 40, height: 5, borderRadius: 3, alignSelf: "center", marginTop: 8, marginBottom: 20 },
   sheetScroll: { flexShrink: 1 },
 
-  /* Search pill */
-  searchRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6, gap: 10 },
-  spaeterBtn: {
+  searchIconCircle: { width: rs(34), height: rs(34), borderRadius: rs(17), justifyContent: "center", alignItems: "center" },
+  miniRouteCard: {
+    marginHorizontal: rs(14),
+    marginBottom: rs(12),
+    borderRadius: rs(18),
+    backgroundColor: HOME_SHEET_PANEL,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: HOME_SHEET_RIM,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(4) },
+    shadowOpacity: 0.32,
+    shadowRadius: rs(10),
+    elevation: 12,
+  },
+  routeCardRowMini: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(5),
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(10),
-    borderRadius: rs(50),
-    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(13),
+    gap: 10,
   },
-  spaeterText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
-  searchPlaceholder: {
-    flex: 1, flexDirection: "row", alignItems: "center",
-    gap: 10, paddingHorizontal: 12, paddingVertical: 13,
-    borderRadius: 50, borderWidth: 1,
+  routeCardSepMini: { height: StyleSheet.hairlineWidth, marginLeft: rs(33), marginRight: rs(14) },
+  miniSearchPill: {
+    marginHorizontal: rs(14),
+    marginTop: rs(2),
+    marginBottom: rs(10),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(12),
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(16),
+    borderRadius: rs(999),
+    backgroundColor: HOME_SHEET_PANEL,
+    borderWidth: 1,
+    borderColor: HOME_SHEET_RIM,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(4) },
+    shadowOpacity: 0.34,
+    shadowRadius: rs(12),
+    elevation: 14,
   },
-  searchIconCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  searchPlaceholderText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
-  /* Route card (Option B – zwei Zeilen mit Trennlinie) */
-  routeCard: {
-    marginHorizontal: 16, marginTop: 10, marginBottom: 2,
-    borderRadius: 14, borderWidth: 1, overflow: "hidden",
+  miniSearchPlaceholderText: {
+    flex: 1,
+    fontSize: rf(19),
+    fontFamily: "Inter_500Medium",
+    color: HOME_SHEET_MUTED,
   },
-  routeCardRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 13, gap: 10,
+  miniActionRow: {
+    flexDirection: "row",
+    gap: rs(10),
+    marginHorizontal: rs(14),
+    marginBottom: rs(14),
+    alignItems: "stretch",
   },
+  miniBtnHalf: { flex: 1, minWidth: 0 },
+  miniBtnPrimaryRed: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+    paddingVertical: rs(13),
+    borderRadius: rs(999),
+    backgroundColor: "#DC2626",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(3) },
+    shadowOpacity: 0.35,
+    shadowRadius: rs(6),
+    elevation: 10,
+  },
+  miniBtnPrimaryRedText: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+    flexShrink: 1,
+  },
+  miniBtnSecondaryDark: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+    paddingVertical: rs(13),
+    borderRadius: rs(999),
+    backgroundColor: HOME_SHEET_INNER,
+    borderWidth: 1,
+    borderColor: HOME_SHEET_RIM,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(2) },
+    shadowOpacity: 0.24,
+    shadowRadius: rs(5),
+    elevation: 8,
+  },
+  miniBtnSecondaryDarkText: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: HOME_SHEET_TEXT,
+    flexShrink: 1,
+  },
+  miniBtnMedicalOutline: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+    paddingVertical: rs(13),
+    paddingHorizontal: rs(8),
+    borderRadius: rs(999),
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: HOME_MEDICAL_OUTLINE_BORDER,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(1) },
+    shadowOpacity: 0.06,
+    shadowRadius: rs(4),
+    elevation: 3,
+  },
+  miniBtnMedicalOutlineText: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: HOME_MEDICAL_GREEN_DARK,
+    flexShrink: 1,
+  },
+  /** Überschrift Favoriten / Verlauf im Home-Sheet (etwas größer als klassisches Panel-Label). */
+  homeQuickSectionHeading: {
+    fontSize: rf(14.5),
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.35,
+    marginBottom: rs(4),
+    paddingHorizontal: 20,
+  },
+  miniBtnFull: { flexGrow: 1, flexShrink: 1 },
   routeCardDotOrigin: {
     width: 9, height: 9, borderRadius: 5,
     backgroundColor: "#999", borderWidth: 1.5, borderColor: "#555",
   },
   routeCardDotDest: { width: 9, height: 9, borderRadius: 5 },
-  routeCardText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  routeCardSep: { height: 1, marginLeft: 14, marginRight: 14 },
+  routeCardText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
 
-  /* Quick destinations */
-  quickSection: { marginHorizontal: 16, marginBottom: 4, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  /* Quick destinations — etwas Abstand nach oben + dezente Trennlinie zur Suchzeile */
+  quickSection: {
+    marginHorizontal: rs(14),
+    marginTop: rs(16),
+    marginBottom: rs(10),
+    paddingTop: rs(12),
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: HOME_SHEET_DIVIDER,
+    borderRadius: rs(14),
+    borderWidth: 1.5,
+    borderColor: HOME_SHEET_RIM,
+    backgroundColor: HOME_SHEET_PANEL,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(3) },
+    shadowOpacity: 0.28,
+    shadowRadius: rs(10),
+    elevation: 10,
+  },
   servicesTitle: {
     paddingHorizontal: 14,
     paddingTop: 12,
@@ -2032,8 +2283,8 @@ const styles = StyleSheet.create({
   quickRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   quickIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   quickTextWrap: { flex: 1 },
-  quickTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  quickSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
+  quickTitle: { fontSize: 16, fontFamily: "Inter_500Medium" },
+  quickSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 1 },
   quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 
   /* Start: Dienstleistungen-Kacheln (Onroda / XL / Rollstuhl Standard) */
@@ -2211,23 +2462,23 @@ const styles = StyleSheet.create({
   /* Fare panel */
   fareSection: { padding: 14, gap: 12, paddingBottom: 22 },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 10, justifyContent: "center", paddingVertical: 16 },
-  loadingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  loadingText: { fontSize: 16, fontFamily: "Inter_400Regular" },
   routeStrip: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, paddingVertical: 18 },
   routeStripItem: { flex: 1, alignItems: "center", gap: 4 },
   fareHighlight: { borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, marginHorizontal: 8, marginVertical: 4, backgroundColor: "#F3F4F6", borderColor: "#D1D5DB" },
   routeStripVal: { fontSize: 28, fontFamily: "Inter_700Bold" },
-  routeStripDistance: { fontSize: 16, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
-  routeStripLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  routeStripDistance: { fontSize: 17, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
+  routeStripLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
   routeStripDivider: { width: 1, height: 32 },
   routeStripDividerShort: { height: 22, alignSelf: "center" },
-  panelLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -6 },
+  panelLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -6 },
   timingRow: { flexDirection: "row", gap: 10, marginTop: 10 },
   timingBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 7, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5,
     borderColor: "#E5E7EB", backgroundColor: "#F9FAFB",
   },
-  timingBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  timingBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   paymentRow: { flexDirection: "row", gap: 8 },
   paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   paymentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, minWidth: "46%" },
@@ -2248,17 +2499,18 @@ const styles = StyleSheet.create({
   stickyBookRow: {
     flexDirection: "row", gap: 10,
     paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: StyleSheet.hairlineWidth + 1,
+    borderTopColor: HOME_SHEET_DIVIDER,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: rs(-5) },
+    shadowOpacity: 0.26,
+    shadowRadius: rs(14),
+    elevation: 14,
   },
   stickyBookCol: { flex: 1, gap: 8 },
   bookBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 14, gap: 6 },
-  bookBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.15 },
-  bookBtnHint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
+  bookBtnText: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.15 },
+  bookBtnHint: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 17 },
   scheduleBtn: { width: 52, height: 52, borderRadius: 14, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
   searchClearBtn: { padding: 2, marginLeft: 4 },
   searchClearCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center" },
@@ -2305,13 +2557,6 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontSize: 15, fontFamily: "Inter_500Medium",
   },
-  saveModeBanner: {
-    flex: 1, flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-  },
-  saveModeBannerText: {
-    fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1,
-  },
   twoFieldCard: {
     flexDirection: "row", alignItems: "stretch",
     borderRadius: 16, borderWidth: 1,
@@ -2345,24 +2590,6 @@ const styles = StyleSheet.create({
 
   /* Results list */
   resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
-  searchFavouritesRow: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  searchFavouriteChip: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  searchFavouriteText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   comboHintText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
@@ -2392,6 +2619,7 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
   resultGroup: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  favReorderCol: { justifyContent: "center", alignItems: "center", gap: 0 },
   resultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   resultText: { flex: 1 },
   resultTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
@@ -2409,8 +2637,25 @@ const styles = StyleSheet.create({
   modalCloseBtn: { padding: 4 },
   modalBtnPrimary: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 14 },
   modalBtnPrimaryText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  editPresetInputWrap: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
-  editPresetInput: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
+  favFormInput: {
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  favFormRow: { flexDirection: "row", gap: 10, alignItems: "stretch", marginBottom: 10 },
+  favFormInputHalf: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
   editPresetResult: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
   modalBtnSecondary: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 14, borderWidth: 1.5 },
   modalBtnSecondaryText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
