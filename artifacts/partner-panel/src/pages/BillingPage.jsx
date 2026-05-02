@@ -1,45 +1,34 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
+import FinanceExportTab from "./finance/FinanceExportTab.jsx";
+import FinanceInvoicesTab from "./finance/FinanceInvoicesTab.jsx";
+import FinanceMedicalTab from "./finance/FinanceMedicalTab.jsx";
+import FinanceOverviewTab from "./finance/FinanceOverviewTab.jsx";
+import FinancePayoutsTab from "./finance/FinancePayoutsTab.jsx";
+import FinanceTabs from "./finance/FinanceTabs.jsx";
+import { defaultMonthYm, deriveFinanceKpis, formatYmDe } from "./finance/financeHelpers.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
-}
-
-function defaultMonthYm() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function rideKindLabel(k) {
-  const m = { standard: "Normal", medical: "Krankenfahrt", voucher: "Gutschein", company: "Firma" };
-  return m[k] ?? k ?? "—";
-}
-
-function payerKindLabel(k) {
-  const m = {
-    passenger: "Fahrgast",
-    company: "Firma",
-    insurance: "Kostenträger",
-    voucher: "Gutschein",
-    third_party: "Dritter",
-  };
-  return m[k] ?? k ?? "—";
-}
-
-function flowLabel(f) {
-  const m = { hotel_guest: "Hotel", medical_patient: "Patient H/R", medical_series_leg: "Serie" };
-  return m[f] ?? f ?? "—";
 }
 
 export default function BillingPage() {
   const { token, user } = usePanelAuth();
   const canRead = hasPerm(user?.permissions, "rides.read");
   const showCodes = hasPanelModule(user?.panelModules, "access_codes");
+
+  const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(false);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const [companyLoading, setCompanyLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [rides, setRides] = useState([]);
+  const [kpiRides, setKpiRides] = useState([]);
+  const [kpiMonthYm, setKpiMonthYm] = useState(() => defaultMonthYm());
+  const [company, setCompany] = useState(null);
+
   const [month, setMonth] = useState(defaultMonthYm);
   const [rideKind, setRideKind] = useState("");
   const [payerKind, setPayerKind] = useState("");
@@ -48,6 +37,7 @@ export default function BillingPage() {
   const [hasAccessCode, setHasAccessCode] = useState("");
   const [partnerFlow, setPartnerFlow] = useState("");
   const [codeOptions, setCodeOptions] = useState([]);
+  const initialBillingLoaded = useRef(false);
 
   const loadCodes = useCallback(async () => {
     if (!token || !showCodes) return;
@@ -64,9 +54,9 @@ export default function BillingPage() {
     }
   }, [token, showCodes]);
 
-  function buildQuery() {
+  function buildQuery(forMonth = month) {
     const p = new URLSearchParams();
-    p.set("month", month);
+    p.set("month", forMonth);
     if (rideKind) p.set("rideKind", rideKind);
     if (payerKind) p.set("payerKind", payerKind);
     if (billingReference.trim()) p.set("billingReference", billingReference.trim());
@@ -77,7 +67,54 @@ export default function BillingPage() {
     return p.toString();
   }
 
-  async function onLoad() {
+  const loadKpiSnapshot = useCallback(async () => {
+    if (!token || !canRead) return;
+    setKpiLoading(true);
+    try {
+      const ym = defaultMonthYm();
+      const res = await fetch(`${API_BASE}/panel/v1/billing/rides?month=${encodeURIComponent(ym)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setKpiRides([]);
+        setKpiMonthYm(ym);
+        return;
+      }
+      setKpiRides(Array.isArray(data.rides) ? data.rides : []);
+      setKpiMonthYm(typeof data.month === "string" ? data.month : ym);
+    } catch {
+      setKpiRides([]);
+    } finally {
+      setKpiLoading(false);
+    }
+  }, [token, canRead]);
+
+  const loadCompany = useCallback(async () => {
+    if (!token || !canRead) return;
+    setCompanyLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/company`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      setCompany(res.ok && data?.ok && data.company ? data.company : null);
+    } catch {
+      setCompany(null);
+    } finally {
+      setCompanyLoading(false);
+    }
+  }, [token, canRead]);
+
+  useEffect(() => {
+    void loadKpiSnapshot();
+    void loadCompany();
+  }, [loadKpiSnapshot, loadCompany]);
+
+  const onLoad = useCallback(async () => {
     if (!token || !canRead) return;
     setMsg("");
     setLoading(true);
@@ -100,7 +137,24 @@ export default function BillingPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [
+    token,
+    canRead,
+    loadCodes,
+    month,
+    rideKind,
+    payerKind,
+    billingReference,
+    accessCodeId,
+    hasAccessCode,
+    partnerFlow,
+  ]);
+
+  useEffect(() => {
+    if (!token || !canRead || initialBillingLoaded.current) return;
+    initialBillingLoaded.current = true;
+    void onLoad();
+  }, [token, canRead, onLoad]);
 
   async function onExportCsv() {
     if (!token || !canRead) return;
@@ -125,140 +179,64 @@ export default function BillingPage() {
     }
   }
 
-  return (
-    <div className="panel-page panel-page--rides">
-      <h2 className="panel-page__title">Abrechnung</h2>
-      <p className="panel-page__lead">
-        Monatsübersicht Ihrer Fahrten — Filter nach Code, Referenz, Fahrttyp, Zahler und Buchungsart
-        (Hotel / Medizin). Export als CSV für die Buchhaltung.
-      </p>
-      {!canRead ? (
-        <p className="panel-page__warn">Keine Leserechte.</p>
-      ) : (
-        <>
-          <div className="panel-card panel-card--wide">
-            <h3 className="panel-card__title">Filter</h3>
-            <div className="panel-rides-form__grid">
-              <label className="panel-rides-form__field">
-                <span>Monat</span>
-                <input type="month" value={month} onChange={(ev) => setMonth(ev.target.value)} />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Fahrttyp</span>
-                <select value={rideKind} onChange={(ev) => setRideKind(ev.target.value)}>
-                  <option value="">Alle</option>
-                  <option value="standard">Normal</option>
-                  <option value="medical">Krankenfahrt</option>
-                  <option value="company">Firma</option>
-                  <option value="voucher">Gutschein</option>
-                </select>
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Zahler</span>
-                <select value={payerKind} onChange={(ev) => setPayerKind(ev.target.value)}>
-                  <option value="">Alle</option>
-                  <option value="passenger">Fahrgast</option>
-                  <option value="company">Firma</option>
-                  <option value="insurance">Kostenträger</option>
-                  <option value="voucher">Gutschein</option>
-                  <option value="third_party">Dritter</option>
-                </select>
-              </label>
-              <label className="panel-rides-form__field panel-rides-form__field--2">
-                <span>Referenz enthält (optional)</span>
-                <input
-                  value={billingReference}
-                  onChange={(ev) => setBillingReference(ev.target.value)}
-                  placeholder="Teilstring Kostenstelle / Akte"
-                />
-              </label>
-              <label className="panel-rides-form__field">
-                <span>Mit Freigabe-Code</span>
-                <select value={hasAccessCode} onChange={(ev) => setHasAccessCode(ev.target.value)}>
-                  <option value="">Egal</option>
-                  <option value="yes">Ja</option>
-                  <option value="no">Nein</option>
-                </select>
-              </label>
-              {showCodes ? (
-                <label className="panel-rides-form__field panel-rides-form__field--2">
-                  <span>Konkreter Code (optional)</span>
-                  <select value={accessCodeId} onChange={(ev) => setAccessCodeId(ev.target.value)}>
-                    <option value="">—</option>
-                    {codeOptions.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label || c.id} ({c.codeType})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              <label className="panel-rides-form__field">
-                <span>Buchungs-Flow</span>
-                <select value={partnerFlow} onChange={(ev) => setPartnerFlow(ev.target.value)}>
-                  <option value="">Alle</option>
-                  <option value="hotel_guest">Hotel</option>
-                  <option value="medical_patient">Patient H/R</option>
-                  <option value="medical_series_leg">Serie</option>
-                </select>
-              </label>
-            </div>
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "12px" }}>
-              <button type="button" className="panel-btn-primary" disabled={loading} onClick={() => void onLoad()}>
-                {loading ? "Laden …" : "Anzeigen"}
-              </button>
-              <button type="button" className="panel-btn-primary" onClick={() => void onExportCsv()}>
-                CSV exportieren
-              </button>
-            </div>
-            {msg ? <p className="panel-page__ok" style={{ marginTop: "12px" }}>{msg}</p> : null}
-          </div>
+  const kpi = useMemo(() => deriveFinanceKpis(kpiRides, kpiMonthYm), [kpiRides, kpiMonthYm]);
+  const kpiMonthLabel = formatYmDe(kpiMonthYm);
 
-          <div className="panel-card panel-card--wide panel-card--table" style={{ marginTop: "1rem" }}>
-            <h3 className="panel-card__title">Ergebnis</h3>
-            {rides.length === 0 ? (
-              <p className="panel-page__lead">Noch keine Daten geladen oder keine Treffer.</p>
-            ) : (
-              <div className="panel-table-wrap">
-                <table className="panel-table">
-                  <thead>
-                    <tr>
-                      <th>Datum</th>
-                      <th>Status</th>
-                      <th>Typ</th>
-                      <th>Zahler</th>
-                      <th>Flow</th>
-                      <th>Referenz</th>
-                      <th>Kunde</th>
-                      <th>Route</th>
-                      <th>geschätzt</th>
-                      <th>final</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rides.map((r) => (
-                      <tr key={r.id}>
-                        <td className="panel-table__muted">{new Date(r.createdAt).toLocaleString("de-DE")}</td>
-                        <td className="panel-table__muted">{r.status}</td>
-                        <td className="panel-table__muted">{rideKindLabel(r.rideKind)}</td>
-                        <td className="panel-table__muted">{payerKindLabel(r.payerKind)}</td>
-                        <td className="panel-table__muted">{flowLabel(r.partnerBookingMeta?.flow)}</td>
-                        <td className="panel-table__muted">{r.billingReference || "—"}</td>
-                        <td>{r.customerName}</td>
-                        <td className="panel-table__route">
-                          {r.from} → {r.to}
-                        </td>
-                        <td className="panel-table__muted">{r.estimatedFare}</td>
-                        <td className="panel-table__muted">{r.finalFare ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+  if (!canRead) {
+    return (
+      <div className="partner-stack partner-stack--tight">
+        <p className="partner-state-warn" style={{ margin: 0 }}>
+          Keine Leserechte für Finanzen.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="partner-stack partner-stack--tight">
+      <div className="partner-page-hero">
+        <p className="partner-page-eyebrow">Finanzen</p>
+        <h1 className="partner-page-title">Abrechnung &amp; Übersicht</h1>
+        <p className="partner-page-lead">
+          Strukturierte Ansicht mit Kennzahlen, Rechnungsliste, Auszahlungshinweisen und Export — ohne Änderung der bestehenden Billing-API.
+        </p>
+      </div>
+
+      <FinanceTabs tab={tab} onTabChange={setTab} />
+
+      {tab === "overview" ? (
+        <FinanceOverviewTab kpiLoading={kpiLoading} kpiMonthLabel={kpiMonthLabel} kpi={kpi} onRefreshKpi={() => void loadKpiSnapshot()} />
+      ) : null}
+      {tab === "invoices" ? <FinanceInvoicesTab rides={rides} loading={loading} /> : null}
+      {tab === "payouts" ? (
+        <FinancePayoutsTab rides={rides} company={company} loading={loading || companyLoading} />
+      ) : null}
+      {tab === "medical" ? <FinanceMedicalTab rides={rides} loading={loading} /> : null}
+      {tab === "export" ? (
+        <FinanceExportTab
+          rides={rides}
+          month={month}
+          setMonth={setMonth}
+          rideKind={rideKind}
+          setRideKind={setRideKind}
+          payerKind={payerKind}
+          setPayerKind={setPayerKind}
+          billingReference={billingReference}
+          setBillingReference={setBillingReference}
+          hasAccessCode={hasAccessCode}
+          setHasAccessCode={setHasAccessCode}
+          accessCodeId={accessCodeId}
+          setAccessCodeId={setAccessCodeId}
+          partnerFlow={partnerFlow}
+          setPartnerFlow={setPartnerFlow}
+          codeOptions={codeOptions}
+          showCodes={showCodes}
+          loading={loading}
+          msg={msg}
+          onLoad={onLoad}
+          onExportCsv={onExportCsv}
+        />
+      ) : null}
     </div>
   );
 }
