@@ -268,12 +268,21 @@ export async function submitFleetVehicleForApproval(
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
   const st = String(cur.approval_status);
-  if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
   const kz = (cur.konzession_number ?? "").trim();
-  if (!kz) return { ok: false, error: "konzession_number_required" };
   const plate = (cur.license_plate ?? "").trim();
-  if (!plate) return { ok: false, error: "license_plate_required" };
   const docs = parseDocuments(cur.vehicle_documents);
+
+  /** Partner legt neu mit `pending_approval` an; UI ruft danach weiter „Einreichen“ auf — idempotent mit gleichen Pflichtprüfungen. */
+  if (st === "pending_approval") {
+    if (!kz) return { ok: false, error: "konzession_number_required" };
+    if (!plate) return { ok: false, error: "license_plate_required" };
+    if (docs.length < 1) return { ok: false, error: "documents_required" };
+    return { ok: true };
+  }
+
+  if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
+  if (!kz) return { ok: false, error: "konzession_number_required" };
+  if (!plate) return { ok: false, error: "license_plate_required" };
   if (docs.length < 1) return { ok: false, error: "documents_required" };
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
