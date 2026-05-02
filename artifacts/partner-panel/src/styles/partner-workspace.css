@@ -767,6 +767,307 @@
   max-width: 260px;
 }
 
+.partner-metrics--dashboard-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px 24px;
+}
+
+/* —— Dashboard (Fleet-Übersicht) —— */
+.partner-dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .partner-dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .partner-dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-dashboard-kpi-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid #e8e8ec;
+  background: #fbfbfc;
+}
+
+.partner-dashboard-kpi-card__title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #71717a;
+}
+
+.partner-dashboard-kpi-card__value {
+  margin: 10px 0 0;
+  font-size: 1.28rem;
+  font-weight: 650;
+  color: #18181b;
+  letter-spacing: -0.02em;
+}
+
+.partner-dashboard-kpi-card__hint {
+  margin: 10px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: #71717a;
+}
+
+.partner-dashboard-today-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .partner-dashboard-today-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-dashboard-today-col__h {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #3f3f46;
+}
+
+.partner-dashboard-mini-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partner-dashboard-mini-list > li {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ececee;
+}
+
+.partner-dashboard-mini-list > li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.partner-dashboard-mini-list__row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.partner-dashboard-mini-list__t {
+  font-weight: 800;
+  color: #18181b;
+  font-size: 0.95rem;
+}
+
+.partner-dashboard-mini-list__tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #52525b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.partner-dashboard-mini-list__m {
+  font-weight: 600;
+  color: #27272a;
+  font-size: 0.88rem;
+}
+
+.partner-dashboard-mini-list__s {
+  margin-top: 2px;
+  color: #71717a;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.partner-dashboard-status-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.partner-dashboard-status-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ececee;
+}
+
+.partner-dashboard-status-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.partner-dashboard-status-list__k {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #71717a;
+}
+
+.partner-dashboard-status-list__v {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.partner-dashboard-docwarn {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partner-dashboard-docwarn li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.partner-dashboard-docwarn__txt {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #3f3f46;
+}
+
+.partner-dashboard-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.partner-dashboard-quick-card {
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.partner-dashboard-quick-card:hover {
+  border-color: #cbd5e1;
+  background: #fafafa;
+}
+
+.partner-dashboard-quick-card__title {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.partner-dashboard-quick-card__hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #71717a;
+}
+
+.partner-dashboard-medical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .partner-dashboard-medical-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.partner-dashboard-medical-stat {
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #ececee;
+  background: #fafafa;
+}
+
+.partner-dashboard-medical-stat__k {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #71717a;
+}
+
+.partner-dashboard-medical-stat__v {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.partner-dashboard-medical-stat__h {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: #71717a;
+  line-height: 1.35;
+}
+
+.partner-dashboard-activity-placeholder {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.partner-dashboard-activity-placeholder li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed #d4d4d8;
+  background: #fafafa;
+}
+
+.partner-dashboard-activity-placeholder__lbl {
+  font-size: 0.88rem;
+  color: #3f3f46;
+}
+
+.partner-dashboard-activity-placeholder__pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* —— Formulare (Stammdaten, Flotte) —— */
 .partner-form {
   max-width: 100%;

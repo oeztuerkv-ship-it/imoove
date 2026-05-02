@@ -203,7 +203,12 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
 
       <div className="partner-shell__body partner-shell__body--fleet">
         {activeTaxiModule === "dashboard" && (
-          <TaxiMasterPanel company={company} onNavigateModule={(key) => setActiveTaxiModule(key)} />
+          <TaxiMasterPanel
+            company={company}
+            user={user}
+            onNavigateModule={(key) => setActiveTaxiModule(key)}
+            onQuickCreate={onGlobalCreateAction}
+          />
         )}
         {activeTaxiModule === "fahrten" && <PartnerRidesListPage />}
         {activeTaxiModule === "flotte" && (
