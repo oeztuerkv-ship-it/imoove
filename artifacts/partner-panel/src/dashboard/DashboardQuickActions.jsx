@@ -5,7 +5,6 @@ const TITLE_OVERRIDE = {
   add_driver: "Fahrer hinzufügen",
   add_vehicle: "Fahrzeug hinzufügen",
   create_medical_round: "Krankenfahrt erstellen",
-  create_voucher_code: "Gutscheincode erstellen",
 };
 
 /** @param {{ user: object; onQuickCreate: (id: string) => void }} props */
