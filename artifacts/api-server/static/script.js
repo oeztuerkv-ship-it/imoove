@@ -470,6 +470,67 @@
       syncPartnerTaxiSection();
     }
 
+    var TAXI_DOC_MAX_BYTES = 4 * 1024 * 1024;
+
+    function readPartnerPdfFileBase64(file) {
+      return new Promise(function (resolve, reject) {
+        if (!file || !file.size) {
+          resolve(null);
+          return;
+        }
+        if (file.size > TAXI_DOC_MAX_BYTES) {
+          reject({ code: "too_large" });
+          return;
+        }
+        var nameOk = /\.pdf$/i.test(file.name || "");
+        var typeOk = !file.type || file.type === "application/pdf";
+        if (!nameOk || !typeOk) {
+          reject({ code: "not_pdf" });
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          var r = reader.result;
+          if (typeof r !== "string") {
+            reject({ code: "read_failed" });
+            return;
+          }
+          var comma = r.indexOf(",");
+          var b64 = comma >= 0 ? r.slice(comma + 1) : r;
+          resolve({ fileName: file.name, mimeType: "application/pdf", contentBase64: b64 });
+        };
+        reader.onerror = function () {
+          reject({ code: "read_failed" });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function buildTaxiDocumentsForSubmit() {
+      var concEl = document.getElementById("taxi-doc-concession");
+      var gewEl = document.getElementById("taxi-doc-gewerbe");
+      var insEl = document.getElementById("taxi-doc-insurance");
+      var concFile = concEl && concEl.files && concEl.files[0];
+      var gewFile = gewEl && gewEl.files && gewEl.files[0];
+      var insFile = insEl && insEl.files && insEl.files[0];
+      if (!concFile) {
+        return Promise.reject({ code: "no_concession" });
+      }
+      return readPartnerPdfFileBase64(concFile).then(function (conc) {
+        if (!conc) return Promise.reject({ code: "no_concession" });
+        return Promise.all([
+          Promise.resolve(conc),
+          gewFile ? readPartnerPdfFileBase64(gewFile) : Promise.resolve(null),
+          insFile ? readPartnerPdfFileBase64(insFile) : Promise.resolve(null),
+        ]).then(function (parts) {
+          var out = { concession: parts[0] };
+          if (parts[1]) out.gewerbe = parts[1];
+          if (parts[2]) out.insurance = parts[2];
+          return out;
+        });
+      });
+    }
+
     function fieldTrim(id) {
       var el = document.getElementById(id);
       return el ? String(el.value || "").trim() : "";
@@ -558,119 +619,152 @@
         }
         var combinedNotes = notesParts.join("\n\n");
 
-        var payload = {
-          hp_company_website: "",
-          companyName: companyName,
-          legalForm: companyTypeLabel || partnerType,
-          partnerType: partnerType,
-          usesVouchers: usesVouchers,
-          contactFirstName: firstName,
-          contactLastName: lastName,
-          email: businessEmail,
-          phone: businessPhone,
-          addressLine1: address,
-          addressLine2: addressLine2,
-          ownerName: ownerName,
-          dispoPhone: dispoPhone,
-          postalCode: postalCode,
-          city: city,
-          country: country,
-          taxId: taxId,
-          vatId: vatId,
-          concessionNumber: concessionNumber,
-          desiredRegion: region,
-          requestedUsage: {},
-          documentsMeta: {},
-          notes: combinedNotes,
-        };
+        function sendPartnerRegistration(taxiDocuments) {
+          var payload = {
+            hp_company_website: "",
+            companyName: companyName,
+            legalForm: companyTypeLabel || partnerType,
+            partnerType: partnerType,
+            usesVouchers: usesVouchers,
+            contactFirstName: firstName,
+            contactLastName: lastName,
+            email: businessEmail,
+            phone: businessPhone,
+            addressLine1: address,
+            addressLine2: addressLine2,
+            ownerName: ownerName,
+            dispoPhone: dispoPhone,
+            postalCode: postalCode,
+            city: city,
+            country: country,
+            taxId: taxId,
+            vatId: vatId,
+            concessionNumber: concessionNumber,
+            desiredRegion: region,
+            requestedUsage: {},
+            documentsMeta: {},
+            notes: combinedNotes,
+          };
+          if (taxiDocuments) payload.taxiDocuments = taxiDocuments;
 
-        if (submitBtn) submitBtn.disabled = true;
-        var url = publicApiBase() + "/panel-auth/registration-request";
+          if (submitBtn) submitBtn.disabled = true;
+          var url = publicApiBase() + "/panel-auth/registration-request";
 
-        fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-          .then(function (res) {
-            return res.json().then(function (data) {
-              return { res: res, data: data };
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+            .then(function (res) {
+              return res.json().then(function (data) {
+                return { res: res, data: data };
+              });
+            })
+            .then(function (x) {
+              var res = x.res;
+              var data = x.data || {};
+              if (res.status === 201 && data.ok && data.request && data.request.id) {
+                var origin =
+                  typeof window !== "undefined" && window.location.origin
+                    ? window.location.origin
+                    : "https://www.onroda.de";
+                var statusUrl =
+                  origin +
+                  "/partner/anfrage-status?requestId=" +
+                  encodeURIComponent(data.request.id) +
+                  "&email=" +
+                  encodeURIComponent(businessEmail);
+                setMessage(
+                  "Vielen Dank — Ihre Anfrage ist eingegangen (Referenz: " +
+                    data.request.id +
+                    "). Wir melden uns per E-Mail.\n\n" +
+                    "Status jederzeit prüfen:\n" +
+                    statusUrl,
+                  "success",
+                );
+                partnerForm.reset();
+                if (privacy) privacy.checked = false;
+                syncPartnerTaxiSection();
+                return;
+              }
+              if (res.status === 429) {
+                var sec = data.retryAfterSec ? String(data.retryAfterSec) : "einige";
+                setMessage("Zu viele Anfragen. Bitte warten Sie " + sec + " Sekunden und versuchen Sie es erneut.", "error");
+                return;
+              }
+              if (res.status === 409) {
+                if (data.error === "duplicate_pending") {
+                  setMessage(
+                    "Zu dieser E-Mail liegt bereits eine offene Anfrage vor. Sie erhalten von uns eine Rückmeldung — bitte keine Doppelanfrage.",
+                    "error",
+                  );
+                  return;
+                }
+                if (data.error === "duplicate_approved") {
+                  setMessage(
+                    "Zu dieser E-Mail existiert bereits eine freigegebene Registrierung. Bitte nutzen Sie das Partner-Portal oder kontaktieren Sie uns.",
+                    "error",
+                  );
+                  return;
+                }
+                if (data.error === "already_panel_user") {
+                  setMessage(
+                    "Zu dieser E-Mail existiert bereits ein Partner-Portal-Zugang. Bitte dort anmelden.",
+                    "error",
+                  );
+                  return;
+                }
+              }
+              if (res.status === 400 && data.error === "required_fields_missing") {
+                setMessage("Bitte füllen Sie alle Pflichtfelder aus.", "error");
+                return;
+              }
+              if (res.status === 400 && data.error === "partner_type_invalid") {
+                setMessage("Ungültige Auswahl bei der Art des Unternehmens.", "error");
+                return;
+              }
+              if (res.status === 503 && data.error === "document_persist_failed") {
+                var ref = data.requestId ? " Referenz: " + String(data.requestId) + "." : "";
+                setMessage((data.hint ? data.hint : "Dokument konnte nicht gespeichert werden.") + ref, "error");
+                return;
+              }
+              if (res.status === 400 && data.hint) {
+                setMessage(data.hint, "error");
+                return;
+              }
+              setMessage("Die Anfrage konnte nicht gesendet werden. Bitte später erneut versuchen oder uns per E-Mail kontaktieren.", "error");
+            })
+            .catch(function () {
+              setMessage("Netzwerkfehler — bitte prüfen Sie Ihre Verbindung oder versuchen Sie es später erneut.", "error");
+            })
+            .finally(function () {
+              if (submitBtn) submitBtn.disabled = false;
             });
-          })
-          .then(function (x) {
-            var res = x.res;
-            var data = x.data || {};
-            if (res.status === 201 && data.ok && data.request && data.request.id) {
-              var origin =
-                typeof window !== "undefined" && window.location.origin
-                  ? window.location.origin
-                  : "https://www.onroda.de";
-              var statusUrl =
-                origin +
-                "/partner/anfrage-status?requestId=" +
-                encodeURIComponent(data.request.id) +
-                "&email=" +
-                encodeURIComponent(businessEmail);
-              setMessage(
-                "Vielen Dank — Ihre Anfrage ist eingegangen (Referenz: " +
-                  data.request.id +
-                  "). Wir melden uns per E-Mail.\n\n" +
-                  "Status jederzeit prüfen:\n" +
-                  statusUrl,
-                "success",
-              );
-              partnerForm.reset();
-              if (privacy) privacy.checked = false;
-              syncPartnerTaxiSection();
-              return;
-            }
-            if (res.status === 429) {
-              var sec = data.retryAfterSec ? String(data.retryAfterSec) : "einige";
-              setMessage("Zu viele Anfragen. Bitte warten Sie " + sec + " Sekunden und versuchen Sie es erneut.", "error");
-              return;
-            }
-            if (res.status === 409) {
-              if (data.error === "duplicate_pending") {
-                setMessage(
-                  "Zu dieser E-Mail liegt bereits eine offene Anfrage vor. Sie erhalten von uns eine Rückmeldung — bitte keine Doppelanfrage.",
-                  "error",
-                );
+        }
+
+        if (partnerType === "taxi") {
+          buildTaxiDocumentsForSubmit()
+            .then(function (taxiDocuments) {
+              sendPartnerRegistration(taxiDocuments);
+            })
+            .catch(function (err) {
+              var code = err && err.code ? err.code : "";
+              if (code === "no_concession") {
+                setMessage("Bitte die Konzession als PDF hochladen (Pflicht).", "error");
                 return;
               }
-              if (data.error === "duplicate_approved") {
-                setMessage(
-                  "Zu dieser E-Mail existiert bereits eine freigegebene Registrierung. Bitte nutzen Sie das Partner-Portal oder kontaktieren Sie uns.",
-                  "error",
-                );
+              if (code === "not_pdf") {
+                setMessage("Nur PDF-Dateien sind erlaubt.", "error");
                 return;
               }
-              if (data.error === "already_panel_user") {
-                setMessage(
-                  "Zu dieser E-Mail existiert bereits ein Partner-Portal-Zugang. Bitte dort anmelden.",
-                  "error",
-                );
+              if (code === "too_large") {
+                setMessage("Jede PDF-Datei darf höchstens 4 MB groß sein.", "error");
                 return;
               }
-            }
-            if (res.status === 400 && data.error === "required_fields_missing") {
-              setMessage("Bitte füllen Sie alle Pflichtfelder aus.", "error");
-              return;
-            }
-            if (res.status === 400 && data.error === "partner_type_invalid") {
-              setMessage("Ungültige Auswahl bei der Art des Unternehmens.", "error");
-              return;
-            }
-            if (res.status === 400 && data.hint) {
-              setMessage(data.hint, "error");
-              return;
-            }
-            setMessage("Die Anfrage konnte nicht gesendet werden. Bitte später erneut versuchen oder uns per E-Mail kontaktieren.", "error");
-          })
-          .catch(function () {
-            setMessage("Netzwerkfehler — bitte prüfen Sie Ihre Verbindung oder versuchen Sie es später erneut.", "error");
-          })
-          .finally(function () {
-            if (submitBtn) submitBtn.disabled = false;
-          });
+              setMessage("Die Unterlagen konnten nicht gelesen werden. Bitte erneut versuchen.", "error");
+            });
+        } else {
+          sendPartnerRegistration(null);
+        }
       });
     }

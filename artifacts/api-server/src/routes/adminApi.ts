@@ -111,6 +111,7 @@ import {
   getPartnerRegistrationDetailAdmin,
   isPartnerType,
   isRegistrationStatus,
+  listPartnerRegistrationDocuments,
   listPartnerRegistrationPendingQueueAdmin,
   listPartnerRegistrationRequestsAdmin,
   mapDocRowForAdminList,
@@ -3300,6 +3301,18 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
         hint: approveIncomplete,
       });
       return;
+    }
+    if (reqRow.partnerType === "taxi") {
+      const regDocs = await listPartnerRegistrationDocuments(reqRow.id);
+      const hasConcessionPdf = regDocs.some((d) => d.category === "concession");
+      if (!hasConcessionPdf) {
+        res.status(400).json({
+          error: "taxi_registration_incomplete",
+          hint:
+            "Konzessionsnachweis (PDF) fehlt. Bitte Nachweise beim Partner einfordern, ein Dokument der Kategorie „Konzession“ als Administrator hochladen oder die Anfrage ablehnen.",
+        });
+        return;
+      }
     }
     const companyExtras = policy?.buildCompanyApproveExtras(reqRow) ?? {};
     const createdCompany = await insertAdminCompany({

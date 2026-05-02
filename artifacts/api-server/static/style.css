@@ -943,6 +943,17 @@
       grid-column: 1 / -1;
     }
 
+    .hp-partner-file-field input[type="file"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d8d8dd;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: #fff;
+      color: var(--onroda-text-dark);
+    }
+
     .hp-field label {
       display: block;
       font-size: 0.8rem;

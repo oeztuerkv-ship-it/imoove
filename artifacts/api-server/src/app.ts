@@ -109,14 +109,23 @@ app.use(
   }),
 );
 
-/** Größeres Body-Limit nur für Krankenfahrt-Transportschein (Base64 in JSON); übrige Routen bleiben klein. */
+/** Größeres Body-Limit nur wo Base64 in JSON nötig ist; übrige Routen bleiben klein. */
 app.use((req, res, next) => {
   const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
   const medicalUpload =
     req.method === "POST" &&
     u.includes("/rides/") &&
     (u.includes("/medical/transport-document") || u.includes("/medical/signature"));
-  const limit = medicalUpload ? "6mb" : "200kb";
+  const partnerRegInitialPost = req.method === "POST" && u.endsWith("/panel-auth/registration-request");
+  const partnerRegDocPost =
+    req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents$/.test(u);
+  const limit = medicalUpload
+    ? "6mb"
+    : partnerRegInitialPost
+      ? "20mb"
+      : partnerRegDocPost
+        ? "8mb"
+        : "200kb";
   express.json({ limit })(req, res, next);
 });
 app.use(express.urlencoded({ extended: true, limit: "200kb" }));

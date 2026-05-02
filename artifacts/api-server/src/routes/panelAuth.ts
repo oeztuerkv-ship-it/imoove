@@ -32,6 +32,63 @@ import { isPanelRoleString } from "../lib/panelPermissions";
 import { verifyPassword } from "../lib/password";
 import { isPanelJwtConfigured, signPanelJwt, type PanelRole } from "../lib/panelJwt";
 
+/** Öffentliches Taxi-Formular: eine Konzession + optional Gewerbe/Versicherung, jeweils max. 4 MiB roh. */
+const MAX_TAXI_REG_PDF_BYTES = 4 * 1024 * 1024;
+
+type TaxiRegDocSlot = { category: string; fileName: string; mimeType: string; contentBase64: string };
+
+function parseTaxiRegistrationPdfSlot(v: unknown): { fileName: string; mimeType: string; contentBase64: string } | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  const fileName = typeof o.fileName === "string" ? o.fileName.trim() : "";
+  const mimeRaw = typeof o.mimeType === "string" ? o.mimeType.trim().toLowerCase() : "";
+  const mimeType = mimeRaw || "application/pdf";
+  const raw64 = typeof o.contentBase64 === "string" ? o.contentBase64.trim() : "";
+  if (!fileName || !raw64) return null;
+  if (mimeType !== "application/pdf") return null;
+  if (!fileName.toLowerCase().endsWith(".pdf")) return null;
+  const cleaned = raw64.includes(",") ? (raw64.split(",").pop() ?? "").trim() : raw64;
+  const buf = Buffer.from(cleaned, "base64");
+  if (!buf.byteLength || buf.byteLength > MAX_TAXI_REG_PDF_BYTES) return null;
+  if (buf[0] !== 0x25 || buf[1] !== 0x50 || buf[2] !== 0x44 || buf[3] !== 0x46) return null;
+  return { fileName, mimeType: "application/pdf", contentBase64: cleaned };
+}
+
+function parseOptionalTaxiPdfSlot(v: unknown): { fileName: string; mimeType: string; contentBase64: string } | null | "invalid" {
+  if (v == null) return null;
+  const slot = parseTaxiRegistrationPdfSlot(v);
+  return slot ?? "invalid";
+}
+
+function parseTaxiRegistrationDocumentsFromBody(body: Record<string, unknown>):
+  | { ok: false; error: string }
+  | { ok: true; docs: TaxiRegDocSlot[] } {
+  const td = body.taxiDocuments;
+  if (!td || typeof td !== "object" || Array.isArray(td)) {
+    return { ok: false, error: "taxi_documents_required" };
+  }
+  const o = td as Record<string, unknown>;
+  const concession = parseTaxiRegistrationPdfSlot(o.concession);
+  if (!concession) {
+    return { ok: false, error: "taxi_concession_pdf_required" };
+  }
+  const docs: TaxiRegDocSlot[] = [{ category: "concession", ...concession }];
+  const gewerbe = parseOptionalTaxiPdfSlot(o.gewerbe);
+  if (gewerbe === "invalid") return { ok: false, error: "taxi_pdf_invalid" };
+  if (gewerbe) docs.push({ category: "gewerbe", ...gewerbe });
+  const insurance = parseOptionalTaxiPdfSlot(o.insurance);
+  if (insurance === "invalid") return { ok: false, error: "taxi_pdf_invalid" };
+  if (insurance) docs.push({ category: "insurance", ...insurance });
+  return { ok: true, docs };
+}
+
+const TAXI_DOC_ERROR_HINTS: Record<string, string> = {
+  taxi_documents_required: "Bitte laden Sie für Taxiunternehmen die Nachweise als PDF mit.",
+  taxi_concession_pdf_required: "Bitte laden Sie die Konzession als PDF hoch (Pflicht).",
+  taxi_pdf_invalid:
+    "Mindestens eine PDF-Datei ist ungültig oder zu groß (max. 4 MB pro Datei, nur PDF).",
+};
+
 const router: IRouter = Router();
 
 router.post("/panel-auth/login", async (req, res) => {
@@ -226,6 +283,19 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     return;
   }
 
+  let taxiPdfDocs: TaxiRegDocSlot[] | null = null;
+  if (partnerTypeRaw === "taxi") {
+    const parsedDocs = parseTaxiRegistrationDocumentsFromBody(body);
+    if (!parsedDocs.ok) {
+      res.status(400).json({
+        error: parsedDocs.error,
+        hint: TAXI_DOC_ERROR_HINTS[parsedDocs.error] ?? "Ungültige Unterlagen.",
+      });
+      return;
+    }
+    taxiPdfDocs = parsedDocs.docs;
+  }
+
   const taxId = str("taxId");
   const vatId = str("vatId");
   const concessionNumber = str("concessionNumber");
@@ -308,6 +378,34 @@ router.post("/panel-auth/registration-request", async (req, res) => {
     res.status(503).json({ error: "create_failed" });
     return;
   }
+
+  if (taxiPdfDocs && taxiPdfDocs.length > 0) {
+    for (const d of taxiPdfDocs) {
+      const doc = await addPartnerRegistrationDocument({
+        requestId: created.id,
+        category: d.category,
+        originalFileName: d.fileName,
+        mimeType: d.mimeType,
+        contentBase64: d.contentBase64,
+        uploadedByActorType: "partner",
+        uploadedByActorLabel: email,
+      });
+      if (!doc) {
+        logger.error(
+          { event: "partner.registration.taxi_doc_failed", requestId: created.id, category: d.category },
+          "partner registration taxi document persist failed",
+        );
+        res.status(503).json({
+          error: "document_persist_failed",
+          requestId: created.id,
+          hint:
+            "Die Anfrage wurde angelegt, aber ein Dokument konnte nicht gespeichert werden. Bitte notieren Sie die Referenz-ID und kontaktieren Sie uns — oder versuchen Sie es später erneut.",
+        });
+        return;
+      }
+    }
+  }
+
   logger.info(
     { event: "partner.registration.submitted", requestId: created.id, email, clientIp: ip },
     "partner registration request created",
