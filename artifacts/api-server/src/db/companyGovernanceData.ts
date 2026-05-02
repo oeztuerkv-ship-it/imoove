@@ -20,7 +20,7 @@ export interface CompanyGovernanceGate {
   areaAssignments: string[];
 }
 
-/** Wie `requireFleetProvisioningReady` in fleetPanelApi — für Fahrer-Einsatzbereitschaft. */
+/** Einsatz/Vermittlung (Fahrer-Readiness, Matching); Panel darf Fahrer/Fahrzeug trotzdem anlegen (siehe `requireFleetOnboardingEntityCreateAllowed` in fleetPanelApi). */
 export function companyMeetsTaxiFleetProvisioningReadiness(gate: CompanyGovernanceGate | null): boolean {
   if (!gate) return false;
   if (gate.companyKind !== "taxi") return false;

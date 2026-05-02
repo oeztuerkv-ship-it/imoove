@@ -108,17 +108,17 @@ async function assertFleetPanel(
   return { claims, profile };
 }
 
-async function requireFleetProvisioningReady(
+/**
+ * Fahrer-/Fahrzeug-Anlage + spätere Admin-Freigabe: auch vor vollständiger Verifizierung/Compliance.
+ * Volle Mandanten-Governance für Einsatz/Vermittlung: `companyMeetsTaxiFleetProvisioningReadiness` / `computeDriverReadiness`.
+ */
+async function requireFleetOnboardingEntityCreateAllowed(
   companyId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const gate = await getCompanyGovernanceGate(companyId);
   if (!gate) return { ok: false, error: "company_not_found" };
   if (gate.companyKind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
   if (gate.isBlocked) return { ok: false, error: "company_blocked" };
-  if (gate.verificationStatus !== "verified") return { ok: false, error: "company_not_verified" };
-  if (gate.complianceStatus !== "compliant") return { ok: false, error: "company_not_compliant" };
-  if (gate.contractStatus !== "active") return { ok: false, error: "contract_not_active" };
-  if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
   return { ok: true };
 }
 
@@ -187,7 +187,7 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
-    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    const gate = await requireFleetOnboardingEntityCreateAllowed(ctx.claims.companyId);
     if (!gate.ok) {
       res.status(403).json({ error: gate.error });
       return;
@@ -427,7 +427,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role as PanelRole, "fleet.manage")) return;
     const b = req.body as Record<string, unknown>;
-    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    const gate = await requireFleetOnboardingEntityCreateAllowed(ctx.claims.companyId);
     if (!gate.ok) {
       res.status(403).json({ error: gate.error });
       return;
