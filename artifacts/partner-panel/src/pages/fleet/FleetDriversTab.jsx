@@ -1,18 +1,12 @@
-import { pScheinMeta, workflowPill } from "./fleetPanelHelpers.js";
-
 /**
  * @param {{
  *   driverCreateSectionRef: import("react").RefObject<HTMLDivElement | null>;
  *   canManage: boolean;
- *   filterExpiring: boolean;
- *   setFilterExpiring: (v: boolean | ((p: boolean) => boolean)) => void;
  *   driverForm: Record<string, string>;
  *   setDriverForm: React.Dispatch<React.SetStateAction<Record<string, string>>>;
  *   createDriver: (e: React.FormEvent) => void | Promise<void>;
  *   loading: boolean;
  *   drivers: Record<string, unknown>[];
- *   suspendDriver: (id: string) => void | Promise<void>;
- *   activateDriver: (id: string) => void | Promise<void>;
  *   resetDriverPassword: (id: string) => void | Promise<void>;
  *   uploadPScheinDoc: (driverId: string, ev: React.ChangeEvent<HTMLInputElement>) => void | Promise<void>;
  *   editDriverId: string | null;
@@ -22,21 +16,23 @@ import { pScheinMeta, workflowPill } from "./fleetPanelHelpers.js";
  *   closeDriverEditor: () => void;
  *   saveEditedDriver: (e: React.FormEvent) => void | Promise<void>;
  *   deactivateDriverAccount: (id: string) => void | Promise<void>;
- *   activateDriverAccountOnly: (id: string) => void | Promise<void>;
+ *   activateDriverForPartner: (id: string) => void | Promise<void>;
  * }} props
  */
+
+/** Entspricht Login: aktiv im Konto und Zugriff nicht gesperrt. */
+function partnerDriverCanLogin(d) {
+  return Boolean(d.isActive) && d.accessStatus === "active";
+}
+
 export default function FleetDriversTab({
   driverCreateSectionRef,
   canManage,
-  filterExpiring,
-  setFilterExpiring,
   driverForm,
   setDriverForm,
   createDriver,
   loading,
   drivers,
-  suspendDriver,
-  activateDriver,
   resetDriverPassword,
   uploadPScheinDoc,
   editDriverId,
@@ -46,16 +42,14 @@ export default function FleetDriversTab({
   closeDriverEditor,
   saveEditedDriver,
   deactivateDriverAccount,
-  activateDriverAccountOnly,
+  activateDriverForPartner,
 }) {
+  const editingDriver = editDriverId ? drivers.find((x) => x.id === editDriverId) : null;
+  const readinessBlocks = editingDriver?.readiness?.blockReasons;
+  const blockLines = Array.isArray(readinessBlocks) ? readinessBlocks.map((b) => b.message).filter(Boolean) : [];
+
   return (
     <div className="partner-card partner-card--section">
-      <div style={{ marginBottom: 12 }}>
-        <label className="partner-fleet-filter">
-          <input type="checkbox" checked={filterExpiring} onChange={(ev) => setFilterExpiring(ev.target.checked)} />
-          Nur P-Schein bald ablaufend (30 Tage)
-        </label>
-      </div>
       {canManage ? (
         <div ref={driverCreateSectionRef}>
           <form className="partner-form" onSubmit={createDriver} style={{ marginBottom: 20 }}>
@@ -63,7 +57,7 @@ export default function FleetDriversTab({
               Neuen Fahrer anlegen
             </h3>
             <p className="partner-muted" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.45 }}>
-              Pflicht sind nur E-Mail, Vor- und Nachname. P-Schein, Führerschein und Anschrift sind optional und können später ergänzt werden.
+              Nach dem Speichern kann sich der Fahrer mit E-Mail und Passwort in der Fahrer-App anmelden. P-Schein, Führerschein und Anschrift sind optional.
             </p>
             <div className="partner-form-grid">
               <label className="partner-form-field">
@@ -170,7 +164,7 @@ export default function FleetDriversTab({
             Fahrer bearbeiten
           </h3>
           <p className="partner-muted" style={{ margin: "0 0 12px", fontSize: 13 }}>
-            Stammdaten und optionale Nachweise. Neues Passwort nur ausfüllen, wenn Sie es ändern möchten (min. 10 Zeichen).
+            Stammdaten und optionale Nachweise. Passwort: unten eintragen (min. 10 Zeichen) oder „Passwort neu vergeben“ in der Liste nutzen.
           </p>
           <div className="partner-form-grid">
             <label className="partner-form-field">
@@ -238,6 +232,15 @@ export default function FleetDriversTab({
               />
             </label>
             <label className="partner-form-field partner-form-field--span2">
+              <span>P-Schein als PDF (optional)</span>
+              <input
+                type="file"
+                accept="application/pdf"
+                className="partner-input"
+                onChange={(ev) => void uploadPScheinDoc(editDriverId, ev)}
+              />
+            </label>
+            <label className="partner-form-field partner-form-field--span2">
               <span>Anschrift</span>
               <input
                 className="partner-input"
@@ -263,6 +266,23 @@ export default function FleetDriversTab({
               />
             </label>
           </div>
+
+          {blockLines.length > 0 ? (
+            <details style={{ marginTop: 12 }} className="partner-muted">
+              <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Technische Hinweise (Fahrer-App)</summary>
+              <p style={{ margin: "8px 0 4px", fontSize: 12, lineHeight: 1.45 }}>
+                Nur bei Bedarf — betrifft z. B. Aufträge in der App, nicht den Login im Panel.
+              </p>
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, lineHeight: 1.45 }}>
+                {blockLines.map((line, idx) => (
+                  <li key={idx} style={{ marginBottom: 4 }}>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
             <button type="submit" className="partner-btn-primary">
               Änderungen speichern
@@ -283,30 +303,22 @@ export default function FleetDriversTab({
             <tr>
               <th>Name</th>
               <th>E-Mail</th>
-              <th>Fahrer-Status</th>
-              <th>Einsatzbereit</th>
-              <th>Hinweis</th>
-              <th>P-Schein bis</th>
+              <th>Status</th>
               <th>Aktionen</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7}>Laden …</td>
+                <td colSpan={4}>Laden …</td>
               </tr>
             ) : drivers.length === 0 ? (
               <tr>
-                <td colSpan={7}>Keine Fahrer.</td>
+                <td colSpan={4}>Keine Fahrer.</td>
               </tr>
             ) : (
               drivers.map((d) => {
-                const wMeta = workflowPill(d);
-                const ready = Boolean(d.readiness?.ready);
-                const blockLines = (d.readiness?.blockReasons ?? []).map((b) => b.message).filter(Boolean);
-                const pSchein = pScheinMeta(d.pScheinExpiry);
-                const suspended = d.accessStatus === "suspended";
-                const activeAccount = Boolean(d.isActive);
+                const loginOk = partnerDriverCanLogin(d);
                 return (
                   <tr key={d.id}>
                     <td>
@@ -314,38 +326,13 @@ export default function FleetDriversTab({
                     </td>
                     <td>{d.email}</td>
                     <td>
-                      <span className={`partner-pill partner-pill--${wMeta.tone}`}>{wMeta.label}</span>
-                    </td>
-                    <td>
-                      <span className={ready ? "partner-pill partner-pill--ok" : "partner-pill partner-pill--missing"}>
-                        {ready ? "Ja" : "Nein"}
+                      <span className={`partner-pill partner-pill--${loginOk ? "ok" : "missing"}`}>
+                        {loginOk ? "Aktiv" : "Deaktiviert"}
                       </span>
-                    </td>
-                    <td
-                      className="partner-muted"
-                      style={{ maxWidth: 360, fontSize: 12, lineHeight: 1.4 }}
-                      title={blockLines.join("\n") || ""}
-                    >
-                      {ready ? (
-                        "—"
-                      ) : blockLines.length ? (
-                        <ul style={{ margin: 0, paddingLeft: 16, maxWidth: 340 }}>
-                          {blockLines.map((line, idx) => (
-                            <li key={idx} style={{ marginBottom: 4 }}>
-                              {line}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        "Nicht einsatzbereit."
-                      )}
-                    </td>
-                    <td>
-                      <span className={`partner-pill partner-pill--${pSchein.tone}`}>{pSchein.label}</span>
                     </td>
                     <td className="partner-table__actions">
                       {canManage ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxWidth: 420 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                           <button
                             type="button"
                             className="partner-btn-secondary partner-btn-secondary--sm"
@@ -353,41 +340,26 @@ export default function FleetDriversTab({
                           >
                             Bearbeiten
                           </button>
-                          {suspended ? (
-                            <button type="button" className="partner-btn-secondary partner-btn-secondary--sm" onClick={() => void activateDriver(d.id)}>
-                              Entsperren
-                            </button>
-                          ) : null}
-                          {!suspended && activeAccount ? (
+                          {loginOk ? (
                             <button
                               type="button"
                               className="partner-btn-secondary partner-btn-secondary--sm"
                               onClick={() => void deactivateDriverAccount(d.id)}
                             >
-                              Außer Dienst
+                              Deaktivieren
                             </button>
-                          ) : null}
-                          {!suspended && !activeAccount ? (
+                          ) : (
                             <button
                               type="button"
                               className="partner-btn-primary partner-btn-primary--sm"
-                              onClick={() => void activateDriverAccountOnly(d.id)}
+                              onClick={() => void activateDriverForPartner(d.id)}
                             >
-                              Im Dienst
+                              Aktivieren
                             </button>
-                          ) : null}
-                          {!suspended && activeAccount ? (
-                            <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={() => void suspendDriver(d.id)}>
-                              Sperren
-                            </button>
-                          ) : null}
+                          )}
                           <button type="button" className="partner-btn-secondary partner-btn-secondary--sm" onClick={() => void resetDriverPassword(d.id)}>
-                            Passwort
+                            Passwort ändern
                           </button>
-                          <label className="partner-btn-secondary partner-btn-secondary--sm" style={{ cursor: "pointer" }}>
-                            P-Schein PDF
-                            <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(ev) => void uploadPScheinDoc(d.id, ev)} />
-                          </label>
                         </div>
                       ) : (
                         <span className="partner-muted">—</span>

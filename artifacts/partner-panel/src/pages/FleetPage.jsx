@@ -31,7 +31,6 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [driverCreateError, setDriverCreateError] = useState("");
-  const [filterExpiring, setFilterExpiring] = useState(false);
   const [vehiclesActiveOnly, setVehiclesActiveOnly] = useState(false);
 
   const [companyBrief, setCompanyBrief] = useState(null);
@@ -127,10 +126,9 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     setErr("");
     setLoading(true);
     try {
-      const qDrivers = filterExpiring ? "?pScheinExpiring=1" : "";
       const qVeh = vehiclesActiveOnly ? "?activeOnly=1" : "";
       const [dRes, vRes, aRes, dashRes] = await Promise.all([
-        fetch(`${API_BASE}/panel/v1/fleet/drivers${qDrivers}`, {
+        fetch(`${API_BASE}/panel/v1/fleet/drivers`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_BASE}/panel/v1/fleet/vehicles${qVeh}`, {
@@ -162,7 +160,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     } finally {
       setLoading(false);
     }
-  }, [token, canRead, filterExpiring, vehiclesActiveOnly]);
+  }, [token, canRead, vehiclesActiveOnly]);
 
   useEffect(() => {
     void loadAll();
@@ -482,67 +480,47 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
 
   async function deactivateDriverAccount(id) {
     if (!token || !canManage) return;
-    if (!window.confirm("Fahrer „außer Dienst“ setzen? Der Login ist dann nicht möglich (ohne Plattform-Sperre).")) return;
+    if (!window.confirm("Fahrer deaktivieren? Der Login in der Fahrer-App ist dann nicht mehr möglich.")) return;
     setMsg("");
     const r = await patchFleetDriver(id, { isActive: false });
     if (!r.ok) {
-      setMsg("Konto konnte nicht deaktiviert werden.");
+      setMsg("Deaktivieren fehlgeschlagen.");
       return;
     }
-    setMsg("Fahrer ist außer Dienst.");
+    setMsg("Fahrer ist deaktiviert.");
     await loadAll();
   }
 
-  async function activateDriverAccountOnly(id) {
+  /** Aktivieren = Login möglich: bei gesperrtem Zugriff zuerst Entsperren (API), sonst Konto aktivieren. */
+  async function activateDriverForPartner(id) {
     if (!token || !canManage) return;
+    if (!window.confirm("Fahrer aktivieren? Der Login in der Fahrer-App ist dann möglich.")) return;
     setMsg("");
-    const r = await patchFleetDriver(id, { isActive: true });
-    if (!r.ok) {
-      setMsg("Konto konnte nicht aktiviert werden.");
-      return;
-    }
-    setMsg("Fahrer ist wieder im Dienst.");
-    await loadAll();
-  }
-
-  async function suspendDriver(id) {
-    if (!token || !canManage) return;
-    if (!window.confirm("Fahrer sperren? Der Login wird sofort ungültig.")) return;
-    setMsg("");
+    const d = drivers.find((x) => x.id === id);
     try {
-      const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(id)}/suspend`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        setMsg("Sperren fehlgeschlagen.");
+      if (d?.accessStatus === "suspended") {
+        const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(id)}/activate`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          setMsg("Aktivieren fehlgeschlagen.");
+          return;
+        }
+        setMsg("Fahrer ist aktiviert.");
+        await loadAll();
         return;
       }
-      setMsg("Fahrer gesperrt.");
-      await loadAll();
-    } catch {
-      setMsg("Sperren fehlgeschlagen.");
-    }
-  }
-
-  async function activateDriver(id) {
-    if (!token || !canManage) return;
-    setMsg("");
-    try {
-      const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(id)}/activate`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        setMsg("Aktivierung fehlgeschlagen.");
+      const r = await patchFleetDriver(id, { isActive: true });
+      if (!r.ok) {
+        setMsg("Aktivieren fehlgeschlagen.");
         return;
       }
-      setMsg("Fahrer wieder aktiv.");
+      setMsg("Fahrer ist aktiviert.");
       await loadAll();
     } catch {
-      setMsg("Aktivierung fehlgeschlagen.");
+      setMsg("Aktivieren fehlgeschlagen.");
     }
   }
 
@@ -563,8 +541,10 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
         setMsg("Passwort-Reset fehlgeschlagen.");
         return;
       }
-      window.alert(`Neues Passwort: ${data.newPassword}`);
-      setMsg("Neues Passwort vergeben (siehe Dialog).");
+      window.alert(
+        `Ein neues Passwort wurde automatisch vergeben. Bitte sicher an den Fahrer übermitteln:\n\n${data.newPassword}\n\nAlternativ können Sie im Bereich „Bearbeiten“ ein Passwort selbst setzen.`,
+      );
+      setMsg("Passwort neu vergeben (siehe Dialog).");
     } catch {
       setMsg("Passwort-Reset fehlgeschlagen.");
     }
@@ -686,15 +666,11 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
         <FleetDriversTab
           driverCreateSectionRef={driverCreateSectionRef}
           canManage={canManage}
-          filterExpiring={filterExpiring}
-          setFilterExpiring={setFilterExpiring}
           driverForm={driverForm}
           setDriverForm={setDriverForm}
           createDriver={createDriver}
           loading={loading}
           drivers={drivers}
-          suspendDriver={suspendDriver}
-          activateDriver={activateDriver}
           resetDriverPassword={resetDriverPassword}
           uploadPScheinDoc={uploadPScheinDoc}
           editDriverId={editDriverId}
@@ -704,7 +680,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           closeDriverEditor={closeDriverEditor}
           saveEditedDriver={saveEditedDriver}
           deactivateDriverAccount={deactivateDriverAccount}
-          activateDriverAccountOnly={activateDriverAccountOnly}
+          activateDriverForPartner={activateDriverForPartner}
         />
       ) : null}
 
