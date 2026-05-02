@@ -462,7 +462,20 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
               <div className="admin-dashboard__card-value">
                 {operatorSnapshot.fleet?.pendingApprovalCount ?? 0}
               </div>
-              <div className="admin-dashboard__card-sub">Freigabe offen (pending)</div>
+              <div className="admin-dashboard__card-sub">Warteschlange (global) — Freigabe nur Admin</div>
+            </button>
+            <button
+              type="button"
+              className={`admin-dashboard__card admin-dashboard__tile-btn ${ampelClass(
+                severityToAmpel(operatorSnapshot.fleetDrivers?.pendingApprovalCount ?? 0),
+              )}`}
+              onClick={() => onNavigate?.("taxi-fleet-drivers")}
+            >
+              <div className="admin-dashboard__card-label">Fahrer prüfen (Taxi)</div>
+              <div className="admin-dashboard__card-value">
+                {operatorSnapshot.fleetDrivers?.pendingApprovalCount ?? 0}
+              </div>
+              <div className="admin-dashboard__card-sub">Offene Fahrer-Freigaben — gleiche Logik wie Mandantenzentrale</div>
             </button>
             <button
               type="button"
@@ -518,7 +531,9 @@ export default function DashboardPage({ onOpenRide, onOpenCompany, onNavigate, u
                       ? "Registrierung"
                       : t.kind === "support"
                         ? "Support"
-                        : "Fahrzeug"}
+                        : t.kind === "fleet_driver"
+                          ? "Fahrer"
+                          : "Fahrzeug"}
                   </span>{" "}
                   <span className="admin-table-sub">{t.subtitle}</span>
                 </div>

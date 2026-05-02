@@ -203,6 +203,8 @@ export default function CompaniesPage({
   expandWorkspaceCompanyId = null,
   onExpandWorkspaceConsumed,
   onRequestWorkspaceForCompany,
+  onNavigateToTaxiFleetDrivers,
+  onNavigateToTaxiFleetVehicles,
 }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -364,6 +366,8 @@ export default function CompaniesPage({
         companyId={mandateDetailCompanyId}
         onBack={onCloseMandateDetail}
         onRequestFullWorkspace={() => onRequestWorkspaceForCompany?.(mandateDetailCompanyId)}
+        onOpenTaxiFleetDrivers={() => onNavigateToTaxiFleetDrivers?.(mandateDetailCompanyId)}
+        onOpenTaxiFleetVehicles={() => onNavigateToTaxiFleetVehicles?.(mandateDetailCompanyId)}
       />
     );
   }

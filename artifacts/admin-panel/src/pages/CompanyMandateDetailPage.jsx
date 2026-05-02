@@ -14,6 +14,29 @@ const KIND_LABEL = {
 
 const NA = "Noch nicht hinterlegt";
 
+function fleetVehicleApprovalDe(st) {
+  const m = {
+    draft: "Entwurf",
+    pending_approval: "Wartet auf Freigabe",
+    missing_documents: "Unterlagen fehlen",
+    approved: "Freigegeben",
+    rejected: "Abgelehnt",
+    blocked: "Gesperrt",
+  };
+  return m[st] || st || "—";
+}
+
+function fleetDriverApprovalDe(st) {
+  const m = {
+    pending: "Angelegt",
+    in_review: "In Prüfung",
+    missing_documents: "Unterlagen fehlen",
+    approved: "Freigegeben",
+    rejected: "Abgelehnt",
+  };
+  return m[st] || st || "—";
+}
+
 /** Admin-interne Keys in `fare_permissions` (Merge beim Speichern, Partner-Keys bleiben erhalten). */
 const FP_ADMIN = {
   block: "admin_platform_block_reason",
@@ -159,7 +182,13 @@ function formFromCompany(c, billingAccountEmail) {
 /**
  * Mandantenzentrale: Lesen + Stammdaten per `PATCH /admin/companies/:id`
  */
-export default function CompanyMandateDetailPage({ companyId, onBack, onRequestFullWorkspace }) {
+export default function CompanyMandateDetailPage({
+  companyId,
+  onBack,
+  onRequestFullWorkspace,
+  onOpenTaxiFleetDrivers,
+  onOpenTaxiFleetVehicles,
+}) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
@@ -167,6 +196,7 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState("");
   const [form, setForm] = useState(null);
+  const [taxiFleetBusy, setTaxiFleetBusy] = useState("");
 
   const loadMandate = useCallback(() => {
     setLoading(true);
@@ -200,6 +230,228 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
   useEffect(() => {
     loadMandate();
   }, [loadMandate]);
+
+  async function postAdminJson(url, body) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+    });
+    const j = await r.json().catch(() => ({}));
+    return { r, j };
+  }
+
+  async function taxiApproveVehicle(vehicleId) {
+    if (!companyId) return;
+    const base = `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(vehicleId)}`;
+    setTaxiFleetBusy(`v-apr-${vehicleId}`);
+    try {
+      let { r, j } = await postAdminJson(`${base}/approve`, {});
+      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
+        const msg = [
+          "Achtung: Unterlagen unvollständig.",
+          "",
+          ...j.gaps.map((g) => `• ${g}`),
+          "",
+          "Manuelle Freigabe durch Admin trotzdem durchführen?",
+        ].join("\n");
+        if (!window.confirm(msg)) return;
+        ({ r, j } = await postAdminJson(`${base}/approve`, { acknowledgeIncompleteDocuments: true }));
+      }
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiVehicleMissingDocs(vehicleId) {
+    if (!companyId) return;
+    setTaxiFleetBusy(`v-md-${vehicleId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(vehicleId)}/mark-missing-documents`,
+        {},
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiRejectVehicle(vehicleId) {
+    if (!companyId) return;
+    const reason = window.prompt("Ablehnungsgrund (Pflicht):", "");
+    if (reason == null) return;
+    if (!String(reason).trim()) {
+      window.alert("Grund erforderlich.");
+      return;
+    }
+    setTaxiFleetBusy(`v-rej-${vehicleId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(vehicleId)}/reject`,
+        { reason: String(reason).trim() },
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiBlockVehicle(vehicleId) {
+    if (!companyId) return;
+    const blockReason = window.prompt("Sperrgrund (sichtbar für Partner):", "") ?? "";
+    setTaxiFleetBusy(`v-blk-${vehicleId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(vehicleId)}/block`,
+        { blockReason },
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiUnblockVehicle(vehicleId) {
+    if (!companyId) return;
+    setTaxiFleetBusy(`v-unblk-${vehicleId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(vehicleId)}/unblock`,
+        {},
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiApproveDriver(driverId) {
+    if (!companyId) return;
+    const url = `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(driverId)}/approval`;
+    setTaxiFleetBusy(`d-apr-${driverId}`);
+    try {
+      let { r, j } = await postAdminJson(url, { status: "approved" });
+      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
+        const msg = [
+          "Achtung: Unterlagen unvollständig.",
+          "",
+          ...j.gaps.map((g) => `• ${g}`),
+          "",
+          "Manuelle Freigabe durch Admin trotzdem durchführen?",
+        ].join("\n");
+        if (!window.confirm(msg)) return;
+        ({ r, j } = await postAdminJson(url, { status: "approved", acknowledgeIncompleteDocuments: true }));
+      }
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiDriverMissingDocs(driverId) {
+    if (!companyId) return;
+    setTaxiFleetBusy(`d-md-${driverId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(driverId)}/approval`,
+        { status: "missing_documents" },
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiRejectDriver(driverId) {
+    if (!companyId) return;
+    const reason = window.prompt("Ablehnungsgrund (Pflicht):", "");
+    if (reason == null) return;
+    if (!String(reason).trim()) {
+      window.alert("Grund erforderlich.");
+      return;
+    }
+    setTaxiFleetBusy(`d-rej-${driverId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(driverId)}/approval`,
+        { status: "rejected", reason: String(reason).trim() },
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiSuspendDriver(driverId) {
+    if (!companyId) return;
+    const reason = window.prompt("Sperrgrund (Zugang inaktiv, sichtbar für Partner):", "") ?? "";
+    setTaxiFleetBusy(`d-sus-${driverId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(driverId)}/suspend`,
+        { reason },
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
+
+  async function taxiActivateDriver(driverId) {
+    if (!companyId) return;
+    setTaxiFleetBusy(`d-act-${driverId}`);
+    try {
+      const { r, j } = await postAdminJson(
+        `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(driverId)}/activate`,
+        {},
+      );
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      await loadMandate();
+    } finally {
+      setTaxiFleetBusy("");
+    }
+  }
 
   const c = data?.company;
   const f = data?.financials;
@@ -1105,9 +1357,14 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
               style={{ marginBottom: 16 }}
             >
               <div className="admin-m-card__h">
-                <span className="admin-panel-card__title" style={{ margin: 0 }}>
-                  Taxi · Flotte
-                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="admin-panel-card__title" style={{ margin: 0 }}>
+                    Taxi · Mandantenzentrale (Flotte &amp; Anfragen)
+                  </div>
+                  <div className="admin-table-sub" style={{ margin: "6px 0 0", maxWidth: 720, lineHeight: 1.45 }}>
+                    Entscheidungen nur durch Plattform-Admin — Unternehmer können nicht selbst freigeben.
+                  </div>
+                </div>
               </div>
               <div className="admin-mandate-kpi" style={{ padding: "8px 12px 12px" }}>
                 <div className="admin-mandate-kpi__cell">
@@ -1143,6 +1400,319 @@ export default function CompanyMandateDetailPage({ companyId, onBack, onRequestF
                   <div className="admin-mandate-kpi__lbl">Fahrzeuge in Prüfung</div>
                 </div>
               </div>
+
+              {data.taxi.queues ? (
+                <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #e8edf4" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                    <button type="button" className="admin-link" onClick={() => onOpenTaxiFleetDrivers?.()}>
+                      Vollansicht Fahrer (Werkstatt)
+                    </button>
+                    <button type="button" className="admin-link" onClick={() => onOpenTaxiFleetVehicles?.()}>
+                      Vollansicht Fahrzeuge (Werkstatt)
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const tq = data.taxi.queues;
+                    const btnBusy = (prefix, id) => taxiFleetBusy.startsWith(`${prefix}-${id}`);
+
+                    const renderDriverOpenRow = (d) => (
+                      <tr key={d.id}>
+                        <td className="admin-mandate-td">
+                          <div style={{ fontWeight: 600 }}>
+                            {d.firstName} {d.lastName}
+                          </div>
+                          <div className="admin-table-sub" style={{ fontSize: 12 }}>
+                            {d.email}
+                          </div>
+                        </td>
+                        <td className="admin-mandate-td">{fleetDriverApprovalDe(d.approvalStatus)}</td>
+                        <td className="admin-mandate-td">{d.accessStatus === "suspended" ? "Gesperrt" : "Aktiv"}</td>
+                        <td className="admin-mandate-td">
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            <button
+                              type="button"
+                              className="admin-mandate-taxi-btn admin-mandate-taxi-btn--approve"
+                              disabled={!!taxiFleetBusy}
+                              onClick={() => void taxiApproveDriver(d.id)}
+                            >
+                              {btnBusy("d-apr", d.id) ? "…" : "Freigeben"}
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-mandate-taxi-btn admin-mandate-taxi-btn--inactive"
+                              disabled={!!taxiFleetBusy}
+                              onClick={() => void taxiSuspendDriver(d.id)}
+                            >
+                              {btnBusy("d-sus", d.id) ? "…" : "Inaktiv"}
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-mandate-taxi-btn admin-mandate-taxi-btn--warn"
+                              disabled={!!taxiFleetBusy}
+                              onClick={() => void taxiDriverMissingDocs(d.id)}
+                            >
+                              {btnBusy("d-md", d.id) ? "…" : "Unterlagen fehlen"}
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-mandate-taxi-btn admin-mandate-taxi-btn--reject"
+                              disabled={!!taxiFleetBusy}
+                              onClick={() => void taxiRejectDriver(d.id)}
+                            >
+                              {btnBusy("d-rej", d.id) ? "…" : "Ablehnen"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+
+                    const renderVehicleRow = (v, mode) => (
+                      <tr key={v.id}>
+                        <td className="admin-mandate-td">
+                          <div style={{ fontWeight: 600 }}>{v.licensePlate}</div>
+                          {v.model ? (
+                            <div className="admin-table-sub" style={{ fontSize: 12 }}>
+                              {v.model}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="admin-mandate-td">{fleetVehicleApprovalDe(v.approvalStatus)}</td>
+                        <td className="admin-mandate-td">
+                          {mode === "blocked" ? (
+                            <button
+                              type="button"
+                              className="admin-mandate-taxi-btn admin-mandate-taxi-btn--secondary"
+                              disabled={!!taxiFleetBusy}
+                              onClick={() => void taxiUnblockVehicle(v.id)}
+                            >
+                              {btnBusy("v-unblk", v.id) ? "…" : "Entsperren"}
+                            </button>
+                          ) : (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              <button
+                                type="button"
+                                className="admin-mandate-taxi-btn admin-mandate-taxi-btn--approve"
+                                disabled={!!taxiFleetBusy}
+                                onClick={() => void taxiApproveVehicle(v.id)}
+                              >
+                                {btnBusy("v-apr", v.id) ? "…" : "Freigeben"}
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-mandate-taxi-btn admin-mandate-taxi-btn--inactive"
+                                disabled={!!taxiFleetBusy}
+                                onClick={() => void taxiBlockVehicle(v.id)}
+                              >
+                                {btnBusy("v-blk", v.id) ? "…" : "Inaktiv"}
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-mandate-taxi-btn admin-mandate-taxi-btn--warn"
+                                disabled={!!taxiFleetBusy}
+                                onClick={() => void taxiVehicleMissingDocs(v.id)}
+                              >
+                                {btnBusy("v-md", v.id) ? "…" : "Unterlagen fehlen"}
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-mandate-taxi-btn admin-mandate-taxi-btn--reject"
+                                disabled={!!taxiFleetBusy}
+                                onClick={() => void taxiRejectVehicle(v.id)}
+                              >
+                                {btnBusy("v-rej", v.id) ? "…" : "Ablehnen"}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+
+                    return (
+                      <>
+                        <h4 className="admin-m-card__title" style={{ margin: "8px 0 8px", fontSize: 15 }}>
+                          Fahrer — offene Freigaben
+                        </h4>
+                        {tq.drivers.openRequests.length === 0 ? (
+                          <p className="admin-table-sub" style={{ marginBottom: 16 }}>
+                            Keine offenen Fahrer-Freigaben.
+                          </p>
+                        ) : (
+                          <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                            <table style={{ minWidth: 720, width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  <th className="admin-mandate-th">Fahrer</th>
+                                  <th className="admin-mandate-th">Freigabe</th>
+                                  <th className="admin-mandate-th">Zugang</th>
+                                  <th className="admin-mandate-th">Aktionen</th>
+                                </tr>
+                              </thead>
+                              <tbody>{tq.drivers.openRequests.map((d) => renderDriverOpenRow(d))}</tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <h4 className="admin-m-card__title" style={{ margin: "8px 0 8px", fontSize: 15 }}>
+                          Fahrzeuge — warten auf Freigabe
+                        </h4>
+                        {tq.vehicles.waitingApproval.length === 0 ? (
+                          <p className="admin-table-sub" style={{ marginBottom: 16 }}>
+                            Keine Fahrzeuge in diesem Status.
+                          </p>
+                        ) : (
+                          <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                            <table style={{ minWidth: 720, width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  <th className="admin-mandate-th">Fahrzeug</th>
+                                  <th className="admin-mandate-th">Status</th>
+                                  <th className="admin-mandate-th">Aktionen</th>
+                                </tr>
+                              </thead>
+                              <tbody>{tq.vehicles.waitingApproval.map((v) => renderVehicleRow(v, "wait"))}</tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <h4 className="admin-m-card__title" style={{ margin: "8px 0 8px", fontSize: 15 }}>
+                          Fahrzeuge — Unterlagen fehlen
+                        </h4>
+                        {tq.vehicles.missingDocuments.length === 0 ? (
+                          <p className="admin-table-sub" style={{ marginBottom: 16 }}>
+                            Keine Fahrzeuge in diesem Status.
+                          </p>
+                        ) : (
+                          <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                            <table style={{ minWidth: 720, width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  <th className="admin-mandate-th">Fahrzeug</th>
+                                  <th className="admin-mandate-th">Status</th>
+                                  <th className="admin-mandate-th">Aktionen</th>
+                                </tr>
+                              </thead>
+                              <tbody>{tq.vehicles.missingDocuments.map((v) => renderVehicleRow(v, "miss"))}</tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <h4 className="admin-m-card__title" style={{ margin: "8px 0 8px", fontSize: 15 }}>
+                          Fahrer — Zugang gesperrt (Inaktiv)
+                        </h4>
+                        {tq.drivers.accessSuspended.length === 0 ? (
+                          <p className="admin-table-sub" style={{ marginBottom: 16 }}>
+                            Keine gesperrten Fahrer-Zugänge.
+                          </p>
+                        ) : (
+                          <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                            <table style={{ minWidth: 560, width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  <th className="admin-mandate-th">Fahrer</th>
+                                  <th className="admin-mandate-th">Freigabe</th>
+                                  <th className="admin-mandate-th">Aktion</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tq.drivers.accessSuspended.map((d) => (
+                                  <tr key={d.id}>
+                                    <td className="admin-mandate-td">
+                                      <div style={{ fontWeight: 600 }}>
+                                        {d.firstName} {d.lastName}
+                                      </div>
+                                      <div className="admin-table-sub" style={{ fontSize: 12 }}>
+                                        {d.email}
+                                      </div>
+                                    </td>
+                                    <td className="admin-mandate-td">{fleetDriverApprovalDe(d.approvalStatus)}</td>
+                                    <td className="admin-mandate-td">
+                                      <button
+                                        type="button"
+                                        className="admin-mandate-taxi-btn admin-mandate-taxi-btn--approve"
+                                        disabled={!!taxiFleetBusy}
+                                        onClick={() => void taxiActivateDriver(d.id)}
+                                      >
+                                        {btnBusy("d-act", d.id) ? "…" : "Zugang aktivieren"}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <h4 className="admin-m-card__title" style={{ margin: "8px 0 8px", fontSize: 15 }}>
+                          Abgelehnt (Fahrer / Fahrzeuge)
+                        </h4>
+                        {tq.drivers.rejected.length === 0 && tq.vehicles.rejected.length === 0 ? (
+                          <p className="admin-table-sub" style={{ marginBottom: 16 }}>
+                            Keine abgelehnten Einträge.
+                          </p>
+                        ) : (
+                          <div style={{ overflowX: "auto", marginBottom: 20 }}>
+                            <table style={{ minWidth: 560, width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  <th className="admin-mandate-th">Typ</th>
+                                  <th className="admin-mandate-th">Eintrag</th>
+                                  <th className="admin-mandate-th">Hinweis</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tq.drivers.rejected.map((d) => (
+                                  <tr key={`dj-${d.id}`}>
+                                    <td className="admin-mandate-td">Fahrer</td>
+                                    <td className="admin-mandate-td">
+                                      {d.firstName} {d.lastName} · {d.email}
+                                    </td>
+                                    <td className="admin-mandate-td">
+                                      Abgelehnt — erneute Einreichung durch Partner; Aktionen über Vollansicht Fahrer.
+                                    </td>
+                                  </tr>
+                                ))}
+                                {tq.vehicles.rejected.map((v) => (
+                                  <tr key={`vj-${v.id}`}>
+                                    <td className="admin-mandate-td">Fahrzeug</td>
+                                    <td className="admin-mandate-td">
+                                      {v.licensePlate}
+                                      {v.model ? ` · ${v.model}` : ""}
+                                    </td>
+                                    <td className="admin-mandate-td">
+                                      Abgelehnt — Nachreichung durch Partner; Aktionen über Vollansicht Fahrzeuge.
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        <h4 className="admin-m-card__title" style={{ margin: "8px 0 8px", fontSize: 15 }}>
+                          Fahrzeuge — gesperrt (Inaktiv)
+                        </h4>
+                        {tq.vehicles.blocked.length === 0 ? (
+                          <p className="admin-table-sub">Keine gesperrten Fahrzeuge.</p>
+                        ) : (
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ minWidth: 720, width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr>
+                                  <th className="admin-mandate-th">Fahrzeug</th>
+                                  <th className="admin-mandate-th">Status</th>
+                                  <th className="admin-mandate-th">Aktionen</th>
+                                </tr>
+                              </thead>
+                              <tbody>{tq.vehicles.blocked.map((v) => renderVehicleRow(v, "blocked"))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : null}
             </section>
           ) : null}
 

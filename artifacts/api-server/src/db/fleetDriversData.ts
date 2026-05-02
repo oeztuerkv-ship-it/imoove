@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lte, sql } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
 
@@ -597,4 +597,71 @@ export async function countFleetDriversOnline(companyId: string, withinSeconds: 
       ),
     );
   return Number(rows[0]?.n ?? 0);
+}
+
+/** Admin-Dashboard / Operator-Snapshot: Taxi-Fahrer mit offener Plattform-Freigabe. */
+export type FleetDriverAdminPendingRow = {
+  driverId: string;
+  companyId: string;
+  companyName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  approvalStatus: string;
+  updatedAt: string;
+};
+
+export async function countPendingFleetDriversForAdmin(): Promise<number> {
+  if (!isPostgresConfigured()) return 0;
+  const db = getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(fleetDriversTable)
+    .innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id))
+    .where(
+      and(
+        eq(adminCompaniesTable.company_kind, "taxi"),
+        inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"]),
+      ),
+    );
+  return Number(rows[0]?.n ?? 0);
+}
+
+export async function listPendingFleetDriversForAdmin(limit?: number): Promise<FleetDriverAdminPendingRow[]> {
+  if (!isPostgresConfigured()) return [];
+  const db = getDb();
+  if (!db) return [];
+  const lim = typeof limit === "number" && limit > 0 ? Math.min(500, limit) : 5;
+  const rows = await db
+    .select({
+      driverId: fleetDriversTable.id,
+      companyId: fleetDriversTable.company_id,
+      companyName: adminCompaniesTable.name,
+      firstName: fleetDriversTable.first_name,
+      lastName: fleetDriversTable.last_name,
+      email: fleetDriversTable.email,
+      approvalStatus: fleetDriversTable.approval_status,
+      updatedAt: fleetDriversTable.updated_at,
+    })
+    .from(fleetDriversTable)
+    .innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id))
+    .where(
+      and(
+        eq(adminCompaniesTable.company_kind, "taxi"),
+        inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"]),
+      ),
+    )
+    .orderBy(desc(fleetDriversTable.updated_at))
+    .limit(lim);
+  return rows.map((r) => ({
+    driverId: r.driverId,
+    companyId: r.companyId,
+    companyName: r.companyName,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    email: r.email,
+    approvalStatus: r.approvalStatus,
+    updatedAt: r.updatedAt.toISOString(),
+  }));
 }

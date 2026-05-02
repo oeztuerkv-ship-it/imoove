@@ -6,7 +6,7 @@ import type { CompanyRow } from "../routes/adminApi.types";
 import { findCompanyById, getCompanyKpis, type CompanyKpis } from "./adminData";
 import { listAdminTaxiFleetDriverRows, type AdminTaxiFleetDriverRow } from "./fleetDriverReadiness";
 import { listFleetDriversForCompany } from "./fleetDriversData";
-import { listFleetVehiclesForCompany } from "./fleetVehiclesData";
+import { listFleetVehiclesForCompany, type FleetVehicleRow } from "./fleetVehiclesData";
 import { listPanelAuditForCompany, type PanelAuditLogRow } from "./panelAuditData";
 import { listRidesAdminPage, listRidesForCompany } from "./ridesData";
 import { billingAccountsTable, rideFinancialsTable, ridesTable, settlementsTable } from "./schema";
@@ -132,6 +132,42 @@ export type CompanyMandateReadFinancials = {
   openSettlementsCount: number;
 };
 
+/** Detail-Zeilen für Taxi-Mandantenzentrale (bestehende DB-Felder, keine Migration). */
+export type MandateTaxiQueueDriver = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  approvalStatus: string;
+  workflowKey: string;
+  workflowLabel: string;
+  accessStatus: string;
+  updatedAt: string | null;
+};
+
+export type MandateTaxiQueueVehicle = {
+  id: string;
+  licensePlate: string;
+  model: string | null;
+  approvalStatus: string;
+  updatedAt: string | null;
+};
+
+export type CompanyMandateTaxiQueues = {
+  drivers: {
+    /** Freigabe durch Admin noch offen (Partner hat eingereicht / Nachreichung). */
+    openRequests: MandateTaxiQueueDriver[];
+    rejected: MandateTaxiQueueDriver[];
+    accessSuspended: MandateTaxiQueueDriver[];
+  };
+  vehicles: {
+    waitingApproval: MandateTaxiQueueVehicle[];
+    missingDocuments: MandateTaxiQueueVehicle[];
+    rejected: MandateTaxiQueueVehicle[];
+    blocked: MandateTaxiQueueVehicle[];
+  };
+};
+
 export type CompanyMandateTaxiBlock = {
   driversTotal: number;
   /** `is_active` und Zugang „active“ (nicht suspendiert). */
@@ -145,6 +181,7 @@ export type CompanyMandateTaxiBlock = {
   /** `approval_status = approved`. */
   vehiclesApproved: number;
   vehiclesPendingReview: number;
+  queues: CompanyMandateTaxiQueues;
 };
 
 export type CompanyMandateHotelBlock = {
@@ -194,6 +231,51 @@ const KPI_FALLBACK: CompanyKpis = {
   openRides: 0,
   voucherLimitAvailable: null,
 };
+
+function emptyTaxiQueues(): CompanyMandateTaxiQueues {
+  return {
+    drivers: { openRequests: [], rejected: [], accessSuspended: [] },
+    vehicles: { waitingApproval: [], missingDocuments: [], rejected: [], blocked: [] },
+  };
+}
+
+export function buildTaxiMandateQueues(
+  drivers: AdminTaxiFleetDriverRow[],
+  vehicles: FleetVehicleRow[],
+): CompanyMandateTaxiQueues {
+  const openApproval = new Set(["pending", "in_review", "missing_documents"]);
+  const driverRows: MandateTaxiQueueDriver[] = drivers.map((d) => ({
+    id: d.id,
+    firstName: d.firstName,
+    lastName: d.lastName,
+    email: d.email,
+    approvalStatus: d.approvalStatus,
+    workflowKey: d.workflow?.key ?? "",
+    workflowLabel: d.workflow?.label ?? "",
+    accessStatus: d.accessStatus,
+    updatedAt: d.updatedAt ?? null,
+  }));
+  const vehicleRows: MandateTaxiQueueVehicle[] = vehicles.map((v) => ({
+    id: v.id,
+    licensePlate: v.licensePlate,
+    model: v.model?.trim() ? v.model : null,
+    approvalStatus: v.approvalStatus,
+    updatedAt: v.updatedAt ?? null,
+  }));
+  return {
+    drivers: {
+      openRequests: driverRows.filter((x) => openApproval.has(x.approvalStatus) && x.accessStatus === "active"),
+      rejected: driverRows.filter((x) => x.approvalStatus === "rejected"),
+      accessSuspended: driverRows.filter((x) => x.accessStatus === "suspended"),
+    },
+    vehicles: {
+      waitingApproval: vehicleRows.filter((x) => x.approvalStatus === "draft" || x.approvalStatus === "pending_approval"),
+      missingDocuments: vehicleRows.filter((x) => x.approvalStatus === "missing_documents"),
+      rejected: vehicleRows.filter((x) => x.approvalStatus === "rejected"),
+      blocked: vehicleRows.filter((x) => x.approvalStatus === "blocked"),
+    },
+  };
+}
 
 export type CompanyMandateRead = {
   company: CompanyRow;
@@ -337,6 +419,7 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
                     v.approvalStatus === "pending_approval" ||
                     v.approvalStatus === "missing_documents",
                 ).length,
+                queues: buildTaxiMandateQueues(drivers, vehicles),
               };
             })()
           : company.company_kind === "taxi"
@@ -388,6 +471,7 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
                     v.approvalStatus === "pending_approval" ||
                     v.approvalStatus === "missing_documents",
                 ).length,
+                queues: buildTaxiMandateQueues(drivers, vehicles),
               };
             })()
           : company.company_kind === "taxi"
@@ -555,7 +639,10 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
     const vehiclesTotal = vehicles.length;
     const vehiclesApproved = vehicles.filter((v) => v.approvalStatus === "approved").length;
     const vehiclesPendingReview = vehicles.filter(
-      (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval",
+      (v) =>
+        v.approvalStatus === "draft" ||
+        v.approvalStatus === "pending_approval" ||
+        v.approvalStatus === "missing_documents",
     ).length;
     taxi = {
       driversTotal,
@@ -566,6 +653,7 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
       vehiclesTotal,
       vehiclesApproved,
       vehiclesPendingReview,
+      queues: buildTaxiMandateQueues(drivers, vehicles),
     };
   }
 
@@ -630,6 +718,7 @@ function emptyTaxi(): CompanyMandateTaxiBlock {
     vehiclesTotal: 0,
     vehiclesApproved: 0,
     vehiclesPendingReview: 0,
+    queues: emptyTaxiQueues(),
   };
 }
 function emptyHotel(): CompanyMandateHotelBlock {

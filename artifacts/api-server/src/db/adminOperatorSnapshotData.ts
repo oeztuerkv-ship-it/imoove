@@ -1,5 +1,6 @@
 import { count, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { getDb, isPostgresConfigured } from "./client";
+import { countPendingFleetDriversForAdmin, listPendingFleetDriversForAdmin } from "./fleetDriversData";
 import {
   countPendingFleetVehiclesForAdmin,
   listPendingFleetVehiclesForAdmin,
@@ -30,11 +31,11 @@ function parseIsoToMs(v: string): number {
 }
 
 export type AdminOperatorTaskItem = {
-  kind: "registration" | "support" | "fleet";
+  kind: "registration" | "support" | "fleet" | "fleet_driver";
   at: string;
   title: string;
   subtitle: string;
-  pageKey: "company-registration-requests" | "support-inbox" | "fleet-vehicles-review";
+  pageKey: "company-registration-requests" | "support-inbox" | "fleet-vehicles-review" | "taxi-fleet-drivers";
   refId: string;
   severity: "high" | "medium";
 };
@@ -78,6 +79,19 @@ export type AdminOperatorSnapshot = {
       approvalStatus: string;
     }>;
   };
+  fleetDrivers: {
+    pendingApprovalCount: number;
+    latest: Array<{
+      driverId: string;
+      companyId: string;
+      companyName: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      approvalStatus: string;
+      updatedAt: string;
+    }>;
+  };
   companies: {
     blockedCount: number;
     incompleteComplianceCount: number;
@@ -96,6 +110,7 @@ export async function getAdminOperatorSnapshot(): Promise<AdminOperatorSnapshot>
     registration: { pendingCount: 0, latest: [] },
     support: { openCount: 0, inProgressCount: 0, answeredCount: 0, latestOpenThreads: [] },
     fleet: { pendingApprovalCount: 0, latest: [] },
+    fleetDrivers: { pendingApprovalCount: 0, latest: [] },
     companies: { blockedCount: 0, incompleteComplianceCount: 0, latestProblematic: [] },
     recentTasks: [],
   };
@@ -111,6 +126,8 @@ export async function getAdminOperatorSnapshot(): Promise<AdminOperatorSnapshot>
     supportOpen,
     fleetPendingN,
     fleetPreview,
+    fleetDriversPendingN,
+    fleetDriversPreview,
     blockedRow,
     incompleteRow,
     probRows,
@@ -145,6 +162,8 @@ export async function getAdminOperatorSnapshot(): Promise<AdminOperatorSnapshot>
     }),
     countPendingFleetVehiclesForAdmin(),
     listPendingFleetVehiclesForAdmin(5),
+    countPendingFleetDriversForAdmin(),
+    listPendingFleetDriversForAdmin(5),
     db
       .select({ n: count() })
       .from(adminCompaniesTable)
@@ -212,6 +231,20 @@ export async function getAdminOperatorSnapshot(): Promise<AdminOperatorSnapshot>
     })),
   };
 
+  const fleetDrivers = {
+    pendingApprovalCount: fleetDriversPendingN,
+    latest: fleetDriversPreview.map((r) => ({
+      driverId: r.driverId,
+      companyId: r.companyId,
+      companyName: r.companyName,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      email: r.email,
+      approvalStatus: r.approvalStatus,
+      updatedAt: r.updatedAt,
+    })),
+  };
+
   const companies = {
     blockedCount: Number(blockedRow[0]?.n ?? 0),
     incompleteComplianceCount: Number(incompleteRow[0]?.n ?? 0),
@@ -258,6 +291,18 @@ export async function getAdminOperatorSnapshot(): Promise<AdminOperatorSnapshot>
       severity: "medium",
     });
   }
+  for (const d of fleetDrivers.latest) {
+    const name = `${d.firstName} ${d.lastName}`.trim() || d.email;
+    recentTasks.push({
+      kind: "fleet_driver",
+      at: d.updatedAt,
+      title: name,
+      subtitle: `${d.companyName} · Fahrer-Freigabe`,
+      pageKey: "taxi-fleet-drivers",
+      refId: d.driverId,
+      severity: "medium",
+    });
+  }
 
   recentTasks.sort((a, b) => parseIsoToMs(b.at) - parseIsoToMs(a.at));
   const trimmedTasks = recentTasks.slice(0, 10);
@@ -266,6 +311,7 @@ export async function getAdminOperatorSnapshot(): Promise<AdminOperatorSnapshot>
     registration,
     support,
     fleet,
+    fleetDrivers,
     companies,
     recentTasks: trimmedTasks,
   };

@@ -327,6 +327,7 @@ export default function App() {
   const [companiesInitialOpenId, setCompaniesInitialOpenId] = useState(null);
   const [companiesListTab, setCompaniesListTab] = useState("all");
   const [mandateDetailCompanyId, setMandateDetailCompanyId] = useState(null);
+  const [taxiFleetSeedCompanyId, setTaxiFleetSeedCompanyId] = useState(null);
   /** Nach Zurück von der Zentrale: Zeile in der Mandantenliste für Voll-Workspace (`CompanyWorkspaceForm`) aufklappen. */
   const [companiesExpandWorkspaceCompanyId, setCompaniesExpandWorkspaceCompanyId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -352,6 +353,8 @@ export default function App() {
     setRideRecordId(null);
   }, []);
 
+  const clearTaxiFleetSeedCompanyId = useCallback(() => setTaxiFleetSeedCompanyId(null), []);
+
   const handlePickPage = useCallback(
     (pageKey, opt) => {
       if (!isAdminPageAllowed(pageKey, userRole)) return;
@@ -359,6 +362,9 @@ export default function App() {
         setCompaniesListTab(opt?.companiesTab != null && opt.companiesTab !== "" ? opt.companiesTab : "all");
         setMandateDetailCompanyId(null);
         setCompaniesExpandWorkspaceCompanyId(null);
+      }
+      if (pageKey === "taxi-fleet-drivers" || pageKey === "taxi-fleet-vehicles") {
+        setTaxiFleetSeedCompanyId(null);
       }
       if (pageKey !== "ride-detail") setRideRecordId(null);
       setActive(pageKey);
@@ -527,14 +533,7 @@ export default function App() {
         return (
           <DashboardPage
             userRole={userRole}
-            onNavigate={(pageKey) => {
-              if (!isAdminPageAllowed(pageKey, userRole)) return;
-              if (pageKey === "companies") {
-                setCompaniesListTab("all");
-                setMandateDetailCompanyId(null);
-              }
-              setActive(pageKey);
-            }}
+            onNavigate={(pageKey) => handlePickPage(pageKey)}
             onOpenRide={(id) => {
               setRideRecordId(id);
               setActive("ride-detail");
@@ -589,12 +588,32 @@ export default function App() {
               setMandateDetailCompanyId(null);
               setCompaniesExpandWorkspaceCompanyId(id);
             }}
+            onNavigateToTaxiFleetDrivers={(cid) => {
+              setTaxiFleetSeedCompanyId(cid);
+              setMandateDetailCompanyId(null);
+              setActive("taxi-fleet-drivers");
+            }}
+            onNavigateToTaxiFleetVehicles={(cid) => {
+              setTaxiFleetSeedCompanyId(cid);
+              setMandateDetailCompanyId(null);
+              setActive("taxi-fleet-vehicles");
+            }}
           />
         );
       case "taxi-fleet-drivers":
-        return <TaxiFleetDriversPage />;
+        return (
+          <TaxiFleetDriversPage
+            initialCompanyId={taxiFleetSeedCompanyId}
+            onInitialCompanyConsumed={clearTaxiFleetSeedCompanyId}
+          />
+        );
       case "taxi-fleet-vehicles":
-        return <TaxiFleetVehiclesPage />;
+        return (
+          <TaxiFleetVehiclesPage
+            initialCompanyId={taxiFleetSeedCompanyId}
+            onInitialCompanyConsumed={clearTaxiFleetSeedCompanyId}
+          />
+        );
       case "support-inbox":
         return <SupportInboxPage />;
       case "ride-support": {
@@ -666,14 +685,7 @@ export default function App() {
         return (
           <DashboardPage
             userRole={userRole}
-            onNavigate={(pageKey) => {
-              if (!isAdminPageAllowed(pageKey, userRole)) return;
-              if (pageKey === "companies") {
-                setCompaniesListTab("all");
-                setMandateDetailCompanyId(null);
-              }
-              setActive(pageKey);
-            }}
+            onNavigate={(pageKey) => handlePickPage(pageKey)}
             onOpenRide={(id) => {
               setRideRecordId(id);
               setActive("ride-detail");

@@ -2375,6 +2375,61 @@
   word-break: break-word;
 }
 
+/* Taxi-Mandantenzentrale: klare Ampel-Aktionen */
+.admin-mandate-taxi-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-mandate-taxi-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.admin-mandate-taxi-btn--approve {
+  background: #16a34a;
+  color: #fff;
+}
+.admin-mandate-taxi-btn--approve:hover:not(:disabled) {
+  background: #15803d;
+}
+.admin-mandate-taxi-btn--inactive {
+  background: #dc2626;
+  color: #fff;
+}
+.admin-mandate-taxi-btn--inactive:hover:not(:disabled) {
+  background: #b91c1c;
+}
+.admin-mandate-taxi-btn--warn {
+  background: #ea580c;
+  color: #fff;
+}
+.admin-mandate-taxi-btn--warn:hover:not(:disabled) {
+  background: #c2410c;
+}
+.admin-mandate-taxi-btn--reject {
+  background: #fff;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.admin-mandate-taxi-btn--reject:hover:not(:disabled) {
+  background: #fef2f2;
+}
+.admin-mandate-taxi-btn--secondary {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+.admin-mandate-taxi-btn--secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
 ul.admin-mandate-doclist {
   margin: 0;
   padding-left: 1.1rem;

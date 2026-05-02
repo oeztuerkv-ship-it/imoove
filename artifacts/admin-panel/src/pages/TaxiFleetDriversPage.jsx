@@ -26,7 +26,7 @@ function workflowDe(key) {
   return m[key] || key || "—";
 }
 
-export default function TaxiFleetDriversPage() {
+export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitialCompanyConsumed }) {
   const [companies, setCompanies] = useState([]);
   const [cLoading, setCLoading] = useState(true);
   const [cQuery, setCQuery] = useState("");
@@ -61,6 +61,13 @@ export default function TaxiFleetDriversPage() {
   useEffect(() => {
     loadCompanies();
   }, [loadCompanies]);
+
+  useEffect(() => {
+    if (!initialCompanyId || typeof initialCompanyId !== "string") return;
+    setCompanyId(initialCompanyId);
+    setSel(null);
+    onInitialCompanyConsumed?.();
+  }, [initialCompanyId, onInitialCompanyConsumed]);
 
   const loadDrivers = useCallback((cid) => {
     if (!cid) {
