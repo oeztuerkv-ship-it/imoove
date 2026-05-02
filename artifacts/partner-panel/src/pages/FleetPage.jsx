@@ -1,141 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 import { API_BASE } from "../lib/apiBase.js";
+import FleetDocumentsTab from "./fleet/FleetDocumentsTab.jsx";
+import FleetDriversTab from "./fleet/FleetDriversTab.jsx";
+import FleetTabs from "./fleet/FleetTabs.jsx";
+import FleetVehiclesTab from "./fleet/FleetVehiclesTab.jsx";
+import { messageForFleetDriverCreateError } from "./fleet/fleetPanelHelpers.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
 }
 
-/** Antwort von `POST /panel/v1/fleet/drivers` bei Fehler — siehe `fleetPanelApi.ts` / `insertFleetDriver`. */
-function messageForFleetDriverCreateError(data) {
-  const code = typeof data?.error === "string" ? data.error : "";
-  const hint = data?.hint;
-  const maxDrivers = data?.maxDrivers;
-  switch (code) {
-    case "email_taken":
-      return "Diese E-Mail ist bereits als Fahrer registriert (systemweit eindeutig). Mit bestehendem Konto anmelden oder andere E-Mail wählen.";
-    case "email_invalid":
-      return "Bitte eine gültige E-Mail-Adresse eingeben.";
-    case "company_profile_incomplete":
-      return "Unternehmensprofil unvollständig. Bitte Stammdaten unter Firmendaten vervollständigen.";
-    case "company_not_verified":
-      return "Unternehmen ist noch nicht verifiziert. Freigabe abwarten oder Support kontaktieren.";
-    case "company_not_compliant":
-      return "Compliance-Anforderungen nicht erfüllt. Bitte Status im Panel prüfen.";
-    case "contract_not_active":
-      return "Kein aktiver Vertrag. Ohne aktiven Vertrag können keine Fahrer angelegt werden.";
-    case "required_documents_missing":
-      return "Pflichtnachweise fehlen (z. B. Gewerbe oder Versicherung). Bitte im Bereich „Dokumente“ prüfen.";
-    case "company_blocked":
-      return "Unternehmen ist gesperrt. Bitte Support kontaktieren.";
-    case "company_not_found":
-      return "Unternehmen wurde nicht gefunden.";
-    case "driver_limit_reached":
-      return maxDrivers != null
-        ? `Maximale Fahreranzahl für Ihr Paket (${maxDrivers}) ist erreicht.`
-        : "Maximale Fahreranzahl ist erreicht.";
-    case "fleet_only_taxi_company":
-      return "Flottenverwaltung steht nur Taxi-Unternehmen zur Verfügung.";
-    case "module_not_enabled":
-      return "Das Modul „Flotte“ ist für Ihr Konto nicht freigeschaltet.";
-    case "forbidden":
-      return hint
-        ? `Keine Berechtigung (${String(hint)}). Bitte Rolle „Flotte verwalten“ zuweisen oder anderen Benutzer nutzen.`
-        : "Keine Berechtigung. Bitte mit einem Benutzer anmelden, der „Flotte verwalten“ darf.";
-    case "database_not_configured":
-      return "Dienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.";
-    case "unauthorized":
-    case "user_inactive_or_missing":
-    case "token_out_of_sync":
-      return "Sitzung abgelaufen oder ungültig. Bitte abmelden und neu anmelden.";
-    case "timeout":
-      return "Die Anfrage hat zu lange gedauert. Bitte erneut versuchen.";
-    case "network_error":
-      return "Netzwerkfehler. Bitte Verbindung prüfen und erneut versuchen.";
-    default:
-      return code ? `Ein unbekannter Fehler ist aufgetreten (Technisch: ${code}).` : "Ein unbekannter Fehler ist aufgetreten.";
-  }
-}
-
-const VEHICLE_TYPES = [
-  { value: "sedan", label: "Limousine" },
-  { value: "station_wagon", label: "Kombi" },
-  { value: "van", label: "Großraum / V-Klasse" },
-  { value: "wheelchair", label: "Rollstuhlgerecht" },
-];
-
-const VEHICLE_LEGAL_HINT =
-  "Onroda arbeitet nur mit Taxi-Schätzpreis. Alle Fahrzeuge werden als Taxi geführt; die Zuordnung erfolgt weiterhin über Fahrzeugklasse (Standard, XL, Rollstuhl).";
-
-function vehicleStatusDe(v) {
-  const s = v?.approvalStatus;
-  if (s === "draft") return "Entwurf";
-  if (s === "pending_approval") return "In Prüfung";
-  if (s === "approved") return "Freigegeben";
-  if (s === "rejected") return "Abgelehnt";
-  if (s === "blocked") return "Gesperrt";
-  return "—";
-}
-
-function vehicleStatusTone(v) {
-  const s = v?.approvalStatus;
-  if (s === "approved") return "ok";
-  if (s === "pending_approval") return "warn";
-  if (s === "rejected" || s === "blocked") return "danger";
-  return "soft";
-}
-
-function formatDateDe(isoDate) {
-  if (!isoDate) return "—";
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return String(isoDate);
-  return d.toLocaleDateString("de-DE");
-}
-
-function pScheinMeta(isoDate) {
-  if (!isoDate) return { label: "Kein Datum", tone: "warn" };
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return { label: String(isoDate), tone: "warn" };
-  const now = new Date();
-  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const expiryUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  if (expiryUtc < todayUtc) {
-    return { label: `abgelaufen (${formatDateDe(isoDate)})`, tone: "danger" };
-  }
-  return { label: formatDateDe(isoDate), tone: "ok" };
-}
-
-function workflowPill(driver) {
-  const w = driver?.workflow;
-  if (w?.label) {
-    return { label: w.label, tone: workflowKeyToTone(w.key) };
-  }
-  const st = String(driver?.approvalStatus ?? "approved").toLowerCase();
-  if (driver && (!driver.isActive || driver.accessStatus === "suspended")) {
-    return { label: "Gesperrt", tone: "missing" };
-  }
-  if (st === "rejected") return { label: "Abgelehnt", tone: "missing" };
-  if (st === "in_review") return { label: "In Prüfung", tone: "review" };
-  if (st === "pending") return { label: "Angelegt", tone: "review" };
-  if (st === "approved") return { label: "Freigegeben", tone: "neutral" };
-  return { label: "—", tone: "soft" };
-}
-
-function workflowKeyToTone(key) {
-  if (key === "inactive" || key === "suspended") return "missing";
-  if (key === "rejected") return "missing";
-  if (key === "in_review" || key === "pending") return "review";
-  if (key === "approved") return "neutral";
-  return "soft";
-}
-
-const VEHICLE_CLASSES = [
-  { value: "standard", label: "Standard" },
-  { value: "xl", label: "XL / Großraum" },
-  { value: "wheelchair", label: "Rollstuhl / barrierefrei" },
-];
-
-export default function FleetPage() {
+/**
+ * @param {{
+ *   fleetIntent?: { tab: "drivers" | "vehicles" | "documents"; focus?: "driver" | "vehicle" } | null;
+ *   onFleetIntentConsumed?: () => void;
+ * }} props
+ */
+export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed }) {
   const { token, user } = usePanelAuth();
   const canManage = hasPerm(user?.permissions, "fleet.manage");
   const canRead = hasPerm(user?.permissions, "fleet.read");
@@ -151,6 +33,12 @@ export default function FleetPage() {
   const [driverCreateError, setDriverCreateError] = useState("");
   const [filterExpiring, setFilterExpiring] = useState(false);
   const [vehiclesActiveOnly, setVehiclesActiveOnly] = useState(false);
+
+  const [companyBrief, setCompanyBrief] = useState(null);
+  const [loadingCompanyBrief, setLoadingCompanyBrief] = useState(false);
+
+  const driverCreateSectionRef = useRef(null);
+  const vehicleCreateSectionRef = useRef(null);
 
   const [driverForm, setDriverForm] = useState({
     email: "",
@@ -171,6 +59,48 @@ export default function FleetPage() {
   });
   const vehicleCreatePdfRef = useRef(null);
   const [assignForm, setAssignForm] = useState({ driverId: "", vehicleId: "" });
+
+  useEffect(() => {
+    if (!fleetIntent?.tab) return;
+    setTab(fleetIntent.tab);
+  }, [fleetIntent]);
+
+  useLayoutEffect(() => {
+    if (!fleetIntent) return;
+    if (tab !== fleetIntent.tab) return;
+    if (fleetIntent.focus === "driver") {
+      driverCreateSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      driverCreateSectionRef.current?.querySelector?.("input")?.focus?.({ preventScroll: true });
+    } else if (fleetIntent.focus === "vehicle") {
+      vehicleCreateSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      vehicleCreateSectionRef.current?.querySelector?.("input")?.focus?.({ preventScroll: true });
+    }
+    if (typeof onFleetIntentConsumed === "function") onFleetIntentConsumed();
+  }, [fleetIntent, tab, onFleetIntentConsumed]);
+
+  const loadCompanyBrief = useCallback(async () => {
+    if (!token || !canRead) return;
+    setLoadingCompanyBrief(true);
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/company`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      setCompanyBrief(res.ok && data?.ok && data.company ? data.company : null);
+    } catch {
+      setCompanyBrief(null);
+    } finally {
+      setLoadingCompanyBrief(false);
+    }
+  }, [token, canRead]);
+
+  useEffect(() => {
+    if (tab !== "documents") return;
+    void loadCompanyBrief();
+  }, [tab, loadCompanyBrief]);
 
   const loadAll = useCallback(async () => {
     if (!token || !canRead) return;
@@ -244,9 +174,7 @@ export default function FleetPage() {
         return;
       }
       setMsg(
-        data.initialPassword
-          ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}`
-          : "Fahrer angelegt.",
+        data.initialPassword ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}` : "Fahrer angelegt.",
       );
       setDriverForm({ email: "", firstName: "", lastName: "", phone: "", initialPassword: "" });
       await loadAll();
@@ -312,13 +240,10 @@ export default function FleetPage() {
         await loadAll();
         return;
       }
-      const sub = await fetch(
-        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(newId)}/submit-for-approval`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const sub = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(newId)}/submit-for-approval`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const subData = await sub.json().catch(() => ({}));
       if (!sub.ok || !subData?.ok) {
         const code = subData?.error;
@@ -359,17 +284,14 @@ export default function FleetPage() {
     setMsg("");
     try {
       const buf = await file.arrayBuffer();
-      const res = await fetch(
-        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/documents`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/pdf",
-          },
-          body: buf,
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/documents`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/pdf",
         },
-      );
+        body: buf,
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         setMsg("Dokument-Upload fehlgeschlagen.");
@@ -386,10 +308,10 @@ export default function FleetPage() {
     if (!token || !canManage) return;
     setMsg("");
     try {
-      const res = await fetch(
-        `${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/submit-for-approval`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
-      );
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/submit-for-approval`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         setMsg("Einreichen fehlgeschlagen (Kennzeichen, Konzession und mindestens ein PDF nötig).");
@@ -564,10 +486,10 @@ export default function FleetPage() {
     <div className="partner-stack partner-stack--tight">
       <div className="partner-page-hero">
         <p className="partner-page-eyebrow">Flotte</p>
-        <h1 className="partner-page-title">Fahrer &amp; Fahrzeuge</h1>
+        <h1 className="partner-page-title">Fahrer, Fahrzeuge &amp; Dokumente</h1>
         <p className="partner-page-lead">
-          Überblick, Zuweisungen und Stammdaten Ihrer aktiven Fahrer und Fahrzeuge. Unternehmensnachweise finden Sie unter
-          „Dokumente“.
+          Strukturiert nach Bereichen: Fahrer verwalten, Fahrzeuge und Zuweisungen, sowie eine kompakte Dokumenten-Warnübersicht. Unternehmensnachweise pflegen Sie
+          weiter unter „Dokumente“ in der Hauptnavigation.
         </p>
       </div>
 
@@ -601,488 +523,58 @@ export default function FleetPage() {
       {driverCreateError ? <p className="partner-state-error">{driverCreateError}</p> : null}
       {msg ? <p className="partner-state-ok">{msg}</p> : null}
 
-      <div className="partner-pill-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "drivers"}
-          className={tab === "drivers" ? "partner-pill-tabs__btn partner-pill-tabs__btn--active" : "partner-pill-tabs__btn"}
-          onClick={() => setTab("drivers")}
-        >
-          Fahrer
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "vehicles"}
-          className={tab === "vehicles" ? "partner-pill-tabs__btn partner-pill-tabs__btn--active" : "partner-pill-tabs__btn"}
-          onClick={() => setTab("vehicles")}
-        >
-          Fahrzeuge
-        </button>
-      </div>
+      <FleetTabs tab={tab} onTabChange={setTab} />
 
       {tab === "drivers" ? (
-        <div className="partner-card partner-card--section">
-          <div style={{ marginBottom: 12 }}>
-            <label className="partner-fleet-filter">
-              <input
-                type="checkbox"
-                checked={filterExpiring}
-                onChange={(ev) => setFilterExpiring(ev.target.checked)}
-              />
-              Nur P-Schein bald ablaufend (30 Tage)
-            </label>
-          </div>
-          {canManage ? (
-            <form className="partner-form" onSubmit={createDriver} style={{ marginBottom: 20 }}>
-              <h3 className="partner-card__title" style={{ marginTop: 0 }}>
-                Neuen Fahrer anlegen
-              </h3>
-              <div className="partner-form-grid">
-                <label className="partner-form-field">
-                  <span>E-Mail (Login)</span>
-                  <input
-                    className="partner-input"
-                    type="email"
-                    value={driverForm.email}
-                    onChange={(ev) => setDriverForm((f) => ({ ...f, email: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="partner-form-field">
-                  <span>Vorname</span>
-                  <input
-                    className="partner-input"
-                    value={driverForm.firstName}
-                    onChange={(ev) => setDriverForm((f) => ({ ...f, firstName: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="partner-form-field">
-                  <span>Nachname</span>
-                  <input
-                    className="partner-input"
-                    value={driverForm.lastName}
-                    onChange={(ev) => setDriverForm((f) => ({ ...f, lastName: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="partner-form-field">
-                  <span>Mobilnummer</span>
-                  <input
-                    className="partner-input"
-                    value={driverForm.phone}
-                    onChange={(ev) => setDriverForm((f) => ({ ...f, phone: ev.target.value }))}
-                  />
-                </label>
-                <label className="partner-form-field partner-form-field--span2">
-                  <span>Initiales Passwort (optional, sonst generiert)</span>
-                  <input
-                    className="partner-input"
-                    type="password"
-                    autoComplete="new-password"
-                    value={driverForm.initialPassword}
-                    onChange={(ev) => setDriverForm((f) => ({ ...f, initialPassword: ev.target.value }))}
-                    minLength={10}
-                  />
-                </label>
-              </div>
-              <button type="submit" className="partner-btn-primary" style={{ marginTop: 12 }}>
-                Fahrer speichern
-              </button>
-            </form>
-          ) : null}
-          <h3 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-            Fahrerliste
-          </h3>
-          <div className="partner-table-wrap">
-            <table className="partner-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>E-Mail</th>
-                  <th>Fahrer-Status</th>
-                  <th>Einsatzbereit</th>
-                  <th>Hinweis</th>
-                  <th>P-Schein bis</th>
-                  <th>Aktionen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={7}>Laden …</td>
-                  </tr>
-                ) : drivers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>Keine Fahrer.</td>
-                  </tr>
-                ) : (
-                  drivers.map((d) => {
-                    const wMeta = workflowPill(d);
-                    const ready = Boolean(d.readiness?.ready);
-                    const blockLines = (d.readiness?.blockReasons ?? []).map((b) => b.message).filter(Boolean);
-                    const pSchein = pScheinMeta(d.pScheinExpiry);
-                    return (
-                    <tr key={d.id}>
-                      <td>
-                        {d.firstName} {d.lastName}
-                      </td>
-                      <td>{d.email}</td>
-                      <td>
-                        <span className={`partner-pill partner-pill--${wMeta.tone}`}>{wMeta.label}</span>
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            ready ? "partner-pill partner-pill--ok" : "partner-pill partner-pill--missing"
-                          }
-                        >
-                          {ready ? "Ja" : "Nein"}
-                        </span>
-                      </td>
-                      <td
-                        className="partner-muted"
-                        style={{ maxWidth: 360, fontSize: 12, lineHeight: 1.4 }}
-                        title={blockLines.join("\n") || ""}
-                      >
-                        {ready ? (
-                          "—"
-                        ) : blockLines.length ? (
-                          <ul style={{ margin: 0, paddingLeft: 16, maxWidth: 340 }}>
-                            {blockLines.map((line, idx) => (
-                              <li key={idx} style={{ marginBottom: 4 }}>
-                                {line}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          "Nicht einsatzbereit."
-                        )}
-                      </td>
-                      <td>
-                        <span className={`partner-pill partner-pill--${pSchein.tone}`}>{pSchein.label}</span>
-                      </td>
-                      <td className="partner-table__actions">
-                        {canManage ? (
-                          <>
-                            {d.accessStatus === "active" && d.isActive ? (
-                              <button type="button" className="partner-btn-primary partner-btn-primary--sm" onClick={() => void suspendDriver(d.id)}>
-                                Sperren
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="partner-btn-secondary partner-btn-secondary--sm"
-                                onClick={() => void activateDriver(d.id)}
-                              >
-                                Aktivieren
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="partner-btn-secondary partner-btn-secondary--sm"
-                              onClick={() => void resetDriverPassword(d.id)}
-                            >
-                              Passwort zurücksetzen
-                            </button>
-                            <label className="partner-btn-secondary partner-btn-secondary--sm" style={{ cursor: "pointer" }}>
-                              P-Schein PDF
-                              <input
-                                type="file"
-                                accept="application/pdf"
-                                style={{ display: "none" }}
-                                onChange={(ev) => void uploadPScheinDoc(d.id, ev)}
-                              />
-                            </label>
-                          </>
-                        ) : (
-                          <span className="partner-muted">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FleetDriversTab
+          driverCreateSectionRef={driverCreateSectionRef}
+          canManage={canManage}
+          filterExpiring={filterExpiring}
+          setFilterExpiring={setFilterExpiring}
+          driverForm={driverForm}
+          setDriverForm={setDriverForm}
+          createDriver={createDriver}
+          loading={loading}
+          drivers={drivers}
+          suspendDriver={suspendDriver}
+          activateDriver={activateDriver}
+          resetDriverPassword={resetDriverPassword}
+          uploadPScheinDoc={uploadPScheinDoc}
+        />
       ) : null}
 
       {tab === "vehicles" ? (
-        <div className="partner-card partner-card--section">
-          <div style={{ marginBottom: 12 }}>
-            <label className="partner-fleet-filter">
-              <input
-                type="checkbox"
-                checked={vehiclesActiveOnly}
-                onChange={(ev) => setVehiclesActiveOnly(ev.target.checked)}
-              />
-              Nur freigegebene Fahrzeuge
-            </label>
-          </div>
-          {canManage ? (
-            <form className="partner-form" onSubmit={createVehicle} style={{ marginBottom: 20 }}>
-              <h3 className="partner-card__title" style={{ marginTop: 0 }}>
-                Neues Fahrzeug
-              </h3>
-              <div className="partner-form-grid">
-                <label className="partner-form-field">
-                  <span>Kennzeichen</span>
-                  <input
-                    className="partner-input"
-                    value={vehicleForm.licensePlate}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, licensePlate: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="partner-form-field">
-                  <span>Hersteller / Modell</span>
-                  <input
-                    className="partner-input"
-                    value={vehicleForm.model}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, model: ev.target.value }))}
-                  />
-                </label>
-                <label className="partner-form-field">
-                  <span>Farbe</span>
-                  <input
-                    className="partner-input"
-                    value={vehicleForm.color}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, color: ev.target.value }))}
-                  />
-                </label>
-                <label className="partner-form-field">
-                  <span>Typ</span>
-                  <select
-                    className="partner-input"
-                    value={vehicleForm.vehicleType}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleType: ev.target.value }))}
-                  >
-                    {VEHICLE_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="partner-form-field">
-                  <span>Fahrzeugklasse</span>
-                  <select
-                    className="partner-input"
-                    value={vehicleForm.vehicleClass}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, vehicleClass: ev.target.value }))}
-                  >
-                    {VEHICLE_CLASSES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="partner-form-field">
-                  <span>Konzessionsnummer (Pflicht)</span>
-                  <input
-                    className="partner-input"
-                    value={vehicleForm.konzessionNumber}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, konzessionNumber: ev.target.value }))}
-                    required
-                  />
-                </label>
-                <label className="partner-form-field partner-form-field--span2">
-                  <span>Nachweis / Dokument (PDF, Pflicht)</span>
-                  <input ref={vehicleCreatePdfRef} className="partner-input" type="file" accept="application/pdf" />
-                </label>
-                <label className="partner-form-field">
-                  <span>Nächste HU (TÜV)</span>
-                  <input
-                    className="partner-input"
-                    type="date"
-                    value={vehicleForm.nextInspectionDate}
-                    onChange={(ev) => setVehicleForm((f) => ({ ...f, nextInspectionDate: ev.target.value }))}
-                  />
-                </label>
-              </div>
-              <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
-                {VEHICLE_LEGAL_HINT}
-              </p>
-              <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
-                Nach dem Speichern wird das Fahrzeug bei Onroda zur Prüfung eingereicht. Sie können Fahrzeuge nicht
-                selbst freischalten — die Freigabe erfolgt nur durch Onroda.
-              </p>
-              <button type="submit" className="partner-btn-primary" style={{ marginTop: 8 }}>
-                Fahrzeug anlegen &amp; einreichen
-              </button>
-            </form>
-          ) : null}
-
-          {canManage ? (
-            <form className="partner-form partner-assign-card" onSubmit={submitAssignment}>
-              <h3 className="partner-assign-card__title">Fahrer zu Fahrzeug zuweisen</h3>
-              <div className="partner-form-grid partner-assign-card__grid">
-                <label className="partner-form-field">
-                  <span>Fahrer</span>
-                  <select
-                    className="partner-input"
-                    value={assignForm.driverId}
-                    onChange={(ev) => setAssignForm((f) => ({ ...f, driverId: ev.target.value }))}
-                    required
-                  >
-                    <option value="">— wählen —</option>
-                    {drivers.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.firstName} {d.lastName} ({d.email})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="partner-form-field">
-                  <span>Fahrzeug</span>
-                  <select
-                    className="partner-input"
-                    value={assignForm.vehicleId}
-                    onChange={(ev) => setAssignForm((f) => ({ ...f, vehicleId: ev.target.value }))}
-                    required
-                  >
-                    <option value="">— wählen —</option>
-                    {vehicles
-                      .filter((v) => v.approvalStatus === "approved")
-                      .map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.licensePlate} {v.model ? `· ${v.model}` : ""}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              </div>
-              <p className="partner-assign-card__hint">Nur freigegebene Fahrzeuge auswählbar</p>
-              <button type="submit" className="partner-btn-primary partner-assign-card__submit">
-                Zuweisen
-              </button>
-            </form>
-          ) : null}
-
-          <h3 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-            Fahrzeugliste
-          </h3>
-          <div className="partner-table-wrap">
-            <table className="partner-table">
-              <thead>
-                <tr>
-                  <th>Kennzeichen</th>
-                  <th>Status</th>
-                  <th>Modell</th>
-                  <th>Typ</th>
-                  <th>Klasse</th>
-                  <th>Konzession</th>
-                  <th>HU</th>
-                  <th>Aktueller Fahrer</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={8}>Laden …</td>
-                  </tr>
-                ) : vehicles.length === 0 ? (
-                  <tr>
-                    <td colSpan={8}>Keine Fahrzeuge.</td>
-                  </tr>
-                ) : (
-                  vehicles.map((v) => {
-                    const a = assignments.find((x) => x.vehicleId === v.id);
-                    const drv = a ? drivers.find((d) => d.id === a.driverId) : null;
-                    const kz = v.konzessionNumber ?? v.taxiOrderNumber ?? "—";
-                    return (
-                      <tr key={v.id}>
-                        <td>{v.licensePlate}</td>
-                        <td>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <span className={`partner-pill partner-pill--${vehicleStatusTone(v)}`} style={{ alignSelf: "flex-start" }}>
-                              {vehicleStatusDe(v)}
-                            </span>
-                            {v.approvalStatus === "pending_approval" ? (
-                              <span className="partner-muted" style={{ fontSize: 12, maxWidth: 260, lineHeight: 1.35 }}>
-                                Wartet auf Freigabe durch Onroda
-                              </span>
-                            ) : null}
-                            {v.approvalStatus === "rejected" && v.rejectionReason ? (
-                              <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
-                                {v.rejectionReason}
-                              </span>
-                            ) : null}
-                            {v.approvalStatus === "blocked" && v.blockReason ? (
-                              <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
-                                Sperrgrund: {v.blockReason}
-                              </span>
-                            ) : null}
-                            {canManage && (v.approvalStatus === "draft" || v.approvalStatus === "rejected") ? (
-                              <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                                <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
-                                  PDF
-                                  <input
-                                    type="file"
-                                    accept="application/pdf"
-                                    style={{ display: "none" }}
-                                    onChange={(ev) => void uploadVehicleDocument(v.id, ev)}
-                                  />
-                                </label>
-                                <button
-                                  type="button"
-                                  className="partner-btn-secondary partner-btn-secondary--sm"
-                                  onClick={() => void submitVehicleApproval(v.id)}
-                                >
-                                  Einreichen
-                                </button>
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td>{v.model || "—"}</td>
-                        <td>{VEHICLE_TYPES.find((t) => t.value === v.vehicleType)?.label ?? v.vehicleType}</td>
-                        <td>{VEHICLE_CLASSES.find((t) => t.value === v.vehicleClass)?.label ?? v.vehicleClass}</td>
-                        <td>{kz}</td>
-                        <td>{v.nextInspectionDate || "—"}</td>
-                        <td>
-                          {drv ? (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <span className="partner-pill partner-pill--soft">Fahrer</span>
-                                <span>
-                                  {drv.firstName} {drv.lastName}
-                                </span>
-                                {canManage ? (
-                                  <button
-                                    type="button"
-                                    className="partner-btn-secondary partner-btn-secondary--sm partner-btn-secondary--muted"
-                                    onClick={() => clearAssignment(drv.id)}
-                                  >
-                                    Zuweisung löschen
-                                  </button>
-                                ) : null}
-                              </div>
-                              {v.approvalStatus !== "approved" && drv.readiness?.ready === false ? (
-                                <span className="partner-muted" style={{ fontSize: 11, maxWidth: 280, lineHeight: 1.35 }}>
-                                  Zugeordneter Fahrer ist nicht einsatzbereit, solange dieses Fahrzeug nicht freigegeben ist oder gesperrt bleibt (Details siehe Fahrerliste, Spalte „Hinweis“).
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FleetVehiclesTab
+          vehicleCreateSectionRef={vehicleCreateSectionRef}
+          canManage={canManage}
+          vehiclesActiveOnly={vehiclesActiveOnly}
+          setVehiclesActiveOnly={setVehiclesActiveOnly}
+          vehicleForm={vehicleForm}
+          setVehicleForm={setVehicleForm}
+          vehicleCreatePdfRef={vehicleCreatePdfRef}
+          createVehicle={createVehicle}
+          assignForm={assignForm}
+          setAssignForm={setAssignForm}
+          submitAssignment={submitAssignment}
+          loading={loading}
+          drivers={drivers}
+          vehicles={vehicles}
+          assignments={assignments}
+          uploadVehicleDocument={uploadVehicleDocument}
+          submitVehicleApproval={submitVehicleApproval}
+          clearAssignment={clearAssignment}
+        />
       ) : null}
 
+      {tab === "documents" ? (
+        <FleetDocumentsTab
+          dash={dash}
+          drivers={drivers}
+          vehicles={vehicles}
+          company={companyBrief}
+          loadingCompany={loadingCompanyBrief}
+        />
+      ) : null}
     </div>
   );
 }
