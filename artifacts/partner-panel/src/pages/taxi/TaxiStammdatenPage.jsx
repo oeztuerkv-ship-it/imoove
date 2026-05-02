@@ -4,6 +4,8 @@ import { API_BASE } from "../../lib/apiBase.js";
 import { hasPanelModule } from "../../lib/panelNavigation.js";
 import { PARTNER_SUPPORT_EMAIL } from "../../lib/partnerSupportEmail.js";
 import { complianceBucketFromCompany, complianceKpiLabelAndClass } from "../../lib/partnerComplianceBucket.js";
+import SettingsTabs from "./SettingsTabs.jsx";
+import DocumentsSidebarCard from "./DocumentsSidebarCard.jsx";
 
 function mailtoStammChangeRequest(company) {
   const id = company?.id != null ? String(company.id) : "";
@@ -238,6 +240,37 @@ function FieldRow({ label, value, company, fieldKey, hint }) {
   );
 }
 
+function formatContactAddress(co) {
+  if (!co) return "";
+  const l1 = displayValue(co.addressLine1);
+  const l2 = displayValue(co.addressLine2);
+  const plz = displayValue(co.postalCode);
+  const city = displayValue(co.city);
+  const tail = [plz, city].filter(Boolean).join(" ");
+  const street = [l1, l2].filter(Boolean).join(", ");
+  return [street, tail].filter(Boolean).join(", ");
+}
+
+function SettingsDisplayRow({ label, children }) {
+  return (
+    <div className="partner-settings-kv">
+      <div className="partner-settings-kv__label">{label}</div>
+      <div className="partner-settings-kv__value">{children}</div>
+    </div>
+  );
+}
+
+function MissingValue() {
+  return <span className="partner-settings-field__missing">Nicht hinterlegt</span>;
+}
+
+const SETTINGS_TAB_DEFS = [
+  { id: "kontakte", label: "Kontakte" },
+  { id: "bank", label: "Bankinformationen" },
+  { id: "steuer", label: "Steuerinformationen" },
+  { id: "dokumente", label: "Dokumente" },
+];
+
 function LabeledInput({ label, value, onChange, disabled, maxLength, type = "text", multiline, wide }) {
   return (
     <label className={wide ? "partner-form-field partner-form-field--span2" : "partner-form-field"}>
@@ -265,9 +298,17 @@ function LabeledInput({ label, value, onChange, disabled, maxLength, type = "tex
   );
 }
 
-export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
+export default function TaxiStammdatenPage({
+  settingsTabIntent,
+  onConsumeSettingsTabIntent,
+  onOpenStammSupportRequest,
+  onOpenDocumentSupportRequest,
+  onNavigateToFleetDocuments,
+}) {
   const { token, user, refreshUser } = usePanelAuth();
   const canPatch = hasPerm(user?.permissions, "company.update") && hasPanelModule(user?.panelModules, "company_profile");
+  const canUploadCompliance =
+    hasPerm(user?.permissions, "fleet.manage") && hasPanelModule(user?.panelModules, "taxi_fleet");
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -276,6 +317,7 @@ export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => emptyEditForm());
+  const [settingsTab, setSettingsTab] = useState("kontakte");
 
   const load = useCallback(async () => {
     if (!token) {
@@ -308,6 +350,15 @@ export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!settingsTabIntent) return;
+    const allowed = new Set(["kontakte", "bank", "steuer", "dokumente"]);
+    if (allowed.has(settingsTabIntent)) {
+      setSettingsTab(settingsTabIntent);
+      if (typeof onConsumeSettingsTabIntent === "function") onConsumeSettingsTabIntent();
+    }
+  }, [settingsTabIntent, onConsumeSettingsTabIntent]);
 
   const c = company;
   const openStammSupport = () => {
@@ -406,15 +457,25 @@ export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
     setForm((f) => ({ ...f, [k]: ev.target.value }));
   };
 
+  const sidebar =
+    c && !loading ? (
+      <DocumentsSidebarCard
+        company={c}
+        canUploadDocs={canUploadCompliance}
+        onAfterUpload={() => void load()}
+        onOpenDocumentSupportRequest={onOpenDocumentSupportRequest}
+        onNavigateFullDocuments={typeof onNavigateToFleetDocuments === "function" ? onNavigateToFleetDocuments : undefined}
+      />
+    ) : null;
+
   return (
-    <div className="partner-stack partner-stack--tight">
+    <div className="partner-stack partner-stack--tight partner-settings-page">
       <div className="partner-page-hero">
         <p className="partner-page-eyebrow">Unternehmen</p>
-        <h1 className="partner-page-title">Stammdaten</h1>
+        <h1 className="partner-page-title">Einstellungen</h1>
         <p className="partner-page-lead">
-          Ihre im System hinterlegten Unternehmensdaten. Geändert werden nur die Felder, die für Ihren Zugang freigeschaltet
-          sind. Sperrungen wichtiger Kernstammdaten und die Freigabe weiterer Anpassungen klären Sie bitte{" "}
-          <strong>über Onroda</strong>.
+          Stammdaten und Nachweise im Überblick. Änderungen nur für freigeschaltete Felder; gesperrte Daten und Korrekturen
+          klären Sie über Onroda oder den Support.
         </p>
       </div>
 
@@ -498,112 +559,141 @@ export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
       ) : null}
 
       {c && !loading && !editing ? (
-        <>
-          <div className="partner-card partner-card--section">
-            <span className="partner-section-eyebrow">Abschnitt 1</span>
-            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-              Firmenbasis
-            </h2>
-            <div className="partner-kv-block">
-              <FieldRow label="Firmenname" value={c.name} company={c} fieldKey="name" />
-              <FieldRow label="Unternehmensart" value={c.companyKind} company={c} fieldKey="companyKind" />
-              <FieldRow label="Rechtsform" value={c.legalForm} company={c} fieldKey="legalForm" />
-              <FieldRow label="Inhaber / GF" value={c.ownerName} company={c} fieldKey="ownerName" />
-              <FieldRow label="Konzession" value={c.concessionNumber} company={c} fieldKey="concessionNumber" />
-              <FieldRow label="Steuernummer" value={c.taxId} company={c} fieldKey="taxId" />
-              <FieldRow label="USt-IdNr." value={c.vatId} company={c} fieldKey="vatId" hint="Änderung nur über Onroda / Plattform." />
-              <FieldRow label="Mandanten-ID" value={c.id} company={c} fieldKey="id" hint="Keine manuelle Bearbeitung." />
-            </div>
-          </div>
+        <div className="partner-settings-layout">
+          <div className="partner-settings-layout__main">
+            <SettingsTabs tabs={SETTINGS_TAB_DEFS} activeId={settingsTab} onChange={setSettingsTab} />
 
-          <div className="partner-card partner-card--section">
-            <span className="partner-section-eyebrow">Abschnitt 2</span>
-            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-              Betriebsadresse
-            </h2>
-            <div className="partner-kv-block">
-              <FieldRow label="Straße, Zeile 1" value={c.addressLine1} company={c} fieldKey="addressLine1" />
-              <FieldRow label="Adresszusatz" value={c.addressLine2} company={c} fieldKey="addressLine2" />
-              <FieldRow label="PLZ" value={c.postalCode} company={c} fieldKey="postalCode" />
-              <FieldRow label="Ort" value={c.city} company={c} fieldKey="city" />
-              <FieldRow label="Land" value={c.country} company={c} fieldKey="country" />
-            </div>
-          </div>
+            {settingsTab === "kontakte" ? (
+              <div className="partner-card partner-card--section partner-settings-panel" role="tabpanel">
+                <div className="partner-settings-kv-stack">
+                  <SettingsDisplayRow label="Stadt">
+                    {displayValue(c.city) ? displayValue(c.city) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="Adresse">
+                    {formatContactAddress(c) ? formatContactAddress(c) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="E-Mail">
+                    {displayValue(c.email) ? displayValue(c.email) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="Handynummer">
+                    {displayValue(c.phone) ? displayValue(c.phone) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="Handelsregisternummer">
+                    <MissingValue />
+                  </SettingsDisplayRow>
+                </div>
+                {displayValue(c.legalForm) ? (
+                  <p className="partner-muted partner-settings-footnote">Rechtsform (Freitext): {displayValue(c.legalForm)}</p>
+                ) : null}
+                <p className="partner-settings-support-note">
+                  Kontaktiere den Support über{" "}
+                  <a href={`mailto:${PARTNER_SUPPORT_EMAIL}`}>{PARTNER_SUPPORT_EMAIL}</a>, um deine Unternehmensdaten zu
+                  aktualisieren.
+                </p>
+                <div className="partner-kv-block partner-settings-more">
+                  <p className="partner-muted" style={{ margin: "0 0 8px" }}>
+                    Weitere Kontakt- und Betriebsfelder (Ansprechpartner, Support, Dispo, Logo, Öffnungszeiten)
+                  </p>
+                  <FieldRow label="Ansprechpartner" value={c.contactName} company={c} fieldKey="contactName" />
+                  <FieldRow label="Support-E-Mail" value={c.supportEmail} company={c} fieldKey="supportEmail" />
+                  <FieldRow label="Dispo-Telefon" value={c.dispoPhone} company={c} fieldKey="dispoPhone" />
+                  <FieldRow label="Firmenlogo (Link)" value={c.logoUrl} company={c} fieldKey="logoUrl" />
+                  <FieldRow label="Öffnungszeiten (Text)" value={c.openingHours} company={c} fieldKey="openingHours" />
+                </div>
+              </div>
+            ) : null}
 
-          <div className="partner-card partner-card--section">
-            <span className="partner-section-eyebrow">Abschnitt 3</span>
-            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-              Operative Erreichbarkeit
-            </h2>
-            <div className="partner-kv-block">
-              <FieldRow label="Ansprechpartner" value={c.contactName} company={c} fieldKey="contactName" />
-              <FieldRow label="E-Mail (Betrieb)" value={c.email} company={c} fieldKey="email" />
-              <FieldRow label="Telefon (Betrieb)" value={c.phone} company={c} fieldKey="phone" />
-              <FieldRow label="Support-E-Mail" value={c.supportEmail} company={c} fieldKey="supportEmail" />
-              <FieldRow label="Dispo-Telefon" value={c.dispoPhone} company={c} fieldKey="dispoPhone" />
-              <FieldRow label="Firmenlogo (Link)" value={c.logoUrl} company={c} fieldKey="logoUrl" />
-              <FieldRow label="Öffnungszeiten (Text)" value={c.openingHours} company={c} fieldKey="openingHours" />
-              <FieldRow label="Betriebsnotizen" value={c.businessNotes} company={c} fieldKey="businessNotes" hint="Anpassung über Onroda." />
-            </div>
-          </div>
+            {settingsTab === "bank" ? (
+              <div className="partner-card partner-card--section partner-settings-panel" role="tabpanel">
+                <div className="partner-settings-kv-stack">
+                  <SettingsDisplayRow label="Kontoinhaber:in">
+                    {displayValue(c.billingName) ? displayValue(c.billingName) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="IBAN">
+                    {displayValue(c.bankIban) ? displayValue(c.bankIban) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="SWIFT/BIC">
+                    {displayValue(c.bankBic) ? displayValue(c.bankBic) : <MissingValue />}
+                  </SettingsDisplayRow>
+                  <SettingsDisplayRow label="Kreditinstitut">
+                    <MissingValue />
+                  </SettingsDisplayRow>
+                </div>
+                <p className="partner-muted partner-settings-footnote">
+                  Rechnungsadresse und Kostenstelle (Anzeige): bei Bedarf über Support ändern.
+                </p>
+                <div className="partner-kv-block partner-settings-more">
+                  <FieldRow label="Rechnungsname" value={c.billingName} company={c} fieldKey="billingName" />
+                  <FieldRow label="Rechnung Straße, Zeile 1" value={c.billingAddressLine1} company={c} fieldKey="billingAddressLine1" />
+                  <FieldRow label="Rechnung Adresszusatz" value={c.billingAddressLine2} company={c} fieldKey="billingAddressLine2" />
+                  <FieldRow label="Rechnung PLZ" value={c.billingPostalCode} company={c} fieldKey="billingPostalCode" />
+                  <FieldRow label="Rechnung Ort" value={c.billingCity} company={c} fieldKey="billingCity" />
+                  <FieldRow label="Rechnung Land" value={c.billingCountry} company={c} fieldKey="billingCountry" />
+                  <FieldRow label="Kostenstelle" value={c.costCenter} company={c} fieldKey="costCenter" />
+                </div>
+              </div>
+            ) : null}
 
-          <div className="partner-card partner-card--section">
-            <span className="partner-section-eyebrow">Abschnitt 4</span>
-            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-              Rechnung &amp; Zahlung
-            </h2>
-            <p className="partner-muted" style={{ margin: "0 0 12px" }}>
-              Rechnungsstamm: in der Regel nur Anzeige; Anpassung über Onroda.
-            </p>
-            <div className="partner-kv-block">
-              <FieldRow label="Rechnungsname" value={c.billingName} company={c} fieldKey="billingName" />
-              <FieldRow label="Rechnung Straße, Zeile 1" value={c.billingAddressLine1} company={c} fieldKey="billingAddressLine1" />
-              <FieldRow label="Rechnung Adresszusatz" value={c.billingAddressLine2} company={c} fieldKey="billingAddressLine2" />
-              <FieldRow label="Rechnung PLZ" value={c.billingPostalCode} company={c} fieldKey="billingPostalCode" />
-              <FieldRow label="Rechnung Ort" value={c.billingCity} company={c} fieldKey="billingCity" />
-              <FieldRow label="Rechnung Land" value={c.billingCountry} company={c} fieldKey="billingCountry" />
-              <FieldRow label="IBAN" value={c.bankIban} company={c} fieldKey="bankIban" />
-              <FieldRow label="BIC" value={c.bankBic} company={c} fieldKey="bankBic" />
-              <FieldRow label="Kostenstelle" value={c.costCenter} company={c} fieldKey="costCenter" />
-            </div>
-          </div>
+            {settingsTab === "steuer" ? (
+              <div className="partner-card partner-card--section partner-settings-panel" role="tabpanel">
+                <p className="partner-muted partner-settings-tax-hint">Gültige Steuer-Identifikationsinformationen</p>
+                <div className="partner-kv-block">
+                  <FieldRow label="USt-IdNr." value={c.vatId} company={c} fieldKey="vatId" hint="Änderung nur über Onroda / Plattform." />
+                  <FieldRow label="Steuernummer" value={c.taxId} company={c} fieldKey="taxId" />
+                  <FieldRow label="Land" value={c.country} company={c} fieldKey="country" />
+                  <FieldRow label="Konzessionsnummer" value={c.concessionNumber} company={c} fieldKey="concessionNumber" />
+                  <FieldRow label="Firmenname" value={c.name} company={c} fieldKey="name" />
+                  <FieldRow label="Inhaber / GF" value={c.ownerName} company={c} fieldKey="ownerName" />
+                  <FieldRow label="Mandanten-ID" value={c.id} company={c} fieldKey="id" hint="Keine manuelle Bearbeitung." />
+                </div>
+                <h3 className="partner-settings-subheading">Mandats- / Systemstatus</h3>
+                <div className="partner-kv-block">
+                  <FieldRow label="Basis-Stammdaten gesperrt" value={c.profileLocked ? "ja" : "nein"} company={c} fieldKey="__profileLockedDisplay" />
+                  <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} company={c} fieldKey="__isActiveDisplay" />
+                  <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} company={c} fieldKey="__isBlockedDisplay" />
+                  <FieldRow label="Verifizierung" value={c.verificationStatus} company={c} fieldKey="__verificationDisplay" />
+                  <FieldRow
+                    label="Compliance (Freigabe)"
+                    value={complianceKpiLabelAndClass(complianceBucketFromCompany(c)).label}
+                    company={c}
+                    fieldKey="__complianceDisplay"
+                    hint={`Systemstatus: ${c.complianceStatus ?? "—"}`}
+                  />
+                  <FieldRow label="Vertragsstatus" value={c.contractStatus} company={c} fieldKey="__contractDisplay" />
+                  <FieldRow label="Gewerbenachweis hinterlegt" value={c.hasComplianceGewerbe ? "ja" : "nein"} company={c} fieldKey="__gewerbeDisplay" />
+                  <FieldRow
+                    label="Versicherungsnachweis hinterlegt"
+                    value={c.hasComplianceInsurance ? "ja" : "nein"}
+                    company={c}
+                    fieldKey="__insuranceDisplay"
+                  />
+                  <FieldRow label="Max. Fahrer" value={c.maxDrivers} company={c} fieldKey="__maxDriversDisplay" />
+                  <FieldRow label="Max. Fahrzeuge" value={c.maxVehicles} company={c} fieldKey="__maxVehiclesDisplay" />
+                </div>
+              </div>
+            ) : null}
 
-          <div className="partner-card partner-card--section">
-            <span className="partner-section-eyebrow">Abschnitt 5</span>
-            <h2 className="partner-section-h" style={{ margin: "0 0 8px" }}>
-              Mandats- / Systemstatus
-            </h2>
-            <p className="partner-muted" style={{ margin: "0 0 12px" }}>
-              Reine Anzeige.
-            </p>
-            <div className="partner-kv-block">
-              <FieldRow label="Basis-Stammdaten gesperrt" value={c.profileLocked ? "ja" : "nein"} company={c} fieldKey="__profileLockedDisplay" />
-              <FieldRow label="Mandant aktiv" value={c.isActive ? "ja" : "nein"} company={c} fieldKey="__isActiveDisplay" />
-              <FieldRow label="Gesperrt" value={c.isBlocked ? "ja" : "nein"} company={c} fieldKey="__isBlockedDisplay" />
-              <FieldRow label="Verifizierung" value={c.verificationStatus} company={c} fieldKey="__verificationDisplay" />
-              <FieldRow
-                label="Compliance (Freigabe)"
-                value={complianceKpiLabelAndClass(complianceBucketFromCompany(c)).label}
-                company={c}
-                fieldKey="__complianceDisplay"
-                hint={`Systemstatus: ${c.complianceStatus ?? "—"}`}
-              />
-              <FieldRow label="Vertragsstatus" value={c.contractStatus} company={c} fieldKey="__contractDisplay" />
-              <FieldRow label="Gewerbenachweis hinterlegt" value={c.hasComplianceGewerbe ? "ja" : "nein"} company={c} fieldKey="__gewerbeDisplay" />
-              <FieldRow
-                label="Versicherungsnachweis hinterlegt"
-                value={c.hasComplianceInsurance ? "ja" : "nein"}
-                company={c}
-                fieldKey="__insuranceDisplay"
-              />
-              <FieldRow label="Max. Fahrer" value={c.maxDrivers} company={c} fieldKey="__maxDriversDisplay" />
-              <FieldRow label="Max. Fahrzeuge" value={c.maxVehicles} company={c} fieldKey="__maxVehiclesDisplay" />
-            </div>
+            {settingsTab === "dokumente" ? (
+              <div className="partner-card partner-card--section partner-settings-panel" role="tabpanel">
+                <p className="partner-muted">
+                  Konzession, Gewerbeanmeldung, Versicherung und weitere Nachweise: rechts in der Karte „Dokumente“. Führerschein und P-Schein pro Fahrer in{" "}
+                  <strong>Flotte</strong>; kompakte Warnliste unter <strong>Flotte · Dokumentstatus</strong>.
+                </p>
+                {typeof onNavigateToFleetDocuments === "function" ? (
+                  <button type="button" className="partner-btn-primary partner-settings-doc-btn" onClick={onNavigateToFleetDocuments}>
+                    Zu Flotte · Dokumentstatus
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-        </>
+          {sidebar}
+        </div>
       ) : null}
 
       {c && !loading && editing && canPatch ? (
+        <div className="partner-settings-layout">
+          <div className="partner-settings-layout__main">
         <div className="partner-form">
           <h2 className="partner-kvlist-title" style={{ margin: "0 0 8px" }}>
             Bearbeiten
@@ -740,6 +830,9 @@ export default function TaxiStammdatenPage({ onOpenStammSupportRequest }) {
               </div>
             ) : null}
           </div>
+        </div>
+          </div>
+          {sidebar}
         </div>
       ) : null}
     </div>

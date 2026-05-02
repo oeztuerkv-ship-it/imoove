@@ -4,9 +4,7 @@ import { API_BASE } from "../lib/apiBase.js";
 import { hasPanelModule } from "../lib/panelNavigation.js";
 import FinanceExportTab from "./finance/FinanceExportTab.jsx";
 import FinanceInvoicesTab from "./finance/FinanceInvoicesTab.jsx";
-import FinanceMedicalTab from "./finance/FinanceMedicalTab.jsx";
 import FinanceOverviewTab from "./finance/FinanceOverviewTab.jsx";
-import FinancePayoutsTab from "./finance/FinancePayoutsTab.jsx";
 import FinanceTabs from "./finance/FinanceTabs.jsx";
 import { defaultMonthYm, deriveFinanceKpis, formatYmDe } from "./finance/financeHelpers.js";
 
@@ -22,12 +20,10 @@ export default function BillingPage() {
   const [tab, setTab] = useState("overview");
   const [loading, setLoading] = useState(false);
   const [kpiLoading, setKpiLoading] = useState(false);
-  const [companyLoading, setCompanyLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [rides, setRides] = useState([]);
   const [kpiRides, setKpiRides] = useState([]);
   const [kpiMonthYm, setKpiMonthYm] = useState(() => defaultMonthYm());
-  const [company, setCompany] = useState(null);
 
   const [month, setMonth] = useState(defaultMonthYm);
   const [rideKind, setRideKind] = useState("");
@@ -90,29 +86,13 @@ export default function BillingPage() {
     }
   }, [token, canRead]);
 
-  const loadCompany = useCallback(async () => {
-    if (!token || !canRead) return;
-    setCompanyLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/panel/v1/company`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await res.json().catch(() => ({}));
-      setCompany(res.ok && data?.ok && data.company ? data.company : null);
-    } catch {
-      setCompany(null);
-    } finally {
-      setCompanyLoading(false);
-    }
-  }, [token, canRead]);
-
   useEffect(() => {
     void loadKpiSnapshot();
-    void loadCompany();
-  }, [loadKpiSnapshot, loadCompany]);
+  }, [loadKpiSnapshot]);
+
+  useEffect(() => {
+    if (tab === "payouts" || tab === "medical") setTab("overview");
+  }, [tab]);
 
   const onLoad = useCallback(async () => {
     if (!token || !canRead) return;
@@ -198,7 +178,7 @@ export default function BillingPage() {
         <p className="partner-page-eyebrow">Finanzen</p>
         <h1 className="partner-page-title">Abrechnung &amp; Übersicht</h1>
         <p className="partner-page-lead">
-          Strukturierte Ansicht mit Kennzahlen, Rechnungsliste, Auszahlungshinweisen und Export — ohne Änderung der bestehenden Billing-API.
+          Taxi-Abrechnung: Übersicht, Rechnungen und CSV-Export. Krankenfahrten sind unter „Krankenfahrten“ zusammengefasst.
         </p>
       </div>
 
@@ -208,10 +188,6 @@ export default function BillingPage() {
         <FinanceOverviewTab kpiLoading={kpiLoading} kpiMonthLabel={kpiMonthLabel} kpi={kpi} onRefreshKpi={() => void loadKpiSnapshot()} />
       ) : null}
       {tab === "invoices" ? <FinanceInvoicesTab rides={rides} loading={loading} /> : null}
-      {tab === "payouts" ? (
-        <FinancePayoutsTab rides={rides} company={company} loading={loading || companyLoading} />
-      ) : null}
-      {tab === "medical" ? <FinanceMedicalTab rides={rides} loading={loading} /> : null}
       {tab === "export" ? (
         <FinanceExportTab
           rides={rides}

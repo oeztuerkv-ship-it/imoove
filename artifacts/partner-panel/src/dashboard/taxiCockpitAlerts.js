@@ -17,7 +17,7 @@ function daysUntilIso(iso) {
 }
 
 /**
- * @typedef {{ id: string, tone: "danger"|"warn"|"caution", text: string, cta?: { label: string, module: string }, tier: "blocker"|"mandatory"|"deadline"|"info" }} CockpitAlert
+ * @typedef {{ id: string, tone: "danger"|"warn"|"caution", text: string, cta?: { label: string, module: string, settingsTab?: string }, tier: "blocker"|"mandatory"|"deadline"|"info" }} CockpitAlert
  * @returns {CockpitAlert[]}
  */
 export function buildTaxiCockpitAlerts(company, drivers, vehicles) {
@@ -45,8 +45,8 @@ export function buildTaxiCockpitAlerts(company, drivers, vehicles) {
       id: "doc-gw",
       tone: "warn",
       tier: "mandatory",
-      text: "Gewerbenachweis fehlt – bitte unter „Dokumente“ nachreichen.",
-      cta: { label: "Zu Dokumenten", module: "dokumente" },
+      text: "Gewerbenachweis fehlt – bitte unter Einstellungen nachreichen.",
+      cta: { label: "Zu Einstellungen", module: "einstellungen", settingsTab: "dokumente" },
     });
   }
   if (!company.hasComplianceInsurance) {
@@ -54,8 +54,8 @@ export function buildTaxiCockpitAlerts(company, drivers, vehicles) {
       id: "doc-in",
       tone: "warn",
       tier: "mandatory",
-      text: "Versicherungsnachweis fehlt – bitte unter „Dokumente“ hochladen.",
-      cta: { label: "Zu Dokumenten", module: "dokumente" },
+      text: "Versicherungsnachweis fehlt – bitte unter Einstellungen hochladen.",
+      cta: { label: "Zu Einstellungen", module: "einstellungen", settingsTab: "dokumente" },
     });
   }
 
@@ -65,8 +65,8 @@ export function buildTaxiCockpitAlerts(company, drivers, vehicles) {
       id: "compliance-rejected",
       tone: "danger",
       tier: "mandatory",
-      text: "Mindestens ein Pflichtnachweis wurde abgelehnt — bitte Bemerkung unter „Dokumente“ prüfen und erneut hochladen.",
-      cta: { label: "Zu Dokumenten", module: "dokumente" },
+      text: "Mindestens ein Pflichtnachweis wurde abgelehnt — bitte Bemerkung unter Einstellungen prüfen und erneut hochladen.",
+      cta: { label: "Zu Einstellungen", module: "einstellungen", settingsTab: "dokumente" },
     });
   } else if (bucket === "in_review" && company.hasComplianceGewerbe && company.hasComplianceInsurance) {
     info.push({
@@ -74,7 +74,7 @@ export function buildTaxiCockpitAlerts(company, drivers, vehicles) {
       tone: "caution",
       tier: "info",
       text: "Alle erwarteten Nachweise sind hochgeladen; die Freigabe durch Onroda steht noch aus.",
-      cta: { label: "Zu Dokumenten", module: "dokumente" },
+      cta: { label: "Zu Einstellungen", module: "einstellungen", settingsTab: "dokumente" },
     });
   }
 

@@ -31,7 +31,7 @@ export default function FinanceExportTab({
           Daten laden &amp; CSV-Export
         </h2>
         <p className="partner-muted" style={{ margin: "0 0 16px", maxWidth: 720, lineHeight: 1.5 }}>
-          Filter und Export nutzen dieselbe Logik wie zuvor — nur die Oberfläche ist strukturiert. CSV entspricht dem bestehenden Endpoint{" "}
+          Monatsfilter und CSV-Export (bestehendes Billing). Die Monatsübersicht erhalten Sie über den gewählten Zeitraum und den CSV-Download — Endpoint{" "}
           <code style={{ fontSize: "0.85em" }}>GET /panel/v1/billing/rides.csv</code>.
         </p>
         <div className="partner-form-grid" style={{ marginBottom: 12 }}>
@@ -113,21 +113,6 @@ export default function FinanceExportTab({
             {msg}
           </p>
         ) : null}
-      </div>
-
-      <div className="partner-card partner-card--section">
-        <h3 className="partner-card__title">Weitere Exporte</h3>
-        <ul className="partner-muted" style={{ margin: 0, paddingLeft: 20, lineHeight: 1.6 }}>
-          <li>
-            <strong>PDF-Monatsbericht:</strong> Demnächst verfügbar.
-          </li>
-          <li>
-            <strong>DATEV / Buchhaltungs-Export:</strong> Demnächst verfügbar (Struktur vorbereitet).
-          </li>
-          <li>
-            <strong>Monatsübersicht gesammelt:</strong> Bis dahin nutzen Sie CSV mit Monatsfilter.
-          </li>
-        </ul>
       </div>
 
       <div className="partner-card partner-card--section partner-card--hint">

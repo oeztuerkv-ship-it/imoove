@@ -44,11 +44,11 @@ export default function FleetDocumentsTab({ dash, drivers, vehicles, company, lo
   return (
     <div className="partner-card partner-card--section">
       <h2 className="partner-card__title" style={{ marginTop: 0 }}>
-        Dokumente &amp; Nachweise (Übersicht)
+        Dokumentstatus
       </h2>
       <p className="partner-muted" style={{ margin: "0 0 16px", maxWidth: 720, lineHeight: 1.5 }}>
-        Hier sehen Sie nur eine kompakte Warnübersicht zur Flotte. Gewerbe-, Versicherungs- und sonstige Unternehmensnachweise laden und pflegen Sie unter der
-        Hauptnavigation „Dokumente“. Fahrzeug-PDFs und P-Schein-Uploads bleiben bei den jeweiligen Tabs „Fahrzeuge“ bzw. „Fahrer“.
+        Kurzüberblick zu Fahrer-, Fahrzeug- und Compliance-Hinweisen. Gewerbe-/Versicherungsnachweise pflegen Sie unter{" "}
+        <strong>Einstellungen</strong> (Seitenleiste). Zusätzliche Uploads für Fahrzeuge und Fahrer weiter in den Tabs „Fahrzeuge“ und „Fahrer“.
       </p>
 
       <div className="partner-stack partner-stack--tight" style={{ gap: 16 }}>

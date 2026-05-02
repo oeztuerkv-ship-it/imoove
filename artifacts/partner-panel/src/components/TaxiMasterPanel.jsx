@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import DashboardOverviewPage from "../dashboard/DashboardOverviewPage.jsx";
 import { medicalOpenOperationsCount } from "../dashboard/dashboardHelpers.js";
-import { buildTaxiCockpitAlerts } from "../dashboard/taxiCockpitAlerts.js";
-
 const STORAGE_KEY = "onrodaPanelJwt";
 
 function getPanelHeaders() {
@@ -33,32 +31,11 @@ async function loadPanelResource(url, label, getBody) {
   return { ok: true, error: null, data: getBody ? getBody(data) : data };
 }
 
-function ymdLocal(d) {
-  const x = new Date(d);
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, "0");
-  const day = String(x.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function defaultExportRange30() {
-  const to = new Date();
-  const from = new Date();
-  from.setDate(from.getDate() - 29);
-  return { from: ymdLocal(from), to: ymdLocal(to) };
-}
-
 /**
  * Taxi-Dashboard — Datenladung hier, Darstellung modular.
- * @param {{ company?: object; user: object; onNavigateModule?: (key: string) => void; onQuickCreate?: (id: string) => void }} props
+ * @param {{ company?: object; user: object; onNavigateModule?: (key: string, opts?: { settingsTab?: string }) => void; onQuickCreate?: (id: string) => void }} props
  */
 export default function TaxiMasterPanel({ company, user, onNavigateModule, onQuickCreate }) {
-  const defRange = useMemo(() => defaultExportRange30(), []);
-  const [exportFrom, setExportFrom] = useState(() => defRange.from);
-  const [exportTo, setExportTo] = useState(() => defRange.to);
-  const [exportBusy, setExportBusy] = useState(false);
-  const [exportErr, setExportErr] = useState("");
-
   const [loadComplete, setLoadComplete] = useState(false);
 
   const [companyData, setCompanyData] = useState(null);
@@ -75,10 +52,6 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
   const [ridesError, setRidesError] = useState(null);
   const [ridesLoaded, setRidesLoaded] = useState(false);
 
-  const [series, setSeries] = useState([]);
-  const [seriesError, setSeriesError] = useState(null);
-  const [seriesLoaded, setSeriesLoaded] = useState(false);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -88,9 +61,7 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
       setMetricsError(null);
       setFleetDashError(null);
       setRidesError(null);
-      setSeriesError(null);
       setRidesLoaded(false);
-      setSeriesLoaded(false);
 
       setCompanyData(null);
       setMetrics(null);
@@ -98,9 +69,8 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
       setVehicles([]);
       setFleetDash(null);
       setRides([]);
-      setSeries([]);
 
-      const [cRes, mRes, dRes, vRes, fdRes, rRes, sRes] = await Promise.all([
+      const [cRes, mRes, dRes, vRes, fdRes, rRes] = await Promise.all([
         loadPanelResource(`${API_BASE}/panel/v1/company`, "Firmendaten", (d) => d.company ?? null),
         loadPanelResource(`${API_BASE}/panel/v1/overview/metrics`, "Kennzahlen", (d) => d.metrics ?? null),
         loadPanelResource(`${API_BASE}/panel/v1/fleet/drivers`, "Fahrerliste", (d) => (Array.isArray(d.drivers) ? d.drivers : [])),
@@ -112,7 +82,6 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
           vehiclesTotal: d.vehiclesTotal,
         })),
         loadPanelResource(`${API_BASE}/panel/v1/rides`, "Fahrten", (d) => (Array.isArray(d.rides) ? d.rides : [])),
-        loadPanelResource(`${API_BASE}/panel/v1/partner-ride-series`, "Serienfahrten", (d) => (Array.isArray(d.items) ? d.items : [])),
       ]);
 
       if (cancelled) return;
@@ -136,10 +105,6 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
       else setRidesError(rRes.error);
       setRidesLoaded(true);
 
-      if (sRes.ok) setSeries(sRes.data);
-      else setSeriesError(sRes.error);
-      setSeriesLoaded(true);
-
       setLoadComplete(true);
     }
 
@@ -153,16 +118,11 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
   const displayCompanyName = companyData?.name || company?.name || "Taxi-Unternehmer";
   const currentCompany = companyData || {};
 
-  const cockpitAlerts = useMemo(
-    () => (loadComplete && companyData ? buildTaxiCockpitAlerts(companyData, drivers, vehicles) : []),
-    [loadComplete, companyData, drivers, vehicles],
-  );
-
   const medicalOpenCount = useMemo(() => medicalOpenOperationsCount(rides), [rides]);
 
   const goModule = useCallback(
-    (key) => {
-      if (typeof onNavigateModule === "function") onNavigateModule(key);
+    (key, opts) => {
+      if (typeof onNavigateModule === "function") onNavigateModule(key, opts);
     },
     [onNavigateModule],
   );
@@ -173,57 +133,6 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
     },
     [onQuickCreate],
   );
-
-  const isTaxiCompany = String(currentCompany?.companyKind ?? "")
-    .trim()
-    .toLowerCase() === "taxi";
-
-  async function downloadRevenueCsv() {
-    setExportErr("");
-    const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : "";
-    if (!token) {
-      setExportErr("Export nicht möglich: keine Anmeldung.");
-      return;
-    }
-    setExportBusy(true);
-    try {
-      const qs = new URLSearchParams({ createdFrom: exportFrom, createdTo: exportTo });
-      const res = await fetch(`${API_BASE}/panel/v1/taxi/revenue-export.csv?${qs.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try {
-          const j = await res.json();
-          if (j?.error) msg = String(j.error);
-        } catch {
-          /* ignore */
-        }
-        setExportErr(`Export fehlgeschlagen: ${msg}`);
-        return;
-      }
-      const blob = await res.blob();
-      const dispo = res.headers.get("Content-Disposition");
-      let name = `onroda-taxi-umsatz-${exportFrom}-${exportTo}.csv`;
-      if (dispo) {
-        const m = /filename="([^"]+)"/i.exec(dispo);
-        if (m?.[1]) name = m[1];
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      setExportErr("Export fehlgeschlagen (Netzwerk).");
-    } finally {
-      setExportBusy(false);
-    }
-  }
 
   return (
     <DashboardOverviewPage
@@ -238,23 +147,12 @@ export default function TaxiMasterPanel({ company, user, onNavigateModule, onQui
       rides={rides}
       ridesError={ridesError}
       ridesLoaded={ridesLoaded}
-      series={series}
-      seriesError={seriesError}
-      seriesLoaded={seriesLoaded}
       drivers={drivers}
-      cockpitAlerts={cockpitAlerts}
+      vehicles={vehicles}
       medicalOpenCount={medicalOpenCount}
       loadComplete={loadComplete}
       onNavigateModule={goModule}
       onQuickCreate={quick}
-      isTaxiCompany={isTaxiCompany}
-      exportFrom={exportFrom}
-      exportTo={exportTo}
-      exportBusy={exportBusy}
-      exportErr={exportErr}
-      setExportFrom={setExportFrom}
-      setExportTo={setExportTo}
-      onDownloadRevenueCsv={downloadRevenueCsv}
     />
   );
 }

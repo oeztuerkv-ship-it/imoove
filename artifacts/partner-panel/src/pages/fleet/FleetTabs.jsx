@@ -27,7 +27,7 @@ export default function FleetTabs({ tab, onTabChange }) {
         className={tab === "documents" ? "partner-pill-tabs__btn partner-pill-tabs__btn--active" : "partner-pill-tabs__btn"}
         onClick={() => onTabChange("documents")}
       >
-        Dokumente
+        Dokumentstatus
       </button>
     </div>
   );

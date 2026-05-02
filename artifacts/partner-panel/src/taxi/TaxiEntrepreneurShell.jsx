@@ -5,6 +5,7 @@ import TeamPage from "../pages/TeamPage.jsx";
 import HelpPage from "../pages/HelpPage.jsx";
 import TaxiStammdatenPage from "../pages/taxi/TaxiStammdatenPage.jsx";
 import TaxiDocumentsPage from "../pages/taxi/TaxiDocumentsPage.jsx";
+import TaxiKrankenfahrtenPage from "../pages/taxi/TaxiKrankenfahrtenPage.jsx";
 import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
 import BillingPage from "../pages/BillingPage.jsx";
 import RideCreatePage from "../pages/RideCreatePage.jsx";
@@ -19,17 +20,19 @@ function hasPerm(user, key) {
   return Array.isArray(user?.permissions) && user.permissions.includes(key);
 }
 
-/** Zusätzliche Ansichten ohne eigenen Haupteintrag (Plus-Menü, Profil-Menü, Deep-Link). */
-const EXTRA_ROUTE_KEYS = new Set(["benutzer", "ride_neu", "medical_ride", "access_codes_hub"]);
+/** Zusätzliche Ansichten ohne eigenen Haupteintrag (Deep-Link, Legacy). */
+const EXTRA_ROUTE_KEYS = new Set([
+  "benutzer",
+  "ride_neu",
+  "medical_ride",
+  "access_codes_hub",
+  "fahrten",
+  "dokumente",
+]);
 
-/** Hauptnavigation — Reihenfolge wie Produktvorgabe (Bolt-Fleet-Philosophie, eigenes ONRODA-Branding). */
+/** Hauptnavigation — vereinfachte Fleet-Struktur. */
 const TAXI_NAV_DEFS = [
   { key: "dashboard", label: "Dashboard", show: () => true },
-  {
-    key: "fahrten",
-    label: "Fahrten",
-    show: (user) => hasPanelModule(user?.panelModules, "rides_list") && hasPerm(user, "rides.read"),
-  },
   {
     key: "flotte",
     label: "Flotte",
@@ -41,9 +44,9 @@ const TAXI_NAV_DEFS = [
     show: (user) => hasPanelModule(user?.panelModules, "billing") && hasPerm(user, "rides.read"),
   },
   {
-    key: "dokumente",
-    label: "Dokumente",
-    show: (user) => hasPanelModule(user?.panelModules, "taxi_fleet") && hasPerm(user, "fleet.read"),
+    key: "krankenfahrten",
+    label: "Krankenfahrten",
+    show: (user) => hasPanelModule(user?.panelModules, "rides_list") && hasPerm(user, "rides.read"),
   },
   {
     key: "einstellungen",
@@ -55,6 +58,7 @@ const TAXI_NAV_DEFS = [
 export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
   const [activeTaxiModule, setActiveTaxiModule] = useState("dashboard");
   const [supportPrefill, setSupportPrefill] = useState(null);
+  const [settingsTabIntent, setSettingsTabIntent] = useState(null);
   /** Tab + optional Fokus auf Anlege-Bereich (Plus-Menü). */
   const [fleetIntent, setFleetIntent] = useState(null);
 
@@ -70,13 +74,17 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
 
   const visibleNav = useMemo(() => TAXI_NAV_DEFS.filter((d) => d.show(user)), [user]);
 
-  /** Alle definierten Bereiche (auch ohne Nav-Sichtbarkeit), damit Dashboard-CTAs / Deep-Links nicht zurückspringen. */
   const routeKeys = useMemo(() => {
     const s = new Set(EXTRA_ROUTE_KEYS);
     for (const d of TAXI_NAV_DEFS) s.add(d.key);
     s.add("anfragen");
     s.add("hilfe");
     return s;
+  }, []);
+
+  const navigateTaxiModule = useCallback((key, opts) => {
+    if (opts && typeof opts.settingsTab === "string") setSettingsTabIntent(opts.settingsTab);
+    setActiveTaxiModule(key);
   }, []);
 
   /** Ermöglicht `?taxiModule=…` für Tests; unterstützt Legacy `stammdaten` → Einstellungen. */
@@ -145,12 +153,6 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
       case "create_medical_round":
         setActiveTaxiModule("medical_ride");
         break;
-      case "create_voucher_code":
-        setActiveTaxiModule("access_codes_hub");
-        break;
-      case "add_staff":
-        setActiveTaxiModule("benutzer");
-        break;
       default:
         break;
     }
@@ -206,7 +208,7 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
           <TaxiMasterPanel
             company={company}
             user={user}
-            onNavigateModule={(key) => setActiveTaxiModule(key)}
+            onNavigateModule={navigateTaxiModule}
             onQuickCreate={onGlobalCreateAction}
           />
         )}
@@ -215,12 +217,18 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
           <FleetPage fleetIntent={fleetIntent} onFleetIntentConsumed={consumeFleetIntent} />
         )}
         {activeTaxiModule === "finanzen" && <BillingPage />}
+        {activeTaxiModule === "krankenfahrten" && <TaxiKrankenfahrtenPage />}
         {activeTaxiModule === "dokumente" && <TaxiDocumentsPage onOpenDocumentSupportRequest={openSupportDraft} />}
         {activeTaxiModule === "einstellungen" && (
           <TaxiStammdatenPage
+            settingsTabIntent={settingsTabIntent}
+            onConsumeSettingsTabIntent={() => setSettingsTabIntent(null)}
             onOpenStammSupportRequest={openSupportDraft}
             onOpenDocumentSupportRequest={openSupportDraft}
-            onNavigateToDocuments={() => setActiveTaxiModule("dokumente")}
+            onNavigateToFleetDocuments={() => {
+              setFleetIntent({ tab: "documents" });
+              setActiveTaxiModule("flotte");
+            }}
           />
         )}
         {activeTaxiModule === "ride_neu" && <RideCreatePage />}

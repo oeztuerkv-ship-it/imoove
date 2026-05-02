@@ -19,7 +19,7 @@ export default function FinanceInvoicesTab({ rides, loading }) {
         Rechnungen
       </h2>
       <p className="partner-muted" style={{ margin: "0 0 16px", maxWidth: 720, lineHeight: 1.5 }}>
-        Liste aus Fahrten mit Rechnungsbezug (Nummer oder Status). Details und PDF-Erstellung erfolgen weiter unter „Fahrten“, soweit verfügbar.
+        Aus Fahrten mit Rechnungsbezug. Route aus Start-/Ziel der Fahrt.
       </p>
       {loading ? (
         <p className="partner-muted">Laden …</p>
@@ -31,6 +31,7 @@ export default function FinanceInvoicesTab({ rides, loading }) {
             <thead>
               <tr>
                 <th>Rechnungsnr.</th>
+                <th>Fahrt</th>
                 <th>Kunde / Kostenträger</th>
                 <th>Betrag</th>
                 <th>Status</th>
@@ -43,6 +44,9 @@ export default function FinanceInvoicesTab({ rides, loading }) {
                 return (
                   <tr key={row.id}>
                     <td>{row.number}</td>
+                    <td className="partner-muted" style={{ maxWidth: 220 }}>
+                      {row.rideRoute ?? "—"}
+                    </td>
                     <td>{row.payer}</td>
                     <td>
                       {typeof row.amount === "number"

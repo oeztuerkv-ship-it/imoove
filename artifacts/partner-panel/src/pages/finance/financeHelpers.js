@@ -207,6 +207,10 @@ export function ridesToInvoiceRows(rides) {
         (typeof meta?.invoice_created_at === "string" && meta.invoice_created_at) ||
         (typeof r?.createdAt === "string" && r.createdAt) ||
         "";
+      const from = typeof r?.from === "string" ? r.from.trim() : "";
+      const to = typeof r?.to === "string" ? r.to.trim() : "";
+      const rideRoute = from || to ? `${from || "—"} → ${to || "—"}` : "—";
+
       return {
         id: r.id,
         number: invNum || "—",
@@ -215,6 +219,7 @@ export function ridesToInvoiceRows(rides) {
         status: invStatus || "draft",
         dateIso,
         rideKind: r.rideKind,
+        rideRoute,
       };
     })
     .filter(Boolean);
