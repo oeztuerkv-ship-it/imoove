@@ -39,6 +39,7 @@
 --   052 → app_service_regions center_lat, center_lng, radius_km
 --   053 → rides.accessibility_options_json
 --   054 → email_verification_codes (Kunden-E-Mail-Codes)
+--   056 → fleet_drivers.home_address, drivers_license_* (Partner, optional)
 
 DO $$
 DECLARE
@@ -260,6 +261,27 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'readiness_override_system'
   ) THEN
     errs := array_append(errs, 'fleet_drivers.readiness_override_system (Migration 048)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'home_address'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.home_address (Migration 056)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'drivers_license_number'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.drivers_license_number (Migration 056)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'drivers_license_expiry'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.drivers_license_expiry (Migration 056)');
   END IF;
 
   IF NOT EXISTS (

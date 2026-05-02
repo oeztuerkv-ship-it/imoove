@@ -46,7 +46,26 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     lastName: "",
     phone: "",
     initialPassword: "",
+    pScheinNumber: "",
+    pScheinExpiry: "",
+    homeAddress: "",
+    driversLicenseNumber: "",
+    driversLicenseExpiry: "",
   });
+  const [editDriverId, setEditDriverId] = useState(null);
+  const [editDriverForm, setEditDriverForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    newPassword: "",
+    pScheinNumber: "",
+    pScheinExpiry: "",
+    homeAddress: "",
+    driversLicenseNumber: "",
+    driversLicenseExpiry: "",
+  });
+  const [driverEditError, setDriverEditError] = useState("");
   const [vehicleForm, setVehicleForm] = useState({
     licensePlate: "",
     model: "",
@@ -167,6 +186,11 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           lastName: driverForm.lastName,
           phone: driverForm.phone,
           initialPassword: driverForm.initialPassword || undefined,
+          pScheinNumber: driverForm.pScheinNumber.trim() || undefined,
+          pScheinExpiry: driverForm.pScheinExpiry.trim() || undefined,
+          homeAddress: driverForm.homeAddress.trim() || undefined,
+          driversLicenseNumber: driverForm.driversLicenseNumber.trim() || undefined,
+          driversLicenseExpiry: driverForm.driversLicenseExpiry.trim() || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -177,7 +201,18 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
       setMsg(
         data.initialPassword ? `Fahrer angelegt. Initiales Passwort: ${data.initialPassword}` : "Fahrer angelegt.",
       );
-      setDriverForm({ email: "", firstName: "", lastName: "", phone: "", initialPassword: "" });
+      setDriverForm({
+        email: "",
+        firstName: "",
+        lastName: "",
+        phone: "",
+        initialPassword: "",
+        pScheinNumber: "",
+        pScheinExpiry: "",
+        homeAddress: "",
+        driversLicenseNumber: "",
+        driversLicenseExpiry: "",
+      });
       await loadAll();
     } catch {
       setDriverCreateError("Fehler beim Erstellen des Fahrers.");
@@ -367,6 +402,109 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     }
   }
 
+  async function patchFleetDriver(driverId, body) {
+    const res = await fetch(`${API_BASE}/panel/v1/fleet/drivers/${encodeURIComponent(driverId)}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok && data?.ok, error: data?.error, status: res.status };
+  }
+
+  function sliceIsoDate(v) {
+    if (v == null || v === "") return "";
+    const s = String(v);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+
+  function openDriverEditor(d) {
+    setDriverEditError("");
+    setEditDriverId(d.id);
+    setEditDriverForm({
+      firstName: d.firstName ?? "",
+      lastName: d.lastName ?? "",
+      email: d.email ?? "",
+      phone: d.phone ?? "",
+      newPassword: "",
+      pScheinNumber: d.pScheinNumber ?? "",
+      pScheinExpiry: sliceIsoDate(d.pScheinExpiry),
+      homeAddress: d.homeAddress ?? "",
+      driversLicenseNumber: d.driversLicenseNumber ?? "",
+      driversLicenseExpiry: sliceIsoDate(d.driversLicenseExpiry),
+    });
+  }
+
+  function closeDriverEditor() {
+    setEditDriverId(null);
+    setDriverEditError("");
+  }
+
+  async function saveEditedDriver(e) {
+    e.preventDefault();
+    if (!token || !canManage || !editDriverId) return;
+    setMsg("");
+    setDriverEditError("");
+    const body = {
+      firstName: editDriverForm.firstName,
+      lastName: editDriverForm.lastName,
+      email: editDriverForm.email,
+      phone: editDriverForm.phone,
+      pScheinNumber: editDriverForm.pScheinNumber,
+      pScheinExpiry: editDriverForm.pScheinExpiry.trim() ? editDriverForm.pScheinExpiry.trim() : null,
+      homeAddress: editDriverForm.homeAddress,
+      driversLicenseNumber: editDriverForm.driversLicenseNumber,
+      driversLicenseExpiry: editDriverForm.driversLicenseExpiry.trim() ? editDriverForm.driversLicenseExpiry.trim() : null,
+    };
+    if (editDriverForm.newPassword.trim().length >= 10) {
+      body.newPassword = editDriverForm.newPassword.trim();
+    }
+    const r = await patchFleetDriver(editDriverId, body);
+    if (!r.ok) {
+      setDriverEditError(
+        r.error === "email_taken"
+          ? "Diese E-Mail ist bereits vergeben."
+          : r.error === "email_invalid"
+            ? "Bitte eine gültige E-Mail eingeben."
+            : typeof r.error === "string"
+              ? `Speichern fehlgeschlagen (${r.error}).`
+              : "Speichern fehlgeschlagen.",
+      );
+      return;
+    }
+    setMsg("Fahrerdaten gespeichert.");
+    closeDriverEditor();
+    await loadAll();
+  }
+
+  async function deactivateDriverAccount(id) {
+    if (!token || !canManage) return;
+    if (!window.confirm("Fahrer „außer Dienst“ setzen? Der Login ist dann nicht möglich (ohne Plattform-Sperre).")) return;
+    setMsg("");
+    const r = await patchFleetDriver(id, { isActive: false });
+    if (!r.ok) {
+      setMsg("Konto konnte nicht deaktiviert werden.");
+      return;
+    }
+    setMsg("Fahrer ist außer Dienst.");
+    await loadAll();
+  }
+
+  async function activateDriverAccountOnly(id) {
+    if (!token || !canManage) return;
+    setMsg("");
+    const r = await patchFleetDriver(id, { isActive: true });
+    if (!r.ok) {
+      setMsg("Konto konnte nicht aktiviert werden.");
+      return;
+    }
+    setMsg("Fahrer ist wieder im Dienst.");
+    await loadAll();
+  }
+
   async function suspendDriver(id) {
     if (!token || !canManage) return;
     if (!window.confirm("Fahrer sperren? Der Login wird sofort ungültig.")) return;
@@ -506,8 +644,8 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
         <p className="partner-page-eyebrow">Flotte</p>
         <h1 className="partner-page-title">Fahrer, Fahrzeuge &amp; Dokumente</h1>
         <p className="partner-page-lead">
-          Strukturiert nach Bereichen: Fahrer verwalten, Fahrzeuge und Zuweisungen, sowie eine kompakte Dokumenten-Warnübersicht. Unternehmensnachweise pflegen Sie
-          weiter unter „Dokumente“ in der Hauptnavigation.
+          Fahrer legen Sie selbst an und pflegen Stammdaten inklusive Aktivierung; die Betreiber-Konsole legt nur Ihr Unternehmen an. Fahrzeuge, Zuweisungen und
+          Unternehmensnachweise bleiben wie gewohnt in den anderen Bereichen bzw. unter „Dokumente“.
         </p>
       </div>
 
@@ -539,6 +677,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
 
       {err ? <p className="partner-state-error">{err}</p> : null}
       {driverCreateError ? <p className="partner-state-error">{driverCreateError}</p> : null}
+      {driverEditError ? <p className="partner-state-error">{driverEditError}</p> : null}
       {msg ? <p className="partner-state-ok">{msg}</p> : null}
 
       <FleetTabs tab={tab} onTabChange={setTab} />
@@ -558,6 +697,14 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           activateDriver={activateDriver}
           resetDriverPassword={resetDriverPassword}
           uploadPScheinDoc={uploadPScheinDoc}
+          editDriverId={editDriverId}
+          editDriverForm={editDriverForm}
+          setEditDriverForm={setEditDriverForm}
+          openDriverEditor={openDriverEditor}
+          closeDriverEditor={closeDriverEditor}
+          saveEditedDriver={saveEditedDriver}
+          deactivateDriverAccount={deactivateDriverAccount}
+          activateDriverAccountOnly={activateDriverAccountOnly}
         />
       ) : null}
 

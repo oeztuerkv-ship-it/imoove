@@ -34,6 +34,10 @@ export interface FleetDriverListRow {
   pScheinNumber: string;
   pScheinExpiry: string | null;
   pScheinDocStorageKey: string | null;
+  /** Anschrift (optional, durch Unternehmer gepflegt). */
+  homeAddress: string;
+  driversLicenseNumber: string;
+  driversLicenseExpiry: string | null;
   vehicleLegalType: FleetVehicleLegalType;
   vehicleClass: FleetVehicleClass;
   lastLoginAt: string | null;
@@ -91,6 +95,9 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     pScheinNumber: r.p_schein_number,
     pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
     pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    homeAddress: r.home_address ?? "",
+    driversLicenseNumber: r.drivers_license_number ?? "",
+    driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
     vehicleLegalType: r.vehicle_legal_type as FleetVehicleLegalType,
     vehicleClass: r.vehicle_class as FleetVehicleClass,
     lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
@@ -209,6 +216,13 @@ export async function insertFleetDriver(input: {
   mustChangePassword: boolean;
   vehicleLegalType?: FleetVehicleLegalType;
   vehicleClass?: FleetVehicleClass;
+  pScheinNumber?: string;
+  pScheinExpiry?: string | null;
+  homeAddress?: string;
+  driversLicenseNumber?: string;
+  driversLicenseExpiry?: string | null;
+  /** Neu angelegte Fahrer gelten im Mandanten als nutzbar; Plattform prüft Einsatz über Readiness (Nachweise/Fahrzeug). */
+  approvalStatus?: FleetDriverApprovalStatus;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
   const db = getDb();
@@ -222,6 +236,8 @@ export async function insertFleetDriver(input: {
     return { ok: false, error: "email_taken" };
   }
   const id = `fd-${randomUUID()}`;
+  const pExp = input.pScheinExpiry?.trim();
+  const dlExp = input.driversLicenseExpiry?.trim();
   await db.insert(fleetDriversTable).values({
     id,
     company_id: input.companyId,
@@ -233,10 +249,14 @@ export async function insertFleetDriver(input: {
     must_change_password: input.mustChangePassword,
     vehicle_legal_type: input.vehicleLegalType ?? "taxi",
     vehicle_class: input.vehicleClass ?? "standard",
+    p_schein_number: (input.pScheinNumber ?? "").trim(),
+    p_schein_expiry: pExp ? pExp : null,
+    home_address: (input.homeAddress ?? "").trim(),
+    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
+    drivers_license_expiry: dlExp ? dlExp : null,
     is_active: true,
     access_status: "active",
-    /** Stammdaten-Anlage ohne Pflichtnachweise; Freigabe erst durch Admin (Unterlagen nachreichbar). */
-    approval_status: "pending",
+    approval_status: input.approvalStatus ?? "approved",
     session_version: 1,
   });
   return { ok: true, id };
@@ -249,11 +269,16 @@ export async function patchFleetDriverProfile(
     firstName: string;
     lastName: string;
     phone: string;
+    email: string;
+    isActive: boolean;
     pScheinNumber: string;
     pScheinExpiry: string | null;
     pScheinDocStorageKey: string | null;
     vehicleLegalType: FleetVehicleLegalType;
     vehicleClass: FleetVehicleClass;
+    homeAddress: string;
+    driversLicenseNumber: string;
+    driversLicenseExpiry: string | null;
   }>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const cur = await findFleetDriverInCompany(id, companyId);
@@ -261,6 +286,25 @@ export async function patchFleetDriverProfile(
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
   const set: Partial<typeof fleetDriversTable.$inferInsert> = { updated_at: new Date() };
+  let bumpSession = false;
+
+  if (patch.email !== undefined) {
+    const em = patch.email.trim().toLowerCase();
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      return { ok: false, error: "email_invalid" };
+    }
+    const other = await findFleetDriverByEmailNormalized(em);
+    if (other && other.id !== id) {
+      return { ok: false, error: "email_taken" };
+    }
+    set.email = em;
+    bumpSession = true;
+  }
+  if (patch.isActive !== undefined) {
+    set.is_active = patch.isActive;
+    bumpSession = true;
+  }
+
   if (patch.firstName !== undefined) set.first_name = patch.firstName.trim();
   if (patch.lastName !== undefined) set.last_name = patch.lastName.trim();
   if (patch.phone !== undefined) set.phone = patch.phone.trim();
@@ -272,6 +316,17 @@ export async function patchFleetDriverProfile(
   if (patch.pScheinDocStorageKey !== undefined) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
   if (patch.vehicleLegalType !== undefined) set.vehicle_legal_type = patch.vehicleLegalType;
   if (patch.vehicleClass !== undefined) set.vehicle_class = patch.vehicleClass;
+  if (patch.homeAddress !== undefined) set.home_address = patch.homeAddress.trim();
+  if (patch.driversLicenseNumber !== undefined) set.drivers_license_number = patch.driversLicenseNumber.trim();
+  if (patch.driversLicenseExpiry !== undefined) {
+    const raw = patch.driversLicenseExpiry?.trim();
+    set.drivers_license_expiry = raw ? raw : null;
+  }
+
+  if (bumpSession) {
+    set.session_version = sql`${fleetDriversTable.session_version} + 1`;
+  }
+
   await db.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
   return { ok: true };
 }

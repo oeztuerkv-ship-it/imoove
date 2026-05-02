@@ -201,6 +201,17 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
     const firstName = typeof b.firstName === "string" ? b.firstName : "";
     const lastName = typeof b.lastName === "string" ? b.lastName : "";
     const phone = typeof b.phone === "string" ? b.phone : "";
+    const pScheinNumber = typeof b.pScheinNumber === "string" ? b.pScheinNumber : "";
+    const pScheinExpiry =
+      b.pScheinExpiry === null ? null : typeof b.pScheinExpiry === "string" ? b.pScheinExpiry : undefined;
+    const homeAddress = typeof b.homeAddress === "string" ? b.homeAddress : "";
+    const driversLicenseNumber = typeof b.driversLicenseNumber === "string" ? b.driversLicenseNumber : "";
+    const driversLicenseExpiry =
+      b.driversLicenseExpiry === null
+        ? null
+        : typeof b.driversLicenseExpiry === "string"
+          ? b.driversLicenseExpiry
+          : undefined;
     const vehicleLegalType = "taxi" as FleetDriverVehicleLegalType;
     const vehicleClass = (typeof b.vehicleClass === "string" ? b.vehicleClass : "standard") as FleetDriverVehicleClass;
     if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType as FleetVehicleLegalType)) {
@@ -226,6 +237,12 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
       mustChangePassword: true,
       vehicleLegalType,
       vehicleClass,
+      pScheinNumber: pScheinNumber.trim() || undefined,
+      pScheinExpiry,
+      homeAddress: homeAddress.trim() || undefined,
+      driversLicenseNumber: driversLicenseNumber.trim() || undefined,
+      driversLicenseExpiry,
+      approvalStatus: "approved",
     });
     if (!ins.ok) {
       const code = ins.error;
@@ -258,7 +275,13 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
     if (typeof b.firstName === "string") patch.firstName = b.firstName;
     if (typeof b.lastName === "string") patch.lastName = b.lastName;
     if (typeof b.phone === "string") patch.phone = b.phone;
+    if (typeof b.email === "string") patch.email = b.email;
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    else if (b.isActive === "true") patch.isActive = true;
+    else if (b.isActive === "false") patch.isActive = false;
     if (typeof b.pScheinNumber === "string") patch.pScheinNumber = b.pScheinNumber;
+    if (typeof b.homeAddress === "string") patch.homeAddress = b.homeAddress;
+    if (typeof b.driversLicenseNumber === "string") patch.driversLicenseNumber = b.driversLicenseNumber;
     if (typeof b.vehicleLegalType === "string") {
       patch.vehicleLegalType = "taxi" as FleetDriverVehicleLegalType;
     }
@@ -272,11 +295,42 @@ router.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, n
     if (b.pScheinExpiry === null || typeof b.pScheinExpiry === "string") {
       patch.pScheinExpiry = b.pScheinExpiry === null ? null : b.pScheinExpiry;
     }
-    const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
-    if (!r.ok) {
-      res.status(404).json({ error: r.error });
+    if (b.driversLicenseExpiry === null || typeof b.driversLicenseExpiry === "string") {
+      patch.driversLicenseExpiry = b.driversLicenseExpiry === null ? null : b.driversLicenseExpiry;
+    }
+    const hasProfileKeys = Object.keys(patch).length > 0;
+    const newPw = typeof b.newPassword === "string" ? b.newPassword : "";
+    const hasPassword = newPw.length >= 10;
+    if (!hasProfileKeys && !hasPassword) {
+      res.status(400).json({ error: "no_updates" });
       return;
     }
+    if (hasProfileKeys) {
+      const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
+      if (!r.ok) {
+        const st =
+          r.error === "email_taken" ? 409 : r.error === "email_invalid" ? 400 : r.error === "not_found" ? 404 : 400;
+        res.status(st).json({ error: r.error });
+        return;
+      }
+    }
+    if (hasPassword) {
+      const hash = await hashPassword(newPw);
+      const pwOk = await updateFleetDriverPassword(id, ctx.claims.companyId, hash, true);
+      if (!pwOk) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_updated",
+      subjectType: "fleet_driver",
+      subjectId: id,
+      meta: { fields: Object.keys(patch), passwordReset: hasPassword },
+    });
     res.json({ ok: true });
   } catch (e) {
     next(e);

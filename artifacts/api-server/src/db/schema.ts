@@ -97,6 +97,10 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   p_schein_number: text("p_schein_number").notNull().default(""),
   p_schein_expiry: date("p_schein_expiry"),
   p_schein_doc_storage_key: text("p_schein_doc_storage_key"),
+  /** Privat-/Meldeadresse (optional, Pflege durch Unternehmer). */
+  home_address: text("home_address").notNull().default(""),
+  drivers_license_number: text("drivers_license_number").notNull().default(""),
+  drivers_license_expiry: date("drivers_license_expiry"),
   vehicle_legal_type: text("vehicle_legal_type").notNull().default("taxi"),
   vehicle_class: text("vehicle_class").notNull().default("standard"),
   last_login_at: timestamp("last_login_at", { withTimezone: true }),
@@ -120,9 +124,16 @@ export const fleetVehiclesTable = pgTable("fleet_vehicles", {
   taxi_order_number: text("taxi_order_number").notNull().default(""),
   /** Taxikonzession / Ordnungsnummer (Pflicht bis Freigabe) */
   konzession_number: text("konzession_number").notNull().default(""),
-  /** [{ storageKey, uploadedAt? }] – Nachweise; FK in Migration 035 */
+  /** Nachweise: chronologisch angehängt, keine Partner-Hard-Deletes; Felder siehe fleetVehiclesData VehicleDocumentRef */
   vehicle_documents: jsonb("vehicle_documents")
-    .$type<{ storageKey: string; uploadedAt?: string }[]>()
+    .$type<
+      {
+        storageKey: string;
+        uploadedAt?: string;
+        kind?: "concession" | "registration" | "insurance" | "taximeter" | "accessibility";
+        uploadedByPanelUserId?: string | null;
+      }[]
+    >()
     .notNull()
     .default([]),
   rejection_reason: text("rejection_reason").notNull().default(""),

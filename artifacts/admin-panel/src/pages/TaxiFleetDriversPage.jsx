@@ -342,6 +342,15 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                   <strong>Telefon</strong> {detail.phone || "—"}
                 </div>
                 <div>
+                  <strong>Anschrift (Unternehmer)</strong> {detail.homeAddress?.trim() ? detail.homeAddress : "—"}
+                </div>
+                <div>
+                  <strong>Führerschein</strong>{" "}
+                  {detail.driversLicenseNumber?.trim()
+                    ? `${detail.driversLicenseNumber.trim()} · gültig bis ${detail.driversLicenseExpiry || "—"}`
+                    : "—"}
+                </div>
+                <div>
                   <strong>Freigabe</strong> {workflowDe(detail.workflow?.key)}
                 </div>
                 <div>

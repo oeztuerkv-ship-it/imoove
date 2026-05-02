@@ -58,6 +58,11 @@ router.post("/fleet-auth/login", async (req, res) => {
     return;
   }
 
+  if (String(row.access_status ?? "").toLowerCase() !== "active") {
+    res.status(403).json({ error: "driver_access_suspended" });
+    return;
+  }
+
   const ok = await verifyPassword(password, row.password_hash);
   if (!ok) {
     res.status(401).json({ error: "invalid_credentials" });

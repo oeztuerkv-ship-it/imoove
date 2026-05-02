@@ -62,6 +62,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   rides.customer_phone + app_service_regions Geofence-Struktur → 050_rides_customer_phone_and_geo_fence_prep.sql
   rides.tariff_snapshot_json (Tarif-Engine bei Buchung)         → 051_rides_tariff_snapshot_json.sql
   email_verification_codes (E-Mail-Otp Kunden-Registrierung)      → 054_email_verification_codes.sql
+  Taxi fleet_drivers: Anschrift + Führerschein (optional, Partner)    → 056_fleet_drivers_partner_optional_profile.sql
 
 Nach Migrationen Schema prüfen:
 
