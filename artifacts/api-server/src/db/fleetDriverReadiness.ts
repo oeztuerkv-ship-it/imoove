@@ -125,6 +125,8 @@ export function deriveDriverWorkflowLabel(
   switch (d.approvalStatus) {
     case "rejected":
       return { key: "rejected", label: "Abgelehnt" };
+    case "missing_documents":
+      return { key: "missing_documents", label: "Unterlagen fehlen" };
     case "in_review":
       return { key: "in_review", label: "In Prüfung" };
     case "pending":
@@ -198,7 +200,11 @@ export function computeDriverReadiness(
   }
   if (d.approvalStatus === "rejected") {
     blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
-  } else if (d.approvalStatus === "pending" || d.approvalStatus === "in_review") {
+  } else if (
+    d.approvalStatus === "pending" ||
+    d.approvalStatus === "in_review" ||
+    d.approvalStatus === "missing_documents"
+  ) {
     blockReasons.push({ code: "driver_not_approved", message: MSG.driver_not_approved });
   }
   if (pScheinDateMissing(d.pScheinExpiry)) {
@@ -227,7 +233,7 @@ export function computeDriverReadiness(
         code: "vehicle_rejected",
         message: rj ? `${MSG.vehicle_rejected} ${rj}` : MSG.vehicle_rejected,
       });
-    } else if (st === "pending_approval") {
+    } else if (st === "pending_approval" || st === "missing_documents") {
       blockReasons.push({ code: "vehicle_pending_approval", message: MSG.vehicle_pending_approval });
     } else if (st === "draft") {
       blockReasons.push({ code: "vehicle_draft", message: MSG.vehicle_draft });

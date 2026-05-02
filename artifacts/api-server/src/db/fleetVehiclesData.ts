@@ -10,6 +10,7 @@ export type FleetVehicleClass = "standard" | "xl" | "wheelchair";
 export type FleetVehicleApprovalStatus =
   | "draft"
   | "pending_approval"
+  | "missing_documents"
   | "approved"
   | "rejected"
   | "blocked";
@@ -143,7 +144,9 @@ export async function countPendingFleetVehiclesForAdmin(): Promise<number> {
   const rows = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(fleetVehiclesTable)
-    .where(eq(fleetVehiclesTable.approval_status, "pending_approval"));
+    .where(
+      sql`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`,
+    );
   return Number(rows[0]?.n ?? 0);
 }
 
@@ -158,7 +161,7 @@ export async function listPendingFleetVehiclesForAdmin(limit?: number): Promise<
     })
     .from(fleetVehiclesTable)
     .innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id))
-    .where(eq(fleetVehiclesTable.approval_status, "pending_approval"))
+    .where(sql`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`)
     .orderBy(desc(fleetVehiclesTable.updated_at));
   const rows =
     typeof limit === "number" && limit > 0
@@ -172,6 +175,16 @@ export async function listPendingFleetVehiclesForAdmin(limit?: number): Promise<
 
 function syncIsActiveForStatus(s: FleetVehicleApprovalStatus): boolean {
   return s === "approved";
+}
+
+/** Für Admin-Freigabe: welche Lücken sollten bestätigt werden (blockiert nicht, wenn Admin explizit bestätigt). */
+export function computeFleetVehicleComplianceGaps(v: Pick<FleetVehicleRow, "vehicleDocuments" | "nextInspectionDate">): string[] {
+  const gaps: string[] = [];
+  const docs = Array.isArray(v.vehicleDocuments) ? v.vehicleDocuments : [];
+  if (docs.length < 1) gaps.push("Kein Fahrzeug-PDF-Nachweis hochgeladen");
+  const hu = v.nextInspectionDate != null ? String(v.nextInspectionDate).trim() : "";
+  if (!hu) gaps.push("HU-Datum (Hauptuntersuchung) fehlt");
+  return gaps;
 }
 
 export async function insertFleetVehicle(input: {
@@ -228,7 +241,7 @@ export async function appendFleetVehicleDocument(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
-  if (!["draft", "rejected"].includes(String(cur.approval_status))) {
+  if (!["draft", "rejected", "pending_approval", "missing_documents"].includes(String(cur.approval_status))) {
     return { ok: false, error: "documents_locked" };
   }
   const existing = parseDocuments(cur.vehicle_documents);
@@ -255,7 +268,7 @@ export async function submitFleetVehicleForApproval(
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
   const st = String(cur.approval_status);
-  if (st !== "draft" && st !== "rejected") return { ok: false, error: "invalid_state" };
+  if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
   const kz = (cur.konzession_number ?? "").trim();
   if (!kz) return { ok: false, error: "konzession_number_required" };
   const plate = (cur.license_plate ?? "").trim();
@@ -295,7 +308,7 @@ export async function patchFleetVehicle(
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
   const st = String(cur.approval_status);
-  if (st === "pending_approval" || st === "approved" || st === "blocked") {
+  if (st === "pending_approval" || st === "missing_documents" || st === "approved" || st === "blocked") {
     const allowed: (keyof typeof patch)[] = ["nextInspectionDate", "color", "model"];
     const keys = Object.keys(patch) as (keyof typeof patch)[];
     for (const k of keys) {
@@ -335,11 +348,14 @@ export async function setFleetVehicleApprovalByAdmin(
     nextStatus: "approved" | "rejected";
     rejectionReason?: string;
     adminUserId: string | null;
+    /** Wenn gesetzt: Freigabe trotz fehlender Standard-Unterlagen (Admin bestätigt). */
+    acknowledgeIncompleteDocuments?: boolean;
   },
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true } | { ok: false; error: string; gaps?: string[] }> {
   const cur = await findFleetVehicleGlobal(id);
   if (!cur) return { ok: false, error: "not_found" };
-  if (String(cur.approval_status) !== "pending_approval") {
+  const st = String(cur.approval_status);
+  if (!["pending_approval", "missing_documents"].includes(st)) {
     return { ok: false, error: "not_pending" };
   }
   const db = getDb();
@@ -350,6 +366,13 @@ export async function setFleetVehicleApprovalByAdmin(
   if (input.nextStatus === "rejected" && !reason) {
     return { ok: false, error: "rejection_reason_required" };
   }
+  if (input.nextStatus === "approved") {
+    const row = rowToVehicle(cur);
+    const gaps = computeFleetVehicleComplianceGaps(row);
+    if (gaps.length > 0 && !input.acknowledgeIncompleteDocuments) {
+      return { ok: false, error: "incomplete_documents_ack_required", gaps };
+    }
+  }
   await db
     .update(fleetVehiclesTable)
     .set({
@@ -359,6 +382,33 @@ export async function setFleetVehicleApprovalByAdmin(
       approval_decided_at: now,
       approval_decided_by_admin_id: input.adminUserId,
       updated_at: now,
+    })
+    .where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+
+/** Admin: explizit „Unterlagen fehlen“ — Fahrzeug bleibt sichtbar, aber nicht einsatzbereit. */
+export async function setFleetVehicleMissingDocumentsByAdmin(
+  id: string,
+  input: { adminUserId: string | null },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (!["draft", "pending_approval", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const now = new Date();
+  await db
+    .update(fleetVehiclesTable)
+    .set({
+      approval_status: "missing_documents",
+      is_active: false,
+      updated_at: now,
+      approval_decided_at: now,
+      approval_decided_by_admin_id: input.adminUserId,
     })
     .where(eq(fleetVehiclesTable.id, id));
   return { ok: true };

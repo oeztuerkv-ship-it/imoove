@@ -159,14 +159,18 @@ import {
   listFleetVehicleDocumentStorageKeysInCompany,
   listPendingFleetVehiclesForAdmin,
   setFleetVehicleApprovalByAdmin,
+  setFleetVehicleMissingDocumentsByAdmin,
   unblockFleetVehicleByAdmin,
 } from "../db/fleetVehiclesData";
 import {
   adminActivateFleetDriver,
   adminPatchFleetDriverAdminFields,
   adminSuspendFleetDriver,
+  approveFleetDriverForCompany,
+  markFleetDriverMissingDocumentsForCompany,
+  rejectFleetDriverForCompany,
   setFleetDriverApprovalByAdmin,
-  setFleetDriverApprovalForCompany,
+  setFleetDriverApprovalStatusOnlyForCompany,
   setFleetDriverReadinessOverrideSystem,
   type FleetDriverApprovalStatus,
 } from "../db/fleetDriversData";
@@ -1213,20 +1217,106 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
     const driverId = String(req.params.driverId ?? "").trim();
     const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
     if (!allowed) return;
-    const raw = typeof (req.body as { status?: unknown })?.status === "string"
-      ? (req.body as { status: string }).status.trim().toLowerCase()
-      : "";
-    const allowedS: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
+    const body = (req.body ?? {}) as {
+      status?: unknown;
+      reason?: unknown;
+      acknowledgeIncompleteDocuments?: unknown;
+    };
+    const raw = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
+    const ackIncomplete = body.acknowledgeIncompleteDocuments === true;
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+
+    if (raw === "approved") {
+      const r = await approveFleetDriverForCompany(companyId, driverId, {
+        acknowledgeIncompleteDocuments: ackIncomplete,
+      });
+      if (!r.ok) {
+        const m: Record<string, number> = {
+          not_found: 404,
+          not_pending: 409,
+          incomplete_documents_ack_required: 409,
+        };
+        const gaps = !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray((r as { gaps?: string[] }).gaps)
+          ? (r as { gaps: string[] }).gaps
+          : undefined;
+        res.status(m[r.error] ?? 400).json(
+          gaps ? { error: r.error, gaps } : { error: r.error },
+        );
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_driver.approval",
+        subjectType: "fleet_driver",
+        subjectId: driverId,
+        meta: {
+          nextStatus: raw,
+          adminUserId: adminId,
+          incompleteDocumentsAcknowledged: ackIncomplete,
+        },
+      });
+      res.json({ ok: true });
+      return;
+    }
+
+    if (raw === "rejected") {
+      const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+      const r = await rejectFleetDriverForCompany(companyId, driverId, reason);
+      if (!r.ok) {
+        const m: Record<string, number> = {
+          not_found: 404,
+          not_pending: 409,
+          rejection_reason_required: 400,
+        };
+        res.status(m[r.error] ?? 400).json({ error: r.error });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_driver.approval",
+        subjectType: "fleet_driver",
+        subjectId: driverId,
+        meta: { nextStatus: raw, reason: reason.slice(0, 500), adminUserId: adminId },
+      });
+      res.json({ ok: true });
+      return;
+    }
+
+    if (raw === "missing_documents") {
+      const r = await markFleetDriverMissingDocumentsForCompany(companyId, driverId);
+      if (!r.ok) {
+        res.status(r.error === "not_found" ? 404 : r.error === "invalid_state" ? 409 : 400).json({
+          error: r.error,
+        });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_driver.missing_documents",
+        subjectType: "fleet_driver",
+        subjectId: driverId,
+        meta: { adminUserId: adminId },
+      });
+      res.json({ ok: true });
+      return;
+    }
+
+    const allowedS: FleetDriverApprovalStatus[] = ["pending", "in_review"];
     if (!allowedS.includes(raw as FleetDriverApprovalStatus)) {
       res.status(400).json({ error: "status_invalid" });
       return;
     }
-    const r = await setFleetDriverApprovalForCompany(companyId, driverId, raw as FleetDriverApprovalStatus);
+    const r = await setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, raw as FleetDriverApprovalStatus);
     if (!r.ok) {
       res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
       return;
     }
-    const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId,
@@ -1468,9 +1558,24 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
       return;
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
-    const r = await setFleetVehicleApprovalByAdmin(vehicleId, { nextStatus: "approved", adminUserId: adminId });
+    const ack =
+      (req.body as { acknowledgeIncompleteDocuments?: unknown } | undefined)?.acknowledgeIncompleteDocuments === true;
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "approved",
+      adminUserId: adminId,
+      acknowledgeIncompleteDocuments: ack,
+    });
     if (!r.ok) {
-      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      const m: Record<string, number> = {
+        not_found: 404,
+        not_pending: 409,
+        incomplete_documents_ack_required: 409,
+      };
+      const gaps =
+        !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray((r as { gaps?: string[] }).gaps)
+          ? (r as { gaps: string[] }).gaps
+          : undefined;
+      res.status(m[r.error] ?? 400).json(gaps ? { error: r.error, gaps } : { error: r.error });
       return;
     }
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
@@ -1482,7 +1587,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
         action: "admin.fleet_vehicle.approved",
         subjectType: "fleet_vehicle",
         subjectId: vehicleId,
-        meta: { adminUserId: adminId },
+        meta: { adminUserId: adminId, incompleteDocumentsAcknowledged: ack },
       });
     }
     res.json({ ok: true });
@@ -1535,6 +1640,41 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
         meta: { reason: reason.slice(0, 500), adminUserId: adminId },
       });
     }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing-documents", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!(await findFleetVehicleInCompany(vehicleId, companyId))) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleMissingDocumentsByAdmin(vehicleId, { adminUserId: adminId });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "invalid_state" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_vehicle.missing_documents",
+      subjectType: "fleet_vehicle",
+      subjectId: vehicleId,
+      meta: { adminUserId: adminId },
+    });
     res.json({ ok: true });
   } catch (e) {
     next(e);
@@ -4041,17 +4181,43 @@ adminJson.post("/fleet-drivers/:driverId/approval", async (req, res, next) => {
       res.status(400).json({ error: "driver_id_required" });
       return;
     }
-    const raw = typeof (req.body as { status?: unknown })?.status === "string"
-      ? (req.body as { status: string }).status.trim().toLowerCase()
-      : "";
-    const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
+    const body = (req.body ?? {}) as {
+      status?: unknown;
+      reason?: unknown;
+      acknowledgeIncompleteDocuments?: unknown;
+    };
+    const raw = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
+    const ackIncomplete = body.acknowledgeIncompleteDocuments === true;
+    const allowed: FleetDriverApprovalStatus[] = [
+      "pending",
+      "in_review",
+      "approved",
+      "rejected",
+      "missing_documents",
+    ];
     if (!allowed.includes(raw as FleetDriverApprovalStatus)) {
       res.status(400).json({ error: "status_invalid" });
       return;
     }
-    const r = await setFleetDriverApprovalByAdmin(driverId, raw as FleetDriverApprovalStatus);
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    const r = await setFleetDriverApprovalByAdmin(driverId, raw as FleetDriverApprovalStatus, {
+      rejectionReason: reason,
+      acknowledgeIncompleteDocuments: ackIncomplete,
+    });
     if (!r.ok) {
-      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      const m: Record<string, number> = {
+        not_found: 404,
+        not_pending: 409,
+        invalid_state: 409,
+        rejection_reason_required: 400,
+        incomplete_documents_ack_required: 409,
+        invalid_status: 400,
+      };
+      const gaps =
+        !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray((r as { gaps?: string[] }).gaps)
+          ? (r as { gaps: string[] }).gaps
+          : undefined;
+      res.status(m[r.error] ?? 400).json(gaps ? { error: r.error, gaps } : { error: r.error });
       return;
     }
     res.json({ ok: true });
@@ -4068,12 +4234,24 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     }
     const vehicleId = String(req.params.vehicleId ?? "").trim();
     const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const ack =
+      (req.body as { acknowledgeIncompleteDocuments?: unknown } | undefined)?.acknowledgeIncompleteDocuments === true;
     const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
       nextStatus: "approved",
       adminUserId: adminId,
+      acknowledgeIncompleteDocuments: ack,
     });
     if (!r.ok) {
-      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      const m: Record<string, number> = {
+        not_found: 404,
+        not_pending: 409,
+        incomplete_documents_ack_required: 409,
+      };
+      const gaps =
+        !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray((r as { gaps?: string[] }).gaps)
+          ? (r as { gaps: string[] }).gaps
+          : undefined;
+      res.status(m[r.error] ?? 400).json(gaps ? { error: r.error, gaps } : { error: r.error });
       return;
     }
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
@@ -4085,7 +4263,11 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
         action: "admin.fleet_vehicle.approved",
         subjectType: "fleet_vehicle",
         subjectId: vehicleId,
-        meta: { adminUserId: adminId, source: "fleet_vehicles_review" },
+        meta: {
+          adminUserId: adminId,
+          source: "fleet_vehicles_review",
+          incompleteDocumentsAcknowledged: ack,
+        },
       });
     }
     res.json({ ok: true });
@@ -4129,6 +4311,37 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
         subjectType: "fleet_vehicle",
         subjectId: vehicleId,
         meta: { reason: reason.slice(0, 500), adminUserId: adminId, source: "fleet_vehicles_review" },
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleMissingDocumentsByAdmin(vehicleId, { adminUserId: adminId });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "invalid_state" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.missing_documents",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId, source: "fleet_vehicles_review" },
       });
     }
     res.json({ ok: true });

@@ -332,7 +332,10 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
                 vehiclesTotal: vehicles.length,
                 vehiclesApproved: vehicles.filter((v) => v.approvalStatus === "approved").length,
                 vehiclesPendingReview: vehicles.filter(
-                  (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval",
+                  (v) =>
+                    v.approvalStatus === "draft" ||
+                    v.approvalStatus === "pending_approval" ||
+                    v.approvalStatus === "missing_documents",
                 ).length,
               };
             })()
@@ -380,7 +383,10 @@ export async function getCompanyMandateRead(companyId: string): Promise<CompanyM
                 vehiclesTotal: vehicles.length,
                 vehiclesApproved: vehicles.filter((v) => v.approvalStatus === "approved").length,
                 vehiclesPendingReview: vehicles.filter(
-                  (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval",
+                  (v) =>
+                    v.approvalStatus === "draft" ||
+                    v.approvalStatus === "pending_approval" ||
+                    v.approvalStatus === "missing_documents",
                 ).length,
               };
             })()

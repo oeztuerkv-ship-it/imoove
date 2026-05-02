@@ -250,7 +250,9 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended')),
-  CONSTRAINT fleet_drivers_approval_status_chk CHECK (approval_status IN ('pending', 'in_review', 'approved', 'rejected')),
+  CONSTRAINT fleet_drivers_approval_status_chk CHECK (
+    approval_status IN ('pending', 'in_review', 'missing_documents', 'approved', 'rejected')
+  ),
   CONSTRAINT fleet_drivers_vehicle_legal_type_chk CHECK (vehicle_legal_type IN ('taxi', 'rental_car')),
   CONSTRAINT fleet_drivers_vehicle_class_chk CHECK (vehicle_class IN ('standard', 'xl', 'wheelchair'))
 );
@@ -293,7 +295,7 @@ CREATE TABLE IF NOT EXISTS fleet_vehicles (
     vehicle_class IN ('standard', 'xl', 'wheelchair')
   ),
   CONSTRAINT fleet_vehicles_approval_status_chk CHECK (
-    approval_status IN ('draft', 'pending_approval', 'approved', 'rejected', 'blocked')
+    approval_status IN ('draft', 'pending_approval', 'missing_documents', 'approved', 'rejected', 'blocked')
   )
 );
 

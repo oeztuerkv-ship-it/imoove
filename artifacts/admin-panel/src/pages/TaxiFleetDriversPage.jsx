@@ -17,6 +17,7 @@ function workflowDe(key) {
   const m = {
     suspended: "Gesperrt",
     rejected: "Abgelehnt",
+    missing_documents: "Unterlagen fehlen",
     in_review: "In Prüfung",
     pending: "Angelegt",
     approved: "Freigegeben",
@@ -161,6 +162,43 @@ export default function TaxiFleetDriversPage() {
     }
   }
 
+  async function runApproveDriver() {
+    if (!companyId || !sel) return;
+    setActBusy("/approval-approve");
+    const url = `${API_BASE}/admin/taxi-fleet-drivers/${encodeURIComponent(companyId)}/drivers/${encodeURIComponent(sel.id)}/approval`;
+    const tryOnce = async (payload) => {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json().catch(() => ({}));
+      return { r, j };
+    };
+    try {
+      let { r, j } = await tryOnce({ status: "approved" });
+      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
+        const msg = [
+          "Achtung: Unterlagen unvollständig.",
+          "",
+          ...j.gaps.map((g) => `• ${g}`),
+          "",
+          "Manuelle Freigabe durch Admin trotzdem durchführen?",
+        ].join("\n");
+        if (!window.confirm(msg)) return;
+        ({ r, j } = await tryOnce({ status: "approved", acknowledgeIncompleteDocuments: true }));
+      }
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
+        return;
+      }
+      loadDrivers(companyId);
+      loadDetailAndAudit(companyId, sel.id);
+    } finally {
+      setActBusy("");
+    }
+  }
+
   async function patchNotes() {
     if (!companyId || !sel) return;
     setActBusy("notes");
@@ -293,7 +331,7 @@ export default function TaxiFleetDriversPage() {
                   <strong>Telefon</strong> {detail.phone || "—"}
                 </div>
                 <div>
-                  <strong>approval_status</strong> <code>{detail.approvalStatus}</code>
+                  <strong>Freigabe</strong> {workflowDe(detail.workflow?.key)}
                 </div>
                 <div>
                   <strong>Einsatzbereit</strong> {detail.readiness?.ready ? "Ja" : "Nein"}
@@ -331,7 +369,7 @@ export default function TaxiFleetDriversPage() {
                     type="button"
                     style={{ padding: "6px 12px" }}
                     disabled={!!actBusy}
-                    onClick={() => postAction("/approval", { status: "approved" })}
+                    onClick={() => void runApproveDriver()}
                   >
                     Freigeben
                   </button>
@@ -340,11 +378,32 @@ export default function TaxiFleetDriversPage() {
                     style={{ padding: "6px 12px" }}
                     disabled={!!actBusy}
                     onClick={() => {
-                      if (!window.confirm("Fahrer wirklich ablehnen?")) return;
-                      postAction("/approval", { status: "rejected" });
+                      const reason = window.prompt("Ablehnungsgrund (Pflicht):", "");
+                      if (reason == null) return;
+                      if (!reason.trim()) {
+                        window.alert("Grund erforderlich.");
+                        return;
+                      }
+                      postAction("/approval", { status: "rejected", reason: reason.trim() });
                     }}
                   >
                     Ablehnen
+                  </button>
+                  <button
+                    type="button"
+                    style={{ padding: "6px 12px" }}
+                    disabled={!!actBusy}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          "Status „Unterlagen fehlen“ setzen? Fahrer bleibt für die Vermittlung ohne Freigabe.",
+                        )
+                      )
+                        return;
+                      postAction("/approval", { status: "missing_documents" });
+                    }}
+                  >
+                    Unterlagen fehlen
                   </button>
                   <button
                     type="button"

@@ -4,7 +4,12 @@ import { getDb, isPostgresConfigured } from "./client";
 import { adminCompaniesTable, fleetDriversTable } from "./schema";
 
 export type FleetDriverAccessStatus = "active" | "suspended";
-export type FleetDriverApprovalStatus = "pending" | "in_review" | "approved" | "rejected";
+export type FleetDriverApprovalStatus =
+  | "pending"
+  | "in_review"
+  | "missing_documents"
+  | "approved"
+  | "rejected";
 export type FleetVehicleLegalType = "taxi" | "rental_car";
 export type FleetVehicleClass = "standard" | "xl" | "wheelchair";
 
@@ -48,8 +53,28 @@ export function normalizeFleetDriverApproval(raw: string | null | undefined): Fl
   const t = String(raw ?? "")
     .toLowerCase()
     .trim();
-  if (t === "in_review" || t === "pending" || t === "rejected" || t === "approved") return t;
-  return "approved";
+  if (
+    t === "in_review" ||
+    t === "pending" ||
+    t === "missing_documents" ||
+    t === "rejected" ||
+    t === "approved"
+  )
+    return t;
+  return "pending";
+}
+
+/** Admin-Freigabe: zu erwartende Nachweise (blockiert nicht bei expliziter Admin-Bestätigung). */
+export function computeFleetDriverComplianceGaps(
+  d: Pick<FleetDriverListRow, "pScheinNumber" | "pScheinExpiry" | "pScheinDocStorageKey">,
+): string[] {
+  const gaps: string[] = [];
+  if (!(d.pScheinNumber ?? "").trim()) gaps.push("P-Schein-Nummer fehlt");
+  const exp = d.pScheinExpiry != null ? String(d.pScheinExpiry).trim() : "";
+  if (!exp) gaps.push("P-Schein-Ablaufdatum fehlt");
+  const doc = (d.pScheinDocStorageKey ?? "").trim();
+  if (!doc) gaps.push("P-Schein-PDF-Nachweis fehlt");
+  return gaps;
 }
 
 export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSelect): FleetDriverListRow {
@@ -140,6 +165,14 @@ export async function findFleetDriverByEmailNormalized(
   return rows[0] ?? null;
 }
 
+export async function findFleetDriverGlobal(id: string): Promise<(typeof fleetDriversTable.$inferSelect) | null> {
+  if (!isPostgresConfigured()) return null;
+  const db = getDb();
+  if (!db) return null;
+  const rows = await db.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function findFleetDriverInCompany(
   id: string,
   companyId: string,
@@ -202,7 +235,7 @@ export async function insertFleetDriver(input: {
     vehicle_class: input.vehicleClass ?? "standard",
     is_active: true,
     access_status: "active",
-    approval_status: "pending",
+    approval_status: "in_review",
     session_version: 1,
   });
   return { ok: true, id };
@@ -295,18 +328,114 @@ export async function activateFleetDriver(id: string, companyId: string): Promis
   return r.length > 0;
 }
 
+/** Globale Admin-ID ohne Mandant im Pfad — nur für Legacy-Routen; nutzt `company_id` aus der Zeile. */
 export async function setFleetDriverApprovalByAdmin(
   driverId: string,
   nextStatus: FleetDriverApprovalStatus,
+  opts?: { rejectionReason?: string; acknowledgeIncompleteDocuments?: boolean },
+): Promise<{ ok: true } | { ok: false; error: string; gaps?: string[] }> {
+  const row = await findFleetDriverGlobal(driverId);
+  if (!row) return { ok: false, error: "not_found" };
+  const companyId = row.company_id;
+  if (nextStatus === "approved") {
+    return approveFleetDriverForCompany(companyId, driverId, {
+      acknowledgeIncompleteDocuments: opts?.acknowledgeIncompleteDocuments === true,
+    });
+  }
+  if (nextStatus === "rejected") {
+    const reason = String(opts?.rejectionReason ?? "").trim();
+    return rejectFleetDriverForCompany(companyId, driverId, reason);
+  }
+  if (nextStatus === "missing_documents") {
+    return markFleetDriverMissingDocumentsForCompany(companyId, driverId);
+  }
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
+}
+
+export async function approveFleetDriverForCompany(
+  companyId: string,
+  driverId: string,
+  opts: { acknowledgeIncompleteDocuments?: boolean },
+): Promise<{ ok: true } | { ok: false; error: string; gaps?: string[] }> {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval((cur as { approval_status?: string | null }).approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const listRow = fleetDriverTableRowToList(cur);
+  const gaps = computeFleetDriverComplianceGaps(listRow);
+  if (gaps.length > 0 && !opts.acknowledgeIncompleteDocuments) {
+    return { ok: false, error: "incomplete_documents_ack_required", gaps };
+  }
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ approval_status: "approved", updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+export async function rejectFleetDriverForCompany(
+  companyId: string,
+  driverId: string,
+  rejectionReason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const reason = String(rejectionReason ?? "").trim();
+  if (!reason) return { ok: false, error: "rejection_reason_required" };
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval((cur as { approval_status?: string | null }).approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ approval_status: "rejected", updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+/** Admin: „Unterlagen fehlen“ — Fahrer bleibt im Pool, aber ohne Plattform-Freigabe. */
+export async function markFleetDriverMissingDocumentsForCompany(
+  companyId: string,
+  driverId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval((cur as { approval_status?: string | null }).approval_status);
+  if (!["pending", "in_review", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db = getDb();
+  if (!db) return { ok: false, error: "database_not_configured" };
+  const u = await db
+    .update(fleetDriversTable)
+    .set({ approval_status: "missing_documents", updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+
+/** Nur Statuswechsel ohne Freigabe-/Ablehnungslogik (z. B. Korrektur pending ↔ in_review). */
+export async function setFleetDriverApprovalStatusOnlyForCompany(
+  companyId: string,
+  driverId: string,
+  nextStatus: FleetDriverApprovalStatus,
 ): Promise<{ ok: true } | { ok: false; error: "not_found" | "invalid_status" }> {
-  const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
+  const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "missing_documents"];
   if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
   const db = getDb();
   if (!db) return { ok: false, error: "not_found" };
   const u = await db
     .update(fleetDriversTable)
     .set({ approval_status: nextStatus, updated_at: new Date() })
-    .where(eq(fleetDriversTable.id, driverId))
+    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
     .returning({ id: fleetDriversTable.id });
   return u[0] ? { ok: true } : { ok: false, error: "not_found" };
 }
@@ -328,21 +457,13 @@ export async function setFleetDriverReadinessOverrideSystem(
   return r.length > 0;
 }
 
+/** @deprecated Nutze approve/reject/markMissing oder `setFleetDriverApprovalStatusOnlyForCompany`. */
 export async function setFleetDriverApprovalForCompany(
   companyId: string,
   driverId: string,
   nextStatus: FleetDriverApprovalStatus,
 ): Promise<{ ok: true } | { ok: false; error: "not_found" | "invalid_status" }> {
-  const allowed: FleetDriverApprovalStatus[] = ["pending", "in_review", "approved", "rejected"];
-  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
-  const db = getDb();
-  if (!db) return { ok: false, error: "not_found" };
-  const u = await db
-    .update(fleetDriversTable)
-    .set({ approval_status: nextStatus, updated_at: new Date() })
-    .where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId)))
-    .returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
 }
 
 const MAX_SUS_REASON = 2000;

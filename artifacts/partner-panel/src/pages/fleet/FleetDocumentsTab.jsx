@@ -38,7 +38,9 @@ export default function FleetDocumentsTab({ dash, drivers, vehicles, company, lo
   });
 
   const vehiclesNeedAttention = (vehicles ?? []).filter((v) =>
-    ["draft", "pending_approval", "rejected", "blocked"].includes(String(v.approvalStatus ?? "")),
+    ["draft", "pending_approval", "missing_documents", "rejected", "blocked"].includes(
+      String(v.approvalStatus ?? ""),
+    ),
   );
 
   return (

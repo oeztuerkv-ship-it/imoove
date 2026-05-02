@@ -473,7 +473,7 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
       konzessionNumber: konzessionRaw,
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
-      approvalStatus: "draft",
+      approvalStatus: "pending_approval",
     });
     if (!ins.ok) {
       res.status(400).json({ error: ins.error });

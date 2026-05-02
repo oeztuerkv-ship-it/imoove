@@ -229,6 +229,11 @@ export default function FleetVehiclesTab({
                             Wartet auf Freigabe durch Onroda
                           </span>
                         ) : null}
+                        {v.approvalStatus === "missing_documents" ? (
+                          <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
+                            Bitte fehlende Unterlagen nachreichen und erneut einreichen.
+                          </span>
+                        ) : null}
                         {v.approvalStatus === "rejected" && v.rejectionReason ? (
                           <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
                             {v.rejectionReason}
@@ -239,15 +244,21 @@ export default function FleetVehiclesTab({
                             Sperrgrund: {v.blockReason}
                           </span>
                         ) : null}
-                        {canManage && (v.approvalStatus === "draft" || v.approvalStatus === "rejected") ? (
+                        {canManage &&
+                        (v.approvalStatus === "draft" ||
+                          v.approvalStatus === "rejected" ||
+                          v.approvalStatus === "pending_approval" ||
+                          v.approvalStatus === "missing_documents") ? (
                           <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                             <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
                               PDF
                               <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(ev) => void uploadVehicleDocument(v.id, ev)} />
                             </label>
-                            <button type="button" className="partner-btn-secondary partner-btn-secondary--sm" onClick={() => void submitVehicleApproval(v.id)}>
-                              Einreichen
-                            </button>
+                            {v.approvalStatus === "draft" || v.approvalStatus === "rejected" || v.approvalStatus === "missing_documents" ? (
+                              <button type="button" className="partner-btn-secondary partner-btn-secondary--sm" onClick={() => void submitVehicleApproval(v.id)}>
+                                {v.approvalStatus === "missing_documents" ? "Erneut einreichen" : "Einreichen"}
+                              </button>
+                            ) : null}
                           </span>
                         ) : null}
                       </div>

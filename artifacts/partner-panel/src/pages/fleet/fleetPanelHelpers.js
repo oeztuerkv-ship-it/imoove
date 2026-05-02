@@ -69,6 +69,7 @@ export function vehicleStatusDe(v) {
   const s = v?.approvalStatus;
   if (s === "draft") return "Entwurf";
   if (s === "pending_approval") return "In Prüfung";
+  if (s === "missing_documents") return "Unterlagen fehlen";
   if (s === "approved") return "Freigegeben";
   if (s === "rejected") return "Abgelehnt";
   if (s === "blocked") return "Gesperrt";
@@ -78,7 +79,7 @@ export function vehicleStatusDe(v) {
 export function vehicleStatusTone(v) {
   const s = v?.approvalStatus;
   if (s === "approved") return "ok";
-  if (s === "pending_approval") return "warn";
+  if (s === "pending_approval" || s === "missing_documents") return "warn";
   if (s === "rejected" || s === "blocked") return "danger";
   return "soft";
 }
@@ -105,7 +106,7 @@ export function pScheinMeta(isoDate) {
 
 function workflowKeyToTone(key) {
   if (key === "inactive" || key === "suspended") return "missing";
-  if (key === "rejected") return "missing";
+  if (key === "rejected" || key === "missing_documents") return "missing";
   if (key === "in_review" || key === "pending") return "review";
   if (key === "approved") return "neutral";
   return "soft";
@@ -121,6 +122,7 @@ export function workflowPill(driver) {
     return { label: "Gesperrt", tone: "missing" };
   }
   if (st === "rejected") return { label: "Abgelehnt", tone: "missing" };
+  if (st === "missing_documents") return { label: "Unterlagen fehlen", tone: "missing" };
   if (st === "in_review") return { label: "In Prüfung", tone: "review" };
   if (st === "pending") return { label: "Angelegt", tone: "review" };
   if (st === "approved") return { label: "Freigegeben", tone: "neutral" };

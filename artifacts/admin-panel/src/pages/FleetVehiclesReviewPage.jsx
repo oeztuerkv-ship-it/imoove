@@ -122,6 +122,50 @@ export default function FleetVehiclesReviewPage() {
     }
   }
 
+  async function approveVehicle(vId) {
+    setBusy(true);
+    setDetailErr("");
+    const approveUrl = `${API_BASE}/admin/fleet-vehicles/${encodeURIComponent(vId)}/approve`;
+    const tryOnce = async (payload) => {
+      const res = await fetch(approveUrl, {
+        method: "POST",
+        headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return { res, data: await res.json().catch(() => ({})) };
+    };
+    try {
+      let { res, data } = await tryOnce({});
+      if (!res.ok && data?.error === "incomplete_documents_ack_required" && Array.isArray(data.gaps)) {
+        const msg = [
+          "Achtung: Unterlagen unvollständig.",
+          "",
+          ...data.gaps.map((g) => `• ${g}`),
+          "",
+          "Manuelle Freigabe durch Admin trotzdem durchführen?",
+        ].join("\n");
+        if (!window.confirm(msg)) {
+          setBusy(false);
+          return;
+        }
+        ({ res, data } = await tryOnce({ acknowledgeIncompleteDocuments: true }));
+      }
+      if (!res.ok || !data?.ok) {
+        setDetailErr(typeof data?.error === "string" ? data.error : "Freigabe fehlgeschlagen.");
+        setBusy(false);
+        return;
+      }
+      setSelectedId(null);
+      setDetail(null);
+      setRejectReason("");
+      await loadList();
+    } catch {
+      setDetailErr("Netzwerkfehler.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const v = detail?.vehicle;
 
   return (
@@ -244,9 +288,7 @@ export default function FleetVehiclesReviewPage() {
                   type="button"
                   className="admin-btn-primary"
                   disabled={busy}
-                  onClick={() =>
-                    void postAction(`${API_BASE}/admin/fleet-vehicles/${encodeURIComponent(v.id)}/approve`)
-                  }
+                  onClick={() => void approveVehicle(v.id)}
                 >
                   Freigeben
                 </button>
@@ -265,6 +307,24 @@ export default function FleetVehiclesReviewPage() {
                   }}
                 >
                   Ablehnen
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        "Status „Unterlagen fehlen“ setzen? Fahrzeug bleibt für die Vermittlung inaktiv.",
+                      )
+                    )
+                      return;
+                    void postAction(
+                      `${API_BASE}/admin/fleet-vehicles/${encodeURIComponent(v.id)}/mark-missing-documents`,
+                    );
+                  }}
+                >
+                  Unterlagen fehlen
                 </button>
                 <button
                   type="button"

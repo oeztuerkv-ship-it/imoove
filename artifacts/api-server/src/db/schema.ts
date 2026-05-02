@@ -82,7 +82,7 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   session_version: integer("session_version").notNull().default(1),
   is_active: boolean("is_active").notNull().default(true),
   access_status: text("access_status").notNull().default("active"),
-  /** Plattform-Freigabe: pending | in_review | approved | rejected (Login bleibt möglich). */
+  /** Plattform-Freigabe: pending | in_review | missing_documents | approved | rejected (Login bleibt möglich). */
   approval_status: text("approval_status").notNull().default("approved"),
   /** Von Admin gesetzter Grund bei Sperre (MVP, Anzeige/Export). */
   suspension_reason: text("suspension_reason").notNull().default(""),
@@ -130,7 +130,7 @@ export const fleetVehiclesTable = pgTable("fleet_vehicles", {
   approval_decided_by_admin_id: text("approval_decided_by_admin_id"),
   next_inspection_date: date("next_inspection_date"),
   is_active: boolean("is_active").notNull().default(false),
-  /** draft | pending_approval | approved | rejected | blocked */
+  /** draft | pending_approval | missing_documents | approved | rejected | blocked */
   approval_status: text("approval_status").notNull().default("draft"),
   admin_internal_note: text("admin_internal_note").notNull().default(""),
   /** Sperrgrund (Plattform) bei `approval_status` = blocked */

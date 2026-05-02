@@ -29,6 +29,7 @@ function approvalDe(key) {
   const m = {
     draft: "Entwurf",
     pending_approval: "Wartet auf Prüfung",
+    missing_documents: "Unterlagen fehlen",
     approved: "Freigegeben",
     rejected: "Abgelehnt",
     blocked: "Gesperrt",
@@ -78,7 +79,7 @@ function vBlocked(v) {
 function approvalBadgeClass(status) {
   if (status === "approved") return "admin-c-badge--ok";
   if (status === "rejected" || status === "blocked") return "admin-c-badge--err";
-  if (status === "pending_approval" || status === "draft") return "admin-c-badge--warn";
+  if (status === "pending_approval" || status === "draft" || status === "missing_documents") return "admin-c-badge--warn";
   return "admin-c-badge--neutral";
 }
 
@@ -97,6 +98,7 @@ function auditActionDe(action) {
   const m = {
     "admin.fleet_vehicle.approved": "Fahrzeug freigegeben",
     "admin.fleet_vehicle.rejected": "Fahrzeug abgelehnt",
+    "admin.fleet_vehicle.missing_documents": "Unterlagen fehlen (gesetzt)",
     "admin.fleet_vehicle.blocked": "Fahrzeug gesperrt",
     "admin.fleet_vehicle.unblocked": "Fahrzeug entsperrt",
     "admin.fleet_vehicle.notes_patched": "Sperrgrund/Notiz aktualisiert",
@@ -265,6 +267,43 @@ export default function TaxiFleetVehiclesPage() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         window.alert(j.error || r.status);
+        return;
+      }
+      loadVehicles(companyId);
+      loadDetailAndAudit(companyId, sel.id);
+    } finally {
+      setActBusy("");
+    }
+  }
+
+  async function runApproveVehicle() {
+    if (!companyId || !sel) return;
+    setActBusy("/approve");
+    try {
+      const url = `${API_BASE}/admin/taxi-fleet-vehicles/${encodeURIComponent(companyId)}/vehicles/${encodeURIComponent(sel.id)}/approve`;
+      const tryApprove = async (payload) => {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const j = await r.json().catch(() => ({}));
+        return { r, j };
+      };
+      let { r, j } = await tryApprove({});
+      if (!r.ok && j?.error === "incomplete_documents_ack_required" && Array.isArray(j.gaps)) {
+        const msg = [
+          "Achtung: Unterlagen unvollständig.",
+          "",
+          ...j.gaps.map((g) => `• ${g}`),
+          "",
+          "Manuelle Freigabe durch Admin trotzdem durchführen?",
+        ].join("\n");
+        if (!window.confirm(msg)) return;
+        ({ r, j } = await tryApprove({ acknowledgeIncompleteDocuments: true }));
+      }
+      if (!r.ok) {
+        window.alert(typeof j?.error === "string" ? j.error : String(r.status));
         return;
       }
       loadVehicles(companyId);
@@ -474,7 +513,7 @@ export default function TaxiFleetVehiclesPage() {
                       type="button"
                       className="admin-m-btn-bearb"
                       disabled={!!actBusy}
-                      onClick={() => postAction("/approve", {})}
+                      onClick={() => void runApproveVehicle()}
                     >
                       {actBusy === "/approve" ? "…" : "Freigeben"}
                     </button>
@@ -489,6 +528,22 @@ export default function TaxiFleetVehiclesPage() {
                       }}
                     >
                       {actBusy === "/reject" ? "…" : "Ablehnen"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-c-btn-sec"
+                      disabled={!!actBusy}
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            "Status „Unterlagen fehlen“ setzen? Das Fahrzeug bleibt für die Vermittlung inaktiv, bis unterlagen nachgereicht und erneut freigegeben wird.",
+                          )
+                        )
+                          return;
+                        postAction("/mark-missing-documents", {});
+                      }}
+                    >
+                      {actBusy === "/mark-missing-documents" ? "…" : "Unterlagen fehlen"}
                     </button>
                     <button
                       type="button"
