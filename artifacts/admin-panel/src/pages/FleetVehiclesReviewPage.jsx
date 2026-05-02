@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import { groupFleetVehicleDocumentsForAdmin } from "../lib/fleetVehicleDocumentsAdmin.js";
 
 const PENDING_URL = `${API_BASE}/admin/fleet-vehicles/pending`;
 
@@ -252,24 +253,36 @@ export default function FleetVehiclesReviewPage() {
                 <div style={{ fontWeight: 600 }}>{v.konzessionNumber || v.taxiOrderNumber || "—"}</div>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: "var(--onroda-text-muted, #6b6b6b)" }}>Dokumente (PDF)</div>
-                <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
-                  {Array.isArray(v.vehicleDocuments) && v.vehicleDocuments.length > 0 ? (
-                    v.vehicleDocuments.map((d, i) => (
-                      <li key={d.storageKey + i} style={{ marginBottom: 4 }}>
-                        <button
-                          type="button"
-                          className="admin-link"
-                          onClick={() => void openPdf(v.id, d.storageKey)}
-                        >
-                          Anzeigen {i + 1}
-                        </button>
-                      </li>
-                    ))
-                  ) : (
-                    <li>—</li>
-                  )}
-                </ul>
+                <div style={{ fontSize: 12, color: "var(--onroda-text-muted, #6b6b6b)" }}>Dokumente (PDF, versioniert)</div>
+                {Array.isArray(v.vehicleDocuments) && v.vehicleDocuments.length > 0 ? (
+                  groupFleetVehicleDocumentsForAdmin(v.vehicleDocuments).map((g) => (
+                    <div key={g.kindKey} style={{ marginTop: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{g.kindLabel}</div>
+                      <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                        {g.versions.map((d) => (
+                          <li key={String(d.storageKey) + d.versionIndex} style={{ marginBottom: 4 }}>
+                            <button type="button" className="admin-link" onClick={() => void openPdf(v.id, d.storageKey)}>
+                              Version {d.versionIndex}
+                              {d.isLatest ? " (aktuell)" : " (früher)"}
+                            </button>
+                            {d.uploadedAt ? (
+                              <span style={{ fontSize: 11, color: "var(--onroda-text-muted, #6b6b6b)", marginLeft: 8 }}>
+                                {fmt(d.uploadedAt)}
+                              </span>
+                            ) : null}
+                            {d.uploadedByPanelUserId ? (
+                              <span style={{ fontSize: 11, color: "var(--onroda-text-muted, #6b6b6b)", marginLeft: 8 }}>
+                                · Panel: {d.uploadedByPanelUserId}
+                              </span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ margin: "4px 0 0", fontSize: 13 }}>—</p>
+                )}
               </div>
               <div>
                 <label className="admin-field" style={{ display: "block" }}>

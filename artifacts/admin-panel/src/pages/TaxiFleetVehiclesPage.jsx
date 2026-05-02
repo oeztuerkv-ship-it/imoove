@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import { groupFleetVehicleDocumentsForAdmin } from "../lib/fleetVehicleDocumentsAdmin.js";
 
 function fmtTs(iso) {
   if (!iso) return "—";
@@ -115,7 +116,7 @@ function KvRow({ label, children, wideValue }) {
   );
 }
 
-export default function TaxiFleetVehiclesPage() {
+export default function TaxiFleetVehiclesPage({ initialCompanyId = null, onInitialCompanyConsumed }) {
   const [companies, setCompanies] = useState([]);
   const [cLoading, setCLoading] = useState(true);
   const [cQuery, setCQuery] = useState("");
@@ -150,6 +151,13 @@ export default function TaxiFleetVehiclesPage() {
   useEffect(() => {
     loadCompanies();
   }, [loadCompanies]);
+
+  useEffect(() => {
+    if (!initialCompanyId || typeof initialCompanyId !== "string") return;
+    setCompanyId(initialCompanyId);
+    setSel(null);
+    onInitialCompanyConsumed?.();
+  }, [initialCompanyId, onInitialCompanyConsumed]);
 
   const loadVehicles = useCallback((cid) => {
     if (!cid) {
@@ -711,27 +719,34 @@ export default function TaxiFleetVehiclesPage() {
                       </div>
                     ) : null}
                     <p className="admin-m-sec__hint" style={{ margin: "0 0 6px" }}>
-                      Nachweise (PDF) — <strong>öffnen</strong> prüft die Datei aus dem Mandanten-Upload.
+                      Nachweise (PDF) — pro Dokumenttyp versioniert. Mit „Version … anzeigen“ öffnen Sie die Datei aus dem Mandanten-Upload. Ältere Versionen
+                      bleiben verfügbar; Partner-Löschung ist nicht vorgesehen.
                     </p>
-                    <ul className="admin-taxi-fv-doclist">
-                      {(detail.vehicle.vehicleDocuments || []).length === 0 ? null : (detail.vehicle.vehicleDocuments || []).map(
-                        (d, i) => (
-                          <li key={d.storageKey + i}>
-                            <button
-                              type="button"
-                              className="admin-taxi-fv-linkbtn"
-                              onClick={() => void openPdf(detail.vehicle.id, d.storageKey)}
-                            >
-                              PDF {i + 1} anzeigen
-                            </button>
-                            <code className="admin-taxi-fv-docmeta">{d.storageKey}</code>
-                            {d.uploadedAt ? (
-                              <span className="admin-taxi-fv-docmeta"> · hochgeladen: {fmtTs(d.uploadedAt)}</span>
-                            ) : null}
-                          </li>
-                        ),
-                      )}
-                    </ul>
+                    {groupFleetVehicleDocumentsForAdmin(detail.vehicle.vehicleDocuments || []).map((g) => (
+                      <div key={g.kindKey} className="admin-taxi-fv-doclist" style={{ marginBottom: 12 }}>
+                        <div className="admin-taxi-fv-docmeta" style={{ fontWeight: 600, marginBottom: 6 }}>
+                          {g.kindLabel}
+                        </div>
+                        <ul className="admin-taxi-fv-doclist" style={{ margin: 0, paddingLeft: 16 }}>
+                          {g.versions.map((d) => (
+                            <li key={String(d.storageKey) + d.versionIndex} style={{ marginBottom: 6 }}>
+                              <button
+                                type="button"
+                                className="admin-taxi-fv-linkbtn"
+                                onClick={() => void openPdf(detail.vehicle.id, d.storageKey)}
+                              >
+                                Version {d.versionIndex} anzeigen{d.isLatest ? " (aktuell)" : " (früher)"}
+                              </button>
+                              <code className="admin-taxi-fv-docmeta">{d.storageKey}</code>
+                              {d.uploadedAt ? <span className="admin-taxi-fv-docmeta"> · hochgeladen: {fmtTs(d.uploadedAt)}</span> : null}
+                              {d.uploadedByPanelUserId ? (
+                                <span className="admin-taxi-fv-docmeta"> · hochgeladen von (Panel): {d.uploadedByPanelUserId}</span>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                     <p className="admin-taxi-fv-muted" style={{ margin: "8px 0 0" }}>
                       Versicherungs-/HUK-Flags gibt es in der DB nicht; Bewertung erfolgt inhaltlich über die PDFs.
                     </p>

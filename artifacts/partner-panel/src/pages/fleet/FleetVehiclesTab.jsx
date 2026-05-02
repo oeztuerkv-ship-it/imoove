@@ -1,4 +1,11 @@
-import { VEHICLE_CLASSES, VEHICLE_LEGAL_HINT, VEHICLE_TYPES, vehicleStatusDe, vehicleStatusTone } from "./fleetPanelHelpers.js";
+import {
+  VEHICLE_CLASSES,
+  VEHICLE_DOCUMENT_KIND_OPTIONS,
+  VEHICLE_LEGAL_HINT,
+  VEHICLE_TYPES,
+  vehicleStatusDe,
+  vehicleStatusTone,
+} from "./fleetPanelHelpers.js";
 
 /**
  * @param {{
@@ -8,7 +15,8 @@ import { VEHICLE_CLASSES, VEHICLE_LEGAL_HINT, VEHICLE_TYPES, vehicleStatusDe, ve
  *   setVehiclesActiveOnly: (v: boolean | ((p: boolean) => boolean)) => void;
  *   vehicleForm: Record<string, string>;
  *   setVehicleForm: React.Dispatch<React.SetStateAction<Record<string, string>>>;
- *   vehicleCreatePdfRef: import("react").RefObject<HTMLInputElement | null>;
+ *   vehicleCreateConcessionPdfRef: import("react").RefObject<HTMLInputElement | null>;
+ *   vehicleCreateRegistrationPdfRef: import("react").RefObject<HTMLInputElement | null>;
  *   createVehicle: (e: React.FormEvent) => void | Promise<void>;
  *   assignForm: { driverId: string; vehicleId: string };
  *   setAssignForm: React.Dispatch<React.SetStateAction<{ driverId: string; vehicleId: string }>>;
@@ -17,7 +25,7 @@ import { VEHICLE_CLASSES, VEHICLE_LEGAL_HINT, VEHICLE_TYPES, vehicleStatusDe, ve
  *   drivers: Record<string, unknown>[];
  *   vehicles: Record<string, unknown>[];
  *   assignments: { vehicleId?: string; driverId?: string }[];
- *   uploadVehicleDocument: (vehicleId: string, ev: React.ChangeEvent<HTMLInputElement>) => void | Promise<void>;
+ *   uploadVehicleDocument: (vehicleId: string, kind: string, ev: React.ChangeEvent<HTMLInputElement>) => void | Promise<void>;
  *   submitVehicleApproval: (vehicleId: string) => void | Promise<void>;
  *   clearAssignment: (driverId: string) => void | Promise<void>;
  * }} props
@@ -29,7 +37,8 @@ export default function FleetVehiclesTab({
   setVehiclesActiveOnly,
   vehicleForm,
   setVehicleForm,
-  vehicleCreatePdfRef,
+  vehicleCreateConcessionPdfRef,
+  vehicleCreateRegistrationPdfRef,
   createVehicle,
   assignForm,
   setAssignForm,
@@ -112,8 +121,12 @@ export default function FleetVehiclesTab({
                 />
               </label>
               <label className="partner-form-field partner-form-field--span2">
-                <span>Nachweis / Dokument (PDF, Pflicht)</span>
-                <input ref={vehicleCreatePdfRef} className="partner-input" type="file" accept="application/pdf" />
+                <span>Konzession / Konzessionsnachweis (PDF, Pflicht)</span>
+                <input ref={vehicleCreateConcessionPdfRef} className="partner-input" type="file" accept="application/pdf" />
+              </label>
+              <label className="partner-form-field partner-form-field--span2">
+                <span>Fahrzeugschein / Zulassungsbescheinigung (PDF, Pflicht)</span>
+                <input ref={vehicleCreateRegistrationPdfRef} className="partner-input" type="file" accept="application/pdf" />
               </label>
               <label className="partner-form-field">
                 <span>Nächste HU (TÜV)</span>
@@ -131,6 +144,10 @@ export default function FleetVehiclesTab({
             <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
               Nach dem Speichern wird das Fahrzeug bei Onroda zur Prüfung eingereicht. Sie können Fahrzeuge nicht selbst freischalten — die Freigabe erfolgt
               nur durch Onroda.
+            </p>
+            <p className="partner-muted" style={{ margin: "4px 0 8px", maxWidth: 720, lineHeight: 1.45, fontSize: 13 }}>
+              Hochgeladene Unterlagen können Sie durch eine neue Version ersetzen; Onroda behält ältere Versionen zur Nachvollziehbarkeit. Eine Löschung von
+              Nachweisen durch Partner ist nicht vorgesehen.
             </p>
             <button type="submit" className="partner-btn-primary" style={{ marginTop: 8 }}>
               Fahrzeug anlegen &amp; einreichen
@@ -250,10 +267,26 @@ export default function FleetVehiclesTab({
                           v.approvalStatus === "pending_approval" ||
                           v.approvalStatus === "missing_documents") ? (
                           <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                            <label className="partner-link-btn partner-link-btn--solid" style={{ cursor: "pointer" }}>
-                              PDF
-                              <input type="file" accept="application/pdf" style={{ display: "none" }} onChange={(ev) => void uploadVehicleDocument(v.id, ev)} />
-                            </label>
+                            {VEHICLE_DOCUMENT_KIND_OPTIONS.map((opt) => (
+                              <label
+                                key={opt.value}
+                                className="partner-link-btn partner-link-btn--solid"
+                                style={{ cursor: "pointer", fontSize: 12 }}
+                                title={opt.label}
+                              >
+                                {opt.value === "concession"
+                                  ? "Konzession"
+                                  : opt.value === "registration"
+                                    ? "Fahrzeugschein"
+                                    : opt.label.replace(/\s*\(optional\)\s*$/i, "")}
+                                <input
+                                  type="file"
+                                  accept="application/pdf"
+                                  style={{ display: "none" }}
+                                  onChange={(ev) => void uploadVehicleDocument(v.id, opt.value, ev)}
+                                />
+                              </label>
+                            ))}
                             {v.approvalStatus === "draft" || v.approvalStatus === "rejected" || v.approvalStatus === "missing_documents" ? (
                               <button type="button" className="partner-btn-secondary partner-btn-secondary--sm" onClick={() => void submitVehicleApproval(v.id)}>
                                 {v.approvalStatus === "missing_documents" ? "Erneut einreichen" : "Einreichen"}

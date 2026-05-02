@@ -5,7 +5,7 @@ import FleetDocumentsTab from "./fleet/FleetDocumentsTab.jsx";
 import FleetDriversTab from "./fleet/FleetDriversTab.jsx";
 import FleetTabs from "./fleet/FleetTabs.jsx";
 import FleetVehiclesTab from "./fleet/FleetVehiclesTab.jsx";
-import { messageForFleetDriverCreateError } from "./fleet/fleetPanelHelpers.js";
+import { messageForFleetDriverCreateError, vehicleDocumentUploadUrl } from "./fleet/fleetPanelHelpers.js";
 
 function hasPerm(permissions, key) {
   return Array.isArray(permissions) && permissions.includes(key);
@@ -57,7 +57,8 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     konzessionNumber: "",
     nextInspectionDate: "",
   });
-  const vehicleCreatePdfRef = useRef(null);
+  const vehicleCreateConcessionPdfRef = useRef(null);
+  const vehicleCreateRegistrationPdfRef = useRef(null);
   const [assignForm, setAssignForm] = useState({ driverId: "", vehicleId: "" });
 
   useEffect(() => {
@@ -187,12 +188,13 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     e.preventDefault();
     if (!token || !canManage) return;
     setMsg("");
-    const pdfFile = vehicleCreatePdfRef.current?.files?.[0];
-    if (!pdfFile) {
-      setMsg("Bitte mindestens ein PDF-Nachweis (z. B. Konzession) auswählen.");
+    const pdfConc = vehicleCreateConcessionPdfRef.current?.files?.[0];
+    const pdfReg = vehicleCreateRegistrationPdfRef.current?.files?.[0];
+    if (!pdfConc || !pdfReg) {
+      setMsg("Bitte jeweils ein PDF für Konzession und für Fahrzeugschein/Zulassung auswählen.");
       return;
     }
-    if (pdfFile.type !== "application/pdf") {
+    if (pdfConc.type !== "application/pdf" || pdfReg.type !== "application/pdf") {
       setMsg("Nur PDF-Dateien sind erlaubt.");
       return;
     }
@@ -224,19 +226,32 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
         return;
       }
       const newId = data.id;
-      const buf = await pdfFile.arrayBuffer();
-      const up = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(newId)}/documents`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/pdf",
-        },
-        body: buf,
-      });
-      const upData = await up.json().catch(() => ({}));
-      if (!up.ok || !upData?.ok) {
-        setMsg("Fahrzeug angelegt, aber PDF-Upload fehlgeschlagen. Bitte in der Liste nachladen (Entwurf).");
-        if (vehicleCreatePdfRef.current) vehicleCreatePdfRef.current.value = "";
+      const uploadOne = async (file, kind) => {
+        const buf = await file.arrayBuffer();
+        const res = await fetch(vehicleDocumentUploadUrl(API_BASE, newId, kind), {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/pdf",
+          },
+          body: buf,
+        });
+        const j = await res.json().catch(() => ({}));
+        return { ok: res.ok && j?.ok, error: j?.error };
+      };
+      const upConc = await uploadOne(pdfConc, "concession");
+      if (!upConc.ok) {
+        setMsg("Fahrzeug angelegt, aber Upload „Konzession“ fehlgeschlagen. Bitte in der Fahrzeugliste nachladen und nachreichen.");
+        if (vehicleCreateConcessionPdfRef.current) vehicleCreateConcessionPdfRef.current.value = "";
+        if (vehicleCreateRegistrationPdfRef.current) vehicleCreateRegistrationPdfRef.current.value = "";
+        await loadAll();
+        return;
+      }
+      const upReg = await uploadOne(pdfReg, "registration");
+      if (!upReg.ok) {
+        setMsg("Konzession gespeichert; Upload „Fahrzeugschein“ fehlgeschlagen. Bitte in der Liste nachreichen.");
+        if (vehicleCreateConcessionPdfRef.current) vehicleCreateConcessionPdfRef.current.value = "";
+        if (vehicleCreateRegistrationPdfRef.current) vehicleCreateRegistrationPdfRef.current.value = "";
         await loadAll();
         return;
       }
@@ -266,14 +281,15 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
         konzessionNumber: "",
         nextInspectionDate: "",
       });
-      if (vehicleCreatePdfRef.current) vehicleCreatePdfRef.current.value = "";
+      if (vehicleCreateConcessionPdfRef.current) vehicleCreateConcessionPdfRef.current.value = "";
+      if (vehicleCreateRegistrationPdfRef.current) vehicleCreateRegistrationPdfRef.current.value = "";
       await loadAll();
     } catch {
       setMsg("Fahrzeug konnte nicht angelegt werden.");
     }
   }
 
-  async function uploadVehicleDocument(vehicleId, ev) {
+  async function uploadVehicleDocument(vehicleId, kind, ev) {
     const file = ev.target.files?.[0];
     ev.target.value = "";
     if (!file || !token || !canManage) return;
@@ -284,7 +300,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     setMsg("");
     try {
       const buf = await file.arrayBuffer();
-      const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/documents`, {
+      const res = await fetch(vehicleDocumentUploadUrl(API_BASE, vehicleId, kind), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -314,7 +330,9 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        setMsg("Einreichen fehlgeschlagen (Kennzeichen, Konzession und mindestens ein PDF nötig).");
+        setMsg(
+          "Einreichen fehlgeschlagen: Kennzeichen, Konzessionsnummer sowie PDFs „Konzession“ und „Fahrzeugschein“ erforderlich (oder ältere Bestände ohne Dokumenttyp).",
+        );
         return;
       }
       setMsg("Zur Prüfung bei Onroda eingereicht.");
@@ -551,7 +569,8 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           setVehiclesActiveOnly={setVehiclesActiveOnly}
           vehicleForm={vehicleForm}
           setVehicleForm={setVehicleForm}
-          vehicleCreatePdfRef={vehicleCreatePdfRef}
+          vehicleCreateConcessionPdfRef={vehicleCreateConcessionPdfRef}
+          vehicleCreateRegistrationPdfRef={vehicleCreateRegistrationPdfRef}
           createVehicle={createVehicle}
           assignForm={assignForm}
           setAssignForm={setAssignForm}

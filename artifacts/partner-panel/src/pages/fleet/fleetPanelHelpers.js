@@ -59,6 +59,21 @@ export const VEHICLE_TYPES = [
 export const VEHICLE_LEGAL_HINT =
   "Onroda arbeitet nur mit Taxi-Schätzpreis. Alle Fahrzeuge werden als Taxi geführt; die Zuordnung erfolgt weiterhin über Fahrzeugklasse (Standard, XL, Rollstuhl).";
 
+/** Query `?kind=` für `POST .../fleet/vehicles/:id/documents` — alle Uploads bleiben für Onroda sichtbar; Löschen durch Partner nicht möglich. */
+export const VEHICLE_DOCUMENT_KIND_OPTIONS = [
+  { value: "concession", label: "Konzession / Konzessionsnachweis" },
+  { value: "registration", label: "Fahrzeugschein / Zulassungsbescheinigung" },
+  { value: "insurance", label: "Versicherung (optional)" },
+  { value: "taximeter", label: "Eichschein / Taxameter (optional)" },
+  { value: "accessibility", label: "Rollstuhl-/Sonderausstattung (optional)" },
+];
+
+export function vehicleDocumentUploadUrl(apiBase, vehicleId, kind) {
+  const u = new URL(`${apiBase.replace(/\/$/, "")}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}/documents`);
+  u.searchParams.set("kind", kind);
+  return u.toString();
+}
+
 export const VEHICLE_CLASSES = [
   { value: "standard", label: "Standard" },
   { value: "xl", label: "XL / Großraum" },
