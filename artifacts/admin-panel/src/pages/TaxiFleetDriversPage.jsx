@@ -295,6 +295,7 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                     <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
                       <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Name</th>
                       <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Status</th>
+                      <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Angelegt</th>
                       <th style={{ padding: 8, borderBottom: "1px solid #e2e8f0" }}>Einsatzbereit</th>
                     </tr>
                   </thead>
@@ -313,6 +314,9 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                           <div style={{ fontSize: 11, color: "#64748b" }}>{d.email}</div>
                         </td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>{workflowDe(d.workflow?.key)}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap", fontSize: 12 }}>
+                          {fmtTs(d.createdAt)}
+                        </td>
                         <td style={{ padding: 8, borderBottom: "1px solid #f1f5f9" }}>{d.readiness?.ready ? "Ja" : "Nein"}</td>
                       </tr>
                     ))}
@@ -339,6 +343,9 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                 </div>
                 <div>
                   <strong>Freigabe</strong> {workflowDe(detail.workflow?.key)}
+                </div>
+                <div>
+                  <strong>Angelegt am</strong> {fmtTs(detail.createdAt)}
                 </div>
                 <div>
                   <strong>Einsatzbereit</strong> {detail.readiness?.ready ? "Ja" : "Nein"}
@@ -495,6 +502,9 @@ export default function TaxiFleetDriversPage({ initialCompanyId = null, onInitia
                   {audit.map((e) => (
                     <div key={e.id} style={{ borderBottom: "1px solid #f1f5f9", padding: "4px 0" }}>
                       {fmtTs(e.createdAt)} <strong>{e.action}</strong> {e.subjectId ? e.subjectId : ""}
+                      {e.actorPanelUserId ? (
+                        <span style={{ color: "#64748b" }}> · Panel-Nutzer: {e.actorPanelUserId}</span>
+                      ) : null}
                     </div>
                   ))}
                 </div>

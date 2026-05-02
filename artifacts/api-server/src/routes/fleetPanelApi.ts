@@ -22,7 +22,8 @@ import {
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
 import {
-  appendFleetVehicleDocument,
+  addFleetVehicleDocumentVersion,
+  parseFleetVehicleDocumentKind,
   countActiveFleetVehicles,
   insertFleetVehicle,
   listFleetVehicleDocumentStorageKeysInCompany,
@@ -38,11 +39,8 @@ import {
   listAssignmentsForCompany,
   setDriverVehicleAssignment,
 } from "../db/fleetAssignmentsData";
-import {
-  countFleetDriversForCompany,
-  countFleetVehiclesForCompany,
-  getCompanyGovernanceGate,
-} from "../db/companyGovernanceData";
+import { countFleetDriversForCompany, countFleetVehiclesForCompany } from "../db/companyGovernanceData";
+import { findCompanyById } from "../db/adminData";
 import { hashPassword } from "../lib/password";
 import { generateTemporaryPassword } from "../lib/tempPassword";
 import { denyUnlessPanelPermission } from "../middleware/panelAccess";
@@ -109,17 +107,18 @@ async function assertFleetPanel(
 }
 
 /**
- * Fahrer-/Fahrzeug-Anlage + spätere Admin-Freigabe: auch vor vollständiger Verifizierung/Compliance.
- * Volle Mandanten-Governance für Einsatz/Vermittlung: `companyMeetsTaxiFleetProvisioningReadiness` / `computeDriverReadiness`.
+ * Fahrer-/Fahrzeug-Anlage: darf nicht an fehlenden Unterlagen oder Mandanten-Compliance scheitern.
+ * Nutzt die Firmenzeile direkt (auch wenn `getCompanyGovernanceGate` wegen `is_active` null liefert).
+ * Volle Mandanten-Governance für Einsatz/Vermittlung bleibt in `companyMeetsTaxiFleetProvisioningReadiness` / Readiness.
  */
 async function requireFleetOnboardingEntityCreateAllowed(
   companyId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const gate = await getCompanyGovernanceGate(companyId);
-  if (!gate) return { ok: false, error: "company_not_found" };
-  if (gate.companyKind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
-  if (gate.isBlocked) return { ok: false, error: "company_blocked" };
-  return { ok: true };
+): Promise<{ ok: true; company: NonNullable<Awaited<ReturnType<typeof findCompanyById>>> } | { ok: false; error: string }> {
+  const company = await findCompanyById(companyId);
+  if (!company) return { ok: false, error: "company_not_found" };
+  if (company.company_kind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
+  if (company.is_blocked) return { ok: false, error: "company_blocked" };
+  return { ok: true, company };
 }
 
 router.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
@@ -193,9 +192,9 @@ router.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) 
       return;
     }
     const c = await countFleetDriversForCompany(ctx.claims.companyId);
-    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
-    if (limits && c >= limits.maxDrivers) {
-      res.status(403).json({ error: "driver_limit_reached", maxDrivers: limits.maxDrivers });
+    const maxDrivers = Number.isFinite(Number(gate.company.max_drivers)) ? Number(gate.company.max_drivers) : 100;
+    if (c >= maxDrivers) {
+      res.status(403).json({ error: "driver_limit_reached", maxDrivers });
       return;
     }
     const email = typeof b.email === "string" ? b.email : "";
@@ -433,9 +432,9 @@ router.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next)
       return;
     }
     const c = await countFleetVehiclesForCompany(ctx.claims.companyId);
-    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
-    if (limits && c >= limits.maxVehicles) {
-      res.status(403).json({ error: "vehicle_limit_reached", maxVehicles: limits.maxVehicles });
+    const maxVehicles = Number.isFinite(Number(gate.company.max_vehicles)) ? Number(gate.company.max_vehicles) : 100;
+    if (c >= maxVehicles) {
+      res.status(403).json({ error: "vehicle_limit_reached", maxVehicles });
       return;
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
@@ -604,12 +603,24 @@ router.post(
         return;
       }
       const id = req.params.id;
+      const kindRaw =
+        typeof (req.query as { kind?: unknown }).kind === "string"
+          ? (req.query as { kind: string }).kind.trim().toLowerCase()
+          : "";
+      const kind = parseFleetVehicleDocumentKind(kindRaw);
+      if (!kind) {
+        res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
+        return;
+      }
       const rel = path.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID()}.pdf`);
       const dest = path.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
-      const ar = await appendFleetVehicleDocument(id, ctx.claims.companyId, storageKey);
+      const ar = await addFleetVehicleDocumentVersion(id, ctx.claims.companyId, storageKey, {
+        kind,
+        uploadedByPanelUserId: ctx.claims.panelUserId,
+      });
       if (!ar.ok) {
         const code = ar.error;
         res.status(code === "not_found" ? 404 : code === "documents_locked" ? 409 : 400).json({ error: code });
@@ -622,7 +633,7 @@ router.post(
         action: "fleet.vehicle_document_uploaded",
         subjectType: "fleet_vehicle",
         subjectId: id,
-        meta: {},
+        meta: { kind, storageKey, uploadedByPanelUserId: ctx.claims.panelUserId },
       });
       res.json({ ok: true, storageKey });
     } catch (e) {

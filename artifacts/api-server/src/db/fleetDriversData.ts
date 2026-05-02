@@ -235,7 +235,8 @@ export async function insertFleetDriver(input: {
     vehicle_class: input.vehicleClass ?? "standard",
     is_active: true,
     access_status: "active",
-    approval_status: "in_review",
+    /** Stammdaten-Anlage ohne Pflichtnachweise; Freigabe erst durch Admin (Unterlagen nachreichbar). */
+    approval_status: "pending",
     session_version: 1,
   });
   return { ok: true, id };

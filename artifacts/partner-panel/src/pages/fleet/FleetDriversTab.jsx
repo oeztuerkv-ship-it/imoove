@@ -46,6 +46,9 @@ export default function FleetDriversTab({
             <h3 className="partner-card__title" style={{ marginTop: 0 }}>
               Neuen Fahrer anlegen
             </h3>
+            <p className="partner-muted" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.45 }}>
+              P-Schein, Führerschein und weitere Nachweise können Sie nach der Anlage ergänzen — die Anlage scheitert nicht an fehlenden Unterlagen.
+            </p>
             <div className="partner-form-grid">
               <label className="partner-form-field">
                 <span>E-Mail (Login)</span>
