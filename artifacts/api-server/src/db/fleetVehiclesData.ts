@@ -15,9 +15,22 @@ export type FleetVehicleApprovalStatus =
   | "rejected"
   | "blocked";
 
+/** Partner-Upload-Typ; Pflicht-Kombination für Einreichung: Konzession + Fahrzeugschein (oder nur Legacy-Uploads ohne kind). */
+export const FLEET_VEHICLE_DOCUMENT_KINDS = [
+  "concession",
+  "registration",
+  "insurance",
+  "taximeter",
+  "accessibility",
+] as const;
+export type FleetVehicleDocumentKind = (typeof FLEET_VEHICLE_DOCUMENT_KINDS)[number];
+
 export interface VehicleDocumentRef {
   storageKey: string;
   uploadedAt?: string;
+  kind?: FleetVehicleDocumentKind;
+  /** Panel-Benutzer, der den Upload ausgelöst hat (Nachvollziehbarkeit für Admin). */
+  uploadedByPanelUserId?: string | null;
 }
 
 export interface FleetVehicleRow {
@@ -46,6 +59,12 @@ export interface FleetVehicleRow {
   updatedAt: string;
 }
 
+export function parseFleetVehicleDocumentKind(raw: unknown): FleetVehicleDocumentKind | undefined {
+  if (typeof raw !== "string") return undefined;
+  const k = raw.trim().toLowerCase();
+  return (FLEET_VEHICLE_DOCUMENT_KINDS as readonly string[]).includes(k) ? (k as FleetVehicleDocumentKind) : undefined;
+}
+
 function parseDocuments(raw: unknown): VehicleDocumentRef[] {
   if (!Array.isArray(raw)) return [];
   const out: VehicleDocumentRef[] = [];
@@ -53,10 +72,27 @@ function parseDocuments(raw: unknown): VehicleDocumentRef[] {
     if (x && typeof x === "object" && "storageKey" in x && typeof (x as { storageKey: unknown }).storageKey === "string") {
       const sk = (x as { storageKey: string }).storageKey;
       const uploadedAt = "uploadedAt" in x && typeof (x as { uploadedAt?: string }).uploadedAt === "string" ? (x as { uploadedAt: string }).uploadedAt : undefined;
-      if (sk) out.push({ storageKey: sk, uploadedAt });
+      const kind = parseFleetVehicleDocumentKind((x as { kind?: unknown }).kind);
+      const uploadedByPanelUserId =
+        "uploadedByPanelUserId" in x &&
+        ((x as { uploadedByPanelUserId?: unknown }).uploadedByPanelUserId === null ||
+          typeof (x as { uploadedByPanelUserId?: unknown }).uploadedByPanelUserId === "string")
+          ? ((x as { uploadedByPanelUserId: string | null }).uploadedByPanelUserId ?? null)
+          : undefined;
+      if (sk) out.push({ storageKey: sk, uploadedAt, kind, uploadedByPanelUserId });
     }
   }
   return out;
+}
+
+/** Einreichung: beide Pflichttypen ODER ausschließlich ältere Uploads ohne `kind` (Bestand). */
+export function fleetVehicleSubmitDocumentsSatisfied(docs: VehicleDocumentRef[]): boolean {
+  if (!docs.length) return false;
+  const hasConc = docs.some((d) => d.kind === "concession");
+  const hasReg = docs.some((d) => d.kind === "registration");
+  if (hasConc && hasReg) return true;
+  const allUntyped = docs.every((d) => d.kind == null || d.kind === undefined);
+  return allUntyped;
 }
 
 function rowToVehicle(r: typeof fleetVehiclesTable.$inferSelect): FleetVehicleRow {
@@ -181,7 +217,15 @@ function syncIsActiveForStatus(s: FleetVehicleApprovalStatus): boolean {
 export function computeFleetVehicleComplianceGaps(v: Pick<FleetVehicleRow, "vehicleDocuments" | "nextInspectionDate">): string[] {
   const gaps: string[] = [];
   const docs = Array.isArray(v.vehicleDocuments) ? v.vehicleDocuments : [];
-  if (docs.length < 1) gaps.push("Kein Fahrzeug-PDF-Nachweis hochgeladen");
+  const hasConc = docs.some((d) => d.kind === "concession");
+  const hasReg = docs.some((d) => d.kind === "registration");
+  const allUntyped = docs.length > 0 && docs.every((d) => d.kind == null || d.kind === undefined);
+  if (docs.length < 1) {
+    gaps.push("Kein Fahrzeug-PDF-Nachweis hochgeladen");
+  } else if (!allUntyped) {
+    if (!hasConc) gaps.push("Konzessionsnachweis (PDF) fehlt oder nicht als Typ „Konzession“ hochgeladen");
+    if (!hasReg) gaps.push("Fahrzeugschein / Zulassungsbescheinigung (PDF) fehlt oder nicht als Typ „Fahrzeugschein“ hochgeladen");
+  }
   const hu = v.nextInspectionDate != null ? String(v.nextInspectionDate).trim() : "";
   if (!hu) gaps.push("HU-Datum (Hauptuntersuchung) fehlt");
   return gaps;
@@ -234,10 +278,15 @@ export async function insertFleetVehicle(input: {
   return { ok: true, id };
 }
 
-export async function appendFleetVehicleDocument(
+/**
+ * Neue Dokumentversion anhängen (kein Entfernen durch Partner).
+ * Ersetzen = erneuter Upload gleichen `kind` → zusätzlicher Eintrag; ältere Dateien bleiben in der Historie.
+ */
+export async function addFleetVehicleDocumentVersion(
   id: string,
   companyId: string,
   storageKey: string,
+  meta: { kind: FleetVehicleDocumentKind; uploadedByPanelUserId: string | null },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
@@ -245,10 +294,13 @@ export async function appendFleetVehicleDocument(
     return { ok: false, error: "documents_locked" };
   }
   const existing = parseDocuments(cur.vehicle_documents);
-  const next: VehicleDocumentRef[] = [
-    ...existing,
-    { storageKey, uploadedAt: new Date().toISOString() },
-  ];
+  const entry: VehicleDocumentRef = {
+    storageKey,
+    uploadedAt: new Date().toISOString(),
+    kind: meta.kind,
+    uploadedByPanelUserId: meta.uploadedByPanelUserId,
+  };
+  const next: VehicleDocumentRef[] = [...existing, entry];
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
   await db
@@ -276,14 +328,14 @@ export async function submitFleetVehicleForApproval(
   if (st === "pending_approval") {
     if (!kz) return { ok: false, error: "konzession_number_required" };
     if (!plate) return { ok: false, error: "license_plate_required" };
-    if (docs.length < 1) return { ok: false, error: "documents_required" };
+    if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
     return { ok: true };
   }
 
   if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
   if (!kz) return { ok: false, error: "konzession_number_required" };
   if (!plate) return { ok: false, error: "license_plate_required" };
-  if (docs.length < 1) return { ok: false, error: "documents_required" };
+  if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
   await db
