@@ -5,9 +5,7 @@ export default function PanelSidebar({ active, onChange, items }) {
     <aside className="panel-sidebar">
       <div>
         <div className="panel-sidebar__brand">
-          <div className="panel-sidebar__brand-icon panel-sidebar__brand-icon--mark" aria-hidden>
-            <OnrodaLogo height={34} alt="" />
-          </div>
+          <OnrodaLogo className="panel-sidebar__wordmark" />
           <div>
             <div className="panel-sidebar__logo-sub">Ihr Unternehmensbereich</div>
           </div>

@@ -164,13 +164,14 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
         <div className="partner-shell__header-inner">
           <div className="partner-shell__brand-cluster">
             <a
-              className="partner-shell__logo-wordmark partner-shell__logo-wordmark--img"
+              className="partner-shell__onroda-wordmark"
               href="https://onroda.de"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="ONRODA – zur Website"
+              aria-label="onroda – zur Website"
             >
-              <img src="/onroda-logo.png" alt="" height={36} width={120} style={{ height: 36, width: "auto", objectFit: "contain" }} decoding="async" />
+              <span className="on">on</span>
+              <span className="roda">roda</span>
             </a>
             {company?.name ? (
               <span className="partner-shell__company-chip" title={company.name}>

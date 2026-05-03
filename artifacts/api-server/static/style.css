@@ -341,27 +341,8 @@
       align-items: center;
     }
 
-    .hp-logo--mark {
-      line-height: 0;
-      padding: 4px 8px;
-      border-radius: 10px;
-      background: #fff;
-    }
-
-    .hp-logo--mark img {
-      display: block;
-      height: 32px;
-      width: auto;
-      max-width: 132px;
-      object-fit: contain;
-    }
-
-    .hp-logo span.on {
-      color: var(--onroda-red);
-    }
-
-    .hp-logo span.roda {
-      color: var(--onroda-text-dark);
+    .hp-topbar .hp-logo .onroda-ui-wordmark {
+      font-size: 1.45rem;
     }
 
     .hp-hero {
@@ -1151,17 +1132,8 @@
       color: #fff;
     }
 
-    .hp-footer-logo.hp-logo--mark {
-      background: transparent;
-      padding: 0;
-    }
-
-    .hp-footer-logo.hp-logo--mark img {
-      height: 40px;
-      width: auto;
-      max-width: 180px;
-      object-fit: contain;
-      display: block;
+    .hp-footer-logo .onroda-ui-wordmark {
+      font-size: 1.55rem;
     }
 
     .hp-footer-text {

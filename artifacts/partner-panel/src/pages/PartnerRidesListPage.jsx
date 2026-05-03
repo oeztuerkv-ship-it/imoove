@@ -89,6 +89,9 @@ function escapeHtml(raw) {
     .replaceAll("'", "&#039;");
 }
 
+/** Bildmarke für PDF — gleiche Datei wie Marketing-Static und Partner-Freigabe-Mail. */
+const ONRODA_DOCUMENT_MARK_URL = "https://www.onroda.de/onroda-mark.png";
+
 const HISTORY_STATUSES = new Set(["completed", "cancelled", "rejected"]);
 
 /**
@@ -272,7 +275,13 @@ export default function PartnerRidesListPage({ variant }) {
     </style>
   </head>
   <body>
-    <h1>ONRODA Fahrtenverlauf (PDF)</h1>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+      <img src="${ONRODA_DOCUMENT_MARK_URL}" width="56" height="56" alt="" style="object-fit:contain;flex-shrink:0;" />
+      <div>
+        <div style="font-weight:700;font-size:20px;line-height:1.2;margin:0;">Fahrtenverlauf (PDF)</div>
+        <div style="font-size:12px;color:#555;margin-top:4px;">ONRODA · offizieller Nachweis</div>
+      </div>
+    </div>
     <div class="meta">
       <div><strong>Unternehmen:</strong> ${escapeHtml(company?.name || user?.companyName || "Unternehmen")}</div>
       <div><strong>Anschrift:</strong> ${escapeHtml(addr || "—")}</div>

@@ -406,12 +406,9 @@
   flex-shrink: 0;
 }
 
+.admin-sidebar__mark-img.onroda-ui-wordmark,
 .admin-sidebar__mark-img {
-  width: auto;
-  max-width: 120px;
-  height: 32px;
-  display: block;
-  object-fit: contain;
+  font-size: 1.2rem;
 }
 
 .admin-sidebar__logo {

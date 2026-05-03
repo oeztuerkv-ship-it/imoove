@@ -135,3 +135,35 @@ input::placeholder,
 textarea::placeholder {
   color: var(--onroda-text-muted);
 }
+
+/**
+ * Schriftzug „onroda“ (nur Text) — Header/Navigation/Login in Apps und Panels.
+ * Bildmarke (`onroda-mark.png`) nur für PDFs, E-Mails und andere offizielle Dokumente.
+ */
+.onroda-ui-wordmark {
+  font-family: "Libre Baskerville", Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: baseline;
+  text-decoration: none;
+  color: inherit;
+}
+
+.onroda-ui-wordmark__on {
+  color: var(--onroda-red);
+}
+
+.onroda-ui-wordmark__rest {
+  color: var(--onroda-text-dark);
+}
+
+.hp-topbar .onroda-ui-wordmark__rest {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.hp-footer-brand .onroda-ui-wordmark__rest {
+  color: #ffffff;
+}

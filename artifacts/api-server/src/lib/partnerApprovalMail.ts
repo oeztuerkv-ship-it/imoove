@@ -12,13 +12,13 @@ function statusPageUrl(): string {
   );
 }
 
-/** Logo für Freigabe-Mail (gleiche Marketing-Origin wie Statusseite). */
-function marketingLogoUrl(): string {
+/** Bildmarke für Freigabe-Mail (gleiche Marketing-Origin wie Statusseite; nur offizielle Kommunikation). */
+function marketingDocumentMarkUrl(): string {
   try {
     const o = new URL(statusPageUrl());
-    return `${o.origin}/onroda-logo.png`;
+    return `${o.origin}/onroda-mark.png`;
   } catch {
-    return "https://www.onroda.de/onroda-logo.png";
+    return "https://www.onroda.de/onroda-mark.png";
   }
 }
 
@@ -76,7 +76,7 @@ function buildBodies(input: {
          <p>Bitte ändern Sie das Passwort nach dem ersten Login.</p>`
       : `<p>Die Zugangsdaten zum Partner-Portal erhalten Sie separat von uns, falls noch nicht angelegt.</p>`;
 
-  const logoSrc = marketingLogoUrl();
+  const logoSrc = marketingDocumentMarkUrl();
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">

@@ -1,13 +1,13 @@
-/** Markenlogo aus `public/onroda-logo.png` (Partner-Panel, kein /partners/-Prefix). */
-export default function OnrodaLogo({ className = "", height = 40, alt = "ONRODA" }) {
+/** Schriftzug „onroda“ — kein Bild-Logo im Unternehmens-Panel (Header/Login/Navigation). */
+export default function OnrodaLogo({ className = "", style }) {
   return (
-    <img
-      src="/onroda-logo.png"
-      alt={alt}
-      height={height}
-      className={className}
-      style={{ width: "auto", maxWidth: 220, height, objectFit: "contain", display: "block" }}
-      decoding="async"
-    />
+    <span
+      className={`onroda-ui-wordmark${className ? ` ${className}` : ""}`.trim()}
+      style={style}
+      aria-label="onroda"
+    >
+      <span className="onroda-ui-wordmark__on">on</span>
+      <span className="onroda-ui-wordmark__rest">roda</span>
+    </span>
   );
 }

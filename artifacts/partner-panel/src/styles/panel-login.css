@@ -37,6 +37,8 @@
 
 .partner-login__brand-logo-img {
   margin: 0 auto 6px;
+  display: block;
+  font-size: 1.65rem;
 }
 
 .partner-login__brand-subtitle {
