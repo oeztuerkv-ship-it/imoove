@@ -10,6 +10,17 @@ import { rs, rf } from "@/utils/scale";
 
 export type BottomTab = "start" | "fahrten" | "buchen" | "geldborse" | "account";
 
+/**
+ * Innenhöhe der Tab-Leiste (ohne Safe-Area unten), abgestimmt auf `styles.bar` + `item` (Icon inkl. Plus-Rand, Label, Abstände).
+ * Wird vom Home-Sheet (`bottom`) und Scroll-Paddings benötigt — fehlender Wert verschiebt Sheet & Tabs nach oben.
+ */
+export const BOTTOM_TAB_BAR_INNER_HEIGHT = rs(7) + rs(32) + rs(3) + rf(14) + rs(4);
+
+/** Scroll-Content-Padding: Tab-Leiste + Home-Indicator + optionaler Zusatz (z. B. letzte Zeile sichtbar). */
+export function mainTabScrollPaddingBottom(safeBottom: number, extra = 0): number {
+  return BOTTOM_TAB_BAR_INNER_HEIGHT + safeBottom + extra;
+}
+
 export function BottomTabBar({ active }: { active: BottomTab }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -66,7 +77,11 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
 
 const styles = StyleSheet.create({
   wrap: {
-    position: "relative",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 40,
   },
   bar: {
     flexDirection: "row",
