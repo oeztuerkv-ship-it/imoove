@@ -328,10 +328,6 @@ export default function HomeScreen() {
   const [favPick, setFavPick] = useState<GeoLocation | null>(null);
   const [favLookupLoading, setFavLookupLoading] = useState(false);
 
-  /* ── Saved home / work ── */
-  const [savedHome, setSavedHome] = useState<GeoLocation | null>(null);
-  const [savedWork, setSavedWork] = useState<GeoLocation | null>(null);
-  const [savingPreset, setSavingPreset] = useState<"home" | "work" | null>(null);
   const [comboHint, setComboHint] = useState<string | null>(null);
   const comboHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapCenterKey, setMapCenterKey] = useState(0);
@@ -474,20 +470,12 @@ export default function HomeScreen() {
   const [editPresetLoading, setEditPresetLoading] = useState(false);
   const [selectedEditResult, setSelectedEditResult] = useState<GeoLocation | null>(null);
 
-  useEffect(() => {
-    AsyncStorage.getItem("@Onroda_home").then((r) => { if (r) setSavedHome(JSON.parse(r)); }).catch(() => {});
-    AsyncStorage.getItem("@Onroda_work").then((r) => { if (r) setSavedWork(JSON.parse(r)); }).catch(() => {});
-  }, []);
-
   const savePreset = (type: "home" | "work", loc: GeoLocation) => {
     if (type === "home") {
-      setSavedHome(loc);
       AsyncStorage.setItem("@Onroda_home", JSON.stringify(loc)).catch(() => {});
     } else {
-      setSavedWork(loc);
       AsyncStorage.setItem("@Onroda_work", JSON.stringify(loc)).catch(() => {});
     }
-    setSavingPreset(null);
     setIsSearchActive(false);
     setDestQuery("");
     setDestResults([]);
@@ -823,10 +811,6 @@ export default function HomeScreen() {
   );
 
   const handleDestinationSelect = (loc: GeoLocation) => {
-    if (savingPreset) {
-      savePreset(savingPreset, loc);
-      return;
-    }
     setDestination(loc);
     setDestQuery("");
     setDestResults([]);
@@ -837,7 +821,6 @@ export default function HomeScreen() {
 
   const closeSearch = () => {
     setIsSearchActive(false);
-    setSavingPreset(null);
     setDestQuery("");
     setDestResults([]);
     setOriginQuery("");
@@ -1317,21 +1300,14 @@ export default function HomeScreen() {
                 <Feather name="arrow-left" size={22} color={colors.foreground} />
               </Pressable>
 
-              {savingPreset ? (
-                <View style={[styles.saveModeBanner, { backgroundColor: colors.primary + "14" }]}>
-                  <Feather name={savingPreset === "home" ? "home" : "briefcase"} size={13} color={colors.primary} />
-                  <Text style={[styles.saveModeBannerText, { color: colors.primary }]}>
-                    {savingPreset === "home" ? "Wohnadresse speichern" : "Arbeitsadresse speichern"}
-                  </Text>
-                </View>
-              ) : <View style={{ flex: 1 }} />}
+              <View style={{ flex: 1 }} />
 
               <Pressable style={styles.cancelBtn} onPress={closeSearch}>
                 <Text style={[styles.cancelBtnText, { color: colors.primary }]}>Abbrechen</Text>
               </Pressable>
             </View>
 
-            {scheduledTime && !savingPreset && (
+            {scheduledTime && (
               <View style={{ paddingHorizontal: 4, paddingBottom: 10 }}>
                 <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#B45309" }} numberOfLines={1}>
                   Vorbestellung · {scheduledTime.getHours().toString().padStart(2, "0")}:{scheduledTime.getMinutes().toString().padStart(2, "0")} Uhr
@@ -1403,54 +1379,6 @@ export default function HomeScreen() {
                   )}
                 </View>
               </View>
-            </View>
-
-            {/* Favoriten im Such-Overlay: Zuhause / Arbeit */}
-            <View style={styles.searchFavouritesRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.searchFavouriteChip,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: "#FFF7ED",
-                    opacity: pressed ? 0.94 : 1,
-                  },
-                ]}
-                onPress={() => {
-                  if (savedHome) {
-                    handleDestinationSelect(savedHome);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  } else {
-                    setSavingPreset("home");
-                    setIsSearchActive(true);
-                  }
-                }}
-              >
-                <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
-                <Text style={[styles.searchFavouriteText, { color: colors.foreground }]}>Zuhause</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.searchFavouriteChip,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: "#EFF6FF",
-                    opacity: pressed ? 0.94 : 1,
-                  },
-                ]}
-                onPress={() => {
-                  if (savedWork) {
-                    handleDestinationSelect(savedWork);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  } else {
-                    setSavingPreset("work");
-                    setIsSearchActive(true);
-                  }
-                }}
-              >
-                <MaterialCommunityIcons name="star-four-points" size={14} color="#F59E0B" />
-                <Text style={[styles.searchFavouriteText, { color: colors.foreground }]}>Arbeit</Text>
-              </Pressable>
             </View>
           </View>
 
@@ -2835,13 +2763,6 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontSize: 15, fontFamily: "Inter_500Medium",
   },
-  saveModeBanner: {
-    flex: 1, flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-  },
-  saveModeBannerText: {
-    fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1,
-  },
   twoFieldCard: {
     flexDirection: "row", alignItems: "stretch",
     borderRadius: 16, borderWidth: 1,
@@ -2875,24 +2796,6 @@ const styles = StyleSheet.create({
 
   /* Results list */
   resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
-  searchFavouritesRow: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  searchFavouriteChip: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  searchFavouriteText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   comboHintText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
