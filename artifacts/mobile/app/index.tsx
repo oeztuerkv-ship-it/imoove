@@ -942,7 +942,7 @@ export default function HomeScreen() {
             {gpsLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Feather name="navigation" size={18} color={colors.primary} />
+              <Feather name="navigation" size={20} color={colors.primary} />
             )}
           </Pressable>
         </View>
@@ -1013,24 +1013,24 @@ export default function HomeScreen() {
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
             >
               <View style={[styles.miniSearchIconCircle, { backgroundColor: colors.primary }]}>
-                <Feather name="search" size={19} color="#fff" />
+                <Feather name="search" size={21} color="#fff" />
               </View>
               <Text style={styles.miniSearchPlaceholderText} numberOfLines={1}>
                 Ziel eingeben...
               </Text>
-              <Feather name="chevron-right" size={20} color={HOME_SHEET_MUTED} />
+              <Feather name="chevron-right" size={22} color={HOME_SHEET_MUTED} />
             </Pressable>
             <View style={styles.miniActionRow}>
               {preBookingOn ? (
                 <>
                   <Pressable style={[styles.miniBtnPrimaryRed, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
-                    <Feather name="calendar" size={18} color="#fff" />
+                    <Feather name="calendar" size={20} color="#fff" />
                     <Text style={styles.miniBtnPrimaryRedText} numberOfLines={1}>
                       Reservieren
                     </Text>
                   </Pressable>
                   <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnHalf]} onPress={goMedicalBooking}>
-                    <MaterialCommunityIcons name="medical-bag" size={19} color={HOME_MEDICAL_GREEN_DARK} />
+                    <MaterialCommunityIcons name="medical-bag" size={21} color={HOME_MEDICAL_GREEN_DARK} />
                     <Text style={styles.miniBtnMedicalOutlineText} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
@@ -1039,13 +1039,13 @@ export default function HomeScreen() {
               ) : (
                 <>
                   <Pressable style={[styles.miniBtnSecondaryDark, styles.miniBtnHalf]} onPress={goBookingCenter}>
-                    <Feather name="layers" size={18} color={HOME_SHEET_TEXT} />
+                    <Feather name="layers" size={20} color={HOME_SHEET_TEXT} />
                     <Text style={styles.miniBtnSecondaryDarkText} numberOfLines={1}>
                       Buchungszentrale
                     </Text>
                   </Pressable>
                   <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnHalf]} onPress={goMedicalBooking}>
-                    <MaterialCommunityIcons name="medical-bag" size={19} color={HOME_MEDICAL_GREEN_DARK} />
+                    <MaterialCommunityIcons name="medical-bag" size={21} color={HOME_MEDICAL_GREEN_DARK} />
                     <Text style={styles.miniBtnMedicalOutlineText} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
@@ -1098,7 +1098,7 @@ export default function HomeScreen() {
                           onPress={() => handleDestinationSelect(fav.location)}
                         >
                           <View style={[styles.homeQuickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
-                            <Feather name="map-pin" size={16} color={colors.primary} />
+                            <Feather name="map-pin" size={18} color={colors.primary} />
                           </View>
                           <View style={styles.quickTextWrap}>
                             <Text style={[styles.homeQuickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>{fav.label}</Text>
@@ -1108,7 +1108,7 @@ export default function HomeScreen() {
                           </View>
                         </Pressable>
                         <Pressable hitSlop={12} onPress={() => removeSearchFavorite(fav.id)}>
-                          <Feather name="trash-2" size={16} color={HOME_SHEET_MUTED} />
+                          <Feather name="trash-2" size={18} color={HOME_SHEET_MUTED} />
                         </Pressable>
                       </View>
                     </React.Fragment>
@@ -1127,7 +1127,7 @@ export default function HomeScreen() {
                             onPress={() => void openSearchWithHistoryEntry(hItem)}
                           >
                             <View style={[styles.homeQuickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
-                              <Ionicons name="time-outline" size={16} color={HOME_SHEET_TEXT} />
+                              <Ionicons name="time-outline" size={18} color={HOME_SHEET_TEXT} />
                             </View>
                             <View style={styles.quickTextWrap}>
                               <Text style={[styles.homeQuickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>
@@ -1137,7 +1137,7 @@ export default function HomeScreen() {
                                 {hItem.destination.split(",").slice(1, 3).join(",").trim() || hItem.origin.split(",")[0]}
                               </Text>
                             </View>
-                            <Feather name="search" size={16} color={HOME_SHEET_MUTED} />
+                            <Feather name="search" size={18} color={HOME_SHEET_MUTED} />
                           </Pressable>
                         </React.Fragment>
                       ))}
@@ -2498,8 +2498,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: rs(12),
   },
   homeQuickIconWrap: {
-    width: rs(34),
-    height: rs(34),
+    width: rs(36),
+    height: rs(36),
     borderRadius: rs(8),
     justifyContent: "center",
     alignItems: "center",
@@ -2508,7 +2508,7 @@ const styles = StyleSheet.create({
   homeQuickSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", marginTop: 1 },
   homeQuickDivider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: rs(52),
+    marginLeft: rs(56),
     marginRight: rs(12),
   },
   favFormInput: {

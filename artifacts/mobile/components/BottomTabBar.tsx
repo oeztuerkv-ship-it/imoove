@@ -18,7 +18,7 @@ const NAV_INACTIVE = "#6B7280";
 /** Abstand unter der Pille bis zur unteren Kante des nutzbaren Tab-Bereichs (ohne Safe-Area). */
 const NAV_FLOAT_ABOVE_SAFE = rs(10);
 const NAV_PILL_PAD_V = rs(8);
-const NAV_ICON_ROW = rs(40);
+const NAV_ICON_ROW = rs(42);
 const NAV_LABEL_GAP = rs(3);
 const NAV_LABEL = rf(10);
 const NAV_PILL_PAD_BOTTOM = rs(8);
@@ -78,7 +78,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
                     { backgroundColor: iconBg, borderColor: "transparent" },
                   ]}
                 >
-                  <Feather name={tab.icon} size={isPlusTab ? rs(20) : rs(15)} color={iconColor} />
+                  <Feather name={tab.icon} size={isPlusTab ? rs(22) : rs(17)} color={iconColor} />
                   {tab.badge != null && tab.badge > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
@@ -130,9 +130,9 @@ const styles = StyleSheet.create({
   label: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
   plusTabLabel: { fontFamily: "Inter_600SemiBold", fontSize: rf(10), marginTop: 1 },
   plusTabIconWrap: {
-    width: rs(40),
-    height: rs(40),
-    borderRadius: rs(20),
+    width: rs(42),
+    height: rs(42),
+    borderRadius: rs(21),
   },
   badge: {
     position: "absolute", top: -5, right: -8,
