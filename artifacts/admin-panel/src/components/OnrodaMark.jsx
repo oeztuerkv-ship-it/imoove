@@ -1,14 +1,12 @@
-/** Markenzeichen aus `public/favicon.svg` (Build-Base `/partners/`). */
+/** Markenlogo aus `public/onroda-logo.png` (Build-Base `/partners/`). */
 export default function OnrodaMark({ className = "" }) {
   const raw = import.meta.env.BASE_URL || "/";
   const base = raw.endsWith("/") ? raw : `${raw}/`;
-  const src = `${base}favicon.svg`;
+  const src = `${base}onroda-logo.png`;
   return (
     <img
       src={src}
-      alt=""
-      width={36}
-      height={34}
+      alt="ONRODA"
       className={`onroda-mark${className ? ` ${className}` : ""}`}
       decoding="async"
     />

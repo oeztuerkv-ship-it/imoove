@@ -138,12 +138,11 @@ export default function TopNav({
             <span className="admin-topnav__hamburger-bar" />
           </button>
         ) : null}
-        <div className="admin-topnav__brand" aria-hidden>
+        <div className="admin-topnav__brand">
           <div className="admin-topnav__mark">
             <OnrodaMark className="admin-topnav__mark-img" />
           </div>
           <div className="admin-topnav__brand-text">
-            <div className="admin-topnav__logo">ONRODA</div>
             <div className="admin-topnav__logo-sub">Plattform-Konsole</div>
           </div>
         </div>

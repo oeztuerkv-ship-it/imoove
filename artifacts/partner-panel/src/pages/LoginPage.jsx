@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
+import OnrodaLogo from "../components/OnrodaLogo.jsx";
 
 export default function LoginPage() {
   const { login, error } = usePanelAuth();
@@ -23,7 +24,7 @@ export default function LoginPage() {
     <div className="partner-login">
       <div className="partner-login__card">
         <div className="partner-login__brand">
-          <p className="partner-login__brand-name">ONRODA</p>
+          <OnrodaLogo className="partner-login__brand-logo-img" height={44} />
           <p className="partner-login__brand-subtitle">Partnerportal</p>
         </div>
         <h1 className="partner-login__title">Unternehmens-Login</h1>

@@ -407,9 +407,11 @@
 }
 
 .admin-sidebar__mark-img {
-  width: 28px;
-  height: auto;
+  width: auto;
+  max-width: 120px;
+  height: 32px;
   display: block;
+  object-fit: contain;
 }
 
 .admin-sidebar__logo {

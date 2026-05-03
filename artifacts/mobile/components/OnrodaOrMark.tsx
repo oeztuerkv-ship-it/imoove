@@ -1,52 +1,27 @@
-import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
-
-import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { Image, View, type StyleProp, type ViewStyle } from "react-native";
 
 type Props = {
-  /** Kantenlänge des Squircle (dp) */
+  /** Höhe des Logos (dp); Breite proportional */
   size?: number;
   style?: StyleProp<ViewStyle>;
 };
 
+const logo = require("../assets/images/onroda-logo.png");
+
 /**
- * App-Icon-Stil: abgerundetes Quadrat, Heller Verlauf (weiß → leicht dunkler),
- * „OR“ in Markenrot – gut lesbar (weiße Schrift auf hellem Grund wäre unsichtbar).
+ * Offizielles ONRODA-Logo (PNG), nicht verzerren — `resizeMode: contain`.
  */
 export function OnrodaOrMark({ size = 88, style }: Props) {
-  const corner = Math.round(size * 0.223);
-  const fontSize = Math.round(size * 0.34);
+  const h = Math.round(size * 1.12);
   return (
-    <LinearGradient
-      colors={["#FAFAFA", "#E3E3E3"]}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={[
-        {
-          width: size,
-          height: size,
-          borderRadius: corner,
-          justifyContent: "center",
-          alignItems: "center",
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: "rgba(0,0,0,0.07)",
-        },
-        style,
-      ]}
-    >
-      <Text
-        style={{
-          fontSize,
-          fontFamily: "Inter_700Bold",
-          color: ONRODA_MARK_RED,
-          letterSpacing: -1,
-          marginTop: -2,
-        }}
-        accessibilityLabel="Onroda"
-      >
-        OR
-      </Text>
-    </LinearGradient>
+    <View style={[{ width: size, height: h, justifyContent: "center", alignItems: "center" }, style]}>
+      <Image
+        source={logo}
+        accessibilityLabel="ONRODA"
+        style={{ width: "100%", height: "100%" }}
+        resizeMode="contain"
+      />
+    </View>
   );
 }

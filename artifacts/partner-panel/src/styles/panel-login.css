@@ -24,6 +24,7 @@
 
 .partner-login__brand {
   margin-bottom: var(--onroda-space-4);
+  text-align: center;
 }
 
 .partner-login__brand-name {
@@ -32,6 +33,10 @@
   font-weight: 900;
   letter-spacing: 0.08em;
   color: var(--onroda-red);
+}
+
+.partner-login__brand-logo-img {
+  margin: 0 auto 6px;
 }
 
 .partner-login__brand-subtitle {

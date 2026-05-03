@@ -1,11 +1,14 @@
+import OnrodaLogo from "../components/OnrodaLogo.jsx";
+
 export default function PanelSidebar({ active, onChange, items }) {
   return (
     <aside className="panel-sidebar">
       <div>
         <div className="panel-sidebar__brand">
-          <div className="panel-sidebar__brand-icon">O</div>
+          <div className="panel-sidebar__brand-icon panel-sidebar__brand-icon--mark" aria-hidden>
+            <OnrodaLogo height={34} alt="" />
+          </div>
           <div>
-            <div className="panel-sidebar__logo">Onroda</div>
             <div className="panel-sidebar__logo-sub">Ihr Unternehmensbereich</div>
           </div>
         </div>

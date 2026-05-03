@@ -1,4 +1,5 @@
 import { useState } from "react";
+import OnrodaLogo from "../components/OnrodaLogo.jsx";
 import { API_BASE } from "../lib/apiBase.js";
 import { usePanelAuth } from "../context/PanelAuthContext.jsx";
 
@@ -68,7 +69,7 @@ export default function PasswordChangeRequiredPage() {
     <div className="partner-login">
       <div className="partner-login__card">
         <div className="partner-login__brand">
-          <p className="partner-login__brand-name">ONRODA</p>
+          <OnrodaLogo className="partner-login__brand-logo-img" height={44} />
           <p className="partner-login__brand-subtitle">Partnerportal</p>
         </div>
         <h1 className="partner-login__title">Passwort aktualisieren</h1>

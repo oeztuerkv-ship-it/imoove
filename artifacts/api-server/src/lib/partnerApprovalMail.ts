@@ -12,6 +12,16 @@ function statusPageUrl(): string {
   );
 }
 
+/** Logo für Freigabe-Mail (gleiche Marketing-Origin wie Statusseite). */
+function marketingLogoUrl(): string {
+  try {
+    const o = new URL(statusPageUrl());
+    return `${o.origin}/onroda-logo.png`;
+  } catch {
+    return "https://www.onroda.de/onroda-logo.png";
+  }
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -66,9 +76,11 @@ function buildBodies(input: {
          <p>Bitte ändern Sie das Passwort nach dem ersten Login.</p>`
       : `<p>Die Zugangsdaten zum Partner-Portal erhalten Sie separat von uns, falls noch nicht angelegt.</p>`;
 
+  const logoSrc = marketingLogoUrl();
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p style="margin:0 0 16px"><img src="${escapeHtml(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
   <p>Guten Tag,</p>
   <p>Ihre Partneranfrage für <strong>${escapeHtml(company)}</strong> wurde <strong>freigegeben</strong>.</p>
   <p><a href="${escapeHtml(panel)}">Zum Partner-Portal</a></p>

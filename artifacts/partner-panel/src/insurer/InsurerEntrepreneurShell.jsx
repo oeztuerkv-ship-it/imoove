@@ -62,14 +62,13 @@ export default function InsurerEntrepreneurShell({ company, onLogout }) {
       <header className="partner-shell__header">
         <div className="partner-shell__brand" title={company?.name || "Kostenträger"}>
           <a
-            className="partner-shell__onroda-wordmark"
+            className="partner-shell__onroda-wordmark partner-shell__onroda-wordmark--img"
             href="https://onroda.de"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="ONRODA – zur Website"
           >
-            <span className="on">ON</span>
-            <span className="roda">RODA</span>
+            <img src="/onroda-logo.png" alt="" height={36} width={120} style={{ height: 36, width: "auto", objectFit: "contain" }} decoding="async" />
           </a>
           <div className="partner-shell__brand-taxi-line">
             <span className="partner-shell__brand-taxi">Krankenkasse &amp; Kostenträger</span>
