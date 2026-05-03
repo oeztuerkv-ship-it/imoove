@@ -179,6 +179,8 @@ import {
   getAdminTaxiFleetDriverDetail,
   listAdminTaxiFleetDriverRows,
 } from "../db/fleetDriverReadiness";
+import { persistPanelUserManualAttachment } from "../lib/persistPanelUserManualAttachment";
+import { sendPanelUserWelcomeEmail } from "../lib/panelUserWelcomeMail";
 import { hashPassword } from "../lib/password";
 import { isPanelRoleString } from "../lib/panelPermissions";
 import { generateTemporaryPassword } from "../lib/tempPassword";
@@ -3503,13 +3505,24 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       res.status(400).json({ error: "company_inactive" });
       return;
     }
-    const body = req.body as { username?: string; email?: string; role?: string; password?: string };
+    const body = req.body as {
+      username?: string;
+      email?: string;
+      role?: string;
+      password?: string;
+      sendWelcomeEmail?: boolean;
+      accessKind?: string;
+      attachment?: { fileName?: string; mimeType?: string; contentBase64?: string };
+    };
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const rawPassword = typeof body.password === "string" ? body.password : "";
     const generatedPassword = rawPassword ? "" : generateTemporaryPassword();
     const password = rawPassword || generatedPassword;
     const roleRaw = typeof body.role === "string" ? body.role.trim() : "";
+    const sendWelcomeEmail = body.sendWelcomeEmail === true;
+    const accessKind =
+      typeof body.accessKind === "string" ? body.accessKind.trim().slice(0, 160) : "";
     if (!username || !password || password.length < 10) {
       res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
       return;
@@ -3517,6 +3530,25 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
     if (!isPanelRoleString(roleRaw)) {
       res.status(400).json({ error: "invalid_role" });
       return;
+    }
+    if (sendWelcomeEmail && !email) {
+      res.status(400).json({ error: "email_required_for_welcome_mail" });
+      return;
+    }
+    const att = body.attachment;
+    let attFileName = "";
+    let attMime = "";
+    let attB64 = "";
+    if (att && typeof att === "object") {
+      attFileName = typeof att.fileName === "string" ? att.fileName.trim() : "";
+      attMime = typeof att.mimeType === "string" ? att.mimeType.trim() : "";
+      attB64 = typeof att.contentBase64 === "string" ? att.contentBase64.trim() : "";
+      const any = !!(attFileName || attMime || attB64);
+      const all = !!(attFileName && attB64);
+      if (any && !all) {
+        res.status(400).json({ error: "attachment_incomplete", hint: "fileName und contentBase64 erforderlich" });
+        return;
+      }
     }
     const targetRole = roleRaw as PanelRole;
     if (await panelUsernameTaken(username.toLowerCase())) {
@@ -3536,6 +3568,35 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       res.status(409).json({ error: "username_taken" });
       return;
     }
+
+    let attachmentResult: { ok: true; relPath: string; sizeBytes: number } | { ok: false; reason: string } | null =
+      null;
+    if (attFileName && attB64) {
+      const saved = await persistPanelUserManualAttachment({
+        companyId,
+        panelUserId: created.id,
+        originalFileName: attFileName,
+        contentBase64: attB64,
+      });
+      if (saved.ok) {
+        attachmentResult = { ok: true, relPath: saved.relPath, sizeBytes: saved.sizeBytes };
+      } else {
+        attachmentResult = { ok: false, reason: saved.reason };
+      }
+    }
+
+    let welcomeEmail: { sent: boolean; reason?: string } = { sent: false, reason: "not_requested" };
+    if (sendWelcomeEmail && email) {
+      const mail = await sendPanelUserWelcomeEmail({
+        to: email,
+        companyName: company.name ?? companyId,
+        username,
+        initialPassword: password,
+        accessKindLabel: accessKind || undefined,
+      });
+      welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
+    }
+
     await insertPanelAuditLog({
       id: randomUUID(),
       companyId,
@@ -3543,7 +3604,15 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       action: "admin.panel_user.created",
       subjectType: "panel_user",
       subjectId: created.id,
-      meta: { username, role: targetRole, source: "platform_admin_api" },
+      meta: {
+        username,
+        role: targetRole,
+        source: "platform_admin_api",
+        ...(accessKind ? { accessKind } : {}),
+        ...(attachmentResult?.ok ? { manualAttachment: attachmentResult } : {}),
+        ...(attachmentResult && !attachmentResult.ok ? { manualAttachmentError: attachmentResult.reason } : {}),
+        welcomeEmail,
+      },
     });
     res.status(201).json({
       ok: true,
@@ -3553,6 +3622,8 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
         ...(generatedPassword ? { initialPassword: generatedPassword } : {}),
         mustChangePassword: true,
       },
+      welcomeEmail,
+      ...(attachmentResult ? { attachment: attachmentResult } : {}),
     });
   } catch (e) {
     next(e);

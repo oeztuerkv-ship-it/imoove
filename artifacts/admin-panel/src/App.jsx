@@ -257,7 +257,8 @@ const PAGE_META = {
   },
   "users-panel": {
     title: "Partner-Zugänge",
-    subtitle: "Zugänge zum Partner-Portal je Unternehmen",
+    subtitle:
+      "Zugänge zum Partner-Portal je Mandant — manuell anlegen, optional Nachweis hochladen und Einladungs-E-Mail mit Startpasswort (SMTP wie Partner-Freigabe)",
   },
   "users-roles": {
     title: "Rollen & Rechte",

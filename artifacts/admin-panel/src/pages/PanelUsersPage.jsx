@@ -10,6 +10,29 @@ const ROLES = [
   { id: "readonly", label: "Nur lesen" },
 ];
 
+/** Manuelle Anlage: Hinweis für E-Mail / Audit (nicht die Panel-Rolle). */
+const ACCESS_KINDS = [
+  { id: "", label: "— keine Angabe —" },
+  { id: "taxi_unternehmer", label: "Taxi / Mietwagen — Unternehmer-Zugang" },
+  { id: "taxi_team", label: "Taxi / Mietwagen — Team / Disposition" },
+  { id: "krankenkasse_kostentraeger", label: "Krankenkasse / Kostenträger" },
+  { id: "hotel_partner", label: "Hotel / Sonstiger Partner" },
+  { id: "sonstiges", label: "Sonstiges (Freitext unten)" },
+];
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = typeof r.result === "string" ? r.result : "";
+      const i = s.indexOf(",");
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    r.onerror = () => reject(new Error("datei_lesen"));
+    r.readAsDataURL(file);
+  });
+}
+
 function roleLabel(role) {
   const r = ROLES.find((x) => x.id === role);
   return r?.label ?? role ?? "—";
@@ -33,10 +56,16 @@ export default function PanelUsersPage() {
     email: "",
     role: "staff",
     password: "",
+    sendWelcomeEmail: false,
+    accessKind: "",
+    accessKindNote: "",
+    attachmentFile: null,
   });
   const [createSaving, setCreateSaving] = useState(false);
   const [createErr, setCreateErr] = useState("");
   const [createOnboarding, setCreateOnboarding] = useState(null);
+  const [createMailResult, setCreateMailResult] = useState(null);
+  const [createAttachmentResult, setCreateAttachmentResult] = useState(null);
 
   const [editUser, setEditUser] = useState(null);
   const [editForm, setEditForm] = useState({ username: "", email: "", role: "staff", isActive: true });
@@ -101,19 +130,54 @@ export default function PanelUsersPage() {
     setCreateSaving(true);
     setCreateErr("");
     setCreateOnboarding(null);
+    setCreateMailResult(null);
+    setCreateAttachmentResult(null);
     try {
+      let attachment;
+      if (createForm.attachmentFile) {
+        const b64 = await readFileAsBase64(createForm.attachmentFile);
+        attachment = {
+          fileName: createForm.attachmentFile.name,
+          mimeType: createForm.attachmentFile.type || "application/octet-stream",
+          contentBase64: b64,
+        };
+      }
+      const accessKindLabel =
+        createForm.accessKind === "sonstiges"
+          ? createForm.accessKindNote.trim()
+          : (ACCESS_KINDS.find((k) => k.id === createForm.accessKind)?.label ?? "").trim();
+      const payload = {
+        username: createForm.username.trim(),
+        email: createForm.email.trim(),
+        role: createForm.role,
+        password: createForm.password,
+        sendWelcomeEmail: createForm.sendWelcomeEmail,
+        accessKind: accessKindLabel || undefined,
+        attachment,
+      };
       const res = await fetch(usersUrl(companyId), {
         method: "POST",
         headers: adminApiHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(createForm),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(data?.error || data?.hint || `HTTP ${res.status}`);
       }
       setCreateOnboarding(data?.onboarding ?? null);
+      setCreateMailResult(data?.welcomeEmail ?? null);
+      setCreateAttachmentResult(data?.attachment ?? null);
       setShowCreate(false);
-      setCreateForm({ username: "", email: "", role: "staff", password: "" });
+      setCreateForm({
+        username: "",
+        email: "",
+        role: "staff",
+        password: "",
+        sendWelcomeEmail: false,
+        accessKind: "",
+        accessKindNote: "",
+        attachmentFile: null,
+      });
       await loadUsers();
     } catch (err) {
       setCreateErr(err.message || "Anlegen fehlgeschlagen.");
@@ -223,6 +287,8 @@ export default function PanelUsersPage() {
                 disabled={!companyId || !selectedCompany?.is_active}
                 onClick={() => {
                   setCreateErr("");
+                  setCreateMailResult(null);
+                  setCreateAttachmentResult(null);
                   setShowCreate(true);
                 }}
               >
@@ -243,6 +309,32 @@ export default function PanelUsersPage() {
         <div className="admin-info-banner">
           Zugang erstellt: <strong>{createOnboarding.username}</strong>
           {createOnboarding.initialPassword ? ` / Startpasswort: ${createOnboarding.initialPassword}` : ""}. Beim ersten Login ist Passwortwechsel Pflicht.
+          {createMailResult?.sent === true ? (
+            <span>
+              {" "}
+              — Einladungs-E-Mail wurde versendet.
+            </span>
+          ) : null}
+          {createMailResult && createMailResult.sent === false ? (
+            <span>
+              {" "}
+              — E-Mail nicht versendet ({createMailResult.reason ?? "unbekannt"}). Zugangsdaten ggf. manuell mitteilen;
+              SMTP: <code className="admin-mono">PARTNER_REGISTRATION_SMTP_URL</code> /{" "}
+              <code className="admin-mono">PARTNER_REGISTRATION_MAIL_FROM</code>.
+            </span>
+          ) : null}
+          {createAttachmentResult?.ok === false ? (
+            <span>
+              {" "}
+              — Anhang konnte nicht gespeichert werden ({createAttachmentResult.reason}).
+            </span>
+          ) : null}
+          {createAttachmentResult?.ok === true ? (
+            <span>
+              {" "}
+              — Anhang gespeichert ({createAttachmentResult.sizeBytes} Bytes).
+            </span>
+          ) : null}
         </div>
       ) : null}
 
@@ -345,6 +437,57 @@ export default function PanelUsersPage() {
                   minLength={10}
                   autoComplete="new-password"
                   placeholder="Leer lassen = automatisch erzeugen"
+                />
+              </div>
+              <div className="admin-filter-item">
+                <label className="admin-field-label">Art des Zugangs (Hinweis für E-Mail / Protokoll)</label>
+                <select
+                  className="admin-select"
+                  value={createForm.accessKind}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, accessKind: e.target.value }))}
+                >
+                  {ACCESS_KINDS.map((k) => (
+                    <option key={k.id || "none"} value={k.id}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {createForm.accessKind === "sonstiges" ? (
+                <div className="admin-filter-item">
+                  <label className="admin-field-label">Freitext „Art“</label>
+                  <input
+                    className="admin-input"
+                    value={createForm.accessKindNote}
+                    onChange={(e) => setCreateForm((p) => ({ ...p, accessKindNote: e.target.value }))}
+                    placeholder="z. B. Zweigstelle Stuttgart-Mitte"
+                  />
+                </div>
+              ) : null}
+              <label className="admin-switch-row" style={{ marginTop: 8 }}>
+                <span className="admin-switch-row__label">Einladungs-E-Mail mit Benutzername und Passwort senden</span>
+                <input
+                  type="checkbox"
+                  checked={createForm.sendWelcomeEmail}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, sendWelcomeEmail: e.target.checked }))}
+                />
+              </label>
+              {createForm.sendWelcomeEmail ? (
+                <p className="admin-entity-card__meta" style={{ marginTop: 6 }}>
+                  Erfordert eine gültige E-Mail. Versand wie Partner-Freigabe über{" "}
+                  <code className="admin-mono">PARTNER_REGISTRATION_SMTP_URL</code> (sonst nur Hinweis nach Anlage).
+                </p>
+              ) : null}
+              <div className="admin-filter-item">
+                <label className="admin-field-label">Optional: Nachweis / Dokument (PDF, max. ca. 6 MB)</label>
+                <input
+                  className="admin-input"
+                  type="file"
+                  accept=".pdf,image/*,application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setCreateForm((p) => ({ ...p, attachmentFile: f }));
+                  }}
                 />
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
