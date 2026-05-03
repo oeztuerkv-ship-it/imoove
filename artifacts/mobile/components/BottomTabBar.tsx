@@ -113,6 +113,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: NAV_PILL_BG,
     borderRadius: rs(28),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(0, 0, 0, 0.22)",
     paddingVertical: NAV_PILL_PAD_V,
     paddingHorizontal: rs(4),
     shadowColor: "#000",
