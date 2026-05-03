@@ -100,38 +100,6 @@ function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-interface PresetLocation {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: "airplane" | "train";
-  location: GeoLocation;
-}
-
-const PRESET_DESTINATIONS: PresetLocation[] = [
-  {
-    id: "airport-t12",
-    title: "Abflug Terminal 1–2",
-    subtitle: "Flughafen Stuttgart",
-    icon: "airplane",
-    location: { lat: 48.6900, lon: 9.2205, displayName: "Flughafen Stuttgart Terminal 1-2", city: "Stuttgart" },
-  },
-  {
-    id: "airport-t34",
-    title: "Abflug Terminal 3–4",
-    subtitle: "Flughafen Stuttgart",
-    icon: "airplane",
-    location: { lat: 48.6892, lon: 9.2222, displayName: "Flughafen Stuttgart Terminal 3-4", city: "Stuttgart" },
-  },
-  {
-    id: "hbf-stuttgart",
-    title: "Hauptbahnhof Stuttgart",
-    subtitle: "Arnulf-Klett-Platz 2, Stuttgart",
-    icon: "train",
-    location: { lat: 48.7842, lon: 9.1826, displayName: "Hauptbahnhof Stuttgart", city: "Stuttgart" },
-  },
-];
-
 async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
@@ -444,20 +412,6 @@ export default function HomeScreen() {
   const removeSearchFavorite = useCallback(
     (id: string) => {
       persistSearchFavorites(searchFavorites.filter((f) => f.id !== id));
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    },
-    [searchFavorites, persistSearchFavorites],
-  );
-
-  const moveSearchFavorite = useCallback(
-    (index: number, direction: -1 | 1) => {
-      const next = [...searchFavorites];
-      const j = index + direction;
-      if (j < 0 || j >= next.length) return;
-      const tmp = next[index];
-      next[index] = next[j]!;
-      next[j] = tmp!;
-      persistSearchFavorites(next);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
     [searchFavorites, persistSearchFavorites],
@@ -867,8 +821,6 @@ export default function HomeScreen() {
   const homeHistorySlice = history.slice(0, MAX_HOME_HISTORY);
   const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
   const showDestResults = !isEditingOrigin && destResults.length > 0;
-  const showFavoriteBlock = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
-  const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
   const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
   const mapEdgePaddingBottom = Math.round(
     destination
@@ -1447,130 +1399,6 @@ export default function HomeScreen() {
                     </React.Fragment>
                   ))}
                 </View>
-              )}
-
-              {showFavoriteBlock && (
-                <>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4, marginBottom: 6 }}>
-                    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      MEINE ZIELE
-                    </Text>
-                    {searchFavorites.length < MAX_FAVORITES_STORED ? (
-                      <Pressable onPress={() => openAddFavoriteModal()} hitSlop={8}>
-                        <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.primary }}>+ Neu</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                  {searchFavorites.length > 0 ? (
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontFamily: "Inter_400Regular",
-                        color: colors.mutedForeground,
-                        paddingHorizontal: 4,
-                        marginBottom: 8,
-                        lineHeight: 15,
-                      }}
-                    >
-                      Oberste {MAX_FAVORITES_ON_HOME} erscheinen auf der Startseite. Mit ↑↓ die Reihenfolge ändern.
-                    </Text>
-                  ) : null}
-                  <View style={[styles.resultGroup, { borderColor: colors.border }]}>
-                    {searchFavorites.length === 0 ? (
-                      <Pressable
-                        style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
-                        onPress={() => openAddFavoriteModal()}
-                      >
-                        <View style={[styles.resultIcon, { backgroundColor: "#F0F9FF" }]}>
-                          <Feather name="bookmark" size={15} color={colors.primary} />
-                        </View>
-                        <View style={styles.resultText}>
-                          <Text style={[styles.resultTitle, { color: colors.foreground }]}>Ersten Favoriten anlegen</Text>
-                          <Text style={[styles.resultSub, { color: colors.mutedForeground }]}>
-                            Straße, Hausnummer, PLZ und Stadt — dann Kartentreffer auswählen
-                          </Text>
-                        </View>
-                        <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                      </Pressable>
-                    ) : (
-                      searchFavorites.map((fav, i) => (
-                        <React.Fragment key={fav.id}>
-                          {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
-                          <View style={styles.resultRow}>
-                            <Pressable
-                              style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }, pressed && { backgroundColor: colors.muted, borderRadius: 10 }]}
-                              onPress={() => handleDestinationSelect(fav.location)}
-                            >
-                              <View style={[styles.resultIcon, { backgroundColor: colors.muted }]}>
-                                <Feather name="map-pin" size={15} color={colors.primary} />
-                              </View>
-                              <View style={styles.resultText}>
-                                <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={1}>
-                                  {fav.label}
-                                </Text>
-                                <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={2}>
-                                  {fav.location.displayName}
-                                </Text>
-                              </View>
-                            </Pressable>
-                            <View style={styles.favReorderCol}>
-                              <Pressable
-                                hitSlop={8}
-                                disabled={i === 0}
-                                onPress={() => moveSearchFavorite(i, -1)}
-                                style={{ opacity: i === 0 ? 0.35 : 1 }}
-                              >
-                                <Feather name="chevron-up" size={20} color={colors.mutedForeground} />
-                              </Pressable>
-                              <Pressable
-                                hitSlop={8}
-                                disabled={i >= searchFavorites.length - 1}
-                                onPress={() => moveSearchFavorite(i, 1)}
-                                style={{ opacity: i >= searchFavorites.length - 1 ? 0.35 : 1 }}
-                              >
-                                <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                              </Pressable>
-                            </View>
-                            <Pressable hitSlop={10} onPress={() => removeSearchFavorite(fav.id)} style={{ padding: 6 }}>
-                              <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-                            </Pressable>
-                          </View>
-                        </React.Fragment>
-                      ))
-                    )}
-                  </View>
-                </>
-              )}
-
-              {/* Preset-Vorschläge (sofort sichtbar) */}
-              {showPresets && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>BELIEBTE ZIELE</Text>
-                  <View style={[styles.resultGroup, { borderColor: colors.border }]}>
-                    {PRESET_DESTINATIONS.map((preset, i) => (
-                      <React.Fragment key={preset.id}>
-                        {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
-                        <Pressable
-                          style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
-                          onPress={() => handleDestinationSelect(preset.location)}
-                        >
-                          <View style={[styles.resultIcon, {
-                            backgroundColor: preset.icon === "airplane" ? "#EFF6FF" : "#F0FDF4",
-                          }]}>
-                            {preset.icon === "airplane"
-                              ? <Ionicons name="airplane" size={15} color="#3B82F6" />
-                              : <Ionicons name="train" size={15} color="#22C55E" />}
-                          </View>
-                          <View style={styles.resultText}>
-                            <Text style={[styles.resultTitle, { color: colors.foreground }]}>{preset.title}</Text>
-                            <Text style={[styles.resultSub, { color: colors.mutedForeground }]}>{preset.subtitle}</Text>
-                          </View>
-                          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                        </Pressable>
-                      </React.Fragment>
-                    ))}
-                  </View>
-                </>
               )}
             </ScrollView>
           </KeyboardAvoidingView>
@@ -2474,7 +2302,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_400Regular",
   },
-  favReorderCol: { alignItems: "center", justifyContent: "center", gap: 2, marginRight: 4 },
 
   /* Quick destinations */
   quickSection: { marginHorizontal: 16, marginBottom: 4, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
@@ -2822,7 +2649,6 @@ const styles = StyleSheet.create({
     color: "#7F1D1D",
     lineHeight: 18,
   },
-  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
   resultGroup: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   resultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
