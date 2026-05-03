@@ -162,40 +162,42 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
     <div className="partner-shell partner-shell--fleet">
       <header className="partner-shell__header partner-shell__header--fleet">
         <div className="partner-shell__header-inner">
-          <div className="partner-shell__brand-cluster">
-            <a
-              className="partner-shell__onroda-wordmark"
-              href="https://onroda.de"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="onroda – zur Website"
-            >
-              <span className="on">on</span>
-              <span className="roda">roda</span>
-            </a>
-            {company?.name ? (
-              <span className="partner-shell__company-chip" title={company.name}>
-                {company.name}
-              </span>
-            ) : null}
-          </div>
-
-          <nav className="partner-shell__nav partner-shell__nav--fleet" aria-label="Hauptbereiche">
-            {visibleNav.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => setActiveTaxiModule(m.key)}
-                className={
-                  activeTaxiModule === m.key
-                    ? "partner-shell__nav-link partner-shell__nav-link--active"
-                    : "partner-shell__nav-link"
-                }
+          <div className="partner-shell__header-primary partner-shell__header-primary--fleet">
+            <div className="partner-shell__brand-cluster">
+              <a
+                className="partner-shell__onroda-wordmark"
+                href="https://onroda.de"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="onroda – zur Website"
               >
-                {m.label}
-              </button>
-            ))}
-          </nav>
+                <span className="on">on</span>
+                <span className="roda">roda</span>
+              </a>
+              {company?.name ? (
+                <span className="partner-shell__company-chip" title={company.name}>
+                  {company.name}
+                </span>
+              ) : null}
+            </div>
+
+            <nav className="partner-shell__nav partner-shell__nav--fleet" aria-label="Hauptbereiche">
+              {visibleNav.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setActiveTaxiModule(m.key)}
+                  className={
+                    activeTaxiModule === m.key
+                      ? "partner-shell__nav-link partner-shell__nav-link--active"
+                      : "partner-shell__nav-link"
+                  }
+                >
+                  {m.label}
+                </button>
+              ))}
+            </nav>
+          </div>
 
           <div className="partner-shell__header-actions">
             <GlobalCreateMenu user={user} onSelectAction={onGlobalCreateAction} />

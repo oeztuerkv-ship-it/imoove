@@ -2403,10 +2403,21 @@
   gap: 20px;
 }
 
-/* Fleet-Topbar: Marke + Navi links zusammen, Aktionen (+ / Benutzer) am rechten Rand */
+/* Fleet-Topbar: Marke + Navi als linke Gruppe; Aktionen (+ / Benutzer) rechts */
 .partner-shell__header--fleet .partner-shell__header-inner {
-  column-gap: 12px;
+  justify-content: flex-start;
+  column-gap: 16px;
   row-gap: 10px;
+}
+
+.partner-shell__header-primary--fleet {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .partner-shell__brand-cluster {
@@ -2440,8 +2451,9 @@
   text-overflow: ellipsis;
 }
 
-.partner-shell__nav--fleet {
-  flex: 1 1 auto;
+.partner-shell__header--fleet .partner-shell__nav.partner-shell__nav--fleet {
+  flex: 0 1 auto;
+  flex-grow: 0;
   justify-content: flex-start;
   align-items: center;
   gap: 4px 8px;
@@ -2649,12 +2661,15 @@
   .partner-shell__header-inner {
     flex-wrap: wrap;
     padding: 12px 16px;
+    align-items: flex-start;
   }
 
-  .partner-shell__nav--fleet {
-    order: 3;
+  .partner-shell__header-primary--fleet {
+    flex-wrap: wrap;
+  }
+
+  .partner-shell__header--fleet .partner-shell__nav.partner-shell__nav--fleet {
     flex-basis: 100%;
-    justify-content: flex-start;
     overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: 4px;
