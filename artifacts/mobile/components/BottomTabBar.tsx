@@ -18,7 +18,7 @@ const NAV_INACTIVE = "#6B7280";
 /** Abstand unter der Pille bis zur unteren Kante des nutzbaren Tab-Bereichs (ohne Safe-Area). */
 const NAV_FLOAT_ABOVE_SAFE = rs(10);
 const NAV_PILL_PAD_V = rs(8);
-const NAV_ICON_ROW = rs(38);
+const NAV_ICON_ROW = rs(40);
 const NAV_LABEL_GAP = rs(3);
 const NAV_LABEL = rf(10);
 const NAV_PILL_PAD_BOTTOM = rs(8);
@@ -54,7 +54,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
   ];
 
   return (
-    <View style={[styles.wrap, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.wrap, { paddingBottom: insets.bottom, backgroundColor: "#FFFFFF" }]}>
       <View style={styles.pillOuter}>
         <View style={styles.pill}>
           {tabs.map((tab) => {
@@ -78,7 +78,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
                     { backgroundColor: iconBg, borderColor: "transparent" },
                   ]}
                 >
-                  <Feather name={tab.icon} size={isPlusTab ? rs(18) : rs(13)} color={iconColor} />
+                  <Feather name={tab.icon} size={isPlusTab ? rs(20) : rs(15)} color={iconColor} />
                   {tab.badge != null && tab.badge > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
@@ -123,16 +123,16 @@ const styles = StyleSheet.create({
   },
   item: { flex: 1, alignItems: "center", justifyContent: "center", gap: NAV_LABEL_GAP, paddingBottom: 0 },
   iconWrap: {
-    width: rs(28), height: rs(28), borderRadius: rs(8),
+    width: rs(30), height: rs(30), borderRadius: rs(8),
     justifyContent: "center", alignItems: "center",
     position: "relative",
   },
   label: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
   plusTabLabel: { fontFamily: "Inter_600SemiBold", fontSize: rf(10), marginTop: 1 },
   plusTabIconWrap: {
-    width: rs(38),
-    height: rs(38),
-    borderRadius: rs(19),
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
   },
   badge: {
     position: "absolute", top: -5, right: -8,
