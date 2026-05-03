@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { BottomTabBar, mainTabScrollPaddingBottom } from "@/components/BottomTabBar";
+import { BottomTabBar, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
@@ -715,13 +715,13 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, {
-        paddingTop: topPad + 12,
-        backgroundColor: colors.background,
+        paddingTop: topPad + 8,
+        backgroundColor: colors.card,
         borderBottomColor: colors.border,
       }]}>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
@@ -729,7 +729,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: mainTabScrollPaddingBottom(insets.bottom, rs(40)) },
+          { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) },
         ]}
       >
         {profile.isLoggedIn ? (
@@ -1185,12 +1185,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: rs(20),
-    paddingBottom: rs(14),
+    paddingHorizontal: rs(16),
+    paddingBottom: rs(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: rs(40), height: rs(40), justifyContent: "center" },
-  headerTitle: { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },
+  backBtn: { width: rs(36), height: rs(36), justifyContent: "center" },
+  headerTitle: { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
 
   scroll: { paddingTop: rs(20), gap: 0 },
 

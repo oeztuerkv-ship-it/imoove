@@ -35,6 +35,11 @@ export function mainTabScrollPaddingBottom(safeBottom: number, extra = 0): numbe
   return BOTTOM_TAB_BAR_INNER_HEIGHT + safeBottom + extra;
 }
 
+/** Einheitlich für Start-/Fahrten-/Geldbörse-/Konto-Hauptscreens (Vorbild Geldbörse + korrekte Tab-Höhe). */
+export function tabMainScreenScrollPaddingBottom(safeBottom: number): number {
+  return mainTabScrollPaddingBottom(safeBottom, rs(24));
+}
+
 export function BottomTabBar({ active }: { active: BottomTab }) {
   const insets = useSafeAreaInsets();
   const { myActiveRequests } = useRideRequests();

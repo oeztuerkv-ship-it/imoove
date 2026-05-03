@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { BottomTabBar } from "@/components/BottomTabBar";
+import { BottomTabBar, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -222,7 +222,6 @@ export default function WalletScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = isWeb ? 44 : insets.top;
-  const bottomPad = isWeb ? 20 : insets.bottom;
 
   const { profile } = useUser();
 
@@ -243,7 +242,7 @@ export default function WalletScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad + 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Zahlungsmethoden ── */}

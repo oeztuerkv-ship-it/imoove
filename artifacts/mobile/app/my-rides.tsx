@@ -1,8 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { BottomTabBar, BOTTOM_TAB_BAR_INNER_HEIGHT } from "@/components/BottomTabBar";
-import { RealMapView } from "@/components/RealMapView";
+import { BottomTabBar, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRide, type PaymentMethod, type RideHistoryEntry, type VehicleType, VEHICLES } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
-import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -167,12 +165,8 @@ export default function MyRidesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const topPad = isWeb ? 67 : insets.top;
-  const bottomPad = isWeb ? 20 : insets.bottom;
-  const { profile } = useUser();
-  const { history, origin } = useRide();
-  const mapEdgePaddingTop = Math.round(topPad + 12 + 56);
-  const mapEdgePaddingBottom = Math.round(BOTTOM_TAB_BAR_INNER_HEIGHT + bottomPad + 48);
+  const topPad = isWeb ? 44 : insets.top;
+  const { history } = useRide();
   const { myActiveRequests, myCancelledRequests, cancelRequest, requests, passengerId } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("alle");
 
@@ -293,44 +287,29 @@ export default function MyRidesScreen() {
     (!showCancelled || cancelled.length === 0);
 
   return (
-    <View style={[styles.container, !profile.isLoggedIn && { backgroundColor: colors.background }]}>
-      {profile.isLoggedIn ? (
-        <RealMapView
-          origin={origin}
-          destination={null}
-          polyline={undefined}
-          style={StyleSheet.absoluteFill}
-          centerKey={0}
-          edgePaddingTop={mapEdgePaddingTop}
-          edgePaddingBottom={mapEdgePaddingBottom}
-          userLocation={null}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
-      )}
-
-      {/* Header */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header — wie Geldbörse */}
       <View
         style={[
           styles.header,
           {
-            paddingTop: topPad + 12,
+            paddingTop: topPad + 8,
             borderBottomColor: colors.border,
-            backgroundColor: profile.isLoggedIn ? "rgba(255,255,255,0.93)" : colors.background,
+            backgroundColor: colors.card,
           },
         ]}
       >
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meine Fahrten</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        style={profile.isLoggedIn ? { flex: 1, backgroundColor: "transparent" } : { flex: 1 }}
+        style={{ flex: 1 }}
         contentContainerStyle={[
           styles.content,
-          profile.isLoggedIn && { paddingBottom: BOTTOM_TAB_BAR_INNER_HEIGHT + bottomPad + rs(24) },
+          { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) },
         ]}
       >
 
@@ -682,10 +661,10 @@ export default function MyRidesScreen() {
 
 const styles = StyleSheet.create({
   container:       { flex: 1 },
-  header:          { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: rs(20), paddingBottom: rs(14), borderBottomWidth: StyleSheet.hairlineWidth },
-  backBtn:         { width: rs(40), height: rs(40), justifyContent: "center" },
-  headerTitle:     { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },
-  content:         { padding: rs(16), gap: rs(14), paddingBottom: rs(40) },
+  header:          { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: rs(16), paddingBottom: rs(12), borderBottomWidth: StyleSheet.hairlineWidth },
+  backBtn:         { width: rs(36), height: rs(36), justifyContent: "center" },
+  headerTitle:     { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
+  content:         { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(4) },
 
   statsRow:        { flexDirection: "row", gap: rs(10) },
   statCard:        { flex: 1, borderRadius: rs(14), borderWidth: 1, padding: rs(12), alignItems: "center", gap: rs(6) },

@@ -967,6 +967,7 @@ export default function HomeScreen() {
             backgroundColor: colors.surface,
             maxHeight: destination ? "86%" : "66%",
             bottom: TAB_HEIGHT + bottomPad,
+            zIndex: 20,
           },
         ]}
       >
@@ -1055,7 +1056,12 @@ export default function HomeScreen() {
           </>
         )}
 
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always" style={styles.sheetScroll}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="always"
+          style={[styles.sheetScroll, { backgroundColor: colors.surface }]}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: rs(16) }}
+        >
           {globalNoticeDe.length > 0 ? (
             <View
               style={{
