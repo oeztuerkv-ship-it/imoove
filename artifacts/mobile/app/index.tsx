@@ -69,7 +69,8 @@ const SEARCH_OVERLAY_BG = "#FFFFFF";
 
 const HOME_MEDICAL_GREEN = "#059669";
 const HOME_MEDICAL_GREEN_DARK = "#047857";
-const HOME_MEDICAL_OUTLINE_BORDER = "rgba(5, 150, 105, 0.38)";
+/** Krankenfahrt-Pille: kräftiger Rand, heller Grund (Bild 2). */
+const HOME_MEDICAL_SOFT_BG = "#ECFDF5";
 
 const FAVORITES_STORAGE_KEY = "@Onroda_search_favorites_v1";
 const MAX_FAVORITES_STORED = 5;
@@ -1014,7 +1015,7 @@ export default function HomeScreen() {
                 <Feather name="search" size={17} color="#fff" />
               </View>
               <Text style={styles.miniSearchPlaceholderText} numberOfLines={1}>
-                Wohin soll\u2019s gehen?
+                Ziel eingeben...
               </Text>
               <Feather name="chevron-right" size={18} color={HOME_SHEET_MUTED} />
             </Pressable>
@@ -1074,62 +1075,63 @@ export default function HomeScreen() {
             <>
               {(searchFavorites.length > 0 || homeHistorySlice.length > 0) ? (
                 <View style={styles.homeQuickSection}>
-                  {searchFavorites.length > 0 ? (
-                    <>
-                      <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED }]}>
-                        Favoriten
-                      </Text>
-                      {searchFavorites.slice(0, MAX_FAVORITES_ON_HOME).map((fav, favIdx) => (
-                        <React.Fragment key={fav.id}>
-                          {favIdx > 0 ? <View style={[styles.quickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
-                          <View style={styles.quickRow}>
-                            <Pressable
-                              style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}
-                              onPress={() => handleDestinationSelect(fav.location)}
-                            >
-                              <View style={[styles.quickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
-                                <Feather name="map-pin" size={16} color={colors.primary} />
-                              </View>
-                              <View style={styles.quickTextWrap}>
-                                <Text style={[styles.quickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>{fav.label}</Text>
-                                <Text style={[styles.quickSub, { color: HOME_SHEET_MUTED }]} numberOfLines={1}>
-                                  {fav.location.displayName}
-                                </Text>
-                              </View>
-                            </Pressable>
-                            <Pressable hitSlop={12} onPress={() => removeSearchFavorite(fav.id)}>
-                              <Feather name="trash-2" size={16} color={HOME_SHEET_MUTED} />
-                            </Pressable>
+                  <Text
+                    style={[
+                      styles.homeQuickSectionHeading,
+                      { color: HOME_SHEET_MUTED, marginBottom: searchFavorites.length > 0 ? rs(2) : rs(4) },
+                    ]}
+                  >
+                    Favoriten
+                  </Text>
+                  {searchFavorites.slice(0, MAX_FAVORITES_ON_HOME).map((fav, favIdx) => (
+                    <React.Fragment key={fav.id}>
+                      {favIdx > 0 ? <View style={[styles.homeQuickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
+                      <View style={styles.homeQuickRow}>
+                        <Pressable
+                          style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}
+                          onPress={() => handleDestinationSelect(fav.location)}
+                        >
+                          <View style={[styles.homeQuickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
+                            <Feather name="map-pin" size={14} color={colors.primary} />
                           </View>
-                        </React.Fragment>
-                      ))}
-                    </>
-                  ) : null}
+                          <View style={styles.quickTextWrap}>
+                            <Text style={[styles.homeQuickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>{fav.label}</Text>
+                            <Text style={[styles.homeQuickSub, { color: HOME_SHEET_MUTED }]} numberOfLines={1}>
+                              {fav.location.displayName}
+                            </Text>
+                          </View>
+                        </Pressable>
+                        <Pressable hitSlop={12} onPress={() => removeSearchFavorite(fav.id)}>
+                          <Feather name="trash-2" size={15} color={HOME_SHEET_MUTED} />
+                        </Pressable>
+                      </View>
+                    </React.Fragment>
+                  ))}
                   {homeHistorySlice.length > 0 ? (
                     <>
-                      {searchFavorites.length > 0 ? <View style={[styles.quickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
-                      <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED }]}>
+                      <View style={[styles.homeQuickDivider, { backgroundColor: HOME_SHEET_DIVIDER, marginTop: searchFavorites.length > 0 ? rs(6) : rs(2) }]} />
+                      <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED, marginTop: rs(4) }]}>
                         Verlauf
                       </Text>
                       {homeHistorySlice.map((hItem, hi) => (
                         <React.Fragment key={hItem.id}>
-                          {hi > 0 ? <View style={[styles.quickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
+                          {hi > 0 ? <View style={[styles.homeQuickDivider, { backgroundColor: HOME_SHEET_DIVIDER }]} /> : null}
                           <Pressable
-                            style={styles.quickRow}
+                            style={styles.homeQuickRow}
                             onPress={() => void openSearchWithHistoryEntry(hItem)}
                           >
-                            <View style={[styles.quickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
-                              <Ionicons name="time-outline" size={16} color={HOME_SHEET_TEXT} />
+                            <View style={[styles.homeQuickIconWrap, { backgroundColor: HOME_SHEET_INNER }]}>
+                              <Ionicons name="time-outline" size={14} color={HOME_SHEET_TEXT} />
                             </View>
                             <View style={styles.quickTextWrap}>
-                              <Text style={[styles.quickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>
+                              <Text style={[styles.homeQuickTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={1}>
                                 {hItem.destination.split(",")[0]}
                               </Text>
-                              <Text style={[styles.quickSub, { color: HOME_SHEET_MUTED }]} numberOfLines={2}>
+                              <Text style={[styles.homeQuickSub, { color: HOME_SHEET_MUTED }]} numberOfLines={2}>
                                 {hItem.destination.split(",").slice(1, 3).join(",").trim() || hItem.origin.split(",")[0]}
                               </Text>
                             </View>
-                            <Feather name="search" size={16} color={HOME_SHEET_MUTED} />
+                            <Feather name="search" size={15} color={HOME_SHEET_MUTED} />
                           </Pressable>
                         </React.Fragment>
                       ))}
@@ -1381,7 +1383,7 @@ export default function HomeScreen() {
                     style={[styles.fieldInput, { color: colors.foreground }]}
                     value={destQuery}
                     onChangeText={handleDestQueryChange}
-                    placeholder="Wohin soll\u2019s gehen?"
+                    placeholder="Ziel eingeben..."
                     placeholderTextColor={colors.mutedForeground}
                     onFocus={() => setIsEditingOrigin(false)}
                     returnKeyType="search"
@@ -2379,8 +2381,8 @@ const styles = StyleSheet.create({
   },
   miniSearchPlaceholderText: {
     flex: 1,
-    fontSize: rf(19),
-    fontFamily: "Inter_500Medium",
+    fontSize: rf(16),
+    fontFamily: "Inter_400Regular",
     color: HOME_SHEET_MUTED,
   },
   miniActionRow: {
@@ -2441,17 +2443,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rs(8),
-    paddingVertical: rs(13),
+    paddingVertical: rs(12),
     paddingHorizontal: rs(8),
     borderRadius: rs(999),
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: HOME_MEDICAL_OUTLINE_BORDER,
+    backgroundColor: HOME_MEDICAL_SOFT_BG,
+    borderWidth: 2,
+    borderColor: HOME_MEDICAL_GREEN,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: rs(1) },
-    shadowOpacity: 0.06,
-    shadowRadius: rs(4),
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: rs(3),
+    elevation: 2,
   },
   miniBtnMedicalOutlineText: {
     fontSize: rf(16),
@@ -2460,29 +2462,48 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   homeQuickSectionHeading: {
-    fontSize: rf(14.5),
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.35,
-    marginBottom: rs(4),
-    paddingHorizontal: 20,
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.2,
+    paddingHorizontal: rs(14),
   },
   homeQuickSection: {
     marginHorizontal: rs(14),
-    marginTop: rs(16),
-    marginBottom: rs(10),
-    paddingTop: rs(12),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: HOME_SHEET_DIVIDER,
-    borderRadius: rs(14),
-    borderWidth: 1.5,
-    borderColor: HOME_SHEET_RIM,
+    marginTop: rs(10),
+    marginBottom: rs(8),
+    paddingTop: rs(10),
+    paddingBottom: rs(8),
+    borderRadius: rs(12),
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
     backgroundColor: HOME_SHEET_PANEL,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: rs(3) },
-    shadowOpacity: 0.28,
-    shadowRadius: rs(10),
-    elevation: 10,
+    shadowOffset: { width: 0, height: rs(2) },
+    shadowOpacity: 0.12,
+    shadowRadius: rs(6),
+    elevation: 4,
+  },
+  homeQuickRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+  },
+  homeQuickIconWrap: {
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(8),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  homeQuickTitle: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
+  homeQuickSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", marginTop: 1 },
+  homeQuickDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: rs(52),
+    marginRight: rs(12),
   },
   favFormInput: {
     borderRadius: 12,

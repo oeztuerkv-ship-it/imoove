@@ -4,7 +4,6 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useColors } from "@/hooks/useColors";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { rs, rf } from "@/utils/scale";
 
@@ -12,12 +11,24 @@ export type BottomTab = "start" | "fahrten" | "buchen" | "geldborse" | "account"
 
 /** Zentraler Buchen-CTA (Referenz-Layout: grüner Kreis, weißes Plus). */
 const BUCHEN_GREEN = "#16A34A";
+/** Schwimmende graue Tab-Pille (Bild 2). */
+const NAV_PILL_BG = "#E8EAED";
+const NAV_INACTIVE = "#6B7280";
+
+/** Abstand unter der Pille bis zur unteren Kante des nutzbaren Tab-Bereichs (ohne Safe-Area). */
+const NAV_FLOAT_ABOVE_SAFE = rs(10);
+const NAV_PILL_PAD_V = rs(8);
+const NAV_ICON_ROW = rs(38);
+const NAV_LABEL_GAP = rs(3);
+const NAV_LABEL = rf(10);
+const NAV_PILL_PAD_BOTTOM = rs(8);
 
 /**
- * Innenhöhe der Tab-Leiste (ohne Safe-Area unten), abgestimmt auf `styles.bar` + `item` (Icon inkl. Plus-Rand, Label, Abstände).
- * Wird vom Home-Sheet (`bottom`) und Scroll-Paddings benötigt — fehlender Wert verschiebt Sheet & Tabs nach oben.
+ * Innenhöhe der Tab-Leiste (ohne Safe-Area unten): Float + graue Pille inkl. Icons/Label.
+ * Wird vom Home-Sheet (`bottom`) und Scroll-Paddings benötigt.
  */
-export const BOTTOM_TAB_BAR_INNER_HEIGHT = rs(7) + rs(38) + rs(3) + rf(10) + rs(4);
+export const BOTTOM_TAB_BAR_INNER_HEIGHT =
+  NAV_FLOAT_ABOVE_SAFE + NAV_PILL_PAD_V + NAV_ICON_ROW + NAV_LABEL_GAP + NAV_LABEL + NAV_PILL_PAD_BOTTOM;
 
 /** Scroll-Content-Padding: Tab-Leiste + Home-Indicator + optionaler Zusatz (z. B. letzte Zeile sichtbar). */
 export function mainTabScrollPaddingBottom(safeBottom: number, extra = 0): number {
@@ -25,7 +36,6 @@ export function mainTabScrollPaddingBottom(safeBottom: number, extra = 0): numbe
 }
 
 export function BottomTabBar({ active }: { active: BottomTab }) {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests?.length ?? 0;
@@ -40,39 +50,41 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom }]}>
-      <View style={[styles.bar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-      {tabs.map((tab) => {
-        const isActive = tab.id === active;
-        const isPlusTab = tab.id === "buchen";
-        const iconBg = isPlusTab
-          ? BUCHEN_GREEN
-          : (isActive ? "#DC2626" : colors.muted);
-        const iconColor = isPlusTab
-          ? "#ffffff"
-          : (isActive ? "#fff" : "#111111");
-        const labelColor = isPlusTab
-          ? BUCHEN_GREEN
-          : (isActive ? "#DC2626" : "#111111");
-        return (
-          <Pressable key={tab.id} style={styles.item} onPress={tab.onPress}>
-            <View
-              style={[
-                styles.iconWrap,
-                isPlusTab && styles.plusTabIconWrap,
-                { backgroundColor: iconBg, borderColor: "transparent" },
-              ]}
-            >
-              <Feather name={tab.icon} size={isPlusTab ? rs(18) : rs(13)} color={iconColor} />
-              {tab.badge != null && tab.badge > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
+      <View style={styles.pillOuter}>
+        <View style={styles.pill}>
+          {tabs.map((tab) => {
+            const isActive = tab.id === active;
+            const isPlusTab = tab.id === "buchen";
+            const iconBg = isPlusTab
+              ? BUCHEN_GREEN
+              : (isActive ? "#DC2626" : "transparent");
+            const iconColor = isPlusTab
+              ? "#ffffff"
+              : (isActive ? "#fff" : NAV_INACTIVE);
+            const labelColor = isPlusTab
+              ? BUCHEN_GREEN
+              : (isActive ? "#DC2626" : NAV_INACTIVE);
+            return (
+              <Pressable key={tab.id} style={styles.item} onPress={tab.onPress}>
+                <View
+                  style={[
+                    styles.iconWrap,
+                    isPlusTab && styles.plusTabIconWrap,
+                    { backgroundColor: iconBg, borderColor: "transparent" },
+                  ]}
+                >
+                  <Feather name={tab.icon} size={isPlusTab ? rs(18) : rs(13)} color={iconColor} />
+                  {tab.badge != null && tab.badge > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            <Text style={[styles.label, isPlusTab && styles.plusTabLabel, { color: labelColor }]}>{tab.label}</Text>
-          </Pressable>
-        );
-      })}
+                <Text style={[styles.label, isPlusTab && styles.plusTabLabel, { color: labelColor }]}>{tab.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -86,17 +98,25 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 40,
   },
-  bar: {
-    flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: rs(7),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 10,
+  pillOuter: {
+    paddingHorizontal: rs(14),
+    paddingTop: 0,
+    paddingBottom: NAV_FLOAT_ABOVE_SAFE,
   },
-  item: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(3), paddingBottom: rs(4) },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: NAV_PILL_BG,
+    borderRadius: rs(28),
+    paddingVertical: NAV_PILL_PAD_V,
+    paddingHorizontal: rs(4),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(4) },
+    shadowOpacity: 0.12,
+    shadowRadius: rs(12),
+    elevation: 14,
+  },
+  item: { flex: 1, alignItems: "center", justifyContent: "center", gap: NAV_LABEL_GAP, paddingBottom: 0 },
   iconWrap: {
     width: rs(28), height: rs(28), borderRadius: rs(8),
     justifyContent: "center", alignItems: "center",
