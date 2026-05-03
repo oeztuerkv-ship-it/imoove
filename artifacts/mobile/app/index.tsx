@@ -1364,6 +1364,14 @@ export default function HomeScreen() {
                       <Feather name="x" size={16} color={colors.mutedForeground} />
                     </Pressable>
                   )}
+                  <Pressable
+                    hitSlop={10}
+                    accessibilityLabel="Zwischenstopp hinzufügen"
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                    style={styles.searchWaypointPlusBtn}
+                  >
+                    <Feather name="plus" size={20} color={colors.primary} />
+                  </Pressable>
                 </View>
               </View>
             </View>
@@ -2741,8 +2749,7 @@ const styles = StyleSheet.create({
   fieldWrap: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: 8, paddingVertical: 14, gap: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    borderBottomWidth: 0,
   },
   fieldInput: {
     flex: 1, fontSize: 15, fontFamily: "Inter_400Regular",
@@ -2750,6 +2757,7 @@ const styles = StyleSheet.create({
   },
   fieldSeparator: { height: 2, marginLeft: 8, marginRight: 8, opacity: 0.45 },
   gpsIconBtn: { padding: 4 },
+  searchWaypointPlusBtn: { padding: 4, marginLeft: 2, justifyContent: "center", alignItems: "center" },
 
   /* Results list */
   resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
