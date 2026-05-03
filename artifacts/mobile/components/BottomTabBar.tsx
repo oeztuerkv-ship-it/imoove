@@ -10,11 +10,14 @@ import { rs, rf } from "@/utils/scale";
 
 export type BottomTab = "start" | "fahrten" | "buchen" | "geldborse" | "account";
 
+/** Zentraler Buchen-CTA (Referenz-Layout: grüner Kreis, weißes Plus). */
+const BUCHEN_GREEN = "#16A34A";
+
 /**
  * Innenhöhe der Tab-Leiste (ohne Safe-Area unten), abgestimmt auf `styles.bar` + `item` (Icon inkl. Plus-Rand, Label, Abstände).
  * Wird vom Home-Sheet (`bottom`) und Scroll-Paddings benötigt — fehlender Wert verschiebt Sheet & Tabs nach oben.
  */
-export const BOTTOM_TAB_BAR_INNER_HEIGHT = rs(7) + rs(32) + rs(3) + rf(14) + rs(4);
+export const BOTTOM_TAB_BAR_INNER_HEIGHT = rs(7) + rs(38) + rs(3) + rf(10) + rs(4);
 
 /** Scroll-Content-Padding: Tab-Leiste + Home-Indicator + optionaler Zusatz (z. B. letzte Zeile sichtbar). */
 export function mainTabScrollPaddingBottom(safeBottom: number, extra = 0): number {
@@ -30,7 +33,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
   const tabs: { id: BottomTab; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
     { id: "start",      icon: "home",        label: "Start",     onPress: () => router.replace("/") },
     { id: "fahrten",    icon: "calendar",    label: "Fahrten",   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
-    { id: "buchen",     icon: "plus",        label: "+",         onPress: () => router.replace("/booking-center") },
+    { id: "buchen",     icon: "plus",        label: "Buchen",    onPress: () => router.replace("/booking-center") },
     { id: "geldborse",  icon: "credit-card", label: "Geldbörse", onPress: () => router.replace("/wallet") },
     { id: "account",    icon: "user",        label: "Account",   onPress: () => router.replace("/profile") },
   ];
@@ -42,13 +45,13 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
         const isActive = tab.id === active;
         const isPlusTab = tab.id === "buchen";
         const iconBg = isPlusTab
-          ? (isActive ? "#DC2626" : "#ffffff")
+          ? BUCHEN_GREEN
           : (isActive ? "#DC2626" : colors.muted);
         const iconColor = isPlusTab
-          ? (isActive ? "#ffffff" : "#DC2626")
+          ? "#ffffff"
           : (isActive ? "#fff" : "#111111");
         const labelColor = isPlusTab
-          ? "#DC2626"
+          ? BUCHEN_GREEN
           : (isActive ? "#DC2626" : "#111111");
         return (
           <Pressable key={tab.id} style={styles.item} onPress={tab.onPress}>
@@ -56,10 +59,10 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
               style={[
                 styles.iconWrap,
                 isPlusTab && styles.plusTabIconWrap,
-                { backgroundColor: iconBg, borderColor: isPlusTab ? "#DC2626" : "transparent" },
+                { backgroundColor: iconBg, borderColor: "transparent" },
               ]}
             >
-              <Feather name={tab.icon} size={isPlusTab ? rs(16) : rs(13)} color={iconColor} />
+              <Feather name={tab.icon} size={isPlusTab ? rs(18) : rs(13)} color={iconColor} />
               {tab.badge != null && tab.badge > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
@@ -100,10 +103,11 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   label: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
-  plusTabLabel: { fontFamily: "Inter_700Bold", fontSize: rf(12), marginTop: -1 },
+  plusTabLabel: { fontFamily: "Inter_600SemiBold", fontSize: rf(10), marginTop: 1 },
   plusTabIconWrap: {
-    borderWidth: 2,
-    borderRadius: rs(10),
+    width: rs(38),
+    height: rs(38),
+    borderRadius: rs(19),
   },
   badge: {
     position: "absolute", top: -5, right: -8,
