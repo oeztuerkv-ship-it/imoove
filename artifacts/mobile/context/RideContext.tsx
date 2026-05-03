@@ -119,6 +119,9 @@ export function calculateCopayment(fullFare: number, isExempted: boolean): numbe
 }
 
 interface RideContextValue extends RideState {
+  /** Rollstuhl: optionaler Entwurf (z. B. Heimadresse), bis der Kunde den Zusatz-Flow abgeschlossen hat. */
+  wheelchairHomeDraft: GeoLocation | null;
+  setWheelchairHomeDraft: (loc: GeoLocation | null) => void;
   setOrigin: (loc: GeoLocation) => void;
   setDestination: (loc: GeoLocation | null) => void;
   setSelectedVehicle: (v: VehicleType | null) => void;
@@ -259,6 +262,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [history, setHistory] = useState<RideHistoryEntry[]>([]);
+  const [wheelchairHomeDraft, setWheelchairHomeDraft] = useState<GeoLocation | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(RESET_KEY).then((done) => {
@@ -424,12 +428,14 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     setPaymentMethod(null);
     setSelectedVehicle(null);
     setSelectedServiceClass(null);
+    setWheelchairHomeDraft(null);
   }, []);
 
   return (
     <RideContext.Provider value={{
       origin, destination, selectedVehicle, selectedServiceClass, paymentMethod, isExempted, scheduledTime,
       route, fareBreakdown, finalFare, rideStatus, isLoadingRoute, routeError, history,
+      wheelchairHomeDraft, setWheelchairHomeDraft,
       setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime,
       fetchRoute, startRide, cancelRide, completeRide, resetRide, loadHistory,
     }}>
