@@ -192,7 +192,35 @@ const EXTRA_CHIPS = [
   { k: "complOk", label: "Compliance erfüllt" },
 ];
 
+const CREATE_KIND_OPTIONS = [
+  { value: "general", label: "Sonstige" },
+  { value: "taxi", label: "Taxi" },
+  { value: "hotel", label: "Hotel" },
+  { value: "insurer", label: "Krankenkasse" },
+  { value: "medical", label: "Krankenfahrt (medical)" },
+  { value: "corporate", label: "Unternehmen (corporate)" },
+  { value: "voucher_client", label: "Gutschein-Partner" },
+];
+
+const EMPTY_CREATE_FORM = {
+  name: "",
+  company_kind: "general",
+  contact_name: "",
+  email: "",
+  phone: "",
+  address_line1: "",
+  address_line2: "",
+  postal_code: "",
+  city: "",
+  country: "DE",
+  legal_form: "",
+  vat_id: "",
+  support_email: "",
+  dispo_phone: "",
+};
+
 export default function CompaniesPage({
+  userRole = "",
   initialOpenCompanyId,
   onInitialOpenCompanyConsumed,
   listTab = "all",
@@ -215,6 +243,11 @@ export default function CompaniesPage({
   const [extra, setExtra] = useState(() => ({ ...INITIAL_EXTRA }));
   const [sortKey, setSortKey] = useState("name");
   const [sortDir, setSortDir] = useState("asc");
+  const [createForm, setCreateForm] = useState(() => ({ ...EMPTY_CREATE_FORM }));
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createErr, setCreateErr] = useState("");
+
+  const canCreateCompany = userRole === "admin" || userRole === "service";
 
   const setExtraToggle = (k) => {
     setExtra((prev) => ({ ...prev, [k]: !prev[k] }));
@@ -361,6 +394,74 @@ export default function CompaniesPage({
     onOpenMandateDetail?.(id);
   };
 
+  const onCreateField = (k) => (e) => {
+    setCreateForm((prev) => ({ ...prev, [k]: e.target.value }));
+  };
+
+  const onCreateCompany = () => {
+    const name = String(createForm.name ?? "").trim();
+    if (!name) {
+      setCreateErr("Firmenname ist Pflicht.");
+      return;
+    }
+    setCreateErr("");
+    setCreateBusy(true);
+    const body = {
+      name,
+      company_kind: createForm.company_kind || "general",
+      contact_name: String(createForm.contact_name ?? "").trim(),
+      email: String(createForm.email ?? "").trim(),
+      phone: String(createForm.phone ?? "").trim(),
+      address_line1: String(createForm.address_line1 ?? "").trim(),
+      address_line2: String(createForm.address_line2 ?? "").trim(),
+      postal_code: String(createForm.postal_code ?? "").trim(),
+      city: String(createForm.city ?? "").trim(),
+      country: String(createForm.country ?? "").trim(),
+      legal_form: String(createForm.legal_form ?? "").trim(),
+      vat_id: String(createForm.vat_id ?? "").trim(),
+      support_email: String(createForm.support_email ?? "").trim(),
+      dispo_phone: String(createForm.dispo_phone ?? "").trim(),
+    };
+    fetch(`${API_BASE}/admin/companies`, {
+      method: "POST",
+      headers: { ...adminApiHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then(async (res) => {
+        const raw = await res.text();
+        let json = null;
+        try {
+          json = raw ? JSON.parse(raw) : null;
+        } catch {
+          json = null;
+        }
+        if (!res.ok) {
+          const code = json && typeof json.error === "string" ? json.error : "";
+          const hint = json && typeof json.hint === "string" ? json.hint : "";
+          if (res.status === 403) {
+            setCreateErr("Keine Berechtigung (nur Plattform-Admin oder Service).");
+            return;
+          }
+          if (code === "name_required") {
+            setCreateErr("Firmenname ist Pflicht.");
+            return;
+          }
+          setCreateErr(
+            [code && `API: ${code}`, hint || (!code && (raw || `HTTP ${res.status}`))].filter(Boolean).join(" — ") ||
+              "Anlage fehlgeschlagen.",
+          );
+          return;
+        }
+        const item = json && json.item ? json.item : null;
+        const newId = item && item.id ? item.id : null;
+        setCreateForm({ ...EMPTY_CREATE_FORM });
+        loadData();
+        if (newId) onOpenMandateDetail?.(newId);
+      })
+      .catch(() => setCreateErr("Netzwerkfehler."))
+      .finally(() => setCreateBusy(false));
+  };
+
   if (mandateDetailCompanyId && onCloseMandateDetail) {
     return (
       <CompanyMandateDetailPage
@@ -388,6 +489,221 @@ export default function CompaniesPage({
           <strong>Bearbeiten</strong> erweitert Flotte, Kasse und weitere Einstellungen in der Werkstatt.
         </p>
       </div>
+
+      {canCreateCompany ? (
+        <section className="admin-companies__create" aria-labelledby="admin-companies-create-title">
+          <div className="admin-companies__create-head">
+            <h2 id="admin-companies-create-title" className="admin-companies__create-title">
+              Neues Unternehmen
+            </h2>
+            <p className="admin-companies__create-lead">
+              Mandant in der Plattform anlegen — ID wird vergeben; Rechnungsdaten und Freigaben können Sie danach in der Mandantenzentrale ergänzen.
+            </p>
+          </div>
+          {createErr ? (
+            <div className="admin-companies__create-err" role="alert">
+              {createErr}
+            </div>
+          ) : null}
+          <div className="admin-companies__create-grid">
+            <div className="admin-companies__create-field admin-companies__create-field--span2">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-name">
+                Firmenname <span className="admin-companies__req">*</span>
+              </label>
+              <input
+                id="admin-create-name"
+                className="admin-c-search__inp"
+                autoComplete="organization"
+                value={createForm.name}
+                onChange={onCreateField("name")}
+                placeholder="z. B. Muster Taxi GmbH"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-kind">
+                Unternehmensart
+              </label>
+              <select
+                id="admin-create-kind"
+                className="admin-c-select admin-companies__create-select"
+                value={createForm.company_kind}
+                onChange={onCreateField("company_kind")}
+              >
+                {CREATE_KIND_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-legal">
+                Rechtsform
+              </label>
+              <input
+                id="admin-create-legal"
+                className="admin-c-search__inp"
+                value={createForm.legal_form}
+                onChange={onCreateField("legal_form")}
+                placeholder="z. B. GmbH"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-contact">
+                Ansprechpartner
+              </label>
+              <input
+                id="admin-create-contact"
+                className="admin-c-search__inp"
+                value={createForm.contact_name}
+                onChange={onCreateField("contact_name")}
+                placeholder="Name"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-email">
+                E-Mail
+              </label>
+              <input
+                id="admin-create-email"
+                className="admin-c-search__inp"
+                type="email"
+                autoComplete="email"
+                value={createForm.email}
+                onChange={onCreateField("email")}
+                placeholder="kontakt@…"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-phone">
+                Telefon
+              </label>
+              <input
+                id="admin-create-phone"
+                className="admin-c-search__inp"
+                type="tel"
+                value={createForm.phone}
+                onChange={onCreateField("phone")}
+                placeholder="+49 …"
+              />
+            </div>
+            <div className="admin-companies__create-field admin-companies__create-field--span2">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-addr1">
+                Straße / Hausnummer
+              </label>
+              <input
+                id="admin-create-addr1"
+                className="admin-c-search__inp"
+                value={createForm.address_line1}
+                onChange={onCreateField("address_line1")}
+                placeholder="Musterstraße 1"
+              />
+            </div>
+            <div className="admin-companies__create-field admin-companies__create-field--span2">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-addr2">
+                Adresszusatz
+              </label>
+              <input
+                id="admin-create-addr2"
+                className="admin-c-search__inp"
+                value={createForm.address_line2}
+                onChange={onCreateField("address_line2")}
+                placeholder="optional"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-plz">
+                PLZ
+              </label>
+              <input
+                id="admin-create-plz"
+                className="admin-c-search__inp"
+                value={createForm.postal_code}
+                onChange={onCreateField("postal_code")}
+                placeholder="12345"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-city">
+                Ort
+              </label>
+              <input
+                id="admin-create-city"
+                className="admin-c-search__inp"
+                value={createForm.city}
+                onChange={onCreateField("city")}
+                placeholder="Berlin"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-country">
+                Land (ISO)
+              </label>
+              <input
+                id="admin-create-country"
+                className="admin-c-search__inp"
+                value={createForm.country}
+                onChange={onCreateField("country")}
+                placeholder="DE"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-vat">
+                USt-IdNr.
+              </label>
+              <input
+                id="admin-create-vat"
+                className="admin-c-search__inp"
+                value={createForm.vat_id}
+                onChange={onCreateField("vat_id")}
+                placeholder="optional"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-support">
+                Support-E-Mail
+              </label>
+              <input
+                id="admin-create-support"
+                className="admin-c-search__inp"
+                type="email"
+                value={createForm.support_email}
+                onChange={onCreateField("support_email")}
+                placeholder="optional"
+              />
+            </div>
+            <div className="admin-companies__create-field">
+              <label className="admin-c-search__lbl" htmlFor="admin-create-dispo">
+                Dispositions-Telefon
+              </label>
+              <input
+                id="admin-create-dispo"
+                className="admin-c-search__inp"
+                type="tel"
+                value={createForm.dispo_phone}
+                onChange={onCreateField("dispo_phone")}
+                placeholder="optional"
+              />
+            </div>
+          </div>
+          <div className="admin-companies__create-actions">
+            <button type="button" className="admin-btn-primary" disabled={createBusy} onClick={() => void onCreateCompany()}>
+              {createBusy ? "Wird angelegt …" : "Unternehmen anlegen"}
+            </button>
+            <button
+              type="button"
+              className="admin-c-btn-sec"
+              disabled={createBusy}
+              onClick={() => {
+                setCreateForm({ ...EMPTY_CREATE_FORM });
+                setCreateErr("");
+              }}
+            >
+              Formular leeren
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="admin-c-search">
         <div className="admin-c-search__row">

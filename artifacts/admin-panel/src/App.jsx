@@ -581,6 +581,7 @@ export default function App() {
       case "companies":
         return (
           <CompaniesPage
+            userRole={userRole}
             initialOpenCompanyId={companiesInitialOpenId}
             onInitialOpenCompanyConsumed={() => setCompaniesInitialOpenId(null)}
             listTab={companiesListTab}

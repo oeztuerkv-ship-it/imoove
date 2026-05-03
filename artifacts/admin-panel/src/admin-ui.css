@@ -2482,6 +2482,91 @@ ul.admin-mandate-doclist {
   font-size: 1rem;
 }
 
+/* Neues Unternehmen (Plattform-Admin / Service) */
+.admin-companies__create {
+  margin-bottom: 28px;
+  padding: 20px 22px 22px;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 48%);
+  border: 1px solid #d8e0eb;
+  border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.admin-companies__create-head {
+  margin-bottom: 16px;
+}
+
+.admin-companies__create-title {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.admin-companies__create-lead {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #64748b;
+  line-height: 1.55;
+  max-width: 900px;
+}
+
+.admin-companies__create-err {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.92rem;
+}
+
+.admin-companies__req {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.admin-companies__create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 820px) {
+  .admin-companies__create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-companies__create-field--span2 {
+    grid-column: auto;
+  }
+}
+
+.admin-companies__create-field--span2 {
+  grid-column: span 2;
+}
+
+.admin-companies__create-field .admin-c-search__inp,
+.admin-companies__create-field .admin-c-select {
+  min-height: 48px;
+  padding: 12px 16px;
+  font-size: 1rem;
+}
+
+.admin-companies__create-select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-companies__create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+
 /* Suchfeld */
 .admin-c-search {
   margin-bottom: 20px;
