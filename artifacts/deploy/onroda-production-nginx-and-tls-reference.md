@@ -179,6 +179,15 @@ Ursache: falscher `ssl_certificate` im `api.onroda.de`-Block, falscher `default_
 
 ---
 
+## 4a. Partner-Registrierung mit PDF: **413** und „CORS“-Eindruck
+
+- **Symptom:** `POST https://api.onroda.de/api/panel-auth/registration-request` → **413 Payload Too Large**; der Browser meldt oft zusätzlich **CORS / Missing Allow Origin**, weil die **413-Antwort von Nginx** typischerweise **ohne** die CORS-Header auskommt, die Node bei 200/400 setzen würde.
+- **Ursache:** Nginx-Default **`client_max_body_size`** ist oft **1m** — der JSON-Body mit mehreren Base64-PDFs erreicht Express gar nicht.
+- **Fix auf dem Server:** Im `server { server_name api.onroda.de; … }` mindestens **`client_max_body_size 25M;`** setzen (gesamter Request-Body; Base64 vergrößert etwa im Verhältnis 4/3). Anschließend `nginx -t` und Reload.
+- **Repo-Referenz:** `artifacts/deploy/nginx-onroda.example.conf` (API-Block). Dazu im API-Prozess das JSON-Body-Limit in **`artifacts/api-server/src/app.ts`** für dieselbe Route (derzeit **25mb**) — nach Änderung **PM2-Restart** der API.
+
+---
+
 ## 5. Verifizierter API-Block (Live): Upstream + Zertifikat
 
 Nach erfolgreichem Fix nutzt der produktive API-`server`-Block u. a.:

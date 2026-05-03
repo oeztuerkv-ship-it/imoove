@@ -26,4 +26,7 @@ fi
 
 grep -q 'location ^~ /partners' "$F" || err "panel: location ^~ /partners (Redirect Admin-Pfad) fehlt"
 
+grep -qE 'client_max_body_size[[:space:]]+25M' "$F" || \
+  err "api: client_max_body_size 25M fehlt (413 bei Partner-PDF-Registrierung vor Node)"
+
 echo "verify-onroda-nginx-example-invariants: OK"

@@ -116,15 +116,17 @@ app.use((req, res, next) => {
     req.method === "POST" &&
     u.includes("/rides/") &&
     (u.includes("/medical/transport-document") || u.includes("/medical/signature"));
-  const partnerRegInitialPost = req.method === "POST" && u.endsWith("/panel-auth/registration-request");
+  // Mehrere Base64-PDFs (Taxi): Nginx braucht passendes client_max_body_size (siehe nginx-onroda.example.conf).
+  const partnerRegInitialPost =
+    req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);
   const partnerRegDocPost =
-    req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents$/.test(u);
+    req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
   const limit = medicalUpload
     ? "6mb"
     : partnerRegInitialPost
-      ? "20mb"
+      ? "25mb"
       : partnerRegDocPost
-        ? "8mb"
+        ? "12mb"
         : "200kb";
   express.json({ limit })(req, res, next);
 });
