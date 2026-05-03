@@ -1023,15 +1023,15 @@ export default function HomeScreen() {
             <View style={styles.miniActionRow}>
               {preBookingOn ? (
                 <>
-                  <Pressable style={[styles.miniBtnPrimaryRed, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
-                    <Feather name="calendar" size={20} color="#fff" />
-                    <Text style={styles.miniBtnPrimaryRedText} numberOfLines={1}>
+                  <Pressable style={[styles.miniBtnPrimaryRed, styles.miniBtnPrimaryRedCompact, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
+                    <Feather name="calendar" size={17} color="#fff" />
+                    <Text style={[styles.miniBtnPrimaryRedText, styles.miniBtnPrimaryRedTextCompact]} numberOfLines={1}>
                       Reservieren
                     </Text>
                   </Pressable>
-                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnHalf]} onPress={goMedicalBooking}>
-                    <MaterialCommunityIcons name="medical-bag" size={21} color={HOME_MEDICAL_GREEN_DARK} />
-                    <Text style={styles.miniBtnMedicalOutlineText} numberOfLines={1}>
+                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnMedicalOutlineCompact, styles.miniBtnHalf]} onPress={goMedicalBooking}>
+                    <MaterialCommunityIcons name="medical-bag" size={18} color={HOME_MEDICAL_GREEN_DARK} />
+                    <Text style={[styles.miniBtnMedicalOutlineText, styles.miniBtnMedicalOutlineTextCompact]} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
                   </Pressable>
@@ -1044,9 +1044,9 @@ export default function HomeScreen() {
                       Buchungszentrale
                     </Text>
                   </Pressable>
-                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnHalf]} onPress={goMedicalBooking}>
-                    <MaterialCommunityIcons name="medical-bag" size={21} color={HOME_MEDICAL_GREEN_DARK} />
-                    <Text style={styles.miniBtnMedicalOutlineText} numberOfLines={1}>
+                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnMedicalOutlineCompact, styles.miniBtnHalf]} onPress={goMedicalBooking}>
+                    <MaterialCommunityIcons name="medical-bag" size={18} color={HOME_MEDICAL_GREEN_DARK} />
+                    <Text style={[styles.miniBtnMedicalOutlineText, styles.miniBtnMedicalOutlineTextCompact]} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
                   </Pressable>
@@ -2420,6 +2420,14 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     flexShrink: 1,
   },
+  /** Nur Home-Sheet „Reservieren“: kompakter als übrige Primary-Buttons. */
+  miniBtnPrimaryRedCompact: {
+    paddingVertical: rs(10),
+    gap: rs(6),
+  },
+  miniBtnPrimaryRedTextCompact: {
+    fontSize: rf(14),
+  },
   miniBtnSecondaryDark: {
     flex: 1,
     flexDirection: "row",
@@ -2466,6 +2474,15 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: HOME_MEDICAL_GREEN_DARK,
     flexShrink: 1,
+  },
+  /** Nur Home-Sheet „Krankenfahrt“: kompakter. */
+  miniBtnMedicalOutlineCompact: {
+    paddingVertical: rs(9),
+    paddingHorizontal: rs(6),
+    gap: rs(6),
+  },
+  miniBtnMedicalOutlineTextCompact: {
+    fontSize: rf(14),
   },
   homeQuickSectionHeading: {
     fontSize: rf(12),
