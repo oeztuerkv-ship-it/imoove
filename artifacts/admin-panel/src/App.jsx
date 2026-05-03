@@ -329,6 +329,8 @@ export default function App() {
   const [companiesListTab, setCompaniesListTab] = useState("all");
   const [mandateDetailCompanyId, setMandateDetailCompanyId] = useState(null);
   const [taxiFleetSeedCompanyId, setTaxiFleetSeedCompanyId] = useState(null);
+  /** Mandant für „Partner-Zugänge“ aus Mandantenverwaltung / -zentrale (Deep-Link in PanelUsersPage). */
+  const [panelUsersSeedCompanyId, setPanelUsersSeedCompanyId] = useState(null);
   /** Nach Zurück von der Zentrale: Zeile in der Mandantenliste für Voll-Workspace (`CompanyWorkspaceForm`) aufklappen. */
   const [companiesExpandWorkspaceCompanyId, setCompaniesExpandWorkspaceCompanyId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -352,9 +354,11 @@ export default function App() {
     setMandateDetailCompanyId(null);
     setCompaniesExpandWorkspaceCompanyId(null);
     setRideRecordId(null);
+    setPanelUsersSeedCompanyId(null);
   }, []);
 
   const clearTaxiFleetSeedCompanyId = useCallback(() => setTaxiFleetSeedCompanyId(null), []);
+  const clearPanelUsersSeedCompanyId = useCallback(() => setPanelUsersSeedCompanyId(null), []);
 
   const handlePickPage = useCallback(
     (pageKey, opt) => {
@@ -368,6 +372,7 @@ export default function App() {
         setTaxiFleetSeedCompanyId(null);
       }
       if (pageKey !== "ride-detail") setRideRecordId(null);
+      if (pageKey === "users-panel") setPanelUsersSeedCompanyId(null);
       setActive(pageKey);
       setMobileMenuOpen(false);
     },
@@ -599,6 +604,15 @@ export default function App() {
               setMandateDetailCompanyId(null);
               setActive("taxi-fleet-vehicles");
             }}
+            onOpenPanelUsersForCompany={
+              isAdminPageAllowed("users-panel", userRole)
+                ? (cid) => {
+                    setPanelUsersSeedCompanyId(cid);
+                    setMandateDetailCompanyId(null);
+                    setActive("users-panel");
+                  }
+                : undefined
+            }
           />
         );
       case "taxi-fleet-drivers":
@@ -645,7 +659,12 @@ export default function App() {
       case "insurer-exports":
         return <InsurerExportsPage />;
       case "users-panel":
-        return <PanelUsersPage />;
+        return (
+          <PanelUsersPage
+            initialCompanyId={panelUsersSeedCompanyId}
+            onInitialCompanyConsumed={clearPanelUsersSeedCompanyId}
+          />
+        );
       case "fares":
         return <FaresPage />;
       case "access-codes":

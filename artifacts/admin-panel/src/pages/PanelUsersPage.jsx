@@ -42,7 +42,7 @@ function usersUrl(companyId) {
   return `${COMPANIES_URL}/${encodeURIComponent(companyId)}/panel-users`;
 }
 
-export default function PanelUsersPage() {
+export default function PanelUsersPage({ initialCompanyId = null, onInitialCompanyConsumed }) {
   const [companies, setCompanies] = useState([]);
   const [companyId, setCompanyId] = useState("");
   const [users, setUsers] = useState([]);
@@ -119,6 +119,23 @@ export default function PanelUsersPage() {
   useEffect(() => {
     void loadCompanies();
   }, [loadCompanies]);
+
+  /** Aus Mandantenverwaltung / -zentrale: Mandant vorauswählen und Dialog „Zugang anlegen“ öffnen */
+  useEffect(() => {
+    if (!initialCompanyId || loadingCompanies) return;
+    if (!Array.isArray(companies) || companies.length === 0) return;
+    const row = companies.find((c) => c.id === initialCompanyId);
+    if (!row) {
+      onInitialCompanyConsumed?.();
+      return;
+    }
+    setCompanyId(initialCompanyId);
+    setShowCreate(true);
+    setCreateErr("");
+    setCreateMailResult(null);
+    setCreateAttachmentResult(null);
+    onInitialCompanyConsumed?.();
+  }, [initialCompanyId, loadingCompanies, companies, onInitialCompanyConsumed]);
 
   useEffect(() => {
     void loadUsers();
@@ -297,6 +314,11 @@ export default function PanelUsersPage() {
             </div>
           </div>
         </div>
+        <p className="admin-entity-card__meta" style={{ marginTop: 10 }}>
+          Tipp: Unter <strong>Unternehmen → Mandantenverwaltung</strong> hat jede Zeile den Button{" "}
+          <strong>Partner-Zugang</strong>; in der <strong>Mandantenzentrale</strong> derselbe Button oben rechts — jeweils
+          mit vorgewähltem Mandanten und geöffnetem Formular <strong>Zugang anlegen</strong>.
+        </p>
         {selectedCompany && !selectedCompany.is_active ? (
           <p className="admin-entity-card__meta" style={{ marginTop: 12 }}>
             Dieses Unternehmen ist inaktiv — neue Zugänge können nicht angelegt werden.

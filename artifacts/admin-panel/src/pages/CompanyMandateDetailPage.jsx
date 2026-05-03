@@ -188,6 +188,7 @@ export default function CompanyMandateDetailPage({
   onRequestFullWorkspace,
   onOpenTaxiFleetDrivers,
   onOpenTaxiFleetVehicles,
+  onOpenPanelUsers,
 }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
@@ -610,6 +611,16 @@ export default function CompanyMandateDetailPage({
                 </p>
               </div>
               <div className="admin-m-hero__actions">
+                {typeof onOpenPanelUsers === "function" ? (
+                  <button
+                    type="button"
+                    className="admin-c-btn-panel-access admin-c-btn-panel-access--hero"
+                    onClick={() => onOpenPanelUsers()}
+                    title="Partner-Portal-Zugang für diesen Mandanten anlegen"
+                  >
+                    Partner-Zugang
+                  </button>
+                ) : null}
                 {typeof onRequestFullWorkspace === "function" ? (
                   <button
                     type="button"

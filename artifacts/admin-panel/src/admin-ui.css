@@ -2771,8 +2771,8 @@ ul.admin-mandate-doclist {
 }
 
 .admin-c-th--act {
-  width: 12%;
-  min-width: 140px;
+  width: 14%;
+  min-width: 220px;
   text-align: right;
   padding-right: 18px;
 }
@@ -3071,6 +3071,33 @@ ul.admin-mandate-doclist {
 .admin-c-btn-edit:hover {
   background: #f4f6f9;
   border-color: #98a3b3;
+}
+
+/* Partner-Portal-Zugang (sichtbar pro Mandant in der Mandantenliste / -zentrale) */
+.admin-c-btn-panel-access {
+  min-height: 34px;
+  padding: 6px 12px;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ccfbf1 100%);
+  color: #0f766e;
+  border: 1px solid #5eead4;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+.admin-c-btn-panel-access:hover {
+  background: linear-gradient(180deg, #ecfdf5 0%, #99f6e4 100%);
+  border-color: #2dd4bf;
+  box-shadow: 0 1px 0 rgba(15, 118, 110, 0.12);
+}
+
+.admin-c-btn-panel-access--hero {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
 }
 
 .admin-c-btn-sec {

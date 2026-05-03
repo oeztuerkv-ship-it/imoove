@@ -205,6 +205,7 @@ export default function CompaniesPage({
   onRequestWorkspaceForCompany,
   onNavigateToTaxiFleetDrivers,
   onNavigateToTaxiFleetVehicles,
+  onOpenPanelUsersForCompany,
 }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -368,6 +369,11 @@ export default function CompaniesPage({
         onRequestFullWorkspace={() => onRequestWorkspaceForCompany?.(mandateDetailCompanyId)}
         onOpenTaxiFleetDrivers={() => onNavigateToTaxiFleetDrivers?.(mandateDetailCompanyId)}
         onOpenTaxiFleetVehicles={() => onNavigateToTaxiFleetVehicles?.(mandateDetailCompanyId)}
+        onOpenPanelUsers={
+          typeof onOpenPanelUsersForCompany === "function"
+            ? () => onOpenPanelUsersForCompany(mandateDetailCompanyId)
+            : undefined
+        }
       />
     );
   }
@@ -378,7 +384,8 @@ export default function CompaniesPage({
         <h1 className="admin-companies__title">Mandantenverwaltung</h1>
         <p className="admin-companies__lead">
           <strong>Operativer Mandanten-Stand</strong> — <strong>Zeile oder Firmenname</strong> öffnet die Mandantenzentrale.
-          Rechts <strong>Bearbeiten</strong> erweitert Flotte, Kasse und weitere Einstellungen in der Werkstatt.
+          Rechts <strong>Partner-Zugang</strong> öffnet die Partner-Portal-Anlage für genau diesen Mandanten;{" "}
+          <strong>Bearbeiten</strong> erweitert Flotte, Kasse und weitere Einstellungen in der Werkstatt.
         </p>
       </div>
 
@@ -657,6 +664,16 @@ export default function CompaniesPage({
                             <span className="admin-c-openhint__i" aria-hidden>
                               ↗
                             </span>
+                          </button>
+                        ) : null}
+                        {typeof onOpenPanelUsersForCompany === "function" ? (
+                          <button
+                            type="button"
+                            className="admin-c-btn-panel-access"
+                            title="Partner-Portal-Zugang für diesen Mandanten anlegen (E-Mail optional)"
+                            onClick={() => onOpenPanelUsersForCompany(item.id)}
+                          >
+                            Partner-Zugang
                           </button>
                         ) : null}
                         <button
