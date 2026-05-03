@@ -1,7 +1,8 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { BottomTabBar } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_INNER_HEIGHT } from "@/components/BottomTabBar";
+import { RealMapView } from "@/components/RealMapView";
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRide, type PaymentMethod, type RideHistoryEntry, type VehicleType, VEHICLES } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
+import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -166,7 +168,11 @@ export default function MyRidesScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
-  const { history } = useRide();
+  const bottomPad = isWeb ? 20 : insets.bottom;
+  const { profile } = useUser();
+  const { history, origin } = useRide();
+  const mapEdgePaddingTop = Math.round(topPad + 12 + 56);
+  const mapEdgePaddingBottom = Math.round(BOTTOM_TAB_BAR_INNER_HEIGHT + bottomPad + 48);
   const { myActiveRequests, myCancelledRequests, cancelRequest, requests, passengerId } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("alle");
 
@@ -287,15 +293,46 @@ export default function MyRidesScreen() {
     (!showCancelled || cancelled.length === 0);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, !profile.isLoggedIn && { backgroundColor: colors.background }]}>
+      {profile.isLoggedIn ? (
+        <RealMapView
+          origin={origin}
+          destination={null}
+          polyline={undefined}
+          style={StyleSheet.absoluteFill}
+          centerKey={0}
+          edgePaddingTop={mapEdgePaddingTop}
+          edgePaddingBottom={mapEdgePaddingBottom}
+          userLocation={null}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
+      )}
+
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: topPad + 12,
+            borderBottomColor: colors.border,
+            backgroundColor: profile.isLoggedIn ? "rgba(255,255,255,0.93)" : colors.background,
+          },
+        ]}
+      >
         <View style={{ width: 40 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meine Fahrten</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={profile.isLoggedIn ? { flex: 1, backgroundColor: "transparent" } : { flex: 1 }}
+        contentContainerStyle={[
+          styles.content,
+          profile.isLoggedIn && { paddingBottom: BOTTOM_TAB_BAR_INNER_HEIGHT + bottomPad + rs(24) },
+        ]}
+      >
 
         {/* ── Stats ── */}
         {completed.length > 0 && (
