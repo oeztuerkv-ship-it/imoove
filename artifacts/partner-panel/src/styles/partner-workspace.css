@@ -2403,6 +2403,12 @@
   gap: 20px;
 }
 
+/* Fleet-Topbar: Marke + Navi links zusammen, Aktionen (+ / Benutzer) am rechten Rand */
+.partner-shell__header--fleet .partner-shell__header-inner {
+  column-gap: 12px;
+  row-gap: 10px;
+}
+
 .partner-shell__brand-cluster {
   display: flex;
   flex-direction: column;
@@ -2435,8 +2441,9 @@
 }
 
 .partner-shell__nav--fleet {
-  flex: 1;
-  justify-content: center;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  align-items: center;
   gap: 4px 8px;
   flex-wrap: wrap;
   min-width: 0;
@@ -2488,6 +2495,7 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .partner-shell__body--fleet {
