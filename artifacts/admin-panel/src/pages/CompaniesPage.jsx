@@ -246,6 +246,7 @@ export default function CompaniesPage({
   const [createForm, setCreateForm] = useState(() => ({ ...EMPTY_CREATE_FORM }));
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState("");
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
 
   const canCreateCompany = userRole === "admin" || userRole === "service";
 
@@ -455,6 +456,8 @@ export default function CompaniesPage({
         const item = json && json.item ? json.item : null;
         const newId = item && item.id ? item.id : null;
         setCreateForm({ ...EMPTY_CREATE_FORM });
+        setShowCreateCompany(false);
+        setCreateErr("");
         loadData();
         if (newId) onOpenMandateDetail?.(newId);
       })
@@ -482,7 +485,32 @@ export default function CompaniesPage({
   return (
     <div className="admin-companies admin-companies--wide">
       <div className="admin-companies__head">
-        <h1 className="admin-companies__title">Mandantenverwaltung</h1>
+        <div className="admin-companies__head-row">
+          <h1 className="admin-companies__title">Mandantenverwaltung</h1>
+          {canCreateCompany ? (
+            <button
+              type="button"
+              className="admin-companies__create-toggle"
+              aria-expanded={showCreateCompany}
+              aria-controls="admin-companies-create-panel"
+              id="admin-companies-create-toggle"
+              onClick={() => {
+                setShowCreateCompany((v) => {
+                  const next = !v;
+                  if (!next) setCreateErr("");
+                  return next;
+                });
+              }}
+            >
+              <span className="admin-companies__create-toggle-plus" aria-hidden>
+                {showCreateCompany ? "−" : "+"}
+              </span>
+              <span className="admin-companies__create-toggle-label">
+                {showCreateCompany ? "Formular ausblenden" : "Unternehmen anlegen"}
+              </span>
+            </button>
+          ) : null}
+        </div>
         <p className="admin-companies__lead">
           <strong>Operativer Mandanten-Stand</strong> — <strong>Zeile oder Firmenname</strong> öffnet die Mandantenzentrale.
           Rechts <strong>Partner-Zugang</strong> öffnet die Partner-Portal-Anlage für genau diesen Mandanten;{" "}
@@ -490,8 +518,13 @@ export default function CompaniesPage({
         </p>
       </div>
 
-      {canCreateCompany ? (
-        <section className="admin-companies__create" aria-labelledby="admin-companies-create-title">
+      {canCreateCompany && showCreateCompany ? (
+        <section
+          id="admin-companies-create-panel"
+          className="admin-companies__create"
+          aria-labelledby="admin-companies-create-title"
+          role="region"
+        >
           <div className="admin-companies__create-head">
             <h2 id="admin-companies-create-title" className="admin-companies__create-title">
               Neues Unternehmen
