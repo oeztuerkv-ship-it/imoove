@@ -2721,7 +2721,7 @@ const styles = StyleSheet.create({
   },
   twoFieldCard: {
     flexDirection: "row", alignItems: "stretch",
-    borderRadius: 16, borderWidth: 1,
+    borderRadius: 16, borderWidth: 1.5,
     overflow: "hidden",
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
@@ -2741,13 +2741,14 @@ const styles = StyleSheet.create({
   fieldWrap: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: 8, paddingVertical: 14, gap: 8,
-    borderBottomWidth: 0,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
   },
   fieldInput: {
     flex: 1, fontSize: 15, fontFamily: "Inter_400Regular",
     paddingVertical: 0,
   },
-  fieldSeparator: { height: 1, marginLeft: 8, marginRight: 8, opacity: 0.4 },
+  fieldSeparator: { height: 2, marginLeft: 8, marginRight: 8, opacity: 0.45 },
   gpsIconBtn: { padding: 4 },
 
   /* Results list */
@@ -2779,7 +2780,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
-  resultGroup: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  resultGroup: { borderRadius: 14, borderWidth: 1.5, overflow: "hidden" },
   resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   resultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   resultText: { flex: 1 },
