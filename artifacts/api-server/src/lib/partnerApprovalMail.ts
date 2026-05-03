@@ -83,6 +83,8 @@ function buildBodies(input: {
 /**
  * Optional: setzt `PARTNER_REGISTRATION_SMTP_URL` (z. B. smtps://user:pass@smtp.example.com:465)
  * und `PARTNER_REGISTRATION_MAIL_FROM`. Ohne Konfiguration wird nichts gesendet (nur Log).
+ *
+ * Roadmap (kleiner Auth-Umbau): Einmalpasswort durch zeitlich begrenzten „Passwort setzen“-Link in der Mail ersetzen.
  */
 export async function sendPartnerRegistrationApprovedEmail(input: {
   to: string;

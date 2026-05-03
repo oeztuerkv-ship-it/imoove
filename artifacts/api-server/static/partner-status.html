@@ -38,6 +38,18 @@
     .ps-tl-meta { font-size: 0.8rem; color: #64748b; margin-bottom: 6px; }
     .ps-note { font-size: 0.85rem; color: #64748b; line-height: 1.45; margin-top: 8px; }
     .ps-btn-secondary { padding: 10px 16px; border-radius: 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-weight: 600; }
+    .ps-callout {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid #bae6fd;
+      background: #f0f9ff;
+      color: #0c4a6e;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .ps-callout p { margin: 0 0 8px; }
+    .ps-callout p:last-child { margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -59,6 +71,10 @@
     <a class="ps-back" href="/">← Zurück zur Startseite</a>
     <div class="ps-card">
       <h1>Status Ihrer Partner-Registrierung</h1>
+      <div class="ps-callout" role="note">
+        <p><strong>Dies ist keine Partner-Portal-Anmeldung.</strong></p>
+        <p>Den Zugang zum Partner-Portal erhalten Sie erst nach Freigabe Ihrer Anfrage durch ONRODA.</p>
+      </div>
       <p class="ps-lead">
         Geben Sie die <strong>E-Mail-Adresse</strong> aus der Anfrage und Ihre <strong>Referenz-ID</strong> ein
         (z.&nbsp;B. <code style="font-size:0.88em;">prr-…</code>). Sie sehen dann den <strong>Verlauf</strong> und können
@@ -67,7 +83,7 @@
       </p>
       <form id="ps-form" novalidate>
         <div class="ps-field">
-          <label for="ps-email">E-Mail</label>
+          <label for="ps-email">E-Mail (wie bei der Anfrage)</label>
           <input id="ps-email" type="email" required autocomplete="email" />
         </div>
         <div class="ps-field">

@@ -561,7 +561,6 @@
         var firstName = document.getElementById("firstName").value.trim();
         var lastName = document.getElementById("lastName").value.trim();
         var businessEmail = document.getElementById("businessEmail").value.trim();
-        var customerEmail = document.getElementById("customerEmail").value.trim();
         var businessPhone = document.getElementById("businessPhone").value.trim();
         var address = document.getElementById("address").value.trim();
         var postalCode = document.getElementById("postalCode").value.trim();
@@ -614,9 +613,6 @@
 
         var notesParts = [];
         if (notes) notesParts.push(notes);
-        if (customerEmail && customerEmail.toLowerCase() !== businessEmail.toLowerCase()) {
-          notesParts.push("Weitere Kontakt-E-Mail: " + customerEmail);
-        }
         var combinedNotes = notesParts.join("\n\n");
 
         function sendPartnerRegistration(taxiDocuments) {

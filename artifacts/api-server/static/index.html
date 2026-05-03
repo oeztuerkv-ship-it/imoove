@@ -428,13 +428,11 @@
           <div class="hp-form-card">
             <h3>Partneranfrage</h3>
             <p class="hint">
-              Ihre Angaben werden verschlüsselt über unsere API an ONRODA übermittelt und in der Bearbeitung
-              vorgemerkt. Es entsteht <strong>noch kein</strong> Zugang zum Partner-Portal — die Freigabe erfolgt nach
-              Prüfung durch uns. Den Status Ihrer Anfrage können Sie jederzeit unter
-              <a href="/partner/anfrage-status">Partner-Anfrage: Status</a> prüfen: dafür die
-              <strong>geschäftliche E-Mail</strong> (wie unten) und die <strong>Referenz-ID</strong> nach dem Absenden
-              — nicht die optionale zweite Kontakt-E-Mail, falls diese abweicht. Das ist kein Login; Zugang zum
-              Partner-Portal gibt es erst nach Freigabe durch uns.
+              <strong>Ablauf:</strong> Anfrage senden → unter
+              <a href="/partner/anfrage-status">Partner-Anfrage: Status</a> mit <strong>dieser E-Mail</strong> und der
+              <strong>Referenz-ID</strong> den Stand prüfen und ggf. Unterlagen nachreichen → nach Prüfung Freigabe →
+              Zugang zum Partner-Portal. Hier entsteht <strong>noch kein</strong> Portal-Login; die Statusseite ist
+              <strong>keine</strong> Anmeldung zum Partner-Portal.
             </p>
 
             <form id="partner-form" action="#" method="post" novalidate>
@@ -481,13 +479,14 @@
                 </div>
 
                 <div class="hp-field">
-                  <label for="businessEmail">Geschäftliche E-Mail *</label>
-                  <input id="businessEmail" type="email" required autocomplete="email" />
-                </div>
-
-                <div class="hp-field">
-                  <label for="customerEmail">E-Mail für Rückmeldung *</label>
-                  <input id="customerEmail" type="email" required autocomplete="email" />
+                  <label for="businessEmail">E-Mail *</label>
+                  <input
+                    id="businessEmail"
+                    type="email"
+                    required
+                    autocomplete="email"
+                    placeholder="für Rückfragen, Benachrichtigungen und Statusseite"
+                  />
                 </div>
 
                 <div class="hp-field">
