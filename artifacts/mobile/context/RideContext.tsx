@@ -11,7 +11,7 @@ import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { pickTariffForStartAddress } from "@/lib/appConfig";
 import { calculateFareFromAppConfig, appTariffFromRecord, ceilToTenth, type FareBreakdown } from "@/utils/fareCalculator";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { type GeoLocation, type RouteResult, getRoute } from "@/utils/routing";
+import { type GeoLocation, type RouteResult, getRoute, getRouteThrough } from "@/utils/routing";
 
 export type VehicleType = "standard" | "xl" | "wheelchair";
 export type RideServiceClass = "rollstuhl" | "xl" | "taxi";
@@ -89,6 +89,8 @@ export const DEFAULT_ORIGIN: GeoLocation = {
 
 interface RideState {
   origin: GeoLocation;
+  /** Zwischenstopps in Reihenfolge zwischen Abholung und Ziel (nur gesetzte Koordinaten). */
+  viaStops: GeoLocation[];
   destination: GeoLocation | null;
   selectedVehicle: VehicleType | null;
   selectedServiceClass: RideServiceClass | null;
@@ -123,6 +125,7 @@ interface RideContextValue extends RideState {
   wheelchairSelectCompleted: boolean;
   setWheelchairSelectCompleted: (done: boolean) => void;
   setOrigin: (loc: GeoLocation) => void;
+  setViaStops: (stops: GeoLocation[]) => void;
   setDestination: (loc: GeoLocation | null) => void;
   setSelectedVehicle: (v: VehicleType | null) => void;
   setSelectedServiceClass: (value: RideServiceClass | null) => void;
@@ -249,6 +252,7 @@ export function effectivePricingModeForCustomerRide(_input: {
 function RideProviderInner({ children }: { children: React.ReactNode }) {
   const { config: appCfg } = useOnrodaAppConfig();
   const [origin, setOrigin] = useState<GeoLocation>(DEFAULT_ORIGIN);
+  const [viaStops, setViaStops] = useState<GeoLocation[]>([]);
   const [destination, setDestination] = useState<GeoLocation | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType | null>(null);
   const [selectedServiceClass, setSelectedServiceClass] = useState<RideServiceClass | null>(null);
@@ -289,7 +293,9 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     setIsLoadingRoute(true);
     setRouteError(null);
     try {
-      const result = await getRoute(origin, destination);
+      const chain = [origin, ...viaStops, destination];
+      const result =
+        viaStops.length > 0 ? await getRouteThrough(chain) : await getRoute(origin, destination);
       setRoute(result);
       if (!selectedVehicle) {
         setFareBreakdown(null);
@@ -418,6 +424,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   );
 
   const resetRide = useCallback(() => {
+    setViaStops([]);
     setDestination(null);
     setRoute(null);
     setFareBreakdown(null);
@@ -433,10 +440,10 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
 
   return (
     <RideContext.Provider value={{
-      origin, destination, selectedVehicle, selectedServiceClass, paymentMethod, isExempted, scheduledTime,
+      origin, viaStops, destination, selectedVehicle, selectedServiceClass, paymentMethod, isExempted, scheduledTime,
       route, fareBreakdown, finalFare, rideStatus, isLoadingRoute, routeError, history,
       wheelchairSelectCompleted, setWheelchairSelectCompleted,
-      setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime,
+      setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime,
       fetchRoute, startRide, cancelRide, completeRide, resetRide, loadHistory,
     }}>
       {children}

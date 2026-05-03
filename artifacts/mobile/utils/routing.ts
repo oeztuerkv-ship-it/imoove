@@ -137,13 +137,13 @@ function coordsFinite(a: GeoLocation, b: GeoLocation): boolean {
   );
 }
 
-async function tryOsrmRoute(from: GeoLocation, to: GeoLocation, withSteps: boolean): Promise<RouteResult | RouteResultWithSteps | null> {
-  if (!coordsFinite(from, to)) return null;
+/** OSRM `coordinates`-String: `lon,lat;lon,lat;…` */
+async function tryOsrmDrivingCoordPath(
+  coordPath: string,
+  withSteps: boolean,
+): Promise<RouteResult | RouteResultWithSteps | null> {
   const stepQs = withSteps ? "&steps=true" : "";
-  const url =
-    `${OSRM_BASE}/route/v1/driving/` +
-    `${from.lon},${from.lat};${to.lon},${to.lat}` +
-    `?overview=full&geometries=geojson${stepQs}`;
+  const url = `${OSRM_BASE}/route/v1/driving/${coordPath}?overview=full&geometries=geojson${stepQs}`;
 
   let resp: Response;
   try {
@@ -196,10 +196,50 @@ async function tryOsrmRoute(from: GeoLocation, to: GeoLocation, withSteps: boole
   return { ...base, steps };
 }
 
+async function tryOsrmRoute(from: GeoLocation, to: GeoLocation, withSteps: boolean): Promise<RouteResult | RouteResultWithSteps | null> {
+  if (!coordsFinite(from, to)) return null;
+  const coordPath = `${from.lon},${from.lat};${to.lon},${to.lat}`;
+  return tryOsrmDrivingCoordPath(coordPath, withSteps);
+}
+
 export async function getRoute(from: GeoLocation, to: GeoLocation): Promise<RouteResult> {
   const osrm = await tryOsrmRoute(from, to, false);
   if (osrm && !("steps" in osrm)) return osrm as RouteResult;
   return fallbackRouteResult(from, to);
+}
+
+/** Route durch beliebig viele aufeinanderfolgende Koordinaten (Start → Zwischenstopps → Ziel). */
+export async function getRouteThrough(ordered: GeoLocation[]): Promise<RouteResult> {
+  if (ordered.length < 2) {
+    const a = ordered[0] ?? { lat: FALLBACK_LAT, lon: FALLBACK_LON, displayName: "" };
+    const b = ordered[ordered.length - 1] ?? a;
+    return fallbackRouteResult(a, b);
+  }
+  for (const p of ordered) {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) {
+      return fallbackRouteResult(ordered[0]!, ordered[ordered.length - 1]!);
+    }
+  }
+  const coordPath = ordered.map((p) => `${p.lon},${p.lat}`).join(";");
+  const osrm = await tryOsrmDrivingCoordPath(coordPath, false);
+  if (osrm && !("steps" in osrm)) return osrm as RouteResult;
+
+  let distanceKm = 0;
+  let durationMinutes = 0;
+  const polyline: [number, number][] = [];
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const leg = fallbackRouteResult(ordered[i]!, ordered[i + 1]!);
+    distanceKm += leg.distanceKm;
+    durationMinutes += leg.durationMinutes;
+    if (leg.polyline && leg.polyline.length > 0) {
+      polyline.push(...leg.polyline);
+    }
+  }
+  return {
+    distanceKm: Math.round(distanceKm * 100) / 100,
+    durationMinutes: Math.max(1, durationMinutes),
+    polyline: polyline.length >= 2 ? polyline : undefined,
+  };
 }
 
 // ─── Step-by-Step Routing ────────────────────────────────────────────────────

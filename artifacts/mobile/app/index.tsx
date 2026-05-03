@@ -76,6 +76,7 @@ const FAVORITES_STORAGE_KEY = "@Onroda_search_favorites_v1";
 const MAX_FAVORITES_STORED = 5;
 const MAX_FAVORITES_ON_HOME = 2;
 const MAX_HOME_HISTORY = 2;
+const MAX_VIA_STOPS = 4;
 
 interface SearchFavorite {
   id: string;
@@ -146,10 +147,10 @@ export default function HomeScreen() {
   const { profile, updateProfile, loginWithGoogle, registerLocalCustomer } = useUser();
 
   const {
-    origin, destination, selectedVehicle, paymentMethod,
+    origin, viaStops, destination, selectedVehicle, paymentMethod,
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
     selectedServiceClass,
-    setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
+    setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
     setScheduledTime, fetchRoute, resetRide, history, setWheelchairSelectCompleted,
   } = useRide();
 
@@ -283,6 +284,18 @@ export default function HomeScreen() {
   const destDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Nach Zeitbestätigung: Suchmaske öffnen und zuerst Abholort fokussieren. */
   const focusPickupFieldOnSearchOpenRef = useRef(false);
+
+  type ViaSearchLeg = {
+    id: string;
+    query: string;
+    results: GeoLocation[];
+    isSearching: boolean;
+    location: GeoLocation | null;
+  };
+  const [viaSearchLegs, setViaSearchLegs] = useState<ViaSearchLeg[]>([]);
+  const [editingViaIndex, setEditingViaIndex] = useState<number | null>(null);
+  const viaInputRefs = useRef<(TextInput | null)[]>([]);
+  const viaDebounceRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   /* ── Gespeicherte Such-Favoriten (lokal pro Gerät) ── */
   const [searchFavorites, setSearchFavorites] = useState<SearchFavorite[]>([]);
@@ -685,6 +698,17 @@ export default function HomeScreen() {
     if (!isSearchActive) return;
     setOriginQuery(origin.displayName.split(",")[0]);
     setOriginResults([]);
+    setViaSearchLegs(
+      viaStops.map((loc) => ({
+        id: `via-${loc.lat}-${loc.lon}-${Math.random().toString(36).slice(2, 9)}`,
+        query: loc.displayName.split(",")[0]?.trim() || loc.displayName,
+        results: [],
+        isSearching: false,
+        location: loc,
+      })),
+    );
+    setEditingViaIndex(null);
+    viaInputRefs.current = [];
     const openForRouteAfterSchedule = focusPickupFieldOnSearchOpenRef.current;
     if (openForRouteAfterSchedule) {
       focusPickupFieldOnSearchOpenRef.current = false;
@@ -703,17 +727,19 @@ export default function HomeScreen() {
       setIsEditingOrigin(false);
       setTimeout(() => destInputRef.current?.focus(), 180);
     }
-  }, [isSearchActive]);
+  }, [isSearchActive, origin.displayName, destination, viaStops]);
 
-  /* ── Switch focus when editing origin ── */
+  /* ── Suchmaske: Fokus Start / Zwischenstopp / Ziel ── */
   useEffect(() => {
     if (!isSearchActive) return;
-    if (isEditingOrigin) {
+    if (isEditingOrigin && editingViaIndex === null) {
       setTimeout(() => originInputRef.current?.focus(), 80);
+    } else if (editingViaIndex !== null) {
+      setTimeout(() => viaInputRefs.current[editingViaIndex]?.focus(), 80);
     } else {
       setTimeout(() => destInputRef.current?.focus(), 80);
     }
-  }, [isEditingOrigin, isSearchActive]);
+  }, [isEditingOrigin, editingViaIndex, isSearchActive]);
 
   /* ── Origin search ── */
   const handleOriginQueryChange = useCallback((text: string) => {
@@ -735,6 +761,7 @@ export default function HomeScreen() {
     setOriginQuery(loc.displayName.split(",")[0]);
     setOriginResults([]);
     setIsEditingOrigin(false);
+    setEditingViaIndex(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTimeout(() => destInputRef.current?.focus(), 100);
   };
@@ -754,10 +781,126 @@ export default function HomeScreen() {
     }, 300);
   }, [userGps]);
 
+  const addViaSearchLeg = useCallback(() => {
+    setIsEditingOrigin(false);
+    setViaSearchLegs((prev) => {
+      if (prev.length >= MAX_VIA_STOPS) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        return prev;
+      }
+      const newIdx = prev.length;
+      setTimeout(() => {
+        setEditingViaIndex(newIdx);
+        setTimeout(() => viaInputRefs.current[newIdx]?.focus(), 80);
+      }, 0);
+      return [
+        ...prev,
+        {
+          id: `via-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          query: "",
+          results: [],
+          isSearching: false,
+          location: null,
+        },
+      ];
+    });
+  }, []);
+
+  const removeViaSearchLeg = useCallback((index: number) => {
+    const t = viaDebounceRef.current.get(index);
+    if (t) clearTimeout(t);
+    viaDebounceRef.current.delete(index);
+    setViaSearchLegs((prev) => prev.filter((_, j) => j !== index));
+    setEditingViaIndex((cur) => {
+      if (cur === null) return null;
+      if (cur === index) return null;
+      if (cur > index) return cur - 1;
+      return cur;
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const handleViaLegQueryChange = useCallback(
+    (index: number, text: string) => {
+      if (text.length === 0) {
+        const prevT = viaDebounceRef.current.get(index);
+        if (prevT) clearTimeout(prevT);
+        viaDebounceRef.current.delete(index);
+        setViaSearchLegs((prev) => {
+          const next = [...prev];
+          if (next[index]) next[index] = { ...next[index], query: "", results: [], isSearching: false, location: null };
+          return next;
+        });
+        return;
+      }
+      setViaSearchLegs((prev) => {
+        const next = [...prev];
+        if (!next[index]) return prev;
+        next[index] = { ...next[index], query: text };
+        return next;
+      });
+      const prevT = viaDebounceRef.current.get(index);
+      if (prevT) clearTimeout(prevT);
+      if (text.length < 2) {
+        setViaSearchLegs((prev) => {
+          const next = [...prev];
+          if (next[index]) next[index] = { ...next[index], results: [], isSearching: false };
+          return next;
+        });
+        return;
+      }
+      const t = setTimeout(async () => {
+        setViaSearchLegs((prev) => {
+          const next = [...prev];
+          if (next[index]) next[index] = { ...next[index], isSearching: true };
+          return next;
+        });
+        try {
+          const locs = await searchLocation(text, userGps ?? undefined);
+          setViaSearchLegs((prev) => {
+            const next = [...prev];
+            if (next[index]) next[index] = { ...next[index], results: locs.slice(0, 6), isSearching: false };
+            return next;
+          });
+        } catch {
+          setViaSearchLegs((prev) => {
+            const next = [...prev];
+            if (next[index]) next[index] = { ...next[index], results: [], isSearching: false };
+            return next;
+          });
+        }
+      }, 300);
+      viaDebounceRef.current.set(index, t);
+    },
+    [userGps],
+  );
+
+  const handleViaLegSelect = useCallback((index: number, loc: GeoLocation) => {
+    setViaSearchLegs((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = {
+        ...next[index],
+        location: loc,
+        query: loc.displayName.split(",")[0]?.trim() || loc.displayName,
+        results: [],
+        isSearching: false,
+      };
+      return next;
+    });
+    setEditingViaIndex(null);
+    setIsEditingOrigin(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setTimeout(() => destInputRef.current?.focus(), 100);
+  }, []);
+
   /** Verlauf: Suche öffnen, aktuellen Abholstandort beibehalten, Ziel wie damals laden. */
   const openSearchWithHistoryEntry = useCallback(
     async (entry: RideHistoryEntry) => {
       setIsSearchActive(true);
+      setViaStops([]);
+      setViaSearchLegs([]);
+      setEditingViaIndex(null);
       setIsEditingOrigin(false);
       setOriginQuery(origin.displayName.split(",")[0]);
       setOriginResults([]);
@@ -775,25 +918,34 @@ export default function HomeScreen() {
       setTimeout(() => destInputRef.current?.focus(), 200);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
-    [origin.displayName, userGps],
+    [origin.displayName, userGps, setViaStops],
   );
 
   const handleDestinationSelect = (loc: GeoLocation) => {
+    const resolved = viaSearchLegs.map((l) => l.location).filter((x): x is GeoLocation => x !== null);
+    setViaStops(resolved);
     setDestination(loc);
     setDestQuery("");
     setDestResults([]);
+    setViaSearchLegs([]);
+    setEditingViaIndex(null);
     setIsSearchActive(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push("/ride-select" as Href);
   };
 
   const closeSearch = () => {
+    viaDebounceRef.current.forEach((tid) => clearTimeout(tid));
+    viaDebounceRef.current.clear();
     setIsSearchActive(false);
     setDestQuery("");
     setDestResults([]);
     setOriginQuery("");
     setOriginResults([]);
     setIsEditingOrigin(false);
+    setViaSearchLegs([]);
+    setEditingViaIndex(null);
+    setViaStops([]);
   };
 
   const goToDirectCheckout = useCallback(() => {
@@ -833,9 +985,15 @@ export default function HomeScreen() {
   useEffect(() => { handleGpsLocate(true); }, []);
 
   const homeHistorySlice = history.slice(0, MAX_HOME_HISTORY);
-  const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
-  const showDestResults = !isEditingOrigin && destResults.length > 0;
-  const showFavoriteBlock = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
+  const showOriginResults = isEditingOrigin && editingViaIndex === null && (originResults.length > 0 || isSearchingOrigin);
+  const showDestResults = !isEditingOrigin && editingViaIndex === null && destResults.length > 0;
+  const activeViaLeg = editingViaIndex !== null ? viaSearchLegs[editingViaIndex] : undefined;
+  const showViaResults =
+    editingViaIndex !== null &&
+    activeViaLeg != null &&
+    (activeViaLeg.results.length > 0 || activeViaLeg.isSearching);
+  const showFavoriteBlock =
+    !isEditingOrigin && editingViaIndex === null && destResults.length === 0 && !isSearchingDest;
   const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
   const mapEdgePaddingBottom = Math.round(
     destination
@@ -1309,15 +1467,23 @@ export default function HomeScreen() {
               <View style={styles.dotsCol}>
                 <View style={[styles.dotOrigin, isEditingOrigin && { borderColor: colors.primary }]} />
                 <View style={[styles.dotLine, { backgroundColor: colors.border }]} />
-                <View style={[styles.dotDestination, { backgroundColor: isEditingOrigin ? colors.border : colors.primary }]} />
+                <View
+                  style={[
+                    styles.dotDestination,
+                    { backgroundColor: isEditingOrigin || editingViaIndex !== null ? colors.border : colors.primary },
+                  ]}
+                />
               </View>
 
               {/* Felder rechts */}
               <View style={styles.fieldsCol}>
                 {/* START-Feld */}
                 <Pressable
-                  style={[styles.fieldWrap, isEditingOrigin && { borderBottomColor: colors.primary }]}
-                  onPress={() => { setIsEditingOrigin(true); }}
+                  style={[
+                    styles.fieldWrap,
+                    isEditingOrigin && editingViaIndex === null && { borderBottomColor: colors.primary },
+                  ]}
+                  onPress={() => { setIsEditingOrigin(true); setEditingViaIndex(null); }}
                 >
                   <TextInput
                     ref={originInputRef}
@@ -1326,7 +1492,7 @@ export default function HomeScreen() {
                     onChangeText={handleOriginQueryChange}
                     placeholder="Startadresse eingeben..."
                     placeholderTextColor={colors.mutedForeground}
-                    onFocus={() => setIsEditingOrigin(true)}
+                    onFocus={() => { setIsEditingOrigin(true); setEditingViaIndex(null); }}
                     returnKeyType="next"
                     autoCorrect={false}
                   />
@@ -1345,8 +1511,51 @@ export default function HomeScreen() {
 
                 <View style={[styles.fieldSeparator, { backgroundColor: colors.border }]} />
 
+                {viaSearchLegs.map((leg, viaIdx) => (
+                  <React.Fragment key={leg.id}>
+                    <View style={[styles.fieldWrap, !isEditingOrigin && editingViaIndex === viaIdx && { borderBottomColor: colors.primary }]}>
+                      <TextInput
+                        ref={(r) => {
+                          viaInputRefs.current[viaIdx] = r;
+                        }}
+                        style={[styles.fieldInput, { color: colors.foreground }]}
+                        value={leg.query}
+                        onChangeText={(t) => handleViaLegQueryChange(viaIdx, t)}
+                        placeholder="Zwischenstopp eingeben…"
+                        placeholderTextColor={colors.mutedForeground}
+                        onFocus={() => {
+                          setIsEditingOrigin(false);
+                          setEditingViaIndex(viaIdx);
+                        }}
+                        returnKeyType="search"
+                        autoCorrect={false}
+                      />
+                      {leg.isSearching && <ActivityIndicator size="small" color={colors.primary} />}
+                      {leg.query.length > 0 && !leg.isSearching && (
+                        <Pressable onPress={() => handleViaLegQueryChange(viaIdx, "")} hitSlop={8}>
+                          <Feather name="x" size={16} color={colors.mutedForeground} />
+                        </Pressable>
+                      )}
+                      <Pressable
+                        hitSlop={10}
+                        accessibilityLabel="Zwischenstopp entfernen"
+                        onPress={() => removeViaSearchLeg(viaIdx)}
+                        style={styles.searchWaypointPlusBtn}
+                      >
+                        <Feather name="minus" size={20} color={colors.mutedForeground} />
+                      </Pressable>
+                    </View>
+                    <View style={[styles.fieldSeparator, { backgroundColor: colors.border }]} />
+                  </React.Fragment>
+                ))}
+
                 {/* ZIEL-Feld */}
-                <View style={[styles.fieldWrap, !isEditingOrigin && { borderBottomColor: colors.primary }]}>
+                <View
+                  style={[
+                    styles.fieldWrap,
+                    !isEditingOrigin && editingViaIndex === null && { borderBottomColor: colors.primary },
+                  ]}
+                >
                   <TextInput
                     ref={destInputRef}
                     style={[styles.fieldInput, { color: colors.foreground }]}
@@ -1354,7 +1563,10 @@ export default function HomeScreen() {
                     onChangeText={handleDestQueryChange}
                     placeholder="Ziel eingeben..."
                     placeholderTextColor={colors.mutedForeground}
-                    onFocus={() => setIsEditingOrigin(false)}
+                    onFocus={() => {
+                      setIsEditingOrigin(false);
+                      setEditingViaIndex(null);
+                    }}
                     returnKeyType="search"
                     autoCorrect={false}
                   />
@@ -1367,8 +1579,9 @@ export default function HomeScreen() {
                   <Pressable
                     hitSlop={10}
                     accessibilityLabel="Zwischenstopp hinzufügen"
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                    style={styles.searchWaypointPlusBtn}
+                    disabled={viaSearchLegs.length >= MAX_VIA_STOPS}
+                    onPress={addViaSearchLeg}
+                    style={[styles.searchWaypointPlusBtn, viaSearchLegs.length >= MAX_VIA_STOPS && { opacity: 0.35 }]}
                   >
                     <Feather name="plus" size={20} color={colors.primary} />
                   </Pressable>
@@ -1441,6 +1654,39 @@ export default function HomeScreen() {
                       </Pressable>
                     </React.Fragment>
                   ))}
+                </View>
+              )}
+
+              {showViaResults && editingViaIndex !== null && activeViaLeg && (
+                <View style={[styles.resultGroup, { borderColor: colors.border }]}>
+                  {activeViaLeg.isSearching && activeViaLeg.results.length === 0 ? (
+                    <View style={styles.searchingRow}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={[styles.searchingText, { color: colors.mutedForeground }]}>Suche läuft...</Text>
+                    </View>
+                  ) : (
+                    activeViaLeg.results.map((loc, i) => (
+                      <React.Fragment key={`${editingViaIndex}-${i}-${loc.displayName}`}>
+                        {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
+                        <Pressable
+                          style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
+                          onPress={() => handleViaLegSelect(editingViaIndex, loc)}
+                        >
+                          <View style={[styles.resultIcon, { backgroundColor: colors.muted }]}>
+                            <Feather name="map-pin" size={15} color={colors.primary} />
+                          </View>
+                          <View style={styles.resultText}>
+                            <Text style={[styles.resultTitle, { color: colors.foreground }]} numberOfLines={1}>
+                              {loc.displayName.split(",")[0]}
+                            </Text>
+                            <Text style={[styles.resultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                              {loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      </React.Fragment>
+                    ))
+                  )}
                 </View>
               )}
 
