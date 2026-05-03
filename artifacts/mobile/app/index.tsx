@@ -158,14 +158,14 @@ export default function HomeScreen() {
     origin, destination, selectedVehicle, paymentMethod,
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
     selectedServiceClass,
-    wheelchairHomeDraft,
+    wheelchairSelectCompleted,
     setOrigin, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
-    setScheduledTime, fetchRoute, resetRide, history, setWheelchairHomeDraft,
+    setScheduledTime, fetchRoute, resetRide, history, setWheelchairSelectCompleted,
   } = useRide();
 
   useEffect(() => {
-    if (selectedVehicle !== "wheelchair") setWheelchairHomeDraft(null);
-  }, [selectedVehicle, setWheelchairHomeDraft]);
+    if (selectedVehicle !== "wheelchair") setWheelchairSelectCompleted(false);
+  }, [selectedVehicle, setWheelchairSelectCompleted]);
 
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests.length;
@@ -783,7 +783,7 @@ export default function HomeScreen() {
       Alert.alert("Fahrzeug wählen", "Bitte wählen Sie zuerst ein Fahrzeug aus.");
       return;
     }
-    if (selectedVehicle === "wheelchair" && !wheelchairHomeDraft) {
+    if (selectedVehicle === "wheelchair" && !wheelchairSelectCompleted) {
       router.push("/ride-select" as Href);
       return;
     }
@@ -796,7 +796,7 @@ export default function HomeScreen() {
       setScheduledTime(null);
     }
     router.push("/ride" as Href);
-  }, [selectedVehicle, wheelchairHomeDraft, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
+  }, [selectedVehicle, wheelchairSelectCompleted, isLoadingRoute, fareBreakdown, bookingMode, setScheduledTime]);
 
   /* ── GPS ── */
   const handleGpsLocate = async (silent = false) => {

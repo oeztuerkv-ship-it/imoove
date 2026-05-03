@@ -30,6 +30,7 @@ export default function RideSelectScreen() {
     routeError,
     fetchRoute,
     setScheduledTime,
+    setWheelchairSelectCompleted,
   } = useRide();
 
   useEffect(() => {
@@ -179,6 +180,9 @@ export default function RideSelectScreen() {
           style={styles.confirmBtn}
           onPress={() => {
             setScheduledTime(null);
+            if (selectedVehicle === "wheelchair") {
+              setWheelchairSelectCompleted(true);
+            }
             router.push("/ride");
           }}
         >
