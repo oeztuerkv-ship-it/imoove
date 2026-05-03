@@ -100,38 +100,6 @@ function ServiceBadge({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-interface PresetLocation {
-  id: string;
-  title: string;
-  subtitle: string;
-  icon: "airplane" | "train";
-  location: GeoLocation;
-}
-
-const PRESET_DESTINATIONS: PresetLocation[] = [
-  {
-    id: "airport-t12",
-    title: "Abflug Terminal 1–2",
-    subtitle: "Flughafen Stuttgart",
-    icon: "airplane",
-    location: { lat: 48.6900, lon: 9.2205, displayName: "Flughafen Stuttgart Terminal 1-2", city: "Stuttgart" },
-  },
-  {
-    id: "airport-t34",
-    title: "Abflug Terminal 3–4",
-    subtitle: "Flughafen Stuttgart",
-    icon: "airplane",
-    location: { lat: 48.6892, lon: 9.2222, displayName: "Flughafen Stuttgart Terminal 3-4", city: "Stuttgart" },
-  },
-  {
-    id: "hbf-stuttgart",
-    title: "Hauptbahnhof Stuttgart",
-    subtitle: "Arnulf-Klett-Platz 2, Stuttgart",
-    icon: "train",
-    location: { lat: 48.7842, lon: 9.1826, displayName: "Hauptbahnhof Stuttgart", city: "Stuttgart" },
-  },
-];
-
 async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
@@ -868,7 +836,6 @@ export default function HomeScreen() {
   const showOriginResults = isEditingOrigin && (originResults.length > 0 || isSearchingOrigin);
   const showDestResults = !isEditingOrigin && destResults.length > 0;
   const showFavoriteBlock = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
-  const showPresets = !isEditingOrigin && destResults.length === 0 && !isSearchingDest;
   const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
   const mapEdgePaddingBottom = Math.round(
     destination
@@ -1558,37 +1525,6 @@ export default function HomeScreen() {
                         </React.Fragment>
                       ))
                     )}
-                  </View>
-                </>
-              )}
-
-              {/* Preset-Vorschläge (sofort sichtbar) */}
-              {showPresets && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>BELIEBTE ZIELE</Text>
-                  <View style={[styles.resultGroup, { borderColor: colors.border }]}>
-                    {PRESET_DESTINATIONS.map((preset, i) => (
-                      <React.Fragment key={preset.id}>
-                        {i > 0 && <View style={[styles.resultDivider, { backgroundColor: colors.border }]} />}
-                        <Pressable
-                          style={({ pressed }) => [styles.resultRow, pressed && { backgroundColor: colors.muted }]}
-                          onPress={() => handleDestinationSelect(preset.location)}
-                        >
-                          <View style={[styles.resultIcon, {
-                            backgroundColor: preset.icon === "airplane" ? "#EFF6FF" : "#F0FDF4",
-                          }]}>
-                            {preset.icon === "airplane"
-                              ? <Ionicons name="airplane" size={15} color="#3B82F6" />
-                              : <Ionicons name="train" size={15} color="#22C55E" />}
-                          </View>
-                          <View style={styles.resultText}>
-                            <Text style={[styles.resultTitle, { color: colors.foreground }]}>{preset.title}</Text>
-                            <Text style={[styles.resultSub, { color: colors.mutedForeground }]}>{preset.subtitle}</Text>
-                          </View>
-                          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                        </Pressable>
-                      </React.Fragment>
-                    ))}
                   </View>
                 </>
               )}
