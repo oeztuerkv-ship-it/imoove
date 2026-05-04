@@ -4,7 +4,7 @@ import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { Redirect, router, useFocusEffect, useLocalSearchParams, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -125,7 +125,7 @@ const TAB_HEIGHT = BOTTOM_TAB_BAR_INNER_HEIGHT;
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const bottomPad = isWeb ? 20 : insets.bottom;
@@ -220,7 +220,20 @@ export default function HomeScreen() {
   };
   const [appNewsItems, setAppNewsItems] = useState<AppNewsItem[]>([]);
   const [appNewsDetail, setAppNewsDetail] = useState<AppNewsItem | null>(null);
+  const [appNewsSlideIndex, setAppNewsSlideIndex] = useState(0);
   const newsAudience = isDriverLoggedIn ? "driver" : "customer";
+
+  const APP_NEWS_CAROUSEL_PAD = 20;
+  const APP_NEWS_CAROUSEL_GAP = 12;
+  const appNewsSlideWidth = useMemo(() => {
+    const w = Math.min(Math.max(screenWidth - APP_NEWS_CAROUSEL_PAD * 2 - APP_NEWS_CAROUSEL_GAP, 260), screenWidth - 24);
+    return Math.round(w);
+  }, [screenWidth]);
+  const appNewsStride = appNewsSlideWidth + APP_NEWS_CAROUSEL_GAP;
+
+  useEffect(() => {
+    setAppNewsSlideIndex(0);
+  }, [appNewsItems]);
 
   useEffect(() => {
     if (!isHomeFocused || showOnboarding) return undefined;
@@ -244,7 +257,7 @@ export default function HomeScreen() {
 
   const openAppNewsItem = useCallback((item: AppNewsItem) => {
     const internalRe =
-      /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|personal-info)(\/|$)/;
+      /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|personal-info|google-auth|login-success)(\/|$)/;
     const tt = String(item.targetType ?? "").trim();
     const tv = String(item.targetValue ?? "").trim();
     if (tt === "internal_screen" && tv && internalRe.test(tv)) {
@@ -1243,30 +1256,113 @@ export default function HomeScreen() {
             </View>
           ) : null}
           {!showOnboarding && appNewsItems.length > 0 ? (
-            <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-              <Text style={styles.appNewsHeading}>Neuigkeiten</Text>
-              {appNewsItems.map((it) => (
-                <Pressable
-                  key={it.id}
-                  style={[styles.appNewsCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    openAppNewsItem(it);
-                  }}
-                >
-                  {it.imageUrl ? (
-                    <Image source={{ uri: it.imageUrl }} style={styles.appNewsImage} resizeMode="cover" />
-                  ) : null}
-                  <View style={{ padding: 12 }}>
-                    <Text style={[styles.appNewsTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={2}>
-                      {it.title}
-                    </Text>
-                    <Text style={[styles.appNewsBody, { color: HOME_SHEET_MUTED }]} numberOfLines={4}>
-                      {it.body}
-                    </Text>
+            <View style={{ marginBottom: rs(12) }}>
+              <Text style={[styles.appNewsHeading, { marginHorizontal: APP_NEWS_CAROUSEL_PAD }]}>Neuigkeiten</Text>
+              {appNewsItems.length === 1 ? (
+                <View style={{ marginHorizontal: APP_NEWS_CAROUSEL_PAD }}>
+                  <Pressable
+                    style={[
+                      styles.appNewsSlideCard,
+                      { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, width: "100%" },
+                    ]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      openAppNewsItem(appNewsItems[0]);
+                    }}
+                  >
+                    {appNewsItems[0].imageUrl ? (
+                      <Image source={{ uri: appNewsItems[0].imageUrl }} style={styles.appNewsSlideImage} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.appNewsSlideImage, styles.appNewsSlideImagePlaceholder]} />
+                    )}
+                    <View style={styles.appNewsSlideBody}>
+                      <Text style={[styles.appNewsSlideTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={2}>
+                        {appNewsItems[0].title}
+                      </Text>
+                      <Text style={[styles.appNewsSlideBodyText, { color: HOME_SHEET_MUTED }]} numberOfLines={4}>
+                        {appNewsItems[0].body}
+                      </Text>
+                      {appNewsItems[0].buttonText ? (
+                        <View style={[styles.appNewsSlideCta, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.appNewsSlideCtaText}>{appNewsItems[0].buttonText}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                </View>
+              ) : (
+                <>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    decelerationRate="fast"
+                    snapToInterval={appNewsStride}
+                    snapToAlignment="start"
+                    disableIntervalMomentum
+                    contentContainerStyle={{
+                      paddingHorizontal: APP_NEWS_CAROUSEL_PAD,
+                      paddingBottom: rs(6),
+                    }}
+                    onScroll={(e) => {
+                      const x = e.nativeEvent.contentOffset.x;
+                      const idx = Math.round(x / appNewsStride);
+                      setAppNewsSlideIndex(Math.min(appNewsItems.length - 1, Math.max(0, idx)));
+                    }}
+                    scrollEventThrottle={16}
+                  >
+                    {appNewsItems.map((it, idx) => (
+                      <View
+                        key={it.id}
+                        style={{
+                          width: appNewsSlideWidth,
+                          marginRight: idx < appNewsItems.length - 1 ? APP_NEWS_CAROUSEL_GAP : 0,
+                        }}
+                      >
+                        <Pressable
+                          style={[
+                            styles.appNewsSlideCard,
+                            { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, width: "100%" },
+                          ]}
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            openAppNewsItem(it);
+                          }}
+                        >
+                          {it.imageUrl ? (
+                            <Image source={{ uri: it.imageUrl }} style={styles.appNewsSlideImage} resizeMode="cover" />
+                          ) : (
+                            <View style={[styles.appNewsSlideImage, styles.appNewsSlideImagePlaceholder]} />
+                          )}
+                          <View style={styles.appNewsSlideBody}>
+                            <Text style={[styles.appNewsSlideTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={2}>
+                              {it.title}
+                            </Text>
+                            <Text style={[styles.appNewsSlideBodyText, { color: HOME_SHEET_MUTED }]} numberOfLines={4}>
+                              {it.body}
+                            </Text>
+                            {it.buttonText ? (
+                              <View style={[styles.appNewsSlideCta, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.appNewsSlideCtaText}>{it.buttonText}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </ScrollView>
+                  <View style={styles.appNewsDotsRow}>
+                    {appNewsItems.map((_, i) => (
+                      <View
+                        key={`dot-${i}`}
+                        style={[
+                          styles.appNewsDot,
+                          i === appNewsSlideIndex ? { backgroundColor: colors.primary } : { backgroundColor: HOME_SHEET_RIM },
+                        ]}
+                      />
+                    ))}
                   </View>
-                </Pressable>
-              ))}
+                </>
+              )}
             </View>
           ) : null}
           {!destination ? (
@@ -2925,15 +3021,42 @@ const styles = StyleSheet.create({
     marginBottom: rs(8),
     letterSpacing: 0.4,
   },
-  appNewsCard: {
-    borderRadius: rs(14),
+  appNewsSlideCard: {
+    borderRadius: rs(16),
     borderWidth: 1,
-    marginBottom: rs(10),
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  appNewsImage: { width: "100%", height: rs(120) },
-  appNewsTitle: { fontSize: rf(16), fontFamily: "Inter_700Bold", marginBottom: rs(4) },
-  appNewsBody: { fontSize: rf(14), fontFamily: "Inter_400Regular", lineHeight: rf(20) },
+  appNewsSlideImage: { width: "100%", height: rs(112), backgroundColor: "#f1f5f9" },
+  appNewsSlideImagePlaceholder: { backgroundColor: "#f8fafc" },
+  appNewsSlideBody: { padding: rs(14) },
+  appNewsSlideTitle: { fontSize: rf(16), fontFamily: "Inter_700Bold", marginBottom: rs(6) },
+  appNewsSlideBodyText: { fontSize: rf(14), fontFamily: "Inter_400Regular", lineHeight: rf(20) },
+  appNewsSlideCta: {
+    alignSelf: "flex-start",
+    marginTop: rs(10),
+    paddingVertical: rs(8),
+    paddingHorizontal: rs(14),
+    borderRadius: rs(999),
+  },
+  appNewsSlideCtaText: { color: "#fff", fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  appNewsDotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: rs(6),
+    marginTop: rs(4),
+    paddingHorizontal: rs(20),
+  },
+  appNewsDot: {
+    width: rs(6),
+    height: rs(6),
+    borderRadius: rs(3),
+  },
   appNewsModalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

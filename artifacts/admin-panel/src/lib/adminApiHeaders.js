@@ -29,3 +29,17 @@ export function adminApiHeaders(extra = {}) {
   }
   return h;
 }
+
+/**
+ * `fetch` für `/api/admin/*`: baut `Headers`, setzt danach immer die aktuelle Sitzung
+ * (`Authorization: Bearer <JWT>`). Verhindert, dass ein leeres/älteres `Authorization`
+ * aus `init.headers` die Session überschreibt und vermeidet Abweichungen zu reinem Plain-Object-Merge.
+ */
+export function adminFetch(input, init = {}) {
+  const headers = new Headers(init.headers == null ? undefined : init.headers);
+  const token = getAdminSessionToken().trim();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return fetch(input, { ...init, headers });
+}
