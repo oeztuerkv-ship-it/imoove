@@ -23,6 +23,11 @@ import { formatEuro } from "@/utils/fareCalculator";
 import { downloadReceipt } from "@/utils/receipt";
 import { rs, rf } from "@/utils/scale";
 
+/** Außenrahmen — leicht abgeschwächtes Schwarz */
+const LIST_FRAME_BORDER = "#3F3F46";
+/** Sekundärtext: dunkel genug zum schnellen Lesen (nicht helles Grau) */
+const LIST_TEXT_STRONG = "#1F2937";
+
 const GMAPS_KEY = "AIzaSyC6-pFE0kCcB-57r2ALZ81SAXys8_PpeoQ";
 
 function buildStaticMapUrl(origin: string, destination: string): string {
@@ -94,12 +99,12 @@ function StatusBadge({ status }: { status: string }) {
 function StatCard({ icon, value, label, color }: { icon: string; value: string; label: string; color: string }) {
   const colors = useColors();
   return (
-    <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}>
       <View style={[styles.statIcon, { backgroundColor: color + "18" }]}>
         <Feather name={icon as any} size={16} color={color} />
       </View>
       <Text style={[styles.statValue, { color: colors.foreground }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[styles.statLabel, { color: LIST_TEXT_STRONG }]}>{label}</Text>
     </View>
   );
 }
@@ -251,10 +256,11 @@ export default function MyRidesScreen() {
     router.push("/");
   };
 
-  const openRideDetail = (id: string) => {
+  /** `id` = Server-Ride-ID (wie in RideRequest / History) — Support-API und Admin-Tickets hängen daran. */
+  const openRideDetail = (id: string, opts?: { focusSupport?: boolean }) => {
     if (!id) return;
-    // Typed routes in this repo are generated; keep navigation working even if the type union is stale.
-    router.push(`/ride-detail?id=${encodeURIComponent(id)}` as any);
+    const q = opts?.focusSupport ? `&focus=support` : "";
+    router.push(`/ride-detail?id=${encodeURIComponent(id)}${q}` as any);
   };
 
   const groupedCompleted = useMemo(() => {
@@ -287,31 +293,47 @@ export default function MyRidesScreen() {
     (!showCancelled || cancelled.length === 0);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header — wie Geldbörse */}
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: topPad + 8,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.card,
-          },
-        ]}
-      >
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Header — wie `wallet.tsx` / Profil „Mein Konto“ */}
+      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <View style={{ width: 36 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meine Fahrten</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
-        showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) },
-        ]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
       >
+        {/* ── Filter Tabs (direkt unter Kopfzeile wie Abstand Geldbörse → erster Inhalt) ── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const storniertBadge = tab.id === "storniert";
+            return (
+              <Pressable
+                key={tab.id}
+                style={[
+                  styles.tab,
+                  {
+                    backgroundColor: "#FFFFFF",
+                    borderColor: isActive ? "#DC2626" : LIST_FRAME_BORDER,
+                    borderWidth: isActive ? 1 : StyleSheet.hairlineWidth,
+                  },
+                ]}
+                onPress={() => setActiveTab(tab.id)}
+              >
+                <Text style={[styles.tabText, { color: "#000000" }]}>{tab.label}</Text>
+                {tab.count !== undefined && (
+                  <View style={[styles.tabBadge, { backgroundColor: storniertBadge ? "#EF4444" : "#000000" }]}>
+                    <Text style={[styles.tabBadgeText, { color: "#FFFFFF" }]}>{tab.count}</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         {/* ── Stats ── */}
         {completed.length > 0 && (
@@ -321,31 +343,6 @@ export default function MyRidesScreen() {
             <StatCard icon="credit-card" value={formatEuro(totalSpent)} label="Ausgaben" color="#16A34A" />
           </View>
         )}
-
-        {/* ── Filter Tabs ── */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <Pressable
-                key={tab.id}
-                style={[styles.tab, isActive && { backgroundColor: "#DC2626", borderColor: "#DC2626" }, !isActive && { borderColor: colors.border, backgroundColor: colors.card }]}
-                onPress={() => setActiveTab(tab.id)}
-              >
-                <Text style={[styles.tabText, { color: isActive ? "#fff" : colors.mutedForeground }]}>
-                  {tab.label}
-                </Text>
-                {tab.count !== undefined && (
-                  <View style={[styles.tabBadge, { backgroundColor: isActive ? "#fff3" : colors.muted }]}>
-                    <Text style={[styles.tabBadgeText, { color: isActive ? "#fff" : colors.mutedForeground }]}>
-                      {tab.count}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
 
         {/* ── Aktive Aufträge ── */}
         {showActive && myActiveRequests.length > 0 && (
@@ -362,10 +359,10 @@ export default function MyRidesScreen() {
               const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
               const whenLabel = hasPickup ? `Abholung ${dateStr} · ${timeStr} Uhr` : `${timeStr} Uhr · gebucht`;
               return (
-                <View key={req.id} style={[styles.activeCard, { backgroundColor: "#1E3A5F08", borderColor: "#2563EB33" }]}>
+                <View key={req.id} style={[styles.activeCard, { backgroundColor: "#1E3A5F08", borderColor: LIST_FRAME_BORDER }]}>
                   <View style={styles.rideHeader}>
                     <StatusBadge status={req.status} />
-                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]} numberOfLines={2}>
+                    <Text style={[styles.rideDate, { color: LIST_TEXT_STRONG }]} numberOfLines={2}>
                       {whenLabel}
                     </Text>
                   </View>
@@ -373,7 +370,7 @@ export default function MyRidesScreen() {
                   <View style={styles.routeRow}>
                     <View style={styles.routeDots}>
                       <View style={[styles.dotFilled, { backgroundColor: "#111" }]} />
-                      <View style={[styles.routeLine, { backgroundColor: colors.border }]} />
+                      <View style={[styles.routeLine, { backgroundColor: LIST_FRAME_BORDER }]} />
                       <View style={[styles.dotOutline, { borderColor: "#DC2626" }]} />
                     </View>
                     <View style={styles.routeLabels}>
@@ -382,10 +379,10 @@ export default function MyRidesScreen() {
                     </View>
                   </View>
 
-                  <View style={[styles.rideFooter, { borderTopColor: colors.border }]}>
+                  <View style={[styles.rideFooter, { borderTopColor: LIST_FRAME_BORDER }]}>
                     <View style={styles.footerItem}>
-                      <Feather name="map" size={13} color={colors.mutedForeground} />
-                      <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{req.distanceKm.toFixed(1)} km</Text>
+                      <Feather name="map" size={13} color={LIST_TEXT_STRONG} />
+                      <Text style={[styles.footerText, { color: LIST_TEXT_STRONG }]}>{req.distanceKm.toFixed(1)} km</Text>
                     </View>
                     <View style={[styles.footerItem, { backgroundColor: colors.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }]}>
                       <Text style={[styles.footerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>{req.vehicle}</Text>
@@ -395,13 +392,13 @@ export default function MyRidesScreen() {
                     </Text>
                   </View>
 
-                  <View style={[styles.payerLine, { backgroundColor: "#F8FAFC", borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="information-outline" size={14} color={colors.mutedForeground} />
+                  <View style={[styles.payerLine, { backgroundColor: "#F8FAFC", borderColor: LIST_FRAME_BORDER }]}>
+                    <MaterialCommunityIcons name="information-outline" size={14} color={LIST_TEXT_STRONG} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.payerLineTitle, { color: colors.foreground }]}>
                         {customerPayerBlockFromRideRequest(req).title}
                       </Text>
-                      <Text style={[styles.payerLineSub, { color: colors.mutedForeground }]}>
+                      <Text style={[styles.payerLineSub, { color: LIST_TEXT_STRONG }]}>
                         {customerPayerBlockFromRideRequest(req).subtitle}
                       </Text>
                     </View>
@@ -431,14 +428,23 @@ export default function MyRidesScreen() {
                     req.status === "arrived" ||
                     req.status === "in_progress") && (
                     <Pressable
-                      style={[styles.liveMapRow, { borderColor: colors.border }]}
+                      style={[styles.liveMapRow, { borderColor: LIST_FRAME_BORDER }]}
                       onPress={() => router.push("/status")}
                     >
                       <Feather name="map" size={16} color="#DC2626" />
                       <Text style={[styles.liveMapText, { color: colors.foreground }]}>Live-Karte & Status</Text>
-                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                      <Feather name="chevron-right" size={16} color={LIST_TEXT_STRONG} />
                     </Pressable>
                   )}
+
+                  <Pressable
+                    style={[styles.rideSupportRow, { borderColor: LIST_FRAME_BORDER }]}
+                    onPress={() => openRideDetail(req.id, { focusSupport: true })}
+                  >
+                    <Feather name="help-circle" size={16} color={colors.primary} />
+                    <Text style={[styles.rideSupportText, { color: colors.foreground }]}>Hilfe</Text>
+                    <Feather name="chevron-right" size={16} color={LIST_TEXT_STRONG} />
+                  </Pressable>
 
                   {(req.status === "pending" ||
                     req.status === "requested" ||
@@ -487,7 +493,7 @@ export default function MyRidesScreen() {
               return (
                 <Pressable
                   key={ride.id}
-                  style={[styles.rideCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  style={[styles.rideCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}
                   onPress={() => openRideDetail(ride.id)}
                 >
                   {/* Static route map image */}
@@ -499,13 +505,13 @@ export default function MyRidesScreen() {
 
                   <View style={[styles.rideHeader, { marginTop: 12 }]}>
                     <StatusBadge status="completed" />
-                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{dateStr} · {timeStr}</Text>
+                    <Text style={[styles.rideDate, { color: LIST_TEXT_STRONG }]}>{dateStr} · {timeStr}</Text>
                   </View>
 
                   <View style={styles.routeRow}>
                     <View style={styles.routeDots}>
                       <View style={[styles.dotFilled, { backgroundColor: "#111" }]} />
-                      <View style={[styles.routeLine, { backgroundColor: colors.border }]} />
+                      <View style={[styles.routeLine, { backgroundColor: "#6B7280" }]} />
                       <View style={[styles.dotOutline, { borderColor: colors.primary }]} />
                     </View>
                     <View style={styles.routeLabels}>
@@ -518,20 +524,20 @@ export default function MyRidesScreen() {
                     </View>
                   </View>
 
-                  <View style={[styles.rideFooter, { borderTopColor: colors.border }]}>
+                  <View style={[styles.rideFooter, { borderTopColor: LIST_FRAME_BORDER }]}>
                     <View style={styles.footerItem}>
-                      <Feather name="map" size={13} color={colors.mutedForeground} />
-                      <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{ride.distanceKm} km</Text>
+                      <Feather name="map" size={13} color={LIST_TEXT_STRONG} />
+                      <Text style={[styles.footerText, { color: LIST_TEXT_STRONG }]}>{ride.distanceKm} km</Text>
                     </View>
                     <View style={styles.footerItem}>
-                      <Feather name="clock" size={13} color={colors.mutedForeground} />
-                      <Text style={[styles.footerText, { color: colors.mutedForeground }]}>{Math.round(ride.distanceKm * 3)} Min.</Text>
+                      <Feather name="clock" size={13} color={LIST_TEXT_STRONG} />
+                      <Text style={[styles.footerText, { color: LIST_TEXT_STRONG }]}>{Math.round(ride.distanceKm * 3)} Min.</Text>
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Text style={[styles.ridePrice, { color: colors.foreground }]}>{formatEuro(ride.totalFare)}</Text>
                       {ride.estimatedFare != null &&
                       Math.abs(ride.estimatedFare - ride.totalFare) > 0.005 ? (
-                        <Text style={[styles.footerText, { color: colors.mutedForeground, fontSize: rf(11), marginTop: 2 }]}>
+                        <Text style={[styles.footerText, { color: LIST_TEXT_STRONG, fontSize: rf(11), marginTop: 2 }]}>
                           Schätzung war {formatEuro(ride.estimatedFare)}
                         </Text>
                       ) : null}
@@ -554,6 +560,18 @@ export default function MyRidesScreen() {
 
                   <View style={styles.actionRow}>
                     <Pressable
+                      style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1 }]}
+                      onPress={(ev) => {
+                        ev?.stopPropagation?.();
+                        openRideDetail(ride.id, { focusSupport: true });
+                      }}
+                    >
+                      <Feather name="help-circle" size={15} color={colors.primary} />
+                      <Text style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
+                        Hilfe
+                      </Text>
+                    </Pressable>
+                    <Pressable
                       style={[styles.repeatBtn, { flex: 1 }]}
                       onPress={(ev) => {
                         ev?.stopPropagation?.();
@@ -573,53 +591,81 @@ export default function MyRidesScreen() {
         {/* ── Stornierte Fahrten ── */}
         {showCancelled && cancelled.length > 0 && (
           <>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionDot, { backgroundColor: "#EF4444" }]} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Stornierte Fahrten</Text>
-            </View>
-
             {cancelled.map((ride) => {
               const date    = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
               const byDriver = ride.cancelledBy === "driver";
+              const fromMain = ride.from.split(",")[0]?.trim() ?? ride.from;
+              const toMain = ride.to.split(",")[0]?.trim() ?? ride.to;
               return (
-                <View key={ride.id} style={[styles.rideCard, { backgroundColor: colors.card, borderColor: "#EF444422", opacity: 0.85 }]}>
-                  <View style={styles.rideHeader}>
+                <View
+                  key={ride.id}
+                  style={[styles.cancelledRideCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}
+                >
+                  <View style={styles.cancelledHeaderRow}>
                     <StatusBadge status={byDriver ? "rejected" : "cancelled"} />
-                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{dateStr} · {timeStr}</Text>
-                  </View>
-
-                  <View style={styles.routeRow}>
-                    <View style={styles.routeDots}>
-                      <View style={[styles.dotFilled, { backgroundColor: "#9CA3AF" }]} />
-                      <View style={[styles.routeLine, { backgroundColor: colors.border }]} />
-                      <View style={[styles.dotOutline, { borderColor: "#9CA3AF" }]} />
-                    </View>
-                    <View style={styles.routeLabels}>
-                      <Text style={[styles.routeLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {ride.from.split(",")[0]}
-                      </Text>
-                      <Text style={[styles.routeLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {ride.to.split(",")[0]}
-                      </Text>
+                    <View style={styles.cancelledWhenRow}>
+                      <Feather name="calendar" size={14} color={LIST_TEXT_STRONG} />
+                      <Text style={[styles.cancelledWhenText, { color: LIST_TEXT_STRONG }]}>{dateStr}</Text>
+                      <Text style={[styles.cancelledWhenSep, { color: LIST_TEXT_STRONG }]}>|</Text>
+                      <Feather name="clock" size={14} color={LIST_TEXT_STRONG} />
+                      <Text style={[styles.cancelledWhenText, { color: LIST_TEXT_STRONG }]}>{timeStr}</Text>
                     </View>
                   </View>
 
-                  {/* Hinweis: wer storniert hat */}
-                  <View style={[styles.cancelHint, { backgroundColor: byDriver ? "#EF444408" : "#F59E0B08", borderColor: byDriver ? "#EF444433" : "#F59E0B33" }]}>
-                    <Feather name={byDriver ? "user-x" : "x-circle"} size={13} color={byDriver ? "#EF4444" : "#D97706"} />
-                    <Text style={[styles.cancelHintText, { color: byDriver ? "#EF4444" : "#D97706" }]}>
+                  <View style={styles.cancelledRouteWrap}>
+                    <View style={styles.cancelledRouteDotsCol}>
+                      <View style={styles.cancelledDotOrigin} />
+                      <View style={styles.cancelledRouteConnector} />
+                      <View style={[styles.cancelledDotDest, { borderColor: LIST_TEXT_STRONG }]} />
+                    </View>
+                    <View style={styles.cancelledRouteLabelsCol}>
+                      <View>
+                        <Text style={[styles.cancelledAddrMain, { color: colors.foreground }]} numberOfLines={2}>
+                          {fromMain}
+                        </Text>
+                        <Text style={[styles.cancelledAddrSub, { color: LIST_TEXT_STRONG }]}>Abholort</Text>
+                      </View>
+                      <View>
+                        <Text style={[styles.cancelledAddrMain, { color: colors.foreground }]} numberOfLines={2}>
+                          {toMain}
+                        </Text>
+                        <Text style={[styles.cancelledAddrSub, { color: LIST_TEXT_STRONG }]}>Zielort</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.cancelledNotice,
+                      {
+                        backgroundColor: byDriver ? "#FEF2F2" : "#FFF7ED",
+                        borderColor: byDriver ? "#FECACA" : "#FDBA74",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="information"
+                      size={16}
+                      color={byDriver ? "#EF4444" : "#EA580C"}
+                    />
+                    <Text
+                      style={[
+                        styles.cancelledNoticeTitle,
+                        { color: byDriver ? "#B91C1C" : "#C2410C" },
+                      ]}
+                    >
                       {byDriver ? "Vom Fahrer abgelehnt" : "Von dir storniert"}
                     </Text>
                   </View>
 
                   <Pressable
-                    style={[styles.actionBtn, { borderColor: "#DC262633", backgroundColor: "#DC262608" }]}
-                    onPress={handleRepeatRide}
+                    style={styles.cancelledHelpSolid}
+                    onPress={() => openRideDetail(ride.id, { focusSupport: true })}
                   >
-                    <Feather name="repeat" size={14} color="#DC2626" />
-                    <Text style={[styles.actionBtnText, { color: "#DC2626" }]}>Route nochmal buchen</Text>
+                    <MaterialCommunityIcons name="headset" size={17} color="#FFFFFF" />
+                    <Text style={styles.cancelledHelpSolidText}>Hilfe</Text>
                   </Pressable>
                 </View>
               );
@@ -660,34 +706,57 @@ export default function MyRidesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:       { flex: 1 },
-  header:          { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: rs(16), paddingBottom: rs(12), borderBottomWidth: StyleSheet.hairlineWidth },
+  root:            { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rs(16),
+    paddingBottom: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   backBtn:         { width: rs(36), height: rs(36), justifyContent: "center" },
   headerTitle:     { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
-  content:         { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(4) },
+  scroll:          { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(4) },
 
   statsRow:        { flexDirection: "row", gap: rs(10) },
-  statCard:        { flex: 1, borderRadius: rs(14), borderWidth: 1, padding: rs(12), alignItems: "center", gap: rs(6) },
+  statCard:        { flex: 1, borderRadius: rs(14), borderWidth: 2, padding: rs(12), alignItems: "center", gap: rs(6) },
   statIcon:        { width: rs(36), height: rs(36), borderRadius: rs(10), alignItems: "center", justifyContent: "center" },
   statValue:       { fontSize: rf(16), fontFamily: "Inter_700Bold" },
-  statLabel:       { fontSize: rf(11), fontFamily: "Inter_400Regular" },
+  statLabel:       { fontSize: rf(11), fontFamily: "Inter_600SemiBold" },
 
-  tabsRow:         { flexDirection: "row", gap: rs(8), paddingBottom: rs(2) },
-  tab:             { flexDirection: "row", alignItems: "center", gap: rs(6), paddingHorizontal: rs(14), paddingVertical: rs(8), borderRadius: rs(20), borderWidth: 1 },
-  tabText:         { fontSize: rf(13), fontFamily: "Inter_500Medium" },
-  tabBadge:        { borderRadius: rs(8), paddingHorizontal: rs(6), paddingVertical: rs(1) },
-  tabBadgeText:    { fontSize: rf(11), fontFamily: "Inter_600SemiBold" },
+  tabsRow:         { flexDirection: "row", gap: rs(8), paddingBottom: rs(4), alignItems: "center" },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(5),
+    minHeight: rs(38),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(8),
+    borderRadius: rs(18),
+  },
+  tabText:         { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  tabBadge: {
+    minWidth: rs(19),
+    height: rs(19),
+    borderRadius: rs(10),
+    paddingHorizontal: rs(5),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabBadgeText:    { fontSize: rf(10), fontFamily: "Inter_700Bold" },
 
   sectionHeader:   { flexDirection: "row", alignItems: "center", gap: rs(8), marginTop: rs(4), marginBottom: -2 },
   sectionDot:      { width: rs(8), height: rs(8), borderRadius: rs(4) },
-  sectionTitle:    { fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
+  sectionTitle:    { fontSize: rf(15), fontFamily: "Inter_700Bold" },
 
-  activeCard:      { borderRadius: rs(16), borderWidth: 1.5, padding: rs(16), gap: rs(12) },
-  rideCard:        { borderRadius: rs(16), borderWidth: 1,   padding: rs(16), gap: rs(12) },
+  activeCard:      { borderRadius: rs(16), borderWidth: 2, padding: rs(16), gap: rs(12) },
+  rideCard:        { borderRadius: rs(16), borderWidth: 2, padding: rs(16), gap: rs(12) },
   rideHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   statusBadge:     { flexDirection: "row", alignItems: "center", paddingHorizontal: rs(10), paddingVertical: rs(4), borderRadius: rs(8) },
   statusText:      { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-  rideDate:        { fontSize: rf(12), fontFamily: "Inter_400Regular" },
+  rideDate:        { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
 
   routeRow:        { flexDirection: "row", gap: rs(12), alignItems: "center" },
   routeDots:       { alignItems: "center", gap: rs(3) },
@@ -695,11 +764,73 @@ const styles = StyleSheet.create({
   routeLine:       { width: 2, height: rs(20) },
   dotOutline:      { width: rs(10), height: rs(10), borderRadius: rs(5), borderWidth: 2, backgroundColor: "transparent" },
   routeLabels:     { flex: 1, gap: rs(14) },
-  routeLabel:      { fontSize: rf(14), fontFamily: "Inter_500Medium" },
+  routeLabel:      { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
 
-  rideFooter:      { flexDirection: "row", alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(10), gap: rs(12) },
+  cancelledRideCard: {
+    borderRadius: rs(16),
+    borderWidth: 3,
+    padding: rs(16),
+    gap: rs(14),
+    marginBottom: rs(4),
+  },
+  cancelledHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rs(8),
+  },
+  cancelledWhenRow: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
+  cancelledWhenText: { fontSize: rf(12), fontFamily: "Inter_700Bold" },
+  cancelledWhenSep: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", opacity: 0.45 },
+  cancelledRouteWrap: { flexDirection: "row", gap: rs(12), alignItems: "stretch" },
+  cancelledRouteDotsCol: { width: rs(14), alignItems: "center", paddingTop: rs(4) },
+  cancelledDotOrigin: {
+    width: rs(12),
+    height: rs(12),
+    borderRadius: rs(6),
+    backgroundColor: "#DC2626",
+  },
+  cancelledRouteConnector: {
+    width: rs(2),
+    flex: 1,
+    minHeight: rs(22),
+    backgroundColor: "#D1D5DB",
+    marginVertical: rs(4),
+  },
+  cancelledDotDest: {
+    width: rs(12),
+    height: rs(12),
+    borderRadius: rs(6),
+    borderWidth: rs(2),
+    backgroundColor: "#FFFFFF",
+  },
+  cancelledRouteLabelsCol: { flex: 1, gap: rs(20) },
+  cancelledAddrMain: { fontSize: rf(15), fontFamily: "Inter_700Bold", lineHeight: rf(20) },
+  cancelledAddrSub: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", marginTop: rs(4) },
+  cancelledNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(6),
+    paddingVertical: rs(7),
+    paddingHorizontal: rs(10),
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  cancelledNoticeTitle: { flex: 1, fontSize: rf(12), fontFamily: "Inter_700Bold" },
+  cancelledHelpSolid: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(6),
+    paddingVertical: rs(10),
+    borderRadius: rs(10),
+    backgroundColor: "#DC2626",
+  },
+  cancelledHelpSolidText: { fontSize: rf(13), fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+
+  rideFooter:      { flexDirection: "row", alignItems: "center", borderTopWidth: 2, paddingTop: rs(10), gap: rs(12) },
   footerItem:      { flexDirection: "row", alignItems: "center", gap: rs(5) },
-  footerText:      { fontSize: rf(12), fontFamily: "Inter_400Regular" },
+  footerText:      { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
   ridePrice:       { marginLeft: "auto", fontSize: rf(18), fontFamily: "Inter_700Bold" },
 
   payerLine: {
@@ -708,22 +839,40 @@ const styles = StyleSheet.create({
     gap: rs(8),
     padding: rs(10),
     borderRadius: rs(10),
-    borderWidth: 1,
+    borderWidth: 2,
   },
   payerLineTitle: { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-  payerLineSub: { fontSize: rf(11), fontFamily: "Inter_400Regular", marginTop: rs(2), lineHeight: rf(15) },
+  payerLineSub: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", marginTop: rs(2), lineHeight: rf(15) },
 
-  driverHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1 },
-  driverHintText:  { fontSize: rf(13), fontFamily: "Inter_500Medium" },
-  liveMapRow:      { flexDirection: "row", alignItems: "center", gap: rs(10), paddingVertical: rs(12), paddingHorizontal: rs(12), borderRadius: rs(12), borderWidth: 1, marginTop: rs(2) },
+  driverHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 2 },
+  driverHintText:  { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  liveMapRow:      { flexDirection: "row", alignItems: "center", gap: rs(10), paddingVertical: rs(12), paddingHorizontal: rs(12), borderRadius: rs(12), borderWidth: 2, marginTop: rs(2) },
   liveMapText:     { flex: 1, fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
-  cancelHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1, marginTop: rs(2) },
-  cancelHintText:  { fontSize: rf(13), fontFamily: "Inter_500Medium" },
-
+  rideSupportRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    paddingVertical: rs(12),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(12),
+    borderWidth: 2,
+    marginTop: rs(2),
+  },
+  rideSupportRowCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(6),
+    paddingVertical: rs(11),
+    paddingHorizontal: rs(8),
+    borderRadius: rs(10),
+    borderWidth: 2,
+  },
+  rideSupportText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
   actionRow:       { flexDirection: "row", gap: rs(8), marginTop: rs(2) },
-  receiptBtn:      { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: rs(7), paddingVertical: rs(11), borderRadius: rs(10), borderWidth: 1 },
-  repeatBtn:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: rs(7), paddingVertical: rs(11), borderRadius: rs(10), borderWidth: 1.5, borderColor: "#DC262633" },
-  actionBtn:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: rs(7), paddingVertical: rs(11), borderRadius: rs(10), borderWidth: 1 },
+  receiptBtn:      { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: rs(7), paddingVertical: rs(11), borderRadius: rs(10), borderWidth: 2 },
+  repeatBtn:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: rs(7), paddingVertical: rs(11), borderRadius: rs(10), borderWidth: 2, borderColor: "#DC262633" },
+  actionBtn:       { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: rs(7), paddingVertical: rs(11), borderRadius: rs(10), borderWidth: 2 },
   staticMap: {
     width: "100%",
     height: rs(120),
@@ -748,7 +897,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
   },
-  actionBtnText:   { fontSize: rf(13), fontFamily: "Inter_500Medium" },
+  actionBtnText:   { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
 
   emptyState:      { alignItems: "center", gap: rs(12), paddingTop: rs(70) },
   emptyIcon:       { width: rs(80), height: rs(80), borderRadius: rs(24), backgroundColor: "#DC262612", alignItems: "center", justifyContent: "center", marginBottom: rs(4) },

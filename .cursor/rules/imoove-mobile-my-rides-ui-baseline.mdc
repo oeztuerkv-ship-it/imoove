@@ -1,0 +1,38 @@
+---
+description: Verbindlicher UI-Baseline-Stand für Mobile „Meine Fahrten“ (my-rides) — Header wie Geldbörse/Konto; keine Header-Hilfe; Filter-Tabs & Badges.
+globs: artifacts/mobile/app/my-rides.tsx
+alwaysApply: false
+---
+
+# Mobile: „Meine Fahrten“ (`my-rides.tsx`) — fixierter Stand
+
+Dieser Stand ist **bewusst** an **Geldbörse** (`artifacts/mobile/app/wallet.tsx`) und **Mein Konto** (`artifacts/mobile/app/profile.tsx`) ausgerichtet. **Keine** Layout-„Verbesserungen“ in dieser Datei ohne **explizite** Nutzeranweisung.
+
+## Shell & Scroll
+
+- Äußerer Container: **`styles.root`** (`flex: 1`), Hintergrund `colors.background` — wie Geldbörse (`root`).
+- **`ScrollView`**: `style={{ flex: 1 }}` (wie Profil-Scroll), `showsVerticalScrollIndicator={false}`.
+- **`contentContainerStyle`**: **`styles.scroll`** mit  
+  `paddingHorizontal: rs(16)`, `paddingTop: rs(20)`, `gap: rs(4)` — gleiche Werte wie `wallet.tsx` → `scroll`.
+
+## Header (verbindlich)
+
+- **Eine** Header-`View` mit Inline:  
+  `paddingTop: topPad + 8`, `borderBottomColor: colors.border`, `backgroundColor: colors.card`  
+  plus `styles.header` (u. a. `paddingHorizontal: rs(16)`, `paddingBottom: rs(12)`, `borderBottomWidth: hairline`).
+- **Drei Kinder**, symmetrisch wie Geldbörse / Mein Konto:
+  1. `<View style={{ width: 36 }} />`
+  2. Titel `Meine Fahrten` mit `styles.headerTitle` + `colors.foreground`
+  3. `<View style={{ width: 36 }} />`
+- **Kein** Hilfe-Icon, **kein** `hitSlop`, **kein** asymmetrischer rechter Slot im Header — sonst wirkt der Titel verschoben und weicht von Geldbörse/Konto ab.
+
+## Filter-Tabs (oberste Zeile im Scroll)
+
+- Tabs: Alle · Aktiv · Abgeschlossen · Storniert (horizontal scrollbar).
+- Aktiver Tab: Rand `#DC2626`, `borderWidth: 1`; inaktiv: `LIST_FRAME_BORDER` + `hairlineWidth`.
+- **Storniert-Zähler-Badge**: Hintergrund **`#EF4444`**, Zahl **weiß**; alle anderen Tab-Badges: **schwarz** / Zahl **weiß**.
+
+## Agent-Verhalten
+
+- Nur Änderungen, die der Nutzer **gezielt** verlangt; kein „nebenbei“ Tabs/Header/Abstände anpassen.
+- Wenn Hilfe im Kontext „Meine Fahrten“ gebraucht wird: **nicht** wieder ins Header-Muster von Geldbörse brechen — andere Stelle (z. B. Kartenzeilen) nur nach Auftrag.
