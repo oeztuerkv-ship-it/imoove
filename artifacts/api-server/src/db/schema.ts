@@ -893,6 +893,24 @@ export const emailVerificationCodesTable = pgTable("email_verification_codes", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Mobile: Neuigkeiten / In-App-Mitteilungen (Admin, öffentlicher GET). */
+export const appNewsItemsTable = pgTable("app_news_items", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  body: text("body").notNull().default(""),
+  image_url: text("image_url"),
+  button_text: text("button_text"),
+  target_type: text("target_type").notNull().default("none"),
+  target_value: text("target_value"),
+  audience: text("audience").notNull().default("all"),
+  sort_order: integer("sort_order").notNull().default(0),
+  is_active: boolean("is_active").notNull().default(true),
+  starts_at: timestamp("starts_at", { withTimezone: true }),
+  ends_at: timestamp("ends_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Einfahrgebiete: Substring in Adresse ODER Mittelpunkt+Radius (match_mode=radius). */
 export const appServiceRegionsTable = pgTable("app_service_regions", {
   id: text("id").primaryKey(),

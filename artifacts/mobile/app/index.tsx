@@ -209,6 +209,55 @@ export default function HomeScreen() {
   /* ── Onboarding: shown whenever neither customer nor driver is logged in ── */
   const showOnboarding = !driverLoading && !profile.isLoggedIn && !isDriverLoggedIn;
 
+  type AppNewsItem = {
+    id: string;
+    title: string;
+    body: string;
+    imageUrl: string | null;
+    buttonText: string | null;
+    targetType: string;
+    targetValue: string | null;
+  };
+  const [appNewsItems, setAppNewsItems] = useState<AppNewsItem[]>([]);
+  const [appNewsDetail, setAppNewsDetail] = useState<AppNewsItem | null>(null);
+  const newsAudience = isDriverLoggedIn ? "driver" : "customer";
+
+  useEffect(() => {
+    if (!isHomeFocused || showOnboarding) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const url = `${API_URL}/app/news?audience=${encodeURIComponent(newsAudience)}&limit=5`;
+        const res = await fetch(url);
+        if (!res.ok || cancelled) return;
+        const data = await res.json().catch(() => null);
+        if (!data?.ok || !Array.isArray(data.items) || cancelled) return;
+        setAppNewsItems(data.items);
+      } catch {
+        if (!cancelled) setAppNewsItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isHomeFocused, showOnboarding, newsAudience]);
+
+  const openAppNewsItem = useCallback((item: AppNewsItem) => {
+    const internalRe =
+      /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|personal-info)(\/|$)/;
+    const tt = String(item.targetType ?? "").trim();
+    const tv = String(item.targetValue ?? "").trim();
+    if (tt === "internal_screen" && tv && internalRe.test(tv)) {
+      router.push(tv as Href);
+      return;
+    }
+    if (tt === "external_url" && tv) {
+      void WebBrowser.openBrowserAsync(tv);
+      return;
+    }
+    setAppNewsDetail(item);
+  }, []);
+
   type OnboardingCustomerStep = "social" | "email_enter" | "verify" | "register_details";
   const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
   const [obRegName, setObRegName] = useState("");
@@ -1040,23 +1089,8 @@ export default function HomeScreen() {
 
       {profile.isLoggedIn ? (<>
 
-      {!destination && (
-        <View style={[styles.topRightFabs, { top: topPad + 12 }]}>
-          <Pressable
-            style={[styles.fab, { backgroundColor: "#fff", borderColor: colors.border }]}
-            onPress={() => { void handleGpsLocate(); }}
-            disabled={gpsLoading}
-          >
-            {gpsLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Feather name="navigation" size={20} color={colors.primary} />
-            )}
-          </Pressable>
-        </View>
-      )}
-
-      {/* ── TOP-RIGHT FABS ── */}
+      {/* GPS: in der Such-Pille integriert — kein schwebender FAB mehr */}
+      {/* ── TOP-RIGHT: nur Abbrechen bei aktiver Route ── */}
       {destination && (
         <Pressable
           style={[styles.cancelFab, { top: topPad + 12 }]}
@@ -1116,18 +1150,41 @@ export default function HomeScreen() {
           </Pressable>
         ) : (
           <>
-            <Pressable
-              style={styles.miniSearchPill}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
-            >
-              <View style={[styles.miniSearchIconCircle, { backgroundColor: colors.primary }]}>
-                <Feather name="search" size={21} color="#fff" />
-              </View>
-              <Text style={styles.miniSearchPlaceholderText} numberOfLines={1}>
-                Ziel eingeben...
-              </Text>
-              <Feather name="chevron-right" size={22} color={HOME_SHEET_MUTED} />
-            </Pressable>
+            <View style={styles.miniSearchPill}>
+              <Pressable
+                style={styles.miniSearchPillMain}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
+              >
+                <View style={[styles.miniSearchIconCircle, { backgroundColor: colors.primary }]}>
+                  <Feather name="search" size={21} color="#fff" />
+                </View>
+                <Text style={styles.miniSearchPlaceholderText} numberOfLines={1}>
+                  Ziel eingeben...
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.miniGpsBtn}
+                onPress={() => { void handleGpsLocate(); }}
+                disabled={gpsLoading}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Standort auf Karte"
+              >
+                {gpsLoading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="navigation" size={20} color={colors.primary} />
+                )}
+              </Pressable>
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Ziel suchen"
+              >
+                <Feather name="chevron-right" size={22} color={HOME_SHEET_MUTED} />
+              </Pressable>
+            </View>
             <View style={styles.miniActionRow}>
               {preBookingOn ? (
                 <>
@@ -1183,6 +1240,33 @@ export default function HomeScreen() {
               }}
             >
               <Text style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}>{globalNoticeDe}</Text>
+            </View>
+          ) : null}
+          {!showOnboarding && appNewsItems.length > 0 ? (
+            <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+              <Text style={styles.appNewsHeading}>Neuigkeiten</Text>
+              {appNewsItems.map((it) => (
+                <Pressable
+                  key={it.id}
+                  style={[styles.appNewsCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    openAppNewsItem(it);
+                  }}
+                >
+                  {it.imageUrl ? (
+                    <Image source={{ uri: it.imageUrl }} style={styles.appNewsImage} resizeMode="cover" />
+                  ) : null}
+                  <View style={{ padding: 12 }}>
+                    <Text style={[styles.appNewsTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={2}>
+                      {it.title}
+                    </Text>
+                    <Text style={[styles.appNewsBody, { color: HOME_SHEET_MUTED }]} numberOfLines={4}>
+                      {it.body}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
             </View>
           ) : null}
           {!destination ? (
@@ -1406,9 +1490,9 @@ export default function HomeScreen() {
                 style={[
                   styles.bookBtn,
                   {
-                    backgroundColor: "#16A34A",
+                    backgroundColor: colors.primary,
                     borderWidth: 2,
-                    borderColor: "#BBF7D0",
+                    borderColor: "rgba(220, 38, 38, 0.35)",
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.1,
@@ -1427,6 +1511,49 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+
+      <Modal visible={appNewsDetail != null} animationType="slide" transparent onRequestClose={() => setAppNewsDetail(null)}>
+        <Pressable style={styles.appNewsModalBackdrop} onPress={() => setAppNewsDetail(null)}>
+          <Pressable
+            style={[styles.appNewsModalCard, { backgroundColor: colors.card }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {appNewsDetail?.imageUrl ? (
+                <Image source={{ uri: appNewsDetail.imageUrl }} style={styles.appNewsModalImage} resizeMode="cover" />
+              ) : null}
+              <Text style={[styles.appNewsModalTitle, { color: colors.foreground }]}>{appNewsDetail?.title}</Text>
+              <Text style={[styles.appNewsModalBody, { color: colors.mutedForeground }]}>{appNewsDetail?.body}</Text>
+              {appNewsDetail?.buttonText && appNewsDetail.targetType === "external_url" && appNewsDetail.targetValue ? (
+                <Pressable
+                  style={[styles.appNewsModalBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    const u = appNewsDetail.targetValue?.trim();
+                    if (u) void WebBrowser.openBrowserAsync(u);
+                  }}
+                >
+                  <Text style={styles.appNewsModalBtnText}>{appNewsDetail.buttonText}</Text>
+                </Pressable>
+              ) : null}
+              {appNewsDetail?.buttonText && appNewsDetail.targetType === "internal_screen" && appNewsDetail.targetValue ? (
+                <Pressable
+                  style={[styles.appNewsModalBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    const p = appNewsDetail.targetValue?.trim();
+                    if (p) router.push(p as Href);
+                    setAppNewsDetail(null);
+                  }}
+                >
+                  <Text style={styles.appNewsModalBtnText}>{appNewsDetail.buttonText}</Text>
+                </Pressable>
+              ) : null}
+              <Pressable style={styles.appNewsModalClose} onPress={() => setAppNewsDetail(null)}>
+                <Text style={[styles.appNewsModalCloseText, { color: colors.primary }]}>Schließen</Text>
+              </Pressable>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* ── BOTTOM TAB BAR ── */}
       <BottomTabBar active="start" />
@@ -2387,51 +2514,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 
-  /* ── Map overlays ── */
-  originChip: {
-    position: "absolute", left: rs(20), right: rs(20),
-    backgroundColor: "rgba(255,255,255,0.97)", borderRadius: rs(14),
-    paddingHorizontal: rs(14), paddingVertical: rs(7),
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10, shadowRadius: 8, elevation: 5, zIndex: 10,
-  },
-  originChipLabel: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#B0B7C3", marginBottom: rs(2), letterSpacing: 0.6, textTransform: "uppercase" },
-  originChipRow: { flexDirection: "row", alignItems: "center", gap: rs(8) },
-  originChipText: { flex: 1, fontSize: rf(17), fontFamily: "Inter_600SemiBold", color: "#111", letterSpacing: -0.2 },
-  homeBrandWrap: {
-    position: "absolute",
-    left: 14,
-    right: 14,
-    zIndex: 20,
-  },
-  homeBrandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  homeBrandIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#DC2626",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homeBrandIconText: { color: "#fff", fontSize: rf(10), fontFamily: "Inter_700Bold" },
-  homeBrandTitle: { fontSize: rf(12), fontFamily: "Inter_700Bold", color: "#111827", letterSpacing: 0.3 },
-  homeBrandSub: { fontSize: rf(11), fontFamily: "Inter_500Medium", color: "#6B7280" },
-  originLocBtn: {
-    width: rs(26), height: rs(26), borderRadius: rs(13),
-    backgroundColor: "#DC2626",
-    alignItems: "center", justifyContent: "center",
-  },
-
   cancelFab: {
     position: "absolute", right: 16, flexDirection: "row", alignItems: "center", gap: 5,
     backgroundColor: "#DC2626", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9,
@@ -2439,17 +2521,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18, shadowRadius: 6, elevation: 5, zIndex: 10,
   },
   cancelFabText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
-  topRightFabs: { position: "absolute", right: 16, flexDirection: "column", gap: 8, zIndex: 10 },
-  fab: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    justifyContent: "center", alignItems: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
-  },
-  driverFab: { backgroundColor: "#111" },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
-  avatarLetter: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
 
   /* ── Bottom sheet ── */
   sheet: {
@@ -2461,25 +2532,6 @@ const styles = StyleSheet.create({
   sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 6, marginBottom: 2 },
   sheetScroll: { flexShrink: 1 },
 
-  /* Search pill */
-  searchRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6, gap: 10 },
-  spaeterBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(5),
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(10),
-    borderRadius: rs(50),
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  spaeterText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
-  searchPlaceholder: {
-    flex: 1, flexDirection: "row", alignItems: "center",
-    gap: 10, paddingHorizontal: 12, paddingVertical: 13,
-    borderRadius: 50, borderWidth: 1,
-  },
-  searchIconCircle: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  searchPlaceholderText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
   /* Route card (Option B – zwei Zeilen mit Trennlinie) */
   routeCard: {
     marginHorizontal: 16, marginTop: 10, marginBottom: 2,
@@ -2503,9 +2555,10 @@ const styles = StyleSheet.create({
     marginBottom: rs(10),
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(12),
-    paddingHorizontal: rs(16),
-    paddingVertical: rs(16),
+    gap: rs(8),
+    paddingLeft: rs(6),
+    paddingRight: rs(12),
+    paddingVertical: rs(10),
     borderRadius: rs(999),
     backgroundColor: HOME_SHEET_PANEL,
     borderWidth: 1,
@@ -2515,6 +2568,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.34,
     shadowRadius: rs(12),
     elevation: 14,
+  },
+  miniSearchPillMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(12),
+    paddingVertical: rs(6),
+    paddingLeft: rs(10),
+    minWidth: 0,
+  },
+  miniGpsBtn: {
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
+    alignItems: "center",
+    justifyContent: "center",
   },
   miniSearchIconCircle: {
     width: rs(36),
@@ -2686,154 +2755,8 @@ const styles = StyleSheet.create({
   },
   favReorderCol: { alignItems: "center", justifyContent: "center", gap: 2, marginRight: 4 },
 
-  /* Quick destinations */
-  quickSection: { marginHorizontal: 16, marginBottom: 4, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
-  servicesTitle: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 6,
-    fontSize: rf(12),
-    fontFamily: "Inter_700Bold",
-    textTransform: "uppercase",
-    letterSpacing: 0.7,
-  },
-  quickRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
-  quickIconWrap: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   quickTextWrap: { flex: 1 },
-  quickTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  quickSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
-  quickDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
 
-  /* Start: Dienstleistungen-Kacheln (Onroda / XL / Rollstuhl Standard) */
-  vehicleSection: { paddingHorizontal: 0, paddingTop: 18, paddingBottom: 8 },
-  homeServiceSection: { marginHorizontal: 16 },
-  homeServiceTitleInGrid: { paddingHorizontal: 0, paddingTop: 2, paddingBottom: 8 },
-  homeServiceGridRow: { gap: 14, paddingRight: 16 },
-  homeServiceCard: {
-    width: 86,
-    borderRadius: 22,
-    paddingVertical: 8,
-    paddingHorizontal: 7,
-    alignItems: "center",
-    minHeight: 64,
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
-  },
-  homeServiceCardCompact: {
-    width: 76,
-    minHeight: 58,
-    paddingVertical: 7,
-    paddingHorizontal: 6,
-  },
-  homeServiceCardTitle: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-    lineHeight: 14,
-    marginTop: 4,
-  },
-  homeServiceCardTitleCompact: {
-    fontSize: 10,
-    lineHeight: 12,
-    marginTop: 3,
-  },
-
-  /* Home Erweiterung unter den 4 Cards */
-  homeExtraWrap: {
-    marginTop: 12,
-    marginHorizontal: 16,
-    paddingBottom: 6,
-  },
-  homeChipRow: { flexDirection: "row", gap: 10 },
-  homeChip: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  homeChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  homeRecentRow: { flexDirection: "row", gap: 10, paddingRight: 16, paddingTop: 6 },
-  homeRecentChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    maxWidth: 220,
-  },
-  homeRecentText: { fontSize: 13, fontFamily: "Inter_500Medium", flexShrink: 1 },
-  homeReserveRow: {
-    marginTop: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  homeReserveIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  homeReserveTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  homeReserveSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-
-  /* Fahrzeug-Slider (Legacy-Styles, ggf. noch für andere Screens) */
-  vehicleSliderWrap: { width: "100%", alignItems: "flex-start" },
-  vehicleSliderSnapContent: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingVertical: 8,
-  },
-  vehicleRefCard: {
-    borderRadius: 22,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-  },
-  vehicleRefCardInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    minHeight: 118,
-  },
-  vehicleRefLeft: { flex: 1, paddingRight: 8, justifyContent: "center" },
-  vehicleRefLine1: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 22 },
-  vehicleRefLine2: { fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.4, lineHeight: 22, marginTop: 2 },
-  vehicleRefMeta: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 8, opacity: 0.85 },
-  vehicleRefCta: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 100,
-  },
-  vehicleRefCtaText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  vehicleRefIllu: { width: 84, height: 90, justifyContent: "center", alignItems: "center" },
-  vehicleRefHex: { position: "absolute" },
-  vehicleRefShield: {
-    justifyContent: "center",
-    alignItems: "center",
-    width: 56,
-    height: 56,
-  },
-  vehicleRefCheck: { position: "absolute" },
   bookingVehicleScroll: { flexDirection: "row", gap: 12, paddingVertical: 8, paddingRight: 8, paddingBottom: 18 },
   bookingVehicleChip: {
     width: 112,
@@ -2853,28 +2776,6 @@ const styles = StyleSheet.create({
   },
   bookingVehicleName: { fontSize: 14, fontFamily: "Inter_700Bold", textAlign: "center" },
   bookingVehicleSub: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 14 },
-  vehicleSliderExpand: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  vehicleSliderExpandLine: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  vehicleSliderDots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    paddingTop: 10,
-    paddingBottom: 6,
-  },
-  vehicleSliderDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.18)",
-  },
-  vehicleSliderDotActive: { width: 22, borderRadius: 4 },
 
   /* Fare panel */
   fareSection: { padding: 14, gap: 12, paddingBottom: 22 },
@@ -2883,36 +2784,11 @@ const styles = StyleSheet.create({
   routeStrip: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1, paddingVertical: 18 },
   routeStripItem: { flex: 1, alignItems: "center", gap: 4 },
   fareHighlight: { borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, marginHorizontal: 8, marginVertical: 4, backgroundColor: "#F3F4F6", borderColor: "#D1D5DB" },
-  routeStripVal: { fontSize: 28, fontFamily: "Inter_700Bold" },
   routeStripDistance: { fontSize: 16, fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
   routeStripLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
   routeStripDivider: { width: 1, height: 32 },
   routeStripDividerShort: { height: 22, alignSelf: "center" },
   panelLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -6 },
-  timingRow: { flexDirection: "row", gap: 10, marginTop: 10 },
-  timingBtn: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 7, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5,
-    borderColor: "#E5E7EB", backgroundColor: "#F9FAFB",
-  },
-  timingBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  paymentRow: { flexDirection: "row", gap: 8 },
-  paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  paymentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5, minWidth: "46%" },
-  paymentBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  paypalText: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  euroSymbol: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  voucherPanel: { borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 10 },
-  voucherPriceRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  voucherLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#1D4ED8", letterSpacing: 0.4 },
-  voucherAmount: { fontSize: 24, fontFamily: "Inter_700Bold", color: "#1D4ED8", marginTop: 2 },
-  voucherSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#3B82F6", marginTop: 4, lineHeight: 17 },
-  exemptRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  exemptCheckbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 2, justifyContent: "center", alignItems: "center" },
-  exemptText: { fontSize: 14, fontFamily: "Inter_500Medium", flex: 1 },
-  voucherHint: { flexDirection: "row", alignItems: "center", gap: 6, paddingTop: 2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#93C5FD" },
-  voucherHintText: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#2563EB", flex: 1 },
-  bookRow: { flexDirection: "row", gap: 10 },
   stickyBookRow: {
     flexDirection: "row", gap: 10,
     paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12,
@@ -2927,29 +2803,8 @@ const styles = StyleSheet.create({
   bookBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 14, gap: 6 },
   bookBtnText: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: 0.15 },
   bookBtnHint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
-  scheduleBtn: { width: 52, height: 52, borderRadius: 14, borderWidth: 1.5, justifyContent: "center", alignItems: "center" },
   searchClearBtn: { padding: 2, marginLeft: 4 },
   searchClearCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center" },
-
-  /* Tab bar */
-  tabBar: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
-  },
-  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(2), paddingBottom: rs(3) },
-  tabIconWrap: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center", position: "relative" },
-  tabLabel: { fontSize: rf(11), fontFamily: "Inter_500Medium" },
-  tabBadge: {
-    position: "absolute", top: -5, right: -8,
-    minWidth: 17, height: 17, borderRadius: 9,
-    backgroundColor: "#DC2626",
-    alignItems: "center", justifyContent: "center",
-    paddingHorizontal: rs(3),
-  },
-  tabBadgeText: { fontSize: rf(11), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(14) },
 
   /* ══ SEARCH OVERLAY ══ */
   searchOverlay: {
@@ -3007,32 +2862,6 @@ const styles = StyleSheet.create({
 
   /* Results list */
   resultsContent: { padding: 16, gap: 12, paddingBottom: 40 },
-  comboHintText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    textAlign: "center",
-    marginTop: 4,
-    lineHeight: 17,
-  },
-  searchFixpreisBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: ONRODA_MARK_RED + "44",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-  },
-  searchFixpreisBannerText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    color: "#7F1D1D",
-    lineHeight: 18,
-  },
   sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginBottom: -4 },
   resultGroup: { borderRadius: 14, borderWidth: 1.5, overflow: "hidden" },
   resultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
@@ -3065,9 +2894,6 @@ const styles = StyleSheet.create({
   socialBtnText: { fontSize: 17, fontFamily: "Inter_500Medium" },
 
   /* ── ONBOARDING ── */
-  onboardingScroll: {
-    flexGrow: 1, paddingHorizontal: 24, gap: 20,
-  },
   onboardingBranding: {
     alignItems: "center", gap: 6, marginBottom: 8,
   },
@@ -3080,15 +2906,6 @@ const styles = StyleSheet.create({
   onboardingBlock: {
     borderRadius: 20, borderWidth: 1, padding: 20, gap: 14,
   },
-  onboardingBlockHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-  },
-  onboardingBlockLabel: {
-    fontSize: 18, fontFamily: "Inter_700Bold",
-  },
-  onboardingBlockSub: {
-    fontSize: 14, fontFamily: "Inter_400Regular", marginTop: -8,
-  },
   onboardingInput: {
     flexDirection: "row", alignItems: "center", gap: 10,
     borderRadius: 14, borderWidth: 1,
@@ -3100,21 +2917,45 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     paddingVertical: 0,
   },
-  onboardingDriverBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, borderRadius: 14, paddingVertical: 16,
+
+  appNewsHeading: {
+    fontSize: rf(13),
+    fontFamily: "Inter_600SemiBold",
+    color: HOME_SHEET_MUTED,
+    marginBottom: rs(8),
+    letterSpacing: 0.4,
   },
-  onboardingRegisterLink: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 6,
+  appNewsCard: {
+    borderRadius: rs(14),
+    borderWidth: 1,
+    marginBottom: rs(10),
+    overflow: "hidden",
   },
-  onboardingRegisterLinkText: {
-    fontSize: 14, fontFamily: "Inter_400Regular",
+  appNewsImage: { width: "100%", height: rs(120) },
+  appNewsTitle: { fontSize: rf(16), fontFamily: "Inter_700Bold", marginBottom: rs(4) },
+  appNewsBody: { fontSize: rf(14), fontFamily: "Inter_400Regular", lineHeight: rf(20) },
+  appNewsModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
   },
-  onboardingDivider: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    marginVertical: -4,
+  appNewsModalCard: {
+    borderTopLeftRadius: rs(20),
+    borderTopRightRadius: rs(20),
+    padding: rs(20),
+    maxHeight: "88%",
   },
-  onboardingDividerLine: { flex: 1, height: 1 },
-  onboardingDividerText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  appNewsModalImage: { width: "100%", height: rs(180), borderRadius: rs(12), marginBottom: rs(12) },
+  appNewsModalTitle: { fontSize: rf(20), fontFamily: "Inter_700Bold", marginBottom: rs(8) },
+  appNewsModalBody: { fontSize: rf(15), fontFamily: "Inter_400Regular", lineHeight: rf(22), marginBottom: rs(16) },
+  appNewsModalBtn: {
+    alignSelf: "flex-start",
+    paddingVertical: rs(12),
+    paddingHorizontal: rs(18),
+    borderRadius: rs(12),
+    marginBottom: rs(12),
+  },
+  appNewsModalBtnText: { color: "#fff", fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
+  appNewsModalClose: { paddingVertical: rs(8), alignItems: "center" },
+  appNewsModalCloseText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
 });

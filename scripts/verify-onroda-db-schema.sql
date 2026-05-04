@@ -40,6 +40,7 @@
 --   053 → rides.accessibility_options_json
 --   054 → email_verification_codes (Kunden-E-Mail-Codes)
 --   056 → fleet_drivers.home_address, drivers_license_* (Partner, optional)
+--   057 → app_news_items (Mobile Neuigkeiten, Admin-CMS)
 
 DO $$
 DECLARE
@@ -672,6 +673,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'email_verification_codes' AND column_name = 'code_hash'
   ) THEN
     errs := array_append(errs, 'email_verification_codes.code_hash (Migration 054)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'app_news_items'
+  ) THEN
+    errs := array_append(errs, 'table app_news_items (Migration 057)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_news_items' AND column_name = 'target_type'
+  ) THEN
+    errs := array_append(errs, 'app_news_items.target_type (Migration 057)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

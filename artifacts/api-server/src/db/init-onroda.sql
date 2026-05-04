@@ -748,6 +748,26 @@ CREATE TABLE IF NOT EXISTS homepage_placeholders (
 CREATE INDEX IF NOT EXISTS homepage_placeholders_active_order_idx
   ON homepage_placeholders (is_active, sort_order, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS app_news_items (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  image_url TEXT,
+  button_text TEXT,
+  target_type TEXT NOT NULL DEFAULT 'none',
+  target_value TEXT,
+  audience TEXT NOT NULL DEFAULT 'all',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  starts_at TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS app_news_items_public_list_idx
+  ON app_news_items (is_active, audience, sort_order, starts_at, ends_at);
+
 CREATE TABLE IF NOT EXISTS homepage_content (
   id TEXT PRIMARY KEY,
   hero_headline TEXT NOT NULL DEFAULT '',

@@ -39,6 +39,7 @@ import AppOperationalFeaturesPage from "./pages/AppOperationalFeaturesPage.jsx";
 import AppOperationalDriverRulesPage from "./pages/AppOperationalDriverRulesPage.jsx";
 import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPage.jsx";
 import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
+import AppNewsPage from "./pages/AppNewsPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
@@ -283,6 +284,10 @@ const PAGE_META = {
   "homepage-content": {
     title: "Homepage-Inhalte",
     subtitle: "Hero-Texte und Hinweiszeile der Marketing-Homepage ohne Codeänderung steuern",
+  },
+  "app-news": {
+    title: "App-Neuigkeiten",
+    subtitle: "Dynamische Meldungen in der Kunden-App (Startseite), ohne App-Update",
   },
   settings: {
     title: "Einstellungen",
@@ -674,6 +679,8 @@ export default function App() {
         return <HomepagePlaceholdersPage />;
       case "homepage-content":
         return <HomepageContentPage />;
+      case "app-news":
+        return <AppNewsPage />;
       case "app-op-tariffs":
         return <AppOperationalTariffsPage />;
       case "app-op-regions":

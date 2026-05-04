@@ -59,6 +59,7 @@ export const ADMIN_PAGE_ROLES = {
   "access-codes": ["admin", "service", "taxi"],
   "homepage-placeholders": ["admin", "service"],
   "homepage-content": ["admin", "service"],
+  "app-news": ["admin", "service"],
 
   "app-op-tariffs": ["admin", "service"],
   "app-op-regions": ["admin", "service"],
@@ -100,6 +101,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     icon: "pulse",
     roles: R.adminSvc,
     items: [
+      { pageKey: "app-news", label: "App-Neuigkeiten", icon: "document", navOrder: 0, roles: R.adminSvc },
       { pageKey: "app-op-tariffs", label: "Tarife & Preise", icon: "map", navOrder: 1, roles: R.adminSvc },
       { pageKey: "app-op-regions", label: "Gebiete & Zonen", icon: "map", navOrder: 2, roles: R.adminSvc },
       { pageKey: "app-op-commission", label: "Provision", icon: "wallet", navOrder: 3, roles: R.adminSvc },
@@ -332,6 +334,7 @@ const ADMIN_TOP_NAV = [
     roles: R.adminSvc,
     defaultTarget: { pageKey: "app-op-tariffs" },
     children: [
+      { pageKey: "app-news", label: "App-Neuigkeiten" },
       { pageKey: "app-op-tariffs", label: "Tarife & Preise" },
       { pageKey: "app-op-regions", label: "Gebiete & Zonen" },
       { pageKey: "app-op-commission", label: "Provision" },

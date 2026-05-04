@@ -193,6 +193,7 @@ import {
 } from "../lib/partnerApprovalMail";
 import { logger } from "../lib/logger";
 import adminInsuranceRouter from "./adminInsuranceApi";
+import adminAppNewsRouter from "./adminAppNewsRouter";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
 import {
@@ -803,6 +804,8 @@ const adminJson: IRouter = Router();
 adminJson.use(requireAdminApiBearer);
 /** Krankenkassen-Modus: nur Whitelist-DTO, kein Mix mit /panel/v1. */
 adminJson.use("/insurance", adminInsuranceRouter);
+/** Mobile App-Neuigkeiten (CMS, Admin + Service). */
+adminJson.use("/app-news", adminAppNewsRouter);
 
 const adminFleetUploadRoot =
   (process.env.FLEET_UPLOAD_DIR ?? "").trim() ||
