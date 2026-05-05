@@ -564,6 +564,9 @@ router.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, 
       patch.nextInspectionDate =
         b.nextInspectionDate === null ? null : (b.nextInspectionDate as string);
     }
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    else if (b.isActive === "true") patch.isActive = true;
+    else if (b.isActive === "false") patch.isActive = false;
     if (typeof b.vehicleLegalType === "string") {
       patch.vehicleLegalType = "taxi" as FleetVehicleLegalType;
     }

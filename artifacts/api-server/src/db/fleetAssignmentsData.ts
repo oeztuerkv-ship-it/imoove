@@ -49,7 +49,11 @@ export async function setDriverVehicleAssignment(input: {
   if (!dRows[0]) return { ok: false, error: "driver_not_found" };
 
   const vRows = await db
-    .select({ id: fleetVehiclesTable.id, approvalStatus: fleetVehiclesTable.approval_status })
+    .select({
+      id: fleetVehiclesTable.id,
+      approvalStatus: fleetVehiclesTable.approval_status,
+      isActive: fleetVehiclesTable.is_active,
+    })
     .from(fleetVehiclesTable)
     .where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId)))
     .limit(1);
@@ -57,6 +61,7 @@ export async function setDriverVehicleAssignment(input: {
   if (String(vRows[0].approvalStatus) !== "approved") {
     return { ok: false, error: "vehicle_not_approved" };
   }
+  if (!vRows[0].isActive) return { ok: false, error: "vehicle_inactive" };
 
   await db.transaction(async (tx) => {
     await tx

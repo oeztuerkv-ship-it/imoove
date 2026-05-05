@@ -64,6 +64,7 @@ export async function getFleetDriverCapability(
       vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
       vehicleClass: fleetVehiclesTable.vehicle_class,
       approvalStatus: fleetVehiclesTable.approval_status,
+      isActive: fleetVehiclesTable.is_active,
     })
     .from(driverVehicleAssignmentsTable)
     .innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id))
@@ -80,6 +81,7 @@ export async function getFleetDriverCapability(
     if (String(assigned[0].approvalStatus) !== "approved") {
       return null;
     }
+    if (!assigned[0].isActive) return null;
     return {
       vehicleLegalType: assigned[0].vehicleLegalType as VehicleLegalType,
       vehicleClass: assigned[0].vehicleClass as VehicleClass,

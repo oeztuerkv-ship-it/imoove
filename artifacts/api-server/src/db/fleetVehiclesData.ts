@@ -364,6 +364,7 @@ export async function patchFleetVehicle(
     taxiOrderNumber: string;
     konzessionNumber: string;
     nextInspectionDate: string | null;
+    isActive: boolean;
   }>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const cur = await findFleetVehicleInCompany(id, companyId);
@@ -373,9 +374,11 @@ export async function patchFleetVehicle(
     const allowed: (keyof typeof patch)[] = ["nextInspectionDate", "color", "model"];
     const keys = Object.keys(patch) as (keyof typeof patch)[];
     for (const k of keys) {
-      if (patch[k] !== undefined && !allowed.includes(k)) {
+      if (patch[k] === undefined) continue;
+      if (allowed.includes(k)) continue;
+      if (k === "isActive" && st === "approved") continue;
+      if (k === "isActive" && st === "blocked") continue;
         return { ok: false, error: "field_locked" };
-      }
     }
   }
   const db = getDb();
@@ -395,6 +398,9 @@ export async function patchFleetVehicle(
   }
   if (patch.nextInspectionDate !== undefined) {
     set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
+  }
+  if (patch.isActive !== undefined) {
+    set.is_active = patch.isActive;
   }
   await db
     .update(fleetVehiclesTable)

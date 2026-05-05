@@ -375,6 +375,32 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
     }
   }
 
+  async function setVehicleActive(vehicleId, isActive) {
+    if (!token || !canManage) return;
+    const actionLabel = isActive ? "aktivieren" : "deaktivieren";
+    if (!window.confirm(`Fahrzeug wirklich ${actionLabel}?`)) return;
+    setMsg("");
+    try {
+      const res = await fetch(`${API_BASE}/panel/v1/fleet/vehicles/${encodeURIComponent(vehicleId)}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isActive }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setMsg(isActive ? "Aktivieren fehlgeschlagen." : "Deaktivieren fehlgeschlagen.");
+        return;
+      }
+      setMsg(isActive ? "Fahrzeug ist aktiv." : "Fahrzeug ist deaktiviert.");
+      await loadAll();
+    } catch {
+      setMsg(isActive ? "Aktivieren fehlgeschlagen." : "Deaktivieren fehlgeschlagen.");
+    }
+  }
+
   async function clearAssignment(driverId) {
     if (!token || !canManage) return;
     if (!driverId) return;
@@ -704,6 +730,7 @@ export default function FleetPage({ fleetIntent = null, onFleetIntentConsumed })
           assignments={assignments}
           uploadVehicleDocument={uploadVehicleDocument}
           submitVehicleApproval={submitVehicleApproval}
+          setVehicleActive={setVehicleActive}
           clearAssignment={clearAssignment}
         />
       ) : null}

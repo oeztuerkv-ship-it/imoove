@@ -27,6 +27,7 @@ import {
  *   assignments: { vehicleId?: string; driverId?: string }[];
  *   uploadVehicleDocument: (vehicleId: string, kind: string, ev: React.ChangeEvent<HTMLInputElement>) => void | Promise<void>;
  *   submitVehicleApproval: (vehicleId: string) => void | Promise<void>;
+ *   setVehicleActive: (vehicleId: string, isActive: boolean) => void | Promise<void>;
  *   clearAssignment: (driverId: string) => void | Promise<void>;
  * }} props
  */
@@ -49,6 +50,7 @@ export default function FleetVehiclesTab({
   assignments,
   uploadVehicleDocument,
   submitVehicleApproval,
+  setVehicleActive,
   clearAssignment,
 }) {
   return (
@@ -261,6 +263,11 @@ export default function FleetVehiclesTab({
                             Sperrgrund: {v.blockReason}
                           </span>
                         ) : null}
+                        {v.approvalStatus === "approved" ? (
+                          <span className="partner-muted" style={{ fontSize: 12, maxWidth: 280, lineHeight: 1.35 }}>
+                            {v.isActive ? "Aktiv: in Fahrer-App sichtbar." : "Deaktiviert: nicht in Fahrer-App sichtbar."}
+                          </span>
+                        ) : null}
                         {canManage &&
                         (v.approvalStatus === "draft" ||
                           v.approvalStatus === "rejected" ||
@@ -292,6 +299,17 @@ export default function FleetVehiclesTab({
                                 {v.approvalStatus === "missing_documents" ? "Erneut einreichen" : "Einreichen"}
                               </button>
                             ) : null}
+                          </span>
+                        ) : null}
+                        {canManage && v.approvalStatus === "approved" ? (
+                          <span style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                            <button
+                              type="button"
+                              className="partner-btn-secondary partner-btn-secondary--sm"
+                              onClick={() => void setVehicleActive(v.id, !v.isActive)}
+                            >
+                              {v.isActive ? "Deaktivieren" : "Aktivieren"}
+                            </button>
                           </span>
                         ) : null}
                       </div>
