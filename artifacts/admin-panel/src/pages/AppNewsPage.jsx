@@ -90,6 +90,7 @@ function emptyForm() {
     audience: "customer",
     isActive: true,
     sortOrder: "0",
+    homepageSlot: "",
     startsAt: "",
     endsAt: "",
   };
@@ -151,6 +152,10 @@ export default function AppNewsPage() {
       audience: it.audience ?? "customer",
       isActive: !!it.isActive,
       sortOrder: String(it.sortOrder ?? 0),
+      homepageSlot:
+        Number.isFinite(Number(it.sortOrder)) && Number(it.sortOrder) >= 1 && Number(it.sortOrder) <= 5
+          ? String(Number(it.sortOrder))
+          : "",
       startsAt: toLocalDatetimeValue(it.startsAt),
       endsAt: toLocalDatetimeValue(it.endsAt),
     });
@@ -388,6 +393,27 @@ export default function AppNewsPage() {
               </h3>
               <div className="app-news-section__grid app-news-section__grid--2">
                 <label className="admin-form-pair">
+                  <span className="admin-field-label">Homepage-Platz (1-5)</span>
+                  <select
+                    className="admin-select"
+                    value={form.homepageSlot}
+                    onChange={(ev) =>
+                      setForm((f) => ({
+                        ...f,
+                        homepageSlot: ev.target.value,
+                        sortOrder: ev.target.value ? ev.target.value : f.sortOrder,
+                      }))
+                    }
+                  >
+                    <option value="">Freie Sortierung</option>
+                    <option value="1">Platz 1</option>
+                    <option value="2">Platz 2</option>
+                    <option value="3">Platz 3</option>
+                    <option value="4">Platz 4</option>
+                    <option value="5">Platz 5</option>
+                  </select>
+                </label>
+                <label className="admin-form-pair">
                   <span className="admin-field-label">Sortierung (aufsteigend)</span>
                   <input className="admin-input" type="number" value={form.sortOrder} onChange={(ev) => setForm((f) => ({ ...f, sortOrder: ev.target.value }))} />
                 </label>
@@ -441,6 +467,14 @@ export default function AppNewsPage() {
                   <div>
                     <dt>Zielgruppe</dt>
                     <dd>{audienceLabel(it.audience)}</dd>
+                  </div>
+                  <div>
+                    <dt>Homepage-Platz</dt>
+                    <dd>
+                      {Number.isFinite(Number(it.sortOrder)) && Number(it.sortOrder) >= 1 && Number(it.sortOrder) <= 5
+                        ? Number(it.sortOrder)
+                        : "—"}
+                    </dd>
                   </div>
                   <div>
                     <dt>Sortierung</dt>
