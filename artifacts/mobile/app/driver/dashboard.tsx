@@ -2066,7 +2066,15 @@ export default function DriverDashboard() {
   const [vehiclePickerLoading, setVehiclePickerLoading] = useState(false);
   const [vehiclePickerSaving, setVehiclePickerSaving] = useState(false);
   const [vehicleOptions, setVehicleOptions] = useState<
-    Array<{ id: string; licensePlate: string; model: string; selected: boolean }>
+    Array<{
+      id: string;
+      licensePlate: string;
+      model: string;
+      selected: boolean;
+      isActive: boolean;
+      approvalStatus: string;
+      selectable: boolean;
+    }>
   >([]);
   const [codeRideFrom, setCodeRideFrom] = useState("");
   const [codeRideTo, setCodeRideTo] = useState("");
@@ -2085,13 +2093,31 @@ export default function DriverDashboard() {
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
-        vehicles?: Array<{ id: string; licensePlate: string; model: string; selected: boolean }>;
+        vehicles?: Array<{
+          id: string;
+          licensePlate: string;
+          model: string;
+          selected: boolean;
+          isActive?: boolean;
+          approvalStatus?: string;
+          selectable?: boolean;
+        }>;
       };
       if (!res.ok || !data?.ok || !Array.isArray(data.vehicles)) {
         setVehicleOptions([]);
         return;
       }
-      setVehicleOptions(data.vehicles);
+      setVehicleOptions(
+        data.vehicles.map((v) => ({
+          id: v.id,
+          licensePlate: v.licensePlate,
+          model: v.model,
+          selected: Boolean(v.selected),
+          isActive: Boolean(v.isActive),
+          approvalStatus: typeof v.approvalStatus === "string" ? v.approvalStatus : "pending",
+          selectable: Boolean(v.selectable),
+        })),
+      );
     } catch {
       setVehicleOptions([]);
     } finally {
@@ -2892,49 +2918,86 @@ export default function DriverDashboard() {
           setShowVehiclePicker(false);
         }}
       >
-        <View style={[styles.sheetScreen, { backgroundColor: colors.background }]}>
-          <View style={[styles.sheetCard, { backgroundColor: colors.card }]}>
-            <View style={styles.sheetHeader}>
-              <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Fahrzeug waehlen</Text>
-              <Pressable
-                disabled={vehiclePickerSaving}
-                onPress={() => setShowVehiclePicker(false)}
-                style={styles.sheetCloseBtn}
-              >
-                <Feather name="x" size={18} color={colors.mutedForeground} />
-              </Pressable>
-            </View>
+        <View style={[styles.sheetScreen, { backgroundColor: colors.background, paddingTop: topPad + 6 }]}>
+          <View style={[styles.sheetHeader, { paddingHorizontal: 14 }]}>
+            <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Fahrzeug waehlen</Text>
+            <Pressable
+              disabled={vehiclePickerSaving}
+              onPress={() => setShowVehiclePicker(false)}
+              style={[styles.sheetCloseBtn, { backgroundColor: colors.card }]}
+            >
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+          <Text style={[styles.sheetSubtitle, { color: colors.mutedForeground, paddingHorizontal: 14 }]}>
+            Bitte ein aktives Kennzeichen aus Ihrem Unternehmen auswaehlen.
+          </Text>
+          <View style={[styles.sheetCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {vehiclePickerLoading ? (
               <View style={{ paddingVertical: 20 }}>
                 <ActivityIndicator color="#DC2626" />
               </View>
             ) : vehicleOptions.length === 0 ? (
               <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular" }}>
-                Keine freigegebenen Fahrzeuge gefunden.
+                Keine Firmenfahrzeuge gefunden.
               </Text>
             ) : (
-              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 {vehicleOptions.map((v) => (
                   <Pressable
                     key={v.id}
                     style={[
                       styles.sheetItemRow,
                       {
-                        borderColor: colors.border,
+                        borderColor: v.selected ? "#FCA5A5" : colors.border,
                         backgroundColor: v.selected ? "#FEF2F2" : colors.background,
-                        opacity: vehiclePickerSaving ? 0.6 : 1,
+                        opacity: vehiclePickerSaving || !v.selectable ? 0.55 : 1,
                       },
                     ]}
-                    disabled={vehiclePickerSaving}
+                    disabled={vehiclePickerSaving || !v.selectable}
                     onPress={() => void selectVehicle(v.id)}
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
                         {v.licensePlate}
                       </Text>
-                      {v.model ? <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>{v.model}</Text> : null}
+                      {v.model ? (
+                        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                          {v.model}
+                        </Text>
+                      ) : null}
+                      <View style={styles.sheetStatusRow}>
+                        <Text
+                          style={[
+                            styles.sheetStatusPill,
+                            {
+                              color: v.isActive ? "#166534" : "#9A3412",
+                              backgroundColor: v.isActive ? "#DCFCE7" : "#FFEDD5",
+                            },
+                          ]}
+                        >
+                          {v.isActive ? "Kennzeichen aktiv" : "Kennzeichen nicht aktiv"}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.sheetStatusPill,
+                            {
+                              color: v.approvalStatus === "approved" ? "#1D4ED8" : "#92400E",
+                              backgroundColor: v.approvalStatus === "approved" ? "#DBEAFE" : "#FEF3C7",
+                            },
+                          ]}
+                        >
+                          {v.approvalStatus === "approved" ? "Fahrzeug aktiv" : "Freigabe ausstehend"}
+                        </Text>
+                      </View>
                     </View>
-                    {v.selected ? <Feather name="check-circle" size={18} color="#DC2626" /> : <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+                    {v.selected ? (
+                      <Feather name="check-circle" size={18} color="#DC2626" />
+                    ) : v.selectable ? (
+                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                    ) : (
+                      <Feather name="slash" size={14} color="#9CA3AF" />
+                    )}
                   </Pressable>
                 ))}
               </ScrollView>
@@ -3270,21 +3333,25 @@ const activeStyles = StyleSheet.create({
   priceConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
   sheetScreen: {
     flex: 1,
-    paddingTop: 10,
+    paddingBottom: 10,
   },
   sheetCard: {
     borderRadius: 16,
     marginHorizontal: 12,
+    marginTop: 10,
+    borderWidth: 1,
     padding: 16,
     paddingBottom: 14,
+    flex: 1,
   },
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 2,
   },
   sheetTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  sheetSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   sheetCloseBtn: {
     width: 28,
     height: 28,
@@ -3301,5 +3368,19 @@ const activeStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  sheetStatusRow: {
+    marginTop: 7,
+    flexDirection: "row",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  sheetStatusPill: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
   },
 });

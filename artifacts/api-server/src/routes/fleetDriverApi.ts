@@ -102,13 +102,15 @@ router.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res)
   ]);
   const currentAssignment = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
   const items = vehicles
-    .filter((v) => v.approvalStatus === "approved" && v.isActive)
     .map((v) => ({
       id: v.id,
       licensePlate: v.licensePlate,
       model: v.model,
       vehicleType: v.vehicleType,
       vehicleClass: v.vehicleClass,
+      isActive: v.isActive,
+      approvalStatus: v.approvalStatus,
+      selectable: v.approvalStatus === "approved" && v.isActive,
       selected: currentAssignment?.vehicleId === v.id,
     }));
   res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
@@ -128,6 +130,16 @@ router.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (re
   const vehicleId = typeof req.body?.vehicleId === "string" ? req.body.vehicleId.trim() : "";
   if (!vehicleId) {
     res.status(400).json({ error: "vehicle_id_required" });
+    return;
+  }
+  const vehicles = await listFleetVehiclesForCompany(a.companyId);
+  const selectedVehicle = vehicles.find((v) => v.id === vehicleId) ?? null;
+  if (!selectedVehicle) {
+    res.status(400).json({ error: "vehicle_not_found" });
+    return;
+  }
+  if (!selectedVehicle.isActive || selectedVehicle.approvalStatus !== "approved") {
+    res.status(400).json({ error: "vehicle_not_selectable" });
     return;
   }
   const r = await setDriverVehicleAssignment({
