@@ -117,6 +117,7 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     invoice: true,
     onlinePayLater: false,
     driverTracking: true,
+    homepageTopOrder: "sponsors_then_news",
   },
   driverRules: {
     pScheinRequired: true,

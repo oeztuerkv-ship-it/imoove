@@ -16,6 +16,7 @@ const ROWS = [
   ["invoice", "Rechnung / Rechnungsweg"],
   ["onlinePayLater", "Später online zahlen (vorbereitet)"],
   ["driverTracking", "Fahrer-Tracking (Kundensicht)"],
+  ["homepageTopOrder", "Reihenfolge Startseite (Unterstützer/Neuigkeiten)"],
 ];
 
 export default function AppOperationalFeaturesPage() {
@@ -79,6 +80,23 @@ export default function AppOperationalFeaturesPage() {
         </p>
         <div className="admin-form-vertical" style={{ maxWidth: 520, marginTop: 12 }}>
           {ROWS.map(([k, label]) => {
+            if (k === "homepageTopOrder") {
+              const cur = typeof f[k] === "string" ? f[k] : "sponsors_then_news";
+              return (
+                <label key={k} style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                  <span>{label}</span>
+                  <select
+                    className="admin-select"
+                    value={cur}
+                    onChange={(e) => setF((p) => ({ ...p, [k]: e.target.value }))}
+                    style={{ maxWidth: 360 }}
+                  >
+                    <option value="sponsors_then_news">Unterstützer vor Neuigkeiten</option>
+                    <option value="news_then_sponsors">Neuigkeiten vor Unterstützer</option>
+                  </select>
+                </label>
+              );
+            }
             const c = k === "onlinePayLater" ? f[k] === true : f[k] !== false;
             return (
             <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>

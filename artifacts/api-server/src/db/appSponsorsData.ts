@@ -24,6 +24,7 @@ export function parseAppSponsorCategory(raw: string | null | undefined): AppSpon
 }
 
 function rowToPublicDto(r: Row) {
+  const targetType = r.external_url ? "external_url" : "none";
   return {
     id: r.id,
     title: r.title,
@@ -37,6 +38,8 @@ function rowToPublicDto(r: Row) {
     category: parseAppSponsorCategory(r.category),
     audience: parseAppSponsorAudience(r.audience),
     sortOrder: r.sort_order,
+    targetType,
+    targetValue: r.external_url,
   };
 }
 

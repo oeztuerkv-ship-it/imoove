@@ -230,6 +230,10 @@ export default function HomeScreen() {
     category: string;
   };
   const [sponsorTeasers, setSponsorTeasers] = useState<SponsorTeaserItem[]>([]);
+  const homeTopOrder =
+    typeof (platformConfig.features as { homepageTopOrder?: unknown } | undefined)?.homepageTopOrder === "string"
+      ? String((platformConfig.features as { homepageTopOrder?: unknown }).homepageTopOrder)
+      : "sponsors_then_news";
 
   const APP_NEWS_CAROUSEL_PAD = 20;
   const APP_NEWS_CAROUSEL_GAP = 12;
@@ -1299,7 +1303,7 @@ export default function HomeScreen() {
               <Text style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}>{globalNoticeDe}</Text>
             </View>
           ) : null}
-          {!showOnboarding && sponsorTeasers.length > 0 ? (
+          {!showOnboarding && homeTopOrder !== "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
               style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
               onPress={() => router.push("/sponsors" as Href)}
@@ -1425,6 +1429,23 @@ export default function HomeScreen() {
                 </>
               )}
             </View>
+          ) : null}
+          {!showOnboarding && homeTopOrder === "news_then_sponsors" && sponsorTeasers.length > 0 ? (
+            <Pressable
+              style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
+              onPress={() => router.push("/sponsors" as Href)}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Unterstützer & Sponsoren</Text>
+                <Text style={[styles.sponsorTeaserTitle, { color: colors.foreground }]} numberOfLines={2}>
+                  {sponsorTeasers[0]?.title}
+                </Text>
+                <Text style={[styles.sponsorTeaserText, { color: colors.mutedForeground }]} numberOfLines={2}>
+                  {sponsorTeasers[0]?.description}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </Pressable>
           ) : null}
           {!destination ? (
             <>

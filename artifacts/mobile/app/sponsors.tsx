@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useDriver } from "@/context/DriverContext";
@@ -20,6 +20,9 @@ type SponsorItem = {
   externalUrl: string | null;
   buttonText: string | null;
   qrCodeUrl: string | null;
+  qrFromLink?: boolean;
+  targetType?: string;
+  targetValue?: string | null;
   category: string;
 };
 
@@ -29,6 +32,19 @@ export default function SponsorsScreen() {
   const { isLoggedIn: isDriverLoggedIn } = useDriver();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<SponsorItem[]>([]);
+  const [selected, setSelected] = useState<SponsorItem | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+
+  const qrUrlFor = useCallback((it: SponsorItem | null): string | null => {
+    if (!it) return null;
+    const qr = it.qrCodeUrl?.trim();
+    if (qr) return qr;
+    const link = it.targetValue?.trim() || it.externalUrl?.trim() || "";
+    if (it.qrFromLink && /^https:\/\//i.test(link)) {
+      return `https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(link)}`;
+    }
+    return null;
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,10 +73,12 @@ export default function SponsorsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+        <Pressable onPress={() => (selected ? setSelected(null) : router.back())} hitSlop={10} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: colors.foreground }]}>Unterstützer & Sponsoren</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          {selected ? "Sponsor-Details" : "Unterstützer & Sponsoren"}
+        </Text>
       </View>
 
       {loading ? (
@@ -68,28 +86,65 @@ export default function SponsorsScreen() {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {items.map((it) => (
-            <View key={it.id} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              {it.imageUrl ? <Image source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" /> : null}
+        selected ? (
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              {selected.imageUrl ? <Image source={{ uri: selected.imageUrl }} style={styles.heroLarge} resizeMode="cover" /> : null}
               <View style={styles.body}>
-                {it.logoUrl ? <Image source={{ uri: it.logoUrl }} style={styles.logo} resizeMode="contain" /> : null}
-                <Text style={[styles.cardTitle, { color: colors.foreground }]}>{it.title}</Text>
-                <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{it.description}</Text>
-                {it.qrCodeUrl ? <Image source={{ uri: it.qrCodeUrl }} style={styles.qr} resizeMode="contain" /> : null}
-                {it.externalUrl ? (
+                {selected.logoUrl ? <Image source={{ uri: selected.logoUrl }} style={styles.logo} resizeMode="contain" /> : null}
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>{selected.title}</Text>
+                <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{selected.description}</Text>
+                <View style={styles.actionsRow}>
                   <Pressable
-                    style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => void WebBrowser.openBrowserAsync(it.externalUrl ?? "")}
+                    style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
+                    onPress={() => setQrOpen(true)}
                   >
-                    <Text style={styles.actionText}>{it.buttonText?.trim() || "Mehr erfahren"}</Text>
+                    <Text style={styles.actionText}>Rabatt nutzen</Text>
                   </Pressable>
-                ) : null}
+                  <Pressable
+                    style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
+                    onPress={() => {
+                      const link = selected.targetValue?.trim() || selected.externalUrl?.trim() || "";
+                      if (/^https:\/\//i.test(link)) void WebBrowser.openBrowserAsync(link);
+                    }}
+                  >
+                    <Text style={styles.actionText}>Mehr erfahren</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
-          ))}
-        </ScrollView>
+          </ScrollView>
+        ) : (
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            {items.map((it) => (
+              <Pressable key={it.id} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => setSelected(it)}>
+                {it.imageUrl ? <Image source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" /> : null}
+                <View style={styles.body}>
+                  {it.logoUrl ? <Image source={{ uri: it.logoUrl }} style={styles.logo} resizeMode="contain" /> : null}
+                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>{it.title}</Text>
+                  <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>{it.description}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )
       )}
+      <Modal visible={qrOpen} animationType="slide" transparent onRequestClose={() => setQrOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setQrOpen(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: colors.card }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Rabatt nutzen</Text>
+            {qrUrlFor(selected) ? (
+              <Image source={{ uri: qrUrlFor(selected) ?? "" }} style={styles.qrBig} resizeMode="contain" />
+            ) : (
+              <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>Kein QR-Code verfügbar.</Text>
+            )}
+            <Text style={[styles.modalHint, { color: colors.mutedForeground }]}>An der Kasse vorzeigen</Text>
+            <Pressable style={[styles.modalCloseBtn, { backgroundColor: colors.primary }]} onPress={() => setQrOpen(false)}>
+              <Text style={styles.actionText}>Schließen</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -103,11 +158,18 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: { borderWidth: 1, borderRadius: 14, overflow: "hidden" },
   hero: { width: "100%", height: rs(150), backgroundColor: "#f1f5f9" },
+  heroLarge: { width: "100%", height: rs(210), backgroundColor: "#f1f5f9" },
   body: { padding: 12 },
   logo: { width: 88, height: 44, marginBottom: 8 },
   cardTitle: { fontSize: rf(17), fontFamily: "Inter_700Bold", marginBottom: 6 },
   cardDesc: { fontSize: rf(14), fontFamily: "Inter_400Regular", lineHeight: rf(20), marginBottom: 10 },
-  qr: { width: rs(120), height: rs(120), marginBottom: 10, alignSelf: "flex-start" },
-  actionBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, alignSelf: "flex-start" },
+  actionsRow: { flexDirection: "row", gap: 10, marginTop: 10 },
+  actionBtnFull: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, flex: 1, alignItems: "center" },
   actionText: { color: "#fff", fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  modalCard: { borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 16, alignItems: "center" },
+  modalTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold", marginBottom: 8 },
+  modalHint: { fontSize: rf(13), fontFamily: "Inter_500Medium", marginTop: 8, marginBottom: 10 },
+  qrBig: { width: rs(220), height: rs(220), marginTop: 6 },
+  modalCloseBtn: { borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10, alignSelf: "stretch", alignItems: "center" },
 });
