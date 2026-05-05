@@ -979,24 +979,6 @@ function TabProfil({
   const colors = useColors();
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabScroll, { paddingTop: 24 }]}>
-      {/* Avatar + Name */}
-      <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.profilAvatarWrap}>
-          <View style={styles.profilAvatar}>
-            <Text style={styles.profilAvatarText}>{driver.name[0]}</Text>
-          </View>
-          <View style={styles.profilAvatarBadge}>
-            <Feather name="check" size={10} color="#fff" />
-          </View>
-        </View>
-        <Text style={[styles.profilName, { color: colors.foreground }]}>{driver.name}</Text>
-        <Text style={[styles.profilEmail, { color: colors.mutedForeground }]}>{driver.email}</Text>
-        <View style={styles.profilRatingRow}>
-          <Feather name="star" size={14} color="#F59E0B" />
-          <Text style={[styles.profilRatingText, { color: colors.foreground }]}>{driver.rating.toFixed(1)} Sterne</Text>
-        </View>
-      </View>
-
       {/* Vehicle info */}
       <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>FAHRZEUG</Text>
@@ -1021,20 +1003,23 @@ function TabProfil({
           </View>
           <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </Pressable>
-      </View>
-
-      {/* Status */}
-      <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>KONTO</Text>
-        <View style={styles.profilRow}>
-          <View style={[styles.profilIconBg, { backgroundColor: "#F0FDF4" }]}>
-            <Feather name="shield" size={18} color="#22C55E" />
+        {!driver.einsatzbereit && driver.driverBlockKind === "vehicle" ? (
+          <View
+            style={{
+              marginTop: 10,
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 9,
+              backgroundColor: "#FEF2F2",
+              borderWidth: 1,
+              borderColor: "#FECACA",
+            }}
+          >
+            <Text style={{ color: "#B91C1C", fontSize: 12, fontFamily: "Inter_500Medium" }}>
+              Bitte aktives Fahrzeug wählen, um online zu gehen.
+            </Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>Lizenzierter Fahrer</Text>
-            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Onroda Esslingen</Text>
-          </View>
-        </View>
+        ) : null}
       </View>
 
       <Pressable
@@ -2900,14 +2885,14 @@ export default function DriverDashboard() {
 
       <Modal
         visible={showVehiclePicker}
-        transparent
+        transparent={false}
         animationType="slide"
         onRequestClose={() => {
           if (vehiclePickerSaving) return;
           setShowVehiclePicker(false);
         }}
       >
-        <View style={styles.sheetBackdrop}>
+        <View style={[styles.sheetScreen, { backgroundColor: colors.background }]}>
           <View style={[styles.sheetCard, { backgroundColor: colors.card }]}>
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Fahrzeug waehlen</Text>
@@ -2947,9 +2932,7 @@ export default function DriverDashboard() {
                       <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
                         {v.licensePlate}
                       </Text>
-                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                        {v.model || "Fahrzeug"}
-                      </Text>
+                      {v.model ? <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>{v.model}</Text> : null}
                     </View>
                     {v.selected ? <Feather name="check-circle" size={18} color="#DC2626" /> : <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
                   </Pressable>
@@ -3285,16 +3268,15 @@ const activeStyles = StyleSheet.create({
   priceCancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   priceConfirmBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: "#22C55E" },
   priceConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  sheetBackdrop: {
+  sheetScreen: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
+    paddingTop: 10,
   },
   sheetCard: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 16,
+    marginHorizontal: 12,
     padding: 16,
-    paddingBottom: 22,
+    paddingBottom: 14,
   },
   sheetHeader: {
     flexDirection: "row",
