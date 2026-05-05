@@ -69,6 +69,9 @@ export default function AppSponsorsPage() {
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [form, setForm] = useState(emptyForm());
+  const [teaserTitle, setTeaserTitle] = useState("");
+  const [teaserBody, setTeaserBody] = useState("");
+  const [teaserSaving, setTeaserSaving] = useState(false);
 
   const mode = useMemo(() => (editingId ? "edit" : "create"), [editingId]);
 
@@ -80,6 +83,17 @@ export default function AppSponsorsPage() {
       const { data } = await readJson(res);
       if (!res.ok || !data?.ok) throw new Error(formatFailure(res, data));
       setItems(Array.isArray(data.items) ? data.items : []);
+      const cfgRes = await adminFetch(`${API_BASE}/admin/app-operational`);
+      const { data: cfgData } = await readJson(cfgRes);
+      if (cfgRes.ok && cfgData?.ok) {
+        const msg = cfgData?.config?.messages && typeof cfgData.config.messages === "object" ? cfgData.config.messages : {};
+        setTeaserTitle(typeof msg.sponsorsTeaserTitleDe === "string" ? msg.sponsorsTeaserTitleDe : "Unterstützer & Sponsoren");
+        setTeaserBody(
+          typeof msg.sponsorsTeaserBodyDe === "string"
+            ? msg.sponsorsTeaserBodyDe
+            : "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
       setItems([]);
@@ -177,6 +191,29 @@ export default function AppSponsorsPage() {
     }
   }
 
+  async function saveTeaserBlock() {
+    setTeaserSaving(true);
+    setError("");
+    try {
+      const res = await adminFetch(`${API_BASE}/admin/app-operational`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: {
+            sponsorsTeaserTitleDe: teaserTitle.trim() || "Unterstützer & Sponsoren",
+            sponsorsTeaserBodyDe: teaserBody.trim() || "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
+          },
+        }),
+      });
+      const { data } = await readJson(res);
+      if (!res.ok || !data?.ok) throw new Error(formatFailure(res, data));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setTeaserSaving(false);
+    }
+  }
+
   return (
     <div className="admin-page admin-page--loose app-news-page">
       {error ? <div className="admin-error-banner">{error}</div> : null}
@@ -186,6 +223,25 @@ export default function AppSponsorsPage() {
         <p className="admin-table-sub">
           Eigenständiger Bereich neben App-Neuigkeiten. Mobile nutzt <code>GET /api/app/sponsors</code> (max 10 aktiv).
         </p>
+      </div>
+      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
+        <div className="admin-panel-card__title">Homepage-Hinweisblock (allgemein)</div>
+        <p className="admin-table-sub">
+          Dieser Block wird auf der Startseite gezeigt. Einzelne Sponsoren erscheinen erst auf der nächsten Seite <code>/sponsors</code>.
+        </p>
+        <div className="app-news-section__grid" style={{ marginTop: 10 }}>
+          <label className="admin-form-pair app-news-field--full">
+            <span className="admin-field-label">Titel</span>
+            <input className="admin-input" value={teaserTitle} onChange={(e) => setTeaserTitle(e.target.value)} />
+          </label>
+          <label className="admin-form-pair app-news-field--full">
+            <span className="admin-field-label">Kurztext</span>
+            <textarea className="admin-textarea" rows={3} value={teaserBody} onChange={(e) => setTeaserBody(e.target.value)} />
+          </label>
+        </div>
+        <button type="button" className="btn btn-red" onClick={() => void saveTeaserBlock()} disabled={teaserSaving}>
+          {teaserSaving ? "Speichert…" : "Hinweisblock speichern"}
+        </button>
       </div>
 
       <div className="app-news-layout">

@@ -51,6 +51,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     bookingBlockedDe: "Neue Buchungen sind vorübergehend deaktiviert.",
     customerAppClosedDe: "Die Kunden-App ist im Wartungsmodus.",
     operationalRuleDe: "Diese Buchung ist mit den aktuellen Plattform-Regeln nicht zulässig.",
+    sponsorsTeaserTitleDe: "Unterstützer & Sponsoren",
+    sponsorsTeaserBodyDe: "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
   },
   tariffs: {
     active: true,

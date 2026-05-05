@@ -234,6 +234,15 @@ export default function HomeScreen() {
     typeof (platformConfig.features as { homepageTopOrder?: unknown } | undefined)?.homepageTopOrder === "string"
       ? String((platformConfig.features as { homepageTopOrder?: unknown }).homepageTopOrder)
       : "sponsors_then_news";
+  const sponsorTeaserTitle =
+    typeof (platformConfig.messages as { sponsorsTeaserTitleDe?: unknown } | undefined)?.sponsorsTeaserTitleDe === "string"
+      ? String((platformConfig.messages as { sponsorsTeaserTitleDe?: unknown }).sponsorsTeaserTitleDe).trim() || "Unterstützer & Sponsoren"
+      : "Unterstützer & Sponsoren";
+  const sponsorTeaserBody =
+    typeof (platformConfig.messages as { sponsorsTeaserBodyDe?: unknown } | undefined)?.sponsorsTeaserBodyDe === "string"
+      ? String((platformConfig.messages as { sponsorsTeaserBodyDe?: unknown }).sponsorsTeaserBodyDe).trim() ||
+        "Entdecke Partner, Aktionen und Angebote in deiner Nähe."
+      : "Entdecke Partner, Aktionen und Angebote in deiner Nähe.";
 
   const APP_NEWS_CAROUSEL_PAD = 20;
   const APP_NEWS_CAROUSEL_GAP = 12;
@@ -1311,10 +1320,10 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Unterstützer & Sponsoren</Text>
                 <Text style={[styles.sponsorTeaserTitle, { color: colors.foreground }]} numberOfLines={2}>
-                  {sponsorTeasers[0]?.title}
+                  {sponsorTeaserTitle}
                 </Text>
                 <Text style={[styles.sponsorTeaserText, { color: colors.mutedForeground }]} numberOfLines={2}>
-                  {sponsorTeasers[0]?.description}
+                  {sponsorTeaserBody}
                 </Text>
               </View>
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
@@ -1438,10 +1447,10 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Unterstützer & Sponsoren</Text>
                 <Text style={[styles.sponsorTeaserTitle, { color: colors.foreground }]} numberOfLines={2}>
-                  {sponsorTeasers[0]?.title}
+                  {sponsorTeaserTitle}
                 </Text>
                 <Text style={[styles.sponsorTeaserText, { color: colors.mutedForeground }]} numberOfLines={2}>
-                  {sponsorTeasers[0]?.description}
+                  {sponsorTeaserBody}
                 </Text>
               </View>
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
@@ -1734,7 +1743,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* ── BOTTOM TAB BAR ── */}
-      <BottomTabBar active="start" />
+      <BottomTabBar active="start" offsetY={rs(8)} />
 
       {/* ══════════════════════════════════════════════════
           ── VOLLBILD-SUCH-OVERLAY ──
