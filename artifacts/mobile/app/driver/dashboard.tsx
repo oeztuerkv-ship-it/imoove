@@ -42,12 +42,6 @@ function isKrankenkasseRide(paymentMethod: string) {
   return paymentMethod.startsWith("Krankenkasse");
 }
 
-function platformPricingModeLabelDe(pm: unknown): string {
-  if (pm === "fixed_price") return "Fixpreis";
-  if (pm === "hybrid") return "Hybrid";
-  return "Taxitarif";
-}
-
 function accessCodeErrorMessage(code: string): string {
   const m: Record<string, string> = {
     pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
@@ -974,11 +968,13 @@ function TabProfil({
   onLogout,
   offersTeaserTitle,
   offersTeaserBody,
+  onOpenVehiclePicker,
 }: {
   driver: DriverProfile;
   onLogout: () => void;
   offersTeaserTitle: string;
   offersTeaserBody: string;
+  onOpenVehiclePicker: () => void;
 }) {
   const colors = useColors();
   return (
@@ -1004,17 +1000,18 @@ function TabProfil({
       {/* Vehicle info */}
       <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>FAHRZEUG</Text>
-        <View style={styles.profilRow}>
+        <Pressable style={styles.profilRow} onPress={onOpenVehiclePicker}>
           <View style={[styles.profilIconBg, { backgroundColor: "#F3F4F6" }]}>
             <MaterialCommunityIcons name="car" size={20} color="#374151" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>{driver.car}</Text>
-            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Fahrzeug</Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Fahrzeug waehlen</Text>
           </View>
-        </View>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+        </Pressable>
         <View style={[styles.profilDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.profilRow}>
+        <Pressable style={styles.profilRow} onPress={onOpenVehiclePicker}>
           <View style={[styles.profilIconBg, { backgroundColor: "#F3F4F6" }]}>
             <Feather name="credit-card" size={18} color="#374151" />
           </View>
@@ -1022,7 +1019,8 @@ function TabProfil({
             <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>{driver.plate}</Text>
             <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Kennzeichen</Text>
           </View>
-        </View>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+        </Pressable>
       </View>
 
       {/* Status */}
@@ -2079,6 +2077,12 @@ export default function DriverDashboard() {
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
+  const [showVehiclePicker, setShowVehiclePicker] = useState(false);
+  const [vehiclePickerLoading, setVehiclePickerLoading] = useState(false);
+  const [vehiclePickerSaving, setVehiclePickerSaving] = useState(false);
+  const [vehicleOptions, setVehicleOptions] = useState<
+    Array<{ id: string; licensePlate: string; model: string; selected: boolean }>
+  >([]);
   const [codeRideFrom, setCodeRideFrom] = useState("");
   const [codeRideTo, setCodeRideTo] = useState("");
   const [codeRideAccessCode, setCodeRideAccessCode] = useState("");
@@ -2087,6 +2091,64 @@ export default function DriverDashboard() {
   const [codeRideVerified, setCodeRideVerified] = useState(false);
   const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
+  const loadVehicleOptions = useCallback(async () => {
+    if (!driver?.authToken) return;
+    setVehiclePickerLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/fleet-driver/v1/vehicles`, {
+        headers: { Authorization: `Bearer ${driver.authToken}` },
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        vehicles?: Array<{ id: string; licensePlate: string; model: string; selected: boolean }>;
+      };
+      if (!res.ok || !data?.ok || !Array.isArray(data.vehicles)) {
+        setVehicleOptions([]);
+        return;
+      }
+      setVehicleOptions(data.vehicles);
+    } catch {
+      setVehicleOptions([]);
+    } finally {
+      setVehiclePickerLoading(false);
+    }
+  }, [driver?.authToken]);
+
+  const openVehiclePicker = useCallback(() => {
+    setShowVehiclePicker(true);
+    void loadVehicleOptions();
+  }, [loadVehicleOptions]);
+
+  const selectVehicle = useCallback(
+    async (vehicleId: string) => {
+      if (!driver?.authToken || !vehicleId) return;
+      setVehiclePickerSaving(true);
+      try {
+        const res = await fetch(`${API_BASE}/fleet-driver/v1/select-vehicle`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${driver.authToken}`,
+          },
+          body: JSON.stringify({ vehicleId }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+        if (!res.ok || !data?.ok) {
+          Alert.alert("Fahrzeugwechsel fehlgeschlagen", data?.error || "Bitte erneut versuchen.");
+          return;
+        }
+        await refreshEinsatzbereit();
+        await loadVehicleOptions();
+        setShowVehiclePicker(false);
+      } catch {
+        Alert.alert("Fahrzeugwechsel fehlgeschlagen", "Netzwerkfehler.");
+      } finally {
+        setVehiclePickerSaving(false);
+      }
+    },
+    [driver?.authToken, loadVehicleOptions, refreshEinsatzbereit],
+  );
+
   const prevPendingIds = useRef<Set<string>>(new Set());
   const firstRender = useRef(true);
 
@@ -2484,13 +2546,7 @@ export default function DriverDashboard() {
             </View>
             <View>
               <Text style={styles.headerName}>{driver.name}</Text>
-              <Text style={styles.headerSub}>{driver.car} · {driver.plate}</Text>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94A3B8", marginTop: 2 }}>
-                Preis: {platformPricingModeLabelDe(
-                  (appPlatformConfig.tariffs as { pricingMode?: string } | undefined)?.pricingMode,
-                )}{" "}
-                · vom System (nicht änderbar)
-              </Text>
+              <Text style={styles.headerSub}>Kennzeichen · {driver.plate}</Text>
             </View>
         </View>
         <Pressable
@@ -2648,6 +2704,7 @@ export default function DriverDashboard() {
                 onLogout={handleLogout}
                 offersTeaserTitle={offersTeaserTitle}
                 offersTeaserBody={offersTeaserBody}
+                onOpenVehiclePicker={openVehiclePicker}
               />
             )}
           </>
@@ -2839,6 +2896,68 @@ export default function DriverDashboard() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={showVehiclePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (vehiclePickerSaving) return;
+          setShowVehiclePicker(false);
+        }}
+      >
+        <View style={styles.sheetBackdrop}>
+          <View style={[styles.sheetCard, { backgroundColor: colors.card }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Fahrzeug waehlen</Text>
+              <Pressable
+                disabled={vehiclePickerSaving}
+                onPress={() => setShowVehiclePicker(false)}
+                style={styles.sheetCloseBtn}
+              >
+                <Feather name="x" size={18} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            {vehiclePickerLoading ? (
+              <View style={{ paddingVertical: 20 }}>
+                <ActivityIndicator color="#DC2626" />
+              </View>
+            ) : vehicleOptions.length === 0 ? (
+              <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular" }}>
+                Keine freigegebenen Fahrzeuge gefunden.
+              </Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                {vehicleOptions.map((v) => (
+                  <Pressable
+                    key={v.id}
+                    style={[
+                      styles.sheetItemRow,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: v.selected ? "#FEF2F2" : colors.background,
+                        opacity: vehiclePickerSaving ? 0.6 : 1,
+                      },
+                    ]}
+                    disabled={vehiclePickerSaving}
+                    onPress={() => void selectVehicle(v.id)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+                        {v.licensePlate}
+                      </Text>
+                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                        {v.model || "Fahrzeug"}
+                      </Text>
+                    </View>
+                    {v.selected ? <Feather name="check-circle" size={18} color="#DC2626" /> : <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -3166,4 +3285,39 @@ const activeStyles = StyleSheet.create({
   priceCancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   priceConfirmBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: "#22C55E" },
   priceConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+  },
+  sheetCard: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    paddingBottom: 22,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  sheetTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  sheetCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetItemRow: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
 });

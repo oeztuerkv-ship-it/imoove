@@ -46,6 +46,7 @@ const DEFAULT_NICHT_FREI_MSG =
 /** Antwort `GET /fleet-driver/v1/me` → Profil (Token bleibt aus `prev`). */
 function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {
   const d = (me.driver ?? {}) as Record<string, unknown>;
+  const av = (me.assignedVehicle ?? {}) as Record<string, unknown>;
   const einsatzbereit = me.einsatzbereit === true;
   const notFreigegebenMessage =
     typeof me.notFreigegebenMessage === "string" && me.notFreigegebenMessage.trim()
@@ -67,6 +68,14 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     name:
       `${String(d.firstName ?? "").trim()} ${String(d.lastName ?? "").trim()}`.trim() ||
       prev.name,
+    plate:
+      typeof av.licensePlate === "string" && av.licensePlate.trim()
+        ? av.licensePlate.trim()
+        : prev.plate,
+    car:
+      typeof av.model === "string" && av.model.trim()
+        ? av.model.trim()
+        : prev.car,
     email: String(d.email ?? prev.email ?? "").trim().toLowerCase(),
     mustChangePassword: Boolean(d.mustChangePassword ?? prev.mustChangePassword),
     blockedUntil: accessStatus === "active" ? null : prev.blockedUntil,

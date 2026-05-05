@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Response } from "express";
+import { Router, type IRouter } from "express";
 import { isPostgresConfigured } from "../db/client";
 import {
   findFleetDriverInCompany,
@@ -6,6 +6,8 @@ import {
   touchFleetDriverHeartbeat,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
+import { listAssignmentsForCompany, setDriverVehicleAssignment } from "../db/fleetAssignmentsData";
+import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
@@ -31,6 +33,12 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     res.status(401).json({ error: "not_found" });
     return;
   }
+  const [assignments, vehicles] = await Promise.all([
+    listAssignmentsForCompany(a.companyId),
+    listFleetVehiclesForCompany(a.companyId),
+  ]);
+  const assigned = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
+  const assignedVehicle = assigned ? vehicles.find((v) => v.id === assigned.vehicleId) ?? null : null;
   const listRow = fleetDriverTableRowToList(row);
   const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
   const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
@@ -65,7 +73,73 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       vehicleLegalType: row.vehicle_legal_type,
       vehicleClass: row.vehicle_class,
     },
+    assignedVehicle: assignedVehicle
+      ? {
+          vehicleId: assignedVehicle.id,
+          licensePlate: assignedVehicle.licensePlate,
+          model: assignedVehicle.model,
+          vehicleType: assignedVehicle.vehicleType,
+          vehicleClass: assignedVehicle.vehicleClass,
+        }
+      : null,
   });
+});
+
+router.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
+  const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+  if (!row) {
+    res.status(401).json({ error: "not_found" });
+    return;
+  }
+  const [assignments, vehicles] = await Promise.all([
+    listAssignmentsForCompany(a.companyId),
+    listFleetVehiclesForCompany(a.companyId),
+  ]);
+  const currentAssignment = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
+  const items = vehicles
+    .filter((v) => v.approvalStatus === "approved" && v.isActive)
+    .map((v) => ({
+      id: v.id,
+      licensePlate: v.licensePlate,
+      model: v.model,
+      vehicleType: v.vehicleType,
+      vehicleClass: v.vehicleClass,
+      selected: currentAssignment?.vehicleId === v.id,
+    }));
+  res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
+});
+
+router.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
+  const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+  if (!row) {
+    res.status(401).json({ error: "not_found" });
+    return;
+  }
+  const vehicleId = typeof req.body?.vehicleId === "string" ? req.body.vehicleId.trim() : "";
+  if (!vehicleId) {
+    res.status(400).json({ error: "vehicle_id_required" });
+    return;
+  }
+  const r = await setDriverVehicleAssignment({
+    companyId: a.companyId,
+    driverId: a.fleetDriverId,
+    vehicleId,
+  });
+  if (!r.ok) {
+    res.status(400).json({ error: r.error });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
