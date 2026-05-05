@@ -2095,7 +2095,9 @@ export default function DriverDashboard() {
         ok?: boolean;
         vehicles?: Array<{
           id: string;
-          licensePlate: string;
+          licensePlate?: string;
+          plate?: string;
+          license_plate?: string;
           model: string;
           selected: boolean;
           isActive?: boolean;
@@ -2110,7 +2112,14 @@ export default function DriverDashboard() {
       setVehicleOptions(
         data.vehicles.map((v) => ({
           id: v.id,
-          licensePlate: v.licensePlate,
+          licensePlate:
+            typeof v.licensePlate === "string" && v.licensePlate.trim()
+              ? v.licensePlate.trim()
+              : typeof v.plate === "string" && v.plate.trim()
+                ? v.plate.trim()
+                : typeof v.license_plate === "string" && v.license_plate.trim()
+                  ? v.license_plate.trim()
+                  : "—",
           model: v.model,
           selected: Boolean(v.selected),
           isActive: Boolean(v.isActive),
@@ -2918,21 +2927,21 @@ export default function DriverDashboard() {
           setShowVehiclePicker(false);
         }}
       >
-        <View style={[styles.sheetScreen, { backgroundColor: colors.background, paddingTop: topPad + 6 }]}>
-          <View style={[styles.sheetHeader, { paddingHorizontal: 14 }]}>
-            <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Fahrzeug waehlen</Text>
+        <View style={[activeStyles.sheetScreen, { backgroundColor: colors.background, paddingTop: topPad + 6 }]}>
+          <View style={[activeStyles.sheetHeader, { paddingHorizontal: 14 }]}>
+            <Text style={[activeStyles.sheetTitle, { color: colors.foreground }]}>Fahrzeug waehlen</Text>
             <Pressable
               disabled={vehiclePickerSaving}
               onPress={() => setShowVehiclePicker(false)}
-              style={[styles.sheetCloseBtn, { backgroundColor: colors.card }]}
+              style={[activeStyles.sheetCloseBtn, { backgroundColor: colors.card }]}
             >
               <Feather name="x" size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
-          <Text style={[styles.sheetSubtitle, { color: colors.mutedForeground, paddingHorizontal: 14 }]}>
+          <Text style={[activeStyles.sheetSubtitle, { color: colors.mutedForeground, paddingHorizontal: 14 }]}>
             Bitte ein aktives Kennzeichen aus Ihrem Unternehmen auswaehlen.
           </Text>
-          <View style={[styles.sheetCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[activeStyles.sheetCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {vehiclePickerLoading ? (
               <View style={{ paddingVertical: 20 }}>
                 <ActivityIndicator color="#DC2626" />
@@ -2947,7 +2956,7 @@ export default function DriverDashboard() {
                   <Pressable
                     key={v.id}
                     style={[
-                      styles.sheetItemRow,
+                      activeStyles.sheetItemRow,
                       {
                         borderColor: v.selected ? "#FCA5A5" : colors.border,
                         backgroundColor: v.selected ? "#FEF2F2" : colors.background,
@@ -2966,10 +2975,10 @@ export default function DriverDashboard() {
                           {v.model}
                         </Text>
                       ) : null}
-                      <View style={styles.sheetStatusRow}>
+                      <View style={activeStyles.sheetStatusRow}>
                         <Text
                           style={[
-                            styles.sheetStatusPill,
+                            activeStyles.sheetStatusPill,
                             {
                               color: v.isActive ? "#166534" : "#9A3412",
                               backgroundColor: v.isActive ? "#DCFCE7" : "#FFEDD5",
@@ -2980,7 +2989,7 @@ export default function DriverDashboard() {
                         </Text>
                         <Text
                           style={[
-                            styles.sheetStatusPill,
+                            activeStyles.sheetStatusPill,
                             {
                               color: v.approvalStatus === "approved" ? "#1D4ED8" : "#92400E",
                               backgroundColor: v.approvalStatus === "approved" ? "#DBEAFE" : "#FEF3C7",

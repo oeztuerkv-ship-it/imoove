@@ -47,6 +47,14 @@ const DEFAULT_NICHT_FREI_MSG =
 function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, unknown>): DriverProfile {
   const d = (me.driver ?? {}) as Record<string, unknown>;
   const av = (me.assignedVehicle ?? {}) as Record<string, unknown>;
+  const assignedPlate =
+    typeof av.licensePlate === "string" && av.licensePlate.trim()
+      ? av.licensePlate.trim()
+      : typeof av.plate === "string" && av.plate.trim()
+        ? av.plate.trim()
+        : typeof av.license_plate === "string" && av.license_plate.trim()
+          ? av.license_plate.trim()
+          : "";
   const einsatzbereit = me.einsatzbereit === true;
   const notFreigegebenMessage =
     typeof me.notFreigegebenMessage === "string" && me.notFreigegebenMessage.trim()
@@ -68,10 +76,7 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     name:
       `${String(d.firstName ?? "").trim()} ${String(d.lastName ?? "").trim()}`.trim() ||
       prev.name,
-    plate:
-      typeof av.licensePlate === "string" && av.licensePlate.trim()
-        ? av.licensePlate.trim()
-        : prev.plate,
+    plate: assignedPlate || prev.plate,
     car:
       typeof av.model === "string" && av.model.trim()
         ? av.model.trim()

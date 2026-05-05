@@ -76,6 +76,8 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     assignedVehicle: assignedVehicle
       ? {
           vehicleId: assignedVehicle.id,
+          plate: assignedVehicle.licensePlate,
+          license_plate: assignedVehicle.licensePlate,
           licensePlate: assignedVehicle.licensePlate,
           model: assignedVehicle.model,
           vehicleType: assignedVehicle.vehicleType,
@@ -102,15 +104,18 @@ router.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res)
   ]);
   const currentAssignment = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
   const items = vehicles
+    .filter((v) => v.isActive && v.approvalStatus === "approved")
     .map((v) => ({
       id: v.id,
+      plate: v.licensePlate,
+      license_plate: v.licensePlate,
       licensePlate: v.licensePlate,
       model: v.model,
       vehicleType: v.vehicleType,
       vehicleClass: v.vehicleClass,
       isActive: v.isActive,
       approvalStatus: v.approvalStatus,
-      selectable: v.approvalStatus === "approved" && v.isActive,
+      selectable: true,
       selected: currentAssignment?.vehicleId === v.id,
     }));
   res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
@@ -151,7 +156,22 @@ router.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (re
     res.status(400).json({ error: r.error });
     return;
   }
-  res.json({ ok: true });
+  const refreshedVehicles = await listFleetVehiclesForCompany(a.companyId);
+  const selectedVehicleAfter = refreshedVehicles.find((v) => v.id === vehicleId) ?? null;
+  res.json({
+    ok: true,
+    selectedVehicle: selectedVehicleAfter
+      ? {
+          vehicleId: selectedVehicleAfter.id,
+          plate: selectedVehicleAfter.licensePlate,
+          license_plate: selectedVehicleAfter.licensePlate,
+          licensePlate: selectedVehicleAfter.licensePlate,
+          model: selectedVehicleAfter.model,
+          vehicleType: selectedVehicleAfter.vehicleType,
+          vehicleClass: selectedVehicleAfter.vehicleClass,
+        }
+      : null,
+  });
 });
 
 router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
