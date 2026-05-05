@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../lib/apiBase.js";
 import DashboardOverviewPage from "../dashboard/DashboardOverviewPage.jsx";
 import { medicalOpenOperationsCount } from "../dashboard/dashboardHelpers.js";
-const STORAGE_KEY = "onrodaPanelJwt";
+import { getPartnerJwt } from "../lib/partnerSessionStorage.js";
 
 function getPanelHeaders() {
-  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : "";
+  const token = typeof window !== "undefined" ? getPartnerJwt() : "";
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

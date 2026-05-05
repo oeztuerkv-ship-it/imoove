@@ -1,22 +1,71 @@
 import { useState, useEffect } from "react";
 import { API_BASE } from "../lib/apiBase.js";
-import { adminApiHeaders } from "../lib/adminApiHeaders.js";
-import { maskData } from "../lib/permissions.js";
+import { usePanelAuth } from "../context/PanelAuthContext.jsx";
+
+function normalizeKasseRow(r) {
+  const id = String(r.id ?? "");
+  const meta =
+    r.partnerBookingMeta && typeof r.partnerBookingMeta === "object" ? r.partnerBookingMeta : {};
+  const from = String(r.fromFull ?? r.from ?? "").trim();
+  const to = String(r.toFull ?? r.to ?? "").trim();
+  const price =
+    typeof r.finalFare === "number" && Number.isFinite(r.finalFare)
+      ? r.finalFare
+      : typeof r.estimatedFare === "number" && Number.isFinite(r.estimatedFare)
+        ? r.estimatedFare
+        : 0;
+  const patientId =
+    typeof r.passengerId === "string" && r.passengerId.trim()
+      ? r.passengerId.trim()
+      : typeof meta.patient_reference === "string"
+        ? String(meta.patient_reference).trim()
+        : "";
+  const costCenter = typeof meta.cost_center === "string" ? meta.cost_center : "";
+  return {
+    id,
+    patient_id: patientId,
+    pickup_address: from || "—",
+    destination_address: to || "—",
+    cost_center: costCenter,
+    price,
+  };
+}
 
 // WICHTIG: export default muss hier stehen!
 export default function KasseMasterPanel({ company, onUpdate }) {
+  const { token } = usePanelAuth();
   const [view, setView] = useState("dashboard");
   const [orders, setOrders] = useState([]);
   
   const theme = { green: "#27ae60", dark: "#1e3a2b", light: "#f0f9f4" };
 
-  // ECHTE DATEN LADEN (Anonymisiert)
+  /** Nur Mandanten-API — niemals `/api/admin/*` aus dem Partner-Panel. */
   useEffect(() => {
-    fetch(`${API_BASE}/admin/companies/${company.id}/orders`, { headers: adminApiHeaders() })
-      .then(res => res.json())
-      .then(json => setOrders(Array.isArray(json) ? json : (json.items || [])))
-      .catch(err => console.error("API Fehler Kasse:", err));
-  }, [company.id]);
+    if (!token || !company?.id) {
+      setOrders([]);
+      return undefined;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/panel/v1/rides`, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !json?.ok || !Array.isArray(json.rides)) {
+          setOrders([]);
+          return;
+        }
+        setOrders(json.rides.map(normalizeKasseRow));
+      } catch {
+        if (!cancelled) setOrders([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, company?.id]);
 
   return (
     <div style={{ display: "flex", background: "#fff", border: `2px solid ${theme.green}`, borderRadius: "12px", overflow: "hidden", minHeight: "750px" }}>
@@ -58,11 +107,11 @@ export default function KasseMasterPanel({ company, onUpdate }) {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(o => (
-                  <tr key={o.id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={{ padding: "10px" }}>#{o.id.toString().slice(-4)}</td>
-                    <td style={{ fontWeight: "bold", color: theme.green }}>{o.patient_id || "PID-88902"}</td>
-                    <td>{o.pickup_address.split(",")[0]} → {o.destination_address.split(",")[0]}</td>
+                {orders.map((o, idx) => (
+                  <tr key={o.id ? `ride-${o.id}` : `idx-${idx}`} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={{ padding: "10px" }}>#{String(o.id || "").slice(-4) || "—"}</td>
+                    <td style={{ fontWeight: "bold", color: theme.green }}>{o.patient_id || "—"}</td>
+                    <td>{String(o.pickup_address).split(",")[0]} → {String(o.destination_address).split(",")[0]}</td>
                     <td>{o.cost_center || "Allgemein"}</td>
                     <td><strong>{(o.price || 0).toFixed(2)} €</strong></td>
                   </tr>

@@ -9,8 +9,8 @@ import {
   useState,
 } from "react";
 import { API_BASE } from "../lib/apiBase.js";
-
-const STORAGE_KEY = "onrodaPanelJwt";
+import { getPartnerJwt, setPartnerJwt } from "../lib/partnerSessionStorage.js";
+import { isLikelyPanelSessionJwt } from "../lib/unsafeJwtPayload.js";
 
 const PanelAuthContext = createContext(null);
 
@@ -27,7 +27,8 @@ async function fetchMe(jwt) {
 export function PanelAuthProvider({ children }) {
   const [token, setTokenState] = useState(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) || null;
+      const t = getPartnerJwt();
+      return t || null;
     } catch {
       return null;
     }
@@ -37,11 +38,7 @@ export function PanelAuthProvider({ children }) {
   const [error, setError] = useState("");
 
   const clearSession = useCallback(() => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
+    setPartnerJwt("");
     setTokenState(null);
     setUser(null);
   }, []);
@@ -50,6 +47,13 @@ export function PanelAuthProvider({ children }) {
     let cancelled = false;
     if (!token) {
       setUser(null);
+      setBooting(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (!isLikelyPanelSessionJwt(token)) {
+      clearSession();
       setBooting(false);
       return () => {
         cancelled = true;
@@ -136,8 +140,12 @@ export function PanelAuthProvider({ children }) {
       setError("Ungültige Antwort der API (kein Token).");
       return false;
     }
+    if (!isLikelyPanelSessionJwt(jwt)) {
+      setError("Ungültiges Token — kein Partner-Zugang.");
+      return false;
+    }
     try {
-      localStorage.setItem(STORAGE_KEY, jwt);
+      setPartnerJwt(jwt);
     } catch {
       /* ignore */
     }

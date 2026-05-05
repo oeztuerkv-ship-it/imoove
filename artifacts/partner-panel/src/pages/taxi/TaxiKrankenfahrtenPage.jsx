@@ -11,13 +11,11 @@ import {
 } from "../../dashboard/dashboardHelpers.js";
 import { filterMedicalRides, formatMoney, rideFareAmount } from "../finance/financeHelpers.js";
 
-const STORAGE_KEY = "onrodaPanelJwt";
-
-function panelHeaders() {
-  const token = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : "";
+function panelHeaders(jwt) {
+  const t = typeof jwt === "string" ? jwt.trim() : "";
   return {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(t ? { Authorization: `Bearer ${t}` } : {}),
   };
 }
 
@@ -99,7 +97,7 @@ export default function TaxiKrankenfahrtenPage() {
     setRidesErr("");
     setRidesLoaded(false);
     try {
-      const res = await fetch(`${API_BASE}/panel/v1/rides`, { headers: panelHeaders() });
+      const res = await fetch(`${API_BASE}/panel/v1/rides`, { headers: panelHeaders(token) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         setRidesErr(typeof data?.error === "string" ? data.error : "Fahrten konnten nicht geladen werden.");
@@ -123,7 +121,7 @@ export default function TaxiKrankenfahrtenPage() {
     }
     setSeriesNote("");
     try {
-      const res = await fetch(`${API_BASE}/panel/v1/partner-ride-series`, { headers: panelHeaders() });
+      const res = await fetch(`${API_BASE}/panel/v1/partner-ride-series`, { headers: panelHeaders(token) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
         setSeries([]);

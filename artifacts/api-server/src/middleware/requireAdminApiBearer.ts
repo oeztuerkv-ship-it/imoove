@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { jwtVerify, SignJWT } from "jose";
+import { decodeJwt, jwtVerify, SignJWT } from "jose";
 import {
   findActiveAdminAuthUserByIdentity,
   findActiveAdminAuthUserByUsername,
@@ -20,6 +20,19 @@ export type AdminAuthPrincipal = {
 declare module "express-serve-static-core" {
   interface Request {
     adminAuth?: AdminAuthPrincipal;
+  }
+}
+
+/** Strikt — keine Abweichung für `/api/admin/*`-Session-JWTs. */
+const ADMIN_JWT_ISSUER = "onroda-admin";
+const ADMIN_JWT_KIND = "admin_panel";
+
+function jwtKindLooksForeignForAdminRoute(token: string): boolean {
+  try {
+    const { kind } = decodeJwt(token);
+    return kind === "panel" || kind === "fleet_driver";
+  } catch {
+    return false;
   }
 }
 
@@ -44,14 +57,14 @@ export async function signAdminSessionJwt(input: { username: string; role: Admin
   const user = await findActiveAdminAuthUserByUsername(input.username);
   const secret = getAdminSessionSecret();
   return new SignJWT({
-    kind: "admin_panel",
+    kind: ADMIN_JWT_KIND,
     username: input.username,
     role: input.role,
     sv: user?.sessionVersion ?? 1,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setIssuer("onroda-admin")
+    .setIssuer(ADMIN_JWT_ISSUER)
     .setExpirationTime("12h")
     .sign(secret);
 }
@@ -60,6 +73,7 @@ export async function signAdminSessionJwt(input: { username: string; role: Admin
 export async function tryResolveAdminApiAuthPrincipal(bearerToken: string): Promise<AdminAuthPrincipal | null> {
   const t = (bearerToken ?? "").trim();
   if (!t) return null;
+  if (jwtKindLooksForeignForAdminRoute(t)) return null;
   const staticToken = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
   if (staticToken && t === staticToken) {
     return { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
@@ -69,12 +83,14 @@ export async function tryResolveAdminApiAuthPrincipal(bearerToken: string): Prom
 
 async function verifyAdminSessionJwt(token: string): Promise<AdminAuthPrincipal | null> {
   try {
+    if (jwtKindLooksForeignForAdminRoute(token)) return null;
     const secret = getAdminSessionSecret();
     const { payload } = await jwtVerify(token, secret, {
       algorithms: ["HS256"],
-      issuer: "onroda-admin",
+      issuer: ADMIN_JWT_ISSUER,
     });
-    if (payload.kind !== "admin_panel") return null;
+    if (payload.iss !== ADMIN_JWT_ISSUER) return null;
+    if (payload.kind !== ADMIN_JWT_KIND) return null;
     const username = typeof payload.username === "string" ? payload.username : "";
     const role = parseAdminRole(typeof payload.role === "string" ? payload.role : "");
     const sessionVersion = typeof payload.sv === "number" ? payload.sv : 1;
@@ -146,34 +162,41 @@ export async function authenticateAdminCredentials(
 }
 
 /**
- * Schützt `/admin/*`-JSON-Endpunkte: `Authorization: Bearer <ADMIN_API_BEARER_TOKEN>`.
- * Ohne gesetztes Secret: in Produktion 503, in Entwicklung weiter (lokales Arbeiten).
+ * Schützt `/admin/*`-JSON-Endpunkte:
+ * - `Authorization: Bearer <ADMIN_API_BEARER_TOKEN>` (statisches API-Geheimnis, kein JWT), oder
+ * - gültiges Admin-Panel-Session-JWT mit **issuer** exakt `onroda-admin` und **kind** exakt `admin_panel`.
+ *
+ * Nie ohne `Authorization: Bearer …`. Kein Dev-Fallback. Panel- und Fahrer-JWTs werden abgelehnt.
+ *
  * Modellübersicht: `docs/access-control.md` (Plattform-Admin vs Partner-Panel).
  */
 export const requireAdminApiBearer: RequestHandler = (req, res, next) => {
-  const token = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
+  const staticApiToken = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
   const auth = req.get("authorization") ?? "";
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  if (token && bearer === token) {
+
+  if (!bearer) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  if (staticApiToken && bearer === staticApiToken) {
     req.adminAuth = { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
     next();
     return;
   }
-  if (bearer) {
-    void verifyAdminSessionJwt(bearer).then((principal) => {
-      if (principal) {
-        req.adminAuth = principal;
-        next();
-        return;
-      }
-      res.status(401).json({ error: "unauthorized" });
-    });
+
+  if (jwtKindLooksForeignForAdminRoute(bearer)) {
+    res.status(401).json({ error: "unauthorized" });
     return;
   }
-  if (!token && process.env.NODE_ENV !== "production") {
-    req.adminAuth = { username: "dev_local", role: "admin", kind: "bearer", scopeCompanyId: null };
-    next();
-    return;
-  }
-  res.status(401).json({ error: "unauthorized" });
+
+  void verifyAdminSessionJwt(bearer).then((principal) => {
+    if (principal) {
+      req.adminAuth = principal;
+      next();
+      return;
+    }
+    res.status(401).json({ error: "unauthorized" });
+  });
 };

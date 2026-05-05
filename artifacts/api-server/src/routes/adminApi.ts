@@ -309,7 +309,7 @@ function adminConsoleRole(req: Request): AdminRole {
 
 async function resolveAdminAuthUserIdForSupport(req: Request): Promise<string | null> {
   const u = req.adminAuth?.username?.trim();
-  if (!u || u === "api_bearer" || u === "dev_local") return null;
+  if (!u || u === "api_bearer") return null;
   const row = await findActiveAdminAuthUserByUsername(u);
   return row?.id ?? null;
 }

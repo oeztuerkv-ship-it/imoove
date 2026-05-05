@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { API_BASE } from "../lib/apiBase.js";
-import { adminApiHeaders } from "../lib/adminApiHeaders.js";
+import { useState } from "react";
 
 export default function AgenturMasterPanel({ company, onUpdate }) {
   const [activeTab, setActiveTab] = useState("booking");

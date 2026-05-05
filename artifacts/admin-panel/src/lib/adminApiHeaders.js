@@ -1,8 +1,26 @@
-const SESSION_KEY = "onrodaAdminSessionToken";
+import { isLikelyAdminSessionJwt } from "./unsafeJwtPayload.js";
+
+const SESSION_KEY = "onroda_admin_token";
+const LEGACY_SESSION_KEY = "onrodaAdminSessionToken";
 
 export function getAdminSessionToken() {
   try {
-    return localStorage.getItem(SESSION_KEY) || "";
+    const next = localStorage.getItem(SESSION_KEY) || "";
+    const migrated =
+      next ||
+      (() => {
+        const legacy = localStorage.getItem(LEGACY_SESSION_KEY) || "";
+        if (!legacy) return "";
+        localStorage.setItem(SESSION_KEY, legacy);
+        localStorage.removeItem(LEGACY_SESSION_KEY);
+        return legacy;
+      })();
+    if (migrated && !isLikelyAdminSessionJwt(migrated)) {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(LEGACY_SESSION_KEY);
+      return "";
+    }
+    return migrated;
   } catch {
     return "";
   }
@@ -10,8 +28,19 @@ export function getAdminSessionToken() {
 
 export function setAdminSessionToken(token) {
   try {
-    if (token) localStorage.setItem(SESSION_KEY, token);
-    else localStorage.removeItem(SESSION_KEY);
+    const t = typeof token === "string" ? token.trim() : "";
+    if (t) {
+      if (!isLikelyAdminSessionJwt(t)) {
+        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(LEGACY_SESSION_KEY);
+        return;
+      }
+      localStorage.setItem(SESSION_KEY, t);
+      localStorage.removeItem(LEGACY_SESSION_KEY);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(LEGACY_SESSION_KEY);
+    }
   } catch {
     /* ignore */
   }

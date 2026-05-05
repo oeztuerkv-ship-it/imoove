@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AdminApiAuthBanner from "./components/AdminApiAuthBanner.jsx";
 import TopNav from "./components/TopNav.jsx";
 import {
@@ -6,7 +6,7 @@ import {
   isAdminPageAllowed,
 } from "./config/adminNavConfig.js";
 import { API_BASE } from "./lib/apiBase.js";
-import { adminApiHeaders, setAdminSessionToken } from "./lib/adminApiHeaders.js";
+import { adminApiHeaders, getAdminSessionToken, setAdminSessionToken } from "./lib/adminApiHeaders.js";
 
 import DashboardPage from "./pages/DashboardPage";
 import FaresPage from "./pages/FaresPage";
@@ -332,6 +332,9 @@ export default function App() {
   const [forgotMessage, setForgotMessage] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [loginRevealed, setLoginRevealed] = useState(false);
+  const spacePressCountRef = useRef(0);
+  const spaceResetTimerRef = useRef(0);
   const [ridesInitialDetailId, setRidesInitialDetailId] = useState(null);
   /** Volle Fahrtakte-Seite (Ziel: ride_events + Audit). */
   const [rideRecordId, setRideRecordId] = useState(null);
@@ -360,6 +363,12 @@ export default function App() {
   const onLogout = useCallback(() => {
     setAdminSessionToken("");
     setAuthUser(null);
+    setLoginRevealed(false);
+    spacePressCountRef.current = 0;
+    if (spaceResetTimerRef.current) {
+      window.clearTimeout(spaceResetTimerRef.current);
+      spaceResetTimerRef.current = 0;
+    }
     setActive("dashboard");
     setMandateDetailCompanyId(null);
     setCompaniesExpandWorkspaceCompanyId(null);
@@ -467,6 +476,8 @@ export default function App() {
         const data = await res.json().catch(() => ({}));
         if (!cancelled && res.ok && data?.ok && data?.user) {
           setAuthUser(data.user);
+        } else if (!cancelled && (res.status === 401 || res.status === 403)) {
+          setAdminSessionToken("");
         }
       } finally {
         if (!cancelled) setAuthBooting(false);
@@ -476,6 +487,41 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (authBooting) return undefined;
+    if (authUser) return undefined;
+    if (isAdminPasswordResetPath()) return undefined;
+    const onKeyDown = (event) => {
+      if (event.code !== "Space") return;
+      const next = spacePressCountRef.current + 1;
+      if (next >= 2) {
+        setLoginRevealed(true);
+        spacePressCountRef.current = 0;
+        if (spaceResetTimerRef.current) {
+          window.clearTimeout(spaceResetTimerRef.current);
+          spaceResetTimerRef.current = 0;
+        }
+        return;
+      }
+      spacePressCountRef.current = next;
+      if (spaceResetTimerRef.current) {
+        window.clearTimeout(spaceResetTimerRef.current);
+      }
+      spaceResetTimerRef.current = window.setTimeout(() => {
+        spacePressCountRef.current = 0;
+        spaceResetTimerRef.current = 0;
+      }, 10_000);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (spaceResetTimerRef.current) {
+        window.clearTimeout(spaceResetTimerRef.current);
+        spaceResetTimerRef.current = 0;
+      }
+    };
+  }, [authBooting, authUser]);
 
   async function onLogin(e) {
     e.preventDefault();
@@ -502,6 +548,10 @@ export default function App() {
         return;
       }
       setAdminSessionToken(data.token);
+      if (!getAdminSessionToken()) {
+        setAuthError("Ungültiges Admin-Token — bitte erneut anmelden.");
+        return;
+      }
       setAuthUser(data.user ?? null);
       setAuthForm({ username: "", password: "" });
     } catch {
@@ -742,6 +792,9 @@ export default function App() {
   if (!authUser) {
     if (isAdminPasswordResetPath()) {
       return <AdminPasswordResetPage />;
+    }
+    if (!loginRevealed) {
+      return <div style={{ minHeight: "100vh", width: "100%", background: "#fff" }} />;
     }
     const resetPageHref = `${import.meta.env.BASE_URL}password-reset`.replace(/([^:]\/)\/+/g, "$1");
     return (
