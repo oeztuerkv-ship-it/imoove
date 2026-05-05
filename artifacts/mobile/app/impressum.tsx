@@ -5,7 +5,6 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
-import { ONRODA_LEGAL } from "@/constants/legal";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const colors = useColors();
@@ -46,22 +45,40 @@ export default function ImpressumScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Section title="Angaben gemäß § 5 TMG">
-            <InfoLine label="Name" value={ONRODA_LEGAL.name} />
-            <InfoLine label="Anschrift" value={ONRODA_LEGAL.address} />
-            <InfoLine label="Land" value={ONRODA_LEGAL.country} />
+            <InfoLine label="Unternehmen" value="Onroda GmbH" />
+            <InfoLine label="Straße" value="Musterstraße 1" />
+            <InfoLine label="PLZ / Ort" value="73728 Esslingen am Neckar" />
+            <InfoLine label="Land" value="Deutschland" />
           </Section>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           <Section title="Kontakt">
-            <InfoLine label="E-Mail" value={ONRODA_LEGAL.email} />
+            <InfoLine label="Telefon" value="+49 711 24 24 24" />
+            <InfoLine label="E-Mail" value="info@Onroda.de" />
+            <InfoLine label="Website" value="www.Onroda.de" />
           </Section>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <Section title="Hinweis">
+          <Section title="Handelsregister">
+            <InfoLine label="Registergericht" value="Amtsgericht Stuttgart" />
+            <InfoLine label="Registernummer" value="HRB 12345" />
+            <InfoLine label="USt-IdNr." value="DE123456789" />
+          </Section>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <Section title="Verantwortlich">
+            <InfoLine label="Name" value="Max Mustermann" />
+            <InfoLine label="Funktion" value="Geschäftsführer" />
+          </Section>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <Section title="Datenschutz">
             <Text style={[styles.bodyText, { color: colors.mutedForeground }]}>
-              {ONRODA_LEGAL.note}
+              Die Nutzung unserer App ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit auf unseren Seiten personenbezogene Daten erhoben werden, erfolgt dies stets auf freiwilliger Basis.
             </Text>
           </Section>
         </View>

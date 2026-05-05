@@ -820,30 +820,6 @@ export default function ProfileScreen() {
               </SectionCard>
             </View>
 
-            {/* Rechtliches */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>RECHTLICHES</Text>
-              <SectionCard>
-                <Row
-                  iconName="file-text"
-                  iconBg="#F1F5F9"
-                  iconColor="#334155"
-                  label="Impressum"
-                  sublabel="Anbieterkennzeichnung"
-                  onPress={() => router.push("/impressum")}
-                />
-                <Row
-                  iconName="shield"
-                  iconBg="#ECFEFF"
-                  iconColor="#0E7490"
-                  label="Datenschutz"
-                  sublabel="Datenschutzhinweise"
-                  onPress={() => router.push("/datenschutz")}
-                  isLast
-                />
-              </SectionCard>
-            </View>
-
             {/* Abmelden */}
             <View style={[styles.section, { marginTop: 8 }]}>
               <SectionCard>
@@ -1190,7 +1166,7 @@ export default function ProfileScreen() {
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Impressum</Text>
           </Pressable>
           <Text style={[styles.footerSep, { color: colors.border }]}>|</Text>
-          <Pressable onPress={() => router.push("/datenschutz")} style={styles.footerLinkBtn}>
+          <Pressable onPress={() => Alert.alert("Datenschutz", "Datenschutzerklärung folgt in Kürze.")} style={styles.footerLinkBtn}>
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Datenschutz</Text>
           </Pressable>
         </View>

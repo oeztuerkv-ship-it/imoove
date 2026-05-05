@@ -5,7 +5,6 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 
 const STORAGE_KEY = "@Onroda_driver_session";
 const DRIVER_HEARTBEAT_MS = 45_000;
-const DRIVER_ME_REFRESH_MS = 20_000;
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
 
 /** Lesbare Meldung zu `POST /fleet-auth/login` — siehe `getFleetLoginCompanyDenyReason` / `fleetAuth.ts`. */
@@ -434,14 +433,6 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }, DRIVER_HEARTBEAT_MS);
     return () => clearInterval(t);
   }, [driver?.authToken]);
-
-  useEffect(() => {
-    if (!driver?.authToken) return;
-    const t = setInterval(() => {
-      void refreshEinsatzbereit();
-    }, DRIVER_ME_REFRESH_MS);
-    return () => clearInterval(t);
-  }, [driver?.authToken, refreshEinsatzbereit]);
 
   return (
     <DriverContext.Provider
