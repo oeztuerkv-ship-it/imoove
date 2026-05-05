@@ -69,6 +69,7 @@ import {
   listServiceRegionsForApi,
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
+import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "../lib/rideBookingPricing";
 import { initialPanelRideStatus } from "../lib/dispatchStatus";
 import { insertPartnerRideSeries, listPartnerRideSeriesForCompany } from "../db/partnerRideSeriesData";
 import type { PartnerBookingFlow, PartnerBookingMeta } from "../domain/partnerBookingMeta";
@@ -1334,8 +1335,29 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         payerKind,
         routeChecks: [{ from, fromFull, to, toFull }],
       });
-      if (!gov.ok) {
-        res.status(403).json({ error: gov.error });
+    if (!gov.ok) {
+      res.status(403).json({ error: gov.error });
+      return;
+    }
+
+      const opPayloadPanel = await getOperationalConfigPayload();
+      const regionsPanel = await listServiceRegionsForApi();
+      const panelVehicleNorm = vehicle.trim().toLowerCase() || "standard";
+      const panelBookingPricing = computeRideBookingPricing({
+        opPayload: opPayloadPanel,
+        regions: regionsPanel,
+        fromFull,
+        fromLat: optNum("fromLat") ?? null,
+        fromLon: optNum("fromLon") ?? null,
+        distanceKm,
+        tripMinutes: durationMinutes,
+        waitingMinutes: 0,
+        vehicle: panelVehicleNorm,
+        at: new Date(),
+      });
+      const panelFareChk = assertClientEstimatedFareMatchesServer(estimatedFare, panelBookingPricing.finalPrice);
+      if (!panelFareChk.ok) {
+        res.status(400).json({ error: panelFareChk.error });
         return;
       }
 
@@ -1361,7 +1383,7 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         toLon: optNum("toLon"),
         distanceKm,
         durationMinutes,
-        estimatedFare,
+        estimatedFare: panelBookingPricing.finalPrice,
         finalFare: null,
         paymentMethod,
         vehicle,
@@ -1371,6 +1393,8 @@ router.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
         billingReference,
         authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
         accessCodeId: null,
+        pricingMode: panelBookingPricing.pricingMode,
+        tariffSnapshot: panelBookingPricing.snapshot,
       };
 
       const accessCodeRaw = body.accessCode;
@@ -1514,6 +1538,27 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       return;
     }
 
+    const opPayloadHotel = await getOperationalConfigPayload();
+    const regionsHotel = await listServiceRegionsForApi();
+    const hotelVehicleNorm = leg.vehicle.trim().toLowerCase() || "standard";
+    const hotelBookingPricing = computeRideBookingPricing({
+      opPayload: opPayloadHotel,
+      regions: regionsHotel,
+      fromFull: leg.fromFull,
+      fromLat: leg.fromLat ?? null,
+      fromLon: leg.fromLon ?? null,
+      distanceKm: leg.distanceKm,
+      tripMinutes: leg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: hotelVehicleNorm,
+      at: new Date(),
+    });
+    const hotelFareChk = assertClientEstimatedFareMatchesServer(leg.estimatedFare, hotelBookingPricing.finalPrice);
+    if (!hotelFareChk.ok) {
+      res.status(400).json({ error: hotelFareChk.error });
+      return;
+    }
+
     const partnerBookingMeta: PartnerBookingMeta = {
       flow: "hotel_guest",
       hotel: {
@@ -1546,7 +1591,7 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       toLon: leg.toLon,
       distanceKm: leg.distanceKm,
       durationMinutes: leg.durationMinutes,
-      estimatedFare: leg.estimatedFare,
+      estimatedFare: hotelBookingPricing.finalPrice,
       finalFare: null,
       paymentMethod: leg.paymentMethod,
       vehicle: leg.vehicle,
@@ -1557,6 +1602,8 @@ router.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res,
       authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
       accessCodeId: null,
       partnerBookingMeta,
+      pricingMode: hotelBookingPricing.pricingMode,
+      tariffSnapshot: hotelBookingPricing.snapshot,
     };
 
     const accessCodeRaw = body.accessCode;
@@ -1727,6 +1774,46 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       return;
     }
 
+    const opPayloadMedRt = await getOperationalConfigPayload();
+    const regionsMedRt = await listServiceRegionsForApi();
+    const atMedRt = new Date();
+    const outVehicleNorm = outLeg.vehicle.trim().toLowerCase() || "standard";
+    const retVehicleNorm = retLeg.vehicle.trim().toLowerCase() || "standard";
+    const medOutPricing = computeRideBookingPricing({
+      opPayload: opPayloadMedRt,
+      regions: regionsMedRt,
+      fromFull: outLeg.fromFull,
+      fromLat: outLeg.fromLat ?? null,
+      fromLon: outLeg.fromLon ?? null,
+      distanceKm: outLeg.distanceKm,
+      tripMinutes: outLeg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: outVehicleNorm,
+      at: atMedRt,
+    });
+    const medRetPricing = computeRideBookingPricing({
+      opPayload: opPayloadMedRt,
+      regions: regionsMedRt,
+      fromFull: retLeg.fromFull,
+      fromLat: retLeg.fromLat ?? null,
+      fromLon: retLeg.fromLon ?? null,
+      distanceKm: retLeg.distanceKm,
+      tripMinutes: retLeg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: retVehicleNorm,
+      at: atMedRt,
+    });
+    const medOutFareChk = assertClientEstimatedFareMatchesServer(outLeg.estimatedFare, medOutPricing.finalPrice);
+    if (!medOutFareChk.ok) {
+      res.status(400).json({ error: medOutFareChk.error });
+      return;
+    }
+    const medRetFareChk = assertClientEstimatedFareMatchesServer(retLeg.estimatedFare, medRetPricing.finalPrice);
+    if (!medRetFareChk.ok) {
+      res.status(400).json({ error: medRetFareChk.error });
+      return;
+    }
+
     const idOut = reqRideId();
     const idRet = reqRideId();
     const nowIso = new Date().toISOString();
@@ -1763,10 +1850,12 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       toLon: outLeg.toLon,
       distanceKm: outLeg.distanceKm,
       durationMinutes: outLeg.durationMinutes,
-      estimatedFare: outLeg.estimatedFare,
+      estimatedFare: medOutPricing.finalPrice,
       finalFare: null,
       paymentMethod: outLeg.paymentMethod,
       vehicle: outLeg.vehicle,
+      pricingMode: medOutPricing.pricingMode,
+      tariffSnapshot: medOutPricing.snapshot,
       partnerBookingMeta: {
         flow: "medical_patient",
         medical: {
@@ -1792,10 +1881,12 @@ router.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (re
       toLon: retLeg.toLon,
       distanceKm: retLeg.distanceKm,
       durationMinutes: retLeg.durationMinutes,
-      estimatedFare: retLeg.estimatedFare,
+      estimatedFare: medRetPricing.finalPrice,
       finalFare: null,
       paymentMethod: retLeg.paymentMethod,
       vehicle: retLeg.vehicle,
+      pricingMode: medRetPricing.pricingMode,
+      tariffSnapshot: medRetPricing.snapshot,
       partnerBookingMeta: {
         flow: "medical_patient",
         medical: {
@@ -1975,6 +2066,27 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
       return;
     }
 
+    const opPayloadSeries = await getOperationalConfigPayload();
+    const regionsSeries = await listServiceRegionsForApi();
+    const seriesVehicle = leg.vehicle.trim().toLowerCase() || "standard";
+    const seriesPricing = computeRideBookingPricing({
+      opPayload: opPayloadSeries,
+      regions: regionsSeries,
+      fromFull: leg.fromFull,
+      fromLat: leg.fromLat ?? null,
+      fromLon: leg.fromLon ?? null,
+      distanceKm: leg.distanceKm,
+      tripMinutes: leg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: seriesVehicle,
+      at: new Date(),
+    });
+    const seriesFareChk = assertClientEstimatedFareMatchesServer(leg.estimatedFare, seriesPricing.finalPrice);
+    if (!seriesFareChk.ok) {
+      res.status(400).json({ error: seriesFareChk.error });
+      return;
+    }
+
     const seriesRow = await insertPartnerRideSeries({
       companyId: ctx.claims.companyId,
       createdByPanelUserId: ctx.claims.panelUserId,
@@ -2013,10 +2125,12 @@ router.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, r
         toLon: leg.toLon,
         distanceKm: leg.distanceKm,
         durationMinutes: leg.durationMinutes,
-        estimatedFare: leg.estimatedFare,
+        estimatedFare: seriesPricing.finalPrice,
         finalFare: null,
         paymentMethod: leg.paymentMethod,
         vehicle: leg.vehicle,
+        pricingMode: seriesPricing.pricingMode,
+        tariffSnapshot: seriesPricing.snapshot,
         rideKind,
         payerKind,
         voucherCode,

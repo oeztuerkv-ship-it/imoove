@@ -32,6 +32,11 @@ export type TariffBookingSnapshotV1 = {
   waitingMinutes: number;
   vehicle: string;
   at: string;
+  /** Optional: ältere Zeilen ohne diese Felder — neue Buchungen setzen sie immer. */
+  operationalConfigVersion?: number;
+  pricingMode?: "taxi_tariff" | "fixed_price" | "hybrid";
+  /** Kompakte Tarif-Kopie zum Buchungszeitpunkt (keine spätere Admin-Änderung am Ride). */
+  mergedTariffAudit?: Record<string, unknown>;
 };
 
 export type RideAccessibilityAssistanceLevel = "boarding" | "to_door" | "to_apartment" | "none";
@@ -125,7 +130,7 @@ export interface RideRequest {
   finalFare?: number | null;
   paymentMethod: string;
   vehicle: string;
-  pricingMode?: "taxi_tariff" | null;
+  pricingMode?: "taxi_tariff" | "fixed_price" | "hybrid" | null;
   customerName: string;
   /** Kunden-Telefon bei Buchung; Pflicht wenn bookingRules.requirePhone. */
   customerPhone?: string | null;

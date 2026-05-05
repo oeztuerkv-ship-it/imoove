@@ -17,8 +17,8 @@ function normalizeVehicleText(value: string | null | undefined): string {
 }
 
 function parsePricingMode(raw: unknown): PricingMode | null {
-  if (raw !== "taxi_tariff") return null;
-  return raw;
+  if (raw === "taxi_tariff" || raw === "fixed_price" || raw === "hybrid") return "taxi_tariff";
+  return null;
 }
 
 function requiredClassForRide(vehicleText: string): VehicleClass | null {

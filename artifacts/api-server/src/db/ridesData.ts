@@ -95,6 +95,31 @@ function parseTariffSnapshotFromRow(raw: unknown): TariffBookingSnapshotV1 | nul
   return raw as TariffBookingSnapshotV1;
 }
 
+function parsePricingModeFromDb(raw: string | null): RideRequest["pricingMode"] {
+  if (raw === "taxi_tariff" || raw === "fixed_price" || raw === "hybrid") return raw;
+  return null;
+}
+
+function assertPersistableRideBookingPricing(ride: RideRequest): { ok: true } | { ok: false; error: string } {
+  const snap = ride.tariffSnapshot;
+  if (!snap || typeof snap !== "object") return { ok: false, error: "tariff_snapshot_required" };
+  if (typeof snap.engineSchemaVersion !== "number" || !Number.isFinite(snap.engineSchemaVersion)) {
+    return { ok: false, error: "tariff_snapshot_invalid" };
+  }
+  if (!Number.isFinite(snap.finalPriceEur)) return { ok: false, error: "tariff_snapshot_invalid" };
+  if (!Number.isFinite(ride.estimatedFare) || ride.estimatedFare < 0) return { ok: false, error: "estimated_fare_invalid" };
+  const pm = ride.pricingMode;
+  if (pm !== "taxi_tariff" && pm !== "fixed_price" && pm !== "hybrid") {
+    return { ok: false, error: "pricing_mode_required" };
+  }
+  return { ok: true };
+}
+
+function omitImmutableRidePricingFields(patch: Partial<RideRequest>): Partial<RideRequest> {
+  const { estimatedFare: _ef, tariffSnapshot: _ts, pricingMode: _pm, ...rest } = patch;
+  return rest;
+}
+
 function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
   const rk = r.ride_kind;
   const pk = r.payer_kind;
@@ -133,7 +158,7 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
-    pricingMode: r.pricing_mode === "taxi_tariff" ? "taxi_tariff" : null,
+    pricingMode: parsePricingModeFromDb(r.pricing_mode),
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
     partnerBookingMeta: parsePartnerBookingMetaFromRow(r.partner_booking_meta, parsePartnerBookingMeta) ?? null,
     accessibilityOptions:
@@ -457,6 +482,8 @@ export async function insertRideWithOptionalAccessCode(
   ride: RideRequest,
   accessCodePlain: string | undefined | null,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const priceGate = assertPersistableRideBookingPricing(ride);
+  if (!priceGate.ok) return priceGate;
   const trimmed = typeof accessCodePlain === "string" ? accessCodePlain.trim() : "";
   if (!trimmed) {
     let auth = ride.authorizationSource;
@@ -524,6 +551,10 @@ export async function insertRideCloningAccessFromTemplate(
   ride: RideRequest,
   template: RideRequest,
 ): Promise<void> {
+  const gate = assertPersistableRideBookingPricing(ride);
+  if (!gate.ok) {
+    throw new Error(`insertRideCloningAccessFromTemplate: ${gate.error}`);
+  }
   const withAuth: RideRequest = {
     ...stripEphemeral(ride),
     authorizationSource: template.authorizationSource,
@@ -1210,7 +1241,13 @@ export async function getPanelCompanyOverviewMetrics(
 export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {
   const cur = await findRide(id);
   if (!cur) return null;
-  const next: RideRequest = { ...cur, ...patch };
+  const next: RideRequest = {
+    ...cur,
+    ...omitImmutableRidePricingFields(patch),
+    estimatedFare: cur.estimatedFare,
+    tariffSnapshot: cur.tariffSnapshot,
+    pricingMode: cur.pricingMode,
+  };
   const correctionPlan: Array<{
     fieldName: string;
     oldValue: unknown;

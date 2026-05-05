@@ -2,7 +2,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Router } from "express";
-import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest";
+import type { RideRequest } from "../domain/rideRequest";
 import type { RideAccessibilityOptions } from "../domain/rideRequest";
 import {
   DEFAULT_PAYER_KIND,
@@ -28,6 +28,7 @@ import {
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
+import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "../lib/rideBookingPricing";
 import { effectiveTaxiGrossEur } from "../lib/financeCalculationService";
 import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
 import { verifyAccessCode } from "../db/accessCodesData";
@@ -960,14 +961,10 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "authorization_source_invalid" });
       return;
     }
-    if (
-      raw.pricingMode != null &&
-      raw.pricingMode !== "" &&
-      raw.pricingMode !== "taxi_tariff"
-    ) {
-      res.status(400).json({ error: "pricing_mode_invalid" });
-      return;
-    }
+    const rawPricingModeStr =
+      raw.pricingMode != null && raw.pricingMode !== ""
+        ? String(raw.pricingMode).trim()
+        : "";
     const fromFull = String((raw as { fromFull?: string }).fromFull ?? (raw as { from?: string }).from ?? "").trim();
     const toFull = String((raw as { toFull?: string }).toFull ?? (raw as { to?: string }).to ?? "").trim();
     if (!fromFull || !toFull) {
@@ -1063,7 +1060,9 @@ router.post("/rides", async (req, res, next) => {
       }
     }
     const atBooking = new Date();
-    const { serviceRegionId, est: estBook } = computeTaxiPriceLikeFareEstimate(opPayload, regions, {
+    const bookingPricing = computeRideBookingPricing({
+      opPayload,
+      regions,
       fromFull,
       fromLat: fromLatB,
       fromLon: fromLonB,
@@ -1073,7 +1072,24 @@ router.post("/rides", async (req, res, next) => {
       vehicle: vehicleB,
       at: atBooking,
     });
-    const finalPriceB = estBook.finalRounded;
+    const finalPriceB = bookingPricing.finalPrice;
+    const snapB = bookingPricing.snapshot;
+    const serverPricingMode = bookingPricing.pricingMode;
+    if (
+      rawPricingModeStr &&
+      rawPricingModeStr !== serverPricingMode
+    ) {
+      res.status(400).json({ error: "pricing_mode_conflict" });
+      return;
+    }
+    const clientFareRaw =
+      (raw as { estimatedFare?: unknown }).estimatedFare ??
+      (raw as { estimated_fare?: unknown }).estimated_fare;
+    const fareMatch = assertClientEstimatedFareMatchesServer(clientFareRaw, finalPriceB);
+    if (!fareMatch.ok) {
+      res.status(400).json({ error: fareMatch.error });
+      return;
+    }
     const durationInt = Math.max(0, Math.round(tripMinutesB));
     const bodyForAssert: Record<string, unknown> = {
       ...(raw as object as Record<string, unknown>),
@@ -1194,19 +1210,6 @@ router.post("/rides", async (req, res, next) => {
       normalizedPartnerMeta.billing_ready = ready.billingReady;
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
     }
-    const snapB: TariffBookingSnapshotV1 = {
-      engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
-      serviceRegionId,
-      finalPriceEur: finalPriceB,
-      subtotal: estBook.subtotal,
-      afterMinFare: estBook.afterMinFare,
-      breakdown: { ...estBook.breakdown },
-      distanceKm: distanceKmB,
-      tripMinutes: tripMinutesB,
-      waitingMinutes: waitingMinutesB,
-      vehicle: vehicleB,
-      at: atBooking.toISOString(),
-    };
     const newReq: RideRequest = {
       ...(raw as RideRequest),
       id: `REQ-${Date.now()}`,
@@ -1223,7 +1226,7 @@ router.post("/rides", async (req, res, next) => {
       billingReference: parseOptionalBillingTag(raw.billingReference, 256),
       authorizationSource,
       accessCodeId: null,
-      pricingMode: "taxi_tariff",
+      pricingMode: serverPricingMode,
       distanceKm: distanceKmB,
       durationMinutes: durationInt,
       estimatedFare: finalPriceB,
