@@ -40,6 +40,7 @@ import AppOperationalDriverRulesPage from "./pages/AppOperationalDriverRulesPage
 import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPage.jsx";
 import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
 import AppNewsPage from "./pages/AppNewsPage.jsx";
+import AppSponsorsPage from "./pages/AppSponsorsPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
@@ -288,6 +289,10 @@ const PAGE_META = {
   "app-news": {
     title: "App-Neuigkeiten",
     subtitle: "Dynamische Meldungen in der Kunden-App (Startseite), ohne App-Update",
+  },
+  "app-sponsors": {
+    title: "Unterstützer & Sponsoren",
+    subtitle: "Eigenständiger Werbe-/Partnerbereich für Mobile ohne App-Update",
   },
   settings: {
     title: "Einstellungen",
@@ -681,6 +686,8 @@ export default function App() {
         return <HomepageContentPage />;
       case "app-news":
         return <AppNewsPage />;
+      case "app-sponsors":
+        return <AppSponsorsPage />;
       case "app-op-tariffs":
         return <AppOperationalTariffsPage />;
       case "app-op-regions":

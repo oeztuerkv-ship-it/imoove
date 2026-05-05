@@ -56,6 +56,7 @@ function RootLayoutNav() {
       <Stack.Screen name="google-auth" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="login-success" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="my-rides" options={{ headerShown: false, animation: "none" }} />
+      <Stack.Screen name="sponsors" options={{ headerShown: false }} />
       <Stack.Screen name="help" options={{ headerShown: false }} />
       <Stack.Screen name="impressum" options={{ headerShown: false }} />
       <Stack.Screen name="personal-info" options={{ headerShown: false }} />

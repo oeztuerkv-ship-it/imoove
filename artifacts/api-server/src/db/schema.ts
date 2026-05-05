@@ -911,6 +911,26 @@ export const appNewsItemsTable = pgTable("app_news_items", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const appSponsorsTable = pgTable("app_sponsors", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  description: text("description").notNull().default(""),
+  image_url: text("image_url"),
+  logo_url: text("logo_url"),
+  external_url: text("external_url"),
+  button_text: text("button_text"),
+  qr_code_url: text("qr_code_url"),
+  qr_from_link: boolean("qr_from_link").notNull().default(false),
+  category: text("category").notNull().default("partner"),
+  audience: text("audience").notNull().default("all"),
+  sort_order: integer("sort_order").notNull().default(0),
+  is_active: boolean("is_active").notNull().default(true),
+  starts_at: timestamp("starts_at", { withTimezone: true }),
+  ends_at: timestamp("ends_at", { withTimezone: true }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Einfahrgebiete: Substring in Adresse ODER Mittelpunkt+Radius (match_mode=radius). */
 export const appServiceRegionsTable = pgTable("app_service_regions", {
   id: text("id").primaryKey(),

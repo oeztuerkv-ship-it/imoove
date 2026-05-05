@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getAppConfigForPublic, getAppPricingForPublic } from "../db/appOperationalData";
 import { listAppNewsPublic, parseAppNewsAudience } from "../db/appNewsData";
+import { listAppSponsorsPublic, parseAppSponsorAudience } from "../db/appSponsorsData";
 
 const router: IRouter = Router();
 
@@ -41,6 +42,24 @@ router.get("/app/news", async (req, res, next) => {
         ? Math.min(20, Math.max(1, parseInt(rawLimit.trim(), 10)))
         : 5;
     const items = await listAppNewsPublic(audience, limit);
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Öffentliche Unterstützer/Sponsoren für Mobile (audience: customer|driver). */
+router.get("/app/sponsors", async (req, res, next) => {
+  try {
+    const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
+    const audience = parseAppSponsorAudience(q);
+    const rawLimit = req.query.limit;
+    const limit =
+      typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim())
+        ? Math.min(20, Math.max(1, parseInt(rawLimit.trim(), 10)))
+        : 10;
+    const items = await listAppSponsorsPublic(audience, limit);
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
     res.json({ ok: true, items });
   } catch (e) {

@@ -222,6 +222,14 @@ export default function HomeScreen() {
   const [appNewsDetail, setAppNewsDetail] = useState<AppNewsItem | null>(null);
   const [appNewsSlideIndex, setAppNewsSlideIndex] = useState(0);
   const newsAudience = isDriverLoggedIn ? "driver" : "customer";
+  type SponsorTeaserItem = {
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string | null;
+    category: string;
+  };
+  const [sponsorTeasers, setSponsorTeasers] = useState<SponsorTeaserItem[]>([]);
 
   const APP_NEWS_CAROUSEL_PAD = 20;
   const APP_NEWS_CAROUSEL_GAP = 12;
@@ -254,6 +262,27 @@ export default function HomeScreen() {
       cancelled = true;
     };
   }, [isHomeFocused, showOnboarding, newsAudience]);
+
+  useEffect(() => {
+    if (!isHomeFocused || showOnboarding) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const audience = isDriverLoggedIn ? "driver" : "customer";
+        const url = `${API_URL}/app/sponsors?audience=${encodeURIComponent(audience)}&limit=3`;
+        const res = await fetch(url);
+        if (!res.ok || cancelled) return;
+        const data = await res.json().catch(() => null);
+        if (!data?.ok || !Array.isArray(data.items) || cancelled) return;
+        setSponsorTeasers(data.items);
+      } catch {
+        if (!cancelled) setSponsorTeasers([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isHomeFocused, showOnboarding, isDriverLoggedIn]);
 
   const openAppNewsItem = useCallback((item: AppNewsItem) => {
     const internalRe =
@@ -1083,19 +1112,33 @@ export default function HomeScreen() {
     return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
   }
 
+  const mapDockBottom = TAB_HEIGHT + bottomPad;
+
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       {profile.isLoggedIn ? (
-        <RealMapView
-          origin={origin}
-          destination={destination}
-          polyline={route?.polyline}
-          style={StyleSheet.absoluteFill}
-          centerKey={mapCenterKey}
-          edgePaddingTop={mapEdgePaddingTop}
-          edgePaddingBottom={mapEdgePaddingBottom}
-          userLocation={userGps}
-        />
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: mapDockBottom,
+            overflow: "hidden",
+            backgroundColor: colors.background,
+          }}
+        >
+          <RealMapView
+            origin={origin}
+            destination={destination}
+            polyline={route?.polyline}
+            style={StyleSheet.absoluteFill}
+            centerKey={mapCenterKey}
+            edgePaddingTop={mapEdgePaddingTop}
+            edgePaddingBottom={mapEdgePaddingBottom}
+            userLocation={userGps}
+          />
+        </View>
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
       )}
@@ -1121,8 +1164,9 @@ export default function HomeScreen() {
           {
             backgroundColor: colors.surface,
             maxHeight: destination ? "86%" : "66%",
-            bottom: TAB_HEIGHT + bottomPad,
+            bottom: mapDockBottom,
             zIndex: 20,
+            ...(Platform.OS === "android" ? { elevation: 26 } : {}),
           },
         ]}
       >
@@ -1254,6 +1298,23 @@ export default function HomeScreen() {
             >
               <Text style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}>{globalNoticeDe}</Text>
             </View>
+          ) : null}
+          {!showOnboarding && sponsorTeasers.length > 0 ? (
+            <Pressable
+              style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
+              onPress={() => router.push("/sponsors" as Href)}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Unterstützer & Sponsoren</Text>
+                <Text style={[styles.sponsorTeaserTitle, { color: colors.foreground }]} numberOfLines={2}>
+                  {sponsorTeasers[0]?.title}
+                </Text>
+                <Text style={[styles.sponsorTeaserText, { color: colors.mutedForeground }]} numberOfLines={2}>
+                  {sponsorTeasers[0]?.description}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </Pressable>
           ) : null}
           {!showOnboarding && appNewsItems.length > 0 ? (
             <View style={{ marginBottom: rs(12) }}>
@@ -3081,4 +3142,15 @@ const styles = StyleSheet.create({
   appNewsModalBtnText: { color: "#fff", fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
   appNewsModalClose: { paddingVertical: rs(8), alignItems: "center" },
   appNewsModalCloseText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold" },
+  sponsorTeaserCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sponsorTeaserEyebrow: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  sponsorTeaserTitle: { fontSize: rf(15), fontFamily: "Inter_700Bold", marginBottom: 2 },
+  sponsorTeaserText: { fontSize: rf(13), fontFamily: "Inter_400Regular", lineHeight: rf(18) },
 });
