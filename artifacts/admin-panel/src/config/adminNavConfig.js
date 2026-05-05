@@ -103,7 +103,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: R.adminSvc,
     items: [
       { pageKey: "app-news", label: "App-Neuigkeiten", icon: "document", navOrder: 0, roles: R.adminSvc },
-      { pageKey: "app-sponsors", label: "Unterstützer & Sponsoren", icon: "building", navOrder: 1, roles: R.adminSvc },
+      { pageKey: "app-sponsors", label: "Exklusive Angebote", icon: "building", navOrder: 1, roles: R.adminSvc },
       { pageKey: "app-op-tariffs", label: "Preise & Tarife", icon: "map", navOrder: 2, roles: R.adminSvc },
       { pageKey: "app-op-regions", label: "Gebiete & Zonen", icon: "map", navOrder: 3, roles: R.adminSvc },
       { pageKey: "app-op-commission", label: "Provision", icon: "wallet", navOrder: 4, roles: R.adminSvc },
@@ -337,7 +337,7 @@ const ADMIN_TOP_NAV = [
     defaultTarget: { pageKey: "app-op-tariffs" },
     children: [
       { pageKey: "app-news", label: "App-Neuigkeiten" },
-      { pageKey: "app-sponsors", label: "Unterstützer & Sponsoren" },
+      { pageKey: "app-sponsors", label: "Exklusive Angebote" },
       { pageKey: "app-op-tariffs", label: "Tarife & Preise" },
       { pageKey: "app-op-regions", label: "Gebiete & Zonen" },
       { pageKey: "app-op-commission", label: "Provision" },

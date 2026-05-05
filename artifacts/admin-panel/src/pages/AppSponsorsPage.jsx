@@ -69,8 +69,10 @@ export default function AppSponsorsPage() {
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [form, setForm] = useState(emptyForm());
-  const [teaserTitle, setTeaserTitle] = useState("");
-  const [teaserBody, setTeaserBody] = useState("");
+  const [teaserTitleCustomer, setTeaserTitleCustomer] = useState("");
+  const [teaserBodyCustomer, setTeaserBodyCustomer] = useState("");
+  const [teaserTitleDriver, setTeaserTitleDriver] = useState("");
+  const [teaserBodyDriver, setTeaserBodyDriver] = useState("");
   const [teaserSaving, setTeaserSaving] = useState(false);
 
   const mode = useMemo(() => (editingId ? "edit" : "create"), [editingId]);
@@ -87,11 +89,24 @@ export default function AppSponsorsPage() {
       const { data: cfgData } = await readJson(cfgRes);
       if (cfgRes.ok && cfgData?.ok) {
         const msg = cfgData?.config?.messages && typeof cfgData.config.messages === "object" ? cfgData.config.messages : {};
-        setTeaserTitle(typeof msg.sponsorsTeaserTitleDe === "string" ? msg.sponsorsTeaserTitleDe : "Unterstützer & Sponsoren");
-        setTeaserBody(
+        const fallbackTitle = typeof msg.sponsorsTeaserTitleDe === "string" ? msg.sponsorsTeaserTitleDe : "Exklusive Angebote";
+        const fallbackBody =
           typeof msg.sponsorsTeaserBodyDe === "string"
             ? msg.sponsorsTeaserBodyDe
-            : "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
+            : "Entdecke Partner, Aktionen und Angebote in deiner Nähe.";
+        setTeaserTitleCustomer(
+          typeof msg.sponsorsTeaserTitleCustomerDe === "string" ? msg.sponsorsTeaserTitleCustomerDe : fallbackTitle,
+        );
+        setTeaserBodyCustomer(
+          typeof msg.sponsorsTeaserBodyCustomerDe === "string" ? msg.sponsorsTeaserBodyCustomerDe : fallbackBody,
+        );
+        setTeaserTitleDriver(
+          typeof msg.sponsorsTeaserTitleDriverDe === "string" ? msg.sponsorsTeaserTitleDriverDe : "Exklusive Angebote für Fahrer",
+        );
+        setTeaserBodyDriver(
+          typeof msg.sponsorsTeaserBodyDriverDe === "string"
+            ? msg.sponsorsTeaserBodyDriverDe
+            : "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag.",
         );
       }
     } catch (e) {
@@ -200,8 +215,13 @@ export default function AppSponsorsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: {
-            sponsorsTeaserTitleDe: teaserTitle.trim() || "Unterstützer & Sponsoren",
-            sponsorsTeaserBodyDe: teaserBody.trim() || "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
+            sponsorsTeaserTitleCustomerDe: teaserTitleCustomer.trim() || "Exklusive Angebote",
+            sponsorsTeaserBodyCustomerDe: teaserBodyCustomer.trim() || "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
+            sponsorsTeaserTitleDriverDe: teaserTitleDriver.trim() || "Exklusive Angebote für Fahrer",
+            sponsorsTeaserBodyDriverDe:
+              teaserBodyDriver.trim() || "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag.",
+            sponsorsTeaserTitleDe: teaserTitleCustomer.trim() || "Exklusive Angebote",
+            sponsorsTeaserBodyDe: teaserBodyCustomer.trim() || "Entdecke Partner, Aktionen und Angebote in deiner Nähe.",
           },
         }),
       });
@@ -219,24 +239,32 @@ export default function AppSponsorsPage() {
       {error ? <div className="admin-error-banner">{error}</div> : null}
 
       <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Unterstützer & Sponsoren</div>
+        <div className="admin-panel-card__title">Exklusive Angebote</div>
         <p className="admin-table-sub">
           Eigenständiger Bereich neben App-Neuigkeiten. Mobile nutzt <code>GET /api/app/sponsors</code> (max 10 aktiv).
         </p>
       </div>
       <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Homepage-Hinweisblock (allgemein)</div>
+        <div className="admin-panel-card__title">Homepage-Hinweisblock (getrennt nach App)</div>
         <p className="admin-table-sub">
-          Dieser Block wird auf der Startseite gezeigt. Einzelne Sponsoren erscheinen erst auf der nächsten Seite <code>/sponsors</code>.
+          Auf der Startseite wird nur ein allgemeiner Hinweis gezeigt. Einzelne Angebote erscheinen erst auf der nächsten Seite <code>/sponsors</code>.
         </p>
         <div className="app-news-section__grid" style={{ marginTop: 10 }}>
           <label className="admin-form-pair app-news-field--full">
-            <span className="admin-field-label">Titel</span>
-            <input className="admin-input" value={teaserTitle} onChange={(e) => setTeaserTitle(e.target.value)} />
+            <span className="admin-field-label">Kunden-App: Titel</span>
+            <input className="admin-input" value={teaserTitleCustomer} onChange={(e) => setTeaserTitleCustomer(e.target.value)} />
           </label>
           <label className="admin-form-pair app-news-field--full">
-            <span className="admin-field-label">Kurztext</span>
-            <textarea className="admin-textarea" rows={3} value={teaserBody} onChange={(e) => setTeaserBody(e.target.value)} />
+            <span className="admin-field-label">Kunden-App: Kurztext</span>
+            <textarea className="admin-textarea" rows={3} value={teaserBodyCustomer} onChange={(e) => setTeaserBodyCustomer(e.target.value)} />
+          </label>
+          <label className="admin-form-pair app-news-field--full">
+            <span className="admin-field-label">Fahrer-App: Titel</span>
+            <input className="admin-input" value={teaserTitleDriver} onChange={(e) => setTeaserTitleDriver(e.target.value)} />
+          </label>
+          <label className="admin-form-pair app-news-field--full">
+            <span className="admin-field-label">Fahrer-App: Kurztext</span>
+            <textarea className="admin-textarea" rows={3} value={teaserBodyDriver} onChange={(e) => setTeaserBodyDriver(e.target.value)} />
           </label>
         </div>
         <button type="button" className="btn btn-red" onClick={() => void saveTeaserBlock()} disabled={teaserSaving}>

@@ -969,7 +969,17 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: typeof MOCK_RIDES
 }
 
 /* ─── Tab: Profil ─── */
-function TabProfil({ driver, onLogout }: { driver: DriverProfile; onLogout: () => void }) {
+function TabProfil({
+  driver,
+  onLogout,
+  offersTeaserTitle,
+  offersTeaserBody,
+}: {
+  driver: DriverProfile;
+  onLogout: () => void;
+  offersTeaserTitle: string;
+  offersTeaserBody: string;
+}) {
   const colors = useColors();
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabScroll, { paddingTop: 24 }]}>
@@ -1028,6 +1038,21 @@ function TabProfil({ driver, onLogout }: { driver: DriverProfile; onLogout: () =
           </View>
         </View>
       </View>
+
+      <Pressable
+        style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push("/sponsors")}
+      >
+        <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>EXKLUSIVE ANGEBOTE</Text>
+        <Text style={[styles.profilName, { color: colors.foreground, textAlign: "left", marginTop: 6 }]}>
+          {offersTeaserTitle}
+        </Text>
+        <Text style={[styles.profilRowSub, { color: colors.mutedForeground, marginTop: 6 }]}>{offersTeaserBody}</Text>
+        <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={{ color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Jetzt ansehen</Text>
+          <Feather name="chevron-right" size={16} color="#DC2626" />
+        </View>
+      </Pressable>
 
       {/* Logout */}
       <Pressable
@@ -2026,6 +2051,18 @@ export default function DriverDashboard() {
   const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit } = useDriver();
   const { config: appPlatformConfig } = useOnrodaAppConfig();
   const allowDriverApp = (appPlatformConfig.system as { allowDriverApp?: boolean } | undefined)?.allowDriverApp !== false;
+  const offersTeaserTitle =
+    typeof (appPlatformConfig.messages as { sponsorsTeaserTitleDriverDe?: unknown } | undefined)?.sponsorsTeaserTitleDriverDe ===
+    "string"
+      ? String((appPlatformConfig.messages as { sponsorsTeaserTitleDriverDe?: unknown }).sponsorsTeaserTitleDriverDe).trim() ||
+        "Exklusive Angebote für Fahrer"
+      : "Exklusive Angebote für Fahrer";
+  const offersTeaserBody =
+    typeof (appPlatformConfig.messages as { sponsorsTeaserBodyDriverDe?: unknown } | undefined)?.sponsorsTeaserBodyDriverDe ===
+    "string"
+      ? String((appPlatformConfig.messages as { sponsorsTeaserBodyDriverDe?: unknown }).sponsorsTeaserBodyDriverDe).trim() ||
+        "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag."
+      : "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag.";
   const { history } = useRide();
   const {
     requests,
@@ -2605,7 +2642,14 @@ export default function DriverDashboard() {
             )}
             {activeTab === "fahrten" && <TabFahrten allRides={allRides} />}
             {activeTab === "geldbeutel" && <TabGeldbeutel allRides={allRides} driverRating={driver.rating} />}
-            {activeTab === "profil" && <TabProfil driver={driver} onLogout={handleLogout} />}
+            {activeTab === "profil" && (
+              <TabProfil
+                driver={driver}
+                onLogout={handleLogout}
+                offersTeaserTitle={offersTeaserTitle}
+                offersTeaserBody={offersTeaserBody}
+              />
+            )}
           </>
         )}
       </View>

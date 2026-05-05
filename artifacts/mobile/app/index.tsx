@@ -235,14 +235,20 @@ export default function HomeScreen() {
       ? String((platformConfig.features as { homepageTopOrder?: unknown }).homepageTopOrder)
       : "sponsors_then_news";
   const sponsorTeaserTitle =
-    typeof (platformConfig.messages as { sponsorsTeaserTitleDe?: unknown } | undefined)?.sponsorsTeaserTitleDe === "string"
-      ? String((platformConfig.messages as { sponsorsTeaserTitleDe?: unknown }).sponsorsTeaserTitleDe).trim() || "Unterstützer & Sponsoren"
-      : "Unterstützer & Sponsoren";
+    typeof (platformConfig.messages as { sponsorsTeaserTitleCustomerDe?: unknown } | undefined)?.sponsorsTeaserTitleCustomerDe === "string"
+      ? String((platformConfig.messages as { sponsorsTeaserTitleCustomerDe?: unknown }).sponsorsTeaserTitleCustomerDe).trim() ||
+        "Exklusive Angebote"
+      : typeof (platformConfig.messages as { sponsorsTeaserTitleDe?: unknown } | undefined)?.sponsorsTeaserTitleDe === "string"
+        ? String((platformConfig.messages as { sponsorsTeaserTitleDe?: unknown }).sponsorsTeaserTitleDe).trim() || "Exklusive Angebote"
+        : "Exklusive Angebote";
   const sponsorTeaserBody =
-    typeof (platformConfig.messages as { sponsorsTeaserBodyDe?: unknown } | undefined)?.sponsorsTeaserBodyDe === "string"
-      ? String((platformConfig.messages as { sponsorsTeaserBodyDe?: unknown }).sponsorsTeaserBodyDe).trim() ||
+    typeof (platformConfig.messages as { sponsorsTeaserBodyCustomerDe?: unknown } | undefined)?.sponsorsTeaserBodyCustomerDe === "string"
+      ? String((platformConfig.messages as { sponsorsTeaserBodyCustomerDe?: unknown }).sponsorsTeaserBodyCustomerDe).trim() ||
         "Entdecke Partner, Aktionen und Angebote in deiner Nähe."
-      : "Entdecke Partner, Aktionen und Angebote in deiner Nähe.";
+      : typeof (platformConfig.messages as { sponsorsTeaserBodyDe?: unknown } | undefined)?.sponsorsTeaserBodyDe === "string"
+        ? String((platformConfig.messages as { sponsorsTeaserBodyDe?: unknown }).sponsorsTeaserBodyDe).trim() ||
+        "Entdecke Partner, Aktionen und Angebote in deiner Nähe."
+        : "Entdecke Partner, Aktionen und Angebote in deiner Nähe.";
 
   const APP_NEWS_CAROUSEL_PAD = 20;
   const APP_NEWS_CAROUSEL_GAP = 12;
@@ -1318,7 +1324,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/sponsors" as Href)}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Unterstützer & Sponsoren</Text>
+                <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Exklusive Angebote</Text>
                 <Text style={[styles.sponsorTeaserTitle, { color: colors.foreground }]} numberOfLines={2}>
                   {sponsorTeaserTitle}
                 </Text>
@@ -1445,7 +1451,7 @@ export default function HomeScreen() {
               onPress={() => router.push("/sponsors" as Href)}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Unterstützer & Sponsoren</Text>
+                <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Exklusive Angebote</Text>
                 <Text style={[styles.sponsorTeaserTitle, { color: colors.foreground }]} numberOfLines={2}>
                   {sponsorTeaserTitle}
                 </Text>

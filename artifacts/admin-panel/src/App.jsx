@@ -291,7 +291,7 @@ const PAGE_META = {
     subtitle: "Dynamische Meldungen in der Kunden-App (Startseite), ohne App-Update",
   },
   "app-sponsors": {
-    title: "Unterstützer & Sponsoren",
+    title: "Exklusive Angebote",
     subtitle: "Eigenständiger Werbe-/Partnerbereich für Mobile ohne App-Update",
   },
   settings: {

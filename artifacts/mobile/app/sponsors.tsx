@@ -77,7 +77,7 @@ export default function SponsorsScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          {selected ? "Sponsor-Details" : "Unterstützer & Sponsoren"}
+          {selected ? "Angebotsdetails" : "Exklusive Angebote"}
         </Text>
       </View>
 
