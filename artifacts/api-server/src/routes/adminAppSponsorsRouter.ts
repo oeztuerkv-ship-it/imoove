@@ -71,10 +71,11 @@ router.post("/", async (req, res, next) => {
       res.status(400).json({ error: "invalid_external_url" });
       return;
     }
+    const qrEnabled = b.qrEnabled === false || b.qr_enabled === false ? false : true;
     const qrFromLink = b.qrFromLink === true || b.qr_from_link === true;
     const qrRaw = typeof b.qrCodeUrl === "string" ? b.qrCodeUrl : typeof b.qr_code_url === "string" ? b.qr_code_url : "";
     const qrTrimmed = qrRaw.trim();
-    const qrCodeUrl = qrFromLink && externalUrl ? qrCodeUrlFromExternalLink(externalUrl) : qrTrimmed || null;
+    const qrCodeUrl = !qrEnabled ? null : qrFromLink && externalUrl ? qrCodeUrlFromExternalLink(externalUrl) : qrTrimmed || null;
     if (qrCodeUrl && !isValidHttpsUrl(qrCodeUrl)) {
       res.status(400).json({ error: "invalid_qr_code_url" });
       return;
@@ -123,6 +124,7 @@ router.post("/", async (req, res, next) => {
       buttonText,
       qrCodeUrl,
       qrFromLink,
+      qrEnabled,
       category,
       audience,
       sortOrder,
@@ -209,7 +211,10 @@ router.patch("/:id", async (req, res, next) => {
       return;
     }
     const effExternal = patch.externalUrl !== undefined ? patch.externalUrl : existing.externalUrl;
+    const qrEnabled =
+      b.qrEnabled === false || b.qr_enabled === false ? false : b.qrEnabled === true || b.qr_enabled === true ? true : existing.qrEnabled !== false;
     const qrFromLink = b.qrFromLink === true || b.qr_from_link === true || (b.qrFromLink === false || b.qr_from_link === false ? false : existing.qrFromLink);
+    patch.qrEnabled = qrEnabled;
     patch.qrFromLink = qrFromLink;
     if (b.qrCodeUrl !== undefined || b.qr_code_url !== undefined) {
       const s = typeof b.qrCodeUrl === "string" ? b.qrCodeUrl : typeof b.qr_code_url === "string" ? b.qr_code_url : "";
@@ -219,7 +224,7 @@ router.patch("/:id", async (req, res, next) => {
         return;
       }
       patch.qrCodeUrl = v;
-    } else if (qrFromLink && effExternal) {
+    } else if (qrEnabled && qrFromLink && effExternal) {
       patch.qrCodeUrl = qrCodeUrlFromExternalLink(effExternal);
     }
     const row = await patchAppSponsorItem(id, patch);

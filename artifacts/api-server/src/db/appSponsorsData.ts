@@ -25,6 +25,7 @@ export function parseAppSponsorCategory(raw: string | null | undefined): AppSpon
 
 function rowToPublicDto(r: Row) {
   const targetType = r.external_url ? "external_url" : "none";
+  const qrEnabled = r.qr_from_link === true || (typeof r.qr_code_url === "string" && r.qr_code_url.trim().length > 0);
   return {
     id: r.id,
     title: r.title,
@@ -35,6 +36,7 @@ function rowToPublicDto(r: Row) {
     buttonText: r.button_text,
     qrCodeUrl: r.qr_code_url,
     qrFromLink: r.qr_from_link,
+    qrEnabled,
     category: parseAppSponsorCategory(r.category),
     audience: parseAppSponsorAudience(r.audience),
     sortOrder: r.sort_order,
@@ -99,6 +101,7 @@ export async function createAppSponsorItem(input: {
   buttonText?: string | null;
   qrCodeUrl?: string | null;
   qrFromLink?: boolean;
+  qrEnabled?: boolean;
   category: AppSponsorCategory;
   audience: AppSponsorAudience;
   sortOrder: number;
@@ -118,8 +121,8 @@ export async function createAppSponsorItem(input: {
     logo_url: input.logoUrl ?? null,
     external_url: input.externalUrl ?? null,
     button_text: input.buttonText ?? null,
-    qr_code_url: input.qrCodeUrl ?? null,
-    qr_from_link: input.qrFromLink === true,
+    qr_code_url: input.qrEnabled === false ? null : input.qrCodeUrl ?? null,
+    qr_from_link: input.qrEnabled === false ? false : input.qrFromLink === true,
     category: input.category,
     audience: input.audience,
     sort_order: input.sortOrder,
@@ -143,6 +146,7 @@ export async function patchAppSponsorItem(
     buttonText: string | null;
     qrCodeUrl: string | null;
     qrFromLink: boolean;
+    qrEnabled: boolean;
     category: AppSponsorCategory;
     audience: AppSponsorAudience;
     sortOrder: number;
@@ -163,6 +167,10 @@ export async function patchAppSponsorItem(
   if (patch.buttonText !== undefined) row.button_text = patch.buttonText;
   if (patch.qrCodeUrl !== undefined) row.qr_code_url = patch.qrCodeUrl;
   if (patch.qrFromLink !== undefined) row.qr_from_link = patch.qrFromLink;
+  if (patch.qrEnabled === false) {
+    row.qr_from_link = false;
+    row.qr_code_url = null;
+  }
   if (patch.category !== undefined) row.category = patch.category;
   if (patch.audience !== undefined) row.audience = patch.audience;
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;

@@ -25,6 +25,7 @@ function emptyForm() {
     logoUrl: "",
     externalUrl: "",
     buttonText: "Zur Webseite",
+    qrEnabled: false,
     qrCodeUrl: "",
     qrFromLink: true,
     category: "partner",
@@ -136,6 +137,7 @@ export default function AppSponsorsPage() {
       logoUrl: it.logoUrl ?? "",
       externalUrl: it.externalUrl ?? "",
       buttonText: it.buttonText ?? "Zur Webseite",
+      qrEnabled: it.qrEnabled !== false,
       qrCodeUrl: it.qrCodeUrl ?? "",
       qrFromLink: !!it.qrFromLink,
       category: it.category ?? "partner",
@@ -163,8 +165,9 @@ export default function AppSponsorsPage() {
         logoUrl: form.logoUrl.trim() || null,
         externalUrl: form.externalUrl.trim() || null,
         buttonText: form.buttonText.trim() || null,
-        qrCodeUrl: form.qrCodeUrl.trim() || null,
-        qrFromLink: !!form.qrFromLink,
+        qrEnabled: !!form.qrEnabled,
+        qrCodeUrl: form.qrEnabled ? form.qrCodeUrl.trim() || null : null,
+        qrFromLink: form.qrEnabled ? !!form.qrFromLink : false,
         category: form.category,
         audience: form.audience,
         isActive: !!form.isActive,
@@ -290,8 +293,9 @@ export default function AppSponsorsPage() {
               <label className="admin-form-pair"><span className="admin-field-label">Logo-URL (optional)</span><input className="admin-input" value={form.logoUrl} onChange={(e) => setForm((f) => ({ ...f, logoUrl: e.target.value }))} /></label>
               <label className="admin-form-pair"><span className="admin-field-label">Externer Link (https)</span><input className="admin-input" value={form.externalUrl} onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))} /></label>
               <label className="admin-form-pair"><span className="admin-field-label">Button-Text</span><input className="admin-input" value={form.buttonText} onChange={(e) => setForm((f) => ({ ...f, buttonText: e.target.value }))} /></label>
-              <label className="admin-form-pair"><span className="admin-field-label">QR-Code URL (optional)</span><input className="admin-input" value={form.qrCodeUrl} onChange={(e) => setForm((f) => ({ ...f, qrCodeUrl: e.target.value }))} disabled={form.qrFromLink} /></label>
-              <label className="admin-form-pair" style={{ alignSelf: "end" }}><span className="admin-field-label">QR aus Link erzeugen</span><input type="checkbox" checked={form.qrFromLink} onChange={(e) => setForm((f) => ({ ...f, qrFromLink: e.target.checked }))} /></label>
+              <label className="admin-form-pair" style={{ alignSelf: "end" }}><span className="admin-field-label">QR aktiv</span><input type="checkbox" checked={!!form.qrEnabled} onChange={(e) => setForm((f) => ({ ...f, qrEnabled: e.target.checked }))} /></label>
+              <label className="admin-form-pair"><span className="admin-field-label">QR-Code URL (optional)</span><input className="admin-input" value={form.qrCodeUrl} onChange={(e) => setForm((f) => ({ ...f, qrCodeUrl: e.target.value }))} disabled={!form.qrEnabled || form.qrFromLink} /></label>
+              <label className="admin-form-pair" style={{ alignSelf: "end" }}><span className="admin-field-label">QR aus Link erzeugen</span><input type="checkbox" checked={!!form.qrFromLink} onChange={(e) => setForm((f) => ({ ...f, qrFromLink: e.target.checked }))} disabled={!form.qrEnabled} /></label>
               <label className="admin-form-pair"><span className="admin-field-label">Kategorie</span><select className="admin-select" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>{CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
               <label className="admin-form-pair"><span className="admin-field-label">Zielgruppe</span><select className="admin-select" value={form.audience} onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}>{AUDIENCE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
               <label className="admin-form-pair"><span className="admin-field-label">Sortierung</span><input className="admin-input" type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))} /></label>

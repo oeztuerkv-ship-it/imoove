@@ -21,6 +21,7 @@ type SponsorItem = {
   buttonText: string | null;
   qrCodeUrl: string | null;
   qrFromLink?: boolean;
+  qrEnabled?: boolean;
   targetType?: string;
   targetValue?: string | null;
   category: string;
@@ -37,6 +38,7 @@ export default function SponsorsScreen() {
 
   const qrUrlFor = useCallback((it: SponsorItem | null): string | null => {
     if (!it) return null;
+    if (it.qrEnabled === false) return null;
     const qr = it.qrCodeUrl?.trim();
     if (qr) return qr;
     const link = it.targetValue?.trim() || it.externalUrl?.trim() || "";
@@ -95,12 +97,14 @@ export default function SponsorsScreen() {
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>{selected.title}</Text>
                 <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{selected.description}</Text>
                 <View style={styles.actionsRow}>
-                  <Pressable
-                    style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
-                    onPress={() => setQrOpen(true)}
-                  >
-                    <Text style={styles.actionText}>Rabatt nutzen</Text>
-                  </Pressable>
+                  {qrUrlFor(selected) ? (
+                    <Pressable
+                      style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
+                      onPress={() => setQrOpen(true)}
+                    >
+                      <Text style={styles.actionText}>Rabatt nutzen</Text>
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
                     onPress={() => {
