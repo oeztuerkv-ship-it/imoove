@@ -1,0 +1,34 @@
+---
+description: Nur beauftragte Änderungen; gespeicherter Repo-Stand als Referenz; keine Mitnahme-Edits.
+alwaysApply: true
+---
+
+# Agent: Änderungsdisziplin (Onroda / imoove)
+
+## Referenzstand
+
+- **Maßgeblich** ist immer der **aktuell im Workspace gespeicherte** Stand (Dateien auf der Platte + was der Nutzer in Git committed haben will).
+- Frühere Chats, ältere Screenshots oder „wie es mal war“ **ersetzen nicht** den aktuellen Code, solange der Nutzer das nicht ausdrücklich verlangt.
+- Keine stillen **Zurücksetzungen**, **Breit-Diffs** oder **„Aufräumen nebenbei“** ohne klaren Auftrag.
+
+## Was du tun sollst
+
+1. **Nur** das umsetzen, was der Nutzer **in dieser Anfrage** will (oder was sich **unmittelbar** daraus ergibt und ohne das die Aufgabe nicht funktioniert).
+2. Vor jeder Änderung: **minimaler Umfang** (wenige Dateien, wenige Zeilen).
+3. Wenn die Anfrage **mehrdeutig** ist (welcher Screen, welches Verhalten): **kurz nachfragen** oder den **kleinsten sicheren** Schritt wählen — nicht raten und nicht umbauen.
+4. Bestehende Konventionen im **gleichen File** (Imports, Benennung, Patterns) **einhalten**.
+
+## Was du nicht tun sollst
+
+- Keine **Refactors**, **Formatierungs-Sweeps**, **Dependency-Updates**, **Copy-/UX-Anpassungen** oder **„Verbesserungen“**, die der Nutzer **nicht** genannt hat.
+- Keine Änderungen an **Admin-, Partner-, API-, Mobile-** oder **Deploy-Pfaden**, die **nicht** zur Aufgabe gehören (siehe ohnehin Rollen-Trennung in den anderen Rules).
+- Keine neuen **Doku-Dateien** oder **README-Einträge**, wenn der Nutzer sie nicht verlangt.
+
+## Ausnahmen (erlaubt ohne Extra-Auftrag)
+
+- **Build-/Lint-Fehler**, die **durch die eigenen Edits** entstehen — diese **im gleichen Zug** beheben.
+- **Offensichtliche Tippfehler** nur dann korrigieren, wenn sie **direkt** an der geänderten Stelle liegen und sonst kaputt wäre.
+
+## Kurz merken
+
+**Der Nutzer führt das Produkt; der Agent liefert punktuelle Umsetzung — keine eigenständige Produktagenda.**
