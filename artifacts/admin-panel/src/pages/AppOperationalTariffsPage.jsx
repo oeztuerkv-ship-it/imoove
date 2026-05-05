@@ -80,6 +80,17 @@ export default function AppOperationalTariffsPage() {
   const [pvTestWait, setPvTestWait] = useState(0);
   const [pvHoliday, setPvHoliday] = useState(false);
   const [pvAirport, setPvAirport] = useState(false);
+  const [gPricing, setGPricing] = useState(
+    /** @type {{ pricingMode: string; onrodaFixBase: string; onrodaFixPerKm: string; prebookSurchargeEur: string; vehXl: string; vehWc: string }} */ ({
+      pricingMode: "taxi_tariff",
+      onrodaFixBase: "0",
+      onrodaFixPerKm: "0",
+      prebookSurchargeEur: "0",
+      vehXl: "1",
+      vehWc: "1",
+    }),
+  );
+  const [globalBusy, setGlobalBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +114,23 @@ export default function AppOperationalTariffsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!config?.tariffs || typeof config.tariffs !== "object") return;
+    const t = config.tariffs;
+    const pm = t.pricingMode;
+    const mode =
+      pm === "fixed_price" || pm === "hybrid" || pm === "taxi_tariff" ? pm : "taxi_tariff";
+    const vm = t.vehicleClassMultipliers && typeof t.vehicleClassMultipliers === "object" ? t.vehicleClassMultipliers : {};
+    setGPricing({
+      pricingMode: mode,
+      onrodaFixBase: t.onrodaFixBase != null ? String(t.onrodaFixBase) : "0",
+      onrodaFixPerKm: t.onrodaFixPerKm != null ? String(t.onrodaFixPerKm) : "0",
+      prebookSurchargeEur: t.prebookSurchargeEur != null ? String(t.prebookSurchargeEur) : "0",
+      vehXl: vm.xl != null ? String(vm.xl) : "1",
+      vehWc: vm.wheelchair != null ? String(vm.wheelchair) : "1",
+    });
+  }, [config]);
 
   useEffect(() => {
     const first = serviceRegions[0];
@@ -234,9 +262,56 @@ export default function AppOperationalTariffsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new Error(data?.error || "Speichern fehlgeschlagen");
       setConfig(data.config || null);
-      setOk("Gespeichert. Sichtbar per GET /api/app/config; Schätzung per GET /api/fare-estimate (gleiche Engine).");
+      setOk("Gebiets-Tarif gespeichert. GET /api/app/config, GET /api/app/pricing; Schätzung GET /api/fare-estimate.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fehler");
+    }
+  };
+
+  const saveGlobal = async () => {
+    setError("");
+    setOk("");
+    if (!config || typeof config !== "object") {
+      setError("Konfiguration fehlt — bitte neu laden.");
+      return;
+    }
+    setGlobalBusy(true);
+    const prevTar = config.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
+    const prevBsr =
+      prevTar.byServiceRegion && typeof prevTar.byServiceRegion === "object" ? { ...prevTar.byServiceRegion } : {};
+    const prevVm =
+      prevTar.vehicleClassMultipliers && typeof prevTar.vehicleClassMultipliers === "object"
+        ? { ...prevTar.vehicleClassMultipliers }
+        : {};
+    const newTariffs = {
+      ...prevTar,
+      active: tariffsActive,
+      pricingMode: gPricing.pricingMode,
+      onrodaFixBase: n(gPricing.onrodaFixBase),
+      onrodaFixPerKm: n(gPricing.onrodaFixPerKm),
+      prebookSurchargeEur: n(gPricing.prebookSurchargeEur),
+      vehicleClassMultipliers: {
+        ...prevVm,
+        standard: 1,
+        xl: n(gPricing.vehXl) || 1,
+        wheelchair: n(gPricing.vehWc) || 1,
+      },
+      byServiceRegion: prevBsr,
+    };
+    try {
+      const res = await fetch(URL, {
+        method: "PATCH",
+        headers: adminApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ tariffs: newTariffs }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) throw new Error(data?.error || "Speichern fehlgeschlagen");
+      setConfig(data.config || null);
+      setOk("Globale Preislogik gespeichert. App: GET /api/app/config und GET /api/app/pricing.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setGlobalBusy(false);
     }
   };
 
@@ -356,11 +431,90 @@ export default function AppOperationalTariffsPage() {
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
       <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">Tarife &amp; Preise (nach Stadt / Einfahrt-Region)</div>
+        <div className="admin-panel-card__title">0. Plattformweit: Preislogik &amp; Fixpreis-Parameter</div>
+        <p className="admin-table-sub" style={{ lineHeight: 1.5, maxWidth: 720 }}>
+          Modus (<code>taxi_tariff</code>, <code>fixed_price</code>, <code>hybrid</code>), Onroda-Fixpreis-Basis/km, Vorausbuchungs-Zuschlag und
+          Fahrzeugklassen-Multiplikatoren (XL, Rollstuhl). Speichern ersetzt nur globale Tarif-Felder, Regionen bleiben erhalten.
+        </p>
+        <div className="admin-form-vertical" style={{ maxWidth: 520, marginTop: 10 }}>
+          <label className="admin-form-label">
+            Preis-Modus
+            <select
+              className="admin-input"
+              style={{ display: "block", marginTop: 4 }}
+              value={gPricing.pricingMode}
+              onChange={(e) => setGPricing((p) => ({ ...p, pricingMode: e.target.value }))}
+            >
+              <option value="taxi_tariff">Taxitarif (Schätzung / Taxameter)</option>
+              <option value="fixed_price">Fixpreis (Onroda-Formel)</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </label>
+          <label className="admin-form-label" style={{ marginTop: 10 }}>
+            Onroda Fix: Basis (EUR)
+            <input
+              className="admin-input"
+              style={{ display: "block", marginTop: 4 }}
+              value={gPricing.onrodaFixBase}
+              onChange={(e) => setGPricing((p) => ({ ...p, onrodaFixBase: e.target.value }))}
+            />
+          </label>
+          <label className="admin-form-label" style={{ marginTop: 10 }}>
+            Onroda Fix: EUR pro km
+            <input
+              className="admin-input"
+              style={{ display: "block", marginTop: 4 }}
+              value={gPricing.onrodaFixPerKm}
+              onChange={(e) => setGPricing((p) => ({ ...p, onrodaFixPerKm: e.target.value }))}
+            />
+          </label>
+          <label className="admin-form-label" style={{ marginTop: 10 }}>
+            Vorausbuchung Zuschlag (EUR)
+            <input
+              className="admin-input"
+              style={{ display: "block", marginTop: 4 }}
+              value={gPricing.prebookSurchargeEur}
+              onChange={(e) => setGPricing((p) => ({ ...p, prebookSurchargeEur: e.target.value }))}
+            />
+          </label>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 10 }}>
+            <label className="admin-form-label" style={{ flex: "1 1 200px" }}>
+              Multiplikator XL
+              <input
+                className="admin-input"
+                style={{ display: "block", marginTop: 4 }}
+                value={gPricing.vehXl}
+                onChange={(e) => setGPricing((p) => ({ ...p, vehXl: e.target.value }))}
+              />
+            </label>
+            <label className="admin-form-label" style={{ flex: "1 1 200px" }}>
+              Multiplikator Rollstuhl
+              <input
+                className="admin-input"
+                style={{ display: "block", marginTop: 4 }}
+                value={gPricing.vehWc}
+                onChange={(e) => setGPricing((p) => ({ ...p, vehWc: e.target.value }))}
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            className="admin-btn admin-btn--primary"
+            style={{ marginTop: 14, alignSelf: "flex-start" }}
+            onClick={saveGlobal}
+            disabled={globalBusy}
+          >
+            {globalBusy ? "Speichern …" : "Globale Preislogik speichern"}
+          </button>
+        </div>
+      </div>
+
+      <div className="admin-panel-card" style={{ marginBottom: 16 }}>
+        <div className="admin-panel-card__title">Preise &amp; Tarife (nach Stadt / Einfahrt-Region)</div>
         <p className="admin-table-sub" style={{ lineHeight: 1.55, maxWidth: 720 }}>
-          Speichert in <code>app_operational_config</code> → <code>tariffs.byServiceRegion[regionId]</code>. Kunden-App:{" "}
-          <code>GET /api/app/config</code> (inkl. <code>tariffsPerServiceRegion</code>). Rechnen: <code>GET /api/fare-estimate?fromFull=…</code>{" "}
-          — dieselbe Logik serverseitig, keine harten Werte in der App.
+          Speichert in <code>app_operational_config</code> → <code>tariffs.byServiceRegion[regionId]</code>. Öffentlich:{" "}
+          <code>GET /api/app/config</code> (inkl. <code>tariffsPerServiceRegion</code>), <code>GET /api/app/pricing</code>. Schätzung:{" "}
+          <code>GET /api/fare-estimate</code> — dieselbe Engine serverseitig; Mobile zeigt nur API-Werte.
         </p>
         <p className="admin-table-sub" style={{ lineHeight: 1.5, maxWidth: 720 }}>
           <strong>Trennung:</strong> „Fahrtminuten” = Zeitkomponente im Tarif (€/min) für die angegebene Fahrt- bzw. Routenzeit, nicht

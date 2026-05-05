@@ -134,8 +134,8 @@ const PAGE_META = {
     subtitle: "Preisregeln, Zonen und Zuschläge",
   },
   "app-op-tariffs": {
-    title: "App / Betrieb — Tarife & Preise",
-    subtitle: "Kunden-App: künftige Tarifparameter ohne App-Update; vorbereitende Vorschau",
+    title: "App / Betrieb — Preise & Tarife",
+    subtitle: "Globale Preislogik, Gebietstarife, Zuschläge; öffentlich GET /api/app/pricing und /app/config",
   },
   "app-op-regions": {
     title: "App / Betrieb — Gebiete & Zonen",

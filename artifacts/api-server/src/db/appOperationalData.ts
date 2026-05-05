@@ -54,6 +54,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
   },
   tariffs: {
     active: true,
+    /** Plattform-Modus: Taxitarif, Fixpreis-Logik oder Kombination — Steuerung nur Admin/Backend. */
+    pricingMode: "taxi_tariff" as const,
     baseFare: 4.3,
     rateFirstPerKm: 3.0,
     rateAfterPerKm: 2.5,
@@ -861,5 +863,34 @@ export async function getAppConfigForPublic(): Promise<AppConfigPublic> {
     driverRules: section("driverRules"),
     bookingRules: section("bookingRules"),
     system: section("system"),
+  };
+}
+
+export type PricingModePublic = "taxi_tariff" | "fixed_price" | "hybrid";
+
+/** Öffentliche Tarif-Payload für Mobile/Partner (keine Admin-Interna); gleiche Quelle wie `getAppConfigForPublic`. */
+export type AppPricingPublic = {
+  ok: true;
+  version: number;
+  updatedAt: string | null;
+  pricingMode: PricingModePublic;
+  tariffs: Record<string, unknown>;
+  infoDe?: string;
+};
+
+export async function getAppPricingForPublic(): Promise<AppPricingPublic> {
+  const cfg = await getAppConfigForPublic();
+  const t = cfg.tariffs && typeof cfg.tariffs === "object" ? cfg.tariffs : {};
+  const pm = (t as { pricingMode?: unknown }).pricingMode;
+  const pricingMode: PricingModePublic =
+    pm === "fixed_price" || pm === "hybrid" || pm === "taxi_tariff" ? pm : "taxi_tariff";
+  const info = (t as { info?: unknown }).info;
+  return {
+    ok: true,
+    version: cfg.version,
+    updatedAt: cfg.updatedAt,
+    pricingMode,
+    tariffs: { ...t },
+    infoDe: typeof info === "string" ? info : undefined,
   };
 }

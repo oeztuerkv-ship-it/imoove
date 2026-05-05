@@ -10,30 +10,6 @@ export interface FareBreakdown {
   fareKind?: FareKind;
 }
 
-/** Immer kaufmännisch "nach oben" auf 10-Cent-Stufen (z. B. 11,23 -> 11,30). */
-export function ceilToTenth(amount: number): number {
-  const safe = Number.isFinite(amount) ? amount : 0;
-  return Math.ceil((safe + Number.EPSILON) * 10) / 10;
-}
-
-/** Auf volle Euro nach oben (z. B. 80,10 -> 81,00). */
-function ceilToEuro(amount: number): number {
-  const safe = Number.isFinite(amount) ? amount : 0;
-  return Math.ceil(safe - Number.EPSILON);
-}
-
-/**
- * Taxameter-Schätzung — ausschließlich aus `AppTariffConfig` (siehe GET /api/app/config, ggf. Region), keine festen Maut-Werte.
- */
-export function calculateFare(
-  distanceKm: number,
-  waitingMinutes: number = 0,
-  tariffs: AppTariffConfig = FALLBACK_TARIFF,
-): FareBreakdown {
-  return calculateFareFromAppConfig(distanceKm, waitingMinutes, tariffs);
-}
-
-/** Onroda Fixpreis: 3,50 € Basis + 2,20 € pro km (lt. Produktvorgabe). */
 /** Werte aus `GET /api/app/config` → `tariffs` (Backend-Steuerung). */
 export type AppTariffConfig = {
   baseFare: number;
@@ -50,15 +26,42 @@ export type AppTariffConfig = {
   kmPricingModel?: "single" | "two_tier";
 };
 
-export const FALLBACK_TARIFF: AppTariffConfig = {
-  baseFare: 4.3,
-  rateFirstPerKm: 3.0,
-  rateAfterPerKm: 2.5,
-  thresholdKm: 4,
-  waitingPerHour: 38,
-  onrodaFixBase: 3.5,
-  onrodaFixPerKm: 2.2,
+/** Immer kaufmännisch "nach oben" auf 10-Cent-Stufen (z. B. 11,23 -> 11,30). */
+export function ceilToTenth(amount: number): number {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  return Math.ceil((safe + Number.EPSILON) * 10) / 10;
+}
+
+/** Auf volle Euro nach oben (z. B. 80,10 -> 81,00). */
+function ceilToEuro(amount: number): number {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  return Math.ceil(safe - Number.EPSILON);
+}
+
+/**
+ * Taxameter-Schätzung — ausschließlich aus `AppTariffConfig` (siehe GET /api/app/config, ggf. Region), keine festen Maut-Werte.
+ */
+/** Leerer Tarif — nur bis die API geladen ist; keine festen Produkt-Euro im Client. */
+const EMPTY_APP_TARIFF: AppTariffConfig = {
+  baseFare: 0,
+  rateFirstPerKm: 0,
+  rateAfterPerKm: 0,
+  thresholdKm: 0,
+  waitingPerHour: 0,
+  onrodaFixBase: 0,
+  onrodaFixPerKm: 0,
 };
+
+export function calculateFare(
+  distanceKm: number,
+  waitingMinutes: number = 0,
+  tariffs: AppTariffConfig = EMPTY_APP_TARIFF,
+): FareBreakdown {
+  return calculateFareFromAppConfig(distanceKm, waitingMinutes, tariffs);
+}
+
+/** @deprecated Nutzen Sie `appTariffFromRecord` / Server-Tarife — keine festen Fallback-Euro. */
+export const FALLBACK_TARIFF: AppTariffConfig = { ...EMPTY_APP_TARIFF };
 
 function num(v: unknown, d: number): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -66,16 +69,16 @@ function num(v: unknown, d: number): number {
 }
 
 export function appTariffFromRecord(raw: Record<string, unknown> | null | undefined): AppTariffConfig {
-  if (!raw || typeof raw !== "object") return { ...FALLBACK_TARIFF };
+  if (!raw || typeof raw !== "object") return { ...EMPTY_APP_TARIFF };
   const perKm = num((raw as { perKm?: unknown }).perKm, 0);
   return {
-    baseFare: num(raw.baseFare, FALLBACK_TARIFF.baseFare),
-    rateFirstPerKm: num(raw.rateFirstPerKm, FALLBACK_TARIFF.rateFirstPerKm),
-    rateAfterPerKm: num(raw.rateAfterPerKm, FALLBACK_TARIFF.rateAfterPerKm),
-    thresholdKm: num(raw.thresholdKm, FALLBACK_TARIFF.thresholdKm),
-    waitingPerHour: num(raw.waitingPerHour, FALLBACK_TARIFF.waitingPerHour),
-    onrodaFixBase: num(raw.onrodaFixBase, FALLBACK_TARIFF.onrodaFixBase),
-    onrodaFixPerKm: num(raw.onrodaFixPerKm, FALLBACK_TARIFF.onrodaFixPerKm),
+    baseFare: num(raw.baseFare, 0),
+    rateFirstPerKm: num(raw.rateFirstPerKm, 0),
+    rateAfterPerKm: num(raw.rateAfterPerKm, 0),
+    thresholdKm: num(raw.thresholdKm, 0),
+    waitingPerHour: num(raw.waitingPerHour, 0),
+    onrodaFixBase: num(raw.onrodaFixBase, 0),
+    onrodaFixPerKm: num(raw.onrodaFixPerKm, 0),
     perKm: perKm > 0 ? perKm : undefined,
     perMin: (raw as { perMin?: unknown }).perMin != null ? num((raw as { perMin?: unknown }).perMin, 0) : undefined,
     minFare: (raw as { minFare?: unknown }).minFare != null ? num((raw as { minFare?: unknown }).minFare, 0) : undefined,
@@ -140,7 +143,7 @@ export function calculateOnrodaFixFareConfig(distanceKm: number, tariffs: AppTar
 
 export function calculateOnrodaFixFare(
   distanceKm: number,
-  tariffs: AppTariffConfig = FALLBACK_TARIFF,
+  tariffs: AppTariffConfig = EMPTY_APP_TARIFF,
 ): FareBreakdown {
   return calculateOnrodaFixFareConfig(distanceKm, tariffs);
 }

@@ -102,7 +102,7 @@ const ADMIN_NAV_GROUPS_RAW = [
     roles: R.adminSvc,
     items: [
       { pageKey: "app-news", label: "App-Neuigkeiten", icon: "document", navOrder: 0, roles: R.adminSvc },
-      { pageKey: "app-op-tariffs", label: "Tarife & Preise", icon: "map", navOrder: 1, roles: R.adminSvc },
+      { pageKey: "app-op-tariffs", label: "Preise & Tarife", icon: "map", navOrder: 1, roles: R.adminSvc },
       { pageKey: "app-op-regions", label: "Gebiete & Zonen", icon: "map", navOrder: 2, roles: R.adminSvc },
       { pageKey: "app-op-commission", label: "Provision", icon: "wallet", navOrder: 3, roles: R.adminSvc },
       { pageKey: "app-op-dispatch", label: "Dispatch", icon: "rides", navOrder: 4, roles: R.adminSvc },
@@ -167,7 +167,7 @@ const ADMIN_NAV_GROUPS_RAW = [
   },
   {
     id: "fares",
-    label: "Tarife / Preise",
+    label: "Preise & Tarife",
     icon: "map",
     roles: ["admin", "taxi"],
     items: [{ pageKey: "fares", label: "Preisregeln & Gebiete", icon: "map", roles: ["admin", "taxi"] }],
@@ -377,7 +377,7 @@ const ADMIN_TOP_NAV = [
       { pageKey: "ride-support", label: "Fahrt-Support (Kund*innen)" },
       { pageKey: "ride-new", label: "Neue Fahrt" },
       { pageKey: "docs-hub", label: "Dokumente & PDF" },
-      { pageKey: "fares", label: "Tarife & Preise" },
+      { pageKey: "fares", label: "Preise & Tarife" },
     ],
   },
   {

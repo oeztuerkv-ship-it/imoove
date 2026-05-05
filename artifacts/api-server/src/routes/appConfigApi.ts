@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { getAppConfigForPublic } from "../db/appOperationalData";
+import { getAppConfigForPublic, getAppPricingForPublic } from "../db/appOperationalData";
 import { listAppNewsPublic, parseAppNewsAudience } from "../db/appNewsData";
 
 const router: IRouter = Router();
@@ -12,6 +12,17 @@ const router: IRouter = Router();
 router.get("/app/config", async (_req, res, next) => {
   try {
     const data = await getAppConfigForPublic();
+    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Tarife & Preis-Modus (öffentlich, gleiche DB-Quelle wie `tariffs` in `/app/config`). */
+router.get("/app/pricing", async (_req, res, next) => {
+  try {
+    const data = await getAppPricingForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
     res.json(data);
   } catch (e) {

@@ -11,6 +11,7 @@ Kurzüberblick über **drei getrennte Identitäten**: Plattform-Admin, Partner-P
 - **Partner-Zugänge anlegen:** Jede gültige `PanelRole` (`owner`, `manager`, `staff`, `readonly`) ist erlaubt — unabhängig von Partner-internen Zuweisungsregeln.
 - **Admin-DB-Zugänge:** `GET/POST/PATCH/DELETE /api/admin/auth/users` nur mit Rolle **`admin`** im JWT (nicht `service`). `DELETE` verweigert Selbstlöschung und Löschen des letzten **aktiven** `admin`-Kontos (`cannot_delete_self`, `last_active_admin`).
 - **App-Neuigkeiten (Mobile-CMS):** `GET/POST/PATCH/DELETE /api/admin/app-news` — `src/routes/adminAppNewsRouter.ts`. Rechte wie Homepage-Hinweise: `canMutateAdminCompanies` (**admin**, **service**). Öffentlicher Lese-Endpunkt für die App: `GET /api/app/news` (ohne Bearer) unter `src/routes/appConfigApi.ts`.
+- **App-Konfiguration / Tarife (öffentlich):** `GET /api/app/config` und `GET /api/app/pricing` (ohne Bearer) — `src/routes/appConfigApi.ts`. Keine Geheimnisse; finale Fahrtpreise weiterhin nur über serverseitige Buchung/Snapshot.
 
 ## 2. Partner-Panel (Unternehmen)
 

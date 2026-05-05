@@ -6,6 +6,7 @@ import HelpPage from "../pages/HelpPage.jsx";
 import TaxiStammdatenPage from "../pages/taxi/TaxiStammdatenPage.jsx";
 import TaxiDocumentsPage from "../pages/taxi/TaxiDocumentsPage.jsx";
 import TaxiKrankenfahrtenPage from "../pages/taxi/TaxiKrankenfahrtenPage.jsx";
+import TaxiTarifeInfoPage from "../pages/taxi/TaxiTarifeInfoPage.jsx";
 import PartnerRidesListPage from "../pages/PartnerRidesListPage.jsx";
 import BillingPage from "../pages/BillingPage.jsx";
 import RideCreatePage from "../pages/RideCreatePage.jsx";
@@ -42,6 +43,11 @@ const TAXI_NAV_DEFS = [
     key: "finanzen",
     label: "Finanzen",
     show: (user) => hasPanelModule(user?.panelModules, "billing") && hasPerm(user, "rides.read"),
+  },
+  {
+    key: "tarif_info",
+    label: "Preise & Tarife",
+    show: (user) => hasPerm(user, "rides.read"),
   },
   {
     key: "krankenfahrten",
@@ -220,6 +226,7 @@ export default function TaxiEntrepreneurShell({ user, company, onLogout }) {
           <FleetPage fleetIntent={fleetIntent} onFleetIntentConsumed={consumeFleetIntent} />
         )}
         {activeTaxiModule === "finanzen" && <BillingPage />}
+        {activeTaxiModule === "tarif_info" && <TaxiTarifeInfoPage />}
         {activeTaxiModule === "krankenfahrten" && <TaxiKrankenfahrtenPage />}
         {activeTaxiModule === "dokumente" && <TaxiDocumentsPage onOpenDocumentSupportRequest={openSupportDraft} />}
         {activeTaxiModule === "einstellungen" && (

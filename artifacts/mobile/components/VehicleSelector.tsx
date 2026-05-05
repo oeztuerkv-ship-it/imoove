@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import React from "react";
+import React, { useMemo } from "react";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   Animated,
@@ -11,9 +11,16 @@ import {
 } from "react-native";
 
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import { calculateFare, ceilToTenth, FALLBACK_TARIFF, formatEuro } from "@/utils/fareCalculator";
+import {
+  type AppTariffConfig,
+  appTariffFromRecord,
+  calculateFare,
+  ceilToTenth,
+  formatEuro,
+} from "@/utils/fareCalculator";
 
 const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
@@ -29,11 +36,13 @@ function VehicleCard({
   isSelected,
   onSelect,
   distanceKm,
+  tariff,
 }: {
   vehicle: VehicleOption;
   isSelected: boolean;
   onSelect: () => void;
   distanceKm?: number;
+  tariff: AppTariffConfig;
 }) {
   const colors = useColors();
   const scale = React.useRef(new Animated.Value(1)).current;
@@ -47,9 +56,11 @@ function VehicleCard({
     onSelect();
   };
 
-  const price = distanceKm
-    ? formatEuro(ceilToTenth(calculateFare(distanceKm, 0, FALLBACK_TARIFF).total * vehicle.multiplier))
-    : null;
+  const rawTotal =
+    distanceKm != null && distanceKm > 0
+      ? ceilToTenth(calculateFare(distanceKm, 0, tariff).total * vehicle.multiplier)
+      : 0;
+  const price = rawTotal > 0 ? formatEuro(rawTotal) : null;
 
   const active = ONRODA_MARK_RED;
   return (
@@ -105,6 +116,11 @@ function VehicleCard({
 }
 
 export function VehicleSelector({ selected, onSelect, distanceKm }: VehicleSelectorProps) {
+  const { config } = useOnrodaAppConfig();
+  const tariff = useMemo(
+    () => appTariffFromRecord(config.tariffs as Record<string, unknown> | undefined),
+    [config.tariffs],
+  );
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {VEHICLES.map((v) => (
@@ -114,6 +130,7 @@ export function VehicleSelector({ selected, onSelect, distanceKm }: VehicleSelec
           isSelected={selected === v.id}
           onSelect={() => onSelect(v.id)}
           distanceKm={distanceKm}
+          tariff={tariff}
         />
       ))}
     </ScrollView>

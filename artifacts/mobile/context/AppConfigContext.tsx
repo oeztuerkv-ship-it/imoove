@@ -6,6 +6,7 @@ import {
   getDefaultAppConfig,
   invalidateAppConfigCache,
 } from "@/lib/appConfig";
+import { type AppPricingResponse, fetchAppPricing } from "@/lib/appPricing";
 
 type AppConfigContextValue = {
   config: OnrodaAppConfig;
@@ -18,6 +19,16 @@ const AppConfigContext = createContext<AppConfigContextValue | null>(null);
 
 const REFRESH_MS = 45_000;
 
+function mergePricingIntoConfig(data: OnrodaAppConfig, pricing: AppPricingResponse | null): OnrodaAppConfig {
+  if (!pricing?.tariffs || typeof pricing.tariffs !== "object") return data;
+  return {
+    ...data,
+    tariffs: { ...data.tariffs, ...pricing.tariffs },
+    version: typeof pricing.version === "number" ? pricing.version : data.version,
+    updatedAt: pricing.updatedAt ?? data.updatedAt,
+  };
+}
+
 export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<OnrodaAppConfig>(getDefaultAppConfig);
   const [loading, setLoading] = useState(true);
@@ -27,11 +38,18 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
     setLastError(null);
     try {
       invalidateAppConfigCache();
-      const data = await fetchAppConfig();
-      setConfig(data);
+      const [data, pricing] = await Promise.all([fetchAppConfig(), fetchAppPricing()]);
+      setConfig(mergePricingIntoConfig(data, pricing));
     } catch (e) {
       setLastError(e instanceof Error ? e.message : "config_load_failed");
-      setConfig(getDefaultAppConfig());
+      let fallback = getDefaultAppConfig();
+      try {
+        const pricing = await fetchAppPricing();
+        fallback = mergePricingIntoConfig(fallback, pricing);
+      } catch {
+        /* ignore */
+      }
+      setConfig(fallback);
     } finally {
       setLoading(false);
     }

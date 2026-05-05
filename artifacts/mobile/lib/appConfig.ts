@@ -66,15 +66,8 @@ const DEFAULT: OnrodaAppConfig = {
     customerAppClosedDe: "Die Kunden-App ist im Wartungsmodus.",
     operationalRuleDe: "Diese Buchung ist mit den aktuellen Plattform-Regeln nicht zulässig.",
   },
-  tariffs: {
-    baseFare: 4.3,
-    rateFirstPerKm: 3.0,
-    rateAfterPerKm: 2.5,
-    thresholdKm: 4,
-    waitingPerHour: 38,
-    onrodaFixBase: 3.5,
-    onrodaFixPerKm: 2.2,
-  },
+  /** Keine festen Euro-Werte — Tarife kommen von `GET /api/app/config` bzw. `/app/pricing`. */
+  tariffs: {},
   provision: {
     defaultRate: 0.07,
     active: true,
@@ -158,7 +151,7 @@ export async function fetchAppConfig(): Promise<OnrodaAppConfig> {
         ok: true,
         messages: { ...DEFAULT.messages, ...(j.messages && typeof j.messages === "object" ? j.messages : {}) },
         provision: { ...DEFAULT.provision, ...(j.provision && typeof j.provision === "object" ? j.provision : {}) },
-        tariffs: { ...DEFAULT.tariffs, ...(j.tariffs && typeof j.tariffs === "object" ? j.tariffs : {}) },
+        tariffs: { ...(j.tariffs && typeof j.tariffs === "object" ? j.tariffs : {}) },
         tariffsPerServiceRegion:
           j.tariffsPerServiceRegion && typeof j.tariffsPerServiceRegion === "object"
             ? (j.tariffsPerServiceRegion as Record<string, Record<string, unknown>>)

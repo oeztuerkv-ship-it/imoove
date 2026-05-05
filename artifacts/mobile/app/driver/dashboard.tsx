@@ -42,6 +42,12 @@ function isKrankenkasseRide(paymentMethod: string) {
   return paymentMethod.startsWith("Krankenkasse");
 }
 
+function platformPricingModeLabelDe(pm: unknown): string {
+  if (pm === "fixed_price") return "Fixpreis";
+  if (pm === "hybrid") return "Hybrid";
+  return "Taxitarif";
+}
+
 function accessCodeErrorMessage(code: string): string {
   const m: Record<string, string> = {
     pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
@@ -2442,6 +2448,12 @@ export default function DriverDashboard() {
             <View>
               <Text style={styles.headerName}>{driver.name}</Text>
               <Text style={styles.headerSub}>{driver.car} · {driver.plate}</Text>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94A3B8", marginTop: 2 }}>
+                Preis: {platformPricingModeLabelDe(
+                  (appPlatformConfig.tariffs as { pricingMode?: string } | undefined)?.pricingMode,
+                )}{" "}
+                · vom System (nicht änderbar)
+              </Text>
             </View>
         </View>
         <Pressable
