@@ -37,6 +37,28 @@ export type TariffBookingSnapshotV1 = {
   pricingMode?: "taxi_tariff" | "fixed_price" | "hybrid";
   /** Kompakte Tarif-Kopie zum Buchungszeitpunkt (keine spätere Admin-Änderung am Ride). */
   mergedTariffAudit?: Record<string, unknown>;
+  /** Strukturierte Taxitarifdaten für revisionssichere Historie. */
+  meterTariffSnapshot?: {
+    regionId: string | null;
+    version: number;
+    validFrom: string | null;
+    baseFareEur: number;
+    minFareEur: number;
+    kmTiers: Array<{
+      fromKm: number;
+      toKm: number | null;
+      pricePerKmEur: number;
+    }>;
+    timeTariff: {
+      amountEur: number;
+      perSeconds: number;
+      perHourEur: number;
+    };
+    surcharges: {
+      largeVehicleFromPassengers: number;
+      largeVehicleAmountEur: number;
+    };
+  };
 };
 
 export type RideAccessibilityAssistanceLevel = "boarding" | "to_door" | "to_apartment" | "none";

@@ -11,9 +11,8 @@ function isTariffsObject(op: Record<string, unknown>): Record<string, unknown> {
 }
 
 export function resolveRidePricingModeFromOperational(op: Record<string, unknown>): RidePricingMode {
-  const t = isTariffsObject(op);
-  const pm = t.pricingMode;
-  if (pm === "fixed_price" || pm === "hybrid" || pm === "taxi_tariff") return pm;
+  // Aktuelle Produktlinie: nur Taxitarif/Taxameter, kein freier Fixpreis-Modus.
+  void op;
   return "taxi_tariff";
 }
 
@@ -38,12 +37,62 @@ function compactMergedTariffAudit(merged: Record<string, unknown>): Record<strin
     "perMin",
     "active",
     "pricingMode",
+    "largeVehicleSurcharge",
+    "tariffVersion",
+    "validFrom",
   ] as const;
   const out: Record<string, unknown> = {};
   for (const k of keys) {
     if (Object.prototype.hasOwnProperty.call(merged, k)) out[k] = merged[k];
   }
   return out;
+}
+
+function toNum(v: unknown, fallback = 0): number {
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+
+function toPositiveInt(v: unknown, fallback: number): number {
+  const n = Math.round(toNum(v, fallback));
+  return n > 0 ? n : fallback;
+}
+
+function extractMeterTariffSnapshot(merged: Record<string, unknown>, serviceRegionId: string | null, opVersion: number) {
+  const kmModel = merged.kmPricingModel === "single" ? "single" : "two_tier";
+  const thresholdKm = Math.max(0, toNum(merged.thresholdKm, 4));
+  const perKm = Math.max(0, toNum(merged.perKm, 0));
+  const firstPerKm = Math.max(0, toNum(merged.rateFirstPerKm, perKm));
+  const afterPerKm = Math.max(0, toNum(merged.rateAfterPerKm, perKm || firstPerKm));
+  const tiers =
+    kmModel === "single"
+      ? [{ fromKm: 0, toKm: null, pricePerKmEur: perKm > 0 ? perKm : afterPerKm }]
+      : [
+          { fromKm: 0, toKm: thresholdKm, pricePerKmEur: firstPerKm },
+          { fromKm: thresholdKm, toKm: null, pricePerKmEur: afterPerKm },
+        ];
+  const tripPerMinute = Math.max(0, toNum(merged.perMin, toNum(merged.pricePerMinute, 0)));
+  const perSeconds = 10.91;
+  const amountEur = tripPerMinute > 0 ? (tripPerMinute * perSeconds) / 60 : 0;
+  const lvs = merged.largeVehicleSurcharge;
+  const lvsObj = lvs && typeof lvs === "object" && !Array.isArray(lvs) ? (lvs as Record<string, unknown>) : {};
+  return {
+    regionId: serviceRegionId,
+    version: toPositiveInt(merged.tariffVersion, opVersion),
+    validFrom: typeof merged.validFrom === "string" && merged.validFrom.trim() ? merged.validFrom.trim() : null,
+    baseFareEur: Math.max(0, toNum(merged.baseFare, 0)),
+    minFareEur: Math.max(0, toNum(merged.minFare, toNum(merged.minPrice, 0))),
+    kmTiers: tiers,
+    timeTariff: {
+      amountEur,
+      perSeconds,
+      perHourEur: Math.max(0, toNum(merged.waitingPerHour, tripPerMinute * 60)),
+    },
+    surcharges: {
+      largeVehicleFromPassengers: toPositiveInt(lvsObj.minPassengers, 5),
+      largeVehicleAmountEur: Math.max(0, toNum(lvsObj.amountEur, 0)),
+    },
+  };
 }
 
 export function bookingPriceToleranceEur(serverEur: number): number {
@@ -92,6 +141,7 @@ export function computeRideBookingPricing(args: {
   at?: Date;
   applyHolidaySurcharge?: boolean;
   applyAirportFlat?: boolean;
+  passengerCount?: number;
 }): RideBookingPricingResult {
   const at = args.at ?? new Date();
   const waitingMinutes = args.waitingMinutes ?? 0;
@@ -103,6 +153,7 @@ export function computeRideBookingPricing(args: {
     tripMinutes: args.tripMinutes,
     waitingMinutes,
     vehicle: args.vehicle,
+    passengerCount: args.passengerCount,
     at,
     applyHolidaySurcharge: args.applyHolidaySurcharge ?? false,
     applyAirportFlat: args.applyAirportFlat ?? false,
@@ -125,6 +176,7 @@ export function computeRideBookingPricing(args: {
     operationalConfigVersion,
     pricingMode,
     mergedTariffAudit: compactMergedTariffAudit(merged),
+    meterTariffSnapshot: extractMeterTariffSnapshot(merged, serviceRegionId, operationalConfigVersion),
   };
   return {
     pricingMode,

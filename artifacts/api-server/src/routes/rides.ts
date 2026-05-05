@@ -1042,6 +1042,8 @@ router.post("/rides", async (req, res, next) => {
       (raw as { waitingMinutes?: unknown }).waitingMinutes ?? (raw as { waiting_minutes?: unknown }).waiting_minutes ?? 0,
     );
     const waitingMinutesB = Number.isFinite(waitMRaw) ? Math.max(0, waitMRaw) : 0;
+    const paxRaw = Number((raw as { passengerCount?: unknown; passenger_count?: unknown }).passengerCount ?? (raw as { passenger_count?: unknown }).passenger_count);
+    const passengerCountB = Number.isFinite(paxRaw) ? Math.max(1, Math.round(paxRaw)) : undefined;
     const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
     const accessibilityRaw = (raw as { accessibilityOptions?: unknown; accessibility_options?: unknown })
       .accessibilityOptions ?? (raw as { accessibility_options?: unknown }).accessibility_options;
@@ -1070,6 +1072,7 @@ router.post("/rides", async (req, res, next) => {
       tripMinutes: tripMinutesB,
       waitingMinutes: waitingMinutesB,
       vehicle: vehicleB,
+      passengerCount: passengerCountB,
       at: atBooking,
     });
     const finalPriceB = bookingPricing.finalPrice;

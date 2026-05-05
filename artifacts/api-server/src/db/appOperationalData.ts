@@ -62,6 +62,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     thresholdKm: 4,
     waitingPerHour: 38,
     pricePerMinute: 0.63,
+    timeTariffAmount: 0.1,
+    timeTariffPerSeconds: 10.91,
     minPrice: 0,
     nightSurchargePercent: 0,
     weekendSurchargePercent: 0,
@@ -77,6 +79,10 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     minFare: 0,
     kmPricingModel: "two_tier" as const,
     vehicleClassMultipliers: { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 } as Record<string, number>,
+    largeVehicleSurcharge: {
+      minPassengers: 5,
+      amountEur: 7,
+    },
     surcharges: {
       night: { enabled: false, percent: 0 },
       weekend: { enabled: false, percent: 0 },

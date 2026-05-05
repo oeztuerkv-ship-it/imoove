@@ -148,6 +148,8 @@ export type EstimateInputs = {
   waitingMinutes: number;
   /** Klasse, z. B. standard, xl, wheelchair, onroda */
   vehicle: string;
+  /** Optional: tatsächliche Personenanzahl für Großraumzuschlag. */
+  passengerCount?: number;
   at: Date;
   /** Test-Preview: Feiertagszuschlag (kein behördliches Feiertagskalender-Modell) */
   applyHolidaySurcharge?: boolean;
@@ -279,6 +281,22 @@ export function estimateTaxiFromMergedTariff(
       withExtra += a;
       sur.push({ type: "holiday", amount: a });
     }
+  }
+  const largeRaw = isPlainTariffObject(m.largeVehicleSurcharge)
+    ? (m.largeVehicleSurcharge as Record<string, unknown>)
+    : {};
+  const minPassengers = Math.max(1, Math.round(n(largeRaw.minPassengers, 5)));
+  const largeAmount = Math.max(0, n(largeRaw.amountEur, 0));
+  const passengerCountRaw = in_.passengerCount;
+  const inferredPassengerCount =
+    Number.isFinite(passengerCountRaw) && Number(passengerCountRaw) > 0
+      ? Math.round(Number(passengerCountRaw))
+      : vClass === "xl"
+        ? minPassengers
+        : 1;
+  if (largeAmount > 0 && inferredPassengerCount >= minPassengers) {
+    withExtra += largeAmount;
+    sur.push({ type: "large_vehicle", amount: largeAmount });
   }
 
   const withVehicle = withExtra * vehicleClassMultiplier;

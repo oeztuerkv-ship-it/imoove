@@ -42,6 +42,12 @@ function formDefaults() {
     pricePerMinute: 0.63,
     waitingPerHour: 38,
     minFare: 0,
+    tariffVersion: 1,
+    validFrom: "",
+    timeTariffAmount: 0.1,
+    timeTariffPerSeconds: 10.91,
+    largeVehicleMinPassengers: 5,
+    largeVehicleAmountEur: 7,
     cancellationFeeEur: 0,
     airportFlatEur: 0,
     taxiMandatoryArea: false,
@@ -81,13 +87,8 @@ export default function AppOperationalTariffsPage() {
   const [pvHoliday, setPvHoliday] = useState(false);
   const [pvAirport, setPvAirport] = useState(false);
   const [gPricing, setGPricing] = useState(
-    /** @type {{ pricingMode: string; onrodaFixBase: string; onrodaFixPerKm: string; prebookSurchargeEur: string; vehXl: string; vehWc: string }} */ ({
+    /** @type {{ pricingMode: string }} */ ({
       pricingMode: "taxi_tariff",
-      onrodaFixBase: "0",
-      onrodaFixPerKm: "0",
-      prebookSurchargeEur: "0",
-      vehXl: "1",
-      vehWc: "1",
     }),
   );
   const [globalBusy, setGlobalBusy] = useState(false);
@@ -118,17 +119,9 @@ export default function AppOperationalTariffsPage() {
   useEffect(() => {
     if (!config?.tariffs || typeof config.tariffs !== "object") return;
     const t = config.tariffs;
-    const pm = t.pricingMode;
-    const mode =
-      pm === "fixed_price" || pm === "hybrid" || pm === "taxi_tariff" ? pm : "taxi_tariff";
-    const vm = t.vehicleClassMultipliers && typeof t.vehicleClassMultipliers === "object" ? t.vehicleClassMultipliers : {};
+    const mode = "taxi_tariff";
     setGPricing({
       pricingMode: mode,
-      onrodaFixBase: t.onrodaFixBase != null ? String(t.onrodaFixBase) : "0",
-      onrodaFixPerKm: t.onrodaFixPerKm != null ? String(t.onrodaFixPerKm) : "0",
-      prebookSurchargeEur: t.prebookSurchargeEur != null ? String(t.prebookSurchargeEur) : "0",
-      vehXl: vm.xl != null ? String(vm.xl) : "1",
-      vehWc: vm.wheelchair != null ? String(vm.wheelchair) : "1",
     });
   }, [config]);
 
@@ -176,6 +169,18 @@ export default function AppOperationalTariffsPage() {
       pricePerMinute: tripEurFromMergedLike(merged) || 0.63,
       waitingPerHour: merged.waitingPerHour != null ? n(merged.waitingPerHour) : 38,
       minFare: merged.minFare != null ? n(merged.minFare) : merged.minPrice != null ? n(merged.minPrice) : 0,
+      tariffVersion: merged.tariffVersion != null ? Math.max(1, Math.round(n(merged.tariffVersion))) : 1,
+      validFrom: typeof merged.validFrom === "string" ? merged.validFrom : "",
+      timeTariffPerSeconds: merged.timeTariffPerSeconds != null ? n(merged.timeTariffPerSeconds) : 10.91,
+      timeTariffAmount: merged.timeTariffAmount != null ? n(merged.timeTariffAmount) : 0.1,
+      largeVehicleMinPassengers:
+        merged.largeVehicleSurcharge && typeof merged.largeVehicleSurcharge === "object"
+          ? Math.max(1, Math.round(n(merged.largeVehicleSurcharge.minPassengers)))
+          : 5,
+      largeVehicleAmountEur:
+        merged.largeVehicleSurcharge && typeof merged.largeVehicleSurcharge === "object"
+          ? n(merged.largeVehicleSurcharge.amountEur)
+          : 7,
       cancellationFeeEur: merged.cancellationFeeEur != null ? n(merged.cancellationFeeEur) : 0,
       airportFlatEur: merged.airportFlatEur != null ? n(merged.airportFlatEur) : 0,
       taxiMandatoryArea: !!merged.taxiMandatoryArea,
@@ -206,17 +211,28 @@ export default function AppOperationalTariffsPage() {
     const f = form;
     const isTwo = f.kmMode === "two_tier";
     const sur = f.surcharges;
-    const ppm = n(f.pricePerMinute);
+    const timeAmount = n(f.timeTariffAmount);
+    const timePerSeconds = Math.max(1, n(f.timeTariffPerSeconds));
+    const ppm = (timeAmount * 60) / timePerSeconds;
+    const perHourEur = ppm * 60;
     const out = {
       active: f.active !== false,
       baseFare: n(f.baseFare),
+      tariffVersion: Math.max(1, Math.round(n(f.tariffVersion))),
+      validFrom: typeof f.validFrom === "string" ? f.validFrom.trim() : "",
       kmPricingModel: isTwo ? "two_tier" : "single",
       perKm: isTwo ? 0 : n(f.perKm),
       rateFirstPerKm: isTwo ? n(f.rateFirstPerKm) : n(f.perKm),
       rateAfterPerKm: isTwo ? n(f.rateAfterPerKm) : n(f.perKm),
       thresholdKm: isTwo ? n(f.thresholdKm) : n(f.thresholdKm),
-      waitingPerHour: n(f.waitingPerHour),
+      waitingPerHour: perHourEur,
+      timeTariffAmount: timeAmount,
+      timeTariffPerSeconds: timePerSeconds,
       minFare: n(f.minFare),
+      largeVehicleSurcharge: {
+        minPassengers: Math.max(1, Math.round(n(f.largeVehicleMinPassengers))),
+        amountEur: Math.max(0, n(f.largeVehicleAmountEur)),
+      },
       cancellationFeeEur: n(f.cancellationFeeEur),
       airportFlatEur: n(f.airportFlatEur),
       taxiMandatoryArea: !!f.taxiMandatoryArea,
@@ -279,23 +295,10 @@ export default function AppOperationalTariffsPage() {
     const prevTar = config.tariffs && typeof config.tariffs === "object" ? { ...config.tariffs } : {};
     const prevBsr =
       prevTar.byServiceRegion && typeof prevTar.byServiceRegion === "object" ? { ...prevTar.byServiceRegion } : {};
-    const prevVm =
-      prevTar.vehicleClassMultipliers && typeof prevTar.vehicleClassMultipliers === "object"
-        ? { ...prevTar.vehicleClassMultipliers }
-        : {};
     const newTariffs = {
       ...prevTar,
       active: tariffsActive,
-      pricingMode: gPricing.pricingMode,
-      onrodaFixBase: n(gPricing.onrodaFixBase),
-      onrodaFixPerKm: n(gPricing.onrodaFixPerKm),
-      prebookSurchargeEur: n(gPricing.prebookSurchargeEur),
-      vehicleClassMultipliers: {
-        ...prevVm,
-        standard: 1,
-        xl: n(gPricing.vehXl) || 1,
-        wheelchair: n(gPricing.vehWc) || 1,
-      },
+      pricingMode: "taxi_tariff",
       byServiceRegion: prevBsr,
     };
     try {
@@ -431,10 +434,9 @@ export default function AppOperationalTariffsPage() {
       {error ? <div className="admin-info-banner admin-info-banner--error">{error}</div> : null}
       {ok ? <div className="admin-info-banner admin-info-banner--ok">{ok}</div> : null}
       <div className="admin-panel-card" style={{ marginBottom: 16 }}>
-        <div className="admin-panel-card__title">0. Plattformweit: Preislogik &amp; Fixpreis-Parameter</div>
+        <div className="admin-panel-card__title">0. Plattformweit: Preislogik</div>
         <p className="admin-table-sub" style={{ lineHeight: 1.5, maxWidth: 720 }}>
-          Modus (<code>taxi_tariff</code>, <code>fixed_price</code>, <code>hybrid</code>), Onroda-Fixpreis-Basis/km, Vorausbuchungs-Zuschlag und
-          Fahrzeugklassen-Multiplikatoren (XL, Rollstuhl). Speichern ersetzt nur globale Tarif-Felder, Regionen bleiben erhalten.
+          Aktuell ist nur <code>taxi_tariff</code> aktiv. Fixpreis/Hybrid werden nicht angeboten.
         </p>
         <div className="admin-form-vertical" style={{ maxWidth: 520, marginTop: 10 }}>
           <label className="admin-form-label">
@@ -446,57 +448,8 @@ export default function AppOperationalTariffsPage() {
               onChange={(e) => setGPricing((p) => ({ ...p, pricingMode: e.target.value }))}
             >
               <option value="taxi_tariff">Taxitarif (Schätzung / Taxameter)</option>
-              <option value="fixed_price">Fixpreis (Onroda-Formel)</option>
-              <option value="hybrid">Hybrid</option>
             </select>
           </label>
-          <label className="admin-form-label" style={{ marginTop: 10 }}>
-            Onroda Fix: Basis (EUR)
-            <input
-              className="admin-input"
-              style={{ display: "block", marginTop: 4 }}
-              value={gPricing.onrodaFixBase}
-              onChange={(e) => setGPricing((p) => ({ ...p, onrodaFixBase: e.target.value }))}
-            />
-          </label>
-          <label className="admin-form-label" style={{ marginTop: 10 }}>
-            Onroda Fix: EUR pro km
-            <input
-              className="admin-input"
-              style={{ display: "block", marginTop: 4 }}
-              value={gPricing.onrodaFixPerKm}
-              onChange={(e) => setGPricing((p) => ({ ...p, onrodaFixPerKm: e.target.value }))}
-            />
-          </label>
-          <label className="admin-form-label" style={{ marginTop: 10 }}>
-            Vorausbuchung Zuschlag (EUR)
-            <input
-              className="admin-input"
-              style={{ display: "block", marginTop: 4 }}
-              value={gPricing.prebookSurchargeEur}
-              onChange={(e) => setGPricing((p) => ({ ...p, prebookSurchargeEur: e.target.value }))}
-            />
-          </label>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 10 }}>
-            <label className="admin-form-label" style={{ flex: "1 1 200px" }}>
-              Multiplikator XL
-              <input
-                className="admin-input"
-                style={{ display: "block", marginTop: 4 }}
-                value={gPricing.vehXl}
-                onChange={(e) => setGPricing((p) => ({ ...p, vehXl: e.target.value }))}
-              />
-            </label>
-            <label className="admin-form-label" style={{ flex: "1 1 200px" }}>
-              Multiplikator Rollstuhl
-              <input
-                className="admin-input"
-                style={{ display: "block", marginTop: 4 }}
-                value={gPricing.vehWc}
-                onChange={(e) => setGPricing((p) => ({ ...p, vehWc: e.target.value }))}
-              />
-            </label>
-          </div>
           <button
             type="button"
             className="admin-btn admin-btn--primary"
@@ -504,7 +457,7 @@ export default function AppOperationalTariffsPage() {
             onClick={saveGlobal}
             disabled={globalBusy}
           >
-            {globalBusy ? "Speichern …" : "Globale Preislogik speichern"}
+            {globalBusy ? "Speichern …" : "Taxitarif-Modus speichern"}
           </button>
         </div>
       </div>
@@ -641,7 +594,7 @@ export default function AppOperationalTariffsPage() {
               <span>Tarif-Override für dieses Gebiet ist aktiv (aus: nur globaler Tarif, wenn vorhanden)</span>
             </label>
             {[
-              ["Grundpreis (€)", "baseFare", "Einstieg/Grundgebühr"],
+              ["Grundtarif (€)", "baseFare", "Einstieg/Grundgebühr"],
             ].map(([t, k, h]) => (
               <div key={k} style={{ marginTop: 10 }}>
                 <label className="admin-form-label" style={{ display: "block" }}>
@@ -657,6 +610,41 @@ export default function AppOperationalTariffsPage() {
                 <span className="admin-table-sub">{h}</span>
               </div>
             ))}
+            <div style={{ marginTop: 10 }}>
+              <label className="admin-form-label" style={{ display: "block" }}>
+                Mindestentgelt (€)
+                <input
+                  className="admin-input"
+                  style={{ display: "block", marginTop: 4 }}
+                  value={form.minFare == null ? "" : String(form.minFare)}
+                  onChange={onNum("minFare")}
+                  inputMode="decimal"
+                />
+              </label>
+              <span className="admin-table-sub">Mindestrechnungsbetrag je Fahrt.</span>
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
+              <label className="admin-form-label" style={{ flex: "1 1 180px" }}>
+                Tarif-Version
+                <input
+                  className="admin-input"
+                  style={{ display: "block", marginTop: 4 }}
+                  value={form.tariffVersion == null ? "" : String(form.tariffVersion)}
+                  onChange={onNum("tariffVersion")}
+                  inputMode="numeric"
+                />
+              </label>
+              <label className="admin-form-label" style={{ flex: "1 1 220px" }}>
+                Gültig ab
+                <input
+                  type="datetime-local"
+                  className="admin-input"
+                  style={{ display: "block", marginTop: 4 }}
+                  value={form.validFrom || ""}
+                  onChange={(e) => setForm((p) => ({ ...p, validFrom: e.target.value }))}
+                />
+              </label>
+            </div>
             <p className="admin-table-sub" style={{ fontWeight: 600, marginTop: 12 }}>
               Tarifmodus (Kilometer)
             </p>
@@ -717,13 +705,6 @@ export default function AppOperationalTariffsPage() {
             )}
             <div style={{ marginTop: 12 }} />
             {[
-              [
-                "Fahrt / Minute (Routenzeit) (€/min)",
-                "pricePerMinute",
-                "Für Fahrtzeit-Komponente, nicht Wartezeit. Schätz-API-Parameter: tripMinutes.",
-              ],
-              ["Wartezeit (€ / Stunde, auf Minuten umgerechnet)", "waitingPerHour", "Nur reine Warte-Minuten, Parameter waitingMinutes."],
-              ["Mindestfahrpreis (€, optional)", "minFare", "Gilt auf Zwischensumme vor Nacht/WE/FE-%."],
               ["Kunden-Storno (€)", "cancellationFeeEur", "Ggf. an bookingRules-Maximum koppeln."],
               [
                 "Flughafenpauschale (€, optional)",
@@ -745,6 +726,55 @@ export default function AppOperationalTariffsPage() {
                 <span className="admin-table-sub">{h}</span>
               </div>
             ))}
+            <p className="admin-table-sub" style={{ fontWeight: 600, marginTop: 12 }}>
+              Zeittarif
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
+              <label className="admin-form-label" style={{ flex: "1 1 180px" }}>
+                Betrag (€)
+                <input
+                  className="admin-input"
+                  value={form.timeTariffAmount == null ? "" : String(form.timeTariffAmount)}
+                  onChange={onNum("timeTariffAmount")}
+                  inputMode="decimal"
+                />
+              </label>
+              <label className="admin-form-label" style={{ flex: "1 1 180px" }}>
+                pro Sekunden
+                <input
+                  className="admin-input"
+                  value={form.timeTariffPerSeconds == null ? "" : String(form.timeTariffPerSeconds)}
+                  onChange={onNum("timeTariffPerSeconds")}
+                  inputMode="decimal"
+                />
+              </label>
+            </div>
+            <p className="admin-table-sub" style={{ marginTop: 6 }}>
+              automatisch: {(n(form.timeTariffAmount) * 3600 / Math.max(1, n(form.timeTariffPerSeconds))).toFixed(2)} €/Stunde
+            </p>
+            <p className="admin-table-sub" style={{ fontWeight: 600, marginTop: 12 }}>
+              Zuschlag Großraumtaxi
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
+              <label className="admin-form-label" style={{ flex: "1 1 180px" }}>
+                ab Personenanzahl
+                <input
+                  className="admin-input"
+                  value={form.largeVehicleMinPassengers == null ? "" : String(form.largeVehicleMinPassengers)}
+                  onChange={onNum("largeVehicleMinPassengers")}
+                  inputMode="numeric"
+                />
+              </label>
+              <label className="admin-form-label" style={{ flex: "1 1 180px" }}>
+                Betrag (€)
+                <input
+                  className="admin-input"
+                  value={form.largeVehicleAmountEur == null ? "" : String(form.largeVehicleAmountEur)}
+                  onChange={onNum("largeVehicleAmountEur")}
+                  inputMode="decimal"
+                />
+              </label>
+            </div>
             <p className="admin-table-sub" style={{ fontWeight: 600, marginTop: 14 }}>
               Zuschläge (Prozent, auf Fahrpreis nach Mindestpreis)
             </p>
