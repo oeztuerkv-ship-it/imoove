@@ -39,6 +39,10 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   ]);
   const assigned = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
   const assignedVehicle = assigned ? vehicles.find((v) => v.id === assigned.vehicleId) ?? null : null;
+  const assignedVehicleVisible =
+    assignedVehicle && assignedVehicle.isActive && assignedVehicle.approvalStatus === "approved"
+      ? assignedVehicle
+      : null;
   const listRow = fleetDriverTableRowToList(row);
   const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
   const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
@@ -73,15 +77,15 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       vehicleLegalType: row.vehicle_legal_type,
       vehicleClass: row.vehicle_class,
     },
-    assignedVehicle: assignedVehicle
+    assignedVehicle: assignedVehicleVisible
       ? {
-          vehicleId: assignedVehicle.id,
-          plate: assignedVehicle.licensePlate,
-          license_plate: assignedVehicle.licensePlate,
-          licensePlate: assignedVehicle.licensePlate,
-          model: assignedVehicle.model,
-          vehicleType: assignedVehicle.vehicleType,
-          vehicleClass: assignedVehicle.vehicleClass,
+          vehicleId: assignedVehicleVisible.id,
+          plate: assignedVehicleVisible.licensePlate,
+          license_plate: assignedVehicleVisible.licensePlate,
+          licensePlate: assignedVehicleVisible.licensePlate,
+          model: assignedVehicleVisible.model,
+          vehicleType: assignedVehicleVisible.vehicleType,
+          vehicleClass: assignedVehicleVisible.vehicleClass,
         }
       : null,
   });

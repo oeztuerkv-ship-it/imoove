@@ -28,7 +28,6 @@ import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
 import { type DriverProfile, useDriver } from "@/context/DriverContext";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
-import { useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
@@ -161,15 +160,17 @@ function parseEuroDriverInput(text: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const MOCK_RIDES = [
-  { id: "F-001", date: "01.04.2026", time: "08:14", from: "Bahnhof Esslingen", to: "Plochingen", km: 6.2, duration: 14, amount: 19.90, payment: "Bar" },
-  { id: "F-002", date: "01.04.2026", time: "09:42", from: "Marktplatz", to: "Flughafen Stuttgart", km: 28.4, duration: 31, amount: 78.50, payment: "Kreditkarte" },
-  { id: "F-003", date: "31.03.2026", time: "17:05", from: "Zollberg", to: "Bahnhof Esslingen", km: 3.8, duration: 9, amount: 15.70, payment: "Bar" },
-  { id: "F-004", date: "31.03.2026", time: "11:30", from: "Mettingen", to: "Nürtingen", km: 11.5, duration: 18, amount: 32.20, payment: "PayPal" },
-  { id: "F-005", date: "30.03.2026", time: "20:15", from: "Bahnhof Esslingen", to: "Stuttgart Mitte", km: 19.8, duration: 26, amount: 54.30, payment: "Bar" },
-  { id: "F-006", date: "30.03.2026", time: "14:00", from: "Oberesslingen", to: "Ostfildern", km: 5.1, duration: 11, amount: 17.90, payment: "Kreditkarte" },
-  { id: "F-007", date: "29.03.2026", time: "07:55", from: "Berkheim", to: "Flughafen Stuttgart", km: 25.2, duration: 28, amount: 68.80, payment: "Bar" },
-];
+type DriverRideListItem = {
+  id: string;
+  date: string;
+  time: string;
+  from: string;
+  to: string;
+  km: number;
+  duration: number;
+  amount: number;
+  payment: string;
+};
 
 const API_BASE = getApiBaseUrl();
 const DRIVER_MARKET_STATUSES = new Set<RideRequest["status"]>([
@@ -826,7 +827,7 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
 }
 
 /* ─── Tab: Fahrten ─── */
-function TabFahrten({ allRides }: { allRides: typeof MOCK_RIDES }) {
+function TabFahrten({ allRides }: { allRides: DriverRideListItem[] }) {
   const colors = useColors();
   const [activeFilter, setActiveFilter] = useState<"heute" | "woche" | "alle">("alle");
   const todayStr = fmt(new Date()).date;
@@ -879,7 +880,7 @@ function TabFahrten({ allRides }: { allRides: typeof MOCK_RIDES }) {
 }
 
 /* ─── Tab: Geldbeutel ─── */
-function TabGeldbeutel({ allRides, driverRating }: { allRides: typeof MOCK_RIDES; driverRating: number }) {
+function TabGeldbeutel({ allRides, driverRating }: { allRides: DriverRideListItem[]; driverRating: number }) {
   const colors = useColors();
   const [hidden, setHidden] = useState(false);
   const todayStr = fmt(new Date()).date;
@@ -2046,7 +2047,6 @@ export default function DriverDashboard() {
       ? String((appPlatformConfig.messages as { sponsorsTeaserBodyDriverDe?: unknown }).sponsorsTeaserBodyDriverDe).trim() ||
         "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag."
       : "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag.";
-  const { history } = useRide();
   const {
     requests,
     scheduledPoolRequests,
@@ -2209,6 +2209,12 @@ export default function DriverDashboard() {
         !r.driverId &&
         r.status !== "scheduled" &&
         !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 30 * 60 * 1000) &&
+        (() => {
+          const createdMs = new Date(r.createdAt as any).getTime();
+          if (!Number.isFinite(createdMs)) return false;
+          const ageMin = (Date.now() - createdMs) / (1000 * 60);
+          return ageMin <= 20;
+        })() &&
         !prevPendingIds.current.has(r.id),
     );
     if (newReqs.length > 0) {
@@ -2255,7 +2261,7 @@ export default function DriverDashboard() {
     if (!Number.isFinite(createdMs)) return true;
     const ageHours = (Date.now() - createdMs) / (1000 * 60 * 60);
     // Alte, nie angenommene Pools nicht erneut beim Fahrer anzeigen.
-    return ageHours <= 8;
+    return ageHours <= 1;
   });
   const scheduledPool = scheduledPoolRequests.filter((r) => {
     if (r.status !== "scheduled") return false;
@@ -2294,26 +2300,30 @@ export default function DriverDashboard() {
     setActiveTab("uebersicht");
   }, [requests, driverId]);
 
-  const appRides = history.filter((r) => r.status === "completed");
   const allRides = useMemo(() => {
-    const now = new Date();
-    const fromApp = appRides.map((r, i) => ({
-      id: `A-${i + 1}`,
-      date: fmt(now).date,
-      time: fmt(now).time,
-      from: typeof r.origin === "string" ? r.origin.split(",")[0] : (r.origin as any)?.displayName?.split(",")[0] ?? "Start",
-      to: typeof r.destination === "string" ? r.destination.split(",")[0] : (r.destination as any)?.displayName?.split(",")[0] ?? "Ziel",
-      km: (r as any).route?.distanceKm ?? r.distanceKm ?? 0,
-      duration: (r as any).route?.durationMinutes ?? 0,
-      amount: (r as any).fareBreakdown?.total ?? r.totalFare ?? 0,
-      payment:
-        r.paymentMethod === "cash" ? "Bar" :
-        r.paymentMethod === "paypal" ? "PayPal" :
-        r.paymentMethod === "card" ? "Kreditkarte" :
-        r.paymentMethod,
-    }));
-    return [...fromApp, ...MOCK_RIDES];
-  }, [appRides]);
+    const done = requests
+      .filter((r) => r.status === "completed" && r.driverId === driverId)
+      .sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
+    return done.map((r) => {
+      const d = new Date(r.createdAt as any);
+      const f = fmt(d);
+      return {
+        id: r.id,
+        date: f.date,
+        time: f.time,
+        from: (r.fromFull || r.from || "Start").split(",")[0],
+        to: (r.toFull || r.to || "Ziel").split(",")[0],
+        km: Number.isFinite(r.distanceKm) ? r.distanceKm : 0,
+        duration: Number.isFinite(r.durationMinutes) ? r.durationMinutes : 0,
+        amount: (r.finalFare ?? r.estimatedFare ?? 0) as number,
+        payment:
+          r.paymentMethod === "cash" ? "Bar" :
+          r.paymentMethod === "paypal" ? "PayPal" :
+          r.paymentMethod === "card" ? "Kreditkarte" :
+          r.paymentMethod,
+      };
+    });
+  }, [requests, driverId]);
 
   const handleAccept = async (id: string) => {
     if (!driver) return;
