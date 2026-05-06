@@ -16,10 +16,17 @@ const NAV_PILL_BG = "#E8EAED";
 const NAV_INACTIVE = "#6B7280";
 
 /** Abstand unter der Pille bis zur unteren Kante des nutzbaren Tab-Bereichs (ohne Safe-Area). */
-const NAV_FLOAT_ABOVE_SAFE = rs(10);
+const NAV_FLOAT_ABOVE_SAFE = 0;
+
+/**
+ * Zusätzlicher Versatz der Tab-Pille nach unten nur auf dem Home-Screen (Start).
+ * Muss mit `TAB_HEIGHT` in `app/index.tsx` übereinstimmen, sonst überlappt die Karte.
+ */
+export const BOTTOM_TAB_BAR_HOME_OFFSET_Y = rs(8);
 const NAV_PILL_PAD_V = rs(8);
-const NAV_ICON_ROW = rs(42);
-const NAV_LABEL_GAP = rs(3);
+/** Icon-Zeile: höchstes Element = grüner Buchen-Kreis. */
+const NAV_ICON_ROW = rs(34);
+const NAV_LABEL_GAP = rs(1);
 const NAV_LABEL = rf(10);
 const NAV_PILL_PAD_BOTTOM = rs(8);
 
@@ -40,7 +47,7 @@ export function tabMainScreenScrollPaddingBottom(safeBottom: number): number {
   return mainTabScrollPaddingBottom(safeBottom, rs(24));
 }
 
-export function BottomTabBar({ active }: { active: BottomTab }) {
+export function BottomTabBar({ active, offsetY = 0 }: { active: BottomTab; offsetY?: number }) {
   const insets = useSafeAreaInsets();
   const { myActiveRequests } = useRideRequests();
   const ridesBadge = myActiveRequests?.length ?? 0;
@@ -55,7 +62,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: insets.bottom, backgroundColor: "#FFFFFF" }]}>
-      <View style={styles.pillOuter}>
+      <View style={[styles.pillOuter, offsetY !== 0 ? { transform: [{ translateY: offsetY }] } : null]}>
         <View style={styles.pill}>
           {tabs.map((tab) => {
             const isActive = tab.id === active;
@@ -70,7 +77,12 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
               ? BUCHEN_GREEN
               : (isActive ? "#DC2626" : NAV_INACTIVE);
             return (
-              <Pressable key={tab.id} style={styles.item} onPress={tab.onPress}>
+              <Pressable
+                key={tab.id}
+                style={styles.item}
+                android_ripple={null}
+                onPress={tab.onPress}
+              >
                 <View
                   style={[
                     styles.iconWrap,
@@ -78,7 +90,7 @@ export function BottomTabBar({ active }: { active: BottomTab }) {
                     { backgroundColor: iconBg, borderColor: "transparent" },
                   ]}
                 >
-                  <Feather name={tab.icon} size={isPlusTab ? rs(22) : rs(17)} color={iconColor} />
+                  <Feather name={tab.icon} size={rs(17)} color={iconColor} />
                   {tab.badge != null && tab.badge > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{tab.badge > 9 ? "9+" : tab.badge}</Text>
@@ -130,11 +142,11 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   label: { fontSize: rf(10), fontFamily: "Inter_500Medium" },
-  plusTabLabel: { fontFamily: "Inter_600SemiBold", fontSize: rf(10), marginTop: 1 },
+  plusTabLabel: { fontFamily: "Inter_600SemiBold", fontSize: rf(10), marginTop: 0 },
   plusTabIconWrap: {
-    width: rs(42),
-    height: rs(42),
-    borderRadius: rs(21),
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
   },
   badge: {
     position: "absolute", top: -5, right: -8,

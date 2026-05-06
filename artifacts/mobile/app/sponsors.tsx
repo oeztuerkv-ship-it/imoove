@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
-import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -30,6 +30,8 @@ type SponsorItem = {
 export default function SponsorsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ open?: string }>();
+  const autoOpenTop = useMemo(() => params.open === "top", [params.open]);
   const { isLoggedIn: isDriverLoggedIn } = useDriver();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<SponsorItem[]>([]);
@@ -72,6 +74,13 @@ export default function SponsorsScreen() {
     }, [isDriverLoggedIn]),
   );
 
+  useEffect(() => {
+    if (!autoOpenTop) return;
+    if (selected) return;
+    if (!items.length) return;
+    setSelected(items[0]);
+  }, [autoOpenTop, items, selected]);
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
       <View style={styles.header}>
@@ -97,6 +106,11 @@ export default function SponsorsScreen() {
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>{selected.title}</Text>
                 <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{selected.description}</Text>
                 <View style={styles.actionsRow}>
+                  {(() => {
+                    const link = selected.targetValue?.trim() || selected.externalUrl?.trim() || "";
+                    const hasExternalLink = /^https:\/\//i.test(link);
+                    return (
+                      <>
                   {qrUrlFor(selected) ? (
                     <Pressable
                       style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
@@ -105,15 +119,19 @@ export default function SponsorsScreen() {
                       <Text style={styles.actionText}>Rabatt nutzen</Text>
                     </Pressable>
                   ) : null}
-                  <Pressable
-                    style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
-                    onPress={() => {
-                      const link = selected.targetValue?.trim() || selected.externalUrl?.trim() || "";
-                      if (/^https:\/\//i.test(link)) void WebBrowser.openBrowserAsync(link);
-                    }}
-                  >
-                    <Text style={styles.actionText}>Mehr erfahren</Text>
-                  </Pressable>
+                        {hasExternalLink ? (
+                          <Pressable
+                            style={[styles.actionBtnFull, { backgroundColor: colors.primary }]}
+                            onPress={() => {
+                              void WebBrowser.openBrowserAsync(link);
+                            }}
+                          >
+                            <Text style={styles.actionText}>Mehr erfahren</Text>
+                          </Pressable>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </View>
               </View>
             </View>

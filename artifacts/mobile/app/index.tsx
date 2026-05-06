@@ -23,7 +23,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
-import { BottomTabBar, BOTTOM_TAB_BAR_INNER_HEIGHT } from "@/components/BottomTabBar";
+import {
+  BottomTabBar,
+  BOTTOM_TAB_BAR_HOME_OFFSET_Y,
+  BOTTOM_TAB_BAR_INNER_HEIGHT,
+} from "@/components/BottomTabBar";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useDriver } from "@/context/DriverContext";
@@ -120,7 +124,8 @@ async function reverseGeocode(lat: number, lon: number): Promise<GeoLocation> {
   }
 }
 
-const TAB_HEIGHT = BOTTOM_TAB_BAR_INNER_HEIGHT;
+/** Reserviert Platz unter der Karte inkl. nach-unten geschobener Tab-Pille auf Home. */
+const TAB_HEIGHT = BOTTOM_TAB_BAR_INNER_HEIGHT + BOTTOM_TAB_BAR_HOME_OFFSET_Y;
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -252,6 +257,7 @@ export default function HomeScreen() {
 
   const APP_NEWS_CAROUSEL_PAD = 20;
   const APP_NEWS_CAROUSEL_GAP = 12;
+  const SPONSORS_DETAIL_ROUTE = "/sponsors?open=top";
   const appNewsSlideWidth = useMemo(() => {
     const w = Math.min(Math.max(screenWidth - APP_NEWS_CAROUSEL_PAD * 2 - APP_NEWS_CAROUSEL_GAP, 260), screenWidth - 24);
     return Math.round(w);
@@ -308,6 +314,10 @@ export default function HomeScreen() {
       /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|personal-info|google-auth|login-success)(\/|$)/;
     const tt = String(item.targetType ?? "").trim();
     const tv = String(item.targetValue ?? "").trim();
+    if (tt === "internal_screen" && tv === "/sponsors") {
+      router.push(SPONSORS_DETAIL_ROUTE as Href);
+      return;
+    }
     if (tt === "internal_screen" && tv && internalRe.test(tv)) {
       router.push(tv as Href);
       return;
@@ -317,7 +327,7 @@ export default function HomeScreen() {
       return;
     }
     setAppNewsDetail(item);
-  }, []);
+  }, [SPONSORS_DETAIL_ROUTE]);
 
   type OnboardingCustomerStep = "social" | "email_enter" | "verify" | "register_details";
   const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
@@ -1321,7 +1331,7 @@ export default function HomeScreen() {
           {!showOnboarding && homeTopOrder !== "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
               style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
-              onPress={() => router.push("/sponsors" as Href)}
+              onPress={() => router.push(SPONSORS_DETAIL_ROUTE as Href)}
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Exklusive Angebote</Text>
@@ -1448,7 +1458,7 @@ export default function HomeScreen() {
           {!showOnboarding && homeTopOrder === "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
               style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
-              onPress={() => router.push("/sponsors" as Href)}
+              onPress={() => router.push(SPONSORS_DETAIL_ROUTE as Href)}
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sponsorTeaserEyebrow, { color: colors.primary }]}>Exklusive Angebote</Text>
@@ -1733,7 +1743,11 @@ export default function HomeScreen() {
                   style={[styles.appNewsModalBtn, { backgroundColor: colors.primary }]}
                   onPress={() => {
                     const p = appNewsDetail.targetValue?.trim();
-                    if (p) router.push(p as Href);
+                    if (p === "/sponsors") {
+                      router.push(SPONSORS_DETAIL_ROUTE as Href);
+                    } else if (p) {
+                      router.push(p as Href);
+                    }
                     setAppNewsDetail(null);
                   }}
                 >
@@ -1749,7 +1763,7 @@ export default function HomeScreen() {
       </Modal>
 
       {/* ── BOTTOM TAB BAR ── */}
-      <BottomTabBar active="start" offsetY={rs(8)} />
+      <BottomTabBar active="start" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
 
       {/* ══════════════════════════════════════════════════
           ── VOLLBILD-SUCH-OVERLAY ──
