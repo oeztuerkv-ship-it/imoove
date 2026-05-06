@@ -20,7 +20,11 @@ import type { RideRequest, TariffBookingSnapshotV1 } from "../domain/rideRequest
 import type { PayerKind, RideKind } from "../domain/rideBillingProfile";
 import type { PartnerBookingFlow } from "../domain/partnerBookingMeta";
 import { metaToJson, parsePartnerBookingMeta } from "../domain/partnerBookingMeta";
-import { parsePartnerBookingMetaFromRow, partnerBookingMetaToDbJson } from "../domain/medicalRidePartnerMeta";
+import {
+  type MedicalRidePartnerMeta,
+  parsePartnerBookingMetaFromRow,
+  partnerBookingMetaToDbJson,
+} from "../domain/medicalRidePartnerMeta";
 import {
   DEFAULT_PAYER_KIND,
   DEFAULT_RIDE_KIND,
@@ -35,7 +39,9 @@ import {
 } from "../domain/rideAuthorization";
 import { redeemAccessCodeInTransaction, redeemAccessCodeMemory } from "./accessCodesData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDb } from "./client";
+import * as schemaNs from "./schema";
 import { adminCompaniesTable, rideEventsTable, ridesTable } from "./schema";
 import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
 
@@ -166,6 +172,29 @@ function rowToRide(r: typeof ridesTable.$inferSelect): RideRequest {
         ? (r.accessibility_options_json as RideRequest["accessibilityOptions"])
         : null,
   };
+}
+
+/** Drizzle-Client wie in Transaktions-Callbacks (u. a. `FOR UPDATE`-Reads). */
+export type OnrodaDbExecutor = NodePgDatabase<typeof schemaNs>;
+
+/** Persistierte Zeile → `RideRequest` (z. B. nach Zeilen-Sperre). */
+export function persistedRideRowToRequest(r: typeof ridesTable.$inferSelect): RideRequest {
+  return rowToRide(r);
+}
+
+export async function updateRidePartnerBookingMetaTx(
+  tx: OnrodaDbExecutor,
+  rideId: string,
+  meta: MedicalRidePartnerMeta,
+): Promise<boolean> {
+  const out = await tx
+    .update(ridesTable)
+    .set({
+      partner_booking_meta: partnerBookingMetaToDbJson(meta, metaToJson),
+    })
+    .where(eq(ridesTable.id, rideId))
+    .returning({ id: ridesTable.id });
+  return out.length > 0;
 }
 
 function rideToUpdate(r: RideRequest) {
@@ -1238,16 +1267,26 @@ export async function getPanelCompanyOverviewMetrics(
   };
 }
 
-export async function updateRide(id: string, patch: Partial<RideRequest>): Promise<RideRequest | null> {
-  const cur = await findRide(id);
-  if (!cur) return null;
-  const next: RideRequest = {
-    ...cur,
-    ...omitImmutableRidePricingFields(patch),
-    estimatedFare: cur.estimatedFare,
-    tariffSnapshot: cur.tariffSnapshot,
-    pricingMode: cur.pricingMode,
-  };
+const ACCEPT_DISPATCH_STATUSES: RideRequest["status"][] = [
+  "scheduled",
+  "requested",
+  "searching_driver",
+  "offered",
+  "pending",
+];
+
+export type RideMutationPersistenceActor = { actorType: string; actorId: string | null };
+
+function buildRideCorrectionPlan(
+  cur: RideRequest,
+  next: RideRequest,
+): Array<{
+  fieldName: string;
+  oldValue: unknown;
+  newValue: unknown;
+  reasonCode: string;
+  createdAt?: Date;
+}> {
   const correctionPlan: Array<{
     fieldName: string;
     oldValue: unknown;
@@ -1303,41 +1342,118 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
       reasonCode: "pricing_mode_change",
     });
   }
+  return correctionPlan;
+}
+
+/** Atomischer Claim: genau eine Instanz gewinnt die Annahme (Pool-Fahrten ohne anderen Fahrer). */
+export async function tryFleetAcceptRideAtomic(input: {
+  rideId: string;
+  driverId: string;
+  companyId?: string | null;
+}): Promise<
+  | { ok: true; previous: RideRequest; ride: RideRequest }
+  | { ok: false; reason: "not_found" | "ride_already_claimed" }
+> {
+  const rideId = String(input.rideId ?? "").trim();
+  const driverId = String(input.driverId ?? "").trim();
+  const companyIdIn = typeof input.companyId === "string" ? input.companyId.trim() : "";
+  if (!rideId || !driverId) return { ok: false, reason: "not_found" };
+
   const db = getDb();
   if (!db) {
-    memoryRides = memoryRides.map((x) => (x.id === id ? next : x));
-    return next;
+    const idx = memoryRides.findIndex((r) => r.id === rideId);
+    if (idx < 0) return { ok: false, reason: "not_found" };
+    const cur = memoryRides[idx];
+    if (!cur) return { ok: false, reason: "not_found" };
+    if (!(ACCEPT_DISPATCH_STATUSES as string[]).includes(cur.status)) {
+      return { ok: false, reason: "ride_already_claimed" };
+    }
+    const assigned = (cur.driverId ?? "").trim();
+    if (assigned && assigned !== driverId) return { ok: false, reason: "ride_already_claimed" };
+    const mergedCompany =
+      companyIdIn || (typeof cur.companyId === "string" ? cur.companyId.trim() : "") || null;
+    const next: RideRequest = {
+      ...cur,
+      status: "accepted",
+      driverId,
+      companyId: mergedCompany,
+    };
+    memoryRides[idx] = next;
+    return { ok: true, previous: cur, ride: next };
   }
-  await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+
+  const mergeCompanyExpr =
+    companyIdIn !== ""
+      ? sql<string>`COALESCE(${ridesTable.company_id}, ${companyIdIn})`
+      : undefined;
+
+  const prevSnapshot = await findRide(rideId);
+  if (!prevSnapshot) return { ok: false, reason: "not_found" };
+
+  const rows = await db
+    .update(ridesTable)
+    .set({
+      status: "accepted",
+      driver_id: driverId,
+      ...(mergeCompanyExpr ? { company_id: mergeCompanyExpr } : {}),
+    })
+    .where(
+      and(
+        eq(ridesTable.id, rideId),
+        inArray(ridesTable.status, ACCEPT_DISPATCH_STATUSES as unknown as string[]),
+        sql`(COALESCE(trim(${ridesTable.driver_id}), '') = '' OR ${ridesTable.driver_id} = ${driverId})`,
+      ),
+    )
+    .returning();
+
+  const row = rows[0];
+  if (!row) return { ok: false, reason: "ride_already_claimed" };
+  return { ok: true, previous: prevSnapshot, ride: rowToRide(row) };
+}
+
+/** Billing-Korrekturen + Events nach bereits persistiertem rides-Stand (wie updateRide-Ende). */
+export async function applyRideMutationPersistence(
+  rideId: string,
+  cur: RideRequest,
+  next: RideRequest,
+  actor: RideMutationPersistenceActor,
+): Promise<void> {
+  const db = getDb();
+  const correctionPlan = buildRideCorrectionPlan(cur, next);
+  if (!db) {
+    return;
+  }
   for (const c of correctionPlan) {
     await createRideBillingCorrection({
-      rideId: id,
+      rideId,
       fieldName: c.fieldName,
       oldValue: c.oldValue,
       newValue: c.newValue,
       reasonCode: c.reasonCode,
-      actorType: "system",
-      actorId: null,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
       createdAt: c.createdAt,
     });
   }
   if (cur.status !== next.status) {
     await db.insert(rideEventsTable).values({
       id: makeEventId(),
-      ride_id: id,
+      ride_id: rideId,
       event_type: "ride_status_changed",
       from_status: cur.status,
       to_status: next.status,
-      actor_type: "system",
-      actor_id: null,
+      actor_type: actor.actorType,
+      actor_id: actor.actorId,
       payload: {},
     });
   }
   if ((cur.driverId ?? null) !== (next.driverId ?? null)) {
-    await insertSupplementalRideEvent(id, {
+    await insertSupplementalRideEvent(rideId, {
       eventType: "ride_reassigned",
       fromStatus: cur.status,
       toStatus: next.status,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
       payload: {
         fromDriverId: cur.driverId ?? null,
         toDriverId: next.driverId ?? null,
@@ -1345,13 +1461,39 @@ export async function updateRide(id: string, patch: Partial<RideRequest>): Promi
     });
   }
   if (next.status === "offered" && cur.status !== "offered") {
-    await insertSupplementalRideEvent(id, {
+    await insertSupplementalRideEvent(rideId, {
       eventType: "driver_offered",
       fromStatus: cur.status,
       toStatus: next.status,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
       payload: {},
     });
   }
+}
+
+export async function updateRide(
+  id: string,
+  patch: Partial<RideRequest>,
+  opts?: { mutationActor?: RideMutationPersistenceActor },
+): Promise<RideRequest | null> {
+  const cur = await findRide(id);
+  if (!cur) return null;
+  const next: RideRequest = {
+    ...cur,
+    ...omitImmutableRidePricingFields(patch),
+    estimatedFare: cur.estimatedFare,
+    tariffSnapshot: cur.tariffSnapshot,
+    pricingMode: cur.pricingMode,
+  };
+  const actor = opts?.mutationActor ?? { actorType: "system", actorId: null };
+  const db = getDb();
+  if (!db) {
+    memoryRides = memoryRides.map((x) => (x.id === id ? next : x));
+    return next;
+  }
+  await db.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  await applyRideMutationPersistence(id, cur, next, actor);
   return next;
 }
 
