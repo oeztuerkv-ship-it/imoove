@@ -1,7 +1,7 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Router } from "express";
+import { Router, type Request } from "express";
 import type { RideRequest } from "../domain/rideRequest";
 import type { RideAccessibilityOptions } from "../domain/rideRequest";
 import {
@@ -12,13 +12,23 @@ import {
   parseRideKind,
 } from "../domain/rideBillingProfile";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
+import { isPostgresConfigured } from "../db/client";
 import {
+  applyRideMutationPersistence,
   findRide,
+  findRideForPassenger,
   insertRideWithOptionalAccessCode,
   insertSupplementalRideEvent,
   resetRidesDemo,
+  tryFleetAcceptRideAtomic,
   updateRide,
+  type RideMutationPersistenceActor,
 } from "../db/ridesData";
+import {
+  buildRideSupportContextSnapshot,
+  insertRideSupportTicket,
+  listRideSupportTicketsForPassengerRide,
+} from "../db/rideSupportTicketsData";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
   DEFAULT_AUTHORIZATION_SOURCE,
@@ -53,6 +63,8 @@ import {
 import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
 import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
+import { signReceiptHtmlAccessJwt, verifyReceiptHtmlAccessJwt } from "../lib/receiptAccessJwt";
+import type { RideMutateActor } from "../lib/rideRouteAuth";
 import {
   authorizePatchRideStatusForActor,
   resolveRideMutateActor,
@@ -60,6 +72,7 @@ import {
   resolveFleetActorOrNull,
   extractBearerAuthorization,
 } from "../lib/rideRouteAuth";
+import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
 import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
@@ -77,10 +90,6 @@ const DEMO: RideRequest[] = [];
 export const driverLocations = new Map<string, DriverLocation>();
 export const customerLocations = new Map<string, DriverLocation>();
 const customerCancelReasons = new Map<string, string>();
-const customerSupportTickets = new Map<
-  string,
-  { ticketId: string; rideId: string; category: string; message: string; source: string; createdAt: string }[]
->();
 
 const router = Router();
 
@@ -91,6 +100,43 @@ const MEDICAL_RIDE_UPLOAD_ROOT =
 /** Demo-Krankenfahrten: synthetische Kassenfelder nur für Schulung, keine echte Abrechnung. */
 const MEDICAL_DEMO_INSURANCE_LABEL = "Demonstration (KV-TEST)";
 const MEDICAL_DEMO_COST_CENTER_LABEL = "TEST — nicht zur Abrechnung";
+
+function mutationActorFromRideMutator(a: RideMutateActor | null): RideMutationPersistenceActor {
+  if (!a || a.kind === "admin") return { actorType: "admin", actorId: null };
+  if (a.kind === "customer_session") return { actorType: "passenger", actorId: a.passengerGoogleId };
+  return { actorType: "driver", actorId: a.fleetDriverId };
+}
+
+async function tryAuthorizeReceiptRide(req: Request, rideId: string): Promise<RideRequest | null> {
+  const trimmedId = rideId.trim();
+  if (!trimmedId) return null;
+  const ride = await findRide(trimmedId);
+  if (!ride || ride.status !== "completed") return null;
+
+  const rtRaw = typeof (req.query as { rt?: unknown }).rt === "string" ? (req.query as { rt: string }).rt.trim() : "";
+  if (rtRaw) {
+    try {
+      const v = await verifyReceiptHtmlAccessJwt(rtRaw);
+      const pax = (ride.passengerId ?? "").trim();
+      if (v.rideId === trimmedId && pax && v.passengerGoogleId === pax) return ride;
+    } catch {
+      /* token ungültig */
+    }
+  }
+
+  const bearer = extractBearerAuthorization(req);
+  if (bearer && isSessionJwtConfigured()) {
+    try {
+      const claims = await verifySessionJwt(bearer);
+      const gid = claims.googleId.trim();
+      if (gid && (ride.passengerId ?? "").trim() === gid) return ride;
+    } catch {
+      /* kein gültiges Kunden-JWT */
+    }
+  }
+
+  return null;
+}
 
 function loweredTrim(v: unknown): string {
   return typeof v === "string" ? v.trim().toLowerCase() : "";
@@ -565,9 +611,13 @@ router.post("/rides/:id/medical/verify-qr", requireFleetDriverAuth, async (req, 
       qr_verified_at: new Date().toISOString(),
       qr_verified_by_driver_id: auth.fleetDriverId,
     });
-    const nextRide = await updateRide(rideId, {
-      partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
-    });
+    const nextRide = await updateRide(
+      rideId,
+      {
+        partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+    );
     if (!nextRide) {
       res.status(500).json({ ok: false, error: "update_failed" });
       return;
@@ -655,9 +705,13 @@ router.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, asy
           }
         : {}),
     });
-    const nextRide = await updateRide(rideId, {
-      partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
-    });
+    const nextRide = await updateRide(
+      rideId,
+      {
+        partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+    );
     if (!nextRide) {
       res.status(500).json({ ok: false, error: "update_failed" });
       return;
@@ -743,9 +797,13 @@ router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, 
       signature_signed_at: signedAt,
       signature_signed_by_driver_id: auth.fleetDriverId,
     });
-    const nextRide = await updateRide(rideId, {
-      partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
-    });
+    const nextRide = await updateRide(
+      rideId,
+      {
+        partnerBookingMeta: merged as RideRequest["partnerBookingMeta"],
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } },
+    );
     if (!nextRide) {
       res.status(500).json({ ok: false, error: "update_failed" });
       return;
@@ -762,34 +820,88 @@ router.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, 
   }
 });
 
-router.post("/rides/:rideId/support", async (req, res) => {
-  const rideId = String(req.params.rideId ?? "").trim();
-  if (!rideId) {
-    res.status(400).json({ ok: false, error: "ride_id_required" });
-    return;
+router.get("/rides/:rideId/support/preview", requireCustomerSession, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(403).json({ ok: false, error: "ride_not_owned" });
+      return;
+    }
+    const items = await listRideSupportTicketsForPassengerRide(rideId, passengerId);
+    const lines = items.map((t) => `[${t.createdAtIso}] ${t.category} — ${t.status}: ${t.messageSnippet || "(ohne Text)"}`);
+    res.json({ ok: true, summary: { lines } });
+  } catch (e) {
+    next(e);
   }
-  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "other";
-  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-  const source = typeof req.body?.source === "string" ? req.body.source.trim() : "unknown";
-  if (message.length < 5) {
-    res.status(400).json({ ok: false, error: "message_too_short" });
-    return;
-  }
+});
 
-  const ticketId = `cs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const entry = {
-    ticketId,
-    rideId,
-    category: category || "other",
-    message: message.slice(0, 4000),
-    source: source || "unknown",
-    createdAt: new Date().toISOString(),
-  };
-  const prev = customerSupportTickets.get(rideId) ?? [];
-  prev.unshift(entry);
-  customerSupportTickets.set(rideId, prev.slice(0, 50));
-  console.log(`[customer-support] rideId=${rideId} ticketId=${ticketId} category=${entry.category} source=${entry.source}`);
-  res.json({ ok: true, ticketId });
+router.post("/rides/:rideId/support", requireCustomerSession, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(403).json({ ok: false, error: "ride_not_owned" });
+      return;
+    }
+    const category = typeof req.body?.category === "string" ? req.body.category.trim() : "other";
+    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    const source = typeof req.body?.source === "string" ? req.body.source.trim() : "mobile";
+    const priorityRaw = typeof req.body?.priority === "string" ? req.body.priority.trim() : "normal";
+    if (message.length > 0 && message.length < 5) {
+      res.status(400).json({ ok: false, error: "message_too_short" });
+      return;
+    }
+
+    const ins = await insertRideSupportTicket({
+      rideId,
+      passengerId,
+      companyId: ride.companyId ?? null,
+      category: category || "other",
+      message: message ? message.slice(0, 4000) : null,
+      priority: priorityRaw || "normal",
+      source: source || "mobile",
+      createdByActorKind: "customer",
+      createdByActorId: passengerId,
+      snapshot: buildRideSupportContextSnapshot(ride),
+    });
+    if (!ins) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    console.log(`[customer-support] rideId=${rideId} ticketId=${ins.id} category=${category}`);
+    res.json({ ok: true, ticketId: ins.id });
+  } catch (e) {
+    next(e);
+  }
 });
 
 function formatEuroHtml(amount: number): string {
@@ -885,9 +997,12 @@ router.get("/rides/:rideId/receipt", async (req, res, next) => {
       res.status(400).json({ error: "ride_id_required" });
       return;
     }
-    const ride = await findRide(rideId);
+    const ride = await tryAuthorizeReceiptRide(req, rideId);
     if (!ride) {
-      res.status(404).json({ error: "not_found" });
+      res.status(401).json({
+        error: "receipt_unauthorized",
+        message: "Quittung nur mit Kunden-Session (Authorization: Bearer) oder gültigem rt-Token.",
+      });
       return;
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -1302,6 +1417,25 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       res.status(404).json({ error: "not found" });
       return;
     }
+
+    /** Kein PATCH mit gleichem Endstatus nach Abschluss/Storno verarbeiten — vermeidet doppelte Finanzmutationen und 500 durch gesperrte Snapshots. */
+    const TERMINAL_STATUS_REPLAY_SKIP: ReadonlySet<RideRequest["status"]> = new Set([
+      "completed",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "cancelled",
+      "rejected",
+      "expired",
+    ]);
+    if (cur.status === nextStatus && TERMINAL_STATUS_REPLAY_SKIP.has(nextStatus)) {
+      res.json({
+        ...stripPartnerOnlyRideFields(cur),
+        cancelReason: customerCancelReasons.get(id) ?? null,
+      });
+      return;
+    }
+
     if (!canTransitionStatus(cur.status, nextStatus)) {
       res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
       return;
@@ -1320,6 +1454,8 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       res.status(gate.status).json({ error: gate.code });
       return;
     }
+
+    const mutActor = mutationActorFromRideMutator(actor);
     let companyIdOnAccept: string | undefined;
     if (nextStatus === "accepted" && driverId) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
@@ -1405,15 +1541,48 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       } as RideRequest);
     }
 
-    const updated = await updateRide(id, {
-      status: nextStatus,
-      ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
-      ...(driverId != null ? { driverId } : {}),
-      ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
-    });
-    if (!updated) {
-      res.status(500).json({ error: "update_failed" });
-      return;
+    const atomicAccept =
+      nextStatus === "accepted" &&
+      bodyDriverIdTrim.length > 0 &&
+      actor &&
+      actor.kind !== "customer_session";
+
+    let updated: RideRequest | null = null;
+
+    if (atomicAccept) {
+      const claimed = await tryFleetAcceptRideAtomic({
+        rideId: id,
+        driverId: bodyDriverIdTrim,
+        companyId: companyIdOnAccept ?? null,
+      });
+      if (!claimed.ok) {
+        if (claimed.reason === "ride_already_claimed") {
+          res.status(409).json({
+            error: "ride_already_claimed",
+            message: "Die Fahrt wurde bereits angenommen.",
+          });
+          return;
+        }
+        res.status(404).json({ error: "not found" });
+        return;
+      }
+      await applyRideMutationPersistence(id, claimed.previous, claimed.ride, mutActor);
+      updated = claimed.ride;
+    } else {
+      updated = await updateRide(
+        id,
+        {
+          status: nextStatus,
+          ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
+          ...(driverId != null ? { driverId } : {}),
+          ...(companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}),
+        },
+        { mutationActor: mutActor },
+      );
+      if (!updated) {
+        res.status(500).json({ error: "update_failed" });
+        return;
+      }
     }
     if (cancelReasonClean) {
       const isCancel = [
@@ -1427,7 +1596,11 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       if (isCancel) {
         const crActor =
           nextStatus === "cancelled_by_customer"
-            ? { actorType: "passenger" as const, actorId: null as string | null }
+            ? {
+                actorType: "passenger" as const,
+                actorId:
+                  actor?.kind === "customer_session" ? actor.passengerGoogleId : (null as string | null),
+              }
             : nextStatus === "cancelled_by_driver"
               ? { actorType: "driver" as const, actorId: driverId ?? null }
               : { actorType: "system" as const, actorId: null as string | null };
@@ -1454,6 +1627,28 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     if (nextStatus === "cancelled_by_customer") {
       customerCancelReasons.set(id, cancelReasonClean);
     }
+    if (
+      nextStatus === "cancelled_by_customer" ||
+      nextStatus === "cancelled_by_driver" ||
+      nextStatus === "cancelled_by_system" ||
+      nextStatus === "cancelled"
+    ) {
+      const opPayloadCf = await getOperationalConfigPayload();
+      const regionsCf = await listServiceRegionsForApi();
+      const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+      const financeCf = await upsertRideFinancialSnapshot({
+        ride: updated,
+        pricingContext: pcCf,
+        reason: `ride_status_${nextStatus}`,
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId,
+      });
+      if (!financeCf.ok) {
+        res.status(500).json({ error: financeCf.error });
+        return;
+      }
+    }
+
     if (nextStatus === "completed") {
       const opPayloadComplete = await getOperationalConfigPayload();
       const regionsComplete = await listServiceRegionsForApi();
@@ -1462,6 +1657,8 @@ router.patch("/rides/:id/status", async (req, res, next) => {
         ride: updated,
         pricingContext: pcComplete,
         reason: "ride_completed_status_transition",
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId,
       });
       if (!finance.ok) {
         res.status(500).json({ error: finance.error });
@@ -1601,7 +1798,7 @@ router.post("/rides/:id/reject", requireFleetDriverAuth, async (req, res, next) 
     const existing = cur.rejectedBy ?? [];
     const rejectIsNew = !existing.includes(driverId);
     const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
-    const updated = await updateRide(id, { rejectedBy });
+    const updated = await updateRide(id, { rejectedBy }, { mutationActor: { actorType: "driver", actorId: driverId } });
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
       return;
@@ -1659,11 +1856,15 @@ router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res,
       : existing;
     const revertStatus: RideRequest["status"] =
       cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "searching_driver";
-    const updated = await updateRide(id, {
-      status: revertStatus,
-      driverId: null,
-      rejectedBy,
-    });
+    const updated = await updateRide(
+      id,
+      {
+        status: revertStatus,
+        driverId: null,
+        rejectedBy,
+      },
+      { mutationActor: { actorType: "driver", actorId: driverId } },
+    );
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
       return;
@@ -1694,11 +1895,15 @@ router.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req,
       res.status(404).json({ error: "not found" });
       return;
     }
-    const updated = await updateRide(id, {
-      status: "cancelled_by_driver",
-      driverId: null,
-      rejectedBy: driverId ? [...new Set([...(cur.rejectedBy ?? []), driverId])] : (cur.rejectedBy ?? []),
-    });
+    const updated = await updateRide(
+      id,
+      {
+        status: "cancelled_by_driver",
+        driverId: null,
+        rejectedBy: driverId ? [...new Set([...(cur.rejectedBy ?? []), driverId])] : (cur.rejectedBy ?? []),
+      },
+      { mutationActor: { actorType: "driver", actorId: driverId } },
+    );
     if (!updated) {
       res.status(500).json({ error: "update_failed" });
       return;

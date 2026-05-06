@@ -122,6 +122,57 @@ CREATE TABLE IF NOT EXISTS ride_events (
 
 CREATE INDEX IF NOT EXISTS ride_events_ride_created_idx ON ride_events (ride_id, created_at DESC);
 
+-- Kunden-Support zu einer Fahrt (Migrationen 047 + 059); Snapshot bei Erstellung eingefroren.
+CREATE TABLE IF NOT EXISTS ride_support_tickets (
+  id TEXT PRIMARY KEY,
+  ride_id TEXT NOT NULL REFERENCES rides (id) ON DELETE CASCADE,
+  passenger_id TEXT NOT NULL,
+  company_id TEXT REFERENCES admin_companies (id) ON DELETE SET NULL,
+  category TEXT NOT NULL,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  internal_note TEXT,
+  priority TEXT NOT NULL DEFAULT 'normal',
+  source TEXT NOT NULL DEFAULT 'mobile',
+  created_by_actor_kind TEXT NOT NULL DEFAULT 'customer',
+  created_by_actor_id TEXT,
+  ride_context_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  snapshot_schema_version INTEGER NOT NULL DEFAULT 1,
+  snapshot_captured_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ride_support_tickets_ride_idx ON ride_support_tickets (ride_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ride_support_tickets_passenger_idx ON ride_support_tickets (passenger_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ride_support_tickets_status_idx ON ride_support_tickets (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS ride_support_tickets_company_created_idx ON ride_support_tickets (company_id, created_at DESC);
+
+-- OCR-/Kassen-Vorbereitung: strukturierte Extraktionen je Fahrt (Migration 060); Policy: keine Diagnose in JSON.
+CREATE TABLE IF NOT EXISTS medical_document_extractions (
+  id TEXT PRIMARY KEY,
+  ride_id TEXT NOT NULL REFERENCES rides (id) ON DELETE CASCADE,
+  company_id TEXT REFERENCES admin_companies (id) ON DELETE SET NULL,
+  document_kind TEXT NOT NULL DEFAULT 'transport_sheet',
+  source TEXT NOT NULL DEFAULT 'ocr_placeholder',
+  review_status TEXT NOT NULL DEFAULT 'draft',
+  extraction_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  confidence_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  reviewed_by_actor_kind TEXT,
+  reviewed_by_actor_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT medical_document_extractions_review_chk
+    CHECK (review_status IN ('draft', 'proposed', 'confirmed', 'rejected')),
+  CONSTRAINT medical_document_extractions_document_kind_chk
+    CHECK (document_kind IN ('transport_sheet', 'signature_image', 'other'))
+);
+
+CREATE INDEX IF NOT EXISTS medical_document_extractions_ride_idx
+  ON medical_document_extractions (ride_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS medical_document_extractions_company_idx
+  ON medical_document_extractions (company_id, created_at DESC);
+
 -- Partner-Panel (panel.onroda.de): Benutzer pro Unternehmen, Passwort-Login nur über diese Tabelle.
 CREATE TABLE IF NOT EXISTS panel_users (
   id TEXT PRIMARY KEY,
@@ -611,6 +662,29 @@ CREATE TABLE IF NOT EXISTS settlements (
 CREATE INDEX IF NOT EXISTS settlements_company_period_idx
   ON settlements (company_id, period_start, period_end, status);
 
+ALTER TABLE settlements ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS settlements_idempotency_key_unique
+  ON settlements (idempotency_key)
+  WHERE idempotency_key IS NOT NULL AND length(trim(idempotency_key)) > 0;
+
+CREATE TABLE IF NOT EXISTS settlement_ride_allocations (
+  settlement_id TEXT NOT NULL REFERENCES settlements (id) ON DELETE CASCADE,
+  ride_id TEXT NOT NULL REFERENCES rides (id) ON DELETE CASCADE,
+  ride_financial_id TEXT NOT NULL REFERENCES ride_financials (id) ON DELETE CASCADE,
+  gross_amount_snap DOUBLE PRECISION NOT NULL DEFAULT 0,
+  commission_amount_snap DOUBLE PRECISION NOT NULL DEFAULT 0,
+  operator_payout_snap DOUBLE PRECISION NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (settlement_id, ride_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS settlement_ride_allocations_one_ride_global
+  ON settlement_ride_allocations (ride_id);
+
+CREATE INDEX IF NOT EXISTS settlement_ride_allocations_settlement_idx
+  ON settlement_ride_allocations (settlement_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS payments (
   id TEXT PRIMARY KEY,
   target_type TEXT NOT NULL,
@@ -634,6 +708,10 @@ CREATE INDEX IF NOT EXISTS payments_target_idx
   ON payments (target_type, target_id, status);
 CREATE INDEX IF NOT EXISTS payments_company_paid_idx
   ON payments (company_id, paid_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS payments_settlement_single_open
+  ON payments (target_id)
+  WHERE target_type = 'settlement' AND status IN ('pending', 'booked');
 
 CREATE TABLE IF NOT EXISTS financial_audit_log (
   id TEXT PRIMARY KEY,

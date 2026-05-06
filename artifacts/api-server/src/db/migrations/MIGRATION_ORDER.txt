@@ -65,6 +65,9 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Taxi fleet_drivers: Anschrift + Führerschein (optional, Partner)    → 056_fleet_drivers_partner_optional_profile.sql
   Mobile App-Neuigkeiten (Admin-CMS, öffentlicher GET)                  → 057_app_news_items.sql
   Mobile Unterstützer & Sponsoren (Admin-CMS, öffentlicher GET)          → 058_app_sponsors.sql
+  ride_support_tickets erweitert (firmenbezogen, Priority, Actor)        → 059_ride_support_tickets_extend.sql
+  OCR-Vorbereitung Medical (Extraktionszeilen, keine finale Auto-Freigabe) → 060_medical_document_extractions_placeholder.sql
+  Financial Double-Booking (Settlement-Allocations, Idempotency, Payout-Dedupe) → 061_financial_double_booking_hardening.sql
 
 Nach Migrationen Schema prüfen:
 

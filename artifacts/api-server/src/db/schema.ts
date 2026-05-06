@@ -5,8 +5,10 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const adminCompaniesTable = pgTable("admin_companies", {
@@ -473,6 +475,55 @@ export const rideEventsTable = pgTable("ride_events", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Kundensupport-Anfragen pro Fahrt (Mobile); Snapshot ist unveränderlicher Kontext beim Erzeugen. */
+export const rideSupportTicketsTable = pgTable("ride_support_tickets", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  passenger_id: text("passenger_id").notNull(),
+  company_id: text("company_id").references(() => adminCompaniesTable.id, {
+    onDelete: "set null",
+  }),
+  category: text("category").notNull(),
+  message: text("message"),
+  status: text("status").notNull().default("open"),
+  internal_note: text("internal_note"),
+  priority: text("priority").notNull().default("normal"),
+  source: text("source").notNull().default("mobile"),
+  created_by_actor_kind: text("created_by_actor_kind").notNull().default("customer"),
+  created_by_actor_id: text("created_by_actor_id"),
+  ride_context_snapshot: jsonb("ride_context_snapshot")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  snapshot_schema_version: integer("snapshot_schema_version").notNull().default(1),
+  snapshot_captured_at: timestamp("snapshot_captured_at", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * OCR / Krankenkassen-Vorbereitung: strukturierte Extraktionszeilen (policy: keine Diagnose).
+ * Vorerst optional; API-Endpunkte können später geschrieben werden.
+ */
+export const medicalDocumentExtractionsTable = pgTable("medical_document_extractions", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  company_id: text("company_id").references(() => adminCompaniesTable.id, { onDelete: "set null" }),
+  document_kind: text("document_kind").notNull().default("transport_sheet"),
+  source: text("source").notNull().default("ocr_placeholder"),
+  review_status: text("review_status").notNull().default("draft"),
+  extraction_json: jsonb("extraction_json").$type<Record<string, unknown>>().notNull().default({}),
+  confidence_json: jsonb("confidence_json").$type<Record<string, unknown>>().notNull().default({}),
+  reviewed_by_actor_kind: text("reviewed_by_actor_kind"),
+  reviewed_by_actor_id: text("reviewed_by_actor_id"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Abrechnungskonto pro Unternehmen/Rolle (Partner, Betreiber, Zahler, Leistungserbringer). */
 export const billingAccountsTable = pgTable("billing_accounts", {
   id: text("id").primaryKey(),
@@ -500,6 +551,7 @@ export const rideFinancialsTable = pgTable("ride_financials", {
   id: text("id").primaryKey(),
   ride_id: text("ride_id")
     .notNull()
+    .unique()
     .references(() => ridesTable.id, { onDelete: "cascade" }),
   payer_type: text("payer_type").notNull(),
   billing_mode: text("billing_mode").notNull(),
@@ -589,10 +641,36 @@ export const settlementsTable = pgTable("settlements", {
   status: text("status").notNull().default("draft"),
   paid_at: timestamp("paid_at", { withTimezone: true }),
   payment_reference: text("payment_reference").notNull().default(""),
+  /** Optional; eindeutig wenn gesetzt — idempotente Settlement-Erzeugung (Retry / gleicher Batch). */
+  idempotency_key: text("idempotency_key"),
   metadata_json: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Eine Fahrt global höchstens einer Abrechnung zugeordnet (UNIQUE auf ride_id). */
+export const settlementRideAllocationsTable = pgTable(
+  "settlement_ride_allocations",
+  {
+    settlement_id: text("settlement_id")
+      .notNull()
+      .references(() => settlementsTable.id, { onDelete: "cascade" }),
+    ride_id: text("ride_id")
+      .notNull()
+      .references(() => ridesTable.id, { onDelete: "cascade" }),
+    ride_financial_id: text("ride_financial_id")
+      .notNull()
+      .references(() => rideFinancialsTable.id, { onDelete: "cascade" }),
+    gross_amount_snap: doublePrecision("gross_amount_snap").notNull().default(0),
+    commission_amount_snap: doublePrecision("commission_amount_snap").notNull().default(0),
+    operator_payout_snap: doublePrecision("operator_payout_snap").notNull().default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.settlement_id, t.ride_id] }),
+    rideUnique: uniqueIndex("settlement_ride_allocations_one_ride_global").on(t.ride_id),
+  }),
+);
 
 export const paymentsTable = pgTable("payments", {
   id: text("id").primaryKey(),

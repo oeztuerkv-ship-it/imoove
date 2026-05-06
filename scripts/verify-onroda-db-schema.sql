@@ -41,6 +41,9 @@
 --   054 → email_verification_codes (Kunden-E-Mail-Codes)
 --   056 → fleet_drivers.home_address, drivers_license_* (Partner, optional)
 --   057 → app_news_items (Mobile Neuigkeiten, Admin-CMS)
+--   059 → ride_support_tickets erweitert (company_id, priority, source, Actor-Felder)
+--   060 → medical_document_extractions (OCR-Struktur ohne API-Pflicht)
+--   061 → settlements.idempotency_key, settlement_ride_allocations, payments partial unique
 
 DO $$
 DECLARE
@@ -687,6 +690,83 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'app_news_items' AND column_name = 'target_type'
   ) THEN
     errs := array_append(errs, 'app_news_items.target_type (Migration 057)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_support_tickets'
+  ) THEN
+    errs := array_append(errs, 'table ride_support_tickets (Migration 047)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_support_tickets' AND column_name = 'ride_context_snapshot'
+  ) THEN
+    errs := array_append(errs, 'ride_support_tickets.ride_context_snapshot (Migration 047)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_support_tickets' AND column_name = 'company_id'
+  ) THEN
+    errs := array_append(errs, 'ride_support_tickets.company_id (Migration 059)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_support_tickets' AND column_name = 'priority'
+  ) THEN
+    errs := array_append(errs, 'ride_support_tickets.priority (Migration 059)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ride_support_tickets' AND column_name = 'created_by_actor_kind'
+  ) THEN
+    errs := array_append(errs, 'ride_support_tickets.created_by_actor_kind (Migration 059)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'medical_document_extractions'
+  ) THEN
+    errs := array_append(errs, 'table medical_document_extractions (Migration 060)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'medical_document_extractions' AND column_name = 'extraction_json'
+  ) THEN
+    errs := array_append(errs, 'medical_document_extractions.extraction_json (Migration 060)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'settlements' AND column_name = 'idempotency_key'
+  ) THEN
+    errs := array_append(errs, 'settlements.idempotency_key (Migration 061)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'settlement_ride_allocations'
+  ) THEN
+    errs := array_append(errs, 'table settlement_ride_allocations (Migration 061)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'settlement_ride_allocations_one_ride_global'
+  ) THEN
+    errs := array_append(errs, 'index settlement_ride_allocations_one_ride_global (Migration 061)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'payments_settlement_single_open'
+  ) THEN
+    errs := array_append(errs, 'index payments_settlement_single_open (Migration 061)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

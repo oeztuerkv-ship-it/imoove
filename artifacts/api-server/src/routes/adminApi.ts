@@ -43,6 +43,10 @@ import {
   listRideFinancialsAdmin,
   listSettlementsAdmin,
 } from "../db/adminFinanceData";
+import {
+  adminCreateSettlementWithRideAllocations,
+  adminRecordSettlementPayoutAttempt,
+} from "../db/financeSettlementsData";
 import { attachAccessCodeSummariesToRides, insertAccessCodeAdmin, listAccessCodesAdmin } from "../db/accessCodesData";
 import { insertPanelAuditLog, listPanelAuditForCompany } from "../db/panelAuditData";
 import {
@@ -1044,6 +1048,78 @@ adminJson.get("/finance/settlements/:settlementId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Partner-Abrechnung: Fahrten zuordnen; `idempotencyKey` für Retry (siehe Migration 061). */
+adminJson.post("/finance/settlements/create", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body as Record<string, unknown>;
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
+    const periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    const periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    const rideIdsRaw = Array.isArray(body.rideIds) ? body.rideIds : [];
+    const rideIds = rideIdsRaw.map((x) => String(x ?? "").trim()).filter(Boolean);
+    const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+    const out = await adminCreateSettlementWithRideAllocations({
+      companyId,
+      periodStart,
+      periodEnd,
+      rideIds,
+      idempotencyKey: idempotencyKey || null,
+      actorLabel: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      const code = out.error;
+      const status =
+        code === "ride_already_allocated" ||
+        code === "idempotency_ride_set_mismatch" ||
+        code === "idempotency_company_mismatch"
+          ? 409
+          : 400;
+      res.status(status).json({ error: code, conflictSettlementId: out.conflictSettlementId });
+      return;
+    }
+    res.json({ ok: true, settlementId: out.settlementId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Auszahlung erfassen: maximal eine pending/booked-Zeile pro Settlement (DB-Index + Logik). */
+adminJson.post("/finance/settlements/:settlementId/record-payment", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body as Record<string, unknown>;
+    const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : undefined;
+    const reference = typeof body.reference === "string" ? body.reference : "";
+    const paymentMethod = typeof body.paymentMethod === "string" ? body.paymentMethod : undefined;
+    const out = await adminRecordSettlementPayoutAttempt({
+      settlementId: req.params.settlementId,
+      companyId: companyId || null,
+      amount,
+      reference,
+      paymentMethod,
+      actorLabel: `admin_console:${role}`,
+    });
+    if (!out.ok) {
+      const st = out.error === "settlement_not_found" ? 404 : out.error === "company_mismatch" ? 403 : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });
   } catch (e) {
     next(e);
   }

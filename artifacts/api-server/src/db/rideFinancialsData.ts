@@ -1,15 +1,73 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import {
   calculateRideFinancialsV1,
   deriveFinanceInitialStatuses,
+  type FinanceCommissionType,
   type FinancePricingContext,
   type RideFinancialBillingStatus,
   type RideFinancialSettlementStatus,
 } from "../lib/financeCalculationService";
 import { getDb } from "./client";
 import { financialAuditLogTable, invoiceItemsTable, rideFinancialsTable } from "./schema";
+
+type PostgresDb = NonNullable<ReturnType<typeof getDb>>;
+
+/** In `calculation_metadata_json`; eingefroren bei erstem Persist — spätere Operational-Änderungen ändern keine alte Provision. */
+const FINANCE_PRICING_SNAPSHOT_KEY = "finance_pricing_snapshot";
+
+function readFinancePricingSnapshot(meta: Record<string, unknown>): FinancePricingContext | null {
+  const raw = meta[FINANCE_PRICING_SNAPSHOT_KEY];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const ct = o.commissionType;
+  const cv = o.commissionValue;
+  const vr = o.vatRate;
+  if (typeof ct !== "string") return null;
+  const commissionTypeAllowed: FinanceCommissionType[] = ["percentage", "fixed", "hybrid", "none"];
+  if (!commissionTypeAllowed.includes(ct as FinanceCommissionType)) return null;
+  const commissionType = ct as FinanceCommissionType;
+  const commissionValue =
+    typeof cv === "number" && Number.isFinite(cv)
+      ? cv
+      : typeof cv === "string" && cv.trim()
+        ? Number(cv)
+        : 0;
+  const vatRate =
+    typeof vr === "number" && Number.isFinite(vr)
+      ? vr
+      : typeof vr === "string" && vr.trim()
+        ? Number(vr)
+        : null;
+  const minComm = o.minCommissionEur;
+  const minCommissionEur =
+    typeof minComm === "number" && Number.isFinite(minComm) ? minComm : null;
+  return {
+    commissionType,
+    commissionValue: Number.isFinite(commissionValue) ? commissionValue : 0,
+    vatRate,
+    minCommissionEur,
+  };
+}
+
+export function buildFinancePricingSnapshotPayload(
+  incoming: FinancePricingContext | null | undefined,
+  calc: ReturnType<typeof calculateRideFinancialsV1>,
+): Record<string, unknown> {
+  return {
+    commissionType: calc.commissionType,
+    commissionValue: calc.commissionValue,
+    vatRate: calc.vatRate,
+    minCommissionEur:
+      incoming != null &&
+      typeof incoming.minCommissionEur === "number" &&
+      Number.isFinite(incoming.minCommissionEur)
+        ? incoming.minCommissionEur
+        : null,
+    capturedAtIso: new Date().toISOString(),
+  };
+}
 
 export const RIDE_FINANCIAL_BILLING_STATUSES: RideFinancialBillingStatus[] = [
   "unbilled",
@@ -66,6 +124,24 @@ async function insertFinancialAuditLog(input: {
   });
 }
 
+/** Billing-/Invoice-Ereignis auf Ride-Ebene (query: entity_type ride + entity_id = rideId). */
+export async function logFinancialAuditForRide(input: {
+  rideId: string;
+  action: string;
+  newValue?: Record<string, unknown>;
+  actorType?: string;
+  actorId?: string | null;
+}): Promise<void> {
+  await insertFinancialAuditLog({
+    entityType: "ride",
+    entityId: input.rideId,
+    action: input.action,
+    newValue: input.newValue ?? {},
+    actorType: input.actorType,
+    actorId: input.actorId,
+  });
+}
+
 function toPublicSnapshot(row: RideFinancialRow) {
   return {
     id: row.id,
@@ -97,9 +173,7 @@ function toPublicSnapshot(row: RideFinancialRow) {
   };
 }
 
-async function getAutoLockReason(rideId: string): Promise<string | null> {
-  const db = getDb();
-  if (!db) return null;
+async function getAutoLockReasonDb(rideId: string, db: PostgresDb): Promise<string | null> {
   const linkedInvoiceItem = await db
     .select({ id: invoiceItemsTable.id })
     .from(invoiceItemsTable)
@@ -107,6 +181,12 @@ async function getAutoLockReason(rideId: string): Promise<string | null> {
     .limit(1);
   if (linkedInvoiceItem[0]) return "invoice_item_assigned";
   return null;
+}
+
+async function getAutoLockReason(rideId: string): Promise<string | null> {
+  const db = getDb();
+  if (!db) return null;
+  return getAutoLockReasonDb(rideId, db);
 }
 
 function isValidBillingStatus(value: string): value is RideFinancialBillingStatus {
@@ -131,138 +211,188 @@ export async function getRideFinancialSnapshotByRideId(rideId: string) {
 
 export async function upsertRideFinancialSnapshot(
   input: UpsertRideFinancialSnapshotInput,
-): Promise<{ ok: true; snapshotId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; snapshotId: string; skipped?: boolean } | { ok: false; error: string }> {
   const db = getDb();
   if (!db) return { ok: false, error: "database_not_configured" };
 
-  const { ride } = input;
-  const calc = calculateRideFinancialsV1({
-    ride,
-    pricingContext: input.pricingContext ?? null,
-    partnerCompanyId: ride.companyId ?? null,
-    serviceProviderCompanyId: ride.companyId ?? null,
-  });
-  const initialStatuses = deriveFinanceInitialStatuses(ride);
-  const now = new Date();
-  const autoLockReason = await getAutoLockReason(ride.id);
+  return await db.transaction(async (tx) => {
+    const { ride } = input;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ride.id}))`);
 
-  const existingRows = await db
-    .select()
-    .from(rideFinancialsTable)
-    .where(eq(rideFinancialsTable.ride_id, ride.id))
-    .limit(1);
-  const existing = existingRows[0];
+    const existingRows = await tx
+      .select()
+      .from(rideFinancialsTable)
+      .where(eq(rideFinancialsTable.ride_id, ride.id))
+      .limit(1);
+    let existing = existingRows[0];
+    const autoLockReason = await getAutoLockReasonDb(ride.id, tx);
 
-  if (!existing) {
-    const id = `rf-${randomUUID()}`;
-    await db.insert(rideFinancialsTable).values({
-      id,
-      ride_id: ride.id,
-      payer_type: calc.payerType,
-      billing_mode: calc.billingMode,
-      service_provider_company_id: calc.serviceProviderCompanyId,
-      partner_company_id: calc.partnerCompanyId,
-      billing_reference: ride.billingReference ?? "",
-      gross_amount: calc.grossAmount,
-      net_amount: calc.netAmount,
-      vat_rate: calc.vatRate,
-      vat_amount: calc.vatAmount,
-      commission_type: calc.commissionType,
-      commission_value: calc.commissionValue,
-      commission_amount: calc.commissionAmount,
-      operator_payout_amount: calc.operatorPayoutAmount,
-      billing_status: initialStatuses.billingStatus,
-      settlement_status: initialStatuses.settlementStatus,
-      calculated_at: now,
-      calculation_version: calc.calculationVersion,
-      calculation_rule_set: calc.calculationRuleSet,
-      calculation_metadata_json: calc.calculationMetadata,
-      lock_reason: autoLockReason,
-      locked_at: autoLockReason ? now : null,
-      updated_at: now,
+    if (existing?.locked_at) {
+      return { ok: true, snapshotId: existing.id, skipped: true };
+    }
+
+    if (existing && autoLockReason && !existing.locked_at) {
+      const now = new Date();
+      await tx
+        .update(rideFinancialsTable)
+        .set({
+          locked_at: now,
+          lock_reason: autoLockReason,
+          updated_at: now,
+        })
+        .where(eq(rideFinancialsTable.id, existing.id));
+      await insertFinancialAuditLog({
+        entityType: "ride_financial",
+        entityId: existing.id,
+        action: "snapshot_locked",
+        oldValue: { lockReason: existing.lock_reason ?? null },
+        newValue: { lockReason: autoLockReason },
+        actorType: input.actorType,
+        actorId: input.actorId,
+      });
+      return { ok: true, snapshotId: existing.id, skipped: true };
+    }
+
+    const now = new Date();
+
+    /** Legacy-Zeilen ohne Freeze: erste erfolgreiche Upsert-Änderung hängt finance_pricing_snapshot an. */
+    const existingMeta: Record<string, unknown> =
+      existing?.calculation_metadata_json &&
+      typeof existing.calculation_metadata_json === "object" &&
+      !Array.isArray(existing.calculation_metadata_json)
+        ? { ...(existing.calculation_metadata_json as Record<string, unknown>) }
+        : {};
+    const frozenCtx = readFinancePricingSnapshot(existingMeta);
+    const pricingForCalc = frozenCtx ?? input.pricingContext ?? null;
+    let calc = calculateRideFinancialsV1({
+      ride,
+      pricingContext: pricingForCalc,
+      partnerCompanyId: ride.companyId ?? null,
+      serviceProviderCompanyId: ride.companyId ?? null,
     });
+
+    if (!existing) {
+      const initialStatuses = deriveFinanceInitialStatuses(ride);
+      const id = `rf-${randomUUID()}`;
+      const snap = buildFinancePricingSnapshotPayload(input.pricingContext, calc);
+      const calculation_metadata_json: Record<string, unknown> = {
+        ...calc.calculationMetadata,
+        [FINANCE_PRICING_SNAPSHOT_KEY]: snap,
+      };
+      await tx.insert(rideFinancialsTable).values({
+        id,
+        ride_id: ride.id,
+        payer_type: calc.payerType,
+        billing_mode: calc.billingMode,
+        service_provider_company_id: calc.serviceProviderCompanyId,
+        partner_company_id: calc.partnerCompanyId,
+        billing_reference: ride.billingReference ?? "",
+        gross_amount: calc.grossAmount,
+        net_amount: calc.netAmount,
+        vat_rate: calc.vatRate,
+        vat_amount: calc.vatAmount,
+        commission_type: calc.commissionType,
+        commission_value: calc.commissionValue,
+        commission_amount: calc.commissionAmount,
+        operator_payout_amount: calc.operatorPayoutAmount,
+        billing_status: initialStatuses.billingStatus,
+        settlement_status: initialStatuses.settlementStatus,
+        calculated_at: now,
+        calculation_version: calc.calculationVersion,
+        calculation_rule_set: calc.calculationRuleSet,
+        calculation_metadata_json,
+        lock_reason: autoLockReason,
+        locked_at: autoLockReason ? now : null,
+        updated_at: now,
+      });
+      await insertFinancialAuditLog({
+        entityType: "ride_financial",
+        entityId: id,
+        action: "snapshot_created",
+        newValue: {
+          rideId: ride.id,
+          calculationVersion: calc.calculationVersion,
+          reason: input.reason ?? "ride_completed",
+        },
+        actorType: input.actorType,
+        actorId: input.actorId,
+      });
+      return { ok: true, snapshotId: id };
+    }
+
+    const persistedSnapRaw = existingMeta[FINANCE_PRICING_SNAPSHOT_KEY];
+    const pricingSnap =
+      persistedSnapRaw &&
+      typeof persistedSnapRaw === "object" &&
+      !Array.isArray(persistedSnapRaw)
+        ? (persistedSnapRaw as Record<string, unknown>)
+        : buildFinancePricingSnapshotPayload(input.pricingContext, calc);
+
+    const mergedSnapMeta = {
+      ...existingMeta,
+      [FINANCE_PRICING_SNAPSHOT_KEY]: pricingSnap,
+    };
+    calc = calculateRideFinancialsV1({
+      ride,
+      pricingContext:
+        readFinancePricingSnapshot(mergedSnapMeta as Record<string, unknown>) ??
+        frozenCtx ??
+        input.pricingContext ??
+        null,
+      partnerCompanyId: ride.companyId ?? null,
+      serviceProviderCompanyId: ride.companyId ?? null,
+    });
+
+    const calculation_metadata_json = {
+      ...existingMeta,
+      ...calc.calculationMetadata,
+      [FINANCE_PRICING_SNAPSHOT_KEY]: pricingSnap,
+    };
+
+    await tx
+      .update(rideFinancialsTable)
+      .set({
+        payer_type: calc.payerType,
+        billing_mode: calc.billingMode,
+        service_provider_company_id: calc.serviceProviderCompanyId,
+        partner_company_id: calc.partnerCompanyId,
+        billing_reference: ride.billingReference ?? "",
+        gross_amount: calc.grossAmount,
+        net_amount: calc.netAmount,
+        vat_rate: calc.vatRate,
+        vat_amount: calc.vatAmount,
+        commission_type: calc.commissionType,
+        commission_value: calc.commissionValue,
+        commission_amount: calc.commissionAmount,
+        operator_payout_amount: calc.operatorPayoutAmount,
+        calculation_version: calc.calculationVersion,
+        calculation_rule_set: calc.calculationRuleSet,
+        calculation_metadata_json,
+        calculated_at: now,
+        updated_at: now,
+      })
+      .where(eq(rideFinancialsTable.id, existing.id));
+
     await insertFinancialAuditLog({
       entityType: "ride_financial",
-      entityId: id,
-      action: "snapshot_created",
+      entityId: existing.id,
+      action: "snapshot_updated",
+      oldValue: {
+        calculationVersion: existing.calculation_version,
+        grossAmount: existing.gross_amount,
+        netAmount: existing.net_amount,
+      },
       newValue: {
-        rideId: ride.id,
         calculationVersion: calc.calculationVersion,
-        reason: input.reason ?? "ride_completed",
+        grossAmount: calc.grossAmount,
+        netAmount: calc.netAmount,
+        reason: input.reason ?? "refresh",
       },
       actorType: input.actorType,
       actorId: input.actorId,
     });
-    return { ok: true, snapshotId: id };
-  }
-
-  if (existing.locked_at) {
-    return { ok: false, error: "snapshot_locked" };
-  }
-  if (autoLockReason) {
-    await db
-      .update(rideFinancialsTable)
-      .set({
-        locked_at: now,
-        lock_reason: autoLockReason,
-        updated_at: now,
-      })
-      .where(eq(rideFinancialsTable.id, existing.id));
-    await insertFinancialAuditLog({
-      entityType: "ride_financial",
-      entityId: existing.id,
-      action: "snapshot_locked",
-      oldValue: { lockReason: existing.lock_reason ?? null },
-      newValue: { lockReason: autoLockReason },
-      actorType: input.actorType,
-      actorId: input.actorId,
-    });
-    return { ok: false, error: "snapshot_locked" };
-  }
-
-  await db
-    .update(rideFinancialsTable)
-    .set({
-      payer_type: calc.payerType,
-      billing_mode: calc.billingMode,
-      service_provider_company_id: calc.serviceProviderCompanyId,
-      partner_company_id: calc.partnerCompanyId,
-      billing_reference: ride.billingReference ?? "",
-      gross_amount: calc.grossAmount,
-      net_amount: calc.netAmount,
-      vat_rate: calc.vatRate,
-      vat_amount: calc.vatAmount,
-      commission_type: calc.commissionType,
-      commission_value: calc.commissionValue,
-      commission_amount: calc.commissionAmount,
-      operator_payout_amount: calc.operatorPayoutAmount,
-      calculation_version: calc.calculationVersion,
-      calculation_rule_set: calc.calculationRuleSet,
-      calculation_metadata_json: calc.calculationMetadata,
-      calculated_at: now,
-      updated_at: now,
-    })
-    .where(eq(rideFinancialsTable.id, existing.id));
-
-  await insertFinancialAuditLog({
-    entityType: "ride_financial",
-    entityId: existing.id,
-    action: "snapshot_updated",
-    oldValue: {
-      calculationVersion: existing.calculation_version,
-      grossAmount: existing.gross_amount,
-      netAmount: existing.net_amount,
-    },
-    newValue: {
-      calculationVersion: calc.calculationVersion,
-      grossAmount: calc.grossAmount,
-      netAmount: calc.netAmount,
-      reason: input.reason ?? "refresh",
-    },
-    actorType: input.actorType,
-    actorId: input.actorId,
+    return { ok: true, snapshotId: existing.id };
   });
-  return { ok: true, snapshotId: existing.id };
 }
 
 export async function lockRideFinancialSnapshot(
@@ -342,14 +472,31 @@ export async function correctRideFinancialSnapshot(input: {
     actorId: input.actorId,
   });
 
+  const prevMeta: Record<string, unknown> =
+    existing.calculation_metadata_json &&
+    typeof existing.calculation_metadata_json === "object" &&
+    !Array.isArray(existing.calculation_metadata_json)
+      ? ({ ...(existing.calculation_metadata_json as Record<string, unknown>) } as Record<string, unknown>)
+      : {};
+
   const calc = calculateRideFinancialsV1({
     ride: input.ride,
-    pricingContext: input.pricingContext ?? null,
+    pricingContext: input.pricingContext ?? readFinancePricingSnapshot(prevMeta) ?? null,
     partnerCompanyId: input.ride.companyId ?? null,
     serviceProviderCompanyId: input.ride.companyId ?? null,
   });
   const now = new Date();
   const correctionCount = Number(existing.correction_count ?? 0) + 1;
+
+  const correctionSnapRaw = prevMeta[FINANCE_PRICING_SNAPSHOT_KEY];
+  const correctionSnap =
+    input.pricingContext != null
+      ? buildFinancePricingSnapshotPayload(input.pricingContext, calc)
+      : correctionSnapRaw &&
+          typeof correctionSnapRaw === "object" &&
+          !Array.isArray(correctionSnapRaw)
+        ? (correctionSnapRaw as Record<string, unknown>)
+        : buildFinancePricingSnapshotPayload(readFinancePricingSnapshot(prevMeta), calc);
 
   await db
     .update(rideFinancialsTable)
@@ -370,7 +517,9 @@ export async function correctRideFinancialSnapshot(input: {
       calculation_version: `${calc.calculationVersion}:corr_${correctionCount}`,
       calculation_rule_set: calc.calculationRuleSet,
       calculation_metadata_json: {
+        ...prevMeta,
         ...calc.calculationMetadata,
+        [FINANCE_PRICING_SNAPSHOT_KEY]: correctionSnap,
         correctionReason: reason,
       },
       correction_count: correctionCount,
