@@ -26,6 +26,7 @@ type SponsorItem = {
   targetValue?: string | null;
   category: string;
 };
+type OfferTab = "coupon" | "angebot" | "partnervorteile";
 
 export default function SponsorsScreen() {
   const colors = useColors();
@@ -37,6 +38,7 @@ export default function SponsorsScreen() {
   const [items, setItems] = useState<SponsorItem[]>([]);
   const [selected, setSelected] = useState<SponsorItem | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<OfferTab>("coupon");
 
   const qrUrlFor = useCallback((it: SponsorItem | null): string | null => {
     if (!it) return null;
@@ -49,6 +51,44 @@ export default function SponsorsScreen() {
     }
     return null;
   }, []);
+
+  const classifyOfferTab = useCallback(
+    (it: SponsorItem): OfferTab => {
+      if (qrUrlFor(it)) return "coupon";
+      const category = String(it.category ?? "").toLowerCase();
+      if (category === "angebot" || category === "event") return "angebot";
+      return "partnervorteile";
+    },
+    [qrUrlFor],
+  );
+
+  const filteredItems = useMemo(() => {
+    return items.filter((it) => classifyOfferTab(it) === activeTab);
+  }, [items, classifyOfferTab, activeTab]);
+
+  const tabCounts = useMemo(
+    () => ({
+      coupon: items.filter((it) => classifyOfferTab(it) === "coupon").length,
+      angebot: items.filter((it) => classifyOfferTab(it) === "angebot").length,
+      partnervorteile: items.filter((it) => classifyOfferTab(it) === "partnervorteile").length,
+    }),
+    [items, classifyOfferTab],
+  );
+
+  useEffect(() => {
+    if (tabCounts[activeTab] > 0) return;
+    if (tabCounts.coupon > 0) {
+      setActiveTab("coupon");
+      return;
+    }
+    if (tabCounts.angebot > 0) {
+      setActiveTab("angebot");
+      return;
+    }
+    if (tabCounts.partnervorteile > 0) {
+      setActiveTab("partnervorteile");
+    }
+  }, [tabCounts, activeTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,9 +117,9 @@ export default function SponsorsScreen() {
   useEffect(() => {
     if (!autoOpenTop) return;
     if (selected) return;
-    if (!items.length) return;
-    setSelected(items[0]);
-  }, [autoOpenTop, items, selected]);
+    if (!filteredItems.length) return;
+    setSelected(filteredItems[0]);
+  }, [autoOpenTop, filteredItems, selected]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
@@ -138,7 +178,49 @@ export default function SponsorsScreen() {
           </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            {items.map((it) => (
+            <Text style={[styles.subHeading, { color: colors.foreground }]}>Rabatte & Partnervorteile</Text>
+            <View style={styles.tabsRow}>
+              <Pressable
+                style={[
+                  styles.tabBtn,
+                  activeTab === "coupon" && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  activeTab !== "coupon" && { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => setActiveTab("coupon")}
+              >
+                <Text style={[styles.tabBtnText, { color: activeTab === "coupon" ? "#fff" : colors.foreground }]}>
+                  Coupons
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.tabBtn,
+                  activeTab === "angebot" && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  activeTab !== "angebot" && { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => setActiveTab("angebot")}
+              >
+                <Text style={[styles.tabBtnText, { color: activeTab === "angebot" ? "#fff" : colors.foreground }]}>
+                  Angebote
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.tabBtn,
+                  activeTab === "partnervorteile" && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  activeTab !== "partnervorteile" && { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => setActiveTab("partnervorteile")}
+              >
+                <Text style={[styles.tabBtnText, { color: activeTab === "partnervorteile" ? "#fff" : colors.foreground }]}>
+                  Partnervorteile
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={[styles.tabHint, { color: colors.mutedForeground }]}>
+              {tabCounts[activeTab]} Eintrag{tabCounts[activeTab] === 1 ? "" : "e"}
+            </Text>
+            {filteredItems.map((it) => (
               <Pressable key={it.id} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => setSelected(it)}>
                 {it.imageUrl ? <Image source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" /> : null}
                 <View style={styles.body}>
@@ -148,6 +230,13 @@ export default function SponsorsScreen() {
                 </View>
               </Pressable>
             ))}
+            {filteredItems.length === 0 ? (
+              <View style={[styles.emptyBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                  Für diesen Bereich sind aktuell keine Einträge verfügbar.
+                </Text>
+              </View>
+            ) : null}
           </ScrollView>
         )
       )}
@@ -176,6 +265,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, marginBottom: 8 },
   backBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   title: { fontSize: rf(20), fontFamily: "Inter_700Bold" },
+  subHeading: { fontSize: rf(28), fontFamily: "Inter_700Bold", marginBottom: rs(2) },
+  tabsRow: { flexDirection: "row", gap: rs(8), marginBottom: rs(4) },
+  tabBtn: { flex: 1, borderWidth: 1, borderRadius: rs(10), alignItems: "center", justifyContent: "center", minHeight: rs(40), paddingHorizontal: rs(8) },
+  tabBtnText: { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  tabHint: { fontSize: rf(12), fontFamily: "Inter_500Medium", marginBottom: rs(2) },
   content: { paddingHorizontal: 16, paddingBottom: rs(24), gap: 14 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: { borderWidth: 1, borderRadius: 14, overflow: "hidden" },
@@ -194,4 +288,6 @@ const styles = StyleSheet.create({
   modalHint: { fontSize: rf(13), fontFamily: "Inter_500Medium", marginTop: 8, marginBottom: 10 },
   qrBig: { width: rs(220), height: rs(220), marginTop: 6 },
   modalCloseBtn: { borderRadius: 10, paddingHorizontal: 18, paddingVertical: 10, alignSelf: "stretch", alignItems: "center" },
+  emptyBox: { borderWidth: 1, borderRadius: rs(12), padding: rs(14), alignItems: "center" },
+  emptyText: { fontSize: rf(13), fontFamily: "Inter_500Medium", textAlign: "center" },
 });
