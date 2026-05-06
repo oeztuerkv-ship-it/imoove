@@ -4,7 +4,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y } from "@/components/BottomTabBar";
 import { useColors } from "@/hooks/useColors";
 import { rf, rs } from "@/utils/scale";
 
@@ -29,7 +29,7 @@ export default function BookingCenterScreen() {
       subtitle: "Direkt starten, Fahrer wird sofort gesucht.",
       icon: "zap",
       color: "#DC2626",
-      onPress: () => router.push("/"),
+      onPress: () => router.push("/?search=1"),
     },
     {
       key: "reserve",
@@ -97,7 +97,7 @@ export default function BookingCenterScreen() {
           </Text>
         </View>
       </ScrollView>
-      <BottomTabBar active="buchen" />
+      <BottomTabBar active="buchen" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { BottomTabBar, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
@@ -700,7 +700,7 @@ export default function MyRidesScreen() {
         )}
 
       </ScrollView>
-      <BottomTabBar active="fahrten" />
+      <BottomTabBar active="fahrten" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }

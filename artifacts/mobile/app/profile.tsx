@@ -3,7 +3,7 @@ import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { BottomTabBar, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
@@ -1172,7 +1172,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
-      {profile.isLoggedIn ? <BottomTabBar active="account" /> : null}
+      {profile.isLoggedIn ? <BottomTabBar active="account" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} /> : null}
     </View>
   );
 }

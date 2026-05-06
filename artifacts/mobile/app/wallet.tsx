@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { BottomTabBar, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -342,7 +342,7 @@ export default function WalletScreen() {
           setBillingOpen(false);
         }}
       />
-      <BottomTabBar active="geldborse" />
+      <BottomTabBar active="geldborse" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }
