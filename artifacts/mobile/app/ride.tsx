@@ -257,11 +257,38 @@ export default function RideScreen() {
       void (async () => {
         try {
           if (!destination) return;
+          const readCoord = (
+            obj: unknown,
+            primary: "lat" | "lon",
+            fallback: "latitude" | "longitude",
+          ): number | null => {
+            if (!obj || typeof obj !== "object") return null;
+            const raw = (obj as Record<string, unknown>)[primary] ?? (obj as Record<string, unknown>)[fallback];
+            const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : NaN;
+            return Number.isFinite(n) ? n : null;
+          };
+
+          const originLat = readCoord(origin as unknown, "lat", "latitude");
+          const originLon = readCoord(origin as unknown, "lon", "longitude");
+          const destinationLat = readCoord(destination as unknown, "lat", "latitude");
+          const destinationLon = readCoord(destination as unknown, "lon", "longitude");
+
+          console.log("BOOKING_ADDRESS_DEBUG", {
+            originDisplayName: origin?.displayName,
+            destinationDisplayName: destination?.displayName,
+            originLat,
+            originLon,
+            destinationLat,
+            destinationLon,
+            origin,
+            destination,
+          });
+
           const hasGeoSelection =
-            Number.isFinite(origin.lat) &&
-            Number.isFinite(origin.lon) &&
-            Number.isFinite(destination.lat) &&
-            Number.isFinite(destination.lon);
+            originLat != null &&
+            originLon != null &&
+            destinationLat != null &&
+            destinationLon != null;
           /**
            * Wenn beide Punkte bereits geokodiert sind (aus Vorschlag/Karte),
            * blockieren wir nicht mehr an der rein textbasierten Hausnummer-Regel.
@@ -276,10 +303,10 @@ export default function RideScreen() {
             }
           }
           const area = await validateServiceAreaForBooking(origin.displayName, destination.displayName, {
-            fromLat: origin.lat,
-            fromLon: origin.lon,
-            toLat: destination.lat,
-            toLon: destination.lon,
+            fromLat: originLat,
+            fromLon: originLon,
+            toLat: destinationLat,
+            toLon: destinationLon,
           });
           if (!area.ok) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -312,10 +339,10 @@ export default function RideScreen() {
             fromFull: origin.displayName,
             to: destination?.displayName.split(",")[0] ?? "Ziel",
             toFull: destination?.displayName ?? "",
-            fromLat: origin.lat,
-            fromLon: origin.lon,
-            toLat: destination?.lat,
-            toLon: destination?.lon,
+            fromLat: originLat ?? undefined,
+            fromLon: originLon ?? undefined,
+            toLat: destinationLat ?? undefined,
+            toLon: destinationLon ?? undefined,
             distanceKm: route?.distanceKm ?? 0,
             durationMinutes: route?.durationMinutes ?? 0,
             estimatedFare: chargeAmount,
