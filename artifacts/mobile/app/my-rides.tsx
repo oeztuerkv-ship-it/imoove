@@ -187,6 +187,7 @@ function StatusBadge({ status }: { status: string }) {
     searching_driver: { label: "Fahrersuche", bg: "#F59E0B22", fg: "#D97706" },
     offered:     { label: "Angebot läuft",      bg: "#F59E0B22", fg: "#D97706" },
     pending:     { label: "Warte auf Fahrer", bg: "#F59E0B22", fg: "#D97706" },
+    ready_for_dispatch: { label: "Fahrer unterwegs", bg: "#16A34A22", fg: "#16A34A" },
     accepted:    { label: "Fahrer unterwegs",     bg: "#16A34A22", fg: "#16A34A" },
     driver_arriving: { label: "Fahrer unterwegs", bg: "#16A34A22", fg: "#16A34A" },
     driver_waiting: { label: "Fahrer wartet", bg: "#16A34A22", fg: "#16A34A" },
@@ -616,7 +617,7 @@ export default function MyRidesScreen() {
                     </View>
                   )}
 
-                  {(req.status === "accepted" || req.status === "driver_arriving") && (
+                  {(req.status === "ready_for_dispatch" || req.status === "accepted" || req.status === "driver_arriving") && (
                     <View style={[styles.driverHint, { backgroundColor: "#16A34A11", borderColor: "#16A34A33" }]}>
                       <Feather name="check-circle" size={14} color="#16A34A" />
                       <Text style={[styles.driverHintText, { color: "#16A34A" }]}>Fahrer auf dem Weg zu dir</Text>
@@ -633,6 +634,7 @@ export default function MyRidesScreen() {
                     req.status === "requested" ||
                     req.status === "searching_driver" ||
                     req.status === "offered" ||
+                    req.status === "ready_for_dispatch" ||
                     req.status === "accepted" ||
                     req.status === "driver_arriving" ||
                     req.status === "driver_waiting" ||
@@ -703,6 +705,7 @@ export default function MyRidesScreen() {
                     req.status === "requested" ||
                     req.status === "searching_driver" ||
                     req.status === "offered" ||
+                    req.status === "ready_for_dispatch" ||
                     req.status === "accepted" ||
                     req.status === "driver_arriving" ||
                     req.status === "driver_waiting") && (

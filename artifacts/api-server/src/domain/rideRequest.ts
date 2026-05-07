@@ -163,6 +163,7 @@ export interface RideRequest {
     | "draft"
     | "scheduled"
     | "scheduled_assigned"
+    | "ready_for_dispatch"
     | "requested"
     | "searching_driver"
     | "offered"

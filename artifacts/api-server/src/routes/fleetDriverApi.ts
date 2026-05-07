@@ -230,6 +230,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       if (ride.companyId && ride.companyId !== a.companyId) return false;
       if (isAssignedToDriver) {
         return (
+          ride.status === "ready_for_dispatch" ||
           ride.status === "accepted" ||
           ride.status === "driver_arriving" ||
           ride.status === "driver_waiting" ||

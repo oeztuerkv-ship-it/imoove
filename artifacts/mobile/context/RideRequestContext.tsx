@@ -14,6 +14,7 @@ export type RequestStatus =
   | "draft"
   | "scheduled"
   | "scheduled_assigned"
+  | "ready_for_dispatch"
   | "requested"
   | "searching_driver"
   | "offered"
@@ -855,6 +856,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
   const acceptedRequest =
     requests.find((r) =>
+      r.status === "ready_for_dispatch" ||
       r.status === "accepted" ||
       r.status === "driver_arriving" ||
       r.status === "driver_waiting" ||
@@ -870,7 +872,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         .filter(
           (r) =>
             r.passengerId === passengerId &&
-            (r.status === "accepted" ||
+            (r.status === "ready_for_dispatch" ||
+              r.status === "accepted" ||
               r.status === "driver_arriving" ||
               r.status === "driver_waiting" ||
               r.status === "passenger_onboard" ||
@@ -893,6 +896,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           (r.status === "pending" ||
             r.status === "scheduled" ||
             r.status === "scheduled_assigned" ||
+            r.status === "ready_for_dispatch" ||
             r.status === "requested" ||
             r.status === "searching_driver" ||
             r.status === "offered" ||

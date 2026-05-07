@@ -1494,7 +1494,7 @@ function ActiveRideScreen({
     if (!driverCoords || req.fromLat == null || req.fromLon == null) return;
     if (navAutoStarted.current) return;
     navAutoStarted.current = true;
-    if (req.status === "accepted") {
+    if (req.status === "accepted" || req.status === "ready_for_dispatch") {
       void markDriverArriving(req.id);
     }
     router.push({
@@ -1533,7 +1533,7 @@ function ActiveRideScreen({
       }
       const dLat = driverCoords.lat;
       const dLon = driverCoords.lon;
-      if (req.status === "accepted") {
+      if (req.status === "accepted" || req.status === "ready_for_dispatch") {
         void markDriverArriving(req.id);
       }
       const destLat = req.toLat ?? req.fromLat;
@@ -2324,6 +2324,7 @@ export default function DriverDashboard() {
     requests.find(
       (r) =>
         (r.status === "accepted" ||
+          r.status === "ready_for_dispatch" ||
           r.status === "driver_arriving" ||
           r.status === "driver_waiting" ||
           r.status === "passenger_onboard" ||
