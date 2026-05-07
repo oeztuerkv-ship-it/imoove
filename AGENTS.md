@@ -22,6 +22,15 @@ Keine Abschlussmeldung ohne diese Basis (Details: **`.cursor/rules/imoove-pre-co
 
 Jede inhaltliche Änderung: in PR- oder Commit-Beschreibung (bzw. Plan) eine **kurze Sektion „Auswirkungen“** — Acht-Punkte-Liste, plus Zusatzfragen für Status/Dokument/Fahrzeuge/Fahrer/Anfrage/Freigabe. Volltext und Begründung: **`.cursor/rules/onroda-cross-impact.mdc`**.
 
+## Feature-/Change-Template (verbindlich bei größeren Änderungen)
+
+Für größere Features/Sprints/API-DB-Flow-Anpassungen ist das Template unter
+**`docs/onroda-feature-change-template.md`** verpflichtend zu verwenden
+(Plan, PR-Text oder Sprint-Übergabe).
+
+Mindestens der Block **"Auswirkungen (Kurzblock, Pflicht)"** muss immer enthalten sein.
+Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt reiner UI-Fertigmeldung.
+
 ## Pflichtlektüre (Cursor Rules, immer aktiv)
 
 - `.cursor/rules/onroda-cross-impact.mdc` — **Auswirkungen** je Änderung (API/DB, Admin, Partner, Mobile, Marketing, Audit, E-Mail, Rechte; kein Mix Support/Onboarding/Panel)
