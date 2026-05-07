@@ -110,6 +110,15 @@ function wheelchairInfoLine(req: RideRequest): string | null {
   return parts.join(" · ");
 }
 
+function customerDriverNoteLine(req: RideRequest): string | null {
+  const meta = (req as RideRequest & { partnerBookingMeta?: unknown }).partnerBookingMeta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const note = (meta as Record<string, unknown>).customer_driver_note;
+  if (typeof note !== "string") return null;
+  const trimmed = note.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 type MedicalStep = { label: string; done: boolean };
 
 function approvalStatusDe(v: string): string {
@@ -265,6 +274,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const { date, time } = fmt(req.createdAt);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
+  const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
   const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
   const modeBadge = rideTypeBadge(req);
@@ -385,6 +395,14 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           </Text>
         </View>
       ) : null}
+      {customerNoteLine ? (
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 16, paddingBottom: 8 }}>
+          <Feather name="message-square" size={14} color="#0F766E" style={{ marginTop: 1 }} />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#115E59" }} numberOfLines={4}>
+            Hinweis Kunde: {customerNoteLine}
+          </Text>
+        </View>
+      ) : null}
       {medicalChecklist ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -469,9 +487,13 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
+  const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
   const modeBadge = rideTypeBadge(req);
   const hasTaxiEstimate = hasTaxiEstimateBadge(req);
+  const isAssignedUpcoming = req.status === "scheduled_assigned";
+  const upcomingStatusLabel = isAssignedUpcoming ? "Angenommen" : "Reserviert";
+  const upcomingStatusBg = isAssignedUpcoming ? "#16A34A" : "#0EA5E9";
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const distToPickup = (driverPos && req.fromLat != null && req.fromLon != null)
     ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
@@ -490,8 +512,13 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
           <Feather name="calendar" size={14} color="#D97706" />
           <Text style={[styles.reqNewLabel, { color: "#B45309" }]}>Vorbestellung</Text>
         </View>
-        <View style={[styles.schedPill, { backgroundColor: activatable ? "#22C55E" : "#F59E0B" }]}>
-          <Text style={styles.schedPillText}>{activatable ? "Bereit" : countdownText}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={[styles.schedPill, { backgroundColor: upcomingStatusBg }]}>
+            <Text style={styles.schedPillText}>{upcomingStatusLabel}</Text>
+          </View>
+          <View style={[styles.schedPill, { backgroundColor: activatable ? "#22C55E" : "#F59E0B" }]}>
+            <Text style={styles.schedPillText}>{activatable ? "Bereit" : countdownText}</Text>
+          </View>
         </View>
       </View>
 
@@ -583,6 +610,14 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
           </Text>
         </View>
       ) : null}
+      {customerNoteLine ? (
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 14, marginBottom: 6 }}>
+          <Feather name="message-square" size={14} color="#0F766E" style={{ marginTop: 1 }} />
+          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#115E59" }} numberOfLines={4}>
+            Hinweis Kunde: {customerNoteLine}
+          </Text>
+        </View>
+      ) : null}
       {medicalChecklist ? (
         <View style={{ marginHorizontal: 14, marginBottom: 6 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -631,17 +666,35 @@ function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideReques
         </View>
       )}
 
-      {/* Annehmen + Ablehnen — immer sichtbar */}
-      <View style={{ flexDirection: "row", gap: 10, marginTop: 8, marginBottom: 4, paddingHorizontal: 14 }}>
-        <Pressable style={[styles.rejectBtn, { flex: 1 }]} onPress={onReject}>
-          <Feather name="x" size={16} color="#DC2626" />
-          <Text style={styles.rejectText}>Ablehnen</Text>
-        </Pressable>
-        <Pressable style={[styles.acceptBtn, { flex: 2 }]} onPress={onAccept}>
-          <Feather name="check" size={18} color="#fff" />
-          <Text style={styles.acceptText}>Annehmen</Text>
-        </Pressable>
-      </View>
+      {!isAssignedUpcoming ? (
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 8, marginBottom: 4, paddingHorizontal: 14 }}>
+          <Pressable style={[styles.rejectBtn, { flex: 1 }]} onPress={onReject}>
+            <Feather name="x" size={16} color="#DC2626" />
+            <Text style={styles.rejectText}>Ablehnen</Text>
+          </Pressable>
+          <Pressable style={[styles.acceptBtn, { flex: 2 }]} onPress={onAccept}>
+            <Feather name="check" size={18} color="#fff" />
+            <Text style={styles.acceptText}>Annehmen</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={{ marginTop: 8, marginBottom: 4, paddingHorizontal: 14 }}>
+          <View
+            style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#16A34A55",
+              backgroundColor: "#16A34A12",
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+            }}
+          >
+            <Text style={{ color: "#166534", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+              Diese Reservierung ist angenommen und bleibt unter "Kommende Fahrten".
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -1351,6 +1404,7 @@ function ActiveRideScreen({
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
+  const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
   const [kkEigenOpen, setKkEigenOpen] = useState(false);
   const [driverEigenanteil, setDriverEigenanteil] = useState(() =>
@@ -1634,6 +1688,7 @@ function ActiveRideScreen({
             <Text style={[activeStyles.customerSub, { color: colors.mutedForeground }]} numberOfLines={4}>
               {codeLine ? `${codeLine}\n` : ""}
               {wheelchairLine ? `${wheelchairLine}\n` : ""}
+              {customerNoteLine ? `Hinweis Kunde: ${customerNoteLine}\n` : ""}
               {medicalChecklist ? "Krankenfahrt-Check aktiv\n" : ""}
               {req.vehicle} · {isKK ? "Krankenkasse" : req.paymentMethod}
             </Text>
@@ -2258,8 +2313,10 @@ export default function DriverDashboard() {
     return ageHours <= 8;
   });
   const scheduledPool = scheduledPoolRequests.filter((r) => {
-    if (r.status !== "scheduled") return false;
-    if (r.driverId) return false;
+    if (r.status !== "scheduled" && r.status !== "scheduled_assigned") return false;
+    const assignedDriverId = typeof r.driverId === "string" ? r.driverId.trim() : "";
+    if (r.status === "scheduled_assigned" && assignedDriverId !== driverId) return false;
+    if (r.status === "scheduled" && assignedDriverId) return false;
     if ((r.rejectedBy ?? []).includes(driverId)) return false;
     return true;
   });

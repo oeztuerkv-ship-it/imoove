@@ -220,7 +220,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     }
     const all = await listRides();
     const marketRows = all.filter((ride) => {
-      if (ride.status === "scheduled") return false;
+      if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
       const isAssignedToDriver = ride.driverId === a.fleetDriverId;
       const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
       if (isAssignedToOtherDriver) return false;
