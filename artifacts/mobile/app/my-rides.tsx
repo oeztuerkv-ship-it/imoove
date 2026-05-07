@@ -134,18 +134,28 @@ function splitAddressLines(
   const postalIdx = parts.findIndex((p) => /\b\d{5}\b/.test(p));
   if (postalIdx >= 0) {
     const postalRaw = parts[postalIdx];
-    const plzMatch = postalRaw.match(/\b(\d{5})\b/);
+    const plzMatch = postalRaw.match(/\b(\d{5})\b\s*,?\s*(.*)$/);
     plz = plzMatch?.[1]?.trim() ?? "";
+    const citySameSegment = String(plzMatch?.[2] ?? "").trim();
 
-    const after = (parts[postalIdx + 1] ?? "").trim();
-    if (after && !isAdminPart(after) && !/\d/.test(after)) {
-      city = isPoiLikePart(after) ? "" : after;
+    if (citySameSegment && !isPoiLikePart(citySameSegment) && !isAdminPart(citySameSegment)) {
+      city = citySameSegment;
     } else {
-      const localityCandidates = parts
-        .slice(0, postalIdx)
-        .filter((p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p));
-      city = dedupeOverlappingLocalities(localityCandidates).slice(-2).join(", ").trim();
+      const after = (parts[postalIdx + 1] ?? "").trim();
+      if (after && !isAdminPart(after) && !/\d/.test(after)) {
+        city = isPoiLikePart(after) ? "" : after;
+      } else {
+        const localityCandidates = parts
+          .slice(0, postalIdx)
+          .filter((p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p));
+        city = dedupeOverlappingLocalities(localityCandidates).slice(-2).join(", ").trim();
+      }
     }
+  } else {
+    const localityCandidates = parts.filter(
+      (p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p),
+    );
+    city = dedupeOverlappingLocalities(localityCandidates).slice(-2).join(", ").trim();
   }
 
   const postalCity = plz && city ? `${plz} ${city}` : city || plz;
@@ -502,13 +512,6 @@ export default function MyRidesScreen() {
             {activeRequestsToRender.map((req) => {
               const fromAddr = formatRideAddress(req.fromFull, req.from);
               const toAddr = formatRideAddress(req.toFull, req.to);
-              console.log("RIDE_ADDRESS_DISPLAY_DEBUG", {
-                id: req.id,
-                toLabel: (req as unknown as { toLabel?: string }).toLabel ?? null,
-                toFull: req.toFull ?? null,
-                parsedStreet: toAddr.line1,
-                parsedPostalCity: toAddr.line2,
-              });
               const hasPickup = req.scheduledAt != null;
               const isReservation = req.status === "scheduled";
               const when = hasPickup ? new Date(req.scheduledAt as Date) : new Date(req.createdAt);
