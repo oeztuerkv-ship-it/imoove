@@ -356,6 +356,11 @@ export default function NewBookingScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const formComplete = from.name.length > 0 && to.name.length > 0 && scheduledAt !== null;
+  const swapFromTo = () => {
+    setFrom(to);
+    setTo(from);
+    Haptics.selectionAsync();
+  };
 
   function accessCodeErrorMessage(code: string): string {
     const m: Record<string, string> = {
@@ -516,6 +521,15 @@ export default function NewBookingScreen() {
             colors={colors}
           />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <View style={styles.swapRow}>
+            <Pressable
+              style={[styles.swapBtn, { borderColor: colors.border, backgroundColor: colors.muted }]}
+              onPress={swapFromTo}
+            >
+              <Feather name="repeat" size={14} color={colors.foreground} />
+              <Text style={[styles.swapBtnText, { color: colors.foreground }]}>Tauschen</Text>
+            </Pressable>
+          </View>
           <AddressInput
             label="Ziel"
             icon="flag"
@@ -652,6 +666,17 @@ const styles = StyleSheet.create({
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
   cardLabel: { fontSize: 14, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
+  swapRow: { alignItems: "flex-start", marginBottom: 8 },
+  swapBtn: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  swapBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
   inputLabel: { fontSize: 14, fontFamily: "Inter_700Bold", marginBottom: 6 },
   inputBox: {
