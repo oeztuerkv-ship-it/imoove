@@ -32,7 +32,31 @@ import {
 } from "@/lib/appOperationalConfig";
 import { useColors } from "@/hooks/useColors";
 
-type GeoResult = { display_name: string; lat: string; lon: string };
+type NominatimAddress = {
+  road?: string;
+  house_number?: string;
+  postcode?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  suburb?: string;
+  amenity?: string;
+  attraction?: string;
+  aeroway?: string;
+  railway?: string;
+  public_transport?: string;
+};
+
+type GeoResult = {
+  display_name: string;
+  lat: string;
+  lon: string;
+  name?: string;
+  class?: string;
+  type?: string;
+  address?: NominatimAddress;
+};
 
 // Soft viewbox bias around Esslingen / Stuttgart (but not exclusive)
 const VIEWBOX = "8.8,48.6,9.6,48.9";
@@ -76,7 +100,67 @@ function subName(display: string) {
   return parts.slice(2, 4).join(",").trim();
 }
 
-type GeoItem = { display_name: string; lat: string; lon: string };
+type GeoItem = GeoResult;
+
+type SelectedAddress = {
+  name: string;
+  fullName: string;
+  lat: number;
+  lon: number;
+  isStreetAddress: boolean;
+  isPoiAddress: boolean;
+};
+
+const EMPTY_SELECTED_ADDRESS: SelectedAddress = {
+  name: "",
+  fullName: "",
+  lat: 0,
+  lon: 0,
+  isStreetAddress: false,
+  isPoiAddress: false,
+};
+
+function buildStructuredAddressFromGeo(item: GeoItem): {
+  name: string;
+  fullName: string;
+  isStreetAddress: boolean;
+  isPoiAddress: boolean;
+} {
+  const addr = item.address ?? {};
+  const street = typeof addr.road === "string" ? addr.road.trim() : "";
+  const house = typeof addr.house_number === "string" ? addr.house_number.trim() : "";
+  const postcode = typeof addr.postcode === "string" ? addr.postcode.trim() : "";
+  const cityRaw =
+    (typeof addr.city === "string" && addr.city.trim()) ||
+    (typeof addr.town === "string" && addr.town.trim()) ||
+    (typeof addr.village === "string" && addr.village.trim()) ||
+    (typeof addr.municipality === "string" && addr.municipality.trim()) ||
+    (typeof addr.suburb === "string" && addr.suburb.trim()) ||
+    "";
+  const city = String(cityRaw || "").trim();
+  const line1Street = street && house ? `${street} ${house}` : "";
+
+  const poiLabel =
+    (typeof item.name === "string" && item.name.trim()) ||
+    (typeof addr.amenity === "string" && addr.amenity.trim()) ||
+    (typeof addr.attraction === "string" && addr.attraction.trim()) ||
+    (typeof addr.aeroway === "string" && addr.aeroway.trim()) ||
+    (typeof addr.railway === "string" && addr.railway.trim()) ||
+    shortName(item.display_name);
+  const poiText = String(poiLabel || "").trim();
+  const poiKeyword = /(flughafen|bahnhof|station|terminal|haltestelle|messe|klinik|hotel|zentrum|gvv)/i.test(poiText);
+  const poiClass = /^(aeroway|railway|amenity|tourism|leisure|public_transport)$/i.test(String(item.class ?? ""));
+  const isPoiAddress = (!line1Street && (poiKeyword || poiClass)) || /^(station|stop|platform|terminal)$/i.test(String(item.type ?? ""));
+
+  const line1 = line1Street || poiText;
+  const line2 = postcode && city ? `${postcode} ${city}` : city || postcode;
+  return {
+    name: line1,
+    fullName: line2 ? `${line1}, ${line2}` : line1,
+    isStreetAddress: Boolean(line1Street),
+    isPoiAddress,
+  };
+}
 
 function AddressInput({
   label,
@@ -90,7 +174,7 @@ function AddressInput({
   icon: "map-pin" | "flag";
   value: string;
   placeholder: string;
-  onSelect: (name: string, fullName: string, lat: number, lon: number) => void;
+  onSelect: (selection: SelectedAddress) => void;
   colors: ReturnType<typeof useColors>;
 }) {
   const [query, setQuery] = useState(value);
@@ -119,18 +203,18 @@ function AddressInput({
     }, 350);
   };
 
-  const handlePick = (name: string, fullName: string, lat: number, lon: number) => {
-    setQuery(name);
+  const handlePick = (selection: SelectedAddress) => {
+    setQuery(selection.name);
     setResults([]);
     setFocused(false);
-    onSelect(name, fullName, lat, lon);
+    onSelect(selection);
     Haptics.selectionAsync();
   };
 
   const handleClear = () => {
     setQuery("");
     setResults([]);
-    onSelect("", "", 0, 0);
+    onSelect(EMPTY_SELECTED_ADDRESS);
   };
 
   return (
@@ -166,7 +250,16 @@ function AddressInput({
             <Pressable
               key={i}
               style={[styles.suggestionItem, i < QUICK_SUGGESTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-              onPress={() => handlePick(s.label, `${s.label}, ${s.sub}`, s.lat, s.lon)}
+              onPress={() =>
+                handlePick({
+                  name: s.label,
+                  fullName: `${s.label}, ${s.sub}`,
+                  lat: s.lat,
+                  lon: s.lon,
+                  isStreetAddress: false,
+                  isPoiAddress: true,
+                })
+              }
             >
               <View style={[styles.suggestionIconBox, { backgroundColor: "#DC262612" }]}>
                 <Feather name={s.icon as any} size={13} color="#DC2626" />
@@ -187,7 +280,14 @@ function AddressInput({
             <Pressable
               key={i}
               style={[styles.suggestionItem, i < results.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-              onPress={() => handlePick(shortName(s.display_name), s.display_name, parseFloat(s.lat), parseFloat(s.lon))}
+              onPress={() => {
+                const structured = buildStructuredAddressFromGeo(s);
+                handlePick({
+                  ...structured,
+                  lat: parseFloat(s.lat),
+                  lon: parseFloat(s.lon),
+                });
+              }}
             >
               <View style={[styles.suggestionIconBox, { backgroundColor: colors.muted }]}>
                 <Feather name="map-pin" size={13} color={colors.mutedForeground} />
@@ -351,8 +451,8 @@ export default function NewBookingScreen() {
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
 
-  const [from, setFrom] = useState({ name: "", fullName: "", lat: 0, lon: 0 });
-  const [to, setTo] = useState({ name: "", fullName: "", lat: 0, lon: 0 });
+  const [from, setFrom] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
+  const [to, setTo] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [showDtPicker, setShowDtPicker] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>("standard");
@@ -456,6 +556,16 @@ export default function NewBookingScreen() {
           return;
         }
       }
+      const fromLooksValid = from.isStreetAddress || from.isPoiAddress;
+      const toLooksValid = to.isStreetAddress || to.isPoiAddress;
+      if (!fromLooksValid || !toLooksValid) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(
+          "Buchung nicht möglich",
+          "Bitte wählen Sie eine vollständige Adresse (Straße + Hausnummer) oder einen eindeutigen POI-Vorschlag.",
+        );
+        return;
+      }
       const area = await validateServiceAreaForBooking(fromFull, toFull, {
         fromLat: originLat,
         fromLon: originLon,
@@ -521,7 +631,7 @@ export default function NewBookingScreen() {
             icon="map-pin"
             value={from.name}
             placeholder="Abholort eingeben…"
-            onSelect={(name, fullName, lat, lon) => setFrom({ name, fullName, lat, lon })}
+            onSelect={setFrom}
             colors={colors}
           />
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -539,7 +649,7 @@ export default function NewBookingScreen() {
             icon="flag"
             value={to.name}
             placeholder="Zielort eingeben…"
-            onSelect={(name, fullName, lat, lon) => setTo({ name, fullName, lat, lon })}
+            onSelect={setTo}
             colors={colors}
           />
         </View>
