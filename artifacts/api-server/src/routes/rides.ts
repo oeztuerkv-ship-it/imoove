@@ -296,6 +296,23 @@ function hasHouseNumberInFirstAddressPart(address: string): boolean {
   return /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(firstPart);
 }
 
+function hasValidLatLon(lat: number | null, lon: number | null): boolean {
+  return lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+
+function hasPoiKeyword(address: string): boolean {
+  const text = String(address ?? "").trim().toLowerCase();
+  if (!text) return false;
+  return /\b(flughafen|hauptbahnhof|bahnhof|klinik|krankenhaus|hotel|einkaufszentrum|zentrum|messe|terminal)\b/i.test(text);
+}
+
+function isAddressAcceptedForBooking(address: string, lat: number | null, lon: number | null): boolean {
+  if (hasHouseNumberInFirstAddressPart(address)) return true;
+  if (hasValidLatLon(lat, lon)) return true;
+  if (hasPoiKeyword(address)) return true;
+  return false;
+}
+
 function parseAccessibilityOptionsFromBody(raw: unknown): RideAccessibilityOptions | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const src = raw as Record<string, unknown>;
@@ -1086,13 +1103,6 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "from_to_required" });
       return;
     }
-    if (!hasHouseNumberInFirstAddressPart(fromFull) || !hasHouseNumberInFirstAddressPart(toFull)) {
-      res.status(400).json({
-        error: "address_house_number_required",
-        message: ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE,
-      });
-      return;
-    }
     const fromLatB = optCoord(
       (raw as { fromLat?: unknown; from_lat?: unknown }).fromLat ?? (raw as { from_lat?: unknown }).from_lat,
     );
@@ -1105,6 +1115,28 @@ router.post("/rides", async (req, res, next) => {
     const toLonB = optCoord(
       (raw as { toLon?: unknown; to_lon?: unknown }).toLon ?? (raw as { to_lon?: unknown }).to_lon,
     );
+    const fromAddressOk = isAddressAcceptedForBooking(fromFull, fromLatB, fromLonB);
+    const toAddressOk = isAddressAcceptedForBooking(toFull, toLatB, toLonB);
+    if (!fromAddressOk || !toAddressOk) {
+      console.warn("RIDES_ADDRESS_VALIDATION_REJECT", {
+        error: "address_house_number_required",
+        fromFull,
+        toFull,
+        fromLat: fromLatB,
+        fromLon: fromLonB,
+        toLat: toLatB,
+        toLon: toLonB,
+        fromHasHouseNumber: hasHouseNumberInFirstAddressPart(fromFull),
+        toHasHouseNumber: hasHouseNumberInFirstAddressPart(toFull),
+        fromHasPoiKeyword: hasPoiKeyword(fromFull),
+        toHasPoiKeyword: hasPoiKeyword(toFull),
+      });
+      res.status(400).json({
+        error: "address_house_number_required",
+        message: ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE,
+      });
+      return;
+    }
     const opPayload = await getOperationalConfigPayload();
     const sysGate = assertPlatformNewRideAllowed(opPayload);
     if (!sysGate.ok) {
