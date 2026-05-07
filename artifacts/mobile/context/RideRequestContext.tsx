@@ -105,6 +105,7 @@ interface RideRequestContextValue {
   passengerId: string;
   myActiveRequests: RideRequest[];
   myCancelledRequests: RideRequest[];
+  updateRequestPaymentMethod: (id: string, paymentMethod: string) => Promise<void>;
   addRequest: (
     req: Omit<
       RideRequest,
@@ -152,6 +153,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   passengerId: "",
   myActiveRequests: [],
   myCancelledRequests: [],
+  updateRequestPaymentMethod: async () => {},
   addRequest: async () => "",
   acceptRequest: async () => {},
   markDriverArriving: async () => {},
@@ -825,6 +827,28 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     [patchStatus],
   );
 
+  const updateRequestPaymentMethod = useCallback(
+    async (id: string, paymentMethod: string) => {
+      if (!API_BASE) return;
+      const token = await readStoredCustomerSessionToken();
+      if (!token) throw new Error("unauthorized");
+      const res = await fetch(`${API_BASE}/customer/v1/rides/${encodeURIComponent(id)}/payment-method`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paymentMethod }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(typeof body.error === "string" && body.error ? body.error : "payment_method_update_failed");
+      }
+      await fetchAll();
+    },
+    [fetchAll],
+  );
+
   const pendingRequests = requests.filter(
     (r) => r.status === "pending" || r.status === "requested" || r.status === "searching_driver" || r.status === "offered",
   );
@@ -917,6 +941,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         arriveAtCustomer,
         startDriving,
         completeRequest,
+        updateRequestPaymentMethod,
         refreshRequests: fetchAll,
       }}
     >
