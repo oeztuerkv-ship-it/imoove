@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -98,6 +98,10 @@ function AddressInput({
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
 
   const showQuick = focused && query.length === 0;
   const showResults = results.length > 0 && query.length >= 2;
