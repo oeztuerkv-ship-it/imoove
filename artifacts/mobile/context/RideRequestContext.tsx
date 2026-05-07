@@ -680,9 +680,43 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const created = await res.json().catch(() => ({}));
+      const rawText = await res.text();
+      let created: unknown = {};
+      try {
+        created = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        created = { rawText };
+      }
       if (!res.ok) {
         const body = created as { error?: string; message?: string };
+        const debugPayload = {
+          from: payload.from,
+          to: payload.to,
+          fromFull: payload.fromFull,
+          toFull: payload.toFull,
+          fromLat: (payload as Record<string, unknown>).fromLat ?? null,
+          fromLon: (payload as Record<string, unknown>).fromLon ?? null,
+          toLat: (payload as Record<string, unknown>).toLat ?? null,
+          toLon: (payload as Record<string, unknown>).toLon ?? null,
+          scheduledAt:
+            payload.scheduledAt instanceof Date
+              ? payload.scheduledAt.toISOString()
+              : payload.scheduledAt ?? null,
+          paymentMethod: payload.paymentMethod,
+          vehicle: payload.vehicle,
+          pricingMode: (payload as Record<string, unknown>).pricingMode ?? null,
+          rideKind: payload.rideKind,
+          payerKind: payload.payerKind,
+          passengerId: payload.passengerId,
+          customerName: payload.customerName,
+          hasAccessCode: typeof (payload as Record<string, unknown>).accessCode === "string",
+        };
+        console.error("RIDES_POST_DEBUG", {
+          status: res.status,
+          statusText: res.statusText,
+          response: created,
+          requestPayload: debugPayload,
+        });
         const code = typeof body.error === "string" ? body.error : "request_failed";
         const err = new Error(code) as Error & { userMessage?: string };
         if (typeof body.message === "string" && body.message.trim()) {
