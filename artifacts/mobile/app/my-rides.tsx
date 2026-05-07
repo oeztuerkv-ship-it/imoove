@@ -68,41 +68,84 @@ type FilterTab = "alle" | "aktiv" | "reservierungen" | "abgeschlossen" | "storni
 function normalizeAddressDisplay(raw: string | null | undefined): string {
   const text = String(raw ?? "").trim();
   if (!text) return "Unbekannt";
-  const m = text.match(/^(\d{1,5}[a-zA-Z]?)\s*,\s*(.+)$/);
-  if (!m) return text;
-  return `${m[2]} ${m[1]}`.trim();
+  const parts = text
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2 && /^\d{1,5}[a-zA-Z]?$/.test(parts[0]) && /[A-Za-zÄÖÜäöüß]/.test(parts[1])) {
+    const number = parts.shift() as string;
+    parts[0] = `${parts[0]} ${number}`.trim();
+    return parts.join(", ");
+  }
+  return text;
 }
 
 function splitAddressLines(
   primary: string | null | undefined,
   secondary?: string | null | undefined,
 ): { line1: string; line2: string } {
+  const isAdminPart = (part: string): boolean => {
+    const s = part.trim().toLowerCase();
+    return (
+      s.includes("landkreis") ||
+      s.includes("region") ||
+      s.includes("regierungsbezirk") ||
+      s.includes("baden-württemberg") ||
+      s.includes("deutschland")
+    );
+  };
+  const isPoiLikePart = (part: string): boolean => {
+    const s = part.trim().toLowerCase();
+    return (
+      s.startsWith("gvv ") ||
+      s.includes("bahnhof") ||
+      s.includes("flughafen") ||
+      s.includes("terminal") ||
+      s.includes("haltestelle") ||
+      s.includes("station") ||
+      s.includes("zentrum")
+    );
+  };
   const candidates = [primary, secondary]
     .map((v) => normalizeAddressDisplay(v))
     .filter((v) => v.length > 0);
   const merged = candidates.join(", ");
-  const postalMatch = merged.match(/\b(\d{5})\s*,?\s*([A-Za-zÄÖÜäöüß][^,]*)/);
-  let postalCity =
-    postalMatch && typeof postalMatch[1] === "string"
-      ? `${postalMatch[1]} ${String(postalMatch[2] ?? "").trim()}`
-      : "";
   const parts = merged
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean);
-  if (!postalCity) {
-    const withPostal = parts.find((p) => /\b\d{5}\b/.test(p));
-    if (withPostal) {
-      const m = withPostal.match(/\b(\d{5})\s*,?\s*(.*)$/);
-      const plz = m?.[1]?.trim() ?? "";
-      const city = m?.[2]?.trim() ?? "";
-      if (plz && city) postalCity = `${plz} ${city}`;
+
+  let plz = "";
+  let city = "";
+  const postalIdx = parts.findIndex((p) => /\b\d{5}\b/.test(p));
+  if (postalIdx >= 0) {
+    const postalRaw = parts[postalIdx];
+    const plzMatch = postalRaw.match(/\b(\d{5})\b/);
+    plz = plzMatch?.[1]?.trim() ?? "";
+
+    const after = (parts[postalIdx + 1] ?? "").trim();
+    if (after && !isAdminPart(after) && !/\d/.test(after)) {
+      city = after;
+    } else {
+      const localityCandidates = parts
+        .slice(0, postalIdx)
+        .filter((p) => !isAdminPart(p) && !/\d/.test(p));
+      city = localityCandidates.slice(-2).join(", ").trim();
     }
   }
-  const streetWithNumber = parts.find((p) => /\b\d{1,5}[a-zA-Z]?\b/.test(p) && !/\b\d{5}\b/.test(p));
+
+  const postalCity = plz && city ? `${plz} ${city}` : plz;
+  const streetWithNumber = parts.find(
+    (p) =>
+      /\b\d{1,5}[a-zA-Z]?\b/.test(p) &&
+      !/\b\d{5}\b/.test(p) &&
+      !isAdminPart(p) &&
+      !isPoiLikePart(p),
+  );
+  const firstStreetish = parts.find((p) => !isAdminPart(p) && !isPoiLikePart(p) && !/\b\d{5}\b/.test(p));
   if (parts.length === 0) return { line1: "Unbekannt", line2: "" };
   return {
-    line1: streetWithNumber ?? parts[0],
+    line1: streetWithNumber ?? firstStreetish ?? parts[0],
     line2: postalCity,
   };
 }
@@ -441,6 +484,13 @@ export default function MyRidesScreen() {
             {activeRequestsToRender.map((req) => {
               const fromAddr = splitAddressLines(req.fromFull, req.from);
               const toAddr = splitAddressLines(req.toFull, req.to);
+              console.log("RIDE_ADDRESS_DISPLAY_DEBUG", {
+                id: req.id,
+                toLabel: (req as unknown as { toLabel?: string }).toLabel ?? null,
+                toFull: req.toFull ?? null,
+                parsedStreet: toAddr.line1,
+                parsedPostalCity: toAddr.line2,
+              });
               const hasPickup = req.scheduledAt != null;
               const isReservation = req.status === "scheduled";
               const when = hasPickup ? new Date(req.scheduledAt as Date) : new Date(req.createdAt);
