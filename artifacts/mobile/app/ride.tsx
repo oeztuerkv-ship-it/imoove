@@ -257,11 +257,23 @@ export default function RideScreen() {
       void (async () => {
         try {
           if (!destination) return;
-          const addressCheck = validateAddressCompletenessForBooking(origin.displayName, destination.displayName);
-          if (!addressCheck.ok) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            Alert.alert("Buchung nicht möglich", addressCheck.message);
-            return;
+          const hasGeoSelection =
+            Number.isFinite(origin.lat) &&
+            Number.isFinite(origin.lon) &&
+            Number.isFinite(destination.lat) &&
+            Number.isFinite(destination.lon);
+          /**
+           * Wenn beide Punkte bereits geokodiert sind (aus Vorschlag/Karte),
+           * blockieren wir nicht mehr an der rein textbasierten Hausnummer-Regel.
+           * Damit vermeiden wir False-Negatives bei unterschiedlichen Adressformaten.
+           */
+          if (!hasGeoSelection) {
+            const addressCheck = validateAddressCompletenessForBooking(origin.displayName, destination.displayName);
+            if (!addressCheck.ok) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert("Buchung nicht möglich", addressCheck.message);
+              return;
+            }
           }
           const area = await validateServiceAreaForBooking(origin.displayName, destination.displayName, {
             fromLat: origin.lat,
