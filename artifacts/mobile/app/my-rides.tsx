@@ -107,6 +107,19 @@ function splitAddressLines(
       s.includes("zentrum")
     );
   };
+  const dedupeOverlappingLocalities = (items: string[]): string[] => {
+    const cleaned = items
+      .map((x) => x.trim())
+      .filter(Boolean);
+    return cleaned.filter((candidate, idx) => {
+      const low = candidate.toLowerCase();
+      return !cleaned.some((other, j) => {
+        if (j === idx) return false;
+        const otherLow = other.toLowerCase();
+        return otherLow.length > low.length && otherLow.includes(low);
+      });
+    });
+  };
   const candidates = [primary, secondary]
     .map((v) => normalizeAddressDisplay(v))
     .filter((v) => v.length > 0);
@@ -131,7 +144,7 @@ function splitAddressLines(
       const localityCandidates = parts
         .slice(0, postalIdx)
         .filter((p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p));
-      city = localityCandidates.slice(-2).join(", ").trim();
+      city = dedupeOverlappingLocalities(localityCandidates).slice(-2).join(", ").trim();
     }
   }
 
@@ -149,6 +162,10 @@ function splitAddressLines(
     line1: streetWithNumber ?? firstStreetish ?? parts[0],
     line2: postalCity,
   };
+}
+
+function formatRideAddress(full: string | null | undefined, label?: string | null): { line1: string; line2: string } {
+  return splitAddressLines(full, label);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -483,8 +500,8 @@ export default function MyRidesScreen() {
             </View>
 
             {activeRequestsToRender.map((req) => {
-              const fromAddr = splitAddressLines(req.fromFull, req.from);
-              const toAddr = splitAddressLines(req.toFull, req.to);
+              const fromAddr = formatRideAddress(req.fromFull, req.from);
+              const toAddr = formatRideAddress(req.toFull, req.to);
               console.log("RIDE_ADDRESS_DISPLAY_DEBUG", {
                 id: req.id,
                 toLabel: (req as unknown as { toLabel?: string }).toLabel ?? null,
