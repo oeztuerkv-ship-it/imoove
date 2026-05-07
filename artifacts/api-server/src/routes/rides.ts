@@ -283,6 +283,18 @@ function optCoord(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function haversineDistanceKm(fromLat: number, fromLon: number, toLat: number, toLon: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(toLat - fromLat);
+  const dLon = toRad(toLon - fromLon);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+
 const ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE =
   "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.";
 
@@ -1172,8 +1184,36 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
       return;
     }
-    const distanceKmB = Number((raw as { distanceKm?: unknown }).distanceKm ?? (raw as { distance_km?: unknown }).distance_km);
-    if (!Number.isFinite(distanceKmB) || distanceKmB < 0) {
+    const distanceKmRaw = (raw as { distanceKm?: unknown }).distanceKm ?? (raw as { distance_km?: unknown }).distance_km;
+    const distanceKmParsed = Number(distanceKmRaw);
+    const computedDistanceKm =
+      fromLatB != null && fromLonB != null && toLatB != null && toLonB != null
+        ? haversineDistanceKm(fromLatB, fromLonB, toLatB, toLonB)
+        : null;
+    const distanceKmB =
+      Number.isFinite(distanceKmParsed) && distanceKmParsed > 0
+        ? distanceKmParsed
+        : computedDistanceKm != null && Number.isFinite(computedDistanceKm) && computedDistanceKm > 0
+          ? computedDistanceKm
+          : distanceKmParsed;
+    if (!Number.isFinite(distanceKmB) || distanceKmB <= 0) {
+      console.warn("RIDES_DISTANCE_INVALID", {
+        distanceKmRaw,
+        computedDistanceKm,
+        originLat: fromLatB,
+        originLon: fromLonB,
+        destinationLat: toLatB,
+        destinationLon: toLonB,
+        pricingMode: rawPricingModeStr || null,
+        vehicle: vehicleB,
+        scheduledAt: pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>),
+        routeSnapshot: (raw as { routeSnapshot?: unknown; route_snapshot?: unknown }).routeSnapshot ??
+          (raw as { route_snapshot?: unknown }).route_snapshot ??
+          null,
+        fareBreakdown: (raw as { fareBreakdown?: unknown; fare_breakdown?: unknown }).fareBreakdown ??
+          (raw as { fare_breakdown?: unknown }).fare_breakdown ??
+          null,
+      });
       res.status(400).json({ error: "distance_km_invalid" });
       return;
     }
