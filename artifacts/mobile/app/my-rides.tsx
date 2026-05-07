@@ -81,8 +81,8 @@ function splitAddressLines(
     .map((v) => normalizeAddressDisplay(v))
     .filter((v) => v.length > 0);
   const merged = candidates.join(", ");
-  const postalMatch = merged.match(/\b(\d{5})\s+([A-Za-zÄÖÜäöüß][^,]*)/);
-  const postalCity =
+  const postalMatch = merged.match(/\b(\d{5})\s*,?\s*([A-Za-zÄÖÜäöüß][^,]*)/);
+  let postalCity =
     postalMatch && typeof postalMatch[1] === "string"
       ? `${postalMatch[1]} ${String(postalMatch[2] ?? "").trim()}`
       : "";
@@ -90,6 +90,15 @@ function splitAddressLines(
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean);
+  if (!postalCity) {
+    const withPostal = parts.find((p) => /\b\d{5}\b/.test(p));
+    if (withPostal) {
+      const m = withPostal.match(/\b(\d{5})\s*,?\s*(.*)$/);
+      const plz = m?.[1]?.trim() ?? "";
+      const city = m?.[2]?.trim() ?? "";
+      if (plz && city) postalCity = `${plz} ${city}`;
+    }
+  }
   const streetWithNumber = parts.find((p) => /\b\d{1,5}[a-zA-Z]?\b/.test(p) && !/\b\d{5}\b/.test(p));
   if (parts.length === 0) return { line1: "Unbekannt", line2: "" };
   return {
