@@ -78,9 +78,23 @@ function withoutBillingFields(r: RideRequest): RideRequest {
   } as RideRequest;
 }
 
+function withoutSensitiveBillingFieldsForCustomer(r: RideRequest): RideRequest {
+  const {
+    billingReference: _billingReference,
+    tariffSnapshot: _tariffSnapshot,
+    ...rest
+  } = r;
+  return {
+    ...rest,
+    // Kunde darf Schätz-/Endpreis sehen, aber keine internen Billing-Referenzen/Snapshots.
+    billingReference: null,
+    tariffSnapshot: null,
+  } as RideRequest;
+}
+
 /** Kunde: nur medizinische Schritt-Status, keine internen Prüf-/Billing-Daten. */
 export function toCustomerRideView(r: RideRequest): RideRequest {
-  const base = stripPartnerOnlyRideFields(withoutBillingFields(r));
+  const base = stripPartnerOnlyRideFields(withoutSensitiveBillingFieldsForCustomer(r));
   const {
     companyId: _companyId,
     createdByPanelUserId: _createdByPanelUserId,

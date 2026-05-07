@@ -65,23 +65,37 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
 
 type FilterTab = "alle" | "aktiv" | "abgeschlossen" | "storniert";
 
+function normalizeAddressDisplay(raw: string | null | undefined): string {
+  const text = String(raw ?? "").trim();
+  if (!text) return "Unbekannt";
+  const m = text.match(/^(\d{1,5}[a-zA-Z]?)\s*,\s*(.+)$/);
+  if (!m) return text;
+  return `${m[2]} ${m[1]}`.trim();
+}
+
+function renderEstimateLabel(estimatedFare: number): string {
+  if (!Number.isFinite(estimatedFare) || estimatedFare <= 0) return "Preis wird berechnet";
+  return `ca. ${Math.round(estimatedFare / 1.08)}–${Math.round(estimatedFare)} €`;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const colors = useColors();
   const config = {
+    scheduled:   { label: "Reserviert", bg: "#6366F122", fg: "#4F46E5" },
     requested:   { label: "Anfrage erfasst",    bg: "#F59E0B22", fg: "#D97706" },
-    searching_driver: { label: "Fahrer wird gesucht", bg: "#F59E0B22", fg: "#D97706" },
+    searching_driver: { label: "Fahrersuche", bg: "#F59E0B22", fg: "#D97706" },
     offered:     { label: "Angebot läuft",      bg: "#F59E0B22", fg: "#D97706" },
     pending:     { label: "Warte auf Fahrer", bg: "#F59E0B22", fg: "#D97706" },
-    accepted:    { label: "Fahrer kommt",     bg: "#16A34A22", fg: "#16A34A" },
+    accepted:    { label: "Fahrer unterwegs",     bg: "#16A34A22", fg: "#16A34A" },
     driver_arriving: { label: "Fahrer unterwegs", bg: "#16A34A22", fg: "#16A34A" },
     driver_waiting: { label: "Fahrer wartet", bg: "#16A34A22", fg: "#16A34A" },
     passenger_onboard: { label: "Kunde an Bord", bg: "#2563EB22", fg: "#2563EB" },
     in_progress: { label: "Fahrt läuft",      bg: "#2563EB22", fg: "#2563EB" },
     completed:   { label: "Abgeschlossen",    bg: colors.success + "22", fg: colors.success },
     cancelled_by_customer: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
-    cancelled_by_driver: { label: "Vom Fahrer storniert", bg: "#EF444422", fg: "#EF4444" },
-    cancelled_by_system: { label: "Systemstorno", bg: "#EF444422", fg: "#EF4444" },
-    expired: { label: "Abgelaufen", bg: "#EF444422", fg: "#EF4444" },
+    cancelled_by_driver: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
+    cancelled_by_system: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
+    expired: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
     cancelled:   { label: "Storniert",        bg: "#EF444422", fg: "#EF4444" },
     rejected:    { label: "Abgelehnt",        bg: "#EF444422", fg: "#EF4444" },
   }[status] ?? { label: status, bg: "#9CA3AF22", fg: "#9CA3AF" };
@@ -374,8 +388,12 @@ export default function MyRidesScreen() {
                       <View style={[styles.dotOutline, { borderColor: "#DC2626" }]} />
                     </View>
                     <View style={styles.routeLabels}>
-                      <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>{req.from}</Text>
-                      <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>{req.to}</Text>
+                      <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
+                        {normalizeAddressDisplay(req.fromFull || req.from)}
+                      </Text>
+                      <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
+                        {normalizeAddressDisplay(req.toFull || req.to)}
+                      </Text>
                     </View>
                   </View>
 
@@ -387,9 +405,7 @@ export default function MyRidesScreen() {
                     <View style={[styles.footerItem, { backgroundColor: colors.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }]}>
                       <Text style={[styles.footerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>{req.vehicle}</Text>
                     </View>
-                    <Text style={[styles.ridePrice, { color: "#2563EB" }]}>
-                      ca. {Math.round(req.estimatedFare / 1.08)}–{Math.round(req.estimatedFare)} €
-                    </Text>
+                    <Text style={[styles.ridePrice, { color: "#2563EB" }]}>{renderEstimateLabel(req.estimatedFare)}</Text>
                   </View>
 
                   <View style={[styles.payerLine, { backgroundColor: "#F8FAFC", borderColor: LIST_FRAME_BORDER }]}>
@@ -516,10 +532,10 @@ export default function MyRidesScreen() {
                     </View>
                     <View style={styles.routeLabels}>
                       <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
-                        {ride.origin?.split(",")[0] ?? "Unbekannt"}
+                        {normalizeAddressDisplay(ride.origin)?.split(",")[0] ?? "Unbekannt"}
                       </Text>
                       <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
-                        {ride.destination.split(",")[0]}
+                        {normalizeAddressDisplay(ride.destination).split(",")[0]}
                       </Text>
                     </View>
                   </View>
@@ -596,8 +612,8 @@ export default function MyRidesScreen() {
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
               const byDriver = ride.cancelledBy === "driver";
-              const fromMain = ride.from.split(",")[0]?.trim() ?? ride.from;
-              const toMain = ride.to.split(",")[0]?.trim() ?? ride.to;
+              const fromMain = normalizeAddressDisplay(ride.from).split(",")[0]?.trim() ?? normalizeAddressDisplay(ride.from);
+              const toMain = normalizeAddressDisplay(ride.to).split(",")[0]?.trim() ?? normalizeAddressDisplay(ride.to);
               return (
                 <View
                   key={ride.id}
