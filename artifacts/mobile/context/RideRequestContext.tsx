@@ -195,6 +195,25 @@ async function readStoredCustomerSessionToken(): Promise<string | null> {
   }
 }
 
+async function readStoredCustomerIdentity(): Promise<{ sessionToken: string | null; passengerId: string | null }> {
+  const raw = await AsyncStorage.getItem(USER_PROFILE_KEY).catch(() => null);
+  if (!raw) return { sessionToken: null, passengerId: null };
+  try {
+    const parsed = JSON.parse(raw) as { sessionToken?: string; googleId?: string };
+    const sessionToken =
+      typeof parsed.sessionToken === "string" && parsed.sessionToken.trim().length > 0
+        ? parsed.sessionToken.trim()
+        : null;
+    const passengerId =
+      typeof parsed.googleId === "string" && parsed.googleId.trim().length > 0
+        ? parsed.googleId.trim()
+        : null;
+    return { sessionToken, passengerId };
+  } catch {
+    return { sessionToken: null, passengerId: null };
+  }
+}
+
 /** API verlangt Bearer: Kunden-Storno nur mit Session-JWT; Fahrer-Übergänge mit Fleet-JWT. */
 async function headersForRideStatusPatch(nextStatus: RequestStatus): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -257,23 +276,19 @@ function parseFinalFareFromApi(raw: Record<string, unknown>): number | null {
 }
 
 function normalizeRequest(r: any): RideRequest {
+  const pickNonEmpty = (...values: unknown[]): string => {
+    for (const v of values) {
+      if (typeof v === "string" && v.trim().length > 0) return v;
+    }
+    return "";
+  };
   const customerName =
     r.customerName ??
     r.customer_name ??
     r.customer ??
     "Unbekannt";
-  const fromFull =
-    r.fromFull ??
-    r.from_full ??
-    r.from_location ??
-    r.from ??
-    "—";
-  const toFull =
-    r.toFull ??
-    r.to_full ??
-    r.to_location ??
-    r.to ??
-    "—";
+  const fromFull = pickNonEmpty(r.fromFull, r.from_full, r.from_location, r.from, "—");
+  const toFull = pickNonEmpty(r.toFull, r.to_full, r.to_location, r.to, "—");
   const paymentMethod =
     r.paymentMethod ??
     r.payment_method ??
@@ -345,11 +360,11 @@ function normalizeRequest(r: any): RideRequest {
         : r.partner_booking_meta && typeof r.partner_booking_meta === "object"
           ? (r.partner_booking_meta as Record<string, unknown>)
           : null,
-    from: r.from ?? r.from_location ?? fromFull,
+    from: pickNonEmpty(r.from, r.from_location, fromFull, "—"),
     fromFull,
     fromLat: r.fromLat ?? r.from_lat ?? undefined,
     fromLon: r.fromLon ?? r.from_lon ?? undefined,
-    to: r.to ?? r.to_location ?? toFull,
+    to: pickNonEmpty(r.to, r.to_location, toFull, "—"),
     toFull,
     toLat: r.toLat ?? r.to_lat ?? undefined,
     toLon: r.toLon ?? r.to_lon ?? undefined,
@@ -391,22 +406,33 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const lastCountRef = useRef(0);
 
   useEffect(() => {
-    AsyncStorage.getItem(PASSENGER_ID_KEY).then((stored) => {
-      if (stored) {
-        setPassengerId(stored);
-      } else {
-        const newId = uuid();
-        AsyncStorage.setItem(PASSENGER_ID_KEY, newId).catch(() => {});
-        setPassengerId(newId);
+    (async () => {
+      try {
+        const identity = await readStoredCustomerIdentity();
+        if (identity.passengerId) {
+          setPassengerId(identity.passengerId);
+          return;
+        }
+        const stored = await AsyncStorage.getItem(PASSENGER_ID_KEY);
+        if (stored && stored.trim().length > 0) {
+          setPassengerId(stored.trim());
+          return;
+        }
+      } catch {
+        /* ignore */
       }
-    }).catch(() => {
       const fallback = uuid();
       AsyncStorage.setItem(PASSENGER_ID_KEY, fallback).catch(() => {});
       setPassengerId(fallback);
-    });
+    })();
   }, []);
 
   const ensurePassengerId = useCallback(async (): Promise<string> => {
+    const identity = await readStoredCustomerIdentity();
+    if (identity.passengerId) {
+      setPassengerId(identity.passengerId);
+      return identity.passengerId;
+    }
     if (passengerId && passengerId.trim().length > 0) return passengerId.trim();
     try {
       const stored = await AsyncStorage.getItem(PASSENGER_ID_KEY);
@@ -486,17 +512,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         return;
       }
 
-      const rawUserProfile = await AsyncStorage.getItem(USER_PROFILE_KEY).catch(() => null);
-      let customerSessionToken: string | null = null;
-      if (rawUserProfile) {
-        try {
-          const parsed = JSON.parse(rawUserProfile) as { sessionToken?: string };
-          if (typeof parsed.sessionToken === "string" && parsed.sessionToken.trim().length > 0) {
-            customerSessionToken = parsed.sessionToken.trim();
-          }
-        } catch {
-          /* ignore invalid profile json */
-        }
+      const customerIdentity = await readStoredCustomerIdentity();
+      const customerSessionToken = customerIdentity.sessionToken;
+      if (customerIdentity.passengerId) {
+        setPassengerId(customerIdentity.passengerId);
       }
       if (!customerSessionToken) {
         // Kein Kunden-Token: keine customer-gebundenen Fahrten laden.
