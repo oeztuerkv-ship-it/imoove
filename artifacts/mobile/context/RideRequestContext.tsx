@@ -624,8 +624,13 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       };
       void _unused;
       void _uv;
+      const estimatedFareRaw =
+        typeof reqForBody.estimatedFare === "number" && Number.isFinite(reqForBody.estimatedFare)
+          ? reqForBody.estimatedFare
+          : undefined;
       const payload = {
         ...reqForBody,
+        ...(estimatedFareRaw != null ? { estimatedFare: estimatedFareRaw } : {}),
         passengerId:
           typeof reqForBody.passengerId === "string" && reqForBody.passengerId.trim().length > 0
             ? reqForBody.passengerId.trim()

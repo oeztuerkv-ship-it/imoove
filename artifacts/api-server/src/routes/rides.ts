@@ -1237,6 +1237,25 @@ router.post("/rides", async (req, res, next) => {
       (raw as { estimated_fare?: unknown }).estimated_fare;
     const fareMatch = assertClientEstimatedFareMatchesServer(clientFareRaw, finalPriceB);
     if (!fareMatch.ok) {
+      const providedFareBreakdown =
+        (raw as { fareBreakdown?: unknown; fare_breakdown?: unknown }).fareBreakdown ??
+        (raw as { fare_breakdown?: unknown }).fare_breakdown ??
+        null;
+      const expectedFareBreakdown = {
+        ...snapB.breakdown,
+        finalPriceEur: finalPriceB,
+      };
+      console.warn("RIDES_ESTIMATE_MISMATCH", {
+        providedEstimate: clientFareRaw ?? null,
+        expectedEstimate: finalPriceB,
+        providedFareBreakdown,
+        expectedFareBreakdown,
+        origin: fromFull,
+        destination: toFull,
+        scheduledAt: pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>),
+        pricingMode: rawPricingModeStr || null,
+        vehicle: vehicleB,
+      });
       res.status(400).json({ error: fareMatch.error });
       return;
     }

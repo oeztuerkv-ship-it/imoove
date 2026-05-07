@@ -469,7 +469,7 @@ export default function NewBookingScreen() {
         toLon: destinationLon ?? undefined,
         distanceKm: 0,
         durationMinutes: 0,
-        estimatedFare: 0,
+        estimatedFare: Number.NaN,
         paymentMethod: "Bar",
         vehicle: vehicleLabel,
         customerName,
