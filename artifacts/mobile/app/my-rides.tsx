@@ -98,6 +98,7 @@ function splitAddressLines(
     const s = part.trim().toLowerCase();
     return (
       s.startsWith("gvv ") ||
+      s.includes(" gvv ") ||
       s.includes("bahnhof") ||
       s.includes("flughafen") ||
       s.includes("terminal") ||
@@ -125,11 +126,11 @@ function splitAddressLines(
 
     const after = (parts[postalIdx + 1] ?? "").trim();
     if (after && !isAdminPart(after) && !/\d/.test(after)) {
-      city = after;
+      city = isPoiLikePart(after) ? "" : after;
     } else {
       const localityCandidates = parts
         .slice(0, postalIdx)
-        .filter((p) => !isAdminPart(p) && !/\d/.test(p));
+        .filter((p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p));
       city = localityCandidates.slice(-2).join(", ").trim();
     }
   }
