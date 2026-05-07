@@ -126,6 +126,10 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
   isStreetAddress: boolean;
   isPoiAddress: boolean;
 } {
+  const displayParts = String(item.display_name ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
   const addr = item.address ?? {};
   const street = typeof addr.road === "string" ? addr.road.trim() : "";
   const house = typeof addr.house_number === "string" ? addr.house_number.trim() : "";
@@ -137,7 +141,13 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
     (typeof addr.municipality === "string" && addr.municipality.trim()) ||
     (typeof addr.suburb === "string" && addr.suburb.trim()) ||
     "";
-  const city = String(cityRaw || "").trim();
+  const cityFromDisplay = displayParts.find(
+    (p) =>
+      !/\b\d{5}\b/.test(p) &&
+      !/\d/.test(p) &&
+      !/deutschland|baden-württemberg|landkreis|region/i.test(p),
+  );
+  const city = String(cityRaw || cityFromDisplay || "").trim();
   const line1Street = street && house ? `${street} ${house}` : "";
 
   const poiLabel =

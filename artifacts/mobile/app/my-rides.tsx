@@ -148,7 +148,7 @@ function splitAddressLines(
     }
   }
 
-  const postalCity = plz && city ? `${plz} ${city}` : plz;
+  const postalCity = plz && city ? `${plz} ${city}` : city || plz;
   const streetWithNumber = parts.find(
     (p) =>
       /\b\d{1,5}[a-zA-Z]?\b/.test(p) &&
