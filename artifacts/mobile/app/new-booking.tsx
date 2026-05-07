@@ -406,17 +406,52 @@ export default function NewBookingScreen() {
     const fromFull = from.fullName || from.name;
     const toFull = to.fullName || to.name;
     try {
-      const addressCheck = validateAddressCompletenessForBooking(fromFull, toFull);
-      if (!addressCheck.ok) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert("Buchung nicht möglich", addressCheck.message);
-        return;
+      const readCoord = (
+        obj: unknown,
+        primary: "lat" | "lon",
+        fallback: "latitude" | "longitude",
+      ): number | null => {
+        if (!obj || typeof obj !== "object") return null;
+        const raw = (obj as Record<string, unknown>)[primary] ?? (obj as Record<string, unknown>)[fallback];
+        const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : NaN;
+        return Number.isFinite(n) ? n : null;
+      };
+
+      const originLat = readCoord(from as unknown, "lat", "latitude");
+      const originLon = readCoord(from as unknown, "lon", "longitude");
+      const destinationLat = readCoord(to as unknown, "lat", "latitude");
+      const destinationLon = readCoord(to as unknown, "lon", "longitude");
+
+      console.log("NEW_BOOKING_ADDRESS_DEBUG", {
+        origin: from,
+        destination: to,
+        originDisplayName: fromFull,
+        destinationDisplayName: toFull,
+        originLat,
+        originLon,
+        destinationLat,
+        destinationLon,
+      });
+
+      const hasGeoSelection =
+        originLat != null &&
+        originLon != null &&
+        destinationLat != null &&
+        destinationLon != null;
+
+      if (!hasGeoSelection) {
+        const addressCheck = validateAddressCompletenessForBooking(fromFull, toFull);
+        if (!addressCheck.ok) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert("Buchung nicht möglich", addressCheck.message);
+          return;
+        }
       }
       const area = await validateServiceAreaForBooking(fromFull, toFull, {
-        fromLat: from.lat,
-        fromLon: from.lon,
-        toLat: to.lat,
-        toLon: to.lon,
+        fromLat: originLat,
+        fromLon: originLon,
+        toLat: destinationLat,
+        toLon: destinationLon,
       });
       if (!area.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -426,12 +461,12 @@ export default function NewBookingScreen() {
       await addRequest({
         from: from.name,
         fromFull,
-        fromLat: from.lat || undefined,
-        fromLon: from.lon || undefined,
+        fromLat: originLat ?? undefined,
+        fromLon: originLon ?? undefined,
         to: to.name,
         toFull,
-        toLat: to.lat || undefined,
-        toLon: to.lon || undefined,
+        toLat: destinationLat ?? undefined,
+        toLon: destinationLon ?? undefined,
         distanceKm: 0,
         durationMinutes: 0,
         estimatedFare: 0,
