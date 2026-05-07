@@ -208,6 +208,7 @@ function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
   const allowed: RideRequest["status"][] = [
     "draft",
     "scheduled",
+    "scheduled_assigned",
     "requested",
     "searching_driver",
     "offered",
@@ -238,8 +239,20 @@ function canTransitionStatus(
     draft: ["requested", "cancelled_by_customer", "cancelled"],
     scheduled: [
       "accepted",
+      "scheduled_assigned",
       "searching_driver",
       "cancelled_by_customer",
+      "cancelled",
+      "expired",
+    ],
+    scheduled_assigned: [
+      "driver_arriving",
+      "driver_waiting",
+      "passenger_onboard",
+      "in_progress",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
       "cancelled",
       "expired",
     ],

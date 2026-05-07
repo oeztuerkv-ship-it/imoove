@@ -162,6 +162,7 @@ export interface RideRequest {
   status:
     | "draft"
     | "scheduled"
+    | "scheduled_assigned"
     | "requested"
     | "searching_driver"
     | "offered"

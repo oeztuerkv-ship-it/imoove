@@ -304,9 +304,16 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
     }
     const all = await listRides();
     const pool = all.filter((ride) => {
-      if (ride.status !== "scheduled") return false;
-      if (ride.driverId) return false;
+      const isFutureReservationStatus =
+        ride.status === "scheduled" || ride.status === "scheduled_assigned";
+      if (!isFutureReservationStatus) return false;
       if (ride.companyId && ride.companyId !== a.companyId) return false;
+
+      const assignedDriverId = typeof ride.driverId === "string" ? ride.driverId.trim() : "";
+      const isAssignedToThisDriver = assignedDriverId === a.fleetDriverId;
+      const isAssignedToOtherDriver = assignedDriverId.length > 0 && !isAssignedToThisDriver;
+      if (isAssignedToOtherDriver) return false;
+
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });

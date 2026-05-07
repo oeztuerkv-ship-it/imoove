@@ -1372,9 +1372,11 @@ export async function tryFleetAcceptRideAtomic(input: {
     if (assigned && assigned !== driverId) return { ok: false, reason: "ride_already_claimed" };
     const mergedCompany =
       companyIdIn || (typeof cur.companyId === "string" ? cur.companyId.trim() : "") || null;
+    const nextStatus: RideRequest["status"] =
+      cur.status === "scheduled" ? "scheduled_assigned" : "accepted";
     const next: RideRequest = {
       ...cur,
-      status: "accepted",
+      status: nextStatus,
       driverId,
       companyId: mergedCompany,
     };
@@ -1390,10 +1392,11 @@ export async function tryFleetAcceptRideAtomic(input: {
   const prevSnapshot = await findRide(rideId);
   if (!prevSnapshot) return { ok: false, reason: "not_found" };
 
+  const nextStatusExpr = sql<string>`case when ${ridesTable.status} = 'scheduled' then 'scheduled_assigned' else 'accepted' end`;
   const rows = await db
     .update(ridesTable)
     .set({
-      status: "accepted",
+      status: nextStatusExpr,
       driver_id: driverId,
       ...(mergeCompanyExpr ? { company_id: mergeCompanyExpr } : {}),
     })

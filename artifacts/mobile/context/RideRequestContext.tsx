@@ -13,6 +13,7 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 export type RequestStatus =
   | "draft"
   | "scheduled"
+  | "scheduled_assigned"
   | "requested"
   | "searching_driver"
   | "offered"
@@ -891,6 +892,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           r.passengerId === passengerId &&
           (r.status === "pending" ||
             r.status === "scheduled" ||
+            r.status === "scheduled_assigned" ||
             r.status === "requested" ||
             r.status === "searching_driver" ||
             r.status === "offered" ||

@@ -182,6 +182,7 @@ function StatusBadge({ status }: { status: string }) {
   const colors = useColors();
   const config = {
     scheduled:   { label: "Reserviert", bg: "#16A34A22", fg: "#16A34A" },
+    scheduled_assigned: { label: "Reserviert", bg: "#16A34A22", fg: "#16A34A" },
     requested:   { label: "Anfrage erfasst",    bg: "#F59E0B22", fg: "#D97706" },
     searching_driver: { label: "Fahrersuche", bg: "#F59E0B22", fg: "#D97706" },
     offered:     { label: "Angebot läuft",      bg: "#F59E0B22", fg: "#D97706" },
@@ -296,14 +297,21 @@ export default function MyRidesScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const { history } = useRide();
-  const { myActiveRequests, myCancelledRequests, cancelRequest, requests, passengerId, updateRequestPaymentMethod } = useRideRequests();
+  const {
+    myActiveRequests,
+    myCancelledRequests,
+    cancelRequest,
+    requests,
+    passengerId,
+    updateRequestPaymentMethod,
+  } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("alle");
   const reservationRequests = useMemo(
-    () => myActiveRequests.filter((r) => r.status === "scheduled"),
+    () => myActiveRequests.filter((r) => r.status === "scheduled" || r.status === "scheduled_assigned"),
     [myActiveRequests],
   );
   const nonReservationActiveRequests = useMemo(
-    () => myActiveRequests.filter((r) => r.status !== "scheduled"),
+    () => myActiveRequests.filter((r) => r.status !== "scheduled" && r.status !== "scheduled_assigned"),
     [myActiveRequests],
   );
 
@@ -398,7 +406,6 @@ export default function MyRidesScreen() {
       { text: "Abbrechen", style: "cancel" },
     ]);
   };
-
   /** `id` = Server-Ride-ID (wie in RideRequest / History) — Support-API und Admin-Tickets hängen daran. */
   const openRideDetail = (id: string, opts?: { focusSupport?: boolean }) => {
     if (!id) return;
@@ -513,7 +520,7 @@ export default function MyRidesScreen() {
               const fromAddr = formatRideAddress(req.fromFull, req.from);
               const toAddr = formatRideAddress(req.toFull, req.to);
               const hasPickup = req.scheduledAt != null;
-              const isReservation = req.status === "scheduled";
+              const isReservation = req.status === "scheduled" || req.status === "scheduled_assigned";
               const when = hasPickup ? new Date(req.scheduledAt as Date) : new Date(req.createdAt);
               const dateStr = when.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -692,6 +699,7 @@ export default function MyRidesScreen() {
 
                   {!isReservation && (req.status === "pending" ||
                     req.status === "scheduled" ||
+                    req.status === "scheduled_assigned" ||
                     req.status === "requested" ||
                     req.status === "searching_driver" ||
                     req.status === "offered" ||
@@ -1155,7 +1163,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   actionBtnText:   { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
-
   emptyState:      { alignItems: "center", gap: rs(12), paddingTop: rs(70) },
   emptyIcon:       { width: rs(80), height: rs(80), borderRadius: rs(24), backgroundColor: "#DC262612", alignItems: "center", justifyContent: "center", marginBottom: rs(4) },
   emptyTitle:      { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },
