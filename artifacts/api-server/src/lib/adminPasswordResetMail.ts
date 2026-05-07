@@ -59,7 +59,7 @@ export async function sendAdminPasswordResetMail(input: {
   const subject = "Passwort zurücksetzen";
   const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
   const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 60_000));
-  const linkEsc = escapeHtml(input.resetLink);
+  const resetLinkEsc = escapeHtml(input.resetLink);
 
   const text = [
     "Du hast eine Anfrage zum Zurücksetzen deines Passworts für die Admin-Konsole gestellt.",
@@ -88,7 +88,7 @@ export async function sendAdminPasswordResetMail(input: {
       <h2 style="text-align:center;margin:24px 0 16px;font-size:20px;color:#111;">Passwort zurücksetzen</h2>
       <p style="margin:0 0 12px;line-height:1.5;color:#333;">Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
       <div style="text-align:center;margin:30px 0;">
-        <a href="${linkEsc}"
+        <a href="${resetLinkEsc}"
            style="display:inline-block;background:#e30613;color:#ffffff;padding:15px 25px;text-decoration:none;border-radius:6px;font-weight:bold;">
           Passwort zurücksetzen
         </a>
