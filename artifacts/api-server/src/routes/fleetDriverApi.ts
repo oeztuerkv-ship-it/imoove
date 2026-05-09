@@ -308,6 +308,12 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       const isFutureReservationStatus =
         ride.status === "scheduled" || ride.status === "scheduled_assigned";
       if (!isFutureReservationStatus) return false;
+
+      if (ride.status === "scheduled" && ride.scheduledAt) {
+        const scheduledMs = new Date(ride.scheduledAt).getTime();
+        if (Number.isFinite(scheduledMs) && scheduledMs < Date.now()) return false;
+      }
+
       if (ride.companyId && ride.companyId !== a.companyId) return false;
 
       const assignedDriverId = typeof ride.driverId === "string" ? ride.driverId.trim() : "";

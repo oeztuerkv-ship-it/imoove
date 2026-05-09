@@ -54,7 +54,7 @@ function readyForDispatchThreshold(nowMs = Date.now()): Date {
 }
 
 function isReservationActivatable(ride: RideRequest, nowMs = Date.now()): boolean {
-  if (ride.status !== "scheduled" && ride.status !== "scheduled_assigned") return false;
+  if (ride.status !== "scheduled_assigned") return false;
   if (!ride.scheduledAt) return false;
   const scheduledMs = new Date(ride.scheduledAt).getTime();
   if (!Number.isFinite(scheduledMs)) return false;
@@ -74,12 +74,36 @@ async function promoteDueReservationsByIds(
     .where(
       and(
         inArray(ridesTable.id, ids),
-        inArray(ridesTable.status, ["scheduled", "scheduled_assigned"]),
+        eq(ridesTable.status, "scheduled_assigned"),
         isNotNull(ridesTable.scheduled_at),
         lte(ridesTable.scheduled_at, threshold),
       ),
     )
     .returning({ id: ridesTable.id });
+  return new Set(rows.map((r) => r.id));
+}
+
+
+async function expirePastOpenReservationsByIds(
+  db: NodePgDatabase<typeof schemaNs>,
+  rideIds: string[],
+): Promise<Set<string>> {
+  const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
+  if (ids.length === 0) return new Set<string>();
+
+  const rows = await db
+    .update(ridesTable)
+    .set({ status: "expired" })
+    .where(
+      and(
+        inArray(ridesTable.id, ids),
+        eq(ridesTable.status, "scheduled"),
+        isNotNull(ridesTable.scheduled_at),
+        lt(ridesTable.scheduled_at, new Date()),
+      ),
+    )
+    .returning({ id: ridesTable.id });
+
   return new Set(rows.map((r) => r.id));
 }
 
@@ -434,6 +458,7 @@ export async function listRidesForCompanyFiltered(
     .from(ridesTable)
     .where(and(...cond))
     .orderBy(desc(ridesTable.created_at));
+  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
   return withPromotedStatuses(rows, promoted).map(rowToRide);
 }
@@ -448,6 +473,7 @@ export async function listRides(): Promise<RideRequest[]> {
     return [...memoryRides];
   }
   const rows = await db.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
+  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
   return withPromotedStatuses(rows, promoted).map(rowToRide);
 }
@@ -470,6 +496,7 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
     .from(ridesTable)
     .where(companyIdMatchCondition(companyId))
     .orderBy(desc(ridesTable.created_at));
+  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
   return withPromotedStatuses(rows, promoted).map(rowToRide);
 }
@@ -494,6 +521,7 @@ export async function listRidesForPassenger(passengerId: string): Promise<RideRe
     .from(ridesTable)
     .where(eq(ridesTable.passenger_id, pid))
     .orderBy(desc(ridesTable.created_at));
+  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
   return withPromotedStatuses(rows, promoted).map(rowToRide);
 }
@@ -696,6 +724,7 @@ export async function findRide(id: string): Promise<RideRequest | null> {
   }
   const rows = await db.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
   if (!rows[0]) return null;
+  await expirePastOpenReservationsByIds(db, [rows[0].id]);
   const promoted = await promoteDueReservationsByIds(db, [rows[0].id]);
   const row = promoted.has(rows[0].id) ? { ...rows[0], status: "ready_for_dispatch" } : rows[0];
   return rowToRide(row);
@@ -722,6 +751,7 @@ export async function findRideForPassenger(id: string, passengerId: string): Pro
     .where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid)))
     .limit(1);
   if (!rows[0]) return null;
+  await expirePastOpenReservationsByIds(db, [rows[0].id]);
   const promoted = await promoteDueReservationsByIds(db, [rows[0].id]);
   const row = promoted.has(rows[0].id) ? { ...rows[0], status: "ready_for_dispatch" } : rows[0];
   return rowToRide(row);

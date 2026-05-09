@@ -34,7 +34,7 @@ import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
-import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
+import { stopRideSound } from "@/utils/notifications";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 
 /** Krankenkassen-/Eigenanteil-Fahrten (vom Kunden gebucht). */
@@ -484,215 +484,118 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 }
 
 /* ─── Scheduled Request Card ─── */
-function ScheduledCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
-  const codeLine = accessCodeRideLine(req);
-  const wheelchairLine = wheelchairInfoLine(req);
-  const customerNoteLine = customerDriverNoteLine(req);
-  const medicalChecklist = medicalSteps(req);
-  const modeBadge = rideTypeBadge(req);
-  const hasTaxiEstimate = hasTaxiEstimateBadge(req);
+function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; onActivate: () => void; onCancelAssigned: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const isAssignedUpcoming = req.status === "scheduled_assigned";
-  const upcomingStatusLabel = isAssignedUpcoming ? "Angenommen" : "Reserviert";
-  const upcomingStatusBg = isAssignedUpcoming ? "#16A34A" : "#0EA5E9";
   const { date, time } = fmt(new Date(req.scheduledAt!));
-  const distToPickup = (driverPos && req.fromLat != null && req.fromLon != null)
-    ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
-    : null;
   const minsLeft = minutesUntil(new Date(req.scheduledAt!));
   const activatable = minsLeft <= 45;
-  const hoursLeft = Math.floor(minsLeft / 60);
-  const minRest = minsLeft % 60;
-  const countdownText = minsLeft <= 0 ? "Jetzt" : hoursLeft > 0 ? `in ${hoursLeft} Std. ${minRest} Min.` : `in ${minsLeft} Min.`;
+
+  const splitAddress = (value?: string | null) => {
+    const parts = String(value || "").split(",").map((part) => part.trim()).filter(Boolean);
+    return {
+      place: parts[0] || "Adresse folgt",
+      address: parts.slice(1).join(", ") || "",
+    };
+  };
+
+  const fromAddress = splitAddress(req.fromFull);
+  const toAddress = splitAddress(req.toFull);
 
   return (
-    <View style={[styles.reqCard, styles.reqCardScheduled]}>
-      {/* Header */}
-      <View style={[styles.reqCardTop, { backgroundColor: "#FFFBEB" }]}>
-        <View style={styles.reqTopLeft}>
-          <Feather name="calendar" size={14} color="#D97706" />
-          <Text style={[styles.reqNewLabel, { color: "#B45309" }]}>Vorbestellung</Text>
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <View style={[styles.schedPill, { backgroundColor: upcomingStatusBg }]}>
-            <Text style={styles.schedPillText}>{upcomingStatusLabel}</Text>
+    <View style={[styles.reqCard, styles.reqCardScheduled, { borderRadius: 22, padding: 18 }]}>
+      <View style={{ flexDirection: "row" }}>
+        <View style={{ width: 48, alignItems: "center", marginRight: 14 }}>
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 25 }}>📍</Text>
           </View>
-          <View style={[styles.schedPill, { backgroundColor: activatable ? "#22C55E" : "#F59E0B" }]}>
-            <Text style={styles.schedPillText}>{activatable ? "Bereit" : countdownText}</Text>
-          </View>
-        </View>
-      </View>
 
-      {/* Big time display */}
-      <View style={styles.schedTimeBlock}>
-        <View style={styles.schedTimeRow}>
-          <Feather name="clock" size={18} color="#D97706" />
-          <Text style={styles.schedTimeValue}>{time} Uhr</Text>
-          <Text style={styles.schedDateValue}>{date}</Text>
-        </View>
-      </View>
+          <View style={{ width: 1, height: 42, borderStyle: "dashed", borderWidth: 1, borderColor: "#D1D5DB", marginVertical: 2 }} />
 
-      {/* Route: Von → Bis */}
-      <View style={styles.schedRoute}>
-        <View style={styles.schedRouteRow}>
-          <View style={styles.dotGreen} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.reqRouteLabel}>Von</Text>
-            <Text style={styles.reqRouteAddr} numberOfLines={1}>{req.fromFull}</Text>
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 23 }}>🏁</Text>
           </View>
         </View>
-        <View style={styles.reqRouteLine} />
-        <View style={styles.schedRouteRow}>
-          <View style={styles.dotRed} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.reqRouteLabel}>Bis</Text>
-            <Text style={styles.reqRouteAddr} numberOfLines={1}>{req.toFull}</Text>
-          </View>
-        </View>
-      </View>
 
-      {/* Stats row: km · Dauer · ca. Preis */}
-      <View style={styles.schedStats}>
-        <View style={[styles.reqBadge, { backgroundColor: modeBadge.bg }]}>
-          <Text style={[styles.reqBadgeText, { color: modeBadge.color }]}>{modeBadge.label}</Text>
-        </View>
-        {hasTaxiEstimate ? (
-          <>
-            <View style={styles.schedStatDivider} />
-            <View style={[styles.reqBadge, { backgroundColor: "#FEE2E2", flexDirection: "row", alignItems: "center", gap: 6 }]}>
-              <MaterialCommunityIcons name="shield-check-outline" size={13} color="#B91C1C" />
-              <Text style={[styles.reqBadgeText, { color: "#B91C1C" }]}>Taxi-Schätzpreis</Text>
-            </View>
-          </>
-        ) : null}
-        <View style={styles.schedStatDivider} />
-        <View style={styles.schedStatItem}>
-          <Feather name="map-pin" size={12} color="#6B7280" />
-          <Text style={styles.schedStatText}>{req.distanceKm.toFixed(1)} km</Text>
-        </View>
-        {distToPickup != null && (
-          <>
-            <View style={styles.schedStatDivider} />
-            <View style={styles.schedStatItem}>
-              <Feather name="navigation" size={12} color="#DC2626" />
-              <Text style={[styles.schedStatText, { color: "#DC2626" }]}>
-                {distToPickup < 1 ? `${Math.round(distToPickup * 1000)} m` : `${distToPickup.toFixed(1)} km`} entfernt
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 18, fontFamily: "Inter_800ExtraBold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+                {fromAddress.place}
+              </Text>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+                {fromAddress.address}
               </Text>
             </View>
-          </>
-        )}
-        <View style={styles.schedStatDivider} />
-        <View style={styles.schedStatItem}>
-          <Feather name="credit-card" size={12} color="#6B7280" />
-          <Text style={styles.schedStatText}>
-            {isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod}
-          </Text>
-        </View>
-        <View style={styles.schedStatDivider} />
-        <View style={styles.schedStatItem}>
-          <Feather name="clock" size={12} color="#6B7280" />
-          <Text style={styles.schedStatText}>{Math.max(1, Math.round(req.durationMinutes || 0))} Min</Text>
+
+            <View style={{ alignItems: "flex-end", marginLeft: 10 }}>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_700Bold", color: "#111827" }}>
+                {date}
+              </Text>
+              <Text style={{ fontSize: 25, fontFamily: "Inter_900Black", color: "#E11D2E", marginTop: 4 }}>
+                {time}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 38 }}>
+            <Text style={{ fontSize: 18, fontFamily: "Inter_800ExtraBold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+              {toAddress.place}
+            </Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
+              {toAddress.address}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {codeLine ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginBottom: 6 }}>
-          <Feather name="shield" size={14} color="#16A34A" />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#15803D" }} numberOfLines={2}>
-            {codeLine}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#374151" }}>
+            {req.distanceKm.toFixed(1)} km · {Math.round(req.durationMinutes)} Min.
           </Text>
         </View>
-      ) : null}
-      {wheelchairLine ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 14, marginBottom: 6 }}>
-          <MaterialCommunityIcons name="wheelchair-accessibility" size={14} color="#0EA5E9" />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#0369A1" }} numberOfLines={3}>
-            {wheelchairLine}
-          </Text>
-        </View>
-      ) : null}
-      {customerNoteLine ? (
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 14, marginBottom: 6 }}>
-          <Feather name="message-square" size={14} color="#0F766E" style={{ marginTop: 1 }} />
-          <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#115E59" }} numberOfLines={4}>
-            Hinweis Kunde: {customerNoteLine}
-          </Text>
-        </View>
-      ) : null}
-      {medicalChecklist ? (
-        <View style={{ marginHorizontal: 14, marginBottom: 6 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <MaterialCommunityIcons name="hospital-box-outline" size={14} color="#2563EB" />
-            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>Krankenfahrt-Check</Text>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            {medicalChecklist.map((step) => (
-              <View
-                key={step.label}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 5,
-                  borderRadius: 999,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  backgroundColor: step.done ? "#DCFCE7" : "#FEE2E2",
-                }}
-              >
-                <Feather name={step.done ? "check-circle" : "alert-circle"} size={12} color={step.done ? "#166534" : "#B91C1C"} />
-                <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: step.done ? "#166534" : "#B91C1C" }}>
-                  {step.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      ) : null}
 
-      {/* Meta */}
-      <View style={styles.reqMeta}>
-        <Feather name="user" size={12} color="#6B7280" />
-        <Text style={styles.reqMetaText}>{req.customerName}</Text>
-        <View style={styles.metaSep} />
-        <Text style={styles.reqMetaText}>{req.vehicle}</Text>
+        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#374151" }}>
+            {req.rideKind === "medical"
+              ? "Krankenfahrt"
+              : req.voucherCode || req.accessCodeSummary
+                ? "Gutschein/Code"
+                : req.paymentMethod === "cash"
+                  ? "Barzahlung"
+                  : "App-Zahlung"}
+          </Text>
+        </View>
+
+        <View style={{ backgroundColor: "#FFF1F1", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_800ExtraBold", color: "#E11D2E" }}>
+            ca. {req.estimatedFare.toFixed(2)} €
+          </Text>
+        </View>
       </View>
-
-      {/* Countdown-Info wenn noch weit weg */}
-      {!activatable && (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FEF9C3", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginTop: 4, marginHorizontal: 14 }}>
-          <Feather name="clock" size={13} color="#CA8A04" />
-          <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#92400E" }}>
-            Abholung {countdownText} — Vorbestellung annehmen
-          </Text>
-        </View>
-      )}
 
       {!isAssignedUpcoming ? (
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 8, marginBottom: 4, paddingHorizontal: 14 }}>
-          <Pressable style={[styles.rejectBtn, { flex: 1 }]} onPress={onReject}>
-            <Feather name="x" size={16} color="#DC2626" />
-            <Text style={styles.rejectText}>Ablehnen</Text>
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
+          <Pressable style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 14, borderRadius: 14 }]} onPress={onReject}>
+            <Text style={[styles.rejectText, { color: "#B91C1C" }]}>Ablehnen</Text>
           </Pressable>
-          <Pressable style={[styles.acceptBtn, { flex: 2 }]} onPress={onAccept}>
-            <Feather name="check" size={18} color="#fff" />
+          <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#DC2626", paddingVertical: 15, borderRadius: 14 }]} onPress={onAccept}>
             <Text style={styles.acceptText}>Annehmen</Text>
           </Pressable>
         </View>
       ) : (
-        <View style={{ marginTop: 8, marginBottom: 4, paddingHorizontal: 14 }}>
-          <View
-            style={{
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: "#16A34A55",
-              backgroundColor: "#16A34A12",
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-            }}
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
+          <Pressable
+            style={[styles.rejectBtn, { flex: 1, borderColor: "#FEE2E2", backgroundColor: "#FFF1F1", paddingVertical: 15, borderRadius: 14 }]}
+            onPress={onCancelAssigned}
           >
-            <Text style={{ color: "#166534", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
-              Diese Reservierung ist angenommen und bleibt unter "Kommende Fahrten".
-            </Text>
-          </View>
+            <Text style={[styles.rejectText, { color: "#E11D2E", fontSize: 17 }]}>Stornieren</Text>
+          </Pressable>
+          {activatable ? (
+            <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#16A34A", paddingVertical: 15, borderRadius: 14 }]} onPress={onActivate}>
+              <Text style={styles.acceptText}>Fahrt aktivieren</Text>
+            </Pressable>
+          ) : null}
         </View>
       )}
     </View>
@@ -708,7 +611,7 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
   isAvailable: boolean;
 }) {
   const slideAnim = useRef(new Animated.Value(300)).current;
-  const prevCountRef = useRef(pendingRequests.length);
+  const prevCountRef = useRef(0);
   const instantReqs = pendingRequests.filter(
     (r) =>
       r.status !== "scheduled" &&
@@ -727,11 +630,9 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
     prevCountRef.current = instantReqs.length;
   }, [instantReqs.length, firstReq]);
 
-  // Slide in on mount if request already present
+  // Kein automatisches Popup bei erstem Mount/Reconnect
   useEffect(() => {
-    if (firstReq) {
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 60, friction: 10 }).start();
-    }
+    slideAnim.setValue(instantReqs.length > 0 ? 0 : 300);
   }, []);
 
   const mapLat = driverPos?.lat ?? 48.7394;
@@ -822,7 +723,9 @@ function TabBestellungen({ scheduledPool, onAccept, onReject, driverPos }: {
       ).map((req) => (
         <ScheduledCard key={req.id} req={req} driverPos={driverPos}
           onAccept={() => onAccept(req.id)}
-          onReject={() => onReject(req.id)} />
+          onReject={() => onReject(req.id)}
+          onActivate={() => onAccept(req.id)}
+          onCancelAssigned={() => onReject(req.id)} />
       ))}
     </ScrollView>
   );
@@ -2114,8 +2017,11 @@ export default function DriverDashboard() {
     cancelRequest,
     completeRequest,
     refreshRequests,
+    markDriverArriving,
+    activateForDispatch,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
+  const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen">("anfragen");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [vehiclePickerLoading, setVehiclePickerLoading] = useState(false);
@@ -2226,6 +2132,7 @@ export default function DriverDashboard() {
 
   const prevPendingIds = useRef<Set<string>>(new Set());
   const firstRender = useRef(true);
+  const prevDriverOnline = useRef(false);
 
   // In-app notification banner
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
@@ -2242,21 +2149,24 @@ export default function DriverDashboard() {
     }, 8000);
   }, [bannerAnim]);
 
-  // Request notification permissions once on mount
-  useEffect(() => {
-    requestNotificationPermissions().catch(() => {});
-  }, []);
-
-  // Fire notification + vibration when a new instant ride request arrives
+  // Fire notification + vibration only for truly new instant ride requests while driver is already online
   useEffect(() => {
     const currentIds = new Set(allPending.map((r) => r.id));
+    const driverOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
 
-    if (firstRender.current) {
-      // On first render: silently record existing rides, no sound
+    if (
+      firstRender.current ||
+      !driverOnline ||
+      (!prevDriverOnline.current && driverOnline)
+    ) {
+      // First render/offline->online sync: silently record existing rides
       prevPendingIds.current = currentIds;
       firstRender.current = false;
+      prevDriverOnline.current = driverOnline;
       return;
     }
+
+    prevDriverOnline.current = driverOnline;
 
     const newReqs = allPending.filter(
       (r) =>
@@ -2271,16 +2181,10 @@ export default function DriverDashboard() {
       const distKm = (driverPos && req.fromLat != null && req.fromLon != null)
         ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
         : null;
-      sendNewRideNotification({
-        customerName: req.customerName,
-        fromAddress: req.fromFull.split(",")[0],
-        distanceKm: distKm,
-        estimatedFare: req.estimatedFare,
-      }).catch(() => {});
       showBanner(req);
     }
     prevPendingIds.current = currentIds;
-  }, [allPending, driverPos, showBanner]);
+  }, [allPending, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner]);
 
   // GPS für Distanzanzeige auf Auftragskarten (vor Annahme)
   useEffect(() => {
@@ -2443,6 +2347,40 @@ export default function DriverDashboard() {
     }
     setActiveTab("uebersicht");
   };
+
+  const handleCancelScheduled = async (req: RideRequest) => {
+    const diffMin = req.scheduledAt ? (new Date(req.scheduledAt).getTime() - Date.now()) / 60000 : null;
+    const nearPickup = diffMin != null && diffMin >= 0 && diffMin < 60;
+
+    Alert.alert(
+      "Reservierung stornieren?",
+      nearPickup
+        ? "Diese Fahrt beginnt in weniger als 60 Minuten. Das kann zu einer vorübergehenden Einschränkung führen. Möchtest du wirklich stornieren?"
+        : "Möchtest du diese angenommene Reservierung wirklich stornieren?",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Stornieren",
+          style: "destructive",
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            await driverCancelRequest(req.id, driverId);
+            if (nearPickup) {
+              await blockDriver48h();
+            }
+            await refreshRequests?.();
+          },
+        },
+      ],
+    );
+  };
+
+  const handleActivateScheduled = async (id: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await activateForDispatch(id);
+    await refreshRequests?.();
+    setActiveTab("uebersicht");
+  };
   const handleLogout = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await logout();
@@ -2601,6 +2539,8 @@ export default function DriverDashboard() {
     );
   }
 
+  const scheduledOpenRequests = scheduledPool.filter((r) => r.status === "scheduled");
+  const scheduledAssignedRequests = scheduledPool.filter((r) => r.status === "scheduled_assigned");
   const sofortCount = pendingRequests.length;
   const vorbestellungCount = scheduledPool.length;
   const totalPending = sofortCount + vorbestellungCount;
@@ -2616,7 +2556,7 @@ export default function DriverDashboard() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: "#111" }]}>
+      <View style={[styles.header, { paddingTop: topPad + 4, paddingBottom: 16, backgroundColor: "#F7F7F5" }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <View style={styles.avatarBg}>
@@ -2645,29 +2585,33 @@ export default function DriverDashboard() {
             style={[
               styles.availToggle,
               {
-                backgroundColor: !driver.einsatzbereit ? "#1F2937" : driver.isAvailable ? "#16A34A" : "#374151",
+                backgroundColor: "#FFFFFF",
                 opacity: driver.einsatzbereit ? 1 : 0.85,
+                shadowColor: "#111827",
+                shadowOpacity: 0.06,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 4,
               },
             ]}
           >
-            <View style={[styles.availDot, { backgroundColor: driver.einsatzbereit && driver.isAvailable ? "#4ADE80" : "#6B7280" }]} />
-            <View>
-              <Text style={styles.availLabel}>
+            <View
+              style={[
+                styles.availSegment,
+                {
+                  backgroundColor: driver.einsatzbereit && driver.isAvailable ? "#16A34A" : "#E5E7EB",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.availSegmentText,
+                  { color: driver.einsatzbereit && driver.isAvailable ? "#FFFFFF" : "#6B7280" },
+                ]}
+              >
                 {!driver.einsatzbereit ? "GESPERRT" : driver.isAvailable ? "ONLINE" : "OFFLINE"}
               </Text>
-              <Text style={styles.availSub} numberOfLines={2}>
-                {!driver.einsatzbereit
-                  ? "Noch nicht freigegeben"
-                  : driver.isAvailable
-                    ? "Aufträge annehmen"
-                    : "Keine Aufträge"}
-              </Text>
             </View>
-            <Feather
-              name={driver.einsatzbereit && driver.isAvailable ? "toggle-right" : "toggle-left"}
-              size={22}
-              color={driver.einsatzbereit && driver.isAvailable ? "#4ADE80" : "#9CA3AF"}
-            />
           </Pressable>
         </View>
       </View>
@@ -2714,63 +2658,150 @@ export default function DriverDashboard() {
             )}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-                <View style={styles.ordersHeaderRow}>
-                  <Text style={[styles.ordersHeaderTitle, { color: colors.foreground }]}>Offene Aufträge</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 18 }}>
                   <Pressable
-                    style={styles.ordersPlusBtn}
-                    onPress={() => setShowCodeRideModal(true)}
+                    onPress={() => setOrdersView("anfragen")}
+                    style={{
+                      flex: 1,
+                      borderRadius: 999,
+                      paddingVertical: 11,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#FFFFFF",
+                      borderWidth: 1.5,
+                      borderColor: ordersView === "anfragen" ? "#EF4444" : "#E5E7EB",
+                    }}
                   >
-                    <Feather name="plus" size={18} color="#fff" />
-                    <Text style={styles.ordersPlusText}>Code einlösen</Text>
+                    <Text
+                      style={{
+                        fontFamily: "Inter_700Bold",
+                        color: "#111827",
+                      }}
+                    >
+                      Anfragen{pendingRequests.length + scheduledOpenRequests.length > 0 ? ` (${pendingRequests.length + scheduledOpenRequests.length})` : ""}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setOrdersView("angenommen")}
+                    style={{
+                      flex: 1,
+                      borderRadius: 999,
+                      paddingVertical: 11,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#FFFFFF",
+                      borderWidth: 1.5,
+                      borderColor: ordersView === "angenommen" ? "#EF4444" : "#E5E7EB",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: "Inter_700Bold",
+                        color: "#111827",
+                      }}
+                    >
+                      Angenommene{scheduledAssignedRequests.length > 0 ? ` (${scheduledAssignedRequests.length})` : ""}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      setOrdersView("code");
+                      console.log("CODE_RIDE_MODAL_OPEN");
+                      setShowCodeRideModal(true);
+                    }}
+                    style={{
+                      borderRadius: 999,
+                      paddingHorizontal: 16,
+                      paddingVertical: 11,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#FFFFFF",
+                      borderWidth: 1.5,
+                      borderColor: ordersView === "code" ? "#EF4444" : "#E5E7EB",
+                      flexDirection: "row",
+                      gap: 3,
+                    }}
+                  >
+                    <Feather name="plus" size={15} color="#111827" />
+                    <Text
+                      style={{
+                        fontFamily: "Inter_700Bold",
+                        color: "#111827",
+                      }}
+                    >
+                      Code
+                    </Text>
                   </Pressable>
                 </View>
-                {pendingRequests.length === 0 && scheduledPool.length === 0 ? (
-                  <View style={styles.emptyCenter}>
-                    <MaterialCommunityIcons name="taxi" size={56} color="#9CA3AF" />
-                    <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine Aufträge</Text>
-                    <Text style={[styles.emptySub, { color: "#6B7280", textAlign: "center" }]}>
-                      {!driver.einsatzbereit
-                        ? "Markt gesperrt, bis Sie einsatzbereit sind. Nutzen Sie die Meldung oben oder fragen Sie Ihr Unternehmen."
-                        : "Warte auf neue Anfragen…"}
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    {pendingRequests.length > 0 && (
-                      <View style={{ marginBottom: 12 }}>
-                        <Text style={[styles.ordersHeaderTitle, { color: colors.foreground, marginBottom: 8 }]}>
-                          Sofort{sofortCount > 0 ? ` (${sofortCount})` : ""}
-                        </Text>
-                        {pendingRequests.map((req) => (
-                          <InstantCard
+
+                {ordersView === "anfragen" ? (
+                  pendingRequests.length === 0 && scheduledOpenRequests.length === 0 ? (
+                    <View style={styles.emptyCenter}>
+                      <MaterialCommunityIcons name="taxi" size={56} color="#9CA3AF" />
+                      <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine Anfragen</Text>
+                      <Text style={[styles.emptySub, { color: "#6B7280", textAlign: "center" }]}>
+                        {!driver.einsatzbereit
+                          ? "Markt gesperrt, bis Sie einsatzbereit sind. Nutzen Sie die Meldung oben oder fragen Sie Ihr Unternehmen."
+                          : "Warte auf neue Anfragen…"}
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      {pendingRequests.map((req) => (
+                        <InstantCard
+                          key={req.id}
+                          req={req}
+                          driverPos={driverPos}
+                          onAccept={() => handleAccept(req.id)}
+                          onReject={() => handleReject(req.id)}
+                        />
+                      ))}
+                      {[...scheduledOpenRequests]
+                        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+                        .map((req) => (
+                          <ScheduledCard
                             key={req.id}
                             req={req}
                             driverPos={driverPos}
                             onAccept={() => handleAccept(req.id)}
                             onReject={() => handleReject(req.id)}
+                            onActivate={() => handleActivateScheduled(req.id)}
+                            onCancelAssigned={() => handleCancelScheduled(req)}
                           />
                         ))}
-                      </View>
-                    )}
-                    {scheduledPool.length > 0 && (
-                      <View style={{ marginBottom: 12 }}>
-                        <Text style={[styles.ordersHeaderTitle, { color: colors.foreground, marginBottom: 8 }]}>
-                          Planer{vorbestellungCount > 0 ? ` (${vorbestellungCount})` : ""}
-                        </Text>
-                        {[...scheduledPool]
-                          .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
-                          .map((req) => (
-                            <ScheduledCard
-                              key={req.id}
-                              req={req}
-                              driverPos={driverPos}
-                              onAccept={() => handleAccept(req.id)}
-                              onReject={() => handleReject(req.id)}
-                            />
-                          ))}
-                      </View>
-                    )}
-                  </>
+                    </>
+                  )
+                ) : (
+                  scheduledAssignedRequests.length === 0 ? (
+                    <View style={styles.emptyCenter}>
+                      <MaterialCommunityIcons name="calendar-check" size={56} color="#9CA3AF" />
+                      <Text style={[styles.emptyTitle, { color: "#111" }]}>Keine angenommenen Fahrten</Text>
+                      <Text style={[styles.emptySub, { color: "#6B7280", textAlign: "center" }]}>
+                        Angenommene Reservierungen erscheinen hier.
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={{ color: "#6B7280", fontSize: 12, marginBottom: 10 }}>
+                        Meine angenommenen Fahrten
+                      </Text>
+                      {[...scheduledAssignedRequests]
+                        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+                        .map((req) => (
+                          <ScheduledCard
+                            key={req.id}
+                            req={req}
+                            driverPos={driverPos}
+                            onAccept={() => handleAccept(req.id)}
+                            onReject={() => handleReject(req.id)}
+                            onActivate={() => handleActivateScheduled(req.id)}
+                            onCancelAssigned={() => handleCancelScheduled(req)}
+                          />
+                        ))}
+                    </>
+                  )
                 )}
               </ScrollView>
             )}
@@ -3082,15 +3113,17 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingBottom: 14 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  avatarBg: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#DC2626", justifyContent: "center", alignItems: "center" },
+  avatarBg: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#EF2323", justifyContent: "center", alignItems: "center", shadowColor: "#EF2323", shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
-  headerName: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  headerSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", marginTop: 1 },
+  headerName: { fontSize: 17, fontFamily: "Inter_800ExtraBold", color: "#111827" },
+  headerSub: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  availToggle: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
+  availToggle: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 9 },
   availDot: { width: 8, height: 8, borderRadius: 4 },
-  availLabel: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#fff" },
-  availSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.7)" },
+  availLabel: { fontSize: 13, fontFamily: "Inter_800ExtraBold", color: "#111827" },
+  availSub: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280" },
+  availSegment: { borderRadius: 999, paddingHorizontal: 18, paddingVertical: 9, alignItems: "center", justifyContent: "center" },
+  availSegmentText: { fontSize: 13, fontFamily: "Inter_800ExtraBold", letterSpacing: 0.2 },
   logoutBtn: { width: 32, height: 32, justifyContent: "center", alignItems: "center" },
 
   tabBar: { flexDirection: "row", borderTopWidth: 1, paddingTop: 6 },
@@ -3248,7 +3281,7 @@ const styles = StyleSheet.create({
   /* Fahrten tab */
   filterRow: { flexDirection: "row", borderRadius: 14, padding: 4, gap: 4, marginBottom: 4 },
   filterBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
-  filterBtnActive: { backgroundColor: "#111" },
+  filterBtnActive: { backgroundColor: "#F3F4F6" },
   filterText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   rideCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 10 },
   rideTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
@@ -3368,7 +3401,7 @@ const activeStyles = StyleSheet.create({
   completeBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
 
   /* Price modal */
-  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.28)" },
   priceModal: {
     backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24, paddingBottom: 40, gap: 16,
