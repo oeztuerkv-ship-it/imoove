@@ -424,6 +424,18 @@ function pickMedicalMeta(raw: unknown): Record<string, unknown> {
   return out;
 }
 
+const CUSTOMER_DRIVER_NOTE_BODY_MAX = 500;
+
+function extractCustomerDriverNoteFromRawBody(raw: Record<string, unknown>): string {
+  const pm = raw.partnerBookingMeta ?? raw.partner_booking_meta;
+  if (!pm || typeof pm !== "object" || Array.isArray(pm)) return "";
+  const rec = pm as Record<string, unknown>;
+  const v = rec.customer_driver_note ?? rec.customerDriverNote;
+  if (typeof v !== "string") return "";
+  const t = v.trim();
+  return t.length > 0 ? t.slice(0, CUSTOMER_DRIVER_NOTE_BODY_MAX) : "";
+}
+
 function medicalFinanceSnapshot(gross: number): {
   gross_ride_amount: number;
   onroda_commission_rate: number;
@@ -1357,8 +1369,15 @@ router.post("/rides", async (req, res, next) => {
         .partnerBookingMeta ??
       (raw as { partner_booking_meta?: unknown }).partner_booking_meta ??
       (raw as { medicalMeta?: unknown }).medicalMeta;
+    if (process.env.NODE_ENV !== "production") {
+      const rb = raw as Record<string, unknown>;
+      console.log(
+        "[RESNOTE] POST /rides raw.partnerBookingMeta / raw.partner_booking_meta:",
+        rb.partnerBookingMeta ?? rb.partner_booking_meta,
+      );
+    }
     const medicalMeta = pickMedicalMeta(partnerMetaRaw);
-    const normalizedPartnerMeta: Record<string, unknown> =
+    let normalizedPartnerMeta: Record<string, unknown> =
       rideKind === "medical"
         ? {
             ...medicalMeta,
@@ -1445,6 +1464,18 @@ router.post("/rides", async (req, res, next) => {
       const ready = calculateMedicalBillingReadiness(normalizedPartnerMeta);
       normalizedPartnerMeta.billing_ready = ready.billingReady;
       normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
+    }
+    const customerDriverNoteFromBody = extractCustomerDriverNoteFromRawBody(raw as Record<string, unknown>);
+    if (customerDriverNoteFromBody) {
+      normalizedPartnerMeta = { ...normalizedPartnerMeta, customer_driver_note: customerDriverNoteFromBody };
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        "[RESNOTE] POST /rides normalizedPartnerMeta.customer_driver_note:",
+        typeof normalizedPartnerMeta.customer_driver_note === "string"
+          ? String(normalizedPartnerMeta.customer_driver_note).slice(0, 120)
+          : "(none)",
+      );
     }
     const newReq: RideRequest = {
       ...(raw as RideRequest),

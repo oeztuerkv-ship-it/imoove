@@ -239,6 +239,7 @@ export default function ReserveRideScreen() {
     isLoadingRoute,
     routeError,
     resetRide,
+    customerDriverNote,
   } = useRide();
 
   const [step, setStep] = useState<Step>("where");
@@ -600,9 +601,17 @@ export default function ReserveRideScreen() {
       commitSchedule();
     }
 
-    setCustomerDriverNote(driverNote.trim());
-
-    router.push("/ride");
+    const trimmed = driverNote.trim();
+    if (__DEV__) {
+      console.log("[RESNOTE] reserve-ride handleBook", {
+        driverNote: trimmed.slice(0, 120),
+        customerDriverNoteFromContext: customerDriverNote.slice(0, 120),
+      });
+    }
+    setCustomerDriverNote(trimmed);
+    setTimeout(() => {
+      router.push("/ride");
+    }, 0);
   }, [
     pickupResolved,
     destination,
@@ -613,6 +622,10 @@ export default function ReserveRideScreen() {
     skipWhere,
     scheduleMode,
     setScheduledTime,
+    setCustomerDriverNote,
+    driverNote,
+    customerDriverNote,
+    router,
   ]);
 
   const arrowDisabled =

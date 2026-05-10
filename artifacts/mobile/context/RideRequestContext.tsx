@@ -669,6 +669,12 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         ...(accessTrim ? { accessCode: accessTrim } : {}),
         ...(verifyToken ? { accessCodeVerifyToken: verifyToken } : {}),
       };
+      if (__DEV__) {
+        console.log(
+          "[RESNOTE] RideRequestContext.addRequest partnerBookingMeta",
+          (payload as { partnerBookingMeta?: unknown }).partnerBookingMeta,
+        );
+      }
       if (!API_BASE) {
         const id = `REQ-${Date.now()}`;
         const { accessCode: _oc, accessCodeVerifyToken: _ov, ...reqSansCode } = req as typeof req & {

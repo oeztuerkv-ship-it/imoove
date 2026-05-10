@@ -335,6 +335,15 @@ export default function RideScreen() {
             origin,
             destination,
           });
+          const noteTrim = customerDriverNote.trim();
+          const partnerBookingMetaPayload =
+            noteTrim ? { partnerBookingMeta: { customer_driver_note: noteTrim } } : {};
+          if (__DEV__) {
+            console.log("[RESNOTE] ride.tsx pre addRequest", {
+              customerDriverNote: customerDriverNote.slice(0, 120),
+              partnerBookingMeta: partnerBookingMetaPayload.partnerBookingMeta,
+            });
+          }
           const rideRequestId = await addRequest({
             from: origin.displayName.split(",")[0],
             fromFull: origin.displayName,
@@ -355,9 +364,7 @@ export default function RideScreen() {
               : "Gast",
             passengerId: passengerId || undefined,
             scheduledAt: scheduledTime ?? null,
-            ...(customerDriverNote.trim()
-              ? { partnerBookingMeta: { customer_driver_note: customerDriverNote.trim() } }
-              : {}),
+            ...partnerBookingMetaPayload,
             ...(pm === "access_code" && accessCodeInput.trim()
               ? { accessCode: accessCodeInput.trim() }
               : {}),

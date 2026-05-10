@@ -2,12 +2,12 @@ import type { PayerKind, RideKind } from "./rideBillingProfile";
 import type { AccessCodeType, AuthorizationSource } from "./rideAuthorization";
 import type { AccessCodeDefinitionState, AccessCodeTripOutcome } from "./accessCodeTrace";
 import type { PartnerBookingMeta } from "./partnerBookingMeta";
-import type { MedicalRidePartnerMeta } from "./medicalRidePartnerMeta";
+import type { CustomerDriverNotePartnerMeta, MedicalRidePartnerMeta } from "./medicalRidePartnerMeta";
 
 export type { AccessCodeType, AuthorizationSource, PayerKind, RideKind };
 export type { AccessCodeDefinitionState, AccessCodeTripOutcome };
 export type { PartnerBookingMeta };
-export type { MedicalRidePartnerMeta };
+export type { CustomerDriverNotePartnerMeta, MedicalRidePartnerMeta };
 
 /** DB/API: `tariff_snapshot_json` */
 export type TariffBookingSnapshotV1 = {
@@ -117,7 +117,7 @@ export interface RideRequest {
    */
   accessCodeNormalizedSnapshot?: string | null;
   /** Hotel / Medizin / Serien — nur Panel-Mandantensicht; nicht öffentlich. Krankenfahrt: flaches `medical_ride`-JSON in derselben Spalte. */
-  partnerBookingMeta?: PartnerBookingMeta | MedicalRidePartnerMeta | null;
+  partnerBookingMeta?: PartnerBookingMeta | MedicalRidePartnerMeta | CustomerDriverNotePartnerMeta | null;
   /** Barrierefrei-/Rollstuhl-Zusatzinfos für Disposition, Fahrer und Admin-Akte. */
   accessibilityOptions?: RideAccessibilityOptions | null;
   /**
