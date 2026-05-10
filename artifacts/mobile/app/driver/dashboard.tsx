@@ -111,6 +111,11 @@ function wheelchairInfoLine(req: RideRequest): string | null {
 }
 
 function customerDriverNoteLine(req: RideRequest): string | null {
+  const accessibilityNote = req.accessibilityOptions?.driverNote;
+  if (typeof accessibilityNote === "string" && accessibilityNote.trim()) {
+    return accessibilityNote.trim();
+  }
+
   const meta = (req as RideRequest & { partnerBookingMeta?: unknown }).partnerBookingMeta;
   if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
   const note = (meta as Record<string, unknown>).customer_driver_note;
@@ -2021,7 +2026,7 @@ export default function DriverDashboard() {
     activateForDispatch,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
-  const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen">("anfragen");
+  const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [vehiclePickerLoading, setVehiclePickerLoading] = useState(false);
