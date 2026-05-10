@@ -224,6 +224,7 @@ export default function ReserveRideScreen() {
 
   const {
     setScheduledTime,
+    setCustomerDriverNote,
     scheduledTime,
     destination,
     setDestination,
@@ -598,6 +599,9 @@ export default function ReserveRideScreen() {
     } else {
       commitSchedule();
     }
+
+    setCustomerDriverNote(driverNote.trim());
+
     router.push("/ride");
   }, [
     pickupResolved,

@@ -97,6 +97,7 @@ interface RideState {
   paymentMethod: PaymentMethod | null;
   isExempted: boolean;
   scheduledTime: Date | null;
+  customerDriverNote: string;
   route: RouteResult | null;
   fareBreakdown: FareBreakdown | null;
   finalFare: number | null;
@@ -132,6 +133,7 @@ interface RideContextValue extends RideState {
   setPaymentMethod: (m: PaymentMethod | null) => void;
   setIsExempted: (v: boolean) => void;
   setScheduledTime: (t: Date | null) => void;
+  setCustomerDriverNote: (note: string) => void;
   fetchRoute: () => Promise<void>;
   startRide: () => void;
   cancelRide: () => void;
@@ -259,6 +261,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [isExempted, setIsExempted] = useState(false);
   const [scheduledTime, setScheduledTime] = useState<Date | null>(null);
+  const [customerDriverNote, setCustomerDriverNote] = useState("");
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [fareBreakdown, setFareBreakdown] = useState<FareBreakdown | null>(null);
   const [finalFare, setFinalFare] = useState<number | null>(null);
@@ -430,6 +433,7 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
     setFareBreakdown(null);
     setFinalFare(null);
     setScheduledTime(null);
+    setCustomerDriverNote("");
     setRideStatus("idle");
     setRouteError(null);
     setPaymentMethod(null);
@@ -440,10 +444,10 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
 
   return (
     <RideContext.Provider value={{
-      origin, viaStops, destination, selectedVehicle, selectedServiceClass, paymentMethod, isExempted, scheduledTime,
+      origin, viaStops, destination, selectedVehicle, selectedServiceClass, paymentMethod, isExempted, scheduledTime, customerDriverNote,
       route, fareBreakdown, finalFare, rideStatus, isLoadingRoute, routeError, history,
       wheelchairSelectCompleted, setWheelchairSelectCompleted,
-      setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime,
+      setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime, setCustomerDriverNote,
       fetchRoute, startRide, cancelRide, completeRide, resetRide, loadHistory,
     }}>
       {children}

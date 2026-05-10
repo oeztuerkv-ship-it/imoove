@@ -148,6 +148,7 @@ export default function RideScreen() {
     paymentMethod,
     isExempted,
     scheduledTime,
+    customerDriverNote,
     setPaymentMethod,
     setIsExempted,
   } = useRide();
@@ -354,6 +355,9 @@ export default function RideScreen() {
               : "Gast",
             passengerId: passengerId || undefined,
             scheduledAt: scheduledTime ?? null,
+            ...(customerDriverNote.trim()
+              ? { partnerBookingMeta: { customer_driver_note: customerDriverNote.trim() } }
+              : {}),
             ...(pm === "access_code" && accessCodeInput.trim()
               ? { accessCode: accessCodeInput.trim() }
               : {}),
