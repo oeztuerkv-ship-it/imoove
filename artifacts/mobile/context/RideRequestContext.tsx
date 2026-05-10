@@ -108,6 +108,7 @@ interface RideRequestContextValue {
   myActiveRequests: RideRequest[];
   myCancelledRequests: RideRequest[];
   updateRequestPaymentMethod: (id: string, paymentMethod: string) => Promise<void>;
+  updateRequestDriverNote: (id: string, driverNote: string) => Promise<void>;
   addRequest: (
     req: Omit<
       RideRequest,
@@ -130,6 +131,7 @@ interface RideRequestContextValue {
     },
   ) => Promise<string>;
   acceptRequest: (id: string, driverId?: string) => Promise<void>;
+  activateForDispatch: (id: string) => Promise<void>;
   markDriverArriving: (id: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
@@ -156,8 +158,10 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   myActiveRequests: [],
   myCancelledRequests: [],
   updateRequestPaymentMethod: async () => {},
+  updateRequestDriverNote: async () => {},
   addRequest: async () => "",
   acceptRequest: async () => {},
+  activateForDispatch: async () => {},
   markDriverArriving: async () => {},
   rejectRequest: async () => {},
   rejectByDriver: async () => {},
@@ -739,15 +743,22 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           customerName: payload.customerName,
           hasAccessCode: typeof (payload as Record<string, unknown>).accessCode === "string",
         };
-        console.error("RIDES_POST_DEBUG", {
-          status: res.status,
-          statusText: res.statusText,
-          response: created,
-          requestPayload: debugPayload,
-        });
         const code = typeof body.error === "string" ? body.error : "request_failed";
+        if (res.status >= 500) {
+          console.error("RIDES_POST_DEBUG", {
+            status: res.status,
+            statusText: res.statusText,
+            response: created,
+            requestPayload: debugPayload,
+          });
+        } else {
+          console.warn("RIDES_POST_RULE_BLOCKED", { status: res.status, code });
+        }
+
         const err = new Error(code) as Error & { userMessage?: string };
-        if (typeof body.message === "string" && body.message.trim()) {
+        if (code === "prebook_lead_too_short") {
+          err.userMessage = "Diese Reservierung ist zu kurzfristig. Bitte wähle eine spätere Abholzeit.";
+        } else if (typeof body.message === "string" && body.message.trim()) {
           err.userMessage = body.message.trim();
         }
         throw err;
@@ -764,6 +775,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     (id: string, driverId?: string) => patchStatus(id, "accepted", undefined, driverId),
     [patchStatus],
   );
+  const activateForDispatch = useCallback((id: string) => patchStatus(id, "ready_for_dispatch"), [patchStatus]);
   const markDriverArriving = useCallback((id: string) => patchStatus(id, "driver_arriving"), [patchStatus]);
   const rejectRequest = useCallback((id: string) => patchStatus(id, "rejected"), [patchStatus]);
 
@@ -827,6 +839,22 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const completeRequest = useCallback(
     (id: string, finalFare?: number) => patchStatus(id, "completed", finalFare),
     [patchStatus],
+  );
+
+  const updateRequestDriverNote = useCallback(
+    async (id: string, driverNote: string) => {
+      const res = await fetch(`${API_BASE}/rides/${encodeURIComponent(id)}/driver-note`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverNote }),
+      });
+      const updated = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(updated?.error ?? "driver_note_update_failed");
+      }
+      await fetchAll();
+    },
+    [fetchAll],
   );
 
   const updateRequestPaymentMethod = useCallback(
@@ -939,6 +967,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         myCancelledRequests,
         addRequest,
         acceptRequest,
+        activateForDispatch,
         markDriverArriving,
         rejectRequest,
         rejectByDriver,
@@ -948,6 +977,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         startDriving,
         completeRequest,
         updateRequestPaymentMethod,
+        updateRequestDriverNote,
         refreshRequests: fetchAll,
       }}
     >

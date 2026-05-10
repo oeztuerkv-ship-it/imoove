@@ -6,11 +6,13 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -295,6 +297,10 @@ function dateGroupLabel(date: Date): string {
 export default function MyRidesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+
+  const [driverNoteModal, setDriverNoteModal] = useState(false);
+  const [driverNoteRideId, setDriverNoteRideId] = useState<string | null>(null);
+  const [driverNoteDraft, setDriverNoteDraft] = useState("");
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const { history } = useRide();
@@ -305,6 +311,7 @@ export default function MyRidesScreen() {
     requests,
     passengerId,
     updateRequestPaymentMethod,
+    updateRequestDriverNote,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("alle");
   const reservationRequests = useMemo(
@@ -666,22 +673,19 @@ export default function MyRidesScreen() {
                     <View style={styles.actionRow}>
                       <Pressable
                         style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1, backgroundColor: "#F3F4F6" }]}
-                        onPress={() => openRideDetail(req.id, { focusSupport: true })}
+                        onPress={() => {
+                          setDriverNoteRideId(req.id);
+                          setDriverNoteDraft(req.accessibilityOptions?.driverNote ?? "");
+                          setDriverNoteModal(true);
+                        }}
                       >
-                        <Feather name="edit" size={15} color={colors.foreground} />
-                        <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Notiz</Text>
-                      </Pressable>
-                      <Pressable
-                        style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1 }]}
-                        onPress={() => router.push("/new-booking")}
-                      >
-                        <Feather name="edit-3" size={15} color={colors.foreground} />
-                        <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Ändern</Text>
+                        <Feather name="message-square" size={15} color={colors.foreground} />
+                        <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Notiz an Fahrer</Text>
                       </Pressable>
                       <Pressable
                         style={[styles.rideSupportRowCompact, { borderColor: "#EF444466", flex: 1, backgroundColor: "#EF4444" }]}
                         onPress={() =>
-                          Alert.alert("Fahrt stornieren?", "Möchtest du diesen Auftrag wirklich stornieren?", [
+                          Alert.alert("Fahrt stornieren?", "Möchtest du diese Reservierung wirklich stornieren?", [
                             { text: "Nein", style: "cancel" },
                             {
                               text: "Ja, stornieren",
@@ -957,6 +961,51 @@ export default function MyRidesScreen() {
         )}
 
       </ScrollView>
+
+      <Modal visible={driverNoteModal} transparent animationType="fade" onRequestClose={() => setDriverNoteModal(false)}>
+        <View style={styles.noteModalBackdrop}>
+          <View style={[styles.noteModalCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}>
+            <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+            <Text style={[styles.noteModalSub, { color: LIST_TEXT_STRONG }]}>
+              Diese Notiz sieht der Fahrer bei der Reservierung.
+            </Text>
+            <TextInput
+              value={driverNoteDraft}
+              onChangeText={setDriverNoteDraft}
+              placeholder="z. B. Bitte am Haupteingang warten"
+              placeholderTextColor="#9CA3AF"
+              multiline
+              maxLength={500}
+              style={[styles.noteModalInput, { color: colors.foreground, borderColor: LIST_FRAME_BORDER }]}
+            />
+            <View style={styles.noteModalActions}>
+              <Pressable
+                style={[styles.noteModalBtn, { borderColor: LIST_FRAME_BORDER }]}
+                onPress={() => setDriverNoteModal(false)}
+              >
+                <Text style={[styles.noteModalBtnText, { color: colors.foreground }]}>Abbrechen</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.noteModalBtn, styles.noteModalBtnPrimary]}
+                onPress={() => {
+                  if (!driverNoteRideId) return;
+                  void updateRequestDriverNote(driverNoteRideId, driverNoteDraft)
+                    .then(() => {
+                      setDriverNoteModal(false);
+                      setDriverNoteRideId(null);
+                    })
+                    .catch(() => {
+                      Alert.alert("Notiz nicht gespeichert", "Bitte versuche es erneut.");
+                    });
+                }}
+              >
+                <Text style={[styles.noteModalBtnText, { color: "#FFFFFF" }]}>Speichern</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <BottomTabBar active="fahrten" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
@@ -1166,6 +1215,42 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   actionBtnText:   { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  noteModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: rs(20),
+  },
+  noteModalCard: {
+    width: "100%",
+    borderRadius: rs(18),
+    borderWidth: 1,
+    padding: rs(16),
+  },
+  noteModalTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold" },
+  noteModalSub: { fontSize: rf(13), fontFamily: "Inter_500Medium", marginTop: rs(6), lineHeight: rf(18) },
+  noteModalInput: {
+    minHeight: rs(110),
+    borderWidth: 1,
+    borderRadius: rs(12),
+    padding: rs(12),
+    marginTop: rs(14),
+    fontSize: rf(15),
+    fontFamily: "Inter_500Medium",
+    textAlignVertical: "top",
+  },
+  noteModalActions: { flexDirection: "row", gap: rs(10), marginTop: rs(14) },
+  noteModalBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: rs(12),
+    paddingVertical: rs(12),
+  },
+  noteModalBtnPrimary: { backgroundColor: "#DC2626", borderColor: "#DC2626" },
+  noteModalBtnText: { fontSize: rf(14), fontFamily: "Inter_700Bold" },
   emptyState:      { alignItems: "center", gap: rs(12), paddingTop: rs(70) },
   emptyIcon:       { width: rs(80), height: rs(80), borderRadius: rs(24), backgroundColor: "#DC262612", alignItems: "center", justifyContent: "center", marginBottom: rs(4) },
   emptyTitle:      { fontSize: rf(18), fontFamily: "Inter_600SemiBold" },

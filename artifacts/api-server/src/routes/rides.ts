@@ -1516,6 +1516,56 @@ router.post("/rides", async (req, res, next) => {
   }
 });
 
+
+router.patch("/rides/:id/driver-note", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+
+    const editableStatuses = new Set<RideRequest["status"]>([
+      "scheduled",
+      "scheduled_assigned",
+      "ready_for_dispatch",
+      "accepted",
+      "driver_arriving",
+      "driver_waiting",
+    ]);
+
+    if (!editableStatuses.has(cur.status)) {
+      res.status(409).json({ error: "driver_note_not_editable_for_status" });
+      return;
+    }
+
+    const rawNote = typeof req.body?.driverNote === "string" ? req.body.driverNote : "";
+    const driverNote = rawNote.trim().slice(0, 500);
+
+    const nextAccessibilityOptions = {
+      ...(cur.accessibilityOptions && typeof cur.accessibilityOptions === "object" ? cur.accessibilityOptions : {}),
+      driverNote: driverNote || null,
+    };
+
+    const updated = await updateRide(
+      id,
+      { accessibilityOptions: nextAccessibilityOptions },
+      { mutationActor: { actorType: "customer", actorId: cur.passengerId ?? null } },
+    );
+
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+
+    const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(updated)]);
+    res.json(withSummary);
+  } catch (e) {
+    next(e);
+  }
+});
+
 router.patch("/rides/:id/status", async (req, res, next) => {
   try {
     const { id } = req.params;
