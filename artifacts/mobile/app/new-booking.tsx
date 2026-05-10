@@ -467,6 +467,7 @@ export default function NewBookingScreen() {
   const [showDtPicker, setShowDtPicker] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>("standard");
   const [accessCode, setAccessCode] = useState("");
+  const [driverNote, setDriverNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const formComplete = from.name.length > 0 && to.name.length > 0 && scheduledAt !== null;
@@ -605,6 +606,7 @@ export default function NewBookingScreen() {
         passengerId: passengerId || undefined,
         scheduledAt: scheduledAt,
         ...(pricingMode ? { pricingMode } : {}),
+        ...(driverNote.trim() ? { partnerBookingMeta: { customer_driver_note: driverNote.trim() } } : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -682,6 +684,24 @@ export default function NewBookingScreen() {
           </Text>
           <Text style={[styles.dtNote, { color: colors.foreground }]}>
             Kostenlose Stornierung bis 1 Stunde vor der Abholung möglich.
+          </Text>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.cardLabel, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+          <View style={[styles.inputBox, { borderColor: colors.border, backgroundColor: colors.muted, minHeight: 92, alignItems: "flex-start" }]}>
+            <TextInput
+              style={[styles.inputText, { color: colors.foreground, minHeight: 76, textAlignVertical: "top" }]}
+              value={driverNote}
+              onChangeText={setDriverNote}
+              placeholder="z. B. Bitte am Haupteingang warten"
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              maxLength={500}
+            />
+          </View>
+          <Text style={[styles.dtNote, { color: colors.foreground }]}>
+            Diese Notiz sieht nur der Fahrer für diese Reservierung.
           </Text>
         </View>
 
