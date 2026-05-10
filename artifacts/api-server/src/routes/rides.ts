@@ -1548,9 +1548,22 @@ router.patch("/rides/:id/driver-note", async (req, res, next) => {
       driverNote: driverNote || null,
     };
 
+    const currentPartnerMeta =
+      cur.partnerBookingMeta && typeof cur.partnerBookingMeta === "object" && !Array.isArray(cur.partnerBookingMeta)
+        ? (cur.partnerBookingMeta as Record<string, unknown>)
+        : {};
+
+    const nextPartnerBookingMeta = {
+      ...currentPartnerMeta,
+      customer_driver_note: driverNote || "",
+    };
+
     const updated = await updateRide(
       id,
-      { accessibilityOptions: nextAccessibilityOptions },
+      {
+        accessibilityOptions: nextAccessibilityOptions,
+        partnerBookingMeta: nextPartnerBookingMeta,
+      },
       { mutationActor: { actorType: "customer", actorId: cur.passengerId ?? null } },
     );
 
