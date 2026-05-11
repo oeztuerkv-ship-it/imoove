@@ -6,7 +6,10 @@ export type PanelAuthRequest = Request & { panelAuth?: PanelJwtClaims };
 
 function bearerToken(req: Request): string | null {
   const raw = req.get("authorization")?.trim();
-  if (!raw) return null;
+  if (!raw) {
+    const qt = typeof req.query?.token === "string" ? req.query.token.trim() : "";
+    return qt.length > 0 ? qt : null;
+  }
   const m = raw.match(/^Bearer\s+(.+)$/i);
   const t = m?.[1]?.trim();
   return t && t.length > 0 ? t : null;

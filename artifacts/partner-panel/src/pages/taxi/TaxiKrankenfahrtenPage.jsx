@@ -429,19 +429,55 @@ export default function TaxiKrankenfahrtenPage() {
                       <th>Abrechnungsbereit</th>
                       <th>Rechnung</th>
                       <th>KK / Kostenträger</th>
+                      <th>Aktionen</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filterMedicalRides(rides).map((r) => {
                       const m = getPartnerMeta(r);
                       const ready = m?.billing_ready === true || m?.billingStatus?.ready === true;
+                      const invStatus = String(m?.invoice_status ?? "").toLowerCase();
+                      const hasInvoice = invStatus === "created" || invStatus === "sent" || invStatus === "paid";
                       return (
                         <tr key={r.id}>
                           <td>{caseLabel(r)}</td>
                           <td>{formatMoney(rideFareAmount(r))}</td>
-                          <td>{ready ? "ja" : "nein"}</td>
+                          <td>{ready ? "✓ ja" : "—"}</td>
                           <td>{invoiceStatusDe(r)}</td>
                           <td>{payerShort(r)}</td>
+                          <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {ready && !hasInvoice && (
+                              <button
+                                className="partner-btn partner-btn--sm partner-btn--primary"
+                                onClick={async () => {
+                                  if (!window.confirm("Rechnung für diese Fahrt erstellen?")) return;
+                                  try {
+                                    const res = await fetch(`${API_BASE}/panel/v1/rides/${r.id}/create-invoice`, {
+                                      method: "POST",
+                                      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                    });
+                                    const j = await res.json().catch(() => ({}));
+                                    if (!res.ok) { alert("Fehler: " + (j.error || res.status)); return; }
+                                    alert("Rechnung " + j.invoice?.number + " erstellt!");
+                                    window.location.reload();
+                                  } catch { alert("Netzwerkfehler"); }
+                                }}
+                              >
+                                Rechnung erstellen
+                              </button>
+                            )}
+                            {hasInvoice && (
+                              
+                                className="partner-btn partner-btn--sm"
+                                href={`${API_BASE}/panel/v1/rides/${r.id}/invoice-pdf`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => { e.currentTarget.href = `${API_BASE}/panel/v1/rides/${r.id}/invoice-pdf?token=${encodeURIComponent(token)}`; }}
+                              >
+                                PDF ↓
+                              </a>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}

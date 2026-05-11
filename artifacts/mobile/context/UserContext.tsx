@@ -35,6 +35,13 @@ export interface UserProfile {
   notfallName: string;
   notfallTelefon: string;
   patientNotiz: string;
+  billingType: "private" | "company" | "insurance";
+  companyName: string;
+  companyAddress: string;
+  companyCity: string;
+  vatNumber: string;
+  costCenter: string;
+  billingEmail: string;
   /** Fahrtrelevante Rollstuhl-Standardwerte (keine Diagnose- oder Behandlungsdaten). */
   wheelchairDefaults?: {
     wheelchairType: "foldable" | "electric";
@@ -72,6 +79,13 @@ const DEFAULT_PROFILE: UserProfile = {
   notfallName: "",
   notfallTelefon: "",
   patientNotiz: "",
+  billingType: "private",
+  companyName: "",
+  companyAddress: "",
+  companyCity: "",
+  vatNumber: "",
+  costCenter: "",
+  billingEmail: "",
   wheelchairDefaults: null,
 };
 

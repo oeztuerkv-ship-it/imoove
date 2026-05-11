@@ -223,14 +223,14 @@ export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const topPad = isWeb ? 44 : insets.top;
 
-  const { profile } = useUser();
+  const { profile, updateProfile } = useUser();
 
   const [billingOpen, setBillingOpen] = useState(false);
-  const [billing, setBilling] = useState<{ name: string; strasse: string; hausnr: string; plz: string; ort: string } | null>(null);
+  const billingSublabel = profile.billingType === "company" ? profile.companyName || "Firma hinterlegen" : profile.billingType === "insurance" ? profile.krankenkasse || "Krankenkasse hinterlegen" : "Noch keine Adresse hinterlegt";
 
-  const billingSublabel = billing
-    ? `${billing.strasse} ${billing.hausnr}, ${billing.plz} ${billing.ort}`
-    : "Noch keine Adresse hinterlegt";
+
+
+
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -296,20 +296,7 @@ export default function WalletScreen() {
           </Card>
         </View>
 
-        {/* ── Rechnungsadresse ── */}
-        <View style={styles.section}>
-          <SectionLabel text="RECHNUNGSADRESSE" />
-          <Card>
-            <ListRow
-              icon={<Feather name="file-text" size={17} color="#D97706" />}
-              iconBg="#FFFBEB"
-              label="Rechnungsadresse"
-              sublabel={billingSublabel}
-              isLast
-              onPress={() => setBillingOpen(true)}
-            />
-          </Card>
-        </View>
+
 
         {/* ── Sicherheit ── */}
         <View style={styles.section}>
@@ -336,7 +323,7 @@ export default function WalletScreen() {
         initialName={profile.name || ""}
         onClose={(data) => {
           if (data) {
-            setBilling(data);
+            updateProfile({ billingType: "private", companyName: data.name ?? "", companyAddress: data.strasse ?? "", companyCity: (data.plz ?? "") + " " + (data.ort ?? ""), billingEmail: "" });
             Alert.alert("Gespeichert", "Rechnungsadresse wurde gespeichert.");
           }
           setBillingOpen(false);

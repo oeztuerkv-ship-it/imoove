@@ -608,6 +608,7 @@ export default function NewBookingScreen() {
         ...(pricingMode ? { pricingMode } : {}),
         ...(driverNote.trim() ? { partnerBookingMeta: { customer_driver_note: driverNote.trim() } } : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),
+        ...(profile.billingType === "company" && profile.costCenter.trim() ? { billingReference: profile.costCenter.trim() } : {}),
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/my-rides");

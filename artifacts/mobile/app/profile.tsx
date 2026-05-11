@@ -85,6 +85,7 @@ function Row({
   onPress,
   danger,
   isLast,
+  hideChevron,
 }: {
   iconName: string;
   iconBg?: string;
@@ -94,6 +95,7 @@ function Row({
   onPress: () => void;
   danger?: boolean;
   isLast?: boolean;
+  hideChevron?: boolean;
 }) {
   const colors = useColors();
   return (
@@ -112,7 +114,7 @@ function Row({
         <Text style={[styles.rowLabel, { color: danger ? "#DC2626" : colors.foreground }]}>{label}</Text>
         {sublabel && <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>{sublabel}</Text>}
       </View>
-      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+      {!hideChevron && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
     </Pressable>
   );
 }
@@ -289,6 +291,58 @@ function ToggleSwitchRow({
         thumbColor="#fff"
       />
     </View>
+  );
+}
+
+function BillingModal({ visible, profile, onClose }: { visible: boolean; profile: any; onClose: (data: any | null) => void; }) {
+  const colors = useColors();
+  const [billingType, setBillingType] = useState<"private" | "company" | "insurance">(profile.billingType ?? "private");
+  const [companyName, setCompanyName] = useState(profile.companyName ?? "");
+  const [companyAddress, setCompanyAddress] = useState(profile.companyAddress ?? "");
+  const [companyCity, setCompanyCity] = useState(profile.companyCity ?? "");
+  const [vatNumber, setVatNumber] = useState(profile.vatNumber ?? "");
+  const [costCenter, setCostCenter] = useState(profile.costCenter ?? "");
+  const [billingEmail, setBillingEmail] = useState(profile.billingEmail ?? "");
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 0.5, borderBottomColor: "#E5E7EB" }}>
+          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>Rechnungsadresse</Text>
+          <Pressable onPress={() => onClose(null)}><Feather name="x" size={24} color={colors.mutedForeground} /></Pressable>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+          <View style={{ flexDirection: "row", backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3, marginBottom: 8 }}>
+            {(["private", "company", "insurance"] as const).map((t) => (
+              <Pressable key={t} onPress={() => setBillingType(t)} style={{ flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center", backgroundColor: billingType === t ? "#FFFFFF" : "transparent" }}>
+                <Text style={{ fontSize: 13, fontFamily: billingType === t ? "Inter_700Bold" : "Inter_500Medium", color: billingType === t ? "#EF1D26" : "#8E8E93" }}>
+                  {t === "private" ? "Privat" : t === "company" ? "Firma" : "Kasse"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {billingType === "company" && (<>
+            <TextInput placeholder="Firmenname" value={companyName} onChangeText={setCompanyName} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+            <TextInput placeholder="Straße & Hausnummer" value={companyAddress} onChangeText={setCompanyAddress} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+            <TextInput placeholder="PLZ & Stadt" value={companyCity} onChangeText={setCompanyCity} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+            <TextInput placeholder="USt-ID (optional)" value={vatNumber} onChangeText={setVatNumber} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+            <TextInput placeholder="Kostenstelle (optional)" value={costCenter} onChangeText={setCostCenter} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+            <TextInput placeholder="Rechnungs-E-Mail" value={billingEmail} onChangeText={setBillingEmail} keyboardType="email-address" style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+          </>)}
+          {billingType === "insurance" && (<>
+            <TextInput placeholder="Krankenkasse" value={profile.krankenkasse} editable={false} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: "#9CA3AF", backgroundColor: "#F9FAFB" }} />
+            <TextInput placeholder="Versichertennummer" value={profile.versichertennummer} editable={false} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: "#9CA3AF", backgroundColor: "#F9FAFB" }} />
+            <TextInput placeholder="Kostenstelle (optional)" value={costCenter} onChangeText={setCostCenter} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+            <TextInput placeholder="Rechnungs-E-Mail" value={billingEmail} onChangeText={setBillingEmail} keyboardType="email-address" style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
+          </>)}
+          {billingType === "private" && (
+            <Text style={{ fontSize: 14, color: "#6B7280", textAlign: "center", paddingVertical: 20 }}>Privatabrechnung – keine weiteren Angaben nötig.</Text>
+          )}
+          <Pressable onPress={() => onClose({ billingType, companyName, companyAddress, companyCity, vatNumber, costCenter, billingEmail })} style={{ backgroundColor: "#EF1D26", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 8 }}>
+            <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }}>Speichern</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </Modal>
   );
 }
 
@@ -521,6 +575,7 @@ export default function ProfileScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
 
   /** Google über Backend; returnUrl = exakt makeRedirectUri (siehe Metro-Log beim Klick). */
   const handleGoogleLogin = async () => {
@@ -735,33 +790,29 @@ export default function ProfileScreen() {
         {profile.isLoggedIn ? (
           /* ══ LOGGED IN ══ */
           <>
-            {/* Profile card */}
-            <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* Profile header */}
+            <View style={{ alignItems: "center", paddingVertical: 24, gap: 6 }}>
               {profile.photoUri ? (
-                <Image source={{ uri: profile.photoUri }} style={styles.avatar} />
+                <Image source={{ uri: profile.photoUri }} style={{ width: 80, height: 80, borderRadius: 40 }} />
               ) : (
-                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.avatarInitial}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#EF1D26", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "#fff", fontSize: 32, fontFamily: "Inter_700Bold" }}>
                     {profile.name ? profile.name[0].toUpperCase() : "?"}
                   </Text>
                 </View>
               )}
-              <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: colors.foreground }]}>
-                  {profile.name || "Kein Name"}
-                </Text>
-                <Text style={[styles.profileEmail, { color: colors.mutedForeground }]}>
-                  {profile.email || "Keine E-Mail"}
-                </Text>
-                {profile.googleId && (
-                  <View style={styles.googleBadge}>
-                    <Image source={require("../assets/images/google-icon.png")} style={{ width: 13, height: 13 }} resizeMode="contain" />
-                    <Text style={[styles.googleBadgeText, { color: "#1D4ED8" }]}>
-                      Anmeldung via Google
-                    </Text>
-                  </View>
-                )}
-              </View>
+              <Text style={{ color: "#000", fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 }}>
+                {profile.name || "Kein Name"}
+              </Text>
+              <Text style={{ color: "#8E8E93", fontSize: 13, fontFamily: "Inter_400Regular" }}>
+                {profile.email || "Keine E-Mail"}
+              </Text>
+              {profile.googleId && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 0.5, borderColor: "#E5E5EA", marginTop: 4 }}>
+                  <Image source={require("../assets/images/google-icon.png")} style={{ width: 14, height: 14 }} resizeMode="contain" />
+                  <Text style={{ fontSize: 12, color: "#1D4ED8", fontFamily: "Inter_500Medium" }}>Anmeldung via Google</Text>
+                </View>
+              )}
             </View>
 
             {/* Fahrten */}
@@ -782,7 +833,7 @@ export default function ProfileScreen() {
 
             {/* Zahlung */}
             <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ZAHLUNG</Text>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ZAHLUNG & ABRECHNUNG</Text>
               <SectionCard>
                 <Row
                   iconName="credit-card"
@@ -791,6 +842,14 @@ export default function ProfileScreen() {
                   label="Zahlungsmittel"
                   sublabel="Kreditkarte, PayPal verwalten"
                   onPress={() => router.push("/wallet")}
+                />
+                <Row
+                  iconName="file-text"
+                  iconBg="#FFF7ED"
+                  iconColor="#EA580C"
+                  label="Rechnungsadresse"
+                  sublabel={profile.billingType === "company" ? profile.companyName || "Firma hinterlegen" : profile.billingType === "insurance" ? profile.krankenkasse || "Krankenkasse hinterlegen" : "Privatperson"}
+                  onPress={() => setBillingOpen(true)}
                   isLast
                 />
               </SectionCard>
@@ -828,6 +887,7 @@ export default function ProfileScreen() {
                   label="Abmelden"
                   danger
                   isLast
+                  hideChevron
                   onPress={() => {
                     Alert.alert("Abmelden", "Möchtest du dich wirklich abmelden?", [
                       { text: "Abbrechen", style: "cancel" },
@@ -857,6 +917,14 @@ export default function ProfileScreen() {
             />
 
             {/* Patient Profile Modal */}
+            <BillingModal
+              visible={billingOpen}
+              profile={profile}
+              onClose={(data) => {
+                if (data) { updateProfile(data); Alert.alert("Gespeichert", "Rechnungsadresse wurde gespeichert."); }
+                setBillingOpen(false);
+              }}
+            />
             <PatientProfileModal
               visible={patientProfileOpen}
               profile={profile}

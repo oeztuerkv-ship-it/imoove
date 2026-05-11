@@ -210,9 +210,14 @@ export default function StatusScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const withinPickupHour = acceptedRequest?.scheduledAt
-    ? (new Date(acceptedRequest.scheduledAt).getTime() - now) <= 60 * 60 * 1000
-    : false;
+  const pickupDiffMs = acceptedRequest?.scheduledAt
+    ? new Date(acceptedRequest.scheduledAt).getTime() - now
+    : null;
+
+  const withinPickupHour =
+    pickupDiffMs !== null &&
+    pickupDiffMs >= 0 &&
+    pickupDiffMs <= 60 * 60 * 1000;
 
   const rawPhase:
     | "searching"

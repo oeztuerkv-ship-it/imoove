@@ -3,6 +3,12 @@ import type { RideRequest } from "./rideRequest";
 /** Partner-/Audit-Felder, die nicht in den gemeinsamen Fahrten-Poll (`GET /rides`) gehören. */
 export function stripPartnerOnlyRideFields(r: RideRequest): RideRequest {
   const partnerMeta = r.partnerBookingMeta;
+  const customerDriverNote =
+    partnerMeta &&
+    typeof partnerMeta === "object" &&
+    typeof (partnerMeta as Record<string, unknown>).customer_driver_note === "string"
+      ? String((partnerMeta as Record<string, unknown>).customer_driver_note).trim().slice(0, 500)
+      : "";
   const driverVisibleMedicalMeta =
     partnerMeta && typeof partnerMeta === "object" && (partnerMeta as Record<string, unknown>).medical_ride === true
       ? {
@@ -26,8 +32,11 @@ export function stripPartnerOnlyRideFields(r: RideRequest): RideRequest {
           )
             ? (partnerMeta as Record<string, unknown>).billing_missing_reasons
             : [],
+          ...(customerDriverNote ? { customer_driver_note: customerDriverNote } : {}),
         }
-      : null;
+      : customerDriverNote
+        ? { customer_driver_note: customerDriverNote }
+        : null;
   const {
     accessCodeNormalizedSnapshot: _snap,
     accessCodeTripOutcome: _to,
@@ -112,6 +121,9 @@ export function toCustomerRideView(r: RideRequest): RideRequest {
     partnerBookingMeta: {
       medical_ride: true,
       stepStatus: medicalStepStatus(meta),
+      ...(typeof meta.customer_driver_note === "string" && meta.customer_driver_note.trim()
+        ? { customer_driver_note: String(meta.customer_driver_note).trim().slice(0, 500) }
+        : {}),
     },
   } as RideRequest;
 }
@@ -126,6 +138,9 @@ export function toDriverRideView(r: RideRequest): RideRequest {
     partnerBookingMeta: {
       medical_ride: true,
       stepStatus: medicalStepStatus(meta),
+      ...(typeof meta.customer_driver_note === "string" && meta.customer_driver_note.trim()
+        ? { customer_driver_note: String(meta.customer_driver_note).trim().slice(0, 500) }
+        : {}),
     },
   } as RideRequest;
 }

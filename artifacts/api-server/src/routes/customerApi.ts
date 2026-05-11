@@ -156,4 +156,46 @@ router.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, as
   }
 });
 
+router.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const noteRaw = String((req.body as { note?: unknown })?.note ?? "");
+    const note = noteRaw.trim().slice(0, 500);
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const nextPartnerMeta =
+      ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object"
+        ? ({ ...ride.partnerBookingMeta } as Record<string, unknown>)
+        : {};
+    if (note) {
+      nextPartnerMeta.customer_driver_note = note;
+    } else {
+      delete nextPartnerMeta.customer_driver_note;
+    }
+    const updated = await updateRide(ride.id, {
+      partnerBookingMeta: nextPartnerMeta as (typeof ride)["partnerBookingMeta"],
+    });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
 export default router;

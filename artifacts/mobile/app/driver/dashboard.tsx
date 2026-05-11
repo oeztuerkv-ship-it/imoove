@@ -175,15 +175,8 @@ function parseEuroDriverInput(text: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const MOCK_RIDES = [
-  { id: "F-001", date: "01.04.2026", time: "08:14", from: "Bahnhof Esslingen", to: "Plochingen", km: 6.2, duration: 14, amount: 19.90, payment: "Bar" },
-  { id: "F-002", date: "01.04.2026", time: "09:42", from: "Marktplatz", to: "Flughafen Stuttgart", km: 28.4, duration: 31, amount: 78.50, payment: "Kreditkarte" },
-  { id: "F-003", date: "31.03.2026", time: "17:05", from: "Zollberg", to: "Bahnhof Esslingen", km: 3.8, duration: 9, amount: 15.70, payment: "Bar" },
-  { id: "F-004", date: "31.03.2026", time: "11:30", from: "Mettingen", to: "Nürtingen", km: 11.5, duration: 18, amount: 32.20, payment: "PayPal" },
-  { id: "F-005", date: "30.03.2026", time: "20:15", from: "Bahnhof Esslingen", to: "Stuttgart Mitte", km: 19.8, duration: 26, amount: 54.30, payment: "Bar" },
-  { id: "F-006", date: "30.03.2026", time: "14:00", from: "Oberesslingen", to: "Ostfildern", km: 5.1, duration: 11, amount: 17.90, payment: "Kreditkarte" },
-  { id: "F-007", date: "29.03.2026", time: "07:55", from: "Berkheim", to: "Flughafen Stuttgart", km: 25.2, duration: 28, amount: 68.80, payment: "Bar" },
-];
+// MOCK_RIDES entfernt - nur echte Fahrten aus RideContext
+type RideEntry = { id: string; date: string; time: string; from: string; to: string; km: number; duration: number; amount: number; payment: string; };
 
 const API_BASE = getApiBaseUrl();
 const DRIVER_MARKET_STATUSES = new Set<RideRequest["status"]>([
@@ -303,7 +296,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       style={{
         marginHorizontal: 14,
         marginBottom: 14,
-        borderRadius: 20,
+        borderRadius: 16,
         borderWidth: 2,
         borderColor: "#22C55E",
         backgroundColor: "#fff",
@@ -327,7 +320,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
-          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 15, color: "#0F172A" }}>Sofortfahrt</Text>
+          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: "#0F172A" }}>Sofortfahrt</Text>
         </View>
         <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
           {date} · {time} Uhr
@@ -337,7 +330,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
         {distPickupLabel ? (
           <View style={pillRed}>
-            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{distPickupLabel}</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{distPickupLabel}</Text>
           </View>
         ) : null}
         <View style={pillGray}>
@@ -349,14 +342,14 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#475569" }}>{req.vehicle}</Text>
         </View>
         <View style={[pillGray, { backgroundColor: modeBadge.bg }]}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: modeBadge.color }}>
+          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: modeBadge.color }}>
             {modeBadge.label}
           </Text>
         </View>
         {hasTaxiEstimate ? (
           <View style={[pillGray, { backgroundColor: "#FEE2E2", flexDirection: "row", alignItems: "center", gap: 6 }]}>
             <MaterialCommunityIcons name="shield-check-outline" size={13} color="#B91C1C" />
-            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>
               Taxi-Schätzpreis
             </Text>
           </View>
@@ -412,7 +405,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
             <MaterialCommunityIcons name="hospital-box-outline" size={14} color="#2563EB" />
-            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>Krankenfahrt-Check</Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#1D4ED8" }}>Krankenfahrt-Check</Text>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
             {medicalChecklist.map((step) => (
@@ -440,12 +433,12 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
         <Feather name="user" size={15} color="#334155" />
-        <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#334155", flexShrink: 1 }}>
+        <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#334155", flexShrink: 1 }}>
           {req.customerName}
         </Text>
         <Text style={{ color: "#CBD5E1" }}>·</Text>
         <MaterialCommunityIcons name="cash" size={18} color="#64748B" />
-        <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#475569" }}>{payLabel}</Text>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#475569" }}>{payLabel}</Text>
       </View>
 
       <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 14, paddingBottom: 16 }}>
@@ -458,7 +451,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             justifyContent: "center",
             gap: 6,
             borderRadius: 14,
-            paddingVertical: 14,
+            paddingVertical: 10,
             borderWidth: 2,
             borderColor: "#DC2626",
             backgroundColor: pressed ? "#FEF2F2" : "#fff",
@@ -476,7 +469,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             justifyContent: "center",
             gap: 8,
             borderRadius: 14,
-            paddingVertical: 14,
+            paddingVertical: 10,
             backgroundColor: pressed ? "#15803D" : "#16A34A",
           })}
         >
@@ -505,18 +498,19 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
 
   const fromAddress = splitAddress(req.fromFull);
   const toAddress = splitAddress(req.toFull);
+  const customerNoteLine = customerDriverNoteLine(req);
 
   return (
     <View style={[styles.reqCard, styles.reqCardScheduled, { borderRadius: 22, padding: 18 }]}>
       <View style={{ flexDirection: "row" }}>
         <View style={{ width: 48, alignItems: "center", marginRight: 14 }}>
-          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 48, height: 38, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontSize: 25 }}>📍</Text>
           </View>
 
           <View style={{ width: 1, height: 42, borderStyle: "dashed", borderWidth: 1, borderColor: "#D1D5DB", marginVertical: 2 }} />
 
-          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 48, height: 38, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center" }}>
             <Text style={{ fontSize: 23 }}>🏁</Text>
           </View>
         </View>
@@ -524,7 +518,7 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 18, fontFamily: "Inter_800ExtraBold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+              <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
                 {fromAddress.place}
               </Text>
               <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
@@ -543,7 +537,7 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
           </View>
 
           <View style={{ marginTop: 38 }}>
-            <Text style={{ fontSize: 18, fontFamily: "Inter_800ExtraBold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
+            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#111827", marginBottom: 5 }} numberOfLines={1}>
               {toAddress.place}
             </Text>
             <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: "#6B7280", lineHeight: 19 }} numberOfLines={2}>
@@ -553,15 +547,39 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
         </View>
       </View>
 
+      {customerNoteLine ? (
+        <View style={{
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: 8,
+          marginTop: 16,
+          padding: 12,
+          borderRadius: 14,
+          backgroundColor: "#ECFDF5",
+          borderWidth: 1,
+          borderColor: "#99F6E4",
+        }}>
+          <Feather name="message-square" size={16} color="#0F766E" style={{ marginTop: 1 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#0F766E", marginBottom: 3 }}>
+              Hinweis Kunde
+            </Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#115E59", lineHeight: 18 }} numberOfLines={5}>
+              {customerNoteLine}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#374151" }}>
-            {req.distanceKm.toFixed(1)} km · {Math.round(req.durationMinutes)} Min.
+        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
+          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
+            {req.distanceKm.toFixed(1)} km
           </Text>
         </View>
 
-        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#374151" }}>
+        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
+          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
             {req.rideKind === "medical"
               ? "Krankenfahrt"
               : req.voucherCode || req.accessCodeSummary
@@ -572,8 +590,8 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
           </Text>
         </View>
 
-        <View style={{ backgroundColor: "#FFF1F1", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_800ExtraBold", color: "#E11D2E" }}>
+        <View style={{ backgroundColor: "#FFF1F1", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#E11D2E" }}>
             ca. {req.estimatedFare.toFixed(2)} €
           </Text>
         </View>
@@ -581,7 +599,7 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
 
       {!isAssignedUpcoming ? (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
-          <Pressable style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 14, borderRadius: 14 }]} onPress={onReject}>
+          <Pressable style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 10, borderRadius: 14 }]} onPress={onReject}>
             <Text style={[styles.rejectText, { color: "#B91C1C" }]}>Ablehnen</Text>
           </Pressable>
           <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#DC2626", paddingVertical: 15, borderRadius: 14 }]} onPress={onAccept}>
@@ -679,7 +697,7 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
           {isAvailable
             ? firstReq
               ? `${instantReqs.length} ${instantReqs.length > 1 ? "Aufträge" : "Auftrag"} wartend`
-              : "Warte auf Aufträge"
+              : "Bereit für Aufträge"
             : "Offline — Keine Aufträge"}
         </Text>
       </View>
@@ -787,7 +805,7 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
 }
 
 /* ─── Tab: Fahrten ─── */
-function TabFahrten({ allRides }: { allRides: typeof MOCK_RIDES }) {
+function TabFahrten({ allRides }: { allRides: RideEntry[] }) {
   const colors = useColors();
   const [activeFilter, setActiveFilter] = useState<"heute" | "woche" | "alle">("alle");
   const todayStr = fmt(new Date()).date;
@@ -797,11 +815,11 @@ function TabFahrten({ allRides }: { allRides: typeof MOCK_RIDES }) {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-      <View style={[styles.filterRow, { backgroundColor: colors.muted }]}>
+      <View style={styles.filterRow}>
         {(["heute", "woche", "alle"] as const).map((f) => (
           <Pressable key={f} style={[styles.filterBtn, activeFilter === f && styles.filterBtnActive]}
             onPress={() => setActiveFilter(f)}>
-            <Text style={[styles.filterText, { color: activeFilter === f ? "#fff" : colors.mutedForeground }]}>
+            <Text style={[styles.filterText, { color: activeFilter === f ? "#EF1D26" : "#8E8E93", fontFamily: activeFilter === f ? "Inter_700Bold" : "Inter_500Medium", fontSize: 14 }]}>
               {f === "heute" ? "Heute" : f === "woche" ? "Woche" : "Alle"}
             </Text>
           </Pressable>
@@ -840,12 +858,16 @@ function TabFahrten({ allRides }: { allRides: typeof MOCK_RIDES }) {
 }
 
 /* ─── Tab: Geldbeutel ─── */
-function TabGeldbeutel({ allRides, driverRating }: { allRides: typeof MOCK_RIDES; driverRating: number }) {
+function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driverRating: number }) {
   const colors = useColors();
   const [hidden, setHidden] = useState(false);
   const todayStr = fmt(new Date()).date;
   const todayRides = allRides.filter((r) => r.date === todayStr);
-  const weekRides = allRides.slice(0, 12);
+  const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const weekRides = allRides.filter((r) => {
+    const [dd, mm, yy] = r.date.split(".");
+    return new Date(`${yy}-${mm}-${dd}`) >= sevenDaysAgo;
+  });
   const todayTotal = todayRides.reduce((s, r) => s + r.amount, 0);
   const weekTotal = weekRides.reduce((s, r) => s + r.amount, 0);
   const allTotal = allRides.reduce((s, r) => s + r.amount, 0);
@@ -939,7 +961,15 @@ function TabProfil({
 }) {
   const colors = useColors();
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabScroll, { paddingTop: 24 }]}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.tabScroll, { paddingTop: 8 }]}>
+      {/* Driver info header */}
+      <View style={{ alignItems: "center", paddingVertical: 24, gap: 6 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EF1D26", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: "#fff", fontSize: 28, fontFamily: "Inter_700Bold" }}>{driver.name?.[0] ?? "F"}</Text>
+        </View>
+        <Text style={{ color: "#000", fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 }}>{driver.name}</Text>
+        <Text style={{ color: "#8E8E93", fontSize: 13, fontFamily: "Inter_400Regular" }}>{driver.plate}</Text>
+      </View>
       {/* Vehicle info */}
       <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground }]}>FAHRZEUG</Text>
@@ -1232,7 +1262,7 @@ function MedicalRideProofActions({
               alignSelf: "center",
               backgroundColor: "#fff",
               paddingVertical: 12,
-              paddingHorizontal: 20,
+              paddingHorizontal: 14,
               borderRadius: 12,
             }}
           >
@@ -2262,12 +2292,45 @@ export default function DriverDashboard() {
   }, [requests, driverId]);
 
   const appRides = history.filter((r) => r.status === "completed");
-  const allRides = useMemo(() => {
-    const now = new Date();
-    const fromApp = appRides.map((r, i) => ({
-      id: `A-${i + 1}`,
-      date: fmt(now).date,
-      time: fmt(now).time,
+  const [serverRides, setServerRides] = useState<RideEntry[]>([]);
+
+  useEffect(() => {
+    if (!driver?.authToken || !API_BASE) return;
+    fetch(`${API_BASE}/fleet-driver/v1/completed-rides`, {
+      headers: { Authorization: `Bearer ${driver.authToken}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!Array.isArray(data.rides)) return;
+        const mapped: RideEntry[] = data.rides.map((r: any, i: number) => {
+          const d = r.createdAt ? new Date(r.createdAt) : new Date();
+          return {
+            id: r.id ?? `S-${i + 1}`,
+            date: fmt(d).date,
+            time: fmt(d).time,
+            from: r.from ?? r.fromFull ?? "Start",
+            to: r.to ?? r.toFull ?? "Ziel",
+            km: r.distanceKm ?? 0,
+            duration: r.durationMinutes ?? 0,
+            amount: r.finalFare ?? r.estimatedFare ?? 0,
+            payment:
+              r.paymentMethod === "cash" ? "Bar" :
+              r.paymentMethod === "paypal" ? "PayPal" :
+              r.paymentMethod === "card" ? "Kreditkarte" :
+              r.paymentMethod ?? "Bar",
+          };
+        });
+        setServerRides(mapped);
+      })
+      .catch(() => {});
+  }, [driver?.authToken, activeTab]);
+
+  const allRides = serverRides.length > 0 ? serverRides : appRides.map((r, i) => {
+    const d = r.createdAt ? new Date(r.createdAt) : new Date();
+    return {
+      id: r.id ?? `A-${i + 1}`,
+      date: fmt(d).date,
+      time: fmt(d).time,
       from: typeof r.origin === "string" ? r.origin.split(",")[0] : (r.origin as any)?.displayName?.split(",")[0] ?? "Start",
       to: typeof r.destination === "string" ? r.destination.split(",")[0] : (r.destination as any)?.displayName?.split(",")[0] ?? "Ziel",
       km: (r as any).route?.distanceKm ?? r.distanceKm ?? 0,
@@ -2278,9 +2341,8 @@ export default function DriverDashboard() {
         r.paymentMethod === "paypal" ? "PayPal" :
         r.paymentMethod === "card" ? "Kreditkarte" :
         r.paymentMethod,
-    }));
-    return [...fromApp, ...MOCK_RIDES];
-  }, [appRides]);
+    };
+  });
 
   const handleAccept = async (id: string) => {
     if (!driver) return;
@@ -2509,7 +2571,7 @@ export default function DriverDashboard() {
   if (!allowDriverApp) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", padding: 24, paddingTop: topPad }}>
-        <Text style={{ fontSize: 16, fontFamily: "Inter_500Medium", textAlign: "center", color: colors.foreground, lineHeight: 24 }}>
+        <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center", color: colors.foreground, lineHeight: 24 }}>
           Die Fahrer-App ist in den Plattform-Einstellungen deaktiviert. Bitte später erneut versuchen.
         </Text>
       </View>
@@ -2523,7 +2585,7 @@ export default function DriverDashboard() {
         <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#FEE2E2", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
           <Feather name="slash" size={36} color="#DC2626" />
         </View>
-        <Text style={{ fontSize: 22, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center", marginBottom: 10 }}>
+        <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center", marginBottom: 10 }}>
           Account gesperrt
         </Text>
         <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
@@ -2534,7 +2596,7 @@ export default function DriverDashboard() {
           <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#DC2626" }}>{unblockStr} Uhr</Text>
         </View>
         <Pressable
-          style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border }}
           onPress={handleLogout}
         >
           <Feather name="log-out" size={16} color="#DC2626" />
@@ -2560,65 +2622,57 @@ export default function DriverDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 4, paddingBottom: 16, backgroundColor: "#F7F7F5" }]}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarBg}>
-              <Text style={styles.avatarText}>{driver.name[0]}</Text>
-            </View>
-            <View>
-              <Text style={styles.headerName}>{driver.name}</Text>
-              <Text style={styles.headerSub}>Kennzeichen · {driver.plate}</Text>
-            </View>
+      {/* Modern driver header */}
+      <View style={[styles.modernDriverHeader, { top: topPad }]}>
+        <View style={styles.driverIdentity}>
+          <View style={styles.driverTextBlock}>
+            <Text style={styles.driverNameModern} numberOfLines={1}>{driver.name}</Text>
+            <Text style={styles.driverPlateModern} numberOfLines={1}>{driver.plate}</Text>
+          </View>
         </View>
+        <View style={styles.headerDivider} />
+
         <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      if (!driver.einsatzbereit) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        void refreshEinsatzbereit();
-        Alert.alert(
-          driver.blockBannerTitle || "Einschränkung aktiv",
-          driver.notFreigegebenMessage ||
-            "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
-        );
-        return;
-      }
-              setAvailable(!driver.isAvailable);
-            }}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+            if (!driver.einsatzbereit) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              void refreshEinsatzbereit();
+              Alert.alert(
+                driver.blockBannerTitle || "Einschränkung aktiv",
+                driver.notFreigegebenMessage ||
+                  "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
+              );
+              return;
+            }
+
+            setAvailable(!driver.isAvailable);
+          }}
+          style={[
+            styles.segmentSwitch,
+            { opacity: driver.einsatzbereit ? 1 : 0.7 },
+          ]}
+        >
+          <View
             style={[
-              styles.availToggle,
-              {
-                backgroundColor: "#FFFFFF",
-                opacity: driver.einsatzbereit ? 1 : 0.85,
-                shadowColor: "#111827",
-                shadowOpacity: 0.06,
-                shadowRadius: 12,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: 4,
-              },
+              styles.segmentActive,
+              driver.einsatzbereit && driver.isAvailable ? styles.segmentOnline : styles.segmentOffline,
             ]}
           >
-            <View
-              style={[
-                styles.availSegment,
-                {
-                  backgroundColor: driver.einsatzbereit && driver.isAvailable ? "#16A34A" : "#E5E7EB",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.availSegmentText,
-                  { color: driver.einsatzbereit && driver.isAvailable ? "#FFFFFF" : "#6B7280" },
-                ]}
-              >
-                {!driver.einsatzbereit ? "GESPERRT" : driver.isAvailable ? "ONLINE" : "OFFLINE"}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
+            <View style={styles.segmentDotActive} />
+            <Text style={styles.segmentActiveText}>
+              {!driver.einsatzbereit ? "Gesperrt" : driver.isAvailable ? "Online" : "Offline"}
+            </Text>
+          </View>
+
+          <View style={styles.segmentInactive}>
+            <View style={styles.segmentDotInactive} />
+            <Text style={styles.segmentInactiveText}>
+              {driver.isAvailable ? "Offline" : "Online"}
+            </Text>
+          </View>
+        </Pressable>
       </View>
 
       {!driver.einsatzbereit && (
@@ -2641,7 +2695,7 @@ export default function DriverDashboard() {
       )}
 
       {/* Content */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, paddingTop: topPad + 75 }}>
         {activeDriverRequest ? (
           <ActiveRideScreen
             req={activeDriverRequest}
@@ -2663,24 +2717,27 @@ export default function DriverDashboard() {
             )}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-                <View style={{ flexDirection: "row", gap: 8, marginBottom: 18 }}>
+                <View style={{ flexDirection: "row", marginBottom: 18, backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3 }}>
                   <Pressable
                     onPress={() => setOrdersView("anfragen")}
                     style={{
                       flex: 1,
-                      borderRadius: 999,
-                      paddingVertical: 11,
+                      borderRadius: 10,
+                      paddingVertical: 10,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: "#FFFFFF",
-                      borderWidth: 1.5,
-                      borderColor: ordersView === "anfragen" ? "#EF4444" : "#E5E7EB",
+                      backgroundColor: ordersView === "anfragen" ? "#FFFFFF" : "transparent",
+                      shadowColor: "#000",
+                      shadowOpacity: ordersView === "anfragen" ? 0.08 : 0,
+                      shadowRadius: 4,
+                      elevation: ordersView === "anfragen" ? 2 : 0,
                     }}
                   >
                     <Text
                       style={{
-                        fontFamily: "Inter_700Bold",
-                        color: "#111827",
+                        fontFamily: ordersView === "anfragen" ? "Inter_700Bold" : "Inter_500Medium",
+                        color: ordersView === "anfragen" ? "#EF1D26" : "#6B7280",
+                        fontSize: 14,
                       }}
                     >
                       Anfragen{pendingRequests.length + scheduledOpenRequests.length > 0 ? ` (${pendingRequests.length + scheduledOpenRequests.length})` : ""}
@@ -2691,19 +2748,22 @@ export default function DriverDashboard() {
                     onPress={() => setOrdersView("angenommen")}
                     style={{
                       flex: 1,
-                      borderRadius: 999,
-                      paddingVertical: 11,
+                      borderRadius: 10,
+                      paddingVertical: 10,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: "#FFFFFF",
-                      borderWidth: 1.5,
-                      borderColor: ordersView === "angenommen" ? "#EF4444" : "#E5E7EB",
+                      backgroundColor: ordersView === "angenommen" ? "#FFFFFF" : "transparent",
+                      shadowColor: "#000",
+                      shadowOpacity: ordersView === "angenommen" ? 0.08 : 0,
+                      shadowRadius: 4,
+                      elevation: ordersView === "angenommen" ? 2 : 0,
                     }}
                   >
                     <Text
                       style={{
-                        fontFamily: "Inter_700Bold",
-                        color: "#111827",
+                        fontFamily: ordersView === "angenommen" ? "Inter_700Bold" : "Inter_500Medium",
+                        color: ordersView === "angenommen" ? "#EF1D26" : "#6B7280",
+                        fontSize: 14,
                       }}
                     >
                       Angenommene{scheduledAssignedRequests.length > 0 ? ` (${scheduledAssignedRequests.length})` : ""}
@@ -2717,23 +2777,22 @@ export default function DriverDashboard() {
                       setShowCodeRideModal(true);
                     }}
                     style={{
-                      borderRadius: 999,
-                      paddingHorizontal: 16,
-                      paddingVertical: 11,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: "#FFFFFF",
-                      borderWidth: 1.5,
-                      borderColor: ordersView === "code" ? "#EF4444" : "#E5E7EB",
+                      backgroundColor: ordersView === "code" ? "#FFFFFF" : "transparent",
+                      borderRadius: 9,
                       flexDirection: "row",
-                      gap: 3,
+                      gap: 4,
                     }}
                   >
-                    <Feather name="plus" size={15} color="#111827" />
+                    <Feather name="plus" size={13} color={ordersView === "code" ? "#EF1D26" : "#8E8E93"} />
                     <Text
                       style={{
-                        fontFamily: "Inter_700Bold",
-                        color: "#111827",
+                        fontFamily: ordersView === "code" ? "Inter_700Bold" : "Inter_500Medium",
+                        color: ordersView === "code" ? "#EF1D26" : "#8E8E93",
+                        fontSize: 14,
                       }}
                     >
                       Code
@@ -3120,15 +3179,120 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   avatarBg: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#EF2323", justifyContent: "center", alignItems: "center", shadowColor: "#EF2323", shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#fff" },
-  headerName: { fontSize: 17, fontFamily: "Inter_800ExtraBold", color: "#111827" },
+  headerName: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#111827" },
   headerSub: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#6B7280", marginTop: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+
+  modernDriverHeader: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    minHeight: 72,
+    borderRadius: 20,
+    backgroundColor: "#F2F2F7",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#C6C6C8",
+  },
+  driverIdentity: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+  avatarWrap: { width: 58, height: 58, marginRight: 14 },
+  avatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#EF1D26",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarLetter: { color: "#FFFFFF", fontSize: 21, fontFamily: "Inter_700Bold" },
+  avatarStatusDot: {
+    position: "absolute",
+    right: -1,
+    bottom: 3,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 3,
+    borderColor: "#151A1F",
+  },
+  driverTextBlock: { flexShrink: 1, minWidth: 0 },
+  driverNameModern: {
+    color: "#000000",
+    fontSize: 22,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: -0.5,
+  },
+  driverPlateModern: {
+    color: "#6B6B6B",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.3,
+  },
+  headerDivider: {
+    width: 1,
+    height: 38,
+    backgroundColor: "#C6C6C8",
+    marginHorizontal: 10,
+  },
+  segmentSwitch: {
+    height: 38,
+    borderRadius: 24,
+    backgroundColor: "#E5E5EA",
+    padding: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 160,
+    flexShrink: 0,
+  },
+  segmentActive: {
+    flex: 1,
+    height: 32,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentOnline: { backgroundColor: "#22C55E" },
+  segmentOffline: { backgroundColor: "#6B7280" },
+  segmentInactive: {
+    flex: 1,
+    height: 32,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentDotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FFFFFF",
+    marginRight: 5,
+  },
+  segmentDotInactive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#9CA3AF",
+    marginRight: 5,
+  },
+  segmentActiveText: { color: "#FFFFFF", fontSize: 15, fontFamily: "Inter_700Bold", paddingHorizontal: 4 },
+  segmentInactiveText: { color: "#8E8E93", fontSize: 13, fontFamily: "Inter_700Bold", paddingHorizontal: 4 },
   availToggle: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 9 },
   availDot: { width: 8, height: 8, borderRadius: 4 },
-  availLabel: { fontSize: 13, fontFamily: "Inter_800ExtraBold", color: "#111827" },
+  availLabel: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#111827" },
   availSub: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#6B7280" },
   availSegment: { borderRadius: 999, paddingHorizontal: 18, paddingVertical: 9, alignItems: "center", justifyContent: "center" },
-  availSegmentText: { fontSize: 13, fontFamily: "Inter_800ExtraBold", letterSpacing: 0.2 },
+  availSegmentText: { fontSize: 13, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
   logoutBtn: { width: 32, height: 32, justifyContent: "center", alignItems: "center" },
 
   tabBar: { flexDirection: "row", borderTopWidth: 1, paddingTop: 6 },
@@ -3144,7 +3308,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptySub: { fontSize: 13, fontFamily: "Inter_400Regular" },
   ordersHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  ordersHeaderTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  ordersHeaderTitle: { fontSize: 13, fontFamily: "Inter_700Bold" },
   ordersPlusBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -3154,7 +3318,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: "#2563EB",
   },
-  ordersPlusText: { color: "#fff", fontSize: 12, fontFamily: "Inter_700Bold" },
+  ordersPlusText: { color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" },
   codeRideField: { gap: 6 },
   codeRideLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#374151" },
   codeRideInput: {
@@ -3204,7 +3368,7 @@ const styles = StyleSheet.create({
 
   /* Instant card */
   reqCard: {
-    backgroundColor: "#fff", borderRadius: 20, borderWidth: 2, borderColor: "#22C55E",
+    backgroundColor: "#fff", borderRadius: 16, borderWidth: 2, borderColor: "#22C55E",
     overflow: "hidden",
     shadowColor: "#22C55E", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 8,
   },
@@ -3231,13 +3395,13 @@ const styles = StyleSheet.create({
   reqActions: { flexDirection: "row", gap: 10, padding: 14 },
   rejectBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 14, paddingVertical: 13, borderWidth: 1.5, borderColor: "#DC2626", backgroundColor: "#FEF2F2" },
   rejectText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#DC2626" },
-  acceptBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 14, paddingVertical: 14, backgroundColor: "#22C55E" },
+  acceptBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 14, paddingVertical: 10, backgroundColor: "#22C55E" },
   acceptBtnLocked: { backgroundColor: "#9CA3AF" },
   acceptText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#fff", flexShrink: 1 },
 
   /* Scheduled card extras */
   reqCardScheduled: { borderColor: "#F59E0B", shadowColor: "#F59E0B" },
-  schedPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  schedPill: { borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
   schedPillText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
   schedTimeBlock: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, backgroundColor: "#FFFBEB" },
   schedTimeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
@@ -3254,7 +3418,7 @@ const styles = StyleSheet.create({
   mapStatusChip: {
     position: "absolute", top: 16, alignSelf: "center",
     flexDirection: "row", alignItems: "center", gap: 7,
-    backgroundColor: "rgba(0,0,0,0.75)", borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.75)", borderRadius: 16,
     paddingHorizontal: 14, paddingVertical: 7,
   },
   mapStatusDot: { width: 9, height: 9, borderRadius: 5 },
@@ -3272,22 +3436,22 @@ const styles = StyleSheet.create({
   /* Map tab (old) */
   mapTabContainer: { flex: 1 },
   mapOverlay: { position: "absolute", bottom: 16, left: 16, right: 16 },
-  mapCard: { backgroundColor: "#fff", borderRadius: 20, padding: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8 },
+  mapCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 8 },
   mapCardRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
   mapCardTitle: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#15803D" },
   mapCardAddr: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#111", marginBottom: 12 },
   mapCardDivider: { height: 1, backgroundColor: "#F3F4F6", marginBottom: 12 },
   mapCardStats: { flexDirection: "row", justifyContent: "space-around", alignItems: "center" },
   mapStatItem: { alignItems: "center", gap: 2 },
-  mapStatValue: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111" },
+  mapStatValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#111" },
   mapStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#9CA3AF" },
   mapStatDivider: { width: 1, height: 28, backgroundColor: "#E5E7EB" },
 
   /* Fahrten tab */
-  filterRow: { flexDirection: "row", borderRadius: 14, padding: 4, gap: 4, marginBottom: 4 },
-  filterBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
-  filterBtnActive: { backgroundColor: "#F3F4F6" },
-  filterText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  filterRow: { flexDirection: "row", backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3, marginBottom: 18, marginHorizontal: 0 },
+  filterBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
+  filterBtnActive: { backgroundColor: "#FFFFFF", borderRadius: 9 },
+  filterText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   rideCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 10 },
   rideTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   rideId: { fontSize: 11, fontFamily: "Inter_400Regular" },
@@ -3304,13 +3468,13 @@ const styles = StyleSheet.create({
   /* Einnahmen / Geldbeutel tab */
   earningsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   earnCard: { width: "47%", borderRadius: 16, borderWidth: 1, padding: 16, gap: 4 },
-  earnIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 6 },
+  earnIconBg: { width: 40, height: 32, borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 6 },
   earnValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
   earnLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
   earnSub: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 2 },
 
   /* Privacy / eye */
-  privacyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 4 },
+  privacyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10, marginBottom: 4 },
   privacyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   privacySub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   eyeBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" },
@@ -3336,12 +3500,12 @@ const styles = StyleSheet.create({
   profilRatingText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   profilSectionTitle: { fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, alignSelf: "flex-start" },
   profilRow: { flexDirection: "row", alignItems: "center", gap: 12, width: "100%", paddingVertical: 4 },
-  profilIconBg: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  profilRowLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  profilIconBg: { width: 40, height: 32, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  profilRowLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   profilRowSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   profilDivider: { height: 1, marginVertical: 8, width: "100%" },
   profilLogoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 16, paddingVertical: 15, borderWidth: 1.5, borderColor: "#DC2626", backgroundColor: "#FEF2F2", marginTop: 4 },
-  profilLogoutText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#DC2626" },
+  profilLogoutText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#DC2626" },
 });
 
 const activeStyles = StyleSheet.create({
@@ -3353,18 +3517,18 @@ const activeStyles = StyleSheet.create({
   },
   headerBannerInner: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerBannerDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22C55E" },
-  headerBannerText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  headerBannerText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   headerBannerSub: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)" },
 
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 14, shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 16 },
   customerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   customerAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#DC2626", justifyContent: "center", alignItems: "center" },
   customerAvatarText: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff" },
-  customerName: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  customerName: { fontSize: 13, fontFamily: "Inter_700Bold" },
   customerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   fareBox: { alignItems: "flex-end" },
   fareLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#9CA3AF", textTransform: "uppercase" },
-  fareValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#22C55E" },
+  fareValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#22C55E" },
   fareBruttoHint: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#16A34A" },
 
   routeCard: { borderRadius: 14, padding: 14, gap: 4 },
@@ -3388,22 +3552,22 @@ const activeStyles = StyleSheet.create({
   schedInfoLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
   schedInfoLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#B45309", textTransform: "uppercase", letterSpacing: 0.5 },
   schedInfoTime: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#92400E", marginTop: 2 },
-  schedInfoBadge: { backgroundColor: "#F59E0B", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  schedInfoBadge: { backgroundColor: "#F59E0B", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 4 },
   schedInfoBadgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#fff" },
 
   stornoBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12 },
   stornoBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: "#DC2626" },
 
   pickupBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#22C55E", borderRadius: 16, paddingVertical: 16 },
-  pickupBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  navBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#2563EB", borderRadius: 16, paddingVertical: 14, marginBottom: 8 },
-  navBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  pickupBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
+  navBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#2563EB", borderRadius: 16, paddingVertical: 10, marginBottom: 8 },
+  navBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   binDaBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#22C55E", borderRadius: 16, paddingVertical: 16 },
-  binDaBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  binDaBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   startDrivingBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#16A34A", borderRadius: 16, paddingVertical: 16 },
-  startDrivingBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  startDrivingBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   completeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#DC2626", borderRadius: 16, paddingVertical: 16 },
-  completeBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  completeBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
 
   /* Price modal */
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.28)" },
@@ -3413,7 +3577,7 @@ const activeStyles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.15, shadowRadius: 20,
   },
   priceModalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#E5E7EB", alignSelf: "center", marginBottom: 4 },
-  priceModalTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#111", textAlign: "center" },
+  priceModalTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#111", textAlign: "center" },
   priceModalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#6B7280", textAlign: "center", marginTop: -8 },
   priceModalRoute: { backgroundColor: "#F9FAFB", borderRadius: 14, padding: 14, gap: 6 },
   priceModalRouteLine: { width: 2, height: 16, backgroundColor: "#E5E7EB", marginLeft: 5 },
@@ -3425,17 +3589,17 @@ const activeStyles = StyleSheet.create({
   priceInputWrapper: {
     flexDirection: "row", alignItems: "center",
     borderWidth: 2, borderColor: "#22C55E", borderRadius: 16,
-    paddingHorizontal: 20, paddingVertical: 14, gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 8,
     backgroundColor: "#F0FDF4",
   },
   priceInputCurrency: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#15803D" },
   priceInput: { flex: 1, fontSize: 36, fontFamily: "Inter_700Bold", color: "#111" },
   priceInputHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF", textAlign: "center", marginTop: -8 },
   priceModalBtns: { flexDirection: "row", gap: 12 },
-  priceCancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: "center", borderWidth: 1.5, borderColor: "#E5E7EB" },
+  priceCancelBtn: { flex: 1, paddingVertical: 10, borderRadius: 14, alignItems: "center", borderWidth: 1.5, borderColor: "#E5E7EB" },
   priceCancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
-  priceConfirmBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: "#22C55E" },
-  priceConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  priceConfirmBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 10, borderRadius: 14, backgroundColor: "#22C55E" },
+  priceConfirmText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
   sheetScreen: {
     flex: 1,
     paddingBottom: 10,

@@ -11,7 +11,7 @@ import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
-import { listRides } from "../db/ridesData";
+import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
@@ -377,6 +377,16 @@ router.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (r
     return;
   }
   res.json({ ok: true });
+});
+
+router.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = req.fleetDriverAuth!;
+    const rides = await listRidesForDriver(a.fleetDriverId);
+    res.json({ rides });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

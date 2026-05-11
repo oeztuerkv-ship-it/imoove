@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Router, type IRouter, type Response } from "express";
 import type { RideRequest } from "../domain/rideRequest";
@@ -1170,6 +1170,42 @@ router.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, 
         pdfFileKey: relKey,
       },
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+router.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req as PanelAuthRequest, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const rideId = String(req.params.id ?? "").trim();
+    const ride = await findRide(rideId);
+    if (!ride || ride.companyId !== ctx.claims.companyId) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const meta = ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object"
+      ? (ride.partnerBookingMeta as Record<string, unknown>)
+      : {};
+    const fileKey = typeof meta.invoice_pdf_file_key === "string" ? meta.invoice_pdf_file_key.trim() : "";
+    if (!fileKey) {
+      res.status(404).json({ error: "invoice_not_found" });
+      return;
+    }
+    const absPath = path.join(INVOICE_UPLOAD_ROOT, fileKey);
+    const buf = await readFile(absPath).catch(() => null);
+    if (!buf) {
+      res.status(404).json({ error: "pdf_file_missing" });
+      return;
+    }
+    const invoiceNumber = typeof meta.invoice_number === "string" ? meta.invoice_number : "rechnung";
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Rechnung-${invoiceNumber}.pdf"`);
+    res.send(buf);
   } catch (e) {
     next(e);
   }

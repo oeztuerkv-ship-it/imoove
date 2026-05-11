@@ -107,19 +107,17 @@ async function expirePastOpenReservationsByIds(
   return new Set(rows.map((r) => r.id));
 }
 
-function withPromotedStatuses(
+function withLifecycleStatuses(
   rows: Array<typeof ridesTable.$inferSelect>,
   promotedIds: Set<string>,
+  expiredIds: Set<string>,
 ): Array<typeof ridesTable.$inferSelect> {
-  if (promotedIds.size === 0) return rows;
-  return rows.map((r) =>
-    promotedIds.has(r.id)
-      ? {
-          ...r,
-          status: "ready_for_dispatch",
-        }
-      : r,
-  );
+  if (promotedIds.size === 0 && expiredIds.size === 0) return rows;
+  return rows.map((r) => {
+    if (expiredIds.has(r.id)) return { ...r, status: "expired" };
+    if (promotedIds.has(r.id)) return { ...r, status: "ready_for_dispatch" };
+    return r;
+  });
 }
 
 /**
@@ -458,9 +456,9 @@ export async function listRidesForCompanyFiltered(
     .from(ridesTable)
     .where(and(...cond))
     .orderBy(desc(ridesTable.created_at));
-  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
+  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withPromotedStatuses(rows, promoted).map(rowToRide);
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 
 export async function listRides(): Promise<RideRequest[]> {
@@ -473,9 +471,9 @@ export async function listRides(): Promise<RideRequest[]> {
     return [...memoryRides];
   }
   const rows = await db.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
-  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
+  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withPromotedStatuses(rows, promoted).map(rowToRide);
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 
 /** Nur Fahrten mit gesetzter company_id = Mandant (Partner-Panel-Scope). */
@@ -496,9 +494,9 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
     .from(ridesTable)
     .where(companyIdMatchCondition(companyId))
     .orderBy(desc(ridesTable.created_at));
-  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
+  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withPromotedStatuses(rows, promoted).map(rowToRide);
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 
 /** Kunde: nur eigene Fahrten über `passenger_id`. */
@@ -521,9 +519,9 @@ export async function listRidesForPassenger(passengerId: string): Promise<RideRe
     .from(ridesTable)
     .where(eq(ridesTable.passenger_id, pid))
     .orderBy(desc(ridesTable.created_at));
-  await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
+  const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
   const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withPromotedStatuses(rows, promoted).map(rowToRide);
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 
 /** Letzte Fahrt des Fahrers im Mandanten (Näherung: kein Fahrzeug-FK auf rides). */
@@ -724,9 +722,9 @@ export async function findRide(id: string): Promise<RideRequest | null> {
   }
   const rows = await db.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
   if (!rows[0]) return null;
-  await expirePastOpenReservationsByIds(db, [rows[0].id]);
+  const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
   const promoted = await promoteDueReservationsByIds(db, [rows[0].id]);
-  const row = promoted.has(rows[0].id) ? { ...rows[0], status: "ready_for_dispatch" } : rows[0];
+  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
   return rowToRide(row);
 }
 
@@ -751,9 +749,9 @@ export async function findRideForPassenger(id: string, passengerId: string): Pro
     .where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid)))
     .limit(1);
   if (!rows[0]) return null;
-  await expirePastOpenReservationsByIds(db, [rows[0].id]);
+  const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
   const promoted = await promoteDueReservationsByIds(db, [rows[0].id]);
-  const row = promoted.has(rows[0].id) ? { ...rows[0], status: "ready_for_dispatch" } : rows[0];
+  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
   return rowToRide(row);
 }
 
@@ -1681,4 +1679,23 @@ export async function resetRidesDemo(seed: RideRequest[]): Promise<void> {
   if (seed.length > 0) {
     await db.insert(ridesTable).values(seed.map(rideToInsert));
   }
+}
+
+export async function listRidesForDriver(driverId: string): Promise<RideRequest[]> {
+  const did = driverId.trim();
+  if (!did) return [];
+  const db = getDb();
+  if (!db) {
+    return memoryRides
+      .filter((r) => r.driverId === did && r.status === "completed")
+      .slice()
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+  const rows = await db
+    .select()
+    .from(ridesTable)
+    .where(and(eq(ridesTable.driver_id, did), eq(ridesTable.status, "completed")))
+    .orderBy(desc(ridesTable.created_at))
+    .limit(200);
+  return rows.map(rowToRide);
 }

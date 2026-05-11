@@ -116,7 +116,7 @@ var require_package = __commonJS({
 var require_main = __commonJS({
   "../../node_modules/.pnpm/dotenv@16.4.7/node_modules/dotenv/lib/main.js"(exports, module) {
     var fs3 = __require("fs");
-    var path8 = __require("path");
+    var path11 = __require("path");
     var os = __require("os");
     var crypto2 = __require("crypto");
     var packageJson = require_package();
@@ -230,7 +230,7 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path8.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path11.resolve(process.cwd(), ".env.vault");
       }
       if (fs3.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
@@ -238,7 +238,7 @@ var require_main = __commonJS({
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path8.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path11.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       _log("Loading env from encrypted .env.vault");
@@ -251,7 +251,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path8.resolve(process.cwd(), ".env");
+      const dotenvPath = path11.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       const debug = Boolean(options && options.debug);
       if (options && options.encoding) {
@@ -274,13 +274,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path9 of optionPaths) {
+      for (const path12 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs3.readFileSync(path9, { encoding }));
+          const parsed = DotenvModule.parse(fs3.readFileSync(path12, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path9} ${e.message}`);
+            _debug(`Failed to load ${path12} ${e.message}`);
           }
           lastError = e;
         }
@@ -1196,34 +1196,34 @@ var require_receiver = __commonJS({
        * @return {Buffer} The consumed bytes
        * @private
        */
-      consume(n3) {
-        this._bufferedBytes -= n3;
-        if (n3 === this._buffers[0].length) return this._buffers.shift();
-        if (n3 < this._buffers[0].length) {
+      consume(n4) {
+        this._bufferedBytes -= n4;
+        if (n4 === this._buffers[0].length) return this._buffers.shift();
+        if (n4 < this._buffers[0].length) {
           const buf = this._buffers[0];
           this._buffers[0] = new FastBuffer(
             buf.buffer,
-            buf.byteOffset + n3,
-            buf.length - n3
+            buf.byteOffset + n4,
+            buf.length - n4
           );
-          return new FastBuffer(buf.buffer, buf.byteOffset, n3);
+          return new FastBuffer(buf.buffer, buf.byteOffset, n4);
         }
-        const dst = Buffer.allocUnsafe(n3);
+        const dst = Buffer.allocUnsafe(n4);
         do {
           const buf = this._buffers[0];
-          const offset = dst.length - n3;
-          if (n3 >= buf.length) {
+          const offset = dst.length - n4;
+          if (n4 >= buf.length) {
             dst.set(this._buffers.shift(), offset);
           } else {
-            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n3), offset);
+            dst.set(new Uint8Array(buf.buffer, buf.byteOffset, n4), offset);
             this._buffers[0] = new FastBuffer(
               buf.buffer,
-              buf.byteOffset + n3,
-              buf.length - n3
+              buf.byteOffset + n4,
+              buf.length - n4
             );
           }
-          n3 -= buf.length;
-        } while (n3 > 0);
+          n4 -= buf.length;
+        } while (n4 > 0);
         return dst;
       }
       /**
@@ -2582,7 +2582,7 @@ var require_websocket = __commonJS({
     var http = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes: randomBytes6, createHash: createHash3 } = __require("crypto");
+    var { randomBytes: randomBytes7, createHash: createHash4 } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate2 = require_permessage_deflate();
@@ -3112,7 +3112,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes6(16).toString("base64");
+      const key = randomBytes7(16).toString("base64");
       const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -3242,7 +3242,7 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash3("sha1").update(key + GUID).digest("base64");
+        const digest = createHash4("sha1").update(key + GUID).digest("base64");
         if (res.headers["sec-websocket-accept"] !== digest) {
           abortHandshake(websocket, socket, "Invalid Sec-WebSocket-Accept header");
           return;
@@ -3609,7 +3609,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter = __require("events");
     var http = __require("http");
     var { Duplex } = __require("stream");
-    var { createHash: createHash3 } = __require("crypto");
+    var { createHash: createHash4 } = __require("crypto");
     var extension2 = require_extension();
     var PerMessageDeflate2 = require_permessage_deflate();
     var subprotocol2 = require_subprotocol();
@@ -3910,7 +3910,7 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket, 503);
-        const digest = createHash3("sha1").update(key + GUID).digest("base64");
+        const digest = createHash4("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
@@ -4027,7 +4027,7 @@ var require_ms = __commonJS({
       if (!match) {
         return;
       }
-      var n3 = parseFloat(match[1]);
+      var n4 = parseFloat(match[1]);
       var type = (match[2] || "ms").toLowerCase();
       switch (type) {
         case "years":
@@ -4035,39 +4035,39 @@ var require_ms = __commonJS({
         case "yrs":
         case "yr":
         case "y":
-          return n3 * y;
+          return n4 * y;
         case "weeks":
         case "week":
         case "w":
-          return n3 * w;
+          return n4 * w;
         case "days":
         case "day":
         case "d":
-          return n3 * d;
+          return n4 * d;
         case "hours":
         case "hour":
         case "hrs":
         case "hr":
         case "h":
-          return n3 * h;
+          return n4 * h;
         case "minutes":
         case "minute":
         case "mins":
         case "min":
         case "m":
-          return n3 * m;
+          return n4 * m;
         case "seconds":
         case "second":
         case "secs":
         case "sec":
         case "s":
-          return n3 * s;
+          return n4 * s;
         case "milliseconds":
         case "millisecond":
         case "msecs":
         case "msec":
         case "ms":
-          return n3;
+          return n4;
         default:
           return void 0;
       }
@@ -4104,9 +4104,9 @@ var require_ms = __commonJS({
       }
       return ms + " ms";
     }
-    function plural(ms, msAbs, n3, name) {
-      var isPlural = msAbs >= n3 * 1.5;
-      return Math.round(ms / n3) + " " + name + (isPlural ? "s" : "");
+    function plural(ms, msAbs, n4, name) {
+      var isPlural = msAbs >= n4 * 1.5;
+      return Math.round(ms / n4) + " " + name + (isPlural ? "s" : "");
     }
   }
 });
@@ -5217,9 +5217,9 @@ var require_statuses = __commonJS({
       if (typeof code !== "string") {
         throw new TypeError("code must be a number or string");
       }
-      var n3 = parseInt(code, 10);
-      if (!isNaN(n3)) {
-        return getStatusMessage(n3);
+      var n4 = parseInt(code, 10);
+      if (!isNaN(n4)) {
+        return getStatusMessage(n4);
       }
       return getStatusCode(code);
     }
@@ -19267,11 +19267,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path8) {
-      if (!path8 || typeof path8 !== "string") {
+    function lookup(path11) {
+      if (!path11 || typeof path11 !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path8).toLowerCase().slice(1);
+      var extension3 = extname("x." + path11).toLowerCase().slice(1);
       if (!extension3) {
         return false;
       }
@@ -20059,10 +20059,10 @@ var require_object_inspect = __commonJS({
       }
       if (!isDate(obj) && !isRegExp(obj)) {
         var ys = arrObjKeys(obj, inspect);
-        var isPlainObject = gPO ? gPO(obj) === Object.prototype : obj instanceof Object || obj.constructor === Object;
+        var isPlainObject3 = gPO ? gPO(obj) === Object.prototype : obj instanceof Object || obj.constructor === Object;
         var protoTag = obj instanceof Object ? "" : "null prototype";
-        var stringTag = !isPlainObject && toStringTag && Object(obj) === obj && toStringTag in obj ? $slice.call(toStr(obj), 8, -1) : protoTag ? "Object" : "";
-        var constructorTag = isPlainObject || typeof obj.constructor !== "function" ? "" : obj.constructor.name ? obj.constructor.name + " " : "";
+        var stringTag = !isPlainObject3 && toStringTag && Object(obj) === obj && toStringTag in obj ? $slice.call(toStr(obj), 8, -1) : protoTag ? "Object" : "";
+        var constructorTag = isPlainObject3 || typeof obj.constructor !== "function" ? "" : obj.constructor.name ? obj.constructor.name + " " : "";
         var tag2 = constructorTag + (stringTag || protoTag ? "[" + $join.call($concat.call([], stringTag || [], protoTag || []), ": ") + "] " : "");
         if (ys.length === 0) {
           return tag2 + "{}";
@@ -20260,18 +20260,18 @@ var require_object_inspect = __commonJS({
       return wrapQuotes(s, "single", opts);
     }
     function lowbyte(c) {
-      var n3 = c.charCodeAt(0);
+      var n4 = c.charCodeAt(0);
       var x = {
         8: "b",
         9: "t",
         10: "n",
         12: "f",
         13: "r"
-      }[n3];
+      }[n4];
       if (x) {
         return "\\" + x;
       }
-      return "\\x" + (n3 < 16 ? "0" : "") + $toUpperCase.call(n3.toString(16));
+      return "\\x" + (n4 < 16 ? "0" : "") + $toUpperCase.call(n4.toString(16));
     }
     function markBoxed(str2) {
       return "Object(" + str2 + ")";
@@ -22485,8 +22485,8 @@ var require_escape_html = __commonJS({
   "../../node_modules/.pnpm/escape-html@1.0.3/node_modules/escape-html/index.js"(exports, module) {
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
-    module.exports = escapeHtml4;
-    function escapeHtml4(string) {
+    module.exports = escapeHtml6;
+    function escapeHtml6(string) {
       var str2 = "" + string;
       var match = matchHtmlRegExp.exec(str2);
       if (!match) {
@@ -22617,13 +22617,13 @@ var require_finalhandler = __commonJS({
     "use strict";
     var debug = require_src()("finalhandler");
     var encodeUrl = require_encodeurl();
-    var escapeHtml4 = require_escape_html();
+    var escapeHtml6 = require_escape_html();
     var onFinished = require_on_finished();
     var parseUrl = require_parseurl();
     var statuses = require_statuses();
     var isFinished = onFinished.isFinished;
     function createHtmlDocument(message2) {
-      var body = escapeHtml4(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
+      var body = escapeHtml6(message2).replaceAll("\n", "<br>").replaceAll("  ", " &nbsp;");
       return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>Error</title>\n</head>\n<body>\n<pre>' + body + "</pre>\n</body>\n</html>\n";
     }
     module.exports = finalhandler;
@@ -22743,13 +22743,13 @@ var require_view = __commonJS({
   "../../node_modules/.pnpm/express@5.2.1/node_modules/express/lib/view.js"(exports, module) {
     "use strict";
     var debug = require_src()("express:view");
-    var path8 = __require("node:path");
+    var path11 = __require("node:path");
     var fs3 = __require("node:fs");
-    var dirname = path8.dirname;
-    var basename = path8.basename;
-    var extname = path8.extname;
-    var join = path8.join;
-    var resolve = path8.resolve;
+    var dirname = path11.dirname;
+    var basename = path11.basename;
+    var extname = path11.extname;
+    var join = path11.join;
+    var resolve = path11.resolve;
     module.exports = View2;
     function View2(name, options) {
       var opts = options || {};
@@ -22778,17 +22778,17 @@ var require_view = __commonJS({
       this.path = this.lookup(fileName);
     }
     View2.prototype.lookup = function lookup(name) {
-      var path9;
+      var path12;
       var roots = [].concat(this.root);
       debug('lookup "%s"', name);
-      for (var i = 0; i < roots.length && !path9; i++) {
+      for (var i = 0; i < roots.length && !path12; i++) {
         var root = roots[i];
         var loc = resolve(root, name);
         var dir = dirname(loc);
         var file = basename(loc);
-        path9 = this.resolve(dir, file);
+        path12 = this.resolve(dir, file);
       }
-      return path9;
+      return path12;
     };
     View2.prototype.render = function render(options, callback) {
       var sync = true;
@@ -22810,21 +22810,21 @@ var require_view = __commonJS({
     };
     View2.prototype.resolve = function resolve2(dir, file) {
       var ext = this.ext;
-      var path9 = join(dir, file);
-      var stat = tryStat(path9);
+      var path12 = join(dir, file);
+      var stat = tryStat(path12);
       if (stat && stat.isFile()) {
-        return path9;
+        return path12;
       }
-      path9 = join(dir, basename(file, ext), "index" + ext);
-      stat = tryStat(path9);
+      path12 = join(dir, basename(file, ext), "index" + ext);
+      stat = tryStat(path12);
       if (stat && stat.isFile()) {
-        return path9;
+        return path12;
       }
     };
-    function tryStat(path9) {
-      debug('stat "%s"', path9);
+    function tryStat(path12) {
+      debug('stat "%s"', path12);
       try {
-        return fs3.statSync(path9);
+        return fs3.statSync(path12);
       } catch (e) {
         return void 0;
       }
@@ -23960,15 +23960,15 @@ var require_dist = __commonJS({
       let index = 0;
       function consumeUntil(end) {
         const output = [];
-        let path8 = "";
+        let path11 = "";
         function writePath() {
-          if (!path8)
+          if (!path11)
             return;
           output.push({
             type: "text",
-            value: encodePath(path8)
+            value: encodePath(path11)
           });
-          path8 = "";
+          path11 = "";
         }
         while (index < chars.length) {
           const value = chars[index++];
@@ -23980,7 +23980,7 @@ var require_dist = __commonJS({
             if (index === chars.length) {
               throw new PathError(`Unexpected end after \\ at index ${index}`, str2);
             }
-            path8 += chars[index++];
+            path11 += chars[index++];
             continue;
           }
           if (value === ":" || value === "*") {
@@ -24024,7 +24024,7 @@ var require_dist = __commonJS({
           if (value === "}" || value === "(" || value === ")" || value === "[" || value === "]" || value === "+" || value === "?" || value === "!") {
             throw new PathError(`Unexpected ${value} at index ${index - 1}`, str2);
           }
-          path8 += value;
+          path11 += value;
         }
         if (end) {
           throw new PathError(`Unexpected end at index ${index}, expected ${end}`, str2);
@@ -24034,17 +24034,17 @@ var require_dist = __commonJS({
       }
       return new TokenData(consumeUntil(""), str2);
     }
-    function compile(path8, options = {}) {
+    function compile(path11, options = {}) {
       const { encode: encode3 = encodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const data = typeof path8 === "object" ? path8 : parse(path8, options);
+      const data = typeof path11 === "object" ? path11 : parse(path11, options);
       const fn = tokensToFunction(data.tokens, delimiter, encode3);
-      return function path9(params = {}) {
+      return function path12(params = {}) {
         const missing = [];
-        const path10 = fn(params, missing);
+        const path13 = fn(params, missing);
         if (missing.length) {
           throw new TypeError(`Missing parameters: ${missing.join(", ")}`);
         }
-        return path10;
+        return path13;
       };
     }
     function tokensToFunction(tokens, delimiter, encode3) {
@@ -24106,9 +24106,9 @@ var require_dist = __commonJS({
         return encodeValue(value);
       };
     }
-    function match(path8, options = {}) {
+    function match(path11, options = {}) {
       const { decode: decode2 = decodeURIComponent, delimiter = DEFAULT_DELIMITER } = options;
-      const { regexp, keys } = pathToRegexp(path8, options);
+      const { regexp, keys } = pathToRegexp(path11, options);
       const decoders = keys.map((key) => {
         if (decode2 === false)
           return NOOP_VALUE;
@@ -24120,7 +24120,7 @@ var require_dist = __commonJS({
         const m = regexp.exec(input);
         if (!m)
           return false;
-        const path9 = m[0];
+        const path12 = m[0];
         const params = /* @__PURE__ */ Object.create(null);
         for (let i = 1; i < m.length; i++) {
           if (m[i] === void 0)
@@ -24129,21 +24129,21 @@ var require_dist = __commonJS({
           const decoder2 = decoders[i - 1];
           params[key.name] = decoder2(m[i]);
         }
-        return { path: path9, params };
+        return { path: path12, params };
       };
     }
-    function pathToRegexp(path8, options = {}) {
+    function pathToRegexp(path11, options = {}) {
       const { delimiter = DEFAULT_DELIMITER, end = true, sensitive = false, trailing = true } = options;
       const keys = [];
       let source = "";
       let combinations = 0;
-      function process2(path9) {
-        if (Array.isArray(path9)) {
-          for (const p of path9)
+      function process2(path12) {
+        if (Array.isArray(path12)) {
+          for (const p of path12)
             process2(p);
           return;
         }
-        const data = typeof path9 === "object" ? path9 : parse(path9, options);
+        const data = typeof path12 === "object" ? path12 : parse(path12, options);
         flatten(data.tokens, 0, [], (tokens) => {
           if (combinations >= 256) {
             throw new PathError("Too many path combinations", data.originalPath);
@@ -24154,7 +24154,7 @@ var require_dist = __commonJS({
           combinations++;
         });
       }
-      process2(path8);
+      process2(path11);
       let pattern = `^(?:${source})`;
       if (trailing)
         pattern += "(?:" + escape2(delimiter) + "$)?";
@@ -24294,18 +24294,18 @@ var require_layer = __commonJS({
     var TRAILING_SLASH_REGEXP = /\/+$/;
     var MATCHING_GROUP_REGEXP = /\((?:\?<(.*?)>)?(?!\?)/g;
     module.exports = Layer;
-    function Layer(path8, options, fn) {
+    function Layer(path11, options, fn) {
       if (!(this instanceof Layer)) {
-        return new Layer(path8, options, fn);
+        return new Layer(path11, options, fn);
       }
-      debug("new %o", path8);
+      debug("new %o", path11);
       const opts = options || {};
       this.handle = fn;
       this.keys = [];
       this.name = fn.name || "<anonymous>";
       this.params = void 0;
       this.path = void 0;
-      this.slash = path8 === "/" && opts.end === false;
+      this.slash = path11 === "/" && opts.end === false;
       function matcher(_path) {
         if (_path instanceof RegExp) {
           const keys = [];
@@ -24344,7 +24344,7 @@ var require_layer = __commonJS({
           decode: decodeParam
         });
       }
-      this.matchers = Array.isArray(path8) ? path8.map(matcher) : [matcher(path8)];
+      this.matchers = Array.isArray(path11) ? path11.map(matcher) : [matcher(path11)];
     }
     Layer.prototype.handleError = function handleError(error, req, res, next) {
       const fn = this.handle;
@@ -24384,9 +24384,9 @@ var require_layer = __commonJS({
         next(err);
       }
     };
-    Layer.prototype.match = function match(path8) {
+    Layer.prototype.match = function match(path11) {
       let match2;
-      if (path8 != null) {
+      if (path11 != null) {
         if (this.slash) {
           this.params = {};
           this.path = "";
@@ -24394,7 +24394,7 @@ var require_layer = __commonJS({
         }
         let i = 0;
         while (!match2 && i < this.matchers.length) {
-          match2 = this.matchers[i](path8);
+          match2 = this.matchers[i](path11);
           i++;
         }
       }
@@ -24422,13 +24422,13 @@ var require_layer = __commonJS({
         throw err;
       }
     }
-    function loosen(path8) {
-      if (path8 instanceof RegExp || path8 === "/") {
-        return path8;
+    function loosen(path11) {
+      if (path11 instanceof RegExp || path11 === "/") {
+        return path11;
       }
-      return Array.isArray(path8) ? path8.map(function(p) {
+      return Array.isArray(path11) ? path11.map(function(p) {
         return loosen(p);
-      }) : String(path8).replace(TRAILING_SLASH_REGEXP, "");
+      }) : String(path11).replace(TRAILING_SLASH_REGEXP, "");
     }
   }
 });
@@ -24444,9 +24444,9 @@ var require_route = __commonJS({
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
     module.exports = Route;
-    function Route(path8) {
-      debug("new %o", path8);
-      this.path = path8;
+    function Route(path11) {
+      debug("new %o", path11);
+      this.path = path11;
       this.stack = [];
       this.methods = /* @__PURE__ */ Object.create(null);
     }
@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router15;
+    module.exports = Router20;
     module.exports.Route = Route;
-    function Router15(options) {
-      if (!(this instanceof Router15)) {
-        return new Router15(options);
+    function Router20(options) {
+      if (!(this instanceof Router20)) {
+        return new Router20(options);
       }
       const opts = options || {};
-      function router15(req, res, next) {
-        router15.handle(req, res, next);
+      function router20(req, res, next) {
+        router20.handle(req, res, next);
       }
-      Object.setPrototypeOf(router15, this);
-      router15.caseSensitive = opts.caseSensitive;
-      router15.mergeParams = opts.mergeParams;
-      router15.params = {};
-      router15.strict = opts.strict;
-      router15.stack = [];
-      return router15;
+      Object.setPrototypeOf(router20, this);
+      router20.caseSensitive = opts.caseSensitive;
+      router20.mergeParams = opts.mergeParams;
+      router20.params = {};
+      router20.strict = opts.strict;
+      router20.stack = [];
+      return router20;
     }
-    Router15.prototype = function() {
+    Router20.prototype = function() {
     };
-    Router15.prototype.param = function param(name, fn) {
+    Router20.prototype.param = function param(name, fn) {
       if (!name) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router15.prototype.handle = function handle(req, res, callback) {
+    Router20.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24654,8 +24654,8 @@ var require_router = __commonJS({
         if (++sync > 100) {
           return setImmediate(next, err);
         }
-        const path8 = getPathname(req);
-        if (path8 == null) {
+        const path11 = getPathname(req);
+        if (path11 == null) {
           return done(layerError);
         }
         let layer;
@@ -24663,7 +24663,7 @@ var require_router = __commonJS({
         let route;
         while (match !== true && idx < stack.length) {
           layer = stack[idx++];
-          match = matchLayer(layer, path8);
+          match = matchLayer(layer, path11);
           route = layer.route;
           if (typeof match !== "boolean") {
             layerError = layerError || match;
@@ -24701,18 +24701,18 @@ var require_router = __commonJS({
           } else if (route) {
             layer.handleRequest(req, res, next);
           } else {
-            trimPrefix(layer, layerError, layerPath, path8);
+            trimPrefix(layer, layerError, layerPath, path11);
           }
           sync = 0;
         });
       }
-      function trimPrefix(layer, layerError, layerPath, path8) {
+      function trimPrefix(layer, layerError, layerPath, path11) {
         if (layerPath.length !== 0) {
-          if (layerPath !== path8.substring(0, layerPath.length)) {
+          if (layerPath !== path11.substring(0, layerPath.length)) {
             next(layerError);
             return;
           }
-          const c = path8[layerPath.length];
+          const c = path11[layerPath.length];
           if (c && c !== "/") {
             next(layerError);
             return;
@@ -24734,9 +24734,9 @@ var require_router = __commonJS({
         }
       }
     };
-    Router15.prototype.use = function use(handler) {
+    Router20.prototype.use = function use(handler) {
       let offset = 0;
-      let path8 = "/";
+      let path11 = "/";
       if (typeof handler !== "function") {
         let arg = handler;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -24744,7 +24744,7 @@ var require_router = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path8 = handler;
+          path11 = handler;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -24756,8 +24756,8 @@ var require_router = __commonJS({
         if (typeof fn !== "function") {
           throw new TypeError("argument handler must be a function");
         }
-        debug("use %o %s", path8, fn.name || "<anonymous>");
-        const layer = new Layer(path8, {
+        debug("use %o %s", path11, fn.name || "<anonymous>");
+        const layer = new Layer(path11, {
           sensitive: this.caseSensitive,
           strict: false,
           end: false
@@ -24767,9 +24767,9 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router15.prototype.route = function route(path8) {
-      const route2 = new Route(path8);
-      const layer = new Layer(path8, {
+    Router20.prototype.route = function route(path11) {
+      const route2 = new Route(path11);
+      const layer = new Layer(path11, {
         sensitive: this.caseSensitive,
         strict: this.strict,
         end: true
@@ -24782,8 +24782,8 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router15.prototype[method] = function(path8) {
-        const route = this.route(path8);
+      Router20.prototype[method] = function(path11) {
+        const route = this.route(path11);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
@@ -24812,9 +24812,9 @@ var require_router = __commonJS({
       const fqdnIndex = url.substring(0, pathLength).indexOf("://");
       return fqdnIndex !== -1 ? url.substring(0, url.indexOf("/", 3 + fqdnIndex)) : void 0;
     }
-    function matchLayer(layer, path8) {
+    function matchLayer(layer, path11) {
       try {
-        return layer.match(path8);
+        return layer.match(path11);
       } catch (err) {
         return err;
       }
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router15 = require_router();
+    var Router20 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router15 = null;
+      var router20 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router15 === null) {
-            router15 = new Router15({
+          if (router20 === null) {
+            router20 = new Router20({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router15;
+          return router20;
         }
       });
     };
@@ -25042,7 +25042,7 @@ var require_application = __commonJS({
     };
     app2.use = function use(fn) {
       var offset = 0;
-      var path8 = "/";
+      var path11 = "/";
       if (typeof fn !== "function") {
         var arg = fn;
         while (Array.isArray(arg) && arg.length !== 0) {
@@ -25050,22 +25050,22 @@ var require_application = __commonJS({
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path8 = fn;
+          path11 = fn;
         }
       }
       var fns = flatten.call(slice.call(arguments, offset), Infinity);
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router15 = this.router;
+      var router20 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router15.use(path8, fn2);
+          return router20.use(path11, fn2);
         }
-        debug(".use app under %s", path8);
-        fn2.mountpath = path8;
+        debug(".use app under %s", path11);
+        fn2.mountpath = path11;
         fn2.parent = this;
-        router15.use(path8, function mounted_app(req, res, next) {
+        router20.use(path11, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -25077,8 +25077,8 @@ var require_application = __commonJS({
       }, this);
       return this;
     };
-    app2.route = function route(path8) {
-      return this.router.route(path8);
+    app2.route = function route(path11) {
+      return this.router.route(path11);
     };
     app2.engine = function engine(ext, fn) {
       if (typeof fn !== "function") {
@@ -25121,7 +25121,7 @@ var require_application = __commonJS({
       }
       return this;
     };
-    app2.path = function path8() {
+    app2.path = function path11() {
       return this.parent ? this.parent.path() + this.mountpath : "";
     };
     app2.enabled = function enabled(setting) {
@@ -25137,17 +25137,17 @@ var require_application = __commonJS({
       return this.set(setting, false);
     };
     methods.forEach(function(method) {
-      app2[method] = function(path8) {
+      app2[method] = function(path11) {
         if (method === "get" && arguments.length === 1) {
-          return this.set(path8);
+          return this.set(path11);
         }
-        var route = this.route(path8);
+        var route = this.route(path11);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
       };
     });
-    app2.all = function all(path8) {
-      var route = this.route(path8);
+    app2.all = function all(path11) {
+      var route = this.route(path11);
       var args = slice.call(arguments, 1);
       for (var i = 0; i < methods.length; i++) {
         route[methods[i]].apply(route, args);
@@ -26057,7 +26057,7 @@ var require_request = __commonJS({
       var subdomains2 = !isIP(hostname2) ? hostname2.split(".").reverse() : [hostname2];
       return subdomains2.slice(offset);
     });
-    defineGetter(req, "path", function path8() {
+    defineGetter(req, "path", function path11() {
       return parse(this).pathname;
     });
     defineGetter(req, "host", function host() {
@@ -26274,15 +26274,15 @@ var require_content_disposition = __commonJS({
 var require_cookie_signature = __commonJS({
   "../../node_modules/.pnpm/cookie-signature@1.2.2/node_modules/cookie-signature/index.js"(exports) {
     var crypto2 = __require("crypto");
-    exports.sign = function(val, secret) {
+    exports.sign = function(val, secret2) {
       if ("string" != typeof val) throw new TypeError("Cookie value must be provided as a string.");
-      if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto2.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      if (null == secret2) throw new TypeError("Secret key must be provided.");
+      return val + "." + crypto2.createHmac("sha256", secret2).update(val).digest("base64").replace(/\=+$/, "");
     };
-    exports.unsign = function(input, secret) {
+    exports.unsign = function(input, secret2) {
       if ("string" != typeof input) throw new TypeError("Signed cookie string must be provided.");
-      if (null == secret) throw new TypeError("Secret key must be provided.");
-      var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
+      if (null == secret2) throw new TypeError("Secret key must be provided.");
+      var tentativeValue = input.slice(0, input.lastIndexOf(".")), expectedInput = exports.sign(tentativeValue, secret2), expectedBuffer = Buffer.from(expectedInput), inputBuffer = Buffer.from(input);
       return expectedBuffer.length === inputBuffer.length && crypto2.timingSafeEqual(expectedBuffer, inputBuffer) ? tentativeValue : false;
     };
   }
@@ -26461,7 +26461,7 @@ var require_send = __commonJS({
     var createError = require_http_errors();
     var debug = require_src()("send");
     var encodeUrl = require_encodeurl();
-    var escapeHtml4 = require_escape_html();
+    var escapeHtml6 = require_escape_html();
     var etag = require_etag();
     var fresh = require_fresh();
     var fs3 = __require("fs");
@@ -26469,27 +26469,27 @@ var require_send = __commonJS({
     var ms = require_ms();
     var onFinished = require_on_finished();
     var parseRange = require_range_parser();
-    var path8 = __require("path");
+    var path11 = __require("path");
     var statuses = require_statuses();
     var Stream = __require("stream");
     var util2 = __require("util");
-    var extname = path8.extname;
-    var join = path8.join;
-    var normalize = path8.normalize;
-    var resolve = path8.resolve;
-    var sep = path8.sep;
+    var extname = path11.extname;
+    var join = path11.join;
+    var normalize = path11.normalize;
+    var resolve = path11.resolve;
+    var sep = path11.sep;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
     module.exports = send;
-    function send(req, path9, options) {
-      return new SendStream(req, path9, options);
+    function send(req, path12, options) {
+      return new SendStream(req, path12, options);
     }
-    function SendStream(req, path9, options) {
+    function SendStream(req, path12, options) {
       Stream.call(this);
       var opts = options || {};
       this.options = opts;
-      this.path = path9;
+      this.path = path12;
       this.req = req;
       this._acceptRanges = opts.acceptRanges !== void 0 ? Boolean(opts.acceptRanges) : true;
       this._cacheControl = opts.cacheControl !== void 0 ? Boolean(opts.cacheControl) : true;
@@ -26514,7 +26514,7 @@ var require_send = __commonJS({
       }
       var res = this.res;
       var msg = statuses.message[status] || String(status);
-      var doc = createHtmlDocument("Error", escapeHtml4(msg));
+      var doc = createHtmlDocument("Error", escapeHtml6(msg));
       clearHeaders(res);
       if (err && err.headers) {
         setHeaders(res, err.headers);
@@ -26603,10 +26603,10 @@ var require_send = __commonJS({
       var lastModified = this.res.getHeader("Last-Modified");
       return parseHttpDate(lastModified) <= parseHttpDate(ifRange);
     };
-    SendStream.prototype.redirect = function redirect(path9) {
+    SendStream.prototype.redirect = function redirect(path12) {
       var res = this.res;
       if (hasListeners(this, "directory")) {
-        this.emit("directory", res, path9);
+        this.emit("directory", res, path12);
         return;
       }
       if (this.hasTrailingSlash()) {
@@ -26614,7 +26614,7 @@ var require_send = __commonJS({
         return;
       }
       var loc = encodeUrl(collapseLeadingSlashes(this.path + "/"));
-      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml4(loc));
+      var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml6(loc));
       res.statusCode = 301;
       res.setHeader("Content-Type", "text/html; charset=UTF-8");
       res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -26626,38 +26626,38 @@ var require_send = __commonJS({
     SendStream.prototype.pipe = function pipe(res) {
       var root = this._root;
       this.res = res;
-      var path9 = decode2(this.path);
-      if (path9 === -1) {
+      var path12 = decode2(this.path);
+      if (path12 === -1) {
         this.error(400);
         return res;
       }
-      if (~path9.indexOf("\0")) {
+      if (~path12.indexOf("\0")) {
         this.error(400);
         return res;
       }
       var parts;
       if (root !== null) {
-        if (path9) {
-          path9 = normalize("." + sep + path9);
+        if (path12) {
+          path12 = normalize("." + sep + path12);
         }
-        if (UP_PATH_REGEXP.test(path9)) {
-          debug('malicious path "%s"', path9);
+        if (UP_PATH_REGEXP.test(path12)) {
+          debug('malicious path "%s"', path12);
           this.error(403);
           return res;
         }
-        parts = path9.split(sep);
-        path9 = normalize(join(root, path9));
+        parts = path12.split(sep);
+        path12 = normalize(join(root, path12));
       } else {
-        if (UP_PATH_REGEXP.test(path9)) {
-          debug('malicious path "%s"', path9);
+        if (UP_PATH_REGEXP.test(path12)) {
+          debug('malicious path "%s"', path12);
           this.error(403);
           return res;
         }
-        parts = normalize(path9).split(sep);
-        path9 = resolve(path9);
+        parts = normalize(path12).split(sep);
+        path12 = resolve(path12);
       }
       if (containsDotFile(parts)) {
-        debug('%s dotfile "%s"', this._dotfiles, path9);
+        debug('%s dotfile "%s"', this._dotfiles, path12);
         switch (this._dotfiles) {
           case "allow":
             break;
@@ -26671,13 +26671,13 @@ var require_send = __commonJS({
         }
       }
       if (this._index.length && this.hasTrailingSlash()) {
-        this.sendIndex(path9);
+        this.sendIndex(path12);
         return res;
       }
-      this.sendFile(path9);
+      this.sendFile(path12);
       return res;
     };
-    SendStream.prototype.send = function send2(path9, stat) {
+    SendStream.prototype.send = function send2(path12, stat) {
       var len = stat.size;
       var options = this.options;
       var opts = {};
@@ -26689,9 +26689,9 @@ var require_send = __commonJS({
         this.headersAlreadySent();
         return;
       }
-      debug('pipe "%s"', path9);
-      this.setHeader(path9, stat);
-      this.type(path9);
+      debug('pipe "%s"', path12);
+      this.setHeader(path12, stat);
+      this.type(path12);
       if (this.isConditionalGET()) {
         if (this.isPreconditionFailure()) {
           this.error(412);
@@ -26740,28 +26740,28 @@ var require_send = __commonJS({
         res.end();
         return;
       }
-      this.stream(path9, opts);
+      this.stream(path12, opts);
     };
-    SendStream.prototype.sendFile = function sendFile(path9) {
+    SendStream.prototype.sendFile = function sendFile(path12) {
       var i = 0;
       var self = this;
-      debug('stat "%s"', path9);
-      fs3.stat(path9, function onstat(err, stat) {
-        var pathEndsWithSep = path9[path9.length - 1] === sep;
-        if (err && err.code === "ENOENT" && !extname(path9) && !pathEndsWithSep) {
+      debug('stat "%s"', path12);
+      fs3.stat(path12, function onstat(err, stat) {
+        var pathEndsWithSep = path12[path12.length - 1] === sep;
+        if (err && err.code === "ENOENT" && !extname(path12) && !pathEndsWithSep) {
           return next(err);
         }
         if (err) return self.onStatError(err);
-        if (stat.isDirectory()) return self.redirect(path9);
+        if (stat.isDirectory()) return self.redirect(path12);
         if (pathEndsWithSep) return self.error(404);
-        self.emit("file", path9, stat);
-        self.send(path9, stat);
+        self.emit("file", path12, stat);
+        self.send(path12, stat);
       });
       function next(err) {
         if (self._extensions.length <= i) {
           return err ? self.onStatError(err) : self.error(404);
         }
-        var p = path9 + "." + self._extensions[i++];
+        var p = path12 + "." + self._extensions[i++];
         debug('stat "%s"', p);
         fs3.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -26771,7 +26771,7 @@ var require_send = __commonJS({
         });
       }
     };
-    SendStream.prototype.sendIndex = function sendIndex(path9) {
+    SendStream.prototype.sendIndex = function sendIndex(path12) {
       var i = -1;
       var self = this;
       function next(err) {
@@ -26779,7 +26779,7 @@ var require_send = __commonJS({
           if (err) return self.onStatError(err);
           return self.error(404);
         }
-        var p = join(path9, self._index[i]);
+        var p = join(path12, self._index[i]);
         debug('stat "%s"', p);
         fs3.stat(p, function(err2, stat) {
           if (err2) return next(err2);
@@ -26790,10 +26790,10 @@ var require_send = __commonJS({
       }
       next();
     };
-    SendStream.prototype.stream = function stream(path9, options) {
+    SendStream.prototype.stream = function stream(path12, options) {
       var self = this;
       var res = this.res;
-      var stream2 = fs3.createReadStream(path9, options);
+      var stream2 = fs3.createReadStream(path12, options);
       this.emit("stream", stream2);
       stream2.pipe(res);
       function cleanup() {
@@ -26808,17 +26808,17 @@ var require_send = __commonJS({
         self.emit("end");
       });
     };
-    SendStream.prototype.type = function type(path9) {
+    SendStream.prototype.type = function type(path12) {
       var res = this.res;
       if (res.getHeader("Content-Type")) return;
-      var ext = extname(path9);
+      var ext = extname(path12);
       var type2 = mime.contentType(ext) || "application/octet-stream";
       debug("content-type %s", type2);
       res.setHeader("Content-Type", type2);
     };
-    SendStream.prototype.setHeader = function setHeader(path9, stat) {
+    SendStream.prototype.setHeader = function setHeader(path12, stat) {
       var res = this.res;
-      this.emit("headers", res, path9, stat);
+      this.emit("headers", res, path12, stat);
       if (this._acceptRanges && !res.getHeader("Accept-Ranges")) {
         debug("accept ranges");
         res.setHeader("Accept-Ranges", "bytes");
@@ -26876,9 +26876,9 @@ var require_send = __commonJS({
       }
       return err instanceof Error ? createError(status, err, { expose: false }) : createError(status, err);
     }
-    function decode2(path9) {
+    function decode2(path12) {
       try {
-        return decodeURIComponent(path9);
+        return decodeURIComponent(path12);
       } catch (err) {
         return -1;
       }
@@ -27018,11 +27018,11 @@ var require_response = __commonJS({
     var createError = require_http_errors();
     var deprecate = require_depd()("express");
     var encodeUrl = require_encodeurl();
-    var escapeHtml4 = require_escape_html();
+    var escapeHtml6 = require_escape_html();
     var http = __require("node:http");
     var onFinished = require_on_finished();
     var mime = require_mime_types();
-    var path8 = __require("node:path");
+    var path11 = __require("node:path");
     var pathIsAbsolute = __require("node:path").isAbsolute;
     var statuses = require_statuses();
     var sign2 = require_cookie_signature().sign;
@@ -27031,8 +27031,8 @@ var require_response = __commonJS({
     var setCharset = require_utils3().setCharset;
     var cookie = require_cookie();
     var send = require_send();
-    var extname = path8.extname;
-    var resolve = path8.resolve;
+    var extname = path11.extname;
+    var resolve = path11.resolve;
     var vary = require_vary();
     var { Buffer: Buffer2 } = __require("node:buffer");
     var res = Object.create(http.ServerResponse.prototype);
@@ -27178,26 +27178,26 @@ var require_response = __commonJS({
       this.type("txt");
       return this.send(body);
     };
-    res.sendFile = function sendFile(path9, options, callback) {
+    res.sendFile = function sendFile(path12, options, callback) {
       var done = callback;
       var req = this.req;
       var res2 = this;
       var next = req.next;
       var opts = options || {};
-      if (!path9) {
+      if (!path12) {
         throw new TypeError("path argument is required to res.sendFile");
       }
-      if (typeof path9 !== "string") {
+      if (typeof path12 !== "string") {
         throw new TypeError("path must be a string to res.sendFile");
       }
       if (typeof options === "function") {
         done = options;
         opts = {};
       }
-      if (!opts.root && !pathIsAbsolute(path9)) {
+      if (!opts.root && !pathIsAbsolute(path12)) {
         throw new TypeError("path must be absolute or specify root to res.sendFile");
       }
-      var pathname = encodeURI(path9);
+      var pathname = encodeURI(path12);
       opts.etag = this.app.enabled("etag");
       var file = send(req, pathname, opts);
       sendfile(res2, file, opts, function(err) {
@@ -27208,7 +27208,7 @@ var require_response = __commonJS({
         }
       });
     };
-    res.download = function download(path9, filename, options, callback) {
+    res.download = function download(path12, filename, options, callback) {
       var done = callback;
       var name = filename;
       var opts = options || null;
@@ -27225,7 +27225,7 @@ var require_response = __commonJS({
         opts = filename;
       }
       var headers = {
-        "Content-Disposition": contentDisposition(name || path9)
+        "Content-Disposition": contentDisposition(name || path12)
       };
       if (opts && opts.headers) {
         var keys = Object.keys(opts.headers);
@@ -27238,7 +27238,7 @@ var require_response = __commonJS({
       }
       opts = Object.create(opts);
       opts.headers = headers;
-      var fullPath = !opts.root ? resolve(path9) : path9;
+      var fullPath = !opts.root ? resolve(path12) : path12;
       return this.sendFile(fullPath, opts, done);
     };
     res.contentType = res.type = function contentType(type) {
@@ -27309,14 +27309,14 @@ var require_response = __commonJS({
     };
     res.cookie = function(name, value, options) {
       var opts = { ...options };
-      var secret = this.req.secret;
+      var secret2 = this.req.secret;
       var signed = opts.signed;
-      if (signed && !secret) {
+      if (signed && !secret2) {
         throw new Error('cookieParser("secret") required for signed cookies');
       }
       var val = typeof value === "object" ? "j:" + JSON.stringify(value) : String(value);
       if (signed) {
-        val = "s:" + sign2(val, secret);
+        val = "s:" + sign2(val, secret2);
       }
       if (opts.maxAge != null) {
         var maxAge = opts.maxAge - 0;
@@ -27357,7 +27357,7 @@ var require_response = __commonJS({
           body = statuses.message[status] + ". Redirecting to " + address;
         },
         html: function() {
-          var u = escapeHtml4(address);
+          var u = escapeHtml6(address);
           body = "<p>" + statuses.message[status] + ". Redirecting to " + u + "</p>";
         },
         default: function() {
@@ -27485,7 +27485,7 @@ var require_serve_static = __commonJS({
   "../../node_modules/.pnpm/serve-static@2.2.1/node_modules/serve-static/index.js"(exports, module) {
     "use strict";
     var encodeUrl = require_encodeurl();
-    var escapeHtml4 = require_escape_html();
+    var escapeHtml6 = require_escape_html();
     var parseUrl = require_parseurl();
     var resolve = __require("path").resolve;
     var send = require_send();
@@ -27521,11 +27521,11 @@ var require_serve_static = __commonJS({
         }
         var forwardError = !fallthrough;
         var originalUrl = parseUrl.original(req);
-        var path8 = parseUrl(req).pathname;
-        if (path8 === "/" && originalUrl.pathname.substr(-1) !== "/") {
-          path8 = "";
+        var path11 = parseUrl(req).pathname;
+        if (path11 === "/" && originalUrl.pathname.substr(-1) !== "/") {
+          path11 = "";
         }
-        var stream = send(req, path8, opts);
+        var stream = send(req, path11, opts);
         stream.on("directory", onDirectory);
         if (setHeaders) {
           stream.on("headers", setHeaders);
@@ -27571,7 +27571,7 @@ var require_serve_static = __commonJS({
         originalUrl.path = null;
         originalUrl.pathname = collapseLeadingSlashes(originalUrl.pathname + "/");
         var loc = encodeUrl(url.format(originalUrl));
-        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml4(loc));
+        var doc = createHtmlDocument("Redirecting", "Redirecting to " + escapeHtml6(loc));
         res.statusCode = 301;
         res.setHeader("Content-Type", "text/html; charset=UTF-8");
         res.setHeader("Content-Length", Buffer.byteLength(doc));
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router15 = require_router();
+    var Router20 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router15.Route;
-    exports.Router = Router15;
+    exports.Route = Router20.Route;
+    exports.Router = Router20;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -27659,8 +27659,8 @@ var require_object_assign = __commonJS({
         for (var i = 0; i < 10; i++) {
           test2["_" + String.fromCharCode(i)] = i;
         }
-        var order2 = Object.getOwnPropertyNames(test2).map(function(n3) {
-          return test2[n3];
+        var order2 = Object.getOwnPropertyNames(test2).map(function(n4) {
+          return test2[n4];
         });
         if (order2.join("") !== "0123456789") {
           return false;
@@ -27828,7 +27828,7 @@ var require_lib3 = __commonJS({
         return null;
       }
       function applyHeaders(headers, res) {
-        for (var i = 0, n3 = headers.length; i < n3; i++) {
+        for (var i = 0, n4 = headers.length; i < n4; i++) {
           var header = headers[i];
           if (header) {
             if (Array.isArray(header)) {
@@ -28173,8 +28173,8 @@ var require_req = __commonJS({
       if (req.originalUrl) {
         _req.url = req.originalUrl;
       } else {
-        const path8 = req.path;
-        _req.url = typeof path8 === "string" ? path8 : req.url ? req.url.path || req.url : void 0;
+        const path11 = req.path;
+        _req.url = typeof path11 === "string" ? path11 : req.url ? req.url.path || req.url : void 0;
       }
       if (req.query) {
         _req.query = req.query;
@@ -28339,14 +28339,14 @@ var require_redact = __commonJS({
       }
       return obj;
     }
-    function parsePath(path8) {
+    function parsePath(path11) {
       const parts = [];
       let current = "";
       let inBrackets = false;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path8.length; i++) {
-        const char2 = path8[i];
+      for (let i = 0; i < path11.length; i++) {
+        const char2 = path11[i];
         if (!inBrackets && char2 === ".") {
           if (current) {
             parts.push(current);
@@ -28477,10 +28477,10 @@ var require_redact = __commonJS({
       return current;
     }
     function redactPaths(obj, paths, censor, remove = false) {
-      for (const path8 of paths) {
-        const parts = parsePath(path8);
+      for (const path11 of paths) {
+        const parts = parsePath(path11);
         if (parts.includes("*")) {
-          redactWildcardPath(obj, parts, censor, path8, remove);
+          redactWildcardPath(obj, parts, censor, path11, remove);
         } else {
           if (remove) {
             removeKey(obj, parts);
@@ -28565,8 +28565,8 @@ var require_redact = __commonJS({
           }
         } else {
           if (afterWildcard.includes("*")) {
-            const wrappedCensor = typeof censor === "function" ? (value, path8) => {
-              const fullPath = [...pathArray.slice(0, pathLength), ...path8];
+            const wrappedCensor = typeof censor === "function" ? (value, path11) => {
+              const fullPath = [...pathArray.slice(0, pathLength), ...path11];
               return censor(value, fullPath);
             } : censor;
             redactWildcardPath(current, afterWildcard, wrappedCensor, originalPath, remove);
@@ -28601,8 +28601,8 @@ var require_redact = __commonJS({
         return null;
       }
       const pathStructure = /* @__PURE__ */ new Map();
-      for (const path8 of pathsToClone) {
-        const parts = parsePath(path8);
+      for (const path11 of pathsToClone) {
+        const parts = parsePath(path11);
         let current = pathStructure;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -28654,24 +28654,24 @@ var require_redact = __commonJS({
       }
       return cloneSelectively(obj, pathStructure);
     }
-    function validatePath(path8) {
-      if (typeof path8 !== "string") {
+    function validatePath(path11) {
+      if (typeof path11 !== "string") {
         throw new Error("Paths must be (non-empty) strings");
       }
-      if (path8 === "") {
+      if (path11 === "") {
         throw new Error("Invalid redaction path ()");
       }
-      if (path8.includes("..")) {
-        throw new Error(`Invalid redaction path (${path8})`);
+      if (path11.includes("..")) {
+        throw new Error(`Invalid redaction path (${path11})`);
       }
-      if (path8.includes(",")) {
-        throw new Error(`Invalid redaction path (${path8})`);
+      if (path11.includes(",")) {
+        throw new Error(`Invalid redaction path (${path11})`);
       }
       let bracketCount = 0;
       let inQuotes = false;
       let quoteChar = "";
-      for (let i = 0; i < path8.length; i++) {
-        const char2 = path8[i];
+      for (let i = 0; i < path11.length; i++) {
+        const char2 = path11[i];
         if ((char2 === '"' || char2 === "'") && bracketCount > 0) {
           if (!inQuotes) {
             inQuotes = true;
@@ -28685,20 +28685,20 @@ var require_redact = __commonJS({
         } else if (char2 === "]" && !inQuotes) {
           bracketCount--;
           if (bracketCount < 0) {
-            throw new Error(`Invalid redaction path (${path8})`);
+            throw new Error(`Invalid redaction path (${path11})`);
           }
         }
       }
       if (bracketCount !== 0) {
-        throw new Error(`Invalid redaction path (${path8})`);
+        throw new Error(`Invalid redaction path (${path11})`);
       }
     }
     function validatePaths(paths) {
       if (!Array.isArray(paths)) {
         throw new TypeError("paths must be an array");
       }
-      for (const path8 of paths) {
-        validatePath(path8);
+      for (const path11 of paths) {
+        validatePath(path11);
       }
     }
     function slowRedact(options = {}) {
@@ -28866,8 +28866,8 @@ var require_redaction = __commonJS({
         if (shape[k] === null) {
           o[k] = (value) => topCensor(value, [k]);
         } else {
-          const wrappedCensor = typeof censor === "function" ? (value, path8) => {
-            return censor(value, [k, ...path8]);
+          const wrappedCensor = typeof censor === "function" ? (value, path11) => {
+            return censor(value, [k, ...path11]);
           } : censor;
           o[k] = Redact({
             paths: shape[k],
@@ -29088,7 +29088,7 @@ var require_sonic_boom = __commonJS({
     var fs3 = __require("fs");
     var EventEmitter = __require("events");
     var inherits = __require("util").inherits;
-    var path8 = __require("path");
+    var path11 = __require("path");
     var sleep = require_atomic_sleep();
     var assert = __require("assert");
     var BUSY_WRITE_TIMEOUT = 100;
@@ -29142,7 +29142,7 @@ var require_sonic_boom = __commonJS({
       const mode = sonic.mode;
       if (sonic.sync) {
         try {
-          if (sonic.mkdir) fs3.mkdirSync(path8.dirname(file), { recursive: true });
+          if (sonic.mkdir) fs3.mkdirSync(path11.dirname(file), { recursive: true });
           const fd = fs3.openSync(file, flags, mode);
           fileOpened(null, fd);
         } catch (err) {
@@ -29150,7 +29150,7 @@ var require_sonic_boom = __commonJS({
           throw err;
         }
       } else if (sonic.mkdir) {
-        fs3.mkdir(path8.dirname(file), { recursive: true }, (err) => {
+        fs3.mkdir(path11.dirname(file), { recursive: true }, (err) => {
           if (err) return fileOpened(err);
           fs3.open(file, flags, mode, fileOpened);
         });
@@ -29162,7 +29162,7 @@ var require_sonic_boom = __commonJS({
       if (!(this instanceof SonicBoom)) {
         return new SonicBoom(opts);
       }
-      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir3, retryEAGAIN, fsync, contentMode, mode } = opts || {};
+      let { fd, dest, minLength, maxLength, maxWrite, periodicFlush, sync, append = true, mkdir: mkdir6, retryEAGAIN, fsync, contentMode, mode } = opts || {};
       fd = fd || dest;
       this._len = 0;
       this.fd = -1;
@@ -29187,7 +29187,7 @@ var require_sonic_boom = __commonJS({
       this.append = append || false;
       this.mode = mode;
       this.retryEAGAIN = retryEAGAIN || (() => true);
-      this.mkdir = mkdir3 || false;
+      this.mkdir = mkdir6 || false;
       let fsWriteSync;
       let fsWrite;
       if (contentMode === kContentModeBuffer) {
@@ -29230,7 +29230,7 @@ var require_sonic_boom = __commonJS({
       if (this.minLength >= this.maxWrite) {
         throw new Error(`minLength should be smaller than maxWrite (${this.maxWrite})`);
       }
-      this.release = (err, n3) => {
+      this.release = (err, n4) => {
         if (err) {
           if ((err.code === "EAGAIN" || err.code === "EBUSY") && this.retryEAGAIN(err, this._writingBuf.length, this._len - this._writingBuf.length)) {
             if (this.sync) {
@@ -29249,8 +29249,8 @@ var require_sonic_boom = __commonJS({
           }
           return;
         }
-        this.emit("write", n3);
-        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n3);
+        this.emit("write", n4);
+        const releasedBufObj = releaseWritingBuf(this._writingBuf, this._len, n4);
         this._len = releasedBufObj.len;
         this._writingBuf = releasedBufObj.writingBuf;
         if (this._writingBuf.length) {
@@ -29260,8 +29260,8 @@ var require_sonic_boom = __commonJS({
           }
           try {
             do {
-              const n4 = fsWriteSync();
-              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n4);
+              const n5 = fsWriteSync();
+              const releasedBufObj2 = releaseWritingBuf(this._writingBuf, this._len, n5);
               this._len = releasedBufObj2.len;
               this._writingBuf = releasedBufObj2.writingBuf;
             } while (this._writingBuf.length);
@@ -29309,12 +29309,12 @@ var require_sonic_boom = __commonJS({
         this._periodicFlushTimer.unref();
       }
     }
-    function releaseWritingBuf(writingBuf, len, n3) {
+    function releaseWritingBuf(writingBuf, len, n4) {
       if (typeof writingBuf === "string") {
         writingBuf = Buffer.from(writingBuf);
       }
-      len = Math.max(len - n3, 0);
-      writingBuf = writingBuf.subarray(n3);
+      len = Math.max(len - n4, 0);
+      writingBuf = writingBuf.subarray(n4);
       return { writingBuf, len };
     }
     function emitDrain(sonic) {
@@ -29536,8 +29536,8 @@ var require_sonic_boom = __commonJS({
           buf = this._bufs[0];
         }
         try {
-          const n3 = Buffer.isBuffer(buf) ? fs3.writeSync(this.fd, buf) : fs3.writeSync(this.fd, buf, "utf8");
-          const releasedBufObj = releaseWritingBuf(buf, this._len, n3);
+          const n4 = Buffer.isBuffer(buf) ? fs3.writeSync(this.fd, buf) : fs3.writeSync(this.fd, buf, "utf8");
+          const releasedBufObj = releaseWritingBuf(buf, this._len, n4);
           buf = releasedBufObj.writingBuf;
           this._len = releasedBufObj.len;
           if (buf.length <= 0) {
@@ -29573,9 +29573,9 @@ var require_sonic_boom = __commonJS({
           buf = mergeBuf(this._bufs[0], this._lens[0]);
         }
         try {
-          const n3 = fs3.writeSync(this.fd, buf);
-          buf = buf.subarray(n3);
-          this._len = Math.max(this._len - n3, 0);
+          const n4 = fs3.writeSync(this.fd, buf);
+          buf = buf.subarray(n4);
+          this._len = Math.max(this._len - n4, 0);
           if (buf.length <= 0) {
             this._bufs.shift();
             this._lens.shift();
@@ -30497,7 +30497,7 @@ var require_tools = __commonJS({
       return function hookWrappedLog(...args) {
         hook.call(this, args, LOG, level);
       };
-      function LOG(o, ...n3) {
+      function LOG(o, ...n4) {
         if (typeof o === "object") {
           let msg = o;
           if (o !== null) {
@@ -30508,22 +30508,22 @@ var require_tools = __commonJS({
             }
           }
           let formatParams;
-          if (msg === null && n3.length === 0) {
+          if (msg === null && n4.length === 0) {
             formatParams = [null];
           } else {
-            msg = n3.shift();
-            formatParams = n3;
+            msg = n4.shift();
+            formatParams = n4;
           }
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
           this[writeSym](o, format(msg, formatParams, this[formatOptsSym]), level);
         } else {
-          let msg = o === void 0 ? n3.shift() : o;
+          let msg = o === void 0 ? n4.shift() : o;
           if (typeof this[msgPrefixSym] === "string" && msg !== void 0 && msg !== null) {
             msg = this[msgPrefixSym] + msg;
           }
-          this[writeSym](null, format(msg, n3, this[formatOptsSym]), level);
+          this[writeSym](null, format(msg, n4, this[formatOptsSym]), level);
         }
       }
     }
@@ -31081,7 +31081,7 @@ var require_proto = __commonJS({
       get levelVal() {
         return this[levelValSym];
       },
-      set levelVal(n3) {
+      set levelVal(n4) {
         throw Error("levelVal is read-only");
       },
       get msgPrefix() {
@@ -32010,9 +32010,9 @@ var require_pino = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/pino.js"(exports, module) {
     function pinoBundlerAbsolutePath(p) {
       try {
-        const path8 = __require("path");
+        const path11 = __require("path");
         const outputDir = "/Users/vedo/Downloads/imoove/artifacts/api-server/dist";
-        return path8.resolve(outputDir, p.replace(/^\.\//, ""));
+        return path11.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
         return f(p);
@@ -33985,7 +33985,7 @@ var init_query_promise = __esm({
 function mapResultRow(columns, row, joinsNotNullableMap) {
   const nullifyMap = {};
   const result = columns.reduce(
-    (result2, { path: path8, field }, columnIndex) => {
+    (result2, { path: path11, field }, columnIndex) => {
       let decoder2;
       if (is(field, Column)) {
         decoder2 = field;
@@ -33997,8 +33997,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         decoder2 = field.sql.decoder;
       }
       let node = result2;
-      for (const [pathChunkIndex, pathChunk] of path8.entries()) {
-        if (pathChunkIndex < path8.length - 1) {
+      for (const [pathChunkIndex, pathChunk] of path11.entries()) {
+        if (pathChunkIndex < path11.length - 1) {
           if (!(pathChunk in node)) {
             node[pathChunk] = {};
           }
@@ -34006,8 +34006,8 @@ function mapResultRow(columns, row, joinsNotNullableMap) {
         } else {
           const rawValue = row[columnIndex];
           const value = node[pathChunk] = rawValue === null ? null : decoder2.mapFromDriverValue(rawValue);
-          if (joinsNotNullableMap && is(field, Column) && path8.length === 2) {
-            const objectName = path8[0];
+          if (joinsNotNullableMap && is(field, Column) && path11.length === 2) {
+            const objectName = path11[0];
             if (!(objectName in nullifyMap)) {
               nullifyMap[objectName] = value === null ? getTableName(field.table) : false;
             } else if (typeof nullifyMap[objectName] === "string" && nullifyMap[objectName] !== getTableName(field.table)) {
@@ -35869,6 +35869,12 @@ var init_table2 = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/primary-keys.js
+function primaryKey(...config2) {
+  if (config2[0].columns) {
+    return new PrimaryKeyBuilder(config2[0].columns, config2[0].name);
+  }
+  return new PrimaryKeyBuilder(config2);
+}
 var PrimaryKeyBuilder, PrimaryKey;
 var init_primary_keys = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/primary-keys.js"() {
@@ -36125,19 +36131,19 @@ function extractTablesRelationalConfig(schema, configHelpers) {
       const relations2 = value.config(
         configHelpers(value.table)
       );
-      let primaryKey;
+      let primaryKey2;
       for (const [relationName, relation] of Object.entries(relations2)) {
         if (tableName) {
           const tableConfig = tablesConfig[tableName];
           tableConfig.relations[relationName] = relation;
-          if (primaryKey) {
-            tableConfig.primaryKey.push(...primaryKey);
+          if (primaryKey2) {
+            tableConfig.primaryKey.push(...primaryKey2);
           }
         } else {
           if (!(dbName in relationsBuffer)) {
             relationsBuffer[dbName] = {
               relations: {},
-              primaryKey
+              primaryKey: primaryKey2
             };
           }
           relationsBuffer[dbName].relations[relationName] = relation;
@@ -36562,6 +36568,9 @@ var init_columns = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/indexes.js
+function uniqueIndex(name) {
+  return new IndexBuilderOn(true, name);
+}
 var IndexBuilderOn, IndexBuilder, Index;
 var init_indexes = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/pg-core/indexes.js"() {
@@ -40943,11 +40952,16 @@ __export(schema_exports, {
   adminAuthPasswordResetsTable: () => adminAuthPasswordResetsTable,
   adminAuthUsersTable: () => adminAuthUsersTable,
   adminCompaniesTable: () => adminCompaniesTable,
+  appNewsItemsTable: () => appNewsItemsTable,
+  appOperationalConfigTable: () => appOperationalConfigTable,
+  appServiceRegionsTable: () => appServiceRegionsTable,
+  appSponsorsTable: () => appSponsorsTable,
   billingAccountsTable: () => billingAccountsTable,
   billingExportBatchesTable: () => billingExportBatchesTable,
   companyChangeRequestsTable: () => companyChangeRequestsTable,
   companyComplianceDocumentsTable: () => companyComplianceDocumentsTable,
   driverVehicleAssignmentsTable: () => driverVehicleAssignmentsTable,
+  emailVerificationCodesTable: () => emailVerificationCodesTable,
   fareAreasTable: () => fareAreasTable,
   financialAuditLogTable: () => financialAuditLogTable,
   fleetDriversTable: () => fleetDriversTable,
@@ -40961,6 +40975,7 @@ __export(schema_exports, {
   insurerRideTransportDocumentsTable: () => insurerRideTransportDocumentsTable,
   invoiceItemsTable: () => invoiceItemsTable,
   invoicesTable: () => invoicesTable,
+  medicalDocumentExtractionsTable: () => medicalDocumentExtractionsTable,
   panelAuditLogTable: () => panelAuditLogTable,
   panelUsersTable: () => panelUsersTable,
   partnerRegistrationDocumentsTable: () => partnerRegistrationDocumentsTable,
@@ -40971,12 +40986,14 @@ __export(schema_exports, {
   rideBillingCorrectionsTable: () => rideBillingCorrectionsTable,
   rideEventsTable: () => rideEventsTable,
   rideFinancialsTable: () => rideFinancialsTable,
+  rideSupportTicketsTable: () => rideSupportTicketsTable,
   ridesTable: () => ridesTable,
+  settlementRideAllocationsTable: () => settlementRideAllocationsTable,
   settlementsTable: () => settlementsTable,
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, rideSupportTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41049,16 +41066,25 @@ var init_schema2 = __esm({
       session_version: integer("session_version").notNull().default(1),
       is_active: boolean("is_active").notNull().default(true),
       access_status: text("access_status").notNull().default("active"),
-      /** Plattform-Freigabe: pending | in_review | approved | rejected (Login bleibt möglich). */
+      /** Plattform-Freigabe: pending | in_review | missing_documents | approved | rejected (Login bleibt möglich). */
       approval_status: text("approval_status").notNull().default("approved"),
       /** Von Admin gesetzter Grund bei Sperre (MVP, Anzeige/Export). */
       suspension_reason: text("suspension_reason").notNull().default(""),
       /** Interne Plattform-Notiz (nur Admin, nicht an Partner ausliefern als fachlichen Status). */
       admin_internal_note: text("admin_internal_note").notNull().default(""),
+      /**
+       * Plattform-Operator: Einsatzbereitschaft trotz fehlender Unterlagen (P-Schein, Fahrzeug, Mandanten-Gate).
+       * Sperre / explizite Nicht-Freigabe / abgelehnt bleiben wirksam.
+       */
+      readiness_override_system: boolean("readiness_override_system").notNull().default(false),
       must_change_password: boolean("must_change_password").notNull().default(true),
       p_schein_number: text("p_schein_number").notNull().default(""),
       p_schein_expiry: date("p_schein_expiry"),
       p_schein_doc_storage_key: text("p_schein_doc_storage_key"),
+      /** Privat-/Meldeadresse (optional, Pflege durch Unternehmer). */
+      home_address: text("home_address").notNull().default(""),
+      drivers_license_number: text("drivers_license_number").notNull().default(""),
+      drivers_license_expiry: date("drivers_license_expiry"),
       vehicle_legal_type: text("vehicle_legal_type").notNull().default("taxi"),
       vehicle_class: text("vehicle_class").notNull().default("standard"),
       last_login_at: timestamp("last_login_at", { withTimezone: true }),
@@ -41079,14 +41105,14 @@ var init_schema2 = __esm({
       taxi_order_number: text("taxi_order_number").notNull().default(""),
       /** Taxikonzession / Ordnungsnummer (Pflicht bis Freigabe) */
       konzession_number: text("konzession_number").notNull().default(""),
-      /** [{ storageKey, uploadedAt? }] – Nachweise; FK in Migration 035 */
+      /** Nachweise: chronologisch angehängt, keine Partner-Hard-Deletes; Felder siehe fleetVehiclesData VehicleDocumentRef */
       vehicle_documents: jsonb("vehicle_documents").$type().notNull().default([]),
       rejection_reason: text("rejection_reason").notNull().default(""),
       approval_decided_at: timestamp("approval_decided_at", { withTimezone: true }),
       approval_decided_by_admin_id: text("approval_decided_by_admin_id"),
       next_inspection_date: date("next_inspection_date"),
       is_active: boolean("is_active").notNull().default(false),
-      /** draft | pending_approval | approved | rejected | blocked */
+      /** draft | pending_approval | missing_documents | approved | rejected | blocked */
       approval_status: text("approval_status").notNull().default("draft"),
       admin_internal_note: text("admin_internal_note").notNull().default(""),
       /** Sperrgrund (Plattform) bei `approval_status` = blocked */
@@ -41336,8 +41362,14 @@ var init_schema2 = __esm({
       }),
       /** Kopie des normalisierten Codes bei Einlösung (Audit / Verlauf). */
       access_code_normalized_snapshot: text("access_code_normalized_snapshot"),
+      /** Optional: Kunden-Telefon bei Buchung (bookingRules.requirePhone). */
+      customer_phone: text("customer_phone"),
       /** Hotel/Medizin/Serien — nur Panel; nicht in öffentlichem Ride-Pool ausliefern. */
-      partner_booking_meta: jsonb("partner_booking_meta").$type().notNull().default({})
+      partner_booking_meta: jsonb("partner_booking_meta").$type().notNull().default({}),
+      /** Tarif-Engine-Snapshot bei Buchung (Merge + Breakdown; freeze). */
+      tariff_snapshot_json: jsonb("tariff_snapshot_json").$type().notNull().default({}),
+      /** Rollstuhl-/Barrierefrei-Infos (fahrtrelevant, keine Diagnose). */
+      accessibility_options_json: jsonb("accessibility_options_json").$type().notNull().default({})
     });
     rideEventsTable = pgTable("ride_events", {
       id: text("id").primaryKey(),
@@ -41349,6 +41381,41 @@ var init_schema2 = __esm({
       actor_id: text("actor_id"),
       payload: jsonb("payload").$type().notNull().default({}),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    rideSupportTicketsTable = pgTable("ride_support_tickets", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      passenger_id: text("passenger_id").notNull(),
+      company_id: text("company_id").references(() => adminCompaniesTable.id, {
+        onDelete: "set null"
+      }),
+      category: text("category").notNull(),
+      message: text("message"),
+      status: text("status").notNull().default("open"),
+      internal_note: text("internal_note"),
+      priority: text("priority").notNull().default("normal"),
+      source: text("source").notNull().default("mobile"),
+      created_by_actor_kind: text("created_by_actor_kind").notNull().default("customer"),
+      created_by_actor_id: text("created_by_actor_id"),
+      ride_context_snapshot: jsonb("ride_context_snapshot").$type().notNull().default({}),
+      snapshot_schema_version: integer("snapshot_schema_version").notNull().default(1),
+      snapshot_captured_at: timestamp("snapshot_captured_at", { withTimezone: true }).notNull(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    medicalDocumentExtractionsTable = pgTable("medical_document_extractions", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      company_id: text("company_id").references(() => adminCompaniesTable.id, { onDelete: "set null" }),
+      document_kind: text("document_kind").notNull().default("transport_sheet"),
+      source: text("source").notNull().default("ocr_placeholder"),
+      review_status: text("review_status").notNull().default("draft"),
+      extraction_json: jsonb("extraction_json").$type().notNull().default({}),
+      confidence_json: jsonb("confidence_json").$type().notNull().default({}),
+      reviewed_by_actor_kind: text("reviewed_by_actor_kind"),
+      reviewed_by_actor_id: text("reviewed_by_actor_id"),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
     billingAccountsTable = pgTable("billing_accounts", {
       id: text("id").primaryKey(),
@@ -41369,7 +41436,7 @@ var init_schema2 = __esm({
     });
     rideFinancialsTable = pgTable("ride_financials", {
       id: text("id").primaryKey(),
-      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      ride_id: text("ride_id").notNull().unique().references(() => ridesTable.id, { onDelete: "cascade" }),
       payer_type: text("payer_type").notNull(),
       billing_mode: text("billing_mode").notNull(),
       service_provider_company_id: text("service_provider_company_id").references(() => adminCompaniesTable.id, {
@@ -41448,10 +41515,28 @@ var init_schema2 = __esm({
       status: text("status").notNull().default("draft"),
       paid_at: timestamp("paid_at", { withTimezone: true }),
       payment_reference: text("payment_reference").notNull().default(""),
+      /** Optional; eindeutig wenn gesetzt — idempotente Settlement-Erzeugung (Retry / gleicher Batch). */
+      idempotency_key: text("idempotency_key"),
       metadata_json: jsonb("metadata_json").$type().notNull().default({}),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
+    settlementRideAllocationsTable = pgTable(
+      "settlement_ride_allocations",
+      {
+        settlement_id: text("settlement_id").notNull().references(() => settlementsTable.id, { onDelete: "cascade" }),
+        ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+        ride_financial_id: text("ride_financial_id").notNull().references(() => rideFinancialsTable.id, { onDelete: "cascade" }),
+        gross_amount_snap: doublePrecision("gross_amount_snap").notNull().default(0),
+        commission_amount_snap: doublePrecision("commission_amount_snap").notNull().default(0),
+        operator_payout_snap: doublePrecision("operator_payout_snap").notNull().default(0),
+        created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+      },
+      (t) => ({
+        pk: primaryKey({ columns: [t.settlement_id, t.ride_id] }),
+        rideUnique: uniqueIndex("settlement_ride_allocations_one_ride_global").on(t.ride_id)
+      })
+    );
     paymentsTable = pgTable("payments", {
       id: text("id").primaryKey(),
       target_type: text("target_type").notNull(),
@@ -41659,6 +41744,71 @@ var init_schema2 = __esm({
         onDelete: "set null"
       }),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    appOperationalConfigTable = pgTable("app_operational_config", {
+      id: text("id").primaryKey(),
+      payload: jsonb("payload").$type().notNull().default({}),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    emailVerificationCodesTable = pgTable("email_verification_codes", {
+      id: text("id").primaryKey(),
+      email: text("email").notNull(),
+      code_hash: text("code_hash").notNull(),
+      purpose: text("purpose").notNull(),
+      expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+      attempts: integer("attempts").notNull().default(0),
+      consumed_at: timestamp("consumed_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    appNewsItemsTable = pgTable("app_news_items", {
+      id: text("id").primaryKey(),
+      title: text("title").notNull().default(""),
+      body: text("body").notNull().default(""),
+      image_url: text("image_url"),
+      button_text: text("button_text"),
+      target_type: text("target_type").notNull().default("none"),
+      target_value: text("target_value"),
+      audience: text("audience").notNull().default("all"),
+      sort_order: integer("sort_order").notNull().default(0),
+      is_active: boolean("is_active").notNull().default(true),
+      starts_at: timestamp("starts_at", { withTimezone: true }),
+      ends_at: timestamp("ends_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    appSponsorsTable = pgTable("app_sponsors", {
+      id: text("id").primaryKey(),
+      title: text("title").notNull().default(""),
+      description: text("description").notNull().default(""),
+      image_url: text("image_url"),
+      logo_url: text("logo_url"),
+      external_url: text("external_url"),
+      button_text: text("button_text"),
+      qr_code_url: text("qr_code_url"),
+      qr_from_link: boolean("qr_from_link").notNull().default(false),
+      category: text("category").notNull().default("partner"),
+      audience: text("audience").notNull().default("all"),
+      sort_order: integer("sort_order").notNull().default(0),
+      is_active: boolean("is_active").notNull().default(true),
+      starts_at: timestamp("starts_at", { withTimezone: true }),
+      ends_at: timestamp("ends_at", { withTimezone: true }),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    appServiceRegionsTable = pgTable("app_service_regions", {
+      id: text("id").primaryKey(),
+      label: text("label").notNull(),
+      match_terms: jsonb("match_terms").$type().notNull().default([]),
+      /** substring (Default) | radius | geofence/polygon (vorbereitet) */
+      match_mode: text("match_mode").notNull().default("substring"),
+      center_lat: doublePrecision("center_lat"),
+      center_lng: doublePrecision("center_lng"),
+      radius_km: doublePrecision("radius_km"),
+      /** Optional: erweiterte Geometrie; Radius nutzt bevorzugt center_* + radius_km. */
+      geo_fence_json: jsonb("geo_fence_json").$type(),
+      is_active: boolean("is_active").notNull().default(true),
+      sort_order: integer("sort_order").notNull().default(0),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
   }
@@ -41990,9 +42140,9 @@ async function insertAccessCodeAdmin(body) {
     const maxAttempts = 12;
     for (let a = 0; a < maxAttempts; a += 1) {
       const plain = generateAccessCodePlain(12);
-      const n3 = normalizeAccessCodeInput(plain);
+      const n4 = normalizeAccessCodeInput(plain);
       const ins = await insertAccessCodeRow({
-        normalized: n3,
+        normalized: n4,
         codeType: body.codeType,
         companyId,
         label,
@@ -42133,6 +42283,44 @@ var init_partnerBookingMeta = __esm({
   }
 });
 
+// src/domain/medicalRidePartnerMeta.ts
+function isMedicalRidePartnerMeta(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v) && v.medical_ride === true;
+}
+function parsePartnerBookingMetaFromRow(raw, parseTyped) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (isMedicalRidePartnerMeta(raw)) return raw;
+  const typed = parseTyped(raw);
+  if (typed) return typed;
+  const rec = raw;
+  const v = rec.customer_driver_note ?? rec.customerDriverNote;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t) return { customer_driver_note: t.slice(0, 500) };
+  }
+  return null;
+}
+function partnerBookingMetaToDbJson(meta, metaToJsonTyped) {
+  if (!meta) return {};
+  if (isMedicalRidePartnerMeta(meta)) {
+    return JSON.parse(JSON.stringify(meta));
+  }
+  if (parsePartnerBookingMeta(meta) === null) {
+    const rec = meta;
+    const v = rec.customer_driver_note ?? rec.customerDriverNote;
+    if (typeof v === "string" && v.trim()) {
+      return { customer_driver_note: v.trim().slice(0, 500) };
+    }
+    return {};
+  }
+  return metaToJsonTyped(meta);
+}
+var init_medicalRidePartnerMeta = __esm({
+  "src/domain/medicalRidePartnerMeta.ts"() {
+    init_partnerBookingMeta();
+  }
+});
+
 // src/lib/dispatchStatus.ts
 function isFarFutureReservation(scheduledAtIso, nowMs = Date.now()) {
   if (scheduledAtIso == null) return false;
@@ -42199,33 +42387,127 @@ var ridesData_exports = {};
 __export(ridesData_exports, {
   adminPreviousDayBounds: () => adminPreviousDayBounds,
   adminReleaseRide: () => adminReleaseRide,
+  applyRideMutationPersistence: () => applyRideMutationPersistence,
   countRidesAdmin: () => countRidesAdmin,
   findRide: () => findRide,
   findRideAdminById: () => findRideAdminById,
+  findRideForPassenger: () => findRideForPassenger,
   getLastRideForDriverInCompany: () => getLastRideForDriverInCompany,
   getPanelCompanyOverviewMetrics: () => getPanelCompanyOverviewMetrics,
   insertRide: () => insertRide,
   insertRideCloningAccessFromTemplate: () => insertRideCloningAccessFromTemplate,
   insertRideWithOptionalAccessCode: () => insertRideWithOptionalAccessCode,
   insertRidesWithSharedAccessCode: () => insertRidesWithSharedAccessCode,
+  insertSupplementalRideEvent: () => insertSupplementalRideEvent,
   listAdminPartnerDayStats: () => listAdminPartnerDayStats,
+  listAdminRideEventsByRideId: () => listAdminRideEventsByRideId,
   listAdminRidesAgendaForDay: () => listAdminRidesAgendaForDay,
   listRides: () => listRides,
   listRidesAdminPage: () => listRidesAdminPage,
   listRidesForCompany: () => listRidesForCompany,
   listRidesForCompanyFiltered: () => listRidesForCompanyFiltered,
+  listRidesForDriver: () => listRidesForDriver,
+  listRidesForPassenger: () => listRidesForPassenger,
   parseAdminDashboardDayBounds: () => parseAdminDashboardDayBounds,
+  persistedRideRowToRequest: () => persistedRideRowToRequest,
   resetRidesDemo: () => resetRidesDemo,
-  updateRide: () => updateRide
+  tryFleetAcceptRideAtomic: () => tryFleetAcceptRideAtomic,
+  updateRide: () => updateRide,
+  updateRidePartnerBookingMetaTx: () => updateRidePartnerBookingMetaTx
 });
+function readyForDispatchThreshold(nowMs = Date.now()) {
+  return new Date(nowMs + DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1e3);
+}
+function isReservationActivatable(ride, nowMs = Date.now()) {
+  if (ride.status !== "scheduled_assigned") return false;
+  if (!ride.scheduledAt) return false;
+  const scheduledMs = new Date(ride.scheduledAt).getTime();
+  if (!Number.isFinite(scheduledMs)) return false;
+  return nowMs >= scheduledMs - DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1e3;
+}
+async function promoteDueReservationsByIds(db2, rideIds) {
+  const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
+  if (ids.length === 0) return /* @__PURE__ */ new Set();
+  const threshold = readyForDispatchThreshold();
+  const rows = await db2.update(ridesTable).set({ status: "ready_for_dispatch" }).where(
+    and(
+      inArray(ridesTable.id, ids),
+      eq(ridesTable.status, "scheduled_assigned"),
+      isNotNull(ridesTable.scheduled_at),
+      lte(ridesTable.scheduled_at, threshold)
+    )
+  ).returning({ id: ridesTable.id });
+  return new Set(rows.map((r) => r.id));
+}
+async function expirePastOpenReservationsByIds(db2, rideIds) {
+  const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
+  if (ids.length === 0) return /* @__PURE__ */ new Set();
+  const rows = await db2.update(ridesTable).set({ status: "expired" }).where(
+    and(
+      inArray(ridesTable.id, ids),
+      eq(ridesTable.status, "scheduled"),
+      isNotNull(ridesTable.scheduled_at),
+      lt(ridesTable.scheduled_at, /* @__PURE__ */ new Date())
+    )
+  ).returning({ id: ridesTable.id });
+  return new Set(rows.map((r) => r.id));
+}
+function withLifecycleStatuses(rows, promotedIds, expiredIds) {
+  if (promotedIds.size === 0 && expiredIds.size === 0) return rows;
+  return rows.map((r) => {
+    if (expiredIds.has(r.id)) return { ...r, status: "expired" };
+    if (promotedIds.has(r.id)) return { ...r, status: "ready_for_dispatch" };
+    return r;
+  });
+}
 function companyIdMatchCondition(companyId) {
   return sql`${ridesTable.company_id}::text = ${companyId}`;
 }
 function makeEventId(prefix = "REV") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
+async function insertSupplementalRideEvent(rideId, input) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.insert(rideEventsTable).values({
+    id: makeEventId("REVX"),
+    ride_id: rideId,
+    event_type: input.eventType,
+    from_status: input.fromStatus ?? null,
+    to_status: input.toStatus ?? null,
+    actor_type: input.actorType ?? "system",
+    actor_id: input.actorId ?? null,
+    payload: input.payload ?? {}
+  });
+}
 function stripEphemeral(r) {
   const { accessCodeSummary: _a, ...rest } = r;
+  return rest;
+}
+function parseTariffSnapshotFromRow(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw;
+}
+function parsePricingModeFromDb(raw) {
+  if (raw === "taxi_tariff" || raw === "fixed_price" || raw === "hybrid") return raw;
+  return null;
+}
+function assertPersistableRideBookingPricing(ride) {
+  const snap = ride.tariffSnapshot;
+  if (!snap || typeof snap !== "object") return { ok: false, error: "tariff_snapshot_required" };
+  if (typeof snap.engineSchemaVersion !== "number" || !Number.isFinite(snap.engineSchemaVersion)) {
+    return { ok: false, error: "tariff_snapshot_invalid" };
+  }
+  if (!Number.isFinite(snap.finalPriceEur)) return { ok: false, error: "tariff_snapshot_invalid" };
+  if (!Number.isFinite(ride.estimatedFare) || ride.estimatedFare < 0) return { ok: false, error: "estimated_fare_invalid" };
+  const pm = ride.pricingMode;
+  if (pm !== "taxi_tariff" && pm !== "fixed_price" && pm !== "hybrid") {
+    return { ok: false, error: "pricing_mode_required" };
+  }
+  return { ok: true };
+}
+function omitImmutableRidePricingFields(patch) {
+  const { estimatedFare: _ef, tariffSnapshot: _ts, pricingMode: _pm, ...rest } = patch;
   return rest;
 }
 function rowToRide(r) {
@@ -42247,6 +42529,7 @@ function rowToRide(r) {
     scheduledAt: r.scheduled_at ? new Date(r.scheduled_at).toISOString() : null,
     status: r.status,
     customerName: r.customer_name,
+    customerPhone: r.customer_phone ?? null,
     passengerId: r.passenger_id ?? void 0,
     driverId: r.driver_id,
     from: r.from_label,
@@ -42260,13 +42543,24 @@ function rowToRide(r) {
     distanceKm: r.distance_km,
     durationMinutes: r.duration_minutes,
     estimatedFare: r.estimated_fare,
+    tariffSnapshot: parseTariffSnapshotFromRow(r.tariff_snapshot_json) ?? null,
     finalFare: r.final_fare ?? null,
     paymentMethod: r.payment_method,
     vehicle: r.vehicle,
-    pricingMode: r.pricing_mode === "taxi_tariff" ? "taxi_tariff" : null,
+    pricingMode: parsePricingModeFromDb(r.pricing_mode),
     rejectedBy: Array.isArray(r.rejected_by) ? r.rejected_by : [],
-    partnerBookingMeta: parsePartnerBookingMeta(r.partner_booking_meta) ?? null
+    partnerBookingMeta: parsePartnerBookingMetaFromRow(r.partner_booking_meta, parsePartnerBookingMeta) ?? null,
+    accessibilityOptions: r.accessibility_options_json && typeof r.accessibility_options_json === "object" ? r.accessibility_options_json : null
   };
+}
+function persistedRideRowToRequest(r) {
+  return rowToRide(r);
+}
+async function updateRidePartnerBookingMetaTx(tx, rideId, meta) {
+  const out = await tx.update(ridesTable).set({
+    partner_booking_meta: partnerBookingMetaToDbJson(meta, metaToJson)
+  }).where(eq(ridesTable.id, rideId)).returning({ id: ridesTable.id });
+  return out.length > 0;
 }
 function rideToUpdate(r) {
   return {
@@ -42282,6 +42576,7 @@ function rideToUpdate(r) {
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
     customer_name: r.customerName,
+    customer_phone: r.customerPhone ?? null,
     passenger_id: r.passengerId ?? null,
     driver_id: r.driverId ?? null,
     from_label: r.from,
@@ -42300,7 +42595,9 @@ function rideToUpdate(r) {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
-    partner_booking_meta: r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}
+    partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson),
+    accessibility_options_json: r.accessibilityOptions ?? {},
+    tariff_snapshot_json: r.tariffSnapshot ? r.tariffSnapshot : {}
   };
 }
 function rideToInsert(r) {
@@ -42319,6 +42616,7 @@ function rideToInsert(r) {
     scheduled_at: r.scheduledAt ? new Date(r.scheduledAt) : null,
     status: r.status,
     customer_name: r.customerName,
+    customer_phone: r.customerPhone ?? null,
     passenger_id: r.passengerId ?? null,
     driver_id: r.driverId ?? null,
     from_label: r.from,
@@ -42337,7 +42635,9 @@ function rideToInsert(r) {
     vehicle: r.vehicle,
     pricing_mode: r.pricingMode ?? null,
     rejected_by: r.rejectedBy,
-    partner_booking_meta: r.partnerBookingMeta ? metaToJson(r.partnerBookingMeta) : {}
+    partner_booking_meta: partnerBookingMetaToDbJson(r.partnerBookingMeta ?? null, metaToJson),
+    accessibility_options_json: r.accessibilityOptions ?? {},
+    tariff_snapshot_json: r.tariffSnapshot ? r.tariffSnapshot : {}
   };
 }
 function applyMemoryRideFilters(list, filters) {
@@ -42361,13 +42661,21 @@ function applyMemoryRideFilters(list, filters) {
     if (filters.accessCodeId && r.accessCodeId !== filters.accessCodeId) return false;
     if (filters.hasAccessCode === true && !r.accessCodeId) return false;
     if (filters.hasAccessCode === false && r.accessCodeId) return false;
-    if (filters.partnerFlow && r.partnerBookingMeta?.flow !== filters.partnerFlow) return false;
+    if (filters.partnerFlow?.trim()) {
+      const m = r.partnerBookingMeta;
+      const flow = m && typeof m === "object" && !Array.isArray(m) && "flow" in m && typeof m.flow === "string" ? m.flow : void 0;
+      if (flow !== filters.partnerFlow) return false;
+    }
     return true;
   });
 }
 async function listRidesForCompanyFiltered(companyId, filters) {
   const db2 = getDb();
   if (!db2) {
+    const nowMs = Date.now();
+    memoryRides = memoryRides.map(
+      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
+    );
     const list = memoryRides.filter((r) => r.companyId === companyId);
     const filtered = applyMemoryRideFilters(list, filters);
     return filtered.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
@@ -42401,23 +42709,53 @@ async function listRidesForCompanyFiltered(companyId, filters) {
     cond.push(sql`${ridesTable.partner_booking_meta}->>'flow' = ${filters.partnerFlow}`);
   }
   const rows = await db2.select().from(ridesTable).where(and(...cond)).orderBy(desc(ridesTable.created_at));
-  return rows.map(rowToRide);
+  const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
+  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 async function listRides() {
   const db2 = getDb();
   if (!db2) {
+    const nowMs = Date.now();
+    memoryRides = memoryRides.map(
+      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
+    );
     return [...memoryRides];
   }
   const rows = await db2.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
-  return rows.map(rowToRide);
+  const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
+  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 async function listRidesForCompany(companyId) {
   const db2 = getDb();
   if (!db2) {
+    const nowMs = Date.now();
+    memoryRides = memoryRides.map(
+      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
+    );
     return memoryRides.filter((r) => r.companyId === companyId).slice().sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
   }
   const rows = await db2.select().from(ridesTable).where(companyIdMatchCondition(companyId)).orderBy(desc(ridesTable.created_at));
-  return rows.map(rowToRide);
+  const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
+  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+}
+async function listRidesForPassenger(passengerId) {
+  const pid = passengerId.trim();
+  if (!pid) return [];
+  const db2 = getDb();
+  if (!db2) {
+    const nowMs = Date.now();
+    memoryRides = memoryRides.map(
+      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
+    );
+    return memoryRides.filter((r) => (r.passengerId ?? "").trim() === pid).slice().sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+  }
+  const rows = await db2.select().from(ridesTable).where(eq(ridesTable.passenger_id, pid)).orderBy(desc(ridesTable.created_at));
+  const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
+  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
+  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
 }
 async function getLastRideForDriverInCompany(companyId, driverId) {
   const db2 = getDb();
@@ -42471,6 +42809,8 @@ async function insertRide(r, tx) {
   });
 }
 async function insertRideWithOptionalAccessCode(ride, accessCodePlain) {
+  const priceGate = assertPersistableRideBookingPricing(ride);
+  if (!priceGate.ok) return priceGate;
   const trimmed = typeof accessCodePlain === "string" ? accessCodePlain.trim() : "";
   if (!trimmed) {
     let auth = ride.authorizationSource;
@@ -42527,6 +42867,10 @@ async function insertRideWithOptionalAccessCode(ride, accessCodePlain) {
   }
 }
 async function insertRideCloningAccessFromTemplate(ride, template) {
+  const gate = assertPersistableRideBookingPricing(ride);
+  if (!gate.ok) {
+    throw new Error(`insertRideCloningAccessFromTemplate: ${gate.error}`);
+  }
   const withAuth = {
     ...stripEphemeral(ride),
     authorizationSource: template.authorizationSource,
@@ -42553,10 +42897,39 @@ async function insertRidesWithSharedAccessCode(rides, accessCodePlain) {
 async function findRide(id) {
   const db2 = getDb();
   if (!db2) {
+    const nowMs = Date.now();
+    memoryRides = memoryRides.map(
+      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
+    );
     return memoryRides.find((x) => x.id === id) ?? null;
   }
   const rows = await db2.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
-  return rows[0] ? rowToRide(rows[0]) : null;
+  if (!rows[0]) return null;
+  const expired = await expirePastOpenReservationsByIds(db2, [rows[0].id]);
+  const promoted = await promoteDueReservationsByIds(db2, [rows[0].id]);
+  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
+  return rowToRide(row);
+}
+async function findRideForPassenger(id, passengerId) {
+  const rideId = id.trim();
+  const pid = passengerId.trim();
+  if (!rideId || !pid) return null;
+  const db2 = getDb();
+  if (!db2) {
+    const nowMs = Date.now();
+    memoryRides = memoryRides.map(
+      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
+    );
+    const row2 = memoryRides.find((x) => x.id === rideId);
+    if (!row2) return null;
+    return (row2.passengerId ?? "").trim() === pid ? row2 : null;
+  }
+  const rows = await db2.select().from(ridesTable).where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid))).limit(1);
+  if (!rows[0]) return null;
+  const expired = await expirePastOpenReservationsByIds(db2, [rows[0].id]);
+  const promoted = await promoteDueReservationsByIds(db2, [rows[0].id]);
+  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
+  return rowToRide(row);
 }
 function escapeIlikePattern(s) {
   return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
@@ -42975,10 +43348,7 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
     }
   };
 }
-async function updateRide(id, patch) {
-  const cur = await findRide(id);
-  if (!cur) return null;
-  const next = { ...cur, ...patch };
+function buildRideCorrectionPlan(cur, next) {
   const correctionPlan = [];
   if ((cur.finalFare ?? null) !== (next.finalFare ?? null)) {
     correctionPlan.push({
@@ -43028,43 +43398,159 @@ async function updateRide(id, patch) {
       reasonCode: "pricing_mode_change"
     });
   }
+  return correctionPlan;
+}
+async function tryFleetAcceptRideAtomic(input) {
+  const rideId = String(input.rideId ?? "").trim();
+  const driverId = String(input.driverId ?? "").trim();
+  const companyIdIn = typeof input.companyId === "string" ? input.companyId.trim() : "";
+  if (!rideId || !driverId) return { ok: false, reason: "not_found" };
   const db2 = getDb();
   if (!db2) {
-    memoryRides = memoryRides.map((x) => x.id === id ? next : x);
-    return next;
+    const idx = memoryRides.findIndex((r) => r.id === rideId);
+    if (idx < 0) return { ok: false, reason: "not_found" };
+    const cur = memoryRides[idx];
+    if (!cur) return { ok: false, reason: "not_found" };
+    if (!ACCEPT_DISPATCH_STATUSES.includes(cur.status)) {
+      return { ok: false, reason: "ride_already_claimed" };
+    }
+    const assigned = (cur.driverId ?? "").trim();
+    if (assigned && assigned !== driverId) return { ok: false, reason: "ride_already_claimed" };
+    const mergedCompany = companyIdIn || (typeof cur.companyId === "string" ? cur.companyId.trim() : "") || null;
+    const nextStatus = cur.status === "scheduled" ? "scheduled_assigned" : "accepted";
+    const next = {
+      ...cur,
+      status: nextStatus,
+      driverId,
+      companyId: mergedCompany
+    };
+    memoryRides[idx] = next;
+    return { ok: true, previous: cur, ride: next };
   }
-  await db2.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  const mergeCompanyExpr = companyIdIn !== "" ? sql`COALESCE(${ridesTable.company_id}, ${companyIdIn})` : void 0;
+  const prevSnapshot = await findRide(rideId);
+  if (!prevSnapshot) return { ok: false, reason: "not_found" };
+  const nextStatusExpr = sql`case when ${ridesTable.status} = 'scheduled' then 'scheduled_assigned' else 'accepted' end`;
+  const rows = await db2.update(ridesTable).set({
+    status: nextStatusExpr,
+    driver_id: driverId,
+    ...mergeCompanyExpr ? { company_id: mergeCompanyExpr } : {}
+  }).where(
+    and(
+      eq(ridesTable.id, rideId),
+      inArray(ridesTable.status, ACCEPT_DISPATCH_STATUSES),
+      sql`(COALESCE(trim(${ridesTable.driver_id}), '') = '' OR ${ridesTable.driver_id} = ${driverId})`
+    )
+  ).returning();
+  const row = rows[0];
+  if (!row) return { ok: false, reason: "ride_already_claimed" };
+  return { ok: true, previous: prevSnapshot, ride: rowToRide(row) };
+}
+async function applyRideMutationPersistence(rideId, cur, next, actor) {
+  const db2 = getDb();
+  const correctionPlan = buildRideCorrectionPlan(cur, next);
+  if (!db2) {
+    return;
+  }
   for (const c of correctionPlan) {
     await createRideBillingCorrection({
-      rideId: id,
+      rideId,
       fieldName: c.fieldName,
       oldValue: c.oldValue,
       newValue: c.newValue,
       reasonCode: c.reasonCode,
-      actorType: "system",
-      actorId: null,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
       createdAt: c.createdAt
     });
   }
   if (cur.status !== next.status) {
     await db2.insert(rideEventsTable).values({
       id: makeEventId(),
-      ride_id: id,
+      ride_id: rideId,
       event_type: "ride_status_changed",
       from_status: cur.status,
       to_status: next.status,
-      actor_type: "system",
-      actor_id: null,
+      actor_type: actor.actorType,
+      actor_id: actor.actorId,
       payload: {}
     });
   }
+  if ((cur.driverId ?? null) !== (next.driverId ?? null)) {
+    await insertSupplementalRideEvent(rideId, {
+      eventType: "ride_reassigned",
+      fromStatus: cur.status,
+      toStatus: next.status,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      payload: {
+        fromDriverId: cur.driverId ?? null,
+        toDriverId: next.driverId ?? null
+      }
+    });
+  }
+  if (next.status === "offered" && cur.status !== "offered") {
+    await insertSupplementalRideEvent(rideId, {
+      eventType: "driver_offered",
+      fromStatus: cur.status,
+      toStatus: next.status,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      payload: {}
+    });
+  }
+}
+async function updateRide(id, patch, opts) {
+  const cur = await findRide(id);
+  if (!cur) return null;
+  const next = {
+    ...cur,
+    ...omitImmutableRidePricingFields(patch),
+    estimatedFare: cur.estimatedFare,
+    tariffSnapshot: cur.tariffSnapshot,
+    pricingMode: cur.pricingMode
+  };
+  const actor = opts?.mutationActor ?? { actorType: "system", actorId: null };
+  const db2 = getDb();
+  if (!db2) {
+    memoryRides = memoryRides.map((x) => x.id === id ? next : x);
+    return next;
+  }
+  await db2.update(ridesTable).set(rideToUpdate(next)).where(eq(ridesTable.id, id));
+  await applyRideMutationPersistence(id, cur, next, actor);
   return next;
+}
+async function listAdminRideEventsByRideId(rideId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(rideEventsTable).where(eq(rideEventsTable.ride_id, rideId)).orderBy(asc(rideEventsTable.created_at));
+  return rows.map((r) => ({
+    id: r.id,
+    eventType: r.event_type,
+    fromStatus: r.from_status,
+    toStatus: r.to_status,
+    actorType: r.actor_type,
+    actorId: r.actor_id,
+    payload: r.payload ?? {},
+    createdAt: r.created_at.toISOString()
+  }));
 }
 async function adminReleaseRide(id) {
   const cur = await findRide(id);
   if (!cur) return null;
   const nextStatus = cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "pending";
-  return updateRide(id, { driverId: null, status: nextStatus });
+  const fromStatus = cur.status;
+  const previousDriverId = cur.driverId ?? null;
+  const out = await updateRide(id, { driverId: null, status: nextStatus });
+  if (out) {
+    await insertSupplementalRideEvent(id, {
+      eventType: "ride_released",
+      fromStatus,
+      toStatus: nextStatus,
+      payload: { previousDriverId, newStatus: nextStatus }
+    });
+  }
+  return out;
 }
 async function resetRidesDemo(seed) {
   const db2 = getDb();
@@ -43077,11 +43563,22 @@ async function resetRidesDemo(seed) {
     await db2.insert(ridesTable).values(seed.map(rideToInsert));
   }
 }
-var memoryRides, PANEL_OVERVIEW_TERMINAL_STATUSES, PANEL_OVERVIEW_CANCELLED_STATUSES;
+async function listRidesForDriver(driverId) {
+  const did = driverId.trim();
+  if (!did) return [];
+  const db2 = getDb();
+  if (!db2) {
+    return memoryRides.filter((r) => r.driverId === did && r.status === "completed").slice().sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
+  }
+  const rows = await db2.select().from(ridesTable).where(and(eq(ridesTable.driver_id, did), eq(ridesTable.status, "completed"))).orderBy(desc(ridesTable.created_at)).limit(200);
+  return rows.map(rowToRide);
+}
+var memoryRides, DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES, PANEL_OVERVIEW_TERMINAL_STATUSES, PANEL_OVERVIEW_CANCELLED_STATUSES, ACCEPT_DISPATCH_STATUSES;
 var init_ridesData = __esm({
   "src/db/ridesData.ts"() {
     init_drizzle_orm();
     init_partnerBookingMeta();
+    init_medicalRidePartnerMeta();
     init_rideBillingProfile();
     init_rideAuthorization();
     init_accessCodesData();
@@ -43090,6 +43587,7 @@ var init_ridesData = __esm({
     init_schema2();
     init_rideBillingCorrectionsData();
     memoryRides = [];
+    DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
     PANEL_OVERVIEW_TERMINAL_STATUSES = [
       "completed",
       "cancelled",
@@ -43105,6 +43603,13 @@ var init_ridesData = __esm({
       "cancelled_by_driver",
       "cancelled_by_system"
     ];
+    ACCEPT_DISPATCH_STATUSES = [
+      "scheduled",
+      "requested",
+      "searching_driver",
+      "offered",
+      "pending"
+    ];
   }
 });
 
@@ -43116,6 +43621,23 @@ function roundMoney(value) {
 function toSafeNonNegative(value, fallback) {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.max(0, value);
+}
+function readTariffSnapshotGrossEur(ride) {
+  const snap = ride.tariffSnapshot;
+  if (snap == null || typeof snap !== "object") return null;
+  const v = Number(snap.finalPriceEur);
+  if (!Number.isFinite(v) || v < 0) return null;
+  return roundMoney(v);
+}
+function effectiveTaxiGrossEur(ride) {
+  const fromSnap = readTariffSnapshotGrossEur(ride);
+  if (fromSnap !== null) return fromSnap;
+  return roundMoney(
+    toSafeNonNegative(
+      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
+      0
+    )
+  );
 }
 function derivePayerType(ride) {
   if (ride.partnerBookingMeta?.flow === "hotel_guest") return "hotel";
@@ -43147,12 +43669,8 @@ function deriveInitialSettlementStatus(ride) {
 function calculateRideFinancialsV1(input) {
   const { ride } = input;
   const pricingContext = input.pricingContext ?? null;
-  const grossAmount = roundMoney(
-    toSafeNonNegative(
-      Number.isFinite(Number(ride.finalFare)) ? Number(ride.finalFare) : Number(ride.estimatedFare),
-      0
-    )
-  );
+  const grossFromSnapshot = readTariffSnapshotGrossEur(ride) !== null;
+  const grossAmount = effectiveTaxiGrossEur(ride);
   const vatRate = toSafeNonNegative(pricingContext?.vatRate ?? DEFAULT_VAT_RATE, DEFAULT_VAT_RATE);
   const netAmount = roundMoney(grossAmount / (1 + vatRate));
   const vatAmount = roundMoney(grossAmount - netAmount);
@@ -43161,7 +43679,12 @@ function calculateRideFinancialsV1(input) {
     pricingContext?.commissionValue ?? DEFAULT_COMMISSION_VALUE,
     DEFAULT_COMMISSION_VALUE
   );
-  const commissionAmount = commissionType === "fixed" ? roundMoney(commissionValue) : commissionType === "none" ? 0 : roundMoney(grossAmount * commissionValue);
+  let commissionAmount = commissionType === "fixed" ? roundMoney(commissionValue) : commissionType === "none" ? 0 : roundMoney(grossAmount * commissionValue);
+  const minComm = pricingContext?.minCommissionEur;
+  if (typeof minComm === "number" && Number.isFinite(minComm) && minComm > 0 && commissionType !== "none") {
+    commissionAmount = roundMoney(Math.max(commissionAmount, minComm));
+  }
+  commissionAmount = roundMoney(Math.min(commissionAmount, grossAmount));
   const operatorPayoutAmount = roundMoney(Math.max(0, grossAmount - commissionAmount));
   return {
     grossAmount,
@@ -43184,7 +43707,9 @@ function calculateRideFinancialsV1(input) {
       rideKind: ride.rideKind,
       payerKind: ride.payerKind,
       initialBillingStatus: deriveInitialBillingStatus(ride),
-      initialSettlementStatus: deriveInitialSettlementStatus(ride)
+      initialSettlementStatus: deriveInitialSettlementStatus(ride),
+      grossSource: grossFromSnapshot ? "tariff_snapshot" : "legacy_final_or_estimate",
+      ...ride.tariffSnapshot && typeof ride.tariffSnapshot === "object" ? { tariffSnapshot: ride.tariffSnapshot } : {}
     }
   };
 }
@@ -43209,20 +43734,53 @@ var rideFinancialsData_exports = {};
 __export(rideFinancialsData_exports, {
   RIDE_FINANCIAL_BILLING_STATUSES: () => RIDE_FINANCIAL_BILLING_STATUSES,
   RIDE_FINANCIAL_SETTLEMENT_STATUSES: () => RIDE_FINANCIAL_SETTLEMENT_STATUSES,
+  buildFinancePricingSnapshotPayload: () => buildFinancePricingSnapshotPayload,
   correctRideFinancialSnapshot: () => correctRideFinancialSnapshot,
   getInvoiceEligibility: () => getInvoiceEligibility,
   getRideFinancialSnapshotByRideId: () => getRideFinancialSnapshotByRideId,
   getSettlementEligibility: () => getSettlementEligibility,
   lockRideFinancialSnapshot: () => lockRideFinancialSnapshot,
+  logFinancialAuditForRide: () => logFinancialAuditForRide,
   updateRideFinancialStatuses: () => updateRideFinancialStatuses,
   upsertRideFinancialSnapshot: () => upsertRideFinancialSnapshot
 });
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
+function readFinancePricingSnapshot(meta) {
+  const raw = meta[FINANCE_PRICING_SNAPSHOT_KEY];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw;
+  const ct = o.commissionType;
+  const cv = o.commissionValue;
+  const vr = o.vatRate;
+  if (typeof ct !== "string") return null;
+  const commissionTypeAllowed = ["percentage", "fixed", "hybrid", "none"];
+  if (!commissionTypeAllowed.includes(ct)) return null;
+  const commissionType = ct;
+  const commissionValue = typeof cv === "number" && Number.isFinite(cv) ? cv : typeof cv === "string" && cv.trim() ? Number(cv) : 0;
+  const vatRate = typeof vr === "number" && Number.isFinite(vr) ? vr : typeof vr === "string" && vr.trim() ? Number(vr) : null;
+  const minComm = o.minCommissionEur;
+  const minCommissionEur = typeof minComm === "number" && Number.isFinite(minComm) ? minComm : null;
+  return {
+    commissionType,
+    commissionValue: Number.isFinite(commissionValue) ? commissionValue : 0,
+    vatRate,
+    minCommissionEur
+  };
+}
+function buildFinancePricingSnapshotPayload(incoming, calc) {
+  return {
+    commissionType: calc.commissionType,
+    commissionValue: calc.commissionValue,
+    vatRate: calc.vatRate,
+    minCommissionEur: incoming != null && typeof incoming.minCommissionEur === "number" && Number.isFinite(incoming.minCommissionEur) ? incoming.minCommissionEur : null,
+    capturedAtIso: (/* @__PURE__ */ new Date()).toISOString()
+  };
+}
 async function insertFinancialAuditLog(input) {
   const db2 = getDb();
   if (!db2) return;
   await db2.insert(financialAuditLogTable).values({
-    id: `fal-${randomUUID3()}`,
+    id: `fal-${randomUUID4()}`,
     entity_type: input.entityType,
     entity_id: input.entityId,
     action: input.action,
@@ -43230,6 +43788,16 @@ async function insertFinancialAuditLog(input) {
     new_value_json: input.newValue ?? {},
     actor_type: input.actorType ?? "system",
     actor_id: input.actorId ?? null
+  });
+}
+async function logFinancialAuditForRide(input) {
+  await insertFinancialAuditLog({
+    entityType: "ride",
+    entityId: input.rideId,
+    action: input.action,
+    newValue: input.newValue ?? {},
+    actorType: input.actorType,
+    actorId: input.actorId
   });
 }
 function toPublicSnapshot(row) {
@@ -43262,9 +43830,7 @@ function toPublicSnapshot(row) {
     updatedAt: row.updated_at
   };
 }
-async function getAutoLockReason(rideId) {
-  const db2 = getDb();
-  if (!db2) return null;
+async function getAutoLockReasonDb(rideId, db2) {
   const linkedInvoiceItem = await db2.select({ id: invoiceItemsTable.id }).from(invoiceItemsTable).where(eq(invoiceItemsTable.ride_id, rideId)).limit(1);
   if (linkedInvoiceItem[0]) return "invoice_item_assigned";
   return null;
@@ -43285,23 +43851,109 @@ async function getRideFinancialSnapshotByRideId(rideId) {
 async function upsertRideFinancialSnapshot(input) {
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const { ride } = input;
-  const calc = calculateRideFinancialsV1({
-    ride,
-    pricingContext: input.pricingContext ?? null,
-    partnerCompanyId: ride.companyId ?? null,
-    serviceProviderCompanyId: ride.companyId ?? null
-  });
-  const initialStatuses = deriveFinanceInitialStatuses(ride);
-  const now = /* @__PURE__ */ new Date();
-  const autoLockReason = await getAutoLockReason(ride.id);
-  const existingRows = await db2.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, ride.id)).limit(1);
-  const existing = existingRows[0];
-  if (!existing) {
-    const id = `rf-${randomUUID3()}`;
-    await db2.insert(rideFinancialsTable).values({
-      id,
-      ride_id: ride.id,
+  return await db2.transaction(async (tx) => {
+    const { ride } = input;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ride.id}))`);
+    const existingRows = await tx.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, ride.id)).limit(1);
+    let existing = existingRows[0];
+    const autoLockReason = await getAutoLockReasonDb(ride.id, tx);
+    if (existing?.locked_at) {
+      return { ok: true, snapshotId: existing.id, skipped: true };
+    }
+    if (existing && autoLockReason && !existing.locked_at) {
+      const now2 = /* @__PURE__ */ new Date();
+      await tx.update(rideFinancialsTable).set({
+        locked_at: now2,
+        lock_reason: autoLockReason,
+        updated_at: now2
+      }).where(eq(rideFinancialsTable.id, existing.id));
+      await insertFinancialAuditLog({
+        entityType: "ride_financial",
+        entityId: existing.id,
+        action: "snapshot_locked",
+        oldValue: { lockReason: existing.lock_reason ?? null },
+        newValue: { lockReason: autoLockReason },
+        actorType: input.actorType,
+        actorId: input.actorId
+      });
+      return { ok: true, snapshotId: existing.id, skipped: true };
+    }
+    const now = /* @__PURE__ */ new Date();
+    const existingMeta = existing?.calculation_metadata_json && typeof existing.calculation_metadata_json === "object" && !Array.isArray(existing.calculation_metadata_json) ? { ...existing.calculation_metadata_json } : {};
+    const frozenCtx = readFinancePricingSnapshot(existingMeta);
+    const pricingForCalc = frozenCtx ?? input.pricingContext ?? null;
+    let calc = calculateRideFinancialsV1({
+      ride,
+      pricingContext: pricingForCalc,
+      partnerCompanyId: ride.companyId ?? null,
+      serviceProviderCompanyId: ride.companyId ?? null
+    });
+    if (!existing) {
+      const initialStatuses = deriveFinanceInitialStatuses(ride);
+      const id = `rf-${randomUUID4()}`;
+      const snap = buildFinancePricingSnapshotPayload(input.pricingContext, calc);
+      const calculation_metadata_json2 = {
+        ...calc.calculationMetadata,
+        [FINANCE_PRICING_SNAPSHOT_KEY]: snap
+      };
+      await tx.insert(rideFinancialsTable).values({
+        id,
+        ride_id: ride.id,
+        payer_type: calc.payerType,
+        billing_mode: calc.billingMode,
+        service_provider_company_id: calc.serviceProviderCompanyId,
+        partner_company_id: calc.partnerCompanyId,
+        billing_reference: ride.billingReference ?? "",
+        gross_amount: calc.grossAmount,
+        net_amount: calc.netAmount,
+        vat_rate: calc.vatRate,
+        vat_amount: calc.vatAmount,
+        commission_type: calc.commissionType,
+        commission_value: calc.commissionValue,
+        commission_amount: calc.commissionAmount,
+        operator_payout_amount: calc.operatorPayoutAmount,
+        billing_status: initialStatuses.billingStatus,
+        settlement_status: initialStatuses.settlementStatus,
+        calculated_at: now,
+        calculation_version: calc.calculationVersion,
+        calculation_rule_set: calc.calculationRuleSet,
+        calculation_metadata_json: calculation_metadata_json2,
+        lock_reason: autoLockReason,
+        locked_at: autoLockReason ? now : null,
+        updated_at: now
+      });
+      await insertFinancialAuditLog({
+        entityType: "ride_financial",
+        entityId: id,
+        action: "snapshot_created",
+        newValue: {
+          rideId: ride.id,
+          calculationVersion: calc.calculationVersion,
+          reason: input.reason ?? "ride_completed"
+        },
+        actorType: input.actorType,
+        actorId: input.actorId
+      });
+      return { ok: true, snapshotId: id };
+    }
+    const persistedSnapRaw = existingMeta[FINANCE_PRICING_SNAPSHOT_KEY];
+    const pricingSnap = persistedSnapRaw && typeof persistedSnapRaw === "object" && !Array.isArray(persistedSnapRaw) ? persistedSnapRaw : buildFinancePricingSnapshotPayload(input.pricingContext, calc);
+    const mergedSnapMeta = {
+      ...existingMeta,
+      [FINANCE_PRICING_SNAPSHOT_KEY]: pricingSnap
+    };
+    calc = calculateRideFinancialsV1({
+      ride,
+      pricingContext: readFinancePricingSnapshot(mergedSnapMeta) ?? frozenCtx ?? input.pricingContext ?? null,
+      partnerCompanyId: ride.companyId ?? null,
+      serviceProviderCompanyId: ride.companyId ?? null
+    });
+    const calculation_metadata_json = {
+      ...existingMeta,
+      ...calc.calculationMetadata,
+      [FINANCE_PRICING_SNAPSHOT_KEY]: pricingSnap
+    };
+    await tx.update(rideFinancialsTable).set({
       payer_type: calc.payerType,
       billing_mode: calc.billingMode,
       service_provider_company_id: calc.serviceProviderCompanyId,
@@ -43315,89 +43967,32 @@ async function upsertRideFinancialSnapshot(input) {
       commission_value: calc.commissionValue,
       commission_amount: calc.commissionAmount,
       operator_payout_amount: calc.operatorPayoutAmount,
-      billing_status: initialStatuses.billingStatus,
-      settlement_status: initialStatuses.settlementStatus,
-      calculated_at: now,
       calculation_version: calc.calculationVersion,
       calculation_rule_set: calc.calculationRuleSet,
-      calculation_metadata_json: calc.calculationMetadata,
-      lock_reason: autoLockReason,
-      locked_at: autoLockReason ? now : null,
-      updated_at: now
-    });
-    await insertFinancialAuditLog({
-      entityType: "ride_financial",
-      entityId: id,
-      action: "snapshot_created",
-      newValue: {
-        rideId: ride.id,
-        calculationVersion: calc.calculationVersion,
-        reason: input.reason ?? "ride_completed"
-      },
-      actorType: input.actorType,
-      actorId: input.actorId
-    });
-    return { ok: true, snapshotId: id };
-  }
-  if (existing.locked_at) {
-    return { ok: false, error: "snapshot_locked" };
-  }
-  if (autoLockReason) {
-    await db2.update(rideFinancialsTable).set({
-      locked_at: now,
-      lock_reason: autoLockReason,
+      calculation_metadata_json,
+      calculated_at: now,
       updated_at: now
     }).where(eq(rideFinancialsTable.id, existing.id));
     await insertFinancialAuditLog({
       entityType: "ride_financial",
       entityId: existing.id,
-      action: "snapshot_locked",
-      oldValue: { lockReason: existing.lock_reason ?? null },
-      newValue: { lockReason: autoLockReason },
+      action: "snapshot_updated",
+      oldValue: {
+        calculationVersion: existing.calculation_version,
+        grossAmount: existing.gross_amount,
+        netAmount: existing.net_amount
+      },
+      newValue: {
+        calculationVersion: calc.calculationVersion,
+        grossAmount: calc.grossAmount,
+        netAmount: calc.netAmount,
+        reason: input.reason ?? "refresh"
+      },
       actorType: input.actorType,
       actorId: input.actorId
     });
-    return { ok: false, error: "snapshot_locked" };
-  }
-  await db2.update(rideFinancialsTable).set({
-    payer_type: calc.payerType,
-    billing_mode: calc.billingMode,
-    service_provider_company_id: calc.serviceProviderCompanyId,
-    partner_company_id: calc.partnerCompanyId,
-    billing_reference: ride.billingReference ?? "",
-    gross_amount: calc.grossAmount,
-    net_amount: calc.netAmount,
-    vat_rate: calc.vatRate,
-    vat_amount: calc.vatAmount,
-    commission_type: calc.commissionType,
-    commission_value: calc.commissionValue,
-    commission_amount: calc.commissionAmount,
-    operator_payout_amount: calc.operatorPayoutAmount,
-    calculation_version: calc.calculationVersion,
-    calculation_rule_set: calc.calculationRuleSet,
-    calculation_metadata_json: calc.calculationMetadata,
-    calculated_at: now,
-    updated_at: now
-  }).where(eq(rideFinancialsTable.id, existing.id));
-  await insertFinancialAuditLog({
-    entityType: "ride_financial",
-    entityId: existing.id,
-    action: "snapshot_updated",
-    oldValue: {
-      calculationVersion: existing.calculation_version,
-      grossAmount: existing.gross_amount,
-      netAmount: existing.net_amount
-    },
-    newValue: {
-      calculationVersion: calc.calculationVersion,
-      grossAmount: calc.grossAmount,
-      netAmount: calc.netAmount,
-      reason: input.reason ?? "refresh"
-    },
-    actorType: input.actorType,
-    actorId: input.actorId
+    return { ok: true, snapshotId: existing.id };
   });
-  return { ok: true, snapshotId: existing.id };
 }
 async function lockRideFinancialSnapshot(rideId, reason, actor) {
   const db2 = getDb();
@@ -43451,14 +44046,17 @@ async function correctRideFinancialSnapshot(input) {
     actorType: input.actorType,
     actorId: input.actorId
   });
+  const prevMeta = existing.calculation_metadata_json && typeof existing.calculation_metadata_json === "object" && !Array.isArray(existing.calculation_metadata_json) ? { ...existing.calculation_metadata_json } : {};
   const calc = calculateRideFinancialsV1({
     ride: input.ride,
-    pricingContext: input.pricingContext ?? null,
+    pricingContext: input.pricingContext ?? readFinancePricingSnapshot(prevMeta) ?? null,
     partnerCompanyId: input.ride.companyId ?? null,
     serviceProviderCompanyId: input.ride.companyId ?? null
   });
   const now = /* @__PURE__ */ new Date();
   const correctionCount = Number(existing.correction_count ?? 0) + 1;
+  const correctionSnapRaw = prevMeta[FINANCE_PRICING_SNAPSHOT_KEY];
+  const correctionSnap = input.pricingContext != null ? buildFinancePricingSnapshotPayload(input.pricingContext, calc) : correctionSnapRaw && typeof correctionSnapRaw === "object" && !Array.isArray(correctionSnapRaw) ? correctionSnapRaw : buildFinancePricingSnapshotPayload(readFinancePricingSnapshot(prevMeta), calc);
   await db2.update(rideFinancialsTable).set({
     payer_type: calc.payerType,
     billing_mode: calc.billingMode,
@@ -43476,7 +44074,9 @@ async function correctRideFinancialSnapshot(input) {
     calculation_version: `${calc.calculationVersion}:corr_${correctionCount}`,
     calculation_rule_set: calc.calculationRuleSet,
     calculation_metadata_json: {
+      ...prevMeta,
       ...calc.calculationMetadata,
+      [FINANCE_PRICING_SNAPSHOT_KEY]: correctionSnap,
       correctionReason: reason
     },
     correction_count: correctionCount,
@@ -43554,7 +44154,9 @@ function getInvoiceEligibility(input) {
   const refRequired = input.ride.payerKind === "insurance" || input.ride.payerKind === "company";
   if (refRequired && !billingReference.trim()) pushBlocker(blockers, "missing_billing_reference");
   if (input.ride.rideKind === "medical") {
-    if (!input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
+    const pm = input.ride.partnerBookingMeta;
+    const isFlatMedicalRide = pm && typeof pm === "object" && pm.medical_ride === true;
+    if (!isFlatMedicalRide && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
       pushBlocker(blockers, "incomplete_medical_fields");
     }
   }
@@ -43574,18 +44176,23 @@ function getSettlementEligibility(input) {
   if (input.snapshot && !["open", "calculated"].includes(input.snapshot.settlementStatus)) {
     pushBlocker(blockers, "settlement_status_not_eligible");
   }
-  if (input.ride.rideKind === "medical" && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
-    pushBlocker(blockers, "incomplete_medical_fields");
+  if (input.ride.rideKind === "medical") {
+    const pm = input.ride.partnerBookingMeta;
+    const isFlatMedicalRide = pm && typeof pm === "object" && pm.medical_ride === true;
+    if (!isFlatMedicalRide && !input.ride.partnerBookingMeta?.medical?.patientReference?.trim()) {
+      pushBlocker(blockers, "incomplete_medical_fields");
+    }
   }
   return { eligible: blockers.length === 0, blockers };
 }
-var RIDE_FINANCIAL_BILLING_STATUSES, RIDE_FINANCIAL_SETTLEMENT_STATUSES;
+var FINANCE_PRICING_SNAPSHOT_KEY, RIDE_FINANCIAL_BILLING_STATUSES, RIDE_FINANCIAL_SETTLEMENT_STATUSES;
 var init_rideFinancialsData = __esm({
   "src/db/rideFinancialsData.ts"() {
     init_drizzle_orm();
     init_financeCalculationService();
     init_client();
     init_schema2();
+    FINANCE_PRICING_SNAPSHOT_KEY = "finance_pricing_snapshot";
     RIDE_FINANCIAL_BILLING_STATUSES = [
       "unbilled",
       "queued",
@@ -43602,6 +44209,1056 @@ var init_rideFinancialsData = __esm({
       "paid_out",
       "held",
       "disputed"
+    ];
+  }
+});
+
+// src/lib/serviceRegionMatch.ts
+function haversineDistanceKm(aLat, aLng, bLat, bLng) {
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function normMode(mode) {
+  const m = String(mode ?? "").trim().toLowerCase();
+  if (m === "radius") return "radius";
+  if (m === "polygon" || m === "geofence") return "polygon";
+  if (m === "substring" || m === "term" || m === "terms" || m === "") return "substring";
+  return "other";
+}
+function isRadiusConfigComplete(r) {
+  if (r.centerLat == null || r.centerLng == null || r.radiusKm == null) return false;
+  if (!Number.isFinite(r.centerLat) || !Number.isFinite(r.centerLng) || !Number.isFinite(r.radiusKm)) return false;
+  if (r.radiusKm <= 0) return false;
+  return r.centerLat >= -90 && r.centerLat <= 90 && r.centerLng >= -180 && r.centerLng <= 180;
+}
+function addressMatchesServiceTerms(address, terms) {
+  if (!address || terms.length === 0) return false;
+  const a = address.toLowerCase();
+  for (const t of terms) {
+    const s = String(t).trim().toLowerCase();
+    if (s && a.includes(s)) return true;
+  }
+  return false;
+}
+function regionCoversPointOrAddress(r, fromFull, fromLat, fromLng) {
+  const mode = normMode(r.matchMode);
+  if (mode === "radius") {
+    if (!isRadiusConfigComplete(r)) return false;
+    if (fromLat == null || fromLng == null || !Number.isFinite(fromLat) || !Number.isFinite(fromLng)) return false;
+    return haversineDistanceKm(fromLat, fromLng, r.centerLat, r.centerLng) <= r.radiusKm + 1e-6;
+  }
+  if (mode === "polygon") {
+    return false;
+  }
+  return addressMatchesServiceTerms(String(fromFull ?? "").trim(), r.matchTerms);
+}
+function pointMatchesServiceRegion(r, fromFull, fromLat, fromLng) {
+  if (!r.isActive) return false;
+  return regionCoversPointOrAddress(r, fromFull, fromLat, fromLng);
+}
+function findServiceRegionIdForPickup(fromFull, fromLat, fromLng, serviceRegions) {
+  for (const reg of serviceRegions.filter((r) => r.isActive)) {
+    if (pointMatchesServiceRegion(reg, fromFull, fromLat, fromLng)) {
+      return reg.id;
+    }
+  }
+  return null;
+}
+function anyActiveRegionRequiresClientCoordinates(regions) {
+  return regions.some((r) => r.isActive && normMode(r.matchMode) === "radius" && isRadiusConfigComplete(r));
+}
+function validateServiceAreaForRidePoints(fromFull, toFull, fromLat, fromLng, toLat, toLng, regions) {
+  const fullFrom = String(fromFull ?? "").trim();
+  const fullTo = String(toFull ?? "").trim();
+  const active = regions.filter((r) => r.isActive);
+  if (active.length === 0) return true;
+  const fromOk = active.some((r) => pointMatchesServiceRegion(r, fullFrom, fromLat, fromLng));
+  const toOk = active.some((r) => pointMatchesServiceRegion(r, fullTo, toLat, toLng));
+  return fromOk && toOk;
+}
+var EARTH_RADIUS_KM;
+var init_serviceRegionMatch = __esm({
+  "src/lib/serviceRegionMatch.ts"() {
+    EARTH_RADIUS_KM = 6371;
+  }
+});
+
+// src/lib/operationalTariffEngine.ts
+var operationalTariffEngine_exports = {};
+__export(operationalTariffEngine_exports, {
+  applyRounding: () => applyRounding,
+  ceilTenthEur: () => ceilTenthEur,
+  estimateTaxiFromMergedTariff: () => estimateTaxiFromMergedTariff,
+  getCancellationFeeEurFromMerged: () => getCancellationFeeEurFromMerged,
+  isPlainTariffObject: () => isPlainTariffObject,
+  mergeTariffsForServiceRegion: () => mergeTariffsForServiceRegion,
+  mergedTariffToPublicProfile: () => mergedTariffToPublicProfile,
+  resolveMergedTariff: () => resolveMergedTariff,
+  resolveTripEurPerRouteMinute: () => resolveTripEurPerRouteMinute
+});
+function isPlainTariffObject(x) {
+  return x !== null && typeof x === "object" && !Array.isArray(x);
+}
+function n(v, fallback) {
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+function resolveTripEurPerRouteMinute(merged) {
+  const a = n(merged.perMin, 0);
+  const b = n(merged.pricePerMinute, 0);
+  if (a > 0) return a;
+  if (b > 0) return b;
+  return 0;
+}
+function mergeTariffsForServiceRegion(globalTariff, regionOverride) {
+  const g = { ...globalTariff };
+  delete g.byServiceRegion;
+  if (!regionOverride || !isPlainTariffObject(regionOverride)) {
+    return { ...g };
+  }
+  const r = { ...regionOverride };
+  delete r.byServiceRegion;
+  const out = { ...g, ...r };
+  const gTrip = resolveTripEurPerRouteMinute(g);
+  const oTrip = resolveTripEurPerRouteMinute(out);
+  if (gTrip > 0 && oTrip === 0) {
+    const explicitPerMin0 = "perMin" in r && n(r.perMin) === 0;
+    const explicitPpm0 = "pricePerMinute" in r && n(r.pricePerMinute) === 0;
+    const bothExplicitlyZeroed = explicitPerMin0 && explicitPpm0;
+    if (!bothExplicitlyZeroed) {
+      out.pricePerMinute = g.pricePerMinute;
+      out.perMin = g.perMin;
+    }
+  }
+  return out;
+}
+function resolveMergedTariff(opPayload, serviceRegions, fromFull, pickup) {
+  const defT = {};
+  const t = {
+    ...defT,
+    ...isPlainTariffObject(opPayload.tariffs) ? opPayload.tariffs : {}
+  };
+  const bySr = isPlainTariffObject(t.byServiceRegion) ? t.byServiceRegion : {};
+  const lat0 = pickup?.lat != null && Number.isFinite(Number(pickup.lat)) ? Number(pickup.lat) : null;
+  const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
+  const id = findServiceRegionIdForPickup(String(fromFull ?? "").trim(), lat0, lon0, serviceRegions);
+  const reg = id && isPlainTariffObject(bySr[id]) ? bySr[id] : null;
+  const merged = mergeTariffsForServiceRegion(t, reg);
+  return { merged, serviceRegionId: id };
+}
+function getBerlinHourAndWeekday(d) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BERLIN_TZ,
+    hour: "2-digit",
+    hour12: false,
+    weekday: "short"
+  }).formatToParts(d).filter((p) => p.type === "hour" || p.type === "weekday");
+  const hourS = parts.find((p) => p.type === "hour")?.value;
+  const wdS = parts.find((p) => p.type === "weekday")?.value;
+  const hour2 = hourS != null ? Math.min(23, Math.max(0, parseInt(hourS, 10) || 0)) : 12;
+  const wmap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const weekday0Sun = wdS && wmap[wdS] != null ? wmap[wdS] : 1;
+  return { hour: hour2, weekday0Sun };
+}
+function isWeekend(d) {
+  const { weekday0Sun } = getBerlinHourAndWeekday(d);
+  return weekday0Sun === 0 || weekday0Sun === 6;
+}
+function isNightDefault(d, startHour = 22, endHour = 6) {
+  const { hour: hour2 } = getBerlinHourAndWeekday(d);
+  if (startHour < endHour) {
+    return hour2 >= startHour && hour2 < endHour;
+  }
+  return hour2 >= startHour || hour2 < endHour;
+}
+function ceilTenthEur(x) {
+  if (!Number.isFinite(x)) return 0;
+  return Math.ceil((x + Number.EPSILON) * 10) / 10;
+}
+function applyRounding(raw, mode) {
+  if (!Number.isFinite(raw)) return 0;
+  const m = typeof mode === "string" ? mode.trim() : "ceil_tenth";
+  if (m === "ceil_euro" || m === "ceil_eur") return Math.ceil(raw - Number.EPSILON);
+  if (m === "nearest_tenth" || m === "round_tenth")
+    return Math.round((raw + Number.EPSILON) * 10) / 10;
+  if (m === "floor_tenth")
+    return Math.floor((raw + Number.EPSILON) * 10) / 10;
+  return ceilTenthEur(raw);
+}
+function estimateTaxiFromMergedTariff(merged, in_) {
+  const m = merged;
+  const multRaw = isPlainTariffObject(m.vehicleClassMultipliers) ? m.vehicleClassMultipliers : {
+    standard: 1,
+    xl: 1.2,
+    wheelchair: 1.15,
+    onroda: 1
+  };
+  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
+  const vehicleClassMultiplier = n(
+    multRaw[vClass] ?? (typeof multRaw["standard"] === "number" ? multRaw["standard"] : 1),
+    1
+  );
+  if (m.active === false) {
+    return {
+      subtotal: 0,
+      afterMinFare: 0,
+      afterSurcharges: 0,
+      finalRounded: 0,
+      breakdown: {
+        baseFare: 0,
+        distanceCharge: 0,
+        tripMinutesCharge: 0,
+        waitingCharge: 0,
+        airportFlatEur: 0,
+        minFare: 0,
+        surcharges: [],
+        vehicleClassMultiplier
+      }
+    };
+  }
+  const baseFare = n(m.baseFare, 0);
+  const dKm = Math.max(0, in_.distanceKm);
+  const perKmN = n(m.perKm, 0);
+  const kmModel = m.kmPricingModel === "single" || perKmN > 0 && m.kmPricingModel !== "two_tier" ? "single" : "two_tier";
+  let distanceCharge = 0;
+  if (kmModel === "single") {
+    const perKm = perKmN > 0 ? perKmN : n(m.rateAfterPerKm, 0) || 0;
+    distanceCharge = dKm * perKm;
+  } else {
+    const rateFirst = n(m.rateFirstPerKm, 0);
+    const rateAfter = n(m.rateAfterPerKm, 0);
+    const th = n(m.thresholdKm, 4);
+    if (dKm <= th) distanceCharge = dKm * rateFirst;
+    else distanceCharge = th * rateFirst + (dKm - th) * rateAfter;
+  }
+  const waitPerH = n(m.waitingPerHour, 0);
+  const tripEurPerMin = resolveTripEurPerRouteMinute(m);
+  const waitMin = Math.max(0, in_.waitingMinutes);
+  const tripMin = Math.max(0, in_.tripMinutes);
+  const waitingCharge = waitPerH / 60 * waitMin;
+  const tripMinutesCharge = tripEurPerMin * tripMin;
+  const airportFlat = in_.applyAirportFlat ? n(m.airportFlatEur, 0) : 0;
+  let subtotal = baseFare + distanceCharge + tripMinutesCharge + waitingCharge + airportFlat;
+  const minFare = n(m.minFare, n(m.minPrice, 0));
+  const afterMinFare = minFare > 0 && subtotal < minFare ? minFare : subtotal;
+  const sur = [];
+  const sroot = isPlainTariffObject(m.surcharges) ? m.surcharges : {};
+  let withExtra = afterMinFare;
+  const t = in_.at;
+  const hasStructNight = sroot.night && typeof sroot.night === "object";
+  if (hasStructNight && sroot.night?.enabled && n(sroot.night?.percent, 0) > 0 && isNightDefault(t)) {
+    const a = afterMinFare * n(sroot.night?.percent, 0) / 100;
+    withExtra += a;
+    sur.push({ type: "night", amount: a });
+  } else if (!hasStructNight && n(m.nightSurchargePercent, 0) > 0 && isNightDefault(t)) {
+    const a = afterMinFare * n(m.nightSurchargePercent, 0) / 100;
+    withExtra += a;
+    sur.push({ type: "night", amount: a });
+  }
+  const hasStructWe = sroot.weekend && typeof sroot.weekend === "object";
+  if (hasStructWe && sroot.weekend?.enabled && n(sroot.weekend?.percent, 0) > 0 && isWeekend(t)) {
+    const a = afterMinFare * n(sroot.weekend?.percent, 0) / 100;
+    withExtra += a;
+    sur.push({ type: "weekend", amount: a });
+  } else if (!hasStructWe && n(m.weekendSurchargePercent, 0) > 0 && isWeekend(t)) {
+    const a = afterMinFare * n(m.weekendSurchargePercent, 0) / 100;
+    withExtra += a;
+    sur.push({ type: "weekend", amount: a });
+  }
+  const hasStructHol = sroot.holiday && typeof sroot.holiday === "object";
+  if (in_.applyHolidaySurcharge) {
+    if (hasStructHol && sroot.holiday?.enabled && n(sroot.holiday?.percent, 0) > 0) {
+      const a = afterMinFare * n(sroot.holiday?.percent, 0) / 100;
+      withExtra += a;
+      sur.push({ type: "holiday", amount: a });
+    } else if (!hasStructHol && n(m.holidaySurchargePercent, 0) > 0) {
+      const a = afterMinFare * n(m.holidaySurchargePercent, 0) / 100;
+      withExtra += a;
+      sur.push({ type: "holiday", amount: a });
+    }
+  }
+  const largeRaw = isPlainTariffObject(m.largeVehicleSurcharge) ? m.largeVehicleSurcharge : {};
+  const minPassengers = Math.max(1, Math.round(n(largeRaw.minPassengers, 5)));
+  const largeAmount = Math.max(0, n(largeRaw.amountEur, 0));
+  const passengerCountRaw = in_.passengerCount;
+  const inferredPassengerCount = Number.isFinite(passengerCountRaw) && Number(passengerCountRaw) > 0 ? Math.round(Number(passengerCountRaw)) : vClass === "xl" ? minPassengers : 1;
+  if (largeAmount > 0 && inferredPassengerCount >= minPassengers) {
+    withExtra += largeAmount;
+    sur.push({ type: "large_vehicle", amount: largeAmount });
+  }
+  const withVehicle = withExtra * vehicleClassMultiplier;
+  const rounding = typeof m.rounding === "string" ? m.rounding : "ceil_tenth";
+  return {
+    subtotal,
+    afterMinFare,
+    afterSurcharges: withExtra * vehicleClassMultiplier,
+    finalRounded: applyRounding(withVehicle, rounding),
+    breakdown: {
+      baseFare,
+      distanceCharge,
+      tripMinutesCharge,
+      waitingCharge,
+      airportFlatEur: airportFlat,
+      minFare,
+      surcharges: sur,
+      vehicleClassMultiplier
+    }
+  };
+}
+function mergedTariffToPublicProfile(merged, serviceRegionId, areaName, areaId) {
+  const base = n(merged.baseFare, 4.3);
+  const perKm = n(merged.perKm, 0);
+  const th = n(merged.thresholdKm, 4);
+  const useSingle = perKm > 0 && merged.kmPricingModel !== "two_tier";
+  if (useSingle) {
+    return {
+      areaId: areaId ?? null,
+      areaName,
+      serviceRegionId: serviceRegionId ?? null,
+      baseFareEur: base,
+      rateFirstKmEur: perKm,
+      rateAfterKmEur: perKm,
+      thresholdKm: th > 0 ? th : 9999,
+      waitingPerHourEur: n(merged.waitingPerHour, 0),
+      serviceFeeEur: 0,
+      onrodaBaseFareEur: n(merged.onrodaFixBase, base),
+      onrodaPerKmEur: n(merged.onrodaFixPerKm, perKm),
+      onrodaMinFareEur: n(merged.minFare, n(merged.minPrice, 0)),
+      manualFixedPriceEur: null,
+      pricePerMinute: resolveTripEurPerRouteMinute(merged)
+    };
+  }
+  return {
+    areaId: areaId ?? null,
+    areaName,
+    serviceRegionId: serviceRegionId ?? null,
+    baseFareEur: base,
+    rateFirstKmEur: n(merged.rateFirstPerKm, 3),
+    rateAfterKmEur: n(merged.rateAfterPerKm, 2.5),
+    thresholdKm: th,
+    waitingPerHourEur: n(merged.waitingPerHour, 38),
+    serviceFeeEur: n(merged.serviceFee, 0),
+    onrodaBaseFareEur: n(merged.onrodaFixBase, 3.5),
+    onrodaPerKmEur: n(merged.onrodaFixPerKm, 2.2),
+    onrodaMinFareEur: n(merged.minFare, 0),
+    manualFixedPriceEur: null,
+    pricePerMinute: resolveTripEurPerRouteMinute(merged)
+  };
+}
+function getCancellationFeeEurFromMerged(merged) {
+  return n(merged.cancellationFeeEur, 0);
+}
+var BERLIN_TZ;
+var init_operationalTariffEngine = __esm({
+  "src/lib/operationalTariffEngine.ts"() {
+    init_serviceRegionMatch();
+    BERLIN_TZ = "Europe/Berlin";
+  }
+});
+
+// src/db/appOperationalData.ts
+var appOperationalData_exports = {};
+__export(appOperationalData_exports, {
+  addressMatchesServiceTerms: () => addressMatchesServiceTerms,
+  assertCustomerFromFullInActiveServiceRegion: () => assertCustomerFromFullInActiveServiceRegion,
+  assertCustomerRideOperational: () => assertCustomerRideOperational,
+  assertPlatformNewRideAllowed: () => assertPlatformNewRideAllowed,
+  checkCustomerRideServiceArea: () => checkCustomerRideServiceArea,
+  evaluateCustomerCancellationFeeEur: () => evaluateCustomerCancellationFeeEur,
+  findFirstServiceRegionMatchForAddress: () => findFirstServiceRegionMatchForAddress,
+  getAppConfigForPublic: () => getAppConfigForPublic,
+  getAppPricingForPublic: () => getAppPricingForPublic,
+  getOperationalConfigPayload: () => getOperationalConfigPayload,
+  getOutOfServiceAreaMessage: () => getOutOfServiceAreaMessage,
+  insertServiceRegion: () => insertServiceRegion,
+  listServiceRegionsForApi: () => listServiceRegionsForApi,
+  resolveFinancePricingContextFromOperational: () => resolveFinancePricingContextFromOperational,
+  updateOperationalConfigPayload: () => updateOperationalConfigPayload,
+  updateServiceRegionById: () => updateServiceRegionById
+});
+import { randomUUID as randomUUID5 } from "node:crypto";
+function isPlainObject(x) {
+  return x !== null && typeof x === "object" && !Array.isArray(x);
+}
+function deepMergePayload(base, over) {
+  const out = { ...base, ...over };
+  for (const k of NESTED_TOP_KEYS) {
+    const b = base[k];
+    const o = over[k];
+    if (o === void 0) continue;
+    if (isPlainObject(b) && isPlainObject(o)) {
+      out[k] = { ...b, ...o };
+    } else {
+      out[k] = o;
+    }
+  }
+  return out;
+}
+function normalizeMatchTerms(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((x) => typeof x === "string" ? x.trim() : String(x)).filter((s) => s.length > 0);
+}
+function rowToRegion(r) {
+  const gf = r.geo_fence_json;
+  const cLat = r.center_lat;
+  const cLng = r.center_lng;
+  const rKm = r.radius_km;
+  return {
+    id: r.id,
+    label: r.label,
+    matchTerms: normalizeMatchTerms(r.match_terms),
+    isActive: r.is_active,
+    sortOrder: r.sort_order,
+    matchMode: typeof r.match_mode === "string" && r.match_mode.trim() ? r.match_mode.trim() : "substring",
+    centerLat: cLat != null && Number.isFinite(Number(cLat)) ? Number(cLat) : null,
+    centerLng: cLng != null && Number.isFinite(Number(cLng)) ? Number(cLng) : null,
+    radiusKm: rKm != null && Number.isFinite(Number(rKm)) ? Number(rKm) : null,
+    geoFence: isPlainObject(gf) ? gf : null
+  };
+}
+async function listServiceRegionsForApi() {
+  if (!isPostgresConfigured()) {
+    return MEM_REGIONS.map((x) => ({ ...x, matchTerms: [...x.matchTerms] }));
+  }
+  const db2 = getDb();
+  if (!db2) {
+    return MEM_REGIONS.map((x) => ({ ...x, matchTerms: [...x.matchTerms] }));
+  }
+  const rows = await db2.select().from(appServiceRegionsTable).orderBy(asc(appServiceRegionsTable.sort_order), asc(appServiceRegionsTable.label));
+  return rows.map(rowToRegion);
+}
+async function getOperationalConfigPayload() {
+  if (!isPostgresConfigured()) {
+    return deepMergePayload({ ...DEFAULT_PAYLOAD }, memPayload);
+  }
+  const db2 = getDb();
+  if (!db2) return deepMergePayload({ ...DEFAULT_PAYLOAD }, memPayload);
+  const [r] = await db2.select().from(appOperationalConfigTable).where(eq(appOperationalConfigTable.id, DEFAULT_ID)).limit(1);
+  if (!r || !r.payload || typeof r.payload !== "object") {
+    return { ...DEFAULT_PAYLOAD };
+  }
+  return deepMergePayload({ ...DEFAULT_PAYLOAD }, r.payload);
+}
+function findFirstServiceRegionMatchForAddress(address, fromLat, fromLng, regions) {
+  for (const r of regions) {
+    if (regionCoversPointOrAddress(r, address, fromLat, fromLng)) return r;
+  }
+  return null;
+}
+function assertCustomerFromFullInActiveServiceRegion(fromFull, opPayload, regions, pickup) {
+  const m = findFirstServiceRegionMatchForAddress(
+    fromFull,
+    pickup?.lat != null && Number.isFinite(pickup.lat) ? pickup.lat : null,
+    pickup?.lon != null && Number.isFinite(pickup.lon) ? pickup.lon : null,
+    regions
+  );
+  if (m && !m.isActive) {
+    return { ok: false, error: "service_region_inactive", message: getOutOfServiceAreaMessage(opPayload) };
+  }
+  return { ok: true };
+}
+async function checkCustomerRideServiceArea(fromFull, toFull, loc) {
+  const all = await listServiceRegionsForApi();
+  const active = all.filter((r) => r.isActive);
+  if (active.length === 0) return { ok: true };
+  const fromLat = loc?.fromLat != null && Number.isFinite(Number(loc.fromLat)) ? Number(loc.fromLat) : null;
+  const fromLng = loc?.fromLon != null && Number.isFinite(Number(loc.fromLon)) ? Number(loc.fromLon) : null;
+  const toLat = loc?.toLat != null && Number.isFinite(Number(loc.toLat)) ? Number(loc.toLat) : null;
+  const toLng = loc?.toLon != null && Number.isFinite(Number(loc.toLon)) ? Number(loc.toLon) : null;
+  const ok2 = validateServiceAreaForRidePoints(fromFull, toFull, fromLat, fromLng, toLat, toLng, all);
+  if (ok2) return { ok: true };
+  return { ok: false, code: "service_area_not_covered" };
+}
+function getOutOfServiceAreaMessage(payload) {
+  const m = payload.messages;
+  const t = m?.outOfServiceAreaDe;
+  if (typeof t === "string" && t.trim()) return t.trim();
+  return DEFAULT_PAYLOAD.messages.outOfServiceAreaDe;
+}
+function msgRuleDe(opPayload) {
+  const m = opPayload.messages?.operationalRuleDe;
+  if (typeof m === "string" && m.trim()) return m.trim();
+  return DEFAULT_PAYLOAD.messages.operationalRuleDe;
+}
+function assertCustomerRideOperational(raw, opPayload) {
+  const defF = DEFAULT_PAYLOAD.features;
+  const defT = DEFAULT_PAYLOAD.tariffs;
+  const defB = DEFAULT_PAYLOAD.bookingRules;
+  const f = { ...defF, ...isPlainObject(opPayload.features) ? opPayload.features : {} };
+  const t = { ...defT, ...isPlainObject(opPayload.tariffs) ? opPayload.tariffs : {} };
+  const b = { ...defB, ...isPlainObject(opPayload.bookingRules) ? opPayload.bookingRules : {} };
+  if (t.active === false) {
+    return { ok: false, error: "tariffs_inactive", message: msgRuleDe(opPayload) };
+  }
+  const rideKind = typeof raw.rideKind === "string" && raw.rideKind.trim() ? raw.rideKind.trim() : "standard";
+  if (rideKind === "standard" && f.normalRide === false) {
+    return { ok: false, error: "feature_normal_ride_disabled", message: msgRuleDe(opPayload) };
+  }
+  if (rideKind === "medical" && f.medicalRide === false) {
+    return { ok: false, error: "feature_medical_disabled", message: msgRuleDe(opPayload) };
+  }
+  if (rideKind === "voucher" && f.voucher === false) {
+    return { ok: false, error: "feature_voucher_disabled", message: msgRuleDe(opPayload) };
+  }
+  if (rideKind === "company" && f.companyTrip === false) {
+    return { ok: false, error: "feature_company_trip_disabled", message: msgRuleDe(opPayload) };
+  }
+  const accessPlain = typeof raw.accessCode === "string" && raw.accessCode.trim() ? raw.accessCode.trim() : "";
+  if (accessPlain && f.accessCode === false) {
+    return { ok: false, error: "feature_access_code_disabled", message: msgRuleDe(opPayload) };
+  }
+  const sched = typeof raw.scheduledAt === "string" && raw.scheduledAt.trim() ? raw.scheduledAt.trim() : typeof raw.scheduled_at === "string" && raw.scheduled_at.trim() ? raw.scheduled_at.trim() : null;
+  if (isFarFutureReservation(sched) && f.preBooking === false) {
+    return { ok: false, error: "feature_prebooking_disabled", message: msgRuleDe(opPayload) };
+  }
+  if (sched) {
+    const t0 = new Date(sched).getTime();
+    if (Number.isFinite(t0) && t0 > Date.now()) {
+      const leadMin = (t0 - Date.now()) / 6e4;
+      const minLead = typeof b.minPrebookLeadMinutes === "number" && Number.isFinite(b.minPrebookLeadMinutes) ? b.minPrebookLeadMinutes : 0;
+      if (leadMin < minLead) {
+        return { ok: false, error: "prebook_lead_too_short", message: msgRuleDe(opPayload) };
+      }
+    }
+  }
+  const pm = String(raw.paymentMethod ?? raw.payment_method ?? "").trim().toLowerCase();
+  if (pm && f.cash === false && (pm === "bar" || pm.includes("cash") || pm === "bargeld")) {
+    return { ok: false, error: "feature_cash_disabled", message: msgRuleDe(opPayload) };
+  }
+  if (pm && f.invoice === false && (pm.includes("rechnung") || pm.includes("invoice"))) {
+    return { ok: false, error: "feature_invoice_disabled", message: msgRuleDe(opPayload) };
+  }
+  const dist = Number(raw.distanceKm ?? raw.distance_km);
+  if (!Number.isFinite(dist) || dist <= 0) {
+    return { ok: false, error: "distance_km_invalid", message: msgRuleDe(opPayload) };
+  }
+  const maxKm = typeof b.maxRouteKm === "number" && Number.isFinite(b.maxRouteKm) ? b.maxRouteKm : 99999;
+  if (dist > maxKm) {
+    return { ok: false, error: "route_too_long", message: msgRuleDe(opPayload) };
+  }
+  const est = Number(raw.estimatedFare ?? raw.estimated_fare);
+  if (!Number.isFinite(est) || est < 0) {
+    return { ok: false, error: "estimated_fare_invalid", message: msgRuleDe(opPayload) };
+  }
+  const dur = Number(raw.durationMinutes ?? raw.duration_minutes);
+  if (!Number.isFinite(dur) || dur < 0) {
+    return { ok: false, error: "duration_minutes_invalid", message: msgRuleDe(opPayload) };
+  }
+  if (b.requireName === true) {
+    const name = String(raw.customerName ?? raw.customer_name ?? "").trim();
+    if (!name) return { ok: false, error: "name_required", message: msgRuleDe(opPayload) };
+  }
+  if (b.requirePhone === true) {
+    const ph = String(raw.customerPhone ?? raw.passengerPhone ?? raw.phone ?? "").trim();
+    if (!ph) return { ok: false, error: "phone_required", message: msgRuleDe(opPayload) };
+  }
+  const fromFull = String(raw.fromFull ?? raw.from ?? raw.from_location ?? "").trim();
+  const toFull = String(raw.toFull ?? raw.to ?? raw.to_location ?? "").trim();
+  if (b.requireFromAddress === true && !fromFull) {
+    return { ok: false, error: "from_required", message: msgRuleDe(opPayload) };
+  }
+  if (b.requireToAddress === true && !toFull) {
+    return { ok: false, error: "to_required", message: msgRuleDe(opPayload) };
+  }
+  if (rideKind === "medical") {
+    const bill = String(raw.billingReference ?? raw.billing_reference ?? "").trim();
+    if (b.medicalCostCenterRequired === true && !bill) {
+      return { ok: false, error: "medical_cost_center_required", message: msgRuleDe(opPayload) };
+    }
+  }
+  return { ok: true };
+}
+function assertPlatformNewRideAllowed(opPayload) {
+  const sys = opPayload.system;
+  const opMsg = opPayload.messages;
+  if (sys?.emergencyShutdown === true) {
+    const m = opMsg?.customerAppClosedDe;
+    return {
+      ok: false,
+      status: 503,
+      error: "app_unavailable",
+      message: typeof m === "string" && m.trim() ? m.trim() : "Dienst nicht verf\xFCgbar."
+    };
+  }
+  if (sys?.maintenanceMode === true && sys?.allowCustomerApp === false) {
+    const m = opMsg?.customerAppClosedDe;
+    return {
+      ok: false,
+      status: 503,
+      error: "app_unavailable",
+      message: typeof m === "string" && m.trim() ? m.trim() : "Kunden-App in Wartung."
+    };
+  }
+  if (sys?.blockNewBookings === true) {
+    const m = opMsg?.bookingBlockedDe;
+    return {
+      ok: false,
+      status: 400,
+      error: "bookings_blocked",
+      message: typeof m === "string" && m.trim() ? m.trim() : "Neue Buchungen derzeit deaktiviert."
+    };
+  }
+  return { ok: true };
+}
+function deepMergeTariffs(current, patch) {
+  const base = current && isPlainObject(current) ? current : DEFAULT_PAYLOAD.tariffs;
+  const pSrIn = isPlainObject(patch.byServiceRegion) ? patch.byServiceRegion : null;
+  const bSr0 = isPlainObject(base.byServiceRegion) ? { ...base.byServiceRegion } : {};
+  const out = { ...base, ...patch };
+  if (pSrIn) {
+    const nextSr = { ...bSr0 };
+    for (const [k, v] of Object.entries(pSrIn)) {
+      if (v == null) continue;
+      if (isPlainObject(v) && isPlainObject(nextSr[k])) {
+        nextSr[k] = { ...nextSr[k], ...v };
+      } else {
+        nextSr[k] = v;
+      }
+    }
+    out.byServiceRegion = nextSr;
+  } else if (base.byServiceRegion !== void 0) {
+    out.byServiceRegion = bSr0;
+  }
+  return out;
+}
+async function evaluateCustomerCancellationFeeEur(ride, opPayload, nowMs = Date.now()) {
+  const defB = DEFAULT_PAYLOAD.bookingRules;
+  const defT = DEFAULT_PAYLOAD.tariffs;
+  const b = { ...defB, ...isPlainObject(opPayload.bookingRules) ? opPayload.bookingRules : {} };
+  const tGlobal = { ...defT, ...isPlainObject(opPayload.tariffs) ? opPayload.tariffs : {} };
+  const regions = await listServiceRegionsForApi();
+  const from = String(ride.fromFull ?? "").trim();
+  const pLat = ride.fromLat != null && Number.isFinite(Number(ride.fromLat)) ? Number(ride.fromLat) : null;
+  const pLon = ride.fromLon != null && Number.isFinite(Number(ride.fromLon)) ? Number(ride.fromLon) : null;
+  const merged = from ? resolveMergedTariff(opPayload, regions, from, { lat: pLat, lon: pLon }).merged : mergeTariffsForServiceRegion(tGlobal, null);
+  const windowMin = typeof b.cancellationWindowMinutes === "number" && Number.isFinite(b.cancellationWindowMinutes) ? b.cancellationWindowMinutes : 120;
+  const feeBooking = typeof b.cancellationFeeAfterWindowEur === "number" && Number.isFinite(b.cancellationFeeAfterWindowEur) ? b.cancellationFeeAfterWindowEur : 0;
+  const feeTariff = getCancellationFeeEurFromMerged(merged);
+  const fee = Math.max(Number(feeBooking) || 0, Number(feeTariff) || 0);
+  const pickupRaw = ride.scheduledAt && String(ride.scheduledAt).trim() ? String(ride.scheduledAt).trim() : "";
+  const pickupMs = pickupRaw ? new Date(pickupRaw).getTime() : NaN;
+  if (Number.isFinite(pickupMs)) {
+    const minsBefore = (pickupMs - nowMs) / 6e4;
+    if (minsBefore > windowMin) return { feeEur: 0, reason: "free_before_pickup_window" };
+    return { feeEur: fee, reason: "inside_pickup_cancellation_window" };
+  }
+  const early = /* @__PURE__ */ new Set(["draft", "requested", "searching_driver", "offered", "pending", "scheduled"]);
+  if (early.has(ride.status)) return { feeEur: 0, reason: "no_pickup_time_pre_assignment_pool" };
+  const post = /* @__PURE__ */ new Set([
+    "accepted",
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "in_progress",
+    "arrived"
+  ]);
+  if (post.has(ride.status)) return { feeEur: fee, reason: "post_driver_assignment_no_scheduled_pickup" };
+  return { feeEur: 0, reason: "terminal_or_unknown" };
+}
+function resolveFinancePricingContextFromOperational(ride, opPayload, serviceRegions) {
+  const defC = DEFAULT_PAYLOAD.commission;
+  const c = { ...defC, ...isPlainObject(opPayload.commission) ? opPayload.commission : {} };
+  if (c.active === false) {
+    return { commissionType: "none", commissionValue: 0, minCommissionEur: null };
+  }
+  let rate = typeof c.defaultRate === "number" && Number.isFinite(c.defaultRate) ? c.defaultRate : 0.07;
+  const companyId = typeof ride.companyId === "string" ? ride.companyId.trim() : "";
+  const byCo = c.byCompany;
+  if (companyId && isPlainObject(byCo) && isPlainObject(byCo[companyId])) {
+    const row = byCo[companyId];
+    if (row.active === false) return { commissionType: "none", commissionValue: 0, minCommissionEur: null };
+    if (typeof row.defaultRate === "number" && Number.isFinite(row.defaultRate)) rate = row.defaultRate;
+  }
+  const fromFull = String(ride.fromFull ?? "");
+  const pLat = ride.fromLat != null && Number.isFinite(Number(ride.fromLat)) ? Number(ride.fromLat) : null;
+  const pLon = ride.fromLon != null && Number.isFinite(Number(ride.fromLon)) ? Number(ride.fromLon) : null;
+  const regId = findServiceRegionIdForPickup(fromFull, pLat, pLon, serviceRegions);
+  if (regId) {
+    const bySr = c.byServiceRegion;
+    if (isPlainObject(bySr) && isPlainObject(bySr[regId])) {
+      const br = bySr[regId];
+      if (br.active === false) return { commissionType: "none", commissionValue: 0, minCommissionEur: null };
+      if (typeof br.defaultRate === "number" && Number.isFinite(br.defaultRate)) rate = br.defaultRate;
+    }
+  }
+  const rkr = c.rideKindRates;
+  const rk = rkr?.[ride.rideKind];
+  if (rk && typeof rk === "object") {
+    if (rk.active === false) return { commissionType: "none", commissionValue: 0, minCommissionEur: null };
+    if (typeof rk.rate === "number" && Number.isFinite(rk.rate)) rate = rk.rate;
+  }
+  const minPe = c.minProvisionEur;
+  const minCommissionEur = typeof minPe === "number" && Number.isFinite(minPe) && minPe > 0 ? minPe : null;
+  return { commissionType: "percentage", commissionValue: rate, minCommissionEur };
+}
+async function updateOperationalConfigPayload(patch) {
+  const cur = await getOperationalConfigPayload();
+  let effPatch = patch;
+  if (isPlainObject(patch.tariffs)) {
+    const curT = isPlainObject(cur.tariffs) ? cur.tariffs : void 0;
+    effPatch = {
+      ...patch,
+      tariffs: deepMergeTariffs(curT, patch.tariffs)
+    };
+  }
+  const next = deepMergePayload(cur, effPatch);
+  if (!isPostgresConfigured()) {
+    memPayload = next;
+    return next;
+  }
+  const db2 = getDb();
+  if (!db2) return { error: "unavailable" };
+  await db2.insert(appOperationalConfigTable).values({ id: DEFAULT_ID, payload: next, updated_at: /* @__PURE__ */ new Date() }).onConflictDoUpdate({ target: appOperationalConfigTable.id, set: { payload: next, updated_at: /* @__PURE__ */ new Date() } });
+  return next;
+}
+async function updateServiceRegionById(id, input) {
+  if (!isPostgresConfigured()) {
+    const i = MEM_REGIONS.findIndex((x) => x.id === id);
+    if (i < 0) return false;
+    const cur = MEM_REGIONS[i];
+    MEM_REGIONS[i] = {
+      id: cur.id,
+      label: input.label !== void 0 ? input.label : cur.label,
+      matchTerms: input.matchTerms !== void 0 ? [...input.matchTerms] : cur.matchTerms,
+      isActive: input.isActive !== void 0 ? input.isActive : cur.isActive,
+      sortOrder: input.sortOrder !== void 0 ? input.sortOrder : cur.sortOrder,
+      matchMode: input.matchMode !== void 0 ? input.matchMode : cur.matchMode,
+      centerLat: input.centerLat !== void 0 ? input.centerLat : cur.centerLat,
+      centerLng: input.centerLng !== void 0 ? input.centerLng : cur.centerLng,
+      radiusKm: input.radiusKm !== void 0 ? input.radiusKm : cur.radiusKm,
+      geoFence: cur.geoFence
+    };
+    return true;
+  }
+  const db2 = getDb();
+  if (!db2) return false;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (input.label !== void 0) set.label = input.label;
+  if (input.matchTerms !== void 0) set.match_terms = input.matchTerms;
+  if (input.isActive !== void 0) set.is_active = input.isActive;
+  if (input.sortOrder !== void 0) set.sort_order = input.sortOrder;
+  if (input.matchMode !== void 0) set.match_mode = input.matchMode;
+  if (input.centerLat !== void 0) set.center_lat = input.centerLat;
+  if (input.centerLng !== void 0) set.center_lng = input.centerLng;
+  if (input.radiusKm !== void 0) set.radius_km = input.radiusKm;
+  const u = await db2.update(appServiceRegionsTable).set(set).where(eq(appServiceRegionsTable.id, id)).returning({ id: appServiceRegionsTable.id });
+  return u.length > 0;
+}
+async function insertServiceRegion(input) {
+  const id = `asr-${randomUUID5()}`;
+  const mode = typeof input.matchMode === "string" && input.matchMode.trim() ? input.matchMode.trim() : "substring";
+  const next = {
+    id,
+    label: input.label,
+    matchTerms: [...input.matchTerms],
+    isActive: input.isActive !== false,
+    sortOrder: Math.max(0, ...MEM_REGIONS.map((x) => x.sortOrder)) + 1,
+    matchMode: mode,
+    centerLat: input.centerLat != null && Number.isFinite(Number(input.centerLat)) ? Number(input.centerLat) : null,
+    centerLng: input.centerLng != null && Number.isFinite(Number(input.centerLng)) ? Number(input.centerLng) : null,
+    radiusKm: input.radiusKm != null && Number.isFinite(Number(input.radiusKm)) ? Number(input.radiusKm) : null,
+    geoFence: null
+  };
+  if (!isPostgresConfigured()) {
+    MEM_REGIONS.push(next);
+    return id;
+  }
+  const db2 = getDb();
+  if (!db2) {
+    MEM_REGIONS.push({ ...next, sortOrder: 99 });
+    return id;
+  }
+  const sortOrder = (await db2.select({ n: appServiceRegionsTable.sort_order }).from(appServiceRegionsTable).orderBy(desc(appServiceRegionsTable.sort_order)).limit(1))[0]?.n ?? 0;
+  await db2.insert(appServiceRegionsTable).values({
+    id,
+    label: next.label.trim(),
+    match_terms: next.matchTerms,
+    match_mode: next.matchMode,
+    center_lat: next.centerLat,
+    center_lng: next.centerLng,
+    radius_km: next.radiusKm,
+    is_active: next.isActive,
+    sort_order: Number(sortOrder) + 1
+  });
+  return id;
+}
+async function getAppConfigForPublic() {
+  const payload = await getOperationalConfigPayload();
+  const regions = await listServiceRegionsForApi();
+  const activeCities = regions.filter((r) => r.isActive).map((r) => r.label.trim()).filter((s) => s.length > 0);
+  const defCom = DEFAULT_PAYLOAD.commission;
+  const c = { ...defCom, ...isPlainObject(payload.commission) ? payload.commission : {} };
+  const dr = c.defaultRate;
+  const defaultRate = typeof dr === "number" && Number.isFinite(dr) ? dr : 0.07;
+  const rkrDef = defCom.rideKindRates ?? {};
+  const rkrRaw = c.rideKindRates;
+  const rkrMerged = { ...rkrDef };
+  if (isPlainObject(rkrRaw)) {
+    for (const [k, v2] of Object.entries(rkrRaw)) {
+      if (!isPlainObject(v2)) continue;
+      const rate = typeof v2.rate === "number" ? v2.rate : 0.07;
+      rkrMerged[k] = { rate, active: v2.active !== false };
+    }
+  }
+  const bySr = isPlainObject(c.byServiceRegion) ? { ...c.byServiceRegion } : {};
+  const byCo = isPlainObject(c.byCompany) ? { ...c.byCompany } : {};
+  const mpe = c.minProvisionEur;
+  const provision = {
+    defaultRate,
+    active: c.active !== false,
+    minPercent: typeof c.minPercent === "number" || c.minPercent === null ? c.minPercent : null,
+    maxPercent: typeof c.maxPercent === "number" || c.maxPercent === null ? c.maxPercent : null,
+    minProvisionEur: typeof mpe === "number" && Number.isFinite(mpe) ? mpe : null,
+    byServiceRegion: bySr,
+    byCompany: byCo,
+    rideKindRates: rkrMerged
+  };
+  let updatedAt = null;
+  if (isPostgresConfigured()) {
+    const db2 = getDb();
+    if (db2) {
+      const [row] = await db2.select({ updated_at: appOperationalConfigTable.updated_at }).from(appOperationalConfigTable).where(eq(appOperationalConfigTable.id, DEFAULT_ID)).limit(1);
+      updatedAt = row?.updated_at ? new Date(row.updated_at).toISOString() : null;
+    }
+  } else {
+    updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  }
+  const v = payload.version;
+  const defMsg = DEFAULT_PAYLOAD.messages;
+  const rawMsg = isPlainObject(payload.messages) ? payload.messages : {};
+  const msgMerged = { ...defMsg, ...rawMsg };
+  if (typeof msgMerged.outOfServiceAreaDe !== "string" || !String(msgMerged.outOfServiceAreaDe).trim()) {
+    msgMerged.outOfServiceAreaDe = defMsg.outOfServiceAreaDe;
+  }
+  if (typeof msgMerged.operationalRuleDe !== "string" || !String(msgMerged.operationalRuleDe).trim()) {
+    msgMerged.operationalRuleDe = defMsg.operationalRuleDe;
+  }
+  const section = (key) => {
+    const def = DEFAULT_PAYLOAD[key] ?? {};
+    const p = payload[key];
+    if (!isPlainObject(p)) return { ...def };
+    return { ...def, ...p };
+  };
+  const tSec = section("tariffs");
+  const bsr = isPlainObject(tSec.byServiceRegion) ? tSec.byServiceRegion : {};
+  const tariffsPerServiceRegion = {};
+  for (const r of regions) {
+    const o = bsr[r.id];
+    tariffsPerServiceRegion[r.id] = mergeTariffsForServiceRegion(tSec, isPlainObject(o) ? o : null);
+  }
+  return {
+    ok: true,
+    version: typeof v === "number" && Number.isFinite(v) ? v : 1,
+    updatedAt,
+    activeCities,
+    serviceRegions: regions,
+    messages: msgMerged,
+    tariffs: tSec,
+    tariffsPerServiceRegion,
+    provision,
+    dispatch: section("dispatch"),
+    features: section("features"),
+    driverRules: section("driverRules"),
+    bookingRules: section("bookingRules"),
+    system: section("system")
+  };
+}
+async function getAppPricingForPublic() {
+  const cfg = await getAppConfigForPublic();
+  const t = cfg.tariffs && typeof cfg.tariffs === "object" ? cfg.tariffs : {};
+  const pm = t.pricingMode;
+  const pricingMode = pm === "fixed_price" || pm === "hybrid" || pm === "taxi_tariff" ? pm : "taxi_tariff";
+  const info = t.info;
+  return {
+    ok: true,
+    version: cfg.version,
+    updatedAt: cfg.updatedAt,
+    pricingMode,
+    tariffs: { ...t },
+    infoDe: typeof info === "string" ? info : void 0
+  };
+}
+var DEFAULT_ID, NESTED_TOP_KEYS, DEFAULT_PAYLOAD, memPayload, MEM_REGIONS;
+var init_appOperationalData = __esm({
+  "src/db/appOperationalData.ts"() {
+    init_drizzle_orm();
+    init_operationalTariffEngine();
+    init_dispatchStatus();
+    init_client();
+    init_schema2();
+    init_serviceRegionMatch();
+    init_serviceRegionMatch();
+    DEFAULT_ID = "default";
+    NESTED_TOP_KEYS = [
+      "messages",
+      "commission",
+      "tariffs",
+      "dispatch",
+      "features",
+      "driverRules",
+      "bookingRules",
+      "system"
+    ];
+    DEFAULT_PAYLOAD = {
+      version: 1,
+      commission: {
+        defaultRate: 0.07,
+        active: true,
+        minPercent: null,
+        maxPercent: null,
+        minProvisionEur: null,
+        byServiceRegion: {},
+        byCompany: {},
+        rideKindRates: {
+          standard: { rate: 0.07, active: true },
+          medical: { rate: 0.07, active: true },
+          voucher: { rate: 0.07, active: true },
+          company: { rate: 0.07, active: true }
+        }
+      },
+      messages: {
+        outOfServiceAreaDe: "ONRODA ist in deiner Stadt momentan noch nicht verf\xFCgbar.",
+        bookingBlockedDe: "Neue Buchungen sind vor\xFCbergehend deaktiviert.",
+        customerAppClosedDe: "Die Kunden-App ist im Wartungsmodus.",
+        operationalRuleDe: "Diese Buchung ist mit den aktuellen Plattform-Regeln nicht zul\xE4ssig.",
+        sponsorsTeaserTitleDe: "Exklusive Angebote",
+        sponsorsTeaserBodyDe: "Entdecke Partner, Aktionen und Angebote in deiner N\xE4he.",
+        sponsorsTeaserTitleCustomerDe: "Exklusive Angebote",
+        sponsorsTeaserBodyCustomerDe: "Entdecke Partner, Aktionen und Angebote in deiner N\xE4he.",
+        sponsorsTeaserTitleDriverDe: "Exklusive Angebote f\xFCr Fahrer",
+        sponsorsTeaserBodyDriverDe: "Rabatte, Partneraktionen und exklusive Vorteile f\xFCr deinen Alltag."
+      },
+      tariffs: {
+        active: true,
+        /** Plattform-Modus: Taxitarif, Fixpreis-Logik oder Kombination — Steuerung nur Admin/Backend. */
+        pricingMode: "taxi_tariff",
+        baseFare: 4.3,
+        rateFirstPerKm: 3,
+        rateAfterPerKm: 2.5,
+        thresholdKm: 4,
+        waitingPerHour: 38,
+        pricePerMinute: 0.63,
+        timeTariffAmount: 0.1,
+        timeTariffPerSeconds: 10.91,
+        minPrice: 0,
+        nightSurchargePercent: 0,
+        weekendSurchargePercent: 0,
+        holidaySurchargePercent: 0,
+        prebookSurchargeEur: 0,
+        cancellationFeeEur: 0,
+        airportFlatEur: 0,
+        onrodaFixBase: 3.5,
+        onrodaFixPerKm: 2.2,
+        shortTripRule: "none",
+        /** Einheitspreis pro km (wenn > 0, optional kmPricingModel \"single\"). */
+        perKm: 0,
+        minFare: 0,
+        kmPricingModel: "two_tier",
+        vehicleClassMultipliers: { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 },
+        largeVehicleSurcharge: {
+          minPassengers: 5,
+          amountEur: 7
+        },
+        surcharges: {
+          night: { enabled: false, percent: 0 },
+          weekend: { enabled: false, percent: 0 }
+        },
+        serviceFee: 0,
+        rounding: "ceil_tenth",
+        taxiMandatoryArea: false,
+        forbidUnlawfulFixedPriceInMandatoryArea: true,
+        byServiceRegion: {},
+        info: "Sch\xE4tzwerte: Grundgeb\xFChr + km-Staffel. Live-Endpreis Taxameter. Zuschl\xE4ge optional."
+      },
+      dispatch: {
+        active: true,
+        ownDriversFirst: true,
+        exclusiveSeconds: 10,
+        radiusKm: 10,
+        openMarket: true,
+        autoReassignOnReject: true,
+        autoReassignOnTimeout: true,
+        priority: "distance",
+        blockAfterMultipleRejects: false
+      },
+      features: {
+        normalRide: true,
+        preBooking: true,
+        medicalRide: true,
+        voucher: true,
+        accessCode: true,
+        companyTrip: true,
+        hotelBooking: true,
+        cash: true,
+        invoice: true,
+        onlinePayLater: false,
+        driverTracking: true,
+        homepageTopOrder: "sponsors_then_news"
+      },
+      driverRules: {
+        pScheinRequired: true,
+        vehicleRequired: true,
+        documentsRequired: true,
+        systemOverrideAllowed: false,
+        requirePlatformApprovalToGoOnline: true,
+        vehicleAssignmentRequired: true,
+        documentExpiryCheck: true
+      },
+      bookingRules: {
+        minPrebookLeadMinutes: 30,
+        maxRouteKm: 200,
+        maxWaitMinutes: 20,
+        requireName: true,
+        requirePhone: false,
+        requireFromAddress: true,
+        requireToAddress: true,
+        medicalCostCenterRequired: false,
+        medicalTransportDocumentRequired: false,
+        doNotStoreDiagnosis: true,
+        cancellationWindowMinutes: 120,
+        cancellationFeeAfterWindowEur: 0
+      },
+      system: {
+        maintenanceMode: false,
+        blockNewBookings: false,
+        allowDriverApp: true,
+        allowCustomerApp: true,
+        globalNoticeDe: "",
+        minAppVersionHint: null,
+        emergencyShutdown: false
+      }
+    };
+    memPayload = {};
+    MEM_REGIONS = [
+      {
+        id: "asr-stuttgart",
+        label: "Stuttgart",
+        matchTerms: ["stuttgart"],
+        isActive: true,
+        sortOrder: 1,
+        matchMode: "substring",
+        centerLat: null,
+        centerLng: null,
+        radiusKm: null,
+        geoFence: null
+      },
+      {
+        id: "asr-esslingen",
+        label: "Esslingen",
+        matchTerms: ["esslingen", "esslingen am neckar"],
+        isActive: true,
+        sortOrder: 2,
+        matchMode: "substring",
+        centerLat: null,
+        centerLng: null,
+        radiusKm: null,
+        geoFence: null
+      }
     ];
   }
 });
@@ -43636,14 +45293,14 @@ var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
 
 // src/app.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
-import path7 from "path";
+import path10 from "path";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
 
 // src/routes/index.ts
-var import_express13 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -44126,8 +45783,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path8, errorMaps, issueData } = params;
-  const fullPath = [...path8, ...issueData.path || []];
+  const { data, path: path11, errorMaps, issueData } = params;
+  const fullPath = [...path11, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -44243,11 +45900,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path8, key) {
+  constructor(parent, value, path11, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path8;
+    this._path = path11;
     this._key = key;
   }
   get path() {
@@ -47708,12 +49365,122 @@ var health_default = router;
 var import_express2 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_accessCodesData();
+init_client();
 init_ridesData();
+import { randomUUID as randomUUID12, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path2 from "node:path";
+
+// src/db/rideSupportTicketsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID3 } from "node:crypto";
+var SNAPSHOT_SCHEMA = 2;
+function buildRideSupportContextSnapshot(ride) {
+  const pb = ride.partnerBookingMeta;
+  let medicalFlowHint = null;
+  try {
+    if (pb && typeof pb === "object" && pb && "flow" in pb) medicalFlowHint = String(pb.flow ?? "");
+  } catch {
+    medicalFlowHint = null;
+  }
+  return {
+    snapshotSchemaVersion: SNAPSHOT_SCHEMA,
+    capturedAtIso: (/* @__PURE__ */ new Date()).toISOString(),
+    rideId: ride.id,
+    status: ride.status,
+    rideKind: ride.rideKind,
+    payerKind: ride.payerKind,
+    pricingMode: ride.pricingMode ?? null,
+    estimatedFare: ride.estimatedFare,
+    finalFare: ride.finalFare ?? null,
+    paymentMethod: ride.paymentMethod ?? null,
+    vehicle: ride.vehicle ?? null,
+    companyId: ride.companyId ?? null,
+    driverId: ride.driverId ?? null,
+    scheduledAt: ride.scheduledAt,
+    createdAt: ride.createdAt,
+    accessibilityOptionsSnapshot: ride.accessibilityOptions ?? null,
+    tariffSnapshotReduced: ride.tariffSnapshot ? { engineSchemaVersion: ride.tariffSnapshot.engineSchemaVersion ?? null } : null,
+    medicalFlowHint,
+    billingReference: ride.billingReference ?? null
+  };
+}
+async function insertRideSupportTicket(row) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = `rst-${randomUUID3()}`;
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(rideSupportTicketsTable).values({
+    id,
+    ride_id: row.rideId.trim(),
+    passenger_id: row.passengerId.trim(),
+    company_id: row.companyId?.trim() || null,
+    category: row.category.trim() || "other",
+    message: row.message?.trim() || null,
+    status: "open",
+    priority: row.priority.trim() || "normal",
+    source: row.source.trim() || "mobile",
+    created_by_actor_kind: row.createdByActorKind.trim() || "customer",
+    created_by_actor_id: row.createdByActorId?.trim() || null,
+    ride_context_snapshot: row.snapshot,
+    snapshot_schema_version: SNAPSHOT_SCHEMA,
+    snapshot_captured_at: now,
+    created_at: now,
+    updated_at: now
+  });
+  return { id };
+}
+async function listRideSupportTicketsForPassengerRide(rideId, passengerId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(rideSupportTicketsTable).where(
+    and(
+      eq(rideSupportTicketsTable.ride_id, rideId.trim()),
+      eq(rideSupportTicketsTable.passenger_id, passengerId.trim())
+    )
+  ).orderBy(desc(rideSupportTicketsTable.created_at));
+  return rows.map((r) => {
+    const msg = r.message ?? "";
+    return {
+      id: r.id,
+      category: r.category,
+      status: r.status,
+      createdAtIso: r.created_at.toISOString(),
+      messageSnippet: msg.length > 120 ? `${msg.slice(0, 117)}\u2026` : msg
+    };
+  });
+}
+
+// src/routes/rides.ts
 init_rideFinancialsData();
 init_rideAuthorization();
 
 // src/domain/ridePublic.ts
 function stripPartnerOnlyRideFields(r) {
+  const partnerMeta = r.partnerBookingMeta;
+  const customerDriverNote = partnerMeta && typeof partnerMeta === "object" && typeof partnerMeta.customer_driver_note === "string" ? String(partnerMeta.customer_driver_note).trim().slice(0, 500) : "";
+  const driverVisibleMedicalMeta = partnerMeta && typeof partnerMeta === "object" && partnerMeta.medical_ride === true ? {
+    medical_ride: true,
+    approval_status: partnerMeta.approval_status ?? "pending",
+    payer_kind: partnerMeta.payer_kind ?? "insurance",
+    insurance_name: partnerMeta.insurance_name ?? "",
+    cost_center: partnerMeta.cost_center ?? "",
+    transport_document_required: partnerMeta.transport_document_required !== false,
+    transport_document_status: partnerMeta.transport_document_status ?? "missing",
+    signature_required: partnerMeta.signature_required === true,
+    signature_done: partnerMeta.signature_done === true,
+    qr_required: partnerMeta.qr_required !== false,
+    qr_done: partnerMeta.qr_done === true,
+    qr_verified_at: partnerMeta.qr_verified_at ?? null,
+    qr_verified_by_driver_id: partnerMeta.qr_verified_by_driver_id ?? null,
+    billing_ready: partnerMeta.billing_ready === true,
+    billing_missing_reasons: Array.isArray(
+      partnerMeta.billing_missing_reasons
+    ) ? partnerMeta.billing_missing_reasons : [],
+    ...customerDriverNote ? { customer_driver_note: customerDriverNote } : {}
+  } : customerDriverNote ? { customer_driver_note: customerDriverNote } : null;
   const {
     accessCodeNormalizedSnapshot: _snap,
     accessCodeTripOutcome: _to,
@@ -47721,14 +49488,100 @@ function stripPartnerOnlyRideFields(r) {
     partnerBookingMeta: _pb,
     ...rest
   } = r;
-  return rest;
+  return {
+    ...rest,
+    partnerBookingMeta: driverVisibleMedicalMeta
+  };
+}
+function asRecord(v) {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  return v;
+}
+function medicalStepStatus(meta) {
+  const qrDone = meta?.qr_done === true;
+  const signatureDone = meta?.signature_done === true;
+  const documentPresent = meta?.transport_document_status === "uploaded" || typeof meta?.transport_document_file_key === "string" && meta.transport_document_file_key.trim().length > 0;
+  return {
+    qrConfirmed: qrDone,
+    documentPresent,
+    signatureDone
+  };
+}
+function withoutSensitiveBillingFieldsForCustomer(r) {
+  const {
+    billingReference: _billingReference,
+    tariffSnapshot: _tariffSnapshot,
+    ...rest
+  } = r;
+  return {
+    ...rest,
+    // Kunde darf Schätz-/Endpreis sehen, aber keine internen Billing-Referenzen/Snapshots.
+    billingReference: null,
+    tariffSnapshot: null
+  };
+}
+function toCustomerRideView(r) {
+  const base = stripPartnerOnlyRideFields(withoutSensitiveBillingFieldsForCustomer(r));
+  const {
+    companyId: _companyId,
+    createdByPanelUserId: _createdByPanelUserId,
+    accessCodeId: _accessCodeId,
+    accessCodeNormalizedSnapshot: _accessCodeNormalizedSnapshot,
+    accessCodeSummary: _accessCodeSummary,
+    accessCodeTripOutcome: _accessCodeTripOutcome,
+    accessCodeDefinitionState: _accessCodeDefinitionState,
+    ...publicBase
+  } = base;
+  const meta = asRecord(base.partnerBookingMeta);
+  if (!meta || meta.medical_ride !== true) return publicBase;
+  return {
+    ...publicBase,
+    partnerBookingMeta: {
+      medical_ride: true,
+      stepStatus: medicalStepStatus(meta),
+      ...typeof meta.customer_driver_note === "string" && meta.customer_driver_note.trim() ? { customer_driver_note: String(meta.customer_driver_note).trim().slice(0, 500) } : {}
+    }
+  };
+}
+function toPartnerRideView(r) {
+  const meta = asRecord(r.partnerBookingMeta);
+  if (!meta || meta.medical_ride !== true) return r;
+  const validationLog = [
+    meta.qr_verified_at ? {
+      type: "qr_verified",
+      at: meta.qr_verified_at,
+      by: meta.qr_verified_by_driver_id ?? null
+    } : null,
+    meta.transport_document_uploaded_at ? {
+      type: "transport_document_uploaded",
+      at: meta.transport_document_uploaded_at,
+      by: meta.transport_document_uploaded_by_driver_id ?? null
+    } : null,
+    meta.signature_signed_at ? {
+      type: "signature_captured",
+      at: meta.signature_signed_at,
+      by: meta.signature_signed_by_driver_id ?? null
+    } : null
+  ].filter(Boolean);
+  return {
+    ...r,
+    partnerBookingMeta: {
+      ...meta,
+      validationLog,
+      billingStatus: {
+        ready: meta.billing_ready === true,
+        missingReasons: Array.isArray(meta.billing_missing_reasons) ? meta.billing_missing_reasons : []
+      },
+      exportEligible: meta.billing_ready === true
+    }
+  };
 }
 
 // src/db/adminData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { randomUUID as randomUUID6 } from "node:crypto";
 
 // src/domain/panelModules.ts
 var PANEL_MODULE_DEFINITIONS = [
@@ -48198,48 +50051,37 @@ function rowToFareArea(r) {
   };
 }
 function asMoney(v, fallback) {
-  const n3 = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n3)) return fallback;
-  return n3;
+  const n4 = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n4)) return fallback;
+  return n4;
 }
-async function getPublicFareProfile() {
-  const defaults = {
-    areaId: null,
-    areaName: "Standard",
-    baseFareEur: 4.3,
-    rateFirstKmEur: 3,
-    rateAfterKmEur: 2.5,
-    thresholdKm: 4,
-    waitingPerHourEur: 38,
-    serviceFeeEur: 0,
-    onrodaBaseFareEur: 3.5,
-    onrodaPerKmEur: 2.2,
-    onrodaMinFareEur: 0,
-    manualFixedPriceEur: null
-  };
+async function getPublicFareProfile(fromFull, pickup) {
+  const { getOperationalConfigPayload: getOperationalConfigPayload2, listServiceRegionsForApi: listServiceRegionsForApi2 } = await Promise.resolve().then(() => (init_appOperationalData(), appOperationalData_exports));
+  const { mergeTariffsForServiceRegion: mergeTariffsForServiceRegion2, mergedTariffToPublicProfile: mergedTariffToPublicProfile2, resolveMergedTariff: resolveMergedTariff2 } = await Promise.resolve().then(() => (init_operationalTariffEngine(), operationalTariffEngine_exports));
+  const op = await getOperationalConfigPayload2();
+  const tSec = isPlainObject2(op.tariffs) ? op.tariffs : {};
+  const regions = await listServiceRegionsForApi2();
+  const from = fromFull && String(fromFull).trim() ? String(fromFull).trim() : "";
+  const lat0 = pickup?.lat != null && Number.isFinite(Number(pickup.lat)) ? Number(pickup.lat) : null;
+  const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
+  const { merged, serviceRegionId } = from ? resolveMergedTariff2(op, regions, from, { lat: lat0, lon: lon0 }) : { merged: mergeTariffsForServiceRegion2(tSec, null), serviceRegionId: null };
+  const regLabel = serviceRegionId ? regions.find((r) => r.id === serviceRegionId)?.label ?? "Standard" : "Standard";
+  const p = mergedTariffToPublicProfile2(merged, serviceRegionId, regLabel, null);
   const areas = await listFareAreas();
   const active = areas.filter((x) => x.status === "aktiv");
   const row = active.find((x) => x.isDefault) ?? active[0] ?? areas[0];
-  if (!row) return defaults;
-  return {
-    areaId: row.id,
-    areaName: row.name,
-    baseFareEur: asMoney(row.baseFareEur, defaults.baseFareEur),
-    rateFirstKmEur: asMoney(row.rateFirstKmEur, defaults.rateFirstKmEur),
-    rateAfterKmEur: asMoney(row.rateAfterKmEur, defaults.rateAfterKmEur),
-    thresholdKm: asMoney(row.thresholdKm, defaults.thresholdKm),
-    waitingPerHourEur: asMoney(row.waitingPerHourEur, defaults.waitingPerHourEur),
-    serviceFeeEur: asMoney(row.serviceFeeEur, defaults.serviceFeeEur),
-    onrodaBaseFareEur: asMoney(row.onrodaBaseFareEur, defaults.onrodaBaseFareEur),
-    onrodaPerKmEur: asMoney(row.onrodaPerKmEur, defaults.onrodaPerKmEur),
-    onrodaMinFareEur: asMoney(row.onrodaMinFareEur, defaults.onrodaMinFareEur),
-    manualFixedPriceEur: row.manualFixedPriceEur != null && Number.isFinite(Number(row.manualFixedPriceEur)) ? Number(row.manualFixedPriceEur) : null
-  };
+  if (row) {
+    return { ...p, areaId: row.id, areaName: p.areaName };
+  }
+  return p;
+}
+function isPlainObject2(x) {
+  return x !== null && typeof x === "object" && !Array.isArray(x);
 }
 var ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
 function num(v) {
-  const n3 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
-  return Number.isFinite(n3) ? n3 : 0;
+  const n4 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n4) ? n4 : 0;
 }
 function rideRevenueAmount(r) {
   if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
@@ -48554,7 +50396,7 @@ function applyAdminCompanyPatch(cur, body) {
 async function insertAdminCompany(body) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) return { error: "name_required" };
-  const id = `co-${randomUUID4()}`;
+  const id = `co-${randomUUID6()}`;
   const base = {
     id,
     name,
@@ -48642,7 +50484,7 @@ async function syncCompanyBillingAccountEmail(companyId, email) {
     return;
   }
   await db2.insert(billingAccountsTable).values({
-    id: `ba-${randomUUID4()}`,
+    id: `ba-${randomUUID6()}`,
     company_id: companyId,
     account_name: "Partner-Abrechnung",
     billing_email: normalized
@@ -48931,7 +50773,163 @@ async function seedAdminDefaultsIfEmpty() {
   }
 }
 
+// src/lib/bookingTariffEstimate.ts
+init_operationalTariffEngine();
+var TARIFF_ENGINE_SCHEMA_VERSION = 2;
+function computeTaxiPriceLikeFareEstimate(opPayload, regions, p) {
+  const { merged, serviceRegionId } = resolveMergedTariff(opPayload, regions, p.fromFull, {
+    lat: p.fromLat != null && Number.isFinite(Number(p.fromLat)) ? Number(p.fromLat) : null,
+    lon: p.fromLon != null && Number.isFinite(Number(p.fromLon)) ? Number(p.fromLon) : null
+  });
+  const est = estimateTaxiFromMergedTariff(merged, {
+    distanceKm: p.distanceKm,
+    tripMinutes: p.tripMinutes,
+    waitingMinutes: p.waitingMinutes,
+    vehicle: p.vehicle,
+    at: p.at,
+    applyHolidaySurcharge: p.applyHolidaySurcharge ?? false,
+    applyAirportFlat: p.applyAirportFlat ?? false
+  });
+  return { serviceRegionId, merged, est };
+}
+
+// src/lib/rideBookingPricing.ts
+function resolveRidePricingModeFromOperational(op) {
+  void op;
+  return "taxi_tariff";
+}
+function operationalConfigVersionFromPayload(op) {
+  const v = op.version;
+  return typeof v === "number" && Number.isFinite(v) ? v : 1;
+}
+function compactMergedTariffAudit(merged) {
+  const keys = [
+    "baseFare",
+    "perKm",
+    "minFare",
+    "minPrice",
+    "rounding",
+    "kmPricingModel",
+    "rateFirstPerKm",
+    "rateAfterPerKm",
+    "thresholdKm",
+    "waitingPerHour",
+    "pricePerMinute",
+    "perMin",
+    "active",
+    "pricingMode",
+    "largeVehicleSurcharge",
+    "tariffVersion",
+    "validFrom"
+  ];
+  const out = {};
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(merged, k)) out[k] = merged[k];
+  }
+  return out;
+}
+function toNum(v, fallback = 0) {
+  const x = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+function toPositiveInt(v, fallback) {
+  const n4 = Math.round(toNum(v, fallback));
+  return n4 > 0 ? n4 : fallback;
+}
+function extractMeterTariffSnapshot(merged, serviceRegionId, opVersion) {
+  const kmModel = merged.kmPricingModel === "single" ? "single" : "two_tier";
+  const thresholdKm = Math.max(0, toNum(merged.thresholdKm, 4));
+  const perKm = Math.max(0, toNum(merged.perKm, 0));
+  const firstPerKm = Math.max(0, toNum(merged.rateFirstPerKm, perKm));
+  const afterPerKm = Math.max(0, toNum(merged.rateAfterPerKm, perKm || firstPerKm));
+  const tiers = kmModel === "single" ? [{ fromKm: 0, toKm: null, pricePerKmEur: perKm > 0 ? perKm : afterPerKm }] : [
+    { fromKm: 0, toKm: thresholdKm, pricePerKmEur: firstPerKm },
+    { fromKm: thresholdKm, toKm: null, pricePerKmEur: afterPerKm }
+  ];
+  const tripPerMinute = Math.max(0, toNum(merged.perMin, toNum(merged.pricePerMinute, 0)));
+  const perSeconds = 10.91;
+  const amountEur = tripPerMinute > 0 ? tripPerMinute * perSeconds / 60 : 0;
+  const lvs = merged.largeVehicleSurcharge;
+  const lvsObj = lvs && typeof lvs === "object" && !Array.isArray(lvs) ? lvs : {};
+  return {
+    regionId: serviceRegionId,
+    version: toPositiveInt(merged.tariffVersion, opVersion),
+    validFrom: typeof merged.validFrom === "string" && merged.validFrom.trim() ? merged.validFrom.trim() : null,
+    baseFareEur: Math.max(0, toNum(merged.baseFare, 0)),
+    minFareEur: Math.max(0, toNum(merged.minFare, toNum(merged.minPrice, 0))),
+    kmTiers: tiers,
+    timeTariff: {
+      amountEur,
+      perSeconds,
+      perHourEur: Math.max(0, toNum(merged.waitingPerHour, tripPerMinute * 60))
+    },
+    surcharges: {
+      largeVehicleFromPassengers: toPositiveInt(lvsObj.minPassengers, 5),
+      largeVehicleAmountEur: Math.max(0, toNum(lvsObj.amountEur, 0))
+    }
+  };
+}
+function bookingPriceToleranceEur(serverEur) {
+  const x = Number.isFinite(serverEur) ? Math.abs(serverEur) : 0;
+  return Math.max(0.05, x * 0.015);
+}
+function assertClientEstimatedFareMatchesServer(clientRaw, serverEur) {
+  if (clientRaw == null) return { ok: true };
+  const c = typeof clientRaw === "number" ? clientRaw : Number(clientRaw);
+  if (!Number.isFinite(c)) return { ok: true };
+  const tol = bookingPriceToleranceEur(serverEur);
+  if (Math.abs(c - serverEur) > tol) return { ok: false, error: "estimate_mismatch" };
+  return { ok: true };
+}
+function computeRideBookingPricing(args) {
+  const at = args.at ?? /* @__PURE__ */ new Date();
+  const waitingMinutes = args.waitingMinutes ?? 0;
+  const { serviceRegionId, merged, est: estBook } = computeTaxiPriceLikeFareEstimate(args.opPayload, args.regions, {
+    fromFull: args.fromFull,
+    fromLat: args.fromLat,
+    fromLon: args.fromLon,
+    distanceKm: args.distanceKm,
+    tripMinutes: args.tripMinutes,
+    waitingMinutes,
+    vehicle: args.vehicle,
+    passengerCount: args.passengerCount,
+    at,
+    applyHolidaySurcharge: args.applyHolidaySurcharge ?? false,
+    applyAirportFlat: args.applyAirportFlat ?? false
+  });
+  const finalPrice = estBook.finalRounded;
+  const operationalConfigVersion = operationalConfigVersionFromPayload(args.opPayload);
+  const pricingMode = resolveRidePricingModeFromOperational(args.opPayload);
+  const snapshot = {
+    engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
+    serviceRegionId,
+    finalPriceEur: finalPrice,
+    subtotal: estBook.subtotal,
+    afterMinFare: estBook.afterMinFare,
+    breakdown: { ...estBook.breakdown },
+    distanceKm: args.distanceKm,
+    tripMinutes: args.tripMinutes,
+    waitingMinutes,
+    vehicle: args.vehicle,
+    at: at.toISOString(),
+    operationalConfigVersion,
+    pricingMode,
+    mergedTariffAudit: compactMergedTariffAudit(merged),
+    meterTariffSnapshot: extractMeterTariffSnapshot(merged, serviceRegionId, operationalConfigVersion)
+  };
+  return {
+    pricingMode,
+    operationalConfigVersion,
+    serviceRegionId,
+    finalPrice,
+    estBook,
+    snapshot
+  };
+}
+
 // src/routes/rides.ts
+init_financeCalculationService();
+init_serviceRegionMatch();
 init_accessCodesData();
 
 // src/db/fleetMatchingData.ts
@@ -48942,8 +50940,8 @@ function normalizeVehicleText(value) {
   return (value ?? "").trim().toLowerCase();
 }
 function parsePricingMode(raw) {
-  if (raw !== "taxi_tariff") return null;
-  return raw;
+  if (raw === "taxi_tariff" || raw === "fixed_price" || raw === "hybrid") return "taxi_tariff";
+  return null;
 }
 function requiredClassForRide(vehicleText) {
   if (vehicleText.includes("rollstuhl")) return "wheelchair";
@@ -48975,7 +50973,8 @@ async function getFleetDriverCapability(driverId, companyId) {
   const assigned = await db2.select({
     vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
     vehicleClass: fleetVehiclesTable.vehicle_class,
-    approvalStatus: fleetVehiclesTable.approval_status
+    approvalStatus: fleetVehiclesTable.approval_status,
+    isActive: fleetVehiclesTable.is_active
   }).from(driverVehicleAssignmentsTable).innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id)).where(
     and(
       eq(driverVehicleAssignmentsTable.driver_id, driverId),
@@ -48986,6 +50985,7 @@ async function getFleetDriverCapability(driverId, companyId) {
     if (String(assigned[0].approvalStatus) !== "approved") {
       return null;
     }
+    if (!assigned[0].isActive) return null;
     return {
       vehicleLegalType: assigned[0].vehicleLegalType,
       vehicleClass: assigned[0].vehicleClass
@@ -49002,7 +51002,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID5 } from "node:crypto";
+import { randomUUID as randomUUID7 } from "node:crypto";
 function asReview(s) {
   const v = String(s ?? "").trim();
   if (v === "approved" || v === "rejected" || v === "pending") return v;
@@ -49117,7 +51117,7 @@ async function insertComplianceDocumentUpload(companyId, kind, storageKey, panel
   if (!db2) {
     throw new Error("database_not_configured");
   }
-  const docId = randomUUID5();
+  const docId = randomUUID7();
   const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
   await db2.transaction(async (tx) => {
     await tx.update(companyComplianceDocumentsTable).set({ is_current: false }).where(
@@ -49243,11 +51243,21 @@ async function countFleetVehiclesForCompany(companyId) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID6 } from "node:crypto";
+import { randomUUID as randomUUID8 } from "node:crypto";
 function normalizeFleetDriverApproval(raw) {
   const t = String(raw ?? "").toLowerCase().trim();
-  if (t === "in_review" || t === "pending" || t === "rejected" || t === "approved") return t;
-  return "approved";
+  if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
+    return t;
+  return "pending";
+}
+function computeFleetDriverComplianceGaps(d) {
+  const gaps = [];
+  if (!(d.pScheinNumber ?? "").trim()) gaps.push("P-Schein-Nummer fehlt");
+  const exp = d.pScheinExpiry != null ? String(d.pScheinExpiry).trim() : "";
+  if (!exp) gaps.push("P-Schein-Ablaufdatum fehlt");
+  const doc = (d.pScheinDocStorageKey ?? "").trim();
+  if (!doc) gaps.push("P-Schein-PDF-Nachweis fehlt");
+  return gaps;
 }
 function fleetDriverTableRowToList(r) {
   return {
@@ -49263,6 +51273,9 @@ function fleetDriverTableRowToList(r) {
     pScheinNumber: r.p_schein_number,
     pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
     pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    homeAddress: r.home_address ?? "",
+    driversLicenseNumber: r.drivers_license_number ?? "",
+    driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
     vehicleLegalType: r.vehicle_legal_type,
     vehicleClass: r.vehicle_class,
     lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
@@ -49273,7 +51286,8 @@ function fleetDriverTableRowToList(r) {
       r.approval_status ?? "approved"
     ),
     suspensionReason: r.suspension_reason ?? "",
-    adminInternalNote: r.admin_internal_note ?? ""
+    adminInternalNote: r.admin_internal_note ?? "",
+    readinessOverrideSystem: Boolean(r.readiness_override_system)
   };
 }
 function rowToList(r) {
@@ -49317,6 +51331,13 @@ async function findFleetDriverByEmailNormalized(email) {
   const rows = await db2.select().from(fleetDriversTable).where(sql`lower(trim(${fleetDriversTable.email})) = ${em}`).limit(1);
   return rows[0] ?? null;
 }
+async function findFleetDriverGlobal(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
 async function findFleetDriverInCompany(id, companyId) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
@@ -49343,7 +51364,9 @@ async function insertFleetDriver(input) {
   if (existing) {
     return { ok: false, error: "email_taken" };
   }
-  const id = `fd-${randomUUID6()}`;
+  const id = `fd-${randomUUID8()}`;
+  const pExp = input.pScheinExpiry?.trim();
+  const dlExp = input.driversLicenseExpiry?.trim();
   await db2.insert(fleetDriversTable).values({
     id,
     company_id: input.companyId,
@@ -49355,9 +51378,14 @@ async function insertFleetDriver(input) {
     must_change_password: input.mustChangePassword,
     vehicle_legal_type: input.vehicleLegalType ?? "taxi",
     vehicle_class: input.vehicleClass ?? "standard",
+    p_schein_number: (input.pScheinNumber ?? "").trim(),
+    p_schein_expiry: pExp ? pExp : null,
+    home_address: (input.homeAddress ?? "").trim(),
+    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
+    drivers_license_expiry: dlExp ? dlExp : null,
     is_active: true,
     access_status: "active",
-    approval_status: "pending",
+    approval_status: input.approvalStatus ?? "approved",
     session_version: 1
   });
   return { ok: true, id };
@@ -49368,6 +51396,23 @@ async function patchFleetDriverProfile(id, companyId, patch) {
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
   const set = { updated_at: /* @__PURE__ */ new Date() };
+  let bumpSession = false;
+  if (patch.email !== void 0) {
+    const em = patch.email.trim().toLowerCase();
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      return { ok: false, error: "email_invalid" };
+    }
+    const other = await findFleetDriverByEmailNormalized(em);
+    if (other && other.id !== id) {
+      return { ok: false, error: "email_taken" };
+    }
+    set.email = em;
+    bumpSession = true;
+  }
+  if (patch.isActive !== void 0) {
+    set.is_active = patch.isActive;
+    bumpSession = true;
+  }
   if (patch.firstName !== void 0) set.first_name = patch.firstName.trim();
   if (patch.lastName !== void 0) set.last_name = patch.lastName.trim();
   if (patch.phone !== void 0) set.phone = patch.phone.trim();
@@ -49379,6 +51424,15 @@ async function patchFleetDriverProfile(id, companyId, patch) {
   if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
   if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
   if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
+  if (patch.homeAddress !== void 0) set.home_address = patch.homeAddress.trim();
+  if (patch.driversLicenseNumber !== void 0) set.drivers_license_number = patch.driversLicenseNumber.trim();
+  if (patch.driversLicenseExpiry !== void 0) {
+    const raw = patch.driversLicenseExpiry?.trim();
+    set.drivers_license_expiry = raw ? raw : null;
+  }
+  if (bumpSession) {
+    set.session_version = sql`${fleetDriversTable.session_version} + 1`;
+  }
   await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
   return { ok: true };
 }
@@ -49398,7 +51452,7 @@ async function suspendFleetDriver(id, companyId) {
   if (!db2) return false;
   const r = await db2.update(fleetDriversTable).set({
     access_status: "suspended",
-    is_active: false,
+    is_active: true,
     updated_at: /* @__PURE__ */ new Date(),
     session_version: sql`${fleetDriversTable.session_version} + 1`
   }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
@@ -49415,21 +51469,80 @@ async function activateFleetDriver(id, companyId) {
   }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
   return r.length > 0;
 }
-async function setFleetDriverApprovalByAdmin(driverId, nextStatus) {
-  const allowed = ["pending", "in_review", "approved", "rejected"];
-  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+async function setFleetDriverApprovalByAdmin(driverId, nextStatus, opts) {
+  const row = await findFleetDriverGlobal(driverId);
+  if (!row) return { ok: false, error: "not_found" };
+  const companyId = row.company_id;
+  if (nextStatus === "approved") {
+    return approveFleetDriverForCompany(companyId, driverId, {
+      acknowledgeIncompleteDocuments: opts?.acknowledgeIncompleteDocuments === true
+    });
+  }
+  if (nextStatus === "rejected") {
+    const reason = String(opts?.rejectionReason ?? "").trim();
+    return rejectFleetDriverForCompany(companyId, driverId, reason);
+  }
+  if (nextStatus === "missing_documents") {
+    return markFleetDriverMissingDocumentsForCompany(companyId, driverId);
+  }
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
+}
+async function approveFleetDriverForCompany(companyId, driverId, opts) {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const listRow = fleetDriverTableRowToList(cur);
+  const gaps = computeFleetDriverComplianceGaps(listRow);
+  if (gaps.length > 0 && !opts.acknowledgeIncompleteDocuments) {
+    return { ok: false, error: "incomplete_documents_ack_required", gaps };
+  }
   const db2 = getDb();
-  if (!db2) return { ok: false, error: "not_found" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, driverId)).returning({ id: fleetDriversTable.id });
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "approved", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
   return u[0] ? { ok: true } : { ok: false, error: "not_found" };
 }
-async function setFleetDriverApprovalForCompany(companyId, driverId, nextStatus) {
-  const allowed = ["pending", "in_review", "approved", "rejected"];
+async function rejectFleetDriverForCompany(companyId, driverId, rejectionReason) {
+  const reason = String(rejectionReason ?? "").trim();
+  if (!reason) return { ok: false, error: "rejection_reason_required" };
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "rejected", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function markFleetDriverMissingDocumentsForCompany(companyId, driverId) {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "missing_documents", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus) {
+  const allowed = ["pending", "in_review", "missing_documents"];
   if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "not_found" };
   const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
   return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverReadinessOverrideSystem(companyId, driverId, enabled) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({ readiness_override_system: enabled, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
 }
 var MAX_SUS_REASON = 2e3;
 var MAX_ADMIN_NOTE = 4e3;
@@ -49439,7 +51552,7 @@ async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
   const reason = String(suspensionReason ?? "").trim().slice(0, MAX_SUS_REASON);
   const r = await db2.update(fleetDriversTable).set({
     access_status: "suspended",
-    is_active: false,
+    is_active: true,
     suspension_reason: reason,
     updated_at: /* @__PURE__ */ new Date(),
     session_version: sql`${fleetDriversTable.session_version} + 1`
@@ -49516,12 +51629,55 @@ async function countFleetDriversOnline(companyId, withinSeconds) {
   );
   return Number(rows[0]?.n ?? 0);
 }
+async function countPendingFleetDriversForAdmin() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(adminCompaniesTable.company_kind, "taxi"),
+      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function listPendingFleetDriversForAdmin(limit) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const lim = typeof limit === "number" && limit > 0 ? Math.min(500, limit) : 5;
+  const rows = await db2.select({
+    driverId: fleetDriversTable.id,
+    companyId: fleetDriversTable.company_id,
+    companyName: adminCompaniesTable.name,
+    firstName: fleetDriversTable.first_name,
+    lastName: fleetDriversTable.last_name,
+    email: fleetDriversTable.email,
+    approvalStatus: fleetDriversTable.approval_status,
+    updatedAt: fleetDriversTable.updated_at
+  }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(adminCompaniesTable.company_kind, "taxi"),
+      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
+    )
+  ).orderBy(desc(fleetDriversTable.updated_at)).limit(lim);
+  return rows.map((r) => ({
+    driverId: r.driverId,
+    companyId: r.companyId,
+    companyName: r.companyName,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    email: r.email,
+    approvalStatus: r.approvalStatus,
+    updatedAt: r.updatedAt.toISOString()
+  }));
+}
 
 // src/db/fleetAssignmentsData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID7 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 function toRow(r) {
   return {
     id: r.id,
@@ -49544,16 +51700,21 @@ async function setDriverVehicleAssignment(input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const dRows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, input.driverId), eq(fleetDriversTable.company_id, input.companyId))).limit(1);
   if (!dRows[0]) return { ok: false, error: "driver_not_found" };
-  const vRows = await db2.select({ id: fleetVehiclesTable.id, approvalStatus: fleetVehiclesTable.approval_status }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
+  const vRows = await db2.select({
+    id: fleetVehiclesTable.id,
+    approvalStatus: fleetVehiclesTable.approval_status,
+    isActive: fleetVehiclesTable.is_active
+  }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
   if (!vRows[0]) return { ok: false, error: "vehicle_not_found" };
   if (String(vRows[0].approvalStatus) !== "approved") {
     return { ok: false, error: "vehicle_not_approved" };
   }
+  if (!vRows[0].isActive) return { ok: false, error: "vehicle_inactive" };
   await db2.transaction(async (tx) => {
     await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
     await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
     await tx.insert(driverVehicleAssignmentsTable).values({
-      id: `fva-${randomUUID7()}`,
+      id: `fva-${randomUUID9()}`,
       company_id: input.companyId,
       driver_id: input.driverId,
       vehicle_id: input.vehicleId
@@ -49577,7 +51738,19 @@ async function clearDriverAssignment(driverId, companyId) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID8 } from "node:crypto";
+import { randomUUID as randomUUID10 } from "node:crypto";
+var FLEET_VEHICLE_DOCUMENT_KINDS = [
+  "concession",
+  "registration",
+  "insurance",
+  "taximeter",
+  "accessibility"
+];
+function parseFleetVehicleDocumentKind(raw) {
+  if (typeof raw !== "string") return void 0;
+  const k = raw.trim().toLowerCase();
+  return FLEET_VEHICLE_DOCUMENT_KINDS.includes(k) ? k : void 0;
+}
 function parseDocuments(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
@@ -49585,10 +51758,20 @@ function parseDocuments(raw) {
     if (x && typeof x === "object" && "storageKey" in x && typeof x.storageKey === "string") {
       const sk = x.storageKey;
       const uploadedAt = "uploadedAt" in x && typeof x.uploadedAt === "string" ? x.uploadedAt : void 0;
-      if (sk) out.push({ storageKey: sk, uploadedAt });
+      const kind = parseFleetVehicleDocumentKind(x.kind);
+      const uploadedByPanelUserId = "uploadedByPanelUserId" in x && (x.uploadedByPanelUserId === null || typeof x.uploadedByPanelUserId === "string") ? x.uploadedByPanelUserId ?? null : void 0;
+      if (sk) out.push({ storageKey: sk, uploadedAt, kind, uploadedByPanelUserId });
     }
   }
   return out;
+}
+function fleetVehicleSubmitDocumentsSatisfied(docs) {
+  if (!docs.length) return false;
+  const hasConc = docs.some((d) => d.kind === "concession");
+  const hasReg = docs.some((d) => d.kind === "registration");
+  if (hasConc && hasReg) return true;
+  const allUntyped = docs.every((d) => d.kind == null || d.kind === void 0);
+  return allUntyped;
 }
 function rowToVehicle(r) {
   return {
@@ -49651,7 +51834,9 @@ async function countPendingFleetVehiclesForAdmin() {
   if (!isPostgresConfigured()) return 0;
   const db2 = getDb();
   if (!db2) return 0;
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.approval_status, "pending_approval"));
+  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(
+    sql`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`
+  );
   return Number(rows[0]?.n ?? 0);
 }
 async function listPendingFleetVehiclesForAdmin(limit) {
@@ -49661,7 +51846,7 @@ async function listPendingFleetVehiclesForAdmin(limit) {
   const q = db2.select({
     v: fleetVehiclesTable,
     companyName: adminCompaniesTable.name
-  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(eq(fleetVehiclesTable.approval_status, "pending_approval")).orderBy(desc(fleetVehiclesTable.updated_at));
+  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(sql`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`).orderBy(desc(fleetVehiclesTable.updated_at));
   const rows = typeof limit === "number" && limit > 0 ? await q.limit(Math.min(500, limit)) : await q;
   return rows.map((r) => ({
     vehicle: rowToVehicle(r.v),
@@ -49671,6 +51856,22 @@ async function listPendingFleetVehiclesForAdmin(limit) {
 function syncIsActiveForStatus(s) {
   return s === "approved";
 }
+function computeFleetVehicleComplianceGaps(v) {
+  const gaps = [];
+  const docs = Array.isArray(v.vehicleDocuments) ? v.vehicleDocuments : [];
+  const hasConc = docs.some((d) => d.kind === "concession");
+  const hasReg = docs.some((d) => d.kind === "registration");
+  const allUntyped = docs.length > 0 && docs.every((d) => d.kind == null || d.kind === void 0);
+  if (docs.length < 1) {
+    gaps.push("Kein Fahrzeug-PDF-Nachweis hochgeladen");
+  } else if (!allUntyped) {
+    if (!hasConc) gaps.push("Konzessionsnachweis (PDF) fehlt oder nicht als Typ \u201EKonzession\u201C hochgeladen");
+    if (!hasReg) gaps.push("Fahrzeugschein / Zulassungsbescheinigung (PDF) fehlt oder nicht als Typ \u201EFahrzeugschein\u201C hochgeladen");
+  }
+  const hu = v.nextInspectionDate != null ? String(v.nextInspectionDate).trim() : "";
+  if (!hu) gaps.push("HU-Datum (Hauptuntersuchung) fehlt");
+  return gaps;
+}
 async function insertFleetVehicle(input) {
   if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
   const db2 = getDb();
@@ -49679,7 +51880,7 @@ async function insertFleetVehicle(input) {
   if (!plate) return { ok: false, error: "license_plate_required" };
   const kz = (input.konzessionNumber ?? "").trim();
   if (!kz) return { ok: false, error: "konzession_number_required" };
-  const id = `fv-${randomUUID8()}`;
+  const id = `fv-${randomUUID10()}`;
   const status = input.approvalStatus;
   const isActive = syncIsActiveForStatus(status);
   const docs = input.vehicleDocuments ?? [];
@@ -49703,17 +51904,20 @@ async function insertFleetVehicle(input) {
   });
   return { ok: true, id };
 }
-async function appendFleetVehicleDocument(id, companyId, storageKey) {
+async function addFleetVehicleDocumentVersion(id, companyId, storageKey, meta) {
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
-  if (!["draft", "rejected"].includes(String(cur.approval_status))) {
+  if (!["draft", "rejected", "pending_approval", "missing_documents"].includes(String(cur.approval_status))) {
     return { ok: false, error: "documents_locked" };
   }
   const existing = parseDocuments(cur.vehicle_documents);
-  const next = [
-    ...existing,
-    { storageKey, uploadedAt: (/* @__PURE__ */ new Date()).toISOString() }
-  ];
+  const entry = {
+    storageKey,
+    uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    kind: meta.kind,
+    uploadedByPanelUserId: meta.uploadedByPanelUserId
+  };
+  const next = [...existing, entry];
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
   await db2.update(fleetVehiclesTable).set({
@@ -49726,13 +51930,19 @@ async function submitFleetVehicleForApproval(id, companyId) {
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
   const st = String(cur.approval_status);
-  if (st !== "draft" && st !== "rejected") return { ok: false, error: "invalid_state" };
   const kz = (cur.konzession_number ?? "").trim();
-  if (!kz) return { ok: false, error: "konzession_number_required" };
   const plate = (cur.license_plate ?? "").trim();
-  if (!plate) return { ok: false, error: "license_plate_required" };
   const docs = parseDocuments(cur.vehicle_documents);
-  if (docs.length < 1) return { ok: false, error: "documents_required" };
+  if (st === "pending_approval") {
+    if (!kz) return { ok: false, error: "konzession_number_required" };
+    if (!plate) return { ok: false, error: "license_plate_required" };
+    if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
+    return { ok: true };
+  }
+  if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
+  if (!kz) return { ok: false, error: "konzession_number_required" };
+  if (!plate) return { ok: false, error: "license_plate_required" };
+  if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
   await db2.update(fleetVehiclesTable).set({
@@ -49747,13 +51957,15 @@ async function patchFleetVehicle(id, companyId, patch) {
   const cur = await findFleetVehicleInCompany(id, companyId);
   if (!cur) return { ok: false, error: "not_found" };
   const st = String(cur.approval_status);
-  if (st === "pending_approval" || st === "approved" || st === "blocked") {
+  if (st === "pending_approval" || st === "missing_documents" || st === "approved" || st === "blocked") {
     const allowed = ["nextInspectionDate", "color", "model"];
     const keys = Object.keys(patch);
     for (const k of keys) {
-      if (patch[k] !== void 0 && !allowed.includes(k)) {
-        return { ok: false, error: "field_locked" };
-      }
+      if (patch[k] === void 0) continue;
+      if (allowed.includes(k)) continue;
+      if (k === "isActive" && st === "approved") continue;
+      if (k === "isActive" && st === "blocked") continue;
+      return { ok: false, error: "field_locked" };
     }
   }
   const db2 = getDb();
@@ -49774,13 +51986,17 @@ async function patchFleetVehicle(id, companyId, patch) {
   if (patch.nextInspectionDate !== void 0) {
     set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
   }
+  if (patch.isActive !== void 0) {
+    set.is_active = patch.isActive;
+  }
   await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
   return { ok: true };
 }
 async function setFleetVehicleApprovalByAdmin(id, input) {
   const cur = await findFleetVehicleGlobal(id);
   if (!cur) return { ok: false, error: "not_found" };
-  if (String(cur.approval_status) !== "pending_approval") {
+  const st = String(cur.approval_status);
+  if (!["pending_approval", "missing_documents"].includes(st)) {
     return { ok: false, error: "not_pending" };
   }
   const db2 = getDb();
@@ -49791,6 +52007,13 @@ async function setFleetVehicleApprovalByAdmin(id, input) {
   if (input.nextStatus === "rejected" && !reason) {
     return { ok: false, error: "rejection_reason_required" };
   }
+  if (input.nextStatus === "approved") {
+    const row = rowToVehicle(cur);
+    const gaps = computeFleetVehicleComplianceGaps(row);
+    if (gaps.length > 0 && !input.acknowledgeIncompleteDocuments) {
+      return { ok: false, error: "incomplete_documents_ack_required", gaps };
+    }
+  }
   await db2.update(fleetVehiclesTable).set({
     approval_status: next,
     is_active: syncIsActiveForStatus(next),
@@ -49798,6 +52021,25 @@ async function setFleetVehicleApprovalByAdmin(id, input) {
     approval_decided_at: now,
     approval_decided_by_admin_id: input.adminUserId,
     updated_at: now
+  }).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function setFleetVehicleMissingDocumentsByAdmin(id, input) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (!["draft", "pending_approval", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: "missing_documents",
+    is_active: false,
+    updated_at: now,
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId
   }).where(eq(fleetVehiclesTable.id, id));
   return { ok: true };
 }
@@ -49882,22 +52124,85 @@ async function getFleetVehicleAdminDetail(vehicleId) {
 // src/db/fleetDriverReadiness.ts
 var MSG = {
   company_not_ready: "Unternehmen ist noch nicht vollst\xE4ndig freigegeben (Verifizierung, Nachweise, Vertrag oder Stammdaten).",
-  driver_suspended: "Fahrer ist gesperrt.",
+  driver_suspended: "Fahrerzugang ist gesperrt.",
+  driver_account_inactive: "Fahrerkonto ist deaktiviert.",
   driver_rejected: "Fahrer wurde abgelehnt.",
   driver_not_approved: "Fahrer ist noch nicht freigegeben (Onroda-Pr\xFCfung).",
   p_schein_date_missing: "P-Schein: kein Ablaufdatum hinterlegt.",
   p_schein_expired: "P-Schein: abgelaufen.",
   p_schein_doc_missing: "P-Schein: kein PDF-Nachweis hochgeladen.",
   no_vehicle_assigned: "Kein Fahrzeug zugeordnet.",
-  vehicle_not_approved: "Zugeordnetes Fahrzeug ist noch nicht freigegeben."
+  vehicle_not_approved: "Zugeordnetes Fahrzeug ist noch nicht freigegeben.",
+  vehicle_blocked: "Zugeordnetes Fahrzeug ist von der Plattform gesperrt.",
+  vehicle_rejected: "Zugeordnetes Fahrzeug wurde abgelehnt.",
+  vehicle_pending_approval: "Zugeordnetes Fahrzeug wartet auf Freigabe durch Onroda.",
+  vehicle_draft: "Zugeordnetes Fahrzeug ist noch nicht zur Pr\xFCfung eingereicht."
 };
+function buildFleetDriverMeClientHints(readiness, listRow) {
+  if (readiness.ready) {
+    return { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" };
+  }
+  const codes = new Set(readiness.blockReasons.map((b) => b.code));
+  if (codes.has("driver_account_inactive")) {
+    return {
+      blockBannerTitle: "Konto deaktiviert",
+      notFreigegebenMessage: MSG.driver_account_inactive,
+      driverBlockKind: "compliance"
+    };
+  }
+  if (codes.has("driver_suspended")) {
+    return {
+      blockBannerTitle: "Zugang gesperrt",
+      notFreigegebenMessage: [
+        "Ihr Zugang ist gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
+        listRow.suspensionReason?.trim() ? `Grund: ${String(listRow.suspensionReason).trim()}` : null
+      ].filter(Boolean).join("\n\n"),
+      driverBlockKind: "access_suspended"
+    };
+  }
+  const vehicleish = /* @__PURE__ */ new Set([
+    "no_vehicle_assigned",
+    "vehicle_not_approved",
+    "vehicle_blocked",
+    "vehicle_rejected",
+    "vehicle_pending_approval",
+    "vehicle_draft"
+  ]);
+  if ([...codes].some((c) => vehicleish.has(c))) {
+    return {
+      blockBannerTitle: "Fahrzeug",
+      notFreigegebenMessage: [
+        "Ihr Fahrzeug ist nicht freigegeben oder gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
+        ...readiness.blockReasons.filter((b) => vehicleish.has(b.code)).map((b) => b.message)
+      ].join("\n\n"),
+      driverBlockKind: "vehicle"
+    };
+  }
+  if (codes.has("company_not_ready")) {
+    return {
+      blockBannerTitle: "Unternehmen",
+      notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
+      driverBlockKind: "compliance"
+    };
+  }
+  return {
+    blockBannerTitle: "Voraussetzungen",
+    notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
+    driverBlockKind: "other"
+  };
+}
 function deriveDriverWorkflowLabel(d) {
-  if (!d.isActive || d.accessStatus === "suspended") {
+  if (!d.isActive) {
+    return { key: "inactive", label: "Deaktiviert" };
+  }
+  if (d.accessStatus === "suspended") {
     return { key: "suspended", label: "Gesperrt" };
   }
   switch (d.approvalStatus) {
     case "rejected":
       return { key: "rejected", label: "Abgelehnt" };
+    case "missing_documents":
+      return { key: "missing_documents", label: "Unterlagen fehlen" };
     case "in_review":
       return { key: "in_review", label: "In Pr\xFCfung" };
     case "pending":
@@ -49927,17 +52232,27 @@ function pScheinExpiredOnlyWhenDatePresent(isoOrDate) {
   const exp = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   return exp < endOfTodayUtc;
 }
-function computeDriverReadiness(gate, d, hasVehicleAssignment, assignedVehicleApproval) {
+var READINESS_OVERRIDE_HARD_STOPS = /* @__PURE__ */ new Set([
+  "driver_suspended",
+  "driver_account_inactive",
+  "driver_rejected",
+  "driver_not_approved"
+]);
+function computeDriverReadiness(gate, d, hasVehicleAssignment, assignedVehicle) {
   const blockReasons = [];
   if (!companyMeetsTaxiFleetProvisioningReadiness(gate)) {
     blockReasons.push({ code: "company_not_ready", message: MSG.company_not_ready });
   }
-  if (!d.isActive || d.accessStatus !== "active") {
-    blockReasons.push({ code: "driver_suspended", message: MSG.driver_suspended });
+  if (!d.isActive) {
+    blockReasons.push({ code: "driver_account_inactive", message: MSG.driver_account_inactive });
+  } else if (d.accessStatus !== "active") {
+    const sr = (d.suspensionReason ?? "").trim();
+    const msg = sr ? `${MSG.driver_suspended} Grund: ${sr}` : MSG.driver_suspended;
+    blockReasons.push({ code: "driver_suspended", message: msg });
   }
   if (d.approvalStatus === "rejected") {
     blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
-  } else if (d.approvalStatus === "pending" || d.approvalStatus === "in_review") {
+  } else if (d.approvalStatus === "pending" || d.approvalStatus === "in_review" || d.approvalStatus === "missing_documents") {
     blockReasons.push({ code: "driver_not_approved", message: MSG.driver_not_approved });
   }
   if (pScheinDateMissing(d.pScheinExpiry)) {
@@ -49950,16 +52265,39 @@ function computeDriverReadiness(gate, d, hasVehicleAssignment, assignedVehicleAp
   }
   if (!hasVehicleAssignment) {
     blockReasons.push({ code: "no_vehicle_assigned", message: MSG.no_vehicle_assigned });
-  } else if (assignedVehicleApproval !== "approved") {
-    blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
+  } else if (assignedVehicle) {
+    const st = String(assignedVehicle.approvalStatus);
+    if (st === "approved") {
+    } else if (st === "blocked") {
+      const br = (assignedVehicle.blockReason ?? "").trim();
+      blockReasons.push({
+        code: "vehicle_blocked",
+        message: br ? `${MSG.vehicle_blocked} ${br}` : MSG.vehicle_blocked
+      });
+    } else if (st === "rejected") {
+      const rj = (assignedVehicle.rejectionReason ?? "").trim();
+      blockReasons.push({
+        code: "vehicle_rejected",
+        message: rj ? `${MSG.vehicle_rejected} ${rj}` : MSG.vehicle_rejected
+      });
+    } else if (st === "pending_approval" || st === "missing_documents") {
+      blockReasons.push({ code: "vehicle_pending_approval", message: MSG.vehicle_pending_approval });
+    } else if (st === "draft") {
+      blockReasons.push({ code: "vehicle_draft", message: MSG.vehicle_draft });
+    } else {
+      blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
+    }
+  }
+  if (d.readinessOverrideSystem) {
+    const filtered = blockReasons.filter((b) => READINESS_OVERRIDE_HARD_STOPS.has(b.code));
+    return { ready: filtered.length === 0, blockReasons: filtered };
   }
   return { ready: blockReasons.length === 0, blockReasons };
 }
-function vehicleApprovalForDriver(driverId, assignRows, vehicles) {
+function assignedVehicleForDriver(driverId, assignRows, vehicles) {
   const a = assignRows.find((x) => x.driverId === driverId);
-  if (!a) return { has: false, approval: null };
-  const v = vehicles.find((v0) => v0.id === a.vehicleId);
-  return { has: true, approval: v ? String(v.approvalStatus) : null };
+  if (!a) return null;
+  return vehicles.find((v0) => v0.id === a.vehicleId) ?? null;
 }
 async function getPanelFleetDriverViews(companyId) {
   const [gate, rows, ass, veh] = await Promise.all([
@@ -49969,11 +52307,11 @@ async function getPanelFleetDriverViews(companyId) {
     listFleetVehiclesForCompany(companyId)
   ]);
   return rows.map((row) => {
-    const { has, approval } = vehicleApprovalForDriver(row.id, ass, veh);
+    const av = assignedVehicleForDriver(row.id, ass, veh);
     return {
       ...row,
       workflow: deriveDriverWorkflowLabel(row),
-      readiness: computeDriverReadiness(gate, row, has, approval)
+      readiness: computeDriverReadiness(gate, row, av != null, av)
     };
   });
 }
@@ -49986,8 +52324,8 @@ async function getFleetDriverReadinessById(driverId, companyId) {
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId)
   ]);
-  const { has, approval } = vehicleApprovalForDriver(listRow.id, ass, veh);
-  return computeDriverReadiness(gate, listRow, has, approval);
+  const av = assignedVehicleForDriver(listRow.id, ass, veh);
+  return computeDriverReadiness(gate, listRow, av != null, av);
 }
 function assignedVehicleMeta(driverId, assignRows, vehicles) {
   const a = assignRows.find((x) => x.driverId === driverId);
@@ -50024,11 +52362,11 @@ async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
     listAssignmentsForCompany(companyId),
     listFleetVehiclesForCompany(companyId)
   ]);
-  const { has, approval } = vehicleApprovalForDriver(listRow.id, ass, veh);
+  const av = assignedVehicleForDriver(listRow.id, ass, veh);
   const view = {
     ...listRow,
     workflow: deriveDriverWorkflowLabel(listRow),
-    readiness: computeDriverReadiness(gate, listRow, has, approval)
+    readiness: computeDriverReadiness(gate, listRow, av != null, av)
   };
   return {
     ...view,
@@ -50041,679 +52379,79 @@ async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
 
 // src/routes/rides.ts
 init_dispatchStatus();
-var DEMO = [];
-var driverLocations = /* @__PURE__ */ new Map();
-var customerLocations = /* @__PURE__ */ new Map();
-var customerCancelReasons = /* @__PURE__ */ new Map();
-var customerSupportTickets = /* @__PURE__ */ new Map();
-var router2 = (0, import_express2.Router)();
-var CODE_VERIFY_TTL_MS = 5 * 60 * 1e3;
-var codeVerifySessions = /* @__PURE__ */ new Map();
-function cleanupCodeVerifySessions(now = Date.now()) {
-  for (const [key, session] of codeVerifySessions) {
-    if (session.expiresAt <= now) codeVerifySessions.delete(key);
-  }
-}
-var ACTIVE_RIDE_STATUSES2 = /* @__PURE__ */ new Set([
-  "scheduled",
-  "requested",
-  "searching_driver",
-  "offered",
-  "accepted",
-  "driver_arriving",
-  "driver_waiting",
-  "passenger_onboard",
-  "in_progress",
-  // Legacy compatibility
-  "pending",
-  "arrived"
-]);
-function parseOptionalFinalFareFromBody(body) {
-  if (!body || typeof body !== "object") return void 0;
-  const b = body;
-  const nested = b.status_data != null && typeof b.status_data === "object" && !Array.isArray(b.status_data) ? b.status_data : null;
-  const raw = b.finalFare ?? b.final_fare ?? nested?.finalFare ?? nested?.final_fare;
-  if (raw == null || raw === "") return void 0;
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "string") {
-    const n3 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
-    return Number.isFinite(n3) ? n3 : void 0;
-  }
-  return void 0;
-}
-function normalizeStatusInput(raw) {
-  if (typeof raw !== "string") return null;
-  const s = raw.trim();
-  if (!s) return null;
-  const allowed = [
-    "draft",
-    "scheduled",
-    "requested",
-    "searching_driver",
-    "offered",
-    "pending",
-    "accepted",
-    "driver_arriving",
-    "driver_waiting",
-    "passenger_onboard",
-    "arrived",
-    "in_progress",
-    "completed",
-    "cancelled_by_customer",
-    "cancelled_by_driver",
-    "cancelled_by_system",
-    "expired",
-    "rejected",
-    "cancelled"
-  ];
-  return allowed.includes(s) ? s : null;
-}
-function canTransitionStatus(from, to) {
-  if (from === to) return true;
-  const map = {
-    draft: ["requested", "cancelled_by_customer", "cancelled"],
-    scheduled: [
-      "accepted",
-      "searching_driver",
-      "cancelled_by_customer",
-      "cancelled",
-      "expired"
-    ],
-    requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-    searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-    offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
-    pending: ["accepted", "driver_arriving", "driver_waiting", "in_progress", "completed", "cancelled", "rejected", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    accepted: ["driver_arriving", "driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "cancelled"],
-    driver_arriving: ["driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    driver_waiting: ["passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    passenger_onboard: ["in_progress", "completed", "cancelled_by_system"],
-    arrived: ["passenger_onboard", "in_progress", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
-    in_progress: ["completed", "cancelled_by_system", "cancelled"]
-  };
-  return (map[from] ?? []).includes(to);
-}
-function ceilToTenth(amount) {
-  const safe = Number.isFinite(amount) ? amount : 0;
-  return Math.ceil((safe + Number.EPSILON) * 10) / 10;
-}
-function pickScheduledAtFromBody(raw) {
-  const c = raw.scheduledAt;
-  if (typeof c === "string" && c.trim()) return c.trim();
-  const s = raw.scheduled_at;
-  if (typeof s === "string" && s.trim()) return s.trim();
+init_appOperationalData();
+
+// src/lib/medicalTransportImage.ts
+var MEDICAL_TRANSPORT_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
+var MEDICAL_TRANSPORT_BASE64_MAX_CHARS = Math.ceil(MEDICAL_TRANSPORT_IMAGE_MAX_BYTES / 3) * 4 + 512;
+function sniffImageMagic(buf) {
+  if (buf.length >= 3 && buf[0] === 255 && buf[1] === 216 && buf[2] === 255) return "image/jpeg";
+  if (buf.length >= 4 && buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71) return "image/png";
   return null;
 }
-function initialCustomerRideStatus(scheduledAt) {
-  return isFarFutureReservation(scheduledAt) ? "scheduled" : "searching_driver";
+function decodeValidatedMedicalTransportImage(input) {
+  const trimmed = input.trim();
+  if (trimmed.length > MEDICAL_TRANSPORT_BASE64_MAX_CHARS) {
+    return { ok: false, error: "payload_too_large" };
+  }
+  let declaredMime = null;
+  let b64part = trimmed.replace(/\s/g, "");
+  const dm = trimmed.match(/^data:image\/(jpeg|png);base64,/i);
+  if (dm) {
+    declaredMime = dm[1].toLowerCase() === "jpeg" ? "image/jpeg" : "image/png";
+    b64part = trimmed.slice(dm[0].length).replace(/\s/g, "");
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b64part)) {
+    return { ok: false, error: "invalid_base64_chars" };
+  }
+  let buf;
+  try {
+    buf = Buffer.from(b64part, "base64");
+  } catch {
+    return { ok: false, error: "invalid_base64" };
+  }
+  if (!buf.length) return { ok: false, error: "empty_image" };
+  if (buf.length > MEDICAL_TRANSPORT_IMAGE_MAX_BYTES) return { ok: false, error: "image_size_invalid" };
+  const magic = sniffImageMagic(buf);
+  if (!magic) return { ok: false, error: "unsupported_or_corrupt_image" };
+  if (declaredMime && declaredMime !== magic) return { ok: false, error: "mime_magic_mismatch" };
+  const ext = magic === "image/jpeg" ? "jpg" : "png";
+  return { ok: true, buffer: buf, ext, mime: magic };
 }
-router2.get("/fare-config", async (_req, res, next) => {
-  try {
-    const profile = await getPublicFareProfile();
-    res.json({ ok: true, profile });
-  } catch (e) {
-    next(e);
-  }
-});
-router2.get("/fare-estimate", async (req, res, next) => {
-  try {
-    const distanceKm = Number(req.query.distanceKm ?? 0);
-    const waitingMinutes = Number(req.query.waitingMinutes ?? 0);
-    const vehicle = String(req.query.vehicle ?? "standard").trim().toLowerCase();
-    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
-      res.status(400).json({ error: "distance_km_invalid" });
-      return;
-    }
-    const profile = await getPublicFareProfile();
-    const waitPerMinute = profile.waitingPerHourEur / 60;
-    const firstKm = Math.min(distanceKm, profile.thresholdKm);
-    const restKm = Math.max(0, distanceKm - profile.thresholdKm);
-    const distanceCharge = firstKm * profile.rateFirstKmEur + restKm * profile.rateAfterKmEur;
-    const waitingCharge = Math.max(0, waitingMinutes) * waitPerMinute;
-    const taxiTotal = ceilToTenth(profile.baseFareEur + distanceCharge + waitingCharge + profile.serviceFeeEur);
-    const multipliers = { standard: 1, xl: 1.2, wheelchair: 1.15, onroda: 1 };
-    const adjustedTaxi = ceilToTenth(taxiTotal * (multipliers[vehicle] ?? 1));
-    const estimate = adjustedTaxi;
-    res.json({
-      ok: true,
-      profile,
-      estimate: {
-        distanceKm,
-        waitingMinutes,
-        vehicle,
-        total: estimate,
-        taxiTotal: adjustedTaxi,
-        onrodaTotal: adjustedTaxi
-      }
-    });
-  } catch (e) {
-    next(e);
-  }
-});
-router2.get("/rides", async (_req, res, next) => {
-  try {
-    const query = _req.query;
-    const driverId = typeof query.driverId === "string" ? query.driverId.trim() : "";
-    const companyId = typeof query.companyId === "string" ? query.companyId.trim() : "";
-    let rows = await listRides();
-    if (driverId && companyId) {
-      const capability = await getFleetDriverCapability(driverId, companyId);
-      if (!capability) {
-        rows = [];
-      } else {
-        rows = rows.filter((ride) => {
-          if (ride.driverId && ride.driverId !== driverId) return false;
-          if ((ride.rejectedBy ?? []).includes(driverId)) return false;
-          if (!ACTIVE_RIDE_STATUSES2.has(ride.status)) return false;
-          return isRideCompatibleWithCapability(ride, capability);
-        });
-      }
-    }
-    const publicRows = rows.map(stripPartnerOnlyRideFields);
-    const withCodes = await attachAccessCodeSummariesToRides(publicRows);
-    res.json(withCodes.map((r) => ({ ...r, cancelReason: customerCancelReasons.get(r.id) ?? null })));
-  } catch (e) {
-    next(e);
-  }
-});
-router2.post("/rides/:rideId/support", async (req, res) => {
-  const rideId = String(req.params.rideId ?? "").trim();
-  if (!rideId) {
-    res.status(400).json({ ok: false, error: "ride_id_required" });
-    return;
-  }
-  const category = typeof req.body?.category === "string" ? req.body.category.trim() : "other";
-  const message2 = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-  const source = typeof req.body?.source === "string" ? req.body.source.trim() : "unknown";
-  if (message2.length < 5) {
-    res.status(400).json({ ok: false, error: "message_too_short" });
-    return;
-  }
-  const ticketId = `cs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const entry = {
-    ticketId,
-    rideId,
-    category: category || "other",
-    message: message2.slice(0, 4e3),
-    source: source || "unknown",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  const prev = customerSupportTickets.get(rideId) ?? [];
-  prev.unshift(entry);
-  customerSupportTickets.set(rideId, prev.slice(0, 50));
-  console.log(`[customer-support] rideId=${rideId} ticketId=${ticketId} category=${entry.category} source=${entry.source}`);
-  res.json({ ok: true, ticketId });
-});
-function formatEuroHtml(amount) {
-  const safe = Number.isFinite(amount) ? amount : 0;
-  return safe.toFixed(2).replace(".", ",") + " \u20AC";
-}
-function escapeHtml(s) {
-  return String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-}
-function buildReceiptHtmlFromRide(r) {
-  const date2 = new Date(r.createdAt);
-  const dateStr = date2.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const timeStr = date2.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-  const amount = r.finalFare != null && Number.isFinite(Number(r.finalFare)) ? Number(r.finalFare) : Number(r.estimatedFare ?? 0);
-  const rideNr = String(r.id).slice(0, 8).toUpperCase();
-  return `<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Quittung #${escapeHtml(rideNr)}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #111; padding: 32px 16px; }
-    .receipt { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 2px 20px rgba(0,0,0,0.10); overflow: hidden; }
-    .header { background: #DC2626; color: #fff; padding: 26px 26px 18px; text-align: center; }
-    .logo { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; margin-bottom: 4px; }
-    .receipt-title { font-size: 12px; font-weight: 600; opacity: 0.9; letter-spacing: 1px; text-transform: uppercase; }
-    .receipt-id { font-size: 12px; opacity: 0.75; margin-top: 6px; }
-    .body { padding: 22px 26px; }
-    .row { display:flex; justify-content:space-between; gap:12px; margin-bottom: 10px; }
-    .k { color:#6b7280; font-size: 12px; font-weight: 600; }
-    .v { color:#111827; font-size: 12px; font-weight: 600; text-align:right; }
-    .route { margin-top: 14px; background:#f9fafb; border:1px solid #eef2f7; border-radius: 12px; padding: 14px; }
-    .route h3 { font-size: 12px; color:#6b7280; letter-spacing:0.08em; text-transform:uppercase; margin-bottom: 10px; }
-    .route .pt { font-size: 13px; font-weight: 600; margin-bottom: 8px; color:#111827; }
-    .muted { color:#6b7280; font-size: 12px; font-weight: 500; }
-    .total { margin-top: 14px; background:#DC2626; color:#fff; border-radius: 12px; padding: 14px 16px; display:flex; justify-content:space-between; align-items:center; }
-    .total .lbl { font-size: 13px; font-weight: 700; opacity:0.9; }
-    .total .amt { font-size: 22px; font-weight: 900; }
-    .footer { text-align:center; padding: 16px 26px; background:#fafafa; border-top:1px solid #f0f0f0; font-size: 11px; color:#9ca3af; line-height: 1.6; }
-    @media print { body { background:#fff; padding:0; } .receipt { box-shadow:none; border-radius:0; } }
-  </style>
-</head>
-<body>
-  <div class="receipt">
-    <div class="header">
-      <div class="logo">ONRODA</div>
-      <div class="receipt-title">Fahrtquittung</div>
-      <div class="receipt-id">Nr. ${escapeHtml(rideNr)}</div>
-    </div>
-    <div class="body">
-      <div class="row"><div><div class="k">Datum</div><div class="v">${escapeHtml(dateStr)}</div></div><div><div class="k">Uhrzeit</div><div class="v">${escapeHtml(timeStr)} Uhr</div></div></div>
-      <div class="route">
-        <h3>Route</h3>
-        <div class="muted">Abfahrt</div>
-        <div class="pt">${escapeHtml(r.from ?? "\u2014")}</div>
-        <div class="muted">Ziel</div>
-        <div class="pt">${escapeHtml(r.to ?? "\u2014")}</div>
-      </div>
-      <div style="margin-top: 14px;">
-        <div class="row"><div class="k">Strecke</div><div class="v">${escapeHtml(String(r.distanceKm ?? 0))} km</div></div>
-        <div class="row"><div class="k">Dauer</div><div class="v">${escapeHtml(String(r.durationMinutes ?? 0))} Min</div></div>
-        <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(r.paymentMethod ?? "\u2014")}</div></div>
-        <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "\u2014")}</div></div>
-      </div>
-      <div class="total"><div class="lbl">Gesamtbetrag</div><div class="amt">${formatEuroHtml(amount)}</div></div>
-    </div>
-    <div class="footer">
-      ONRODA \xB7 Deutschland<br/>
-      Vielen Dank f\xFCr Ihre Fahrt!<br/>
-      Diese Quittung dient als Beleg.
-    </div>
-  </div>
-  <script>
-    window.addEventListener('load', function() { setTimeout(function() { try { window.print(); } catch(e) {} }, 250); });
-  </script>
-</body>
-</html>`;
-}
-router2.get("/rides/:rideId/receipt", async (req, res, next) => {
-  try {
-    const rideId = String(req.params.rideId ?? "").trim();
-    if (!rideId) {
-      res.status(400).json({ error: "ride_id_required" });
-      return;
-    }
-    const ride = await findRide(rideId);
-    if (!ride) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(buildReceiptHtmlFromRide(ride));
-  } catch (e) {
-    next(e);
-  }
-});
-router2.post("/rides/access-code/verify", async (req, res, next) => {
-  try {
-    const body = req.body;
-    const accessCode = typeof body.accessCode === "string" ? body.accessCode.trim() : "";
-    const driverId = typeof body.driverId === "string" ? body.driverId.trim() : "";
-    if (!accessCode || !driverId) {
-      res.status(400).json({ error: "access_code_or_driver_missing" });
-      return;
-    }
-    const probe = await verifyAccessCode(accessCode, null);
-    if (!probe.ok) {
-      res.status(400).json({ error: probe.error });
-      return;
-    }
-    cleanupCodeVerifySessions();
-    const verifyToken = `acv-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
-    codeVerifySessions.set(verifyToken, {
-      driverId,
-      normalized: probe.normalized,
-      expiresAt: Date.now() + CODE_VERIFY_TTL_MS
-    });
-    res.json({
-      ok: true,
-      verifyToken,
-      expiresInSeconds: Math.floor(CODE_VERIFY_TTL_MS / 1e3),
-      summary: { codeType: probe.codeType, label: probe.label }
-    });
-  } catch (e) {
-    next(e);
-  }
-});
-router2.post("/rides", async (req, res, next) => {
-  try {
-    const raw = req.body;
-    if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
-      res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
-      return;
-    }
-    if (raw.rideKind != null && raw.rideKind !== "" && (typeof raw.rideKind !== "string" || parseRideKind(raw.rideKind) === null)) {
-      res.status(400).json({ error: "ride_kind_invalid" });
-      return;
-    }
-    if (raw.payerKind != null && raw.payerKind !== "" && (typeof raw.payerKind !== "string" || parsePayerKind(raw.payerKind) === null)) {
-      res.status(400).json({ error: "payer_kind_invalid" });
-      return;
-    }
-    if (raw.authorizationSource != null && raw.authorizationSource !== "" && (typeof raw.authorizationSource !== "string" || parseAuthorizationSource(raw.authorizationSource) === null)) {
-      res.status(400).json({ error: "authorization_source_invalid" });
-      return;
-    }
-    if (raw.pricingMode != null && raw.pricingMode !== "" && raw.pricingMode !== "taxi_tariff") {
-      res.status(400).json({ error: "pricing_mode_invalid" });
-      return;
-    }
-    const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
-    const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
-    const authorizationSource = parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
-    const scheduledAtNormalized = pickScheduledAtFromBody(raw);
-    const newReq = {
-      ...raw,
-      id: `REQ-${Date.now()}`,
-      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-      status: initialCustomerRideStatus(scheduledAtNormalized),
-      scheduledAt: scheduledAtNormalized,
-      rejectedBy: [],
-      driverId: null,
-      rideKind,
-      payerKind,
-      voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
-      billingReference: parseOptionalBillingTag(raw.billingReference, 256),
-      authorizationSource,
-      accessCodeId: null,
-      pricingMode: "taxi_tariff"
-    };
-    const accessCodeRaw = raw.accessCode;
-    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
-    const accessCodeVerifyToken = typeof raw.accessCodeVerifyToken === "string" ? raw.accessCodeVerifyToken.trim() : "";
-    const driverIdForCodeRide = typeof raw.driverId === "string" ? raw.driverId.trim() : "";
-    const normalizedCode = accessCodePlain ? normalizeAccessCodeInput(accessCodePlain) : null;
-    if (normalizedCode && driverIdForCodeRide) {
-      cleanupCodeVerifySessions();
-      const session = accessCodeVerifyToken ? codeVerifySessions.get(accessCodeVerifyToken) : null;
-      const isSessionValid = !!session && session.expiresAt > Date.now() && session.driverId === driverIdForCodeRide && session.normalized === normalizedCode;
-      if (!isSessionValid) {
-        res.status(409).json({ error: "access_code_verify_required" });
-        return;
-      }
-      codeVerifySessions.delete(accessCodeVerifyToken);
-    }
-    const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
-    if (!ins.ok) {
-      res.status(400).json({ error: ins.error });
-      return;
-    }
-    const created = await findRide(newReq.id);
-    if (!created) {
-      res.status(500).json({ error: "ride_insert_inconsistent" });
-      return;
-    }
-    const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
-    res.status(201).json(withSummary);
-  } catch (e) {
-    next(e);
-  }
-});
-router2.patch("/rides/:id/status", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { status, driverId, cancelReason } = req.body;
-    const parsedFinalFare = parseOptionalFinalFareFromBody(req.body);
-    const nextStatus = normalizeStatusInput(status);
-    if (!nextStatus) {
-      res.status(400).json({ error: "status_invalid" });
-      return;
-    }
-    const cur = await findRide(id);
-    if (!cur) {
-      res.status(404).json({ error: "not found" });
-      return;
-    }
-    if (!canTransitionStatus(cur.status, nextStatus)) {
-      res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
-      return;
-    }
-    const cancelReasonClean = typeof cancelReason === "string" ? cancelReason.trim() : "";
-    if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
-      res.status(400).json({ error: "cancel_reason_required" });
-      return;
-    }
-    if (nextStatus === "accepted" && driverId) {
-      const driverAuth = await findFleetDriverAuthRow(driverId);
-      const capabilityCompanyId = cur.companyId ?? driverAuth?.company_id ?? null;
-      if (!capabilityCompanyId) {
-        res.status(409).json({
-          error: "ride_not_assignable",
-          message: "Fahrt/Fahrer konnten keinem Unternehmen zugeordnet werden."
-        });
-        return;
-      }
-      if (cur.companyId && driverAuth?.company_id && cur.companyId !== driverAuth.company_id) {
-        res.status(409).json({
-          error: "ride_company_mismatch",
-          message: "Diese Fahrt geh\xF6rt zu einem anderen Unternehmen."
-        });
-        return;
-      }
-      const readinessR = await getFleetDriverReadinessById(driverId, capabilityCompanyId);
-      if (!("error" in readinessR) && !readinessR.ready) {
-        res.status(409).json({
-          error: "driver_not_einsatzbereit",
-          blockReasons: readinessR.blockReasons,
-          message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen)."
-        });
-        return;
-      }
-      const capability = await getFleetDriverCapability(driverId, capabilityCompanyId);
-      if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
-        res.status(409).json({
-          error: "no_matching_vehicle_available",
-          message: "Aktuell kein passendes Fahrzeug verf\xFCgbar"
-        });
-        return;
-      }
-    }
-    const updated = await updateRide(id, {
-      status: nextStatus,
-      ...parsedFinalFare !== void 0 ? { finalFare: parsedFinalFare } : {},
-      ...driverId != null ? { driverId } : {}
-    });
-    if (!updated) {
-      res.status(500).json({ error: "update_failed" });
-      return;
-    }
-    if (nextStatus === "cancelled_by_customer") {
-      customerCancelReasons.set(id, cancelReasonClean);
-    }
-    if (nextStatus === "completed") {
-      const finance = await upsertRideFinancialSnapshot({
-        ride: updated,
-        reason: "ride_completed_status_transition"
-      });
-      if (!finance.ok) {
-        res.status(500).json({ error: finance.error });
-        return;
-      }
-    }
-    if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
-      customerCancelReasons.delete(id);
-    }
-    res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
-  } catch (e) {
-    next(e);
-  }
-});
-router2.patch("/rides/:id/release", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const updated = await adminReleaseRide(id);
-    if (!updated) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    res.json(stripPartnerOnlyRideFields(updated));
-  } catch (e) {
-    next(e);
-  }
-});
-router2.post("/rides/:id/driver-location", (req, res) => {
-  const { id } = req.params;
-  const { lat, lon } = req.body;
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    res.status(400).json({ error: "lat and lon required" });
-    return;
-  }
-  const loc = { lat, lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
-  driverLocations.set(id, loc);
-  res.json(loc);
-});
-router2.get("/rides/:id/driver-location", (req, res) => {
-  const { id } = req.params;
-  const loc = driverLocations.get(id);
-  if (!loc) {
-    res.status(404).json({ error: "no location yet" });
-    return;
-  }
-  res.json(loc);
-});
-router2.post("/rides/:id/customer-location", (req, res) => {
-  const { id } = req.params;
-  const { lat, lon } = req.body;
-  if (typeof lat !== "number" || typeof lon !== "number") {
-    res.status(400).json({ error: "lat and lon required" });
-    return;
-  }
-  const loc = { lat, lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
-  customerLocations.set(id, loc);
-  res.json(loc);
-});
-router2.get("/rides/:id/customer-location", (req, res) => {
-  const { id } = req.params;
-  const loc = customerLocations.get(id);
-  if (!loc) {
-    res.status(404).json({ error: "no location yet" });
-    return;
-  }
-  res.json(loc);
-});
-router2.post("/rides/:id/reject", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const driverIdRaw = req.body.driverId;
-    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
-    if (!driverId) {
-      res.status(400).json({ error: "driver_id_required" });
-      return;
-    }
-    const cur = await findRide(id);
-    if (!cur) {
-      res.status(404).json({ error: "not found" });
-      return;
-    }
-    const existing = cur.rejectedBy ?? [];
-    const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
-    const updated = await updateRide(id, { rejectedBy });
-    if (!updated) {
-      res.status(500).json({ error: "update_failed" });
-      return;
-    }
-    res.json(stripPartnerOnlyRideFields(updated));
-  } catch (e) {
-    next(e);
-  }
-});
-router2.post("/rides/:id/driver-cancel", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const driverIdRaw = req.body.driverId;
-    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
-    const cur = await findRide(id);
-    if (!cur) {
-      res.status(404).json({ error: "not found" });
-      return;
-    }
-    if (cur.status === "cancelled_by_customer" || cur.status === "cancelled_by_system" || cur.status === "cancelled_by_driver" || cur.status === "cancelled" || cur.status === "completed") {
-      res.json(stripPartnerOnlyRideFields(cur));
-      return;
-    }
-    const existing = cur.rejectedBy ?? [];
-    const rejectedBy = driverId ? existing.includes(driverId) ? existing : [...existing, driverId] : existing;
-    const revertStatus = cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "searching_driver";
-    const updated = await updateRide(id, {
-      status: revertStatus,
-      driverId: null,
-      rejectedBy
-    });
-    if (!updated) {
-      res.status(500).json({ error: "update_failed" });
-      return;
-    }
-    res.json(stripPartnerOnlyRideFields(updated));
-  } catch (e) {
-    next(e);
-  }
-});
-router2.post("/rides/:id/driver-hard-cancel", async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const driverIdRaw = req.body.driverId;
-    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
-    const cur = await findRide(id);
-    if (!cur) {
-      res.status(404).json({ error: "not found" });
-      return;
-    }
-    const updated = await updateRide(id, {
-      status: "cancelled_by_driver",
-      driverId: null,
-      rejectedBy: driverId ? [.../* @__PURE__ */ new Set([...cur.rejectedBy ?? [], driverId])] : cur.rejectedBy ?? []
-    });
-    if (!updated) {
-      res.status(500).json({ error: "update_failed" });
-      return;
-    }
-    res.json(stripPartnerOnlyRideFields(updated));
-  } catch (e) {
-    next(e);
-  }
-});
-router2.delete("/rides/demo", async (_req, res, next) => {
-  try {
-    await resetRidesDemo([...DEMO]);
-    driverLocations.clear();
-    res.json({ ok: true });
-  } catch (e) {
-    next(e);
-  }
-});
-var rides_default = router2;
 
-// src/routes/auth.ts
-var import_express3 = __toESM(require_express2(), 1);
-import { ClientAuthentication, OAuth2Client } from "google-auth-library";
-import { createHash, randomBytes as randomBytes2 } from "crypto";
+// src/lib/medicalBillingReadiness.ts
+function normalizeStatus(v) {
+  return typeof v === "string" ? v.trim().toLowerCase() : "";
+}
+function calculateMedicalBillingReadiness(meta) {
+  const missing = [];
+  const approval = normalizeStatus(meta.approval_status);
+  const doc = normalizeStatus(meta.transport_document_status);
+  const insurance = typeof meta.insurance_name === "string" ? meta.insurance_name.trim() : "";
+  const costCenter = typeof meta.cost_center === "string" ? meta.cost_center.trim() : "";
+  const signatureRequired = meta.signature_required === true;
+  const signatureDone = meta.signature_done === true;
+  const qrRequired = meta.qr_required !== false;
+  const qrDone = meta.qr_done === true;
+  const transportDocRequired = meta.transport_document_required !== false;
+  const approvalProofMode = normalizeStatus(meta.approval_proof_mode);
+  if (approval !== "approved") missing.push("missing_approval");
+  if (qrRequired && !qrDone) missing.push("missing_qr_verification");
+  if (transportDocRequired && doc !== "uploaded" && doc !== "provided") missing.push("missing_transport_document");
+  if (approvalProofMode === "later") missing.push("approval_proof_pending");
+  if (signatureRequired && !signatureDone) missing.push("missing_signature");
+  if (!insurance) missing.push("missing_insurance");
+  if (!costCenter) missing.push("missing_cost_center");
+  return { billingReady: missing.length === 0, missingReasons: missing };
+}
 
-// src/lib/firebaseAdmin.ts
-import admin from "firebase-admin";
-function isFirebaseAdminConfigured() {
-  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const path8 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  return raw.length > 0 || path8.length > 0;
+// src/lib/medicalQrToken.ts
+import { randomBytes as randomBytes2 } from "node:crypto";
+function createMedicalQrToken() {
+  return randomBytes2(32).toString("base64url");
 }
-function ensureFirebaseApp() {
-  if (admin.apps.length > 0) {
-    return admin.app();
-  }
-  const rawJson = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
-  const credPath = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
-  if (rawJson) {
-    let parsed;
-    try {
-      parsed = JSON.parse(rawJson);
-    } catch {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT ist kein g\xFCltiges JSON.");
-    }
-    return admin.initializeApp({ credential: admin.credential.cert(parsed) });
-  }
-  if (credPath) {
-    return admin.initializeApp({ credential: admin.credential.cert(credPath) });
-  }
-  throw new Error(
-    "Firebase Admin nicht konfiguriert: GOOGLE_APPLICATION_CREDENTIALS oder FIREBASE_SERVICE_ACCOUNT setzen."
-  );
-}
-function getFirebaseAuth() {
-  return admin.auth(ensureFirebaseApp());
+function formatMedicalQrPayload(rideId, token) {
+  return `onroda.medical.v1|${rideId}|${token}`;
 }
 
 // ../../node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/lib/buffer_utils.js
@@ -51733,7 +53471,7 @@ function validateClaimsSet(protectedHeader, encodedPayload, options = {}) {
   if (typ && (typeof protectedHeader.typ !== "string" || normalizeTyp(protectedHeader.typ) !== normalizeTyp(typ))) {
     throw new JWTClaimValidationFailed('unexpected "typ" JWT header value', payload, "typ", "check_failed");
   }
-  const { requiredClaims = [], issuer: issuer4, subject, audience, maxTokenAge } = options;
+  const { requiredClaims = [], issuer: issuer5, subject, audience, maxTokenAge } = options;
   const presenceCheck = [...requiredClaims];
   if (maxTokenAge !== void 0)
     presenceCheck.push("iat");
@@ -51741,14 +53479,14 @@ function validateClaimsSet(protectedHeader, encodedPayload, options = {}) {
     presenceCheck.push("aud");
   if (subject !== void 0)
     presenceCheck.push("sub");
-  if (issuer4 !== void 0)
+  if (issuer5 !== void 0)
     presenceCheck.push("iss");
   for (const claim of new Set(presenceCheck.reverse())) {
     if (!(claim in payload)) {
       throw new JWTClaimValidationFailed(`missing required "${claim}" claim`, payload, claim, "missing");
     }
   }
-  if (issuer4 && !(Array.isArray(issuer4) ? issuer4 : [issuer4]).includes(payload.iss)) {
+  if (issuer5 && !(Array.isArray(issuer5) ? issuer5 : [issuer5]).includes(payload.iss)) {
     throw new JWTClaimValidationFailed('unexpected "iss" claim value', payload, "iss", "check_failed");
   }
   if (subject && payload.sub !== subject) {
@@ -51987,8 +53725,8 @@ var SignJWT = class {
   constructor(payload = {}) {
     this.#jwt = new JWTClaimsBuilder(payload);
   }
-  setIssuer(issuer4) {
-    this.#jwt.iss = issuer4;
+  setIssuer(issuer5) {
+    this.#jwt.iss = issuer5;
     return this;
   }
   setSubject(subject) {
@@ -52029,29 +53767,140 @@ var SignJWT = class {
   }
 };
 
-// src/lib/sessionJwt.ts
+// ../../node_modules/.pnpm/jose@6.2.2/node_modules/jose/dist/webapi/util/decode_jwt.js
+function decodeJwt(jwt) {
+  if (typeof jwt !== "string")
+    throw new JWTInvalid("JWTs must use Compact JWS serialization, JWT must be a string");
+  const { 1: payload, length } = jwt.split(".");
+  if (length === 5)
+    throw new JWTInvalid("Only JWTs using Compact JWS serialization can be decoded");
+  if (length !== 3)
+    throw new JWTInvalid("Invalid JWT");
+  if (!payload)
+    throw new JWTInvalid("JWTs must contain a payload");
+  let decoded;
+  try {
+    decoded = decode(payload);
+  } catch {
+    throw new JWTInvalid("Failed to base64url decode the payload");
+  }
+  let result;
+  try {
+    result = JSON.parse(decoder.decode(decoded));
+  } catch {
+    throw new JWTInvalid("Failed to parse the decoded payload as JSON");
+  }
+  if (!isObject(result))
+    throw new JWTInvalid("Invalid JWT Claims Set");
+  return result;
+}
+
+// src/lib/receiptAccessJwt.ts
+var RECEIPT_LINK_KIND = "ride_receipt_html";
+var RECEIPT_LINK_ISS = "onroda-receipt-link";
+function secretKey() {
+  const raw = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!raw) throw new Error("AUTH_JWT_SECRET is not configured");
+  return new TextEncoder().encode(raw);
+}
+async function verifyReceiptHtmlAccessJwt(token) {
+  const { payload } = await jwtVerify(token, secretKey(), {
+    issuer: RECEIPT_LINK_ISS,
+    audience: "ride-receipt",
+    algorithms: ["HS256"]
+  });
+  return payloadToClaims(payload);
+}
+function payloadToClaims(payload) {
+  const k = typeof payload.k === "string" ? String(payload.k) : "";
+  if (k !== RECEIPT_LINK_KIND) throw new Error("invalid receipt token kind");
+  const rid = typeof payload.rid === "string" ? String(payload.rid).trim() : "";
+  const sub = typeof payload.sub === "string" ? payload.sub.trim() : "";
+  if (!rid || !sub) throw new Error("invalid receipt token");
+  return { rideId: rid, passengerGoogleId: sub };
+}
+
+// src/lib/fleetDriverJwt.ts
 function getSecretKey() {
+  const fleet = (process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim();
+  if (fleet) {
+    return new TextEncoder().encode(fleet);
+  }
+  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
+  if (panel) {
+    return new TextEncoder().encode(panel);
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FLEET_DRIVER_JWT_SECRET or PANEL_JWT_SECRET is required for fleet driver tokens in production");
+  }
+  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!auth) {
+    throw new Error("FLEET_DRIVER_JWT_SECRET, PANEL_JWT_SECRET, or AUTH_JWT_SECRET must be set");
+  }
+  return new TextEncoder().encode(auth);
+}
+function issuer() {
+  return (process.env.FLEET_DRIVER_JWT_ISSUER ?? "onroda-fleet-driver").trim() || "onroda-fleet-driver";
+}
+function isFleetDriverJwtConfigured() {
+  if ((process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim()) return true;
+  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) return true;
+  if (process.env.NODE_ENV === "production") return false;
+  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
+}
+async function signFleetDriverJwt(claims, expiresIn = "14d") {
+  const secret2 = getSecretKey();
+  return new SignJWT({
+    kind: "fleet_driver",
+    companyId: claims.companyId,
+    email: claims.email,
+    sv: claims.sessionVersion
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.fleetDriverId).setIssuedAt().setIssuer(issuer()).setExpirationTime(expiresIn).sign(secret2);
+}
+async function verifyFleetDriverJwt(token) {
+  const secret2 = getSecretKey();
+  const { payload } = await jwtVerify(token, secret2, {
+    issuer: issuer(),
+    algorithms: ["HS256"]
+  });
+  return payloadToFleetDriverClaims(payload);
+}
+function payloadToFleetDriverClaims(payload) {
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  if (!sub) throw new Error("invalid fleet driver token: missing sub");
+  if (payload.kind !== "fleet_driver") throw new Error("invalid fleet driver token: wrong kind");
+  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const sv = typeof payload.sv === "number" ? payload.sv : Number(payload.sv);
+  if (!companyId || !email || !Number.isFinite(sv)) {
+    throw new Error("invalid fleet driver token: missing claims");
+  }
+  return { fleetDriverId: sub, companyId, email, sessionVersion: Math.floor(sv) };
+}
+
+// src/lib/sessionJwt.ts
+function getSecretKey2() {
   const raw = (process.env.AUTH_JWT_SECRET ?? "").trim();
   if (!raw) {
     throw new Error("AUTH_JWT_SECRET is not configured");
   }
   return new TextEncoder().encode(raw);
 }
-function issuer() {
+function issuer2() {
   return (process.env.AUTH_JWT_ISSUER ?? "onroda-api").trim() || "onroda-api";
 }
 async function signSessionJwt(claims, expiresIn = "7d") {
-  const secret = getSecretKey();
+  const secret2 = getSecretKey2();
   return new SignJWT({
     email: claims.email,
     name: claims.name,
     picture: claims.photoUri
-  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.googleId).setIssuedAt().setIssuer(issuer()).setExpirationTime(expiresIn).sign(secret);
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.googleId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret2);
 }
 async function verifySessionJwt(token) {
-  const secret = getSecretKey();
-  const { payload } = await jwtVerify(token, secret, {
-    issuer: issuer(),
+  const secret2 = getSecretKey2();
+  const { payload } = await jwtVerify(token, secret2, {
+    issuer: issuer2(),
     algorithms: ["HS256"]
   });
   return jwtPayloadToClaims(payload);
@@ -52071,6 +53920,2596 @@ function jwtPayloadToClaims(payload) {
 }
 function isSessionJwtConfigured() {
   return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
+}
+
+// src/db/adminAuthData.ts
+init_drizzle_orm();
+import { randomUUID as randomUUID11 } from "node:crypto";
+
+// src/lib/adminConsoleRoles.ts
+var ADMIN_ROLE_VALUES = ["admin", "service", "taxi", "insurance", "hotel"];
+function parseAdminRole(raw) {
+  const s = raw.trim();
+  return ADMIN_ROLE_VALUES.includes(s) ? s : null;
+}
+function canAccessAdminStats(role) {
+  return role !== "hotel";
+}
+function canAccessAdminDashboardOverview(role) {
+  return role !== "hotel";
+}
+function canReadAdminCompaniesList(role) {
+  return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
+}
+function canMutateAdminCompanies(role) {
+  return role === "admin" || role === "service";
+}
+function canMutateScopedTaxiAdminCompany(role, scopeCompanyId, company) {
+  if (role !== "taxi") return false;
+  if (String(company.company_kind ?? "").trim() !== "taxi") return false;
+  const scope = scopeCompanyId?.trim();
+  if (scope) return scope === company.id;
+  return true;
+}
+function canMutateAdminFareAreas(role) {
+  return role === "admin" || role === "taxi";
+}
+function canAccessAdminAccessCodes(role) {
+  return role === "admin" || role === "service" || role === "taxi";
+}
+function canAccessInsurerAdminApi(role) {
+  return role === "admin" || role === "service" || role === "insurance";
+}
+function canAdminReleaseRide(role) {
+  return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
+}
+var HOTEL_NO_SCOPE_COMPANY_ID = "__onroda_hotel_no_scope__";
+function mergeAdminRideListQueryForPrincipal(role, scopeCompanyId, query) {
+  if (role === "insurance") {
+    return { ...query, payerKind: "insurance" };
+  }
+  if (role === "hotel") {
+    const id = scopeCompanyId?.trim();
+    return { ...query, companyId: id || HOTEL_NO_SCOPE_COMPANY_ID };
+  }
+  return query;
+}
+function adminRideRowVisibleToPrincipal(role, scopeCompanyId, ride) {
+  if (role === "insurance") {
+    return ride.payerKind === "insurance";
+  }
+  if (role === "hotel") {
+    const id = scopeCompanyId?.trim();
+    if (!id) return false;
+    return String(ride.companyId ?? "") === id;
+  }
+  return true;
+}
+
+// src/db/adminAuthData.ts
+init_client();
+init_schema2();
+async function findActiveAdminAuthUserByUsername(username) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = username.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    passwordHash: adminAuthUsersTable.password_hash,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active
+  }).from(adminAuthUsersTable).where(
+    and(
+      sql`lower(${adminAuthUsersTable.username}) = ${normalized}`,
+      eq(adminAuthUsersTable.is_active, true)
+    )
+  ).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    passwordHash: row.passwordHash,
+    role,
+    sessionVersion: row.sessionVersion,
+    isActive: row.isActive,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null
+  };
+}
+async function findActiveAdminAuthUserByIdentity(identity) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const normalized = identity.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    passwordHash: adminAuthUsersTable.password_hash,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active
+  }).from(adminAuthUsersTable).where(
+    and(
+      eq(adminAuthUsersTable.is_active, true),
+      sql`(lower(${adminAuthUsersTable.username}) = ${normalized} OR lower(${adminAuthUsersTable.email}) = ${normalized})`
+    )
+  ).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    passwordHash: row.passwordHash,
+    role,
+    sessionVersion: row.sessionVersion,
+    isActive: row.isActive,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null
+  };
+}
+async function upsertAdminAuthUser(input) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  const username = input.username.trim();
+  if (!username) return;
+  const existingRows = await db2.select({ id: adminAuthUsersTable.id }).from(adminAuthUsersTable).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).limit(1);
+  const existing = existingRows[0];
+  if (existing) {
+    await db2.update(adminAuthUsersTable).set({
+      password_hash: input.passwordHash,
+      email: (input.email ?? "").trim(),
+      role: input.role,
+      session_version: sql`${adminAuthUsersTable.session_version}`,
+      is_active: true,
+      updated_at: /* @__PURE__ */ new Date()
+    }).where(eq(adminAuthUsersTable.id, existing.id));
+    return;
+  }
+  await db2.insert(adminAuthUsersTable).values({
+    id: randomUUID11(),
+    username,
+    email: (input.email ?? "").trim(),
+    password_hash: input.passwordHash,
+    role: input.role,
+    scope_company_id: null,
+    session_version: 1,
+    is_active: true,
+    created_at: /* @__PURE__ */ new Date(),
+    updated_at: /* @__PURE__ */ new Date()
+  });
+}
+async function updateAdminAuthPasswordByUsername(input) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const username = input.username.trim();
+  if (!username) return false;
+  const rows = await db2.update(adminAuthUsersTable).set({
+    password_hash: input.passwordHash,
+    session_version: sql`${adminAuthUsersTable.session_version} + 1`,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).returning({ id: adminAuthUsersTable.id });
+  return rows.length > 0;
+}
+async function listAdminAuthUsers() {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active,
+    createdAt: adminAuthUsersTable.created_at,
+    updatedAt: adminAuthUsersTable.updated_at
+  }).from(adminAuthUsersTable).orderBy(sql`lower(${adminAuthUsersTable.username}) asc`);
+  return rows.map((row) => {
+    const role = parseAdminRole(row.role);
+    if (!role) return null;
+    return {
+      id: row.id,
+      username: row.username,
+      email: row.email,
+      role,
+      scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
+      sessionVersion: row.sessionVersion,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    };
+  }).filter((row) => row !== null);
+}
+async function createAdminAuthUser(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const username = input.username.trim();
+  if (!username) return null;
+  const scope = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
+  const createdRows = await db2.insert(adminAuthUsersTable).values({
+    id: randomUUID11(),
+    username,
+    email: (input.email ?? "").trim(),
+    password_hash: input.passwordHash,
+    role: input.role,
+    scope_company_id: scope,
+    session_version: 1,
+    is_active: input.isActive ?? true,
+    created_at: /* @__PURE__ */ new Date(),
+    updated_at: /* @__PURE__ */ new Date()
+  }).onConflictDoNothing().returning({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active,
+    createdAt: adminAuthUsersTable.created_at,
+    updatedAt: adminAuthUsersTable.updated_at
+  });
+  const created = createdRows[0];
+  if (!created) return null;
+  const role = parseAdminRole(created.role);
+  if (!role) return null;
+  return {
+    id: created.id,
+    username: created.username,
+    email: created.email,
+    role,
+    scopeCompanyId: created.scopeCompanyId?.trim() ? created.scopeCompanyId.trim() : null,
+    sessionVersion: created.sessionVersion,
+    isActive: created.isActive,
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt
+  };
+}
+async function findAdminAuthUserRowById(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    role: adminAuthUsersTable.role,
+    isActive: adminAuthUsersTable.is_active
+  }).from(adminAuthUsersTable).where(eq(adminAuthUsersTable.id, id)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return { id: row.id, username: row.username, role, isActive: row.isActive };
+}
+async function countActiveAdminRoleUsers() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({
+    n: sql`count(*)::int`
+  }).from(adminAuthUsersTable).where(and(eq(adminAuthUsersTable.role, "admin"), eq(adminAuthUsersTable.is_active, true)));
+  const raw = rows[0]?.n;
+  return typeof raw === "number" ? raw : Number(raw) || 0;
+}
+async function deleteAdminAuthUserById(id) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const deleted = await db2.delete(adminAuthUsersTable).where(eq(adminAuthUsersTable.id, id)).returning({ id: adminAuthUsersTable.id });
+  return deleted.length > 0;
+}
+async function patchAdminAuthUserById(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const patch = { updated_at: /* @__PURE__ */ new Date() };
+  if (typeof input.role === "string") patch.role = input.role;
+  if (typeof input.email === "string") patch.email = input.email.trim();
+  if (typeof input.isActive === "boolean") patch.is_active = input.isActive;
+  if (input.scopeCompanyId !== void 0) {
+    patch.scope_company_id = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
+  }
+  if (typeof input.passwordHash === "string" && input.passwordHash) {
+    patch.password_hash = input.passwordHash;
+    patch.session_version = sql`${adminAuthUsersTable.session_version} + 1`;
+  }
+  const rows = await db2.update(adminAuthUsersTable).set(patch).where(eq(adminAuthUsersTable.id, input.id)).returning({
+    id: adminAuthUsersTable.id,
+    username: adminAuthUsersTable.username,
+    email: adminAuthUsersTable.email,
+    role: adminAuthUsersTable.role,
+    scopeCompanyId: adminAuthUsersTable.scope_company_id,
+    sessionVersion: adminAuthUsersTable.session_version,
+    isActive: adminAuthUsersTable.is_active,
+    createdAt: adminAuthUsersTable.created_at,
+    updatedAt: adminAuthUsersTable.updated_at
+  });
+  const row = rows[0];
+  if (!row) return null;
+  const role = parseAdminRole(row.role);
+  if (!role) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    role,
+    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
+    sessionVersion: row.sessionVersion,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+async function createAdminPasswordResetToken(input) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.insert(adminAuthPasswordResetsTable).values({
+    id: randomUUID11(),
+    admin_user_id: input.adminUserId,
+    token_hash: input.tokenHash,
+    expires_at: input.expiresAt,
+    created_at: /* @__PURE__ */ new Date()
+  }).returning({
+    id: adminAuthPasswordResetsTable.id,
+    adminUserId: adminAuthPasswordResetsTable.admin_user_id,
+    tokenHash: adminAuthPasswordResetsTable.token_hash,
+    expiresAt: adminAuthPasswordResetsTable.expires_at,
+    usedAt: adminAuthPasswordResetsTable.used_at,
+    createdAt: adminAuthPasswordResetsTable.created_at
+  });
+  return rows[0] ?? null;
+}
+async function findUsableAdminPasswordResetByTokenHash(tokenHash) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: adminAuthPasswordResetsTable.id,
+    adminUserId: adminAuthPasswordResetsTable.admin_user_id,
+    tokenHash: adminAuthPasswordResetsTable.token_hash,
+    expiresAt: adminAuthPasswordResetsTable.expires_at,
+    usedAt: adminAuthPasswordResetsTable.used_at,
+    createdAt: adminAuthPasswordResetsTable.created_at
+  }).from(adminAuthPasswordResetsTable).where(eq(adminAuthPasswordResetsTable.token_hash, tokenHash)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  if (row.usedAt) return null;
+  if (row.expiresAt.getTime() <= Date.now()) return null;
+  return row;
+}
+async function markAdminPasswordResetUsed(id) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(adminAuthPasswordResetsTable).set({ used_at: /* @__PURE__ */ new Date() }).where(eq(adminAuthPasswordResetsTable.id, id));
+}
+async function insertAdminAuthAuditLog(input) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.insert(adminAuthAuditLogTable).values({
+    id: randomUUID11(),
+    admin_user_id: input.adminUserId ?? null,
+    username: (input.username ?? "").trim(),
+    action: input.action,
+    meta: input.meta ?? {},
+    created_at: /* @__PURE__ */ new Date()
+  });
+}
+
+// src/middleware/requireAdminApiBearer.ts
+init_client();
+
+// src/lib/password.ts
+import { randomBytes as randomBytes3, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+var scryptAsync = promisify(scrypt);
+var PREFIX = "v1";
+var KEYLEN = 64;
+var SCRYPT_OPTS = {
+  N: 16384,
+  r: 8,
+  p: 1,
+  /** Node/scrypt Speicherlimit — zu niedrig → `scrypt` schlägt fehl, `verifyPassword` wirkt wie „falsches Passwort“. Nicht wieder verkleinern. */
+  maxmem: 64 * 1024 * 1024
+};
+async function hashPassword(plain) {
+  const salt = randomBytes3(16);
+  const key = await scryptAsync(plain, salt, KEYLEN, SCRYPT_OPTS);
+  return `${PREFIX}.${salt.toString("base64url")}.${key.toString("base64url")}`;
+}
+async function verifyPassword(plain, stored) {
+  if (!stored.startsWith(`${PREFIX}.`)) return false;
+  const parts = stored.split(".");
+  if (parts.length !== 3) return false;
+  const [, saltB64, hashB64] = parts;
+  if (!saltB64 || !hashB64) return false;
+  let salt;
+  let expected;
+  try {
+    salt = Buffer.from(saltB64, "base64url");
+    expected = Buffer.from(hashB64, "base64url");
+  } catch {
+    return false;
+  }
+  if (salt.length === 0 || expected.length !== KEYLEN) return false;
+  let key;
+  try {
+    key = await scryptAsync(plain, salt, expected.length, SCRYPT_OPTS);
+  } catch {
+    return false;
+  }
+  return key.length === expected.length && timingSafeEqual(key, expected);
+}
+
+// src/middleware/requireAdminApiBearer.ts
+var ADMIN_JWT_ISSUER = "onroda-admin";
+var ADMIN_JWT_KIND = "admin_panel";
+function jwtKindLooksForeignForAdminRoute(token) {
+  try {
+    const { kind } = decodeJwt(token);
+    return kind === "panel" || kind === "fleet_driver";
+  } catch {
+    return false;
+  }
+}
+function getAdminSessionSecret() {
+  const s = (process.env.ADMIN_PANEL_JWT_SECRET ?? process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!s) throw new Error("ADMIN_PANEL_JWT_SECRET not configured");
+  return new TextEncoder().encode(s);
+}
+function readConfiguredUsers() {
+  const users = [];
+  const ownerUser = (process.env.ADMIN_PANEL_USERNAME ?? "").trim();
+  const ownerPass = (process.env.ADMIN_PANEL_PASSWORD ?? "").trim();
+  if (ownerUser && ownerPass) users.push({ username: ownerUser, password: ownerPass, role: "admin" });
+  const svcUser = (process.env.ADMIN_PANEL_SERVICE_USERNAME ?? "").trim();
+  const svcPass = (process.env.ADMIN_PANEL_SERVICE_PASSWORD ?? "").trim();
+  if (svcUser && svcPass) users.push({ username: svcUser, password: svcPass, role: "service" });
+  return users;
+}
+async function signAdminSessionJwt(input) {
+  const user = await findActiveAdminAuthUserByUsername(input.username);
+  const secret2 = getAdminSessionSecret();
+  return new SignJWT({
+    kind: ADMIN_JWT_KIND,
+    username: input.username,
+    role: input.role,
+    sv: user?.sessionVersion ?? 1
+  }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setIssuer(ADMIN_JWT_ISSUER).setExpirationTime("12h").sign(secret2);
+}
+async function tryResolveAdminApiAuthPrincipal(bearerToken4) {
+  const t = (bearerToken4 ?? "").trim();
+  if (!t) return null;
+  if (jwtKindLooksForeignForAdminRoute(t)) return null;
+  const staticToken = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
+  if (staticToken && t === staticToken) {
+    return { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
+  }
+  return verifyAdminSessionJwt(t);
+}
+async function verifyAdminSessionJwt(token) {
+  try {
+    if (jwtKindLooksForeignForAdminRoute(token)) return null;
+    const secret2 = getAdminSessionSecret();
+    const { payload } = await jwtVerify(token, secret2, {
+      algorithms: ["HS256"],
+      issuer: ADMIN_JWT_ISSUER
+    });
+    if (payload.iss !== ADMIN_JWT_ISSUER) return null;
+    if (payload.kind !== ADMIN_JWT_KIND) return null;
+    const username = typeof payload.username === "string" ? payload.username : "";
+    const role = parseAdminRole(typeof payload.role === "string" ? payload.role : "");
+    const sessionVersion = typeof payload.sv === "number" ? payload.sv : 1;
+    if (!username || !role) return null;
+    const user = await findActiveAdminAuthUserByUsername(username);
+    if (!user) return null;
+    if (user.sessionVersion !== sessionVersion) return null;
+    return {
+      username,
+      role,
+      kind: "session",
+      scopeCompanyId: user.scopeCompanyId ?? null
+    };
+  } catch {
+    return null;
+  }
+}
+async function authenticateAdminCredentials(username, password) {
+  const u = username.trim();
+  const p = password;
+  if (!u || !p) return { ok: false, error: "invalid_credentials", detail: "empty_identity" };
+  const dbUser = await findActiveAdminAuthUserByIdentity(u);
+  if (dbUser) {
+    const pwOk = await verifyPassword(p, dbUser.passwordHash);
+    if (!pwOk) return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_db" };
+    return { ok: true, role: dbUser.role, source: "db" };
+  }
+  const users = readConfiguredUsers();
+  const hit = users.find((x) => x.username === u && x.password === p);
+  if (!hit) {
+    const envUsernameMatch = users.find((x) => x.username === u);
+    if (envUsernameMatch) {
+      return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_env" };
+    }
+    return { ok: false, error: "invalid_credentials", detail: "admin_identity_unknown" };
+  }
+  if (!isPostgresConfigured()) {
+    return { ok: false, error: "bootstrap_persist_failed" };
+  }
+  try {
+    const hash = await hashPassword(p);
+    await upsertAdminAuthUser({
+      username: hit.username,
+      email: "",
+      passwordHash: hash,
+      role: hit.role
+    });
+  } catch {
+    return { ok: false, error: "bootstrap_persist_failed" };
+  }
+  return { ok: true, role: hit.role, source: "env_bootstrap" };
+}
+var requireAdminApiBearer = (req, res, next) => {
+  const staticApiToken = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
+  const auth = req.get("authorization") ?? "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!bearer) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  if (staticApiToken && bearer === staticApiToken) {
+    req.adminAuth = { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
+    next();
+    return;
+  }
+  if (jwtKindLooksForeignForAdminRoute(bearer)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  void verifyAdminSessionJwt(bearer).then((principal) => {
+    if (principal) {
+      req.adminAuth = principal;
+      next();
+      return;
+    }
+    res.status(401).json({ error: "unauthorized" });
+  });
+};
+
+// src/lib/rideRouteAuth.ts
+function extractBearerAuthorization(req) {
+  const raw = req.get("authorization")?.trim();
+  if (!raw) return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  const t = m?.[1]?.trim();
+  return t && t.length > 0 ? t : null;
+}
+async function normalizeFleetClaims(claims) {
+  const row = await findFleetDriverAuthRow(claims.fleetDriverId);
+  if (!row || row.company_id !== claims.companyId) return null;
+  if (!row.is_active) return null;
+  if (row.session_version !== claims.sessionVersion) return null;
+  return { fleetDriverId: claims.fleetDriverId, companyId: claims.companyId };
+}
+async function resolveRideMutateActor(req) {
+  const raw = extractBearerAuthorization(req);
+  if (!raw) return null;
+  try {
+    const claims = await verifyFleetDriverJwt(raw);
+    const n4 = await normalizeFleetClaims(claims);
+    if (n4) return { kind: "fleet_session", fleetDriverId: n4.fleetDriverId, companyId: n4.companyId };
+  } catch {
+  }
+  if (isSessionJwtConfigured()) {
+    try {
+      const c = await verifySessionJwt(raw);
+      const passengerGoogleId = c.googleId?.trim();
+      if (passengerGoogleId) return { kind: "customer_session", passengerGoogleId };
+    } catch {
+    }
+  }
+  const admin2 = await tryResolveAdminApiAuthPrincipal(raw);
+  if (admin2) return { kind: "admin" };
+  return null;
+}
+async function resolveFleetActorOrNull(req) {
+  const raw = extractBearerAuthorization(req);
+  if (!raw) return null;
+  try {
+    const claims = await verifyFleetDriverJwt(raw);
+    return normalizeFleetClaims(claims);
+  } catch {
+    return null;
+  }
+}
+async function resolveCustomerActorOrNull(req) {
+  const raw = extractBearerAuthorization(req);
+  if (!raw || !isSessionJwtConfigured()) return null;
+  try {
+    const c = await verifySessionJwt(raw);
+    const passengerGoogleId = c.googleId?.trim();
+    if (!passengerGoogleId) return null;
+    return { passengerGoogleId };
+  } catch {
+    return null;
+  }
+}
+var MARKET_REJECT_STATUSES = /* @__PURE__ */ new Set([
+  "requested",
+  "searching_driver",
+  "offered",
+  "pending",
+  "scheduled"
+]);
+function authorizePatchRideStatusForActor(nextStatus, cur, actor, opts) {
+  if (!actor) return { ok: false, status: 401, code: "unauthorized" };
+  if (actor.kind === "admin") return { ok: true };
+  if (nextStatus === "cancelled_by_customer") {
+    if (actor.kind !== "customer_session") {
+      return { ok: false, status: 403, code: "patch_status_requires_customer_session" };
+    }
+    const p = cur.passengerId?.trim();
+    if (!p || p !== actor.passengerGoogleId) {
+      return { ok: false, status: 403, code: "customer_not_passenger_for_ride" };
+    }
+    return { ok: true };
+  }
+  if (actor.kind !== "fleet_session") {
+    return { ok: false, status: 403, code: "patch_status_requires_fleet_driver" };
+  }
+  const a = actor;
+  if (cur.companyId && cur.companyId !== a.companyId) {
+    return { ok: false, status: 403, code: "ride_company_mismatch" };
+  }
+  if (nextStatus === "accepted") {
+    const did = opts.bodyDriverId?.trim();
+    if (!did || did !== a.fleetDriverId) return { ok: false, status: 403, code: "fleet_accept_driver_mismatch" };
+    return { ok: true };
+  }
+  if (nextStatus === "rejected") {
+    const assigned = (cur.driverId ?? "").trim();
+    if (assigned && assigned === a.fleetDriverId) return { ok: true };
+    if (!assigned && MARKET_REJECT_STATUSES.has(cur.status)) {
+      return { ok: true };
+    }
+    return { ok: false, status: 403, code: "fleet_reject_forbidden_for_driver" };
+  }
+  const assignedDriver = (cur.driverId ?? "").trim();
+  if (!assignedDriver) {
+    return { ok: false, status: 403, code: "driver_not_assigned_to_ride" };
+  }
+  if (assignedDriver !== a.fleetDriverId) {
+    return { ok: false, status: 403, code: "fleet_driver_assignment_mismatch" };
+  }
+  return { ok: true };
+}
+
+// src/middleware/requireCustomerSession.ts
+function bearerToken(req) {
+  const raw = req.get("authorization")?.trim();
+  if (!raw) return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  const t = m?.[1]?.trim();
+  return t && t.length > 0 ? t : null;
+}
+var requireCustomerSession = async (req, res, next) => {
+  if (!isSessionJwtConfigured()) {
+    res.status(503).json({ error: "session_jwt_unconfigured", ok: false });
+    return;
+  }
+  const token = bearerToken(req);
+  if (!token) {
+    res.status(401).json({ error: "unauthorized", ok: false, hint: "Send Authorization: Bearer <session_jwt>." });
+    return;
+  }
+  try {
+    const claims = await verifySessionJwt(token);
+    req.customerSession = claims;
+    next();
+  } catch {
+    res.status(401).json({ error: "invalid_token", ok: false });
+  }
+};
+function customerPassengerId(claims) {
+  return claims.googleId.trim();
+}
+
+// src/middleware/requireFleetDriverAuth.ts
+function bearerToken2(req) {
+  const raw = req.get("authorization")?.trim();
+  if (!raw) return null;
+  const m = raw.match(/^Bearer\s+(.+)$/i);
+  const t = m?.[1]?.trim();
+  return t && t.length > 0 ? t : null;
+}
+var requireFleetDriverAuth = async (req, res, next) => {
+  const token = bearerToken2(req);
+  if (!token) {
+    res.status(401).json({
+      error: "unauthorized",
+      hint: "Send Authorization: Bearer <fleet_jwt> from POST /api/fleet-auth/login."
+    });
+    return;
+  }
+  try {
+    const claims = await verifyFleetDriverJwt(token);
+    const row = await findFleetDriverAuthRow(claims.fleetDriverId);
+    if (!row || row.company_id !== claims.companyId) {
+      res.status(401).json({ error: "invalid_token" });
+      return;
+    }
+    if (!row.is_active) {
+      res.status(403).json({ error: "driver_account_inactive" });
+      return;
+    }
+    if (row.access_status !== "active") {
+      res.status(403).json({ error: "driver_access_suspended" });
+      return;
+    }
+    if (row.session_version !== claims.sessionVersion) {
+      res.status(401).json({ error: "token_revoked" });
+      return;
+    }
+    req.fleetDriverAuth = claims;
+    next();
+  } catch {
+    res.status(401).json({ error: "invalid_token" });
+  }
+};
+
+// src/routes/rides.ts
+var DEMO = [];
+var driverLocations = /* @__PURE__ */ new Map();
+var customerLocations = /* @__PURE__ */ new Map();
+var customerCancelReasons = /* @__PURE__ */ new Map();
+var router2 = (0, import_express2.Router)();
+var MEDICAL_RIDE_UPLOAD_ROOT = (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() || path2.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+var MEDICAL_DEMO_INSURANCE_LABEL = "Demonstration (KV-TEST)";
+var MEDICAL_DEMO_COST_CENTER_LABEL = "TEST \u2014 nicht zur Abrechnung";
+function mutationActorFromRideMutator(a) {
+  if (!a || a.kind === "admin") return { actorType: "admin", actorId: null };
+  if (a.kind === "customer_session") return { actorType: "passenger", actorId: a.passengerGoogleId };
+  return { actorType: "driver", actorId: a.fleetDriverId };
+}
+async function tryAuthorizeReceiptRide(req, rideId) {
+  const trimmedId = rideId.trim();
+  if (!trimmedId) return null;
+  const ride = await findRide(trimmedId);
+  if (!ride || ride.status !== "completed") return null;
+  const rtRaw = typeof req.query.rt === "string" ? req.query.rt.trim() : "";
+  if (rtRaw) {
+    try {
+      const v = await verifyReceiptHtmlAccessJwt(rtRaw);
+      const pax = (ride.passengerId ?? "").trim();
+      if (v.rideId === trimmedId && pax && v.passengerGoogleId === pax) return ride;
+    } catch {
+    }
+  }
+  const bearer = extractBearerAuthorization(req);
+  if (bearer && isSessionJwtConfigured()) {
+    try {
+      const claims = await verifySessionJwt(bearer);
+      const gid = claims.googleId.trim();
+      if (gid && (ride.passengerId ?? "").trim() === gid) return ride;
+    } catch {
+    }
+  }
+  return null;
+}
+function loweredTrim(v) {
+  return typeof v === "string" ? v.trim().toLowerCase() : "";
+}
+function asMedicalFlatMeta(ride) {
+  const m = ride.partnerBookingMeta;
+  if (!m || typeof m !== "object" || Array.isArray(m)) return null;
+  const rec = m;
+  if (rec.medical_ride !== true) return null;
+  return { ...rec };
+}
+function timingSafeEqualUtf8(a, b) {
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual2(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+  } catch {
+    return false;
+  }
+}
+function mergeMedicalPartnerMeta(ride, patch) {
+  const base = asMedicalFlatMeta(ride);
+  if (!base) {
+    throw Object.assign(new Error("not_medical_meta"), { code: "not_medical_meta" });
+  }
+  const merged = { ...base, ...patch };
+  const ready = calculateMedicalBillingReadiness(merged);
+  merged.billing_ready = ready.billingReady;
+  merged.billing_missing_reasons = ready.missingReasons;
+  return merged;
+}
+var CODE_VERIFY_TTL_MS = 5 * 60 * 1e3;
+var codeVerifySessions = /* @__PURE__ */ new Map();
+function cleanupCodeVerifySessions(now = Date.now()) {
+  for (const [key, session] of codeVerifySessions) {
+    if (session.expiresAt <= now) codeVerifySessions.delete(key);
+  }
+}
+function parseOptionalFinalFareFromBody(body) {
+  if (!body || typeof body !== "object") return void 0;
+  const b = body;
+  const nested = b.status_data != null && typeof b.status_data === "object" && !Array.isArray(b.status_data) ? b.status_data : null;
+  const raw = b.finalFare ?? b.final_fare ?? nested?.finalFare ?? nested?.final_fare;
+  if (raw == null || raw === "") return void 0;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string") {
+    const n4 = Number(String(raw).trim().replace(/\s/g, "").replace(",", "."));
+    return Number.isFinite(n4) ? n4 : void 0;
+  }
+  return void 0;
+}
+function normalizeStatusInput(raw) {
+  if (typeof raw !== "string") return null;
+  const s = raw.trim();
+  if (!s) return null;
+  const allowed = [
+    "draft",
+    "scheduled",
+    "scheduled_assigned",
+    "ready_for_dispatch",
+    "requested",
+    "searching_driver",
+    "offered",
+    "pending",
+    "accepted",
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "arrived",
+    "in_progress",
+    "completed",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system",
+    "expired",
+    "rejected",
+    "cancelled"
+  ];
+  return allowed.includes(s) ? s : null;
+}
+function canTransitionStatus(from, to) {
+  if (from === to) return true;
+  const map = {
+    draft: ["requested", "cancelled_by_customer", "cancelled"],
+    scheduled: [
+      "accepted",
+      "scheduled_assigned",
+      "ready_for_dispatch",
+      "searching_driver",
+      "cancelled_by_customer",
+      "cancelled",
+      "expired"
+    ],
+    scheduled_assigned: [
+      "ready_for_dispatch",
+      "driver_arriving",
+      "driver_waiting",
+      "passenger_onboard",
+      "in_progress",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "cancelled",
+      "expired"
+    ],
+    ready_for_dispatch: [
+      "driver_arriving",
+      "driver_waiting",
+      "passenger_onboard",
+      "in_progress",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "cancelled",
+      "expired"
+    ],
+    requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+    searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+    offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
+    pending: ["accepted", "driver_arriving", "driver_waiting", "in_progress", "completed", "cancelled", "rejected", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    accepted: ["driver_arriving", "driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "cancelled"],
+    driver_arriving: ["driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    driver_waiting: ["passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
+    passenger_onboard: ["in_progress", "completed", "cancelled_by_system"],
+    arrived: ["passenger_onboard", "in_progress", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
+    in_progress: ["completed", "cancelled_by_system", "cancelled"]
+  };
+  return (map[from] ?? []).includes(to);
+}
+function pickScheduledAtFromBody(raw) {
+  const c = raw.scheduledAt;
+  if (typeof c === "string" && c.trim()) return c.trim();
+  const s = raw.scheduled_at;
+  if (typeof s === "string" && s.trim()) return s.trim();
+  return null;
+}
+function initialCustomerRideStatus(scheduledAt) {
+  return isFarFutureReservation(scheduledAt) ? "scheduled" : "searching_driver";
+}
+function optCoord(v) {
+  if (v === void 0 || v === null) return null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const s = String(v).trim();
+  if (!s) return null;
+  const n4 = Number(s);
+  return Number.isFinite(n4) ? n4 : null;
+}
+function haversineDistanceKm2(fromLat, fromLon, toLat, toLon) {
+  const toRad = (deg) => deg * Math.PI / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(toLat - fromLat);
+  const dLon = toRad(toLon - fromLon);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+}
+var ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE = "Bitte gib eine vollst\xE4ndige Adresse mit Hausnummer ein oder w\xE4hle einen eindeutigen Vorschlag aus.";
+function hasHouseNumberInFirstAddressPart(address) {
+  const firstPart = String(address ?? "").split(",")[0].trim().toLowerCase();
+  if (!firstPart) return false;
+  return /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(firstPart);
+}
+function hasValidLatLon(lat, lon) {
+  return lat != null && lon != null && Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+function hasPoiKeyword(address) {
+  const text2 = String(address ?? "").trim().toLowerCase();
+  if (!text2) return false;
+  return /\b(flughafen|hauptbahnhof|bahnhof|klinik|krankenhaus|hotel|einkaufszentrum|zentrum|messe|terminal)\b/i.test(text2);
+}
+function isAddressAcceptedForBooking(address, lat, lon) {
+  if (hasHouseNumberInFirstAddressPart(address)) return true;
+  if (hasValidLatLon(lat, lon)) return true;
+  if (hasPoiKeyword(address)) return true;
+  return false;
+}
+function parseAccessibilityOptionsFromBody(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const src = raw;
+  const level = String(src.assistanceLevel ?? "").trim();
+  const wheelchairType = String(src.wheelchairType ?? "").trim();
+  const companionCountRaw = Number(src.companionCount);
+  const canTransferRaw = src.canTransfer;
+  const wheelchairStaysRaw = src.wheelchairStaysOccupied;
+  const allowedLevels = /* @__PURE__ */ new Set(["boarding", "to_door", "to_apartment", "none"]);
+  const allowedTypes = /* @__PURE__ */ new Set(["foldable", "electric"]);
+  if (!allowedLevels.has(level) || !allowedTypes.has(wheelchairType)) return null;
+  if (![0, 1, 2].includes(companionCountRaw)) return null;
+  if (typeof canTransferRaw !== "boolean" || typeof wheelchairStaysRaw !== "boolean") return null;
+  const noteRaw = typeof src.driverNote === "string" ? src.driverNote.trim() : "";
+  return {
+    assistanceLevel: level,
+    wheelchairType,
+    wheelchairStaysOccupied: wheelchairStaysRaw,
+    canTransfer: canTransferRaw,
+    companionCount: companionCountRaw,
+    rampRequired: Boolean(src.rampRequired),
+    carryChairRequired: Boolean(src.carryChairRequired),
+    elevatorAvailable: Boolean(src.elevatorAvailable),
+    stairsPresent: Boolean(src.stairsPresent),
+    driverNote: noteRaw ? noteRaw.slice(0, 500) : null
+  };
+}
+function pickMedicalMeta(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const src = raw;
+  const out = {};
+  const copyString = (k) => {
+    const v = src[k];
+    if (typeof v === "string" && v.trim()) out[k] = v.trim().slice(0, 256);
+  };
+  const copyBool = (k) => {
+    const v = src[k];
+    if (typeof v === "boolean") out[k] = v;
+  };
+  const copyNumber = (k) => {
+    const v = src[k];
+    if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+  };
+  copyString("approval_status");
+  copyString("insurance_name");
+  copyString("cost_center");
+  copyString("authorization_reference");
+  copyString("transport_document_status");
+  copyString("approval_proof_mode");
+  copyString("copayment_required");
+  copyString("copayment_collected_status");
+  copyString("copayment_collection_method");
+  copyNumber("copayment_amount_estimated");
+  copyNumber("gross_ride_amount");
+  copyNumber("onroda_commission_rate");
+  copyNumber("onroda_commission_amount");
+  copyNumber("partner_payout_amount");
+  copyBool("signature_required");
+  copyBool("qr_required");
+  copyBool("transport_document_required");
+  copyBool("billing_ready");
+  copyBool("return_ride");
+  copyString("return_time");
+  copyString("transport_document_uri");
+  copyBool("medical_demo_mode");
+  if (typeof src.medical_demo_transport_source === "string" && src.medical_demo_transport_source.trim()) {
+    out.medical_demo_transport_source = src.medical_demo_transport_source.trim().slice(0, 48);
+  }
+  return out;
+}
+var CUSTOMER_DRIVER_NOTE_BODY_MAX = 500;
+function extractCustomerDriverNoteFromRawBody(raw) {
+  const pm = raw.partnerBookingMeta ?? raw.partner_booking_meta;
+  if (!pm || typeof pm !== "object" || Array.isArray(pm)) return "";
+  const rec = pm;
+  const v = rec.customer_driver_note ?? rec.customerDriverNote;
+  if (typeof v !== "string") return "";
+  const t = v.trim();
+  return t.length > 0 ? t.slice(0, CUSTOMER_DRIVER_NOTE_BODY_MAX) : "";
+}
+function medicalFinanceSnapshot(gross) {
+  const grossSafe = Number.isFinite(gross) ? Math.max(0, gross) : 0;
+  const rate = 0.07;
+  const commission = Math.round(grossSafe * rate * 100) / 100;
+  const payout = Math.round((grossSafe - commission) * 100) / 100;
+  return {
+    gross_ride_amount: grossSafe,
+    onroda_commission_rate: rate,
+    onroda_commission_amount: commission,
+    partner_payout_amount: payout
+  };
+}
+router2.get("/fare-config", async (_req, res, next) => {
+  try {
+    const profile = await getPublicFareProfile();
+    res.json({ ok: true, profile });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.get("/fare-estimate", async (req, res, next) => {
+  try {
+    const opPayloadEst = await getOperationalConfigPayload();
+    const gateEst = assertPlatformNewRideAllowed(opPayloadEst);
+    if (!gateEst.ok) {
+      res.status(gateEst.status).json({ error: gateEst.error, message: gateEst.message });
+      return;
+    }
+    const tEst = opPayloadEst.tariffs;
+    if (tEst?.active === false) {
+      res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
+      return;
+    }
+    const distanceKm = Number(req.query.distanceKm ?? 0);
+    const waitingMinutes = Number(req.query.waitingMinutes ?? 0);
+    const tripMinutes = Number(
+      req.query.tripMinutes ?? req.query.durationMinutes ?? req.query.routeMinutes ?? 0
+    );
+    const vehicle = String(req.query.vehicle ?? "standard").trim().toLowerCase();
+    const fromFullQ = String(req.query.fromFull ?? req.query.from ?? "").trim();
+    if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+      res.status(400).json({ error: "distance_km_invalid" });
+      return;
+    }
+    const regions = await listServiceRegionsForApi();
+    const fromLatQ = optCoord(
+      req.query.fromLat ?? req.query.from_lat ?? req.query.pickupLat
+    );
+    const fromLngQ = optCoord(
+      req.query.fromLng ?? req.query.from_lon ?? req.query.pickupLng ?? req.query.pickupLon
+    );
+    if (anyActiveRegionRequiresClientCoordinates(regions) && (fromLatQ == null || fromLngQ == null)) {
+      res.status(400).json({
+        error: "pickup_coordinates_required",
+        message: "F\xFCr die Einfahrt-Regionen (Radius) werden Startkoordinaten ben\xF6tigt: fromLat, fromLng (Query)."
+      });
+      return;
+    }
+    const atRaw = req.query.at;
+    const at = typeof atRaw === "string" && atRaw.trim() ? new Date(atRaw.trim()) : /* @__PURE__ */ new Date();
+    const applyHolidaySurcharge = String(req.query.holiday ?? req.query.assumeHoliday ?? "") === "1";
+    const applyAirportFlat = String(req.query.airport ?? req.query.airportStop ?? "") === "1";
+    const { serviceRegionId, est } = computeTaxiPriceLikeFareEstimate(opPayloadEst, regions, {
+      fromFull: fromFullQ || "",
+      fromLat: fromLatQ,
+      fromLon: fromLngQ,
+      distanceKm,
+      tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
+      waitingMinutes: Math.max(0, waitingMinutes),
+      vehicle,
+      at,
+      applyHolidaySurcharge,
+      applyAirportFlat
+    });
+    const profile = await getPublicFareProfile(fromFullQ || null, { lat: fromLatQ, lon: fromLngQ });
+    const total = est.finalRounded;
+    res.json({
+      ok: true,
+      engineSchemaVersion: TARIFF_ENGINE_SCHEMA_VERSION,
+      serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null,
+      profile: { ...profile, serviceRegionId: serviceRegionId ?? profile.serviceRegionId ?? null },
+      estimate: {
+        distanceKm,
+        waitingMinutes,
+        tripMinutes: Number.isFinite(tripMinutes) ? tripMinutes : 0,
+        vehicle,
+        total,
+        taxiTotal: total,
+        onrodaTotal: total,
+        breakdown: est.breakdown,
+        engine: { subtotal: est.subtotal, afterMinFare: est.afterMinFare }
+      }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.get("/rides/:rideId/fleet-snapshot", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const assigned = (ride.driverId ?? "").trim();
+    if (assigned !== a.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    res.json({
+      id: ride.id,
+      status: ride.status,
+      cancelReason: customerCancelReasons.get(ride.id) ?? null
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.get("/rides/:id/medical/qr-payload", requireCustomerSession, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const passenger = (ride.passengerId ?? "").trim();
+    if (!passenger || passenger !== customerPassengerId(sess)) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta || typeof meta.medical_qr_token !== "string" || !meta.medical_qr_token.trim()) {
+      res.status(503).json({ ok: false, error: "qr_token_missing" });
+      return;
+    }
+    const qrValue = formatMedicalQrPayload(ride.id, meta.medical_qr_token.trim());
+    res.json({
+      ok: true,
+      rideId: ride.id,
+      qrValue,
+      qrDone: meta.qr_done === true
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/medical/verify-qr", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const body = req.body;
+    const token = typeof body.token === "string" ? body.token.trim() : "";
+    const auth = req.fleetDriverAuth;
+    if (!rideId || !token || !auth) {
+      res.status(400).json({ ok: false, error: "ride_or_token_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta) {
+      res.status(400).json({ ok: false, error: "no_medical_meta" });
+      return;
+    }
+    const companyId = (ride.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(403).json({ ok: false, error: "ride_company_required" });
+      return;
+    }
+    if (companyId !== auth.companyId) {
+      res.status(403).json({ ok: false, error: "wrong_company" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver) {
+      res.status(403).json({ ok: false, error: "driver_not_assigned" });
+      return;
+    }
+    if (assignedDriver !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const expected = typeof meta.medical_qr_token === "string" ? meta.medical_qr_token.trim() : "";
+    if (!expected || !timingSafeEqualUtf8(token, expected)) {
+      res.status(400).json({ ok: false, error: "invalid_qr_token" });
+      return;
+    }
+    if (meta.qr_done === true) {
+      res.status(409).json({ ok: false, error: "qr_already_verified" });
+      return;
+    }
+    const merged = mergeMedicalPartnerMeta(ride, {
+      qr_done: true,
+      qr_verified_at: (/* @__PURE__ */ new Date()).toISOString(),
+      qr_verified_by_driver_id: auth.fleetDriverId
+    });
+    const nextRide = await updateRide(
+      rideId,
+      {
+        partnerBookingMeta: merged
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } }
+    );
+    if (!nextRide) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "medical_qr_verified",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: {}
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = req.fleetDriverAuth;
+    const body = req.body;
+    const b64 = typeof body.imageBase64 === "string" ? body.imageBase64.trim() : "";
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    if (!b64) {
+      res.status(400).json({ ok: false, error: "image_base64_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const companyId = (ride.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(403).json({ ok: false, error: "ride_company_required" });
+      return;
+    }
+    if (companyId !== auth.companyId) {
+      res.status(403).json({ ok: false, error: "wrong_company" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver) {
+      res.status(403).json({ ok: false, error: "driver_not_assigned" });
+      return;
+    }
+    if (assignedDriver !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta) {
+      res.status(400).json({ ok: false, error: "no_medical_meta" });
+      return;
+    }
+    const decoded = decodeValidatedMedicalTransportImage(b64);
+    if (!decoded.ok) {
+      const code = decoded.error;
+      const status = code === "payload_too_large" ? 413 : 400;
+      res.status(status).json({ ok: false, error: code });
+      return;
+    }
+    const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const rel = path2.join(companyKey, "rides", rideId, `${randomUUID12()}.${decoded.ext}`).replace(/\\/g, "/");
+    const dest = path2.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
+    await mkdir(path2.dirname(dest), { recursive: true });
+    await writeFile(dest, decoded.buffer);
+    const uploadedAt = (/* @__PURE__ */ new Date()).toISOString();
+    const demo = meta.medical_demo_mode === true;
+    const merged = mergeMedicalPartnerMeta(ride, {
+      transport_document_status: "uploaded",
+      transport_document_file_key: rel,
+      transport_document_uploaded_at: uploadedAt,
+      ...demo ? {
+        transport_document_not_for_billing: true,
+        transport_document_demo_label: "TESTDOKUMENT / NICHT ZUR ABRECHNUNG"
+      } : {}
+    });
+    const nextRide = await updateRide(
+      rideId,
+      {
+        partnerBookingMeta: merged
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } }
+    );
+    if (!nextRide) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "medical_transport_document_uploaded",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: { fileKey: rel }
+    });
+    res.json({ ok: true, fileKey: rel });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.id ?? "").trim();
+    const auth = req.fleetDriverAuth;
+    const body = req.body;
+    const b64 = typeof body.imageBase64 === "string" ? body.imageBase64.trim() : "";
+    if (!rideId || !auth) {
+      res.status(400).json({ ok: false, error: "bad_request" });
+      return;
+    }
+    if (!b64) {
+      res.status(400).json({ ok: false, error: "image_base64_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (ride.rideKind !== "medical") {
+      res.status(400).json({ ok: false, error: "not_medical_ride" });
+      return;
+    }
+    const companyId = (ride.companyId ?? "").trim();
+    if (!companyId) {
+      res.status(403).json({ ok: false, error: "ride_company_required" });
+      return;
+    }
+    if (companyId !== auth.companyId) {
+      res.status(403).json({ ok: false, error: "wrong_company" });
+      return;
+    }
+    const assignedDriver = (ride.driverId ?? "").trim();
+    if (!assignedDriver) {
+      res.status(403).json({ ok: false, error: "driver_not_assigned" });
+      return;
+    }
+    if (assignedDriver !== auth.fleetDriverId) {
+      res.status(403).json({ ok: false, error: "not_assigned_driver" });
+      return;
+    }
+    const meta = asMedicalFlatMeta(ride);
+    if (!meta) {
+      res.status(400).json({ ok: false, error: "no_medical_meta" });
+      return;
+    }
+    if (meta.signature_done === true) {
+      res.status(409).json({ ok: false, error: "signature_already_saved" });
+      return;
+    }
+    const decoded = decodeValidatedMedicalTransportImage(b64);
+    if (!decoded.ok) {
+      const code = decoded.error;
+      const status = code === "payload_too_large" ? 413 : 400;
+      res.status(status).json({ ok: false, error: code });
+      return;
+    }
+    const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const rel = path2.join(companyKey, "rides", rideId, `signature-${randomUUID12()}.${decoded.ext}`).replace(/\\/g, "/");
+    const dest = path2.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
+    await mkdir(path2.dirname(dest), { recursive: true });
+    await writeFile(dest, decoded.buffer);
+    const signedAt = (/* @__PURE__ */ new Date()).toISOString();
+    const merged = mergeMedicalPartnerMeta(ride, {
+      signature_done: true,
+      signature_file_key: rel,
+      signature_signed_at: signedAt,
+      signature_signed_by_driver_id: auth.fleetDriverId
+    });
+    const nextRide = await updateRide(
+      rideId,
+      {
+        partnerBookingMeta: merged
+      },
+      { mutationActor: { actorType: "driver", actorId: auth.fleetDriverId } }
+    );
+    if (!nextRide) {
+      res.status(500).json({ ok: false, error: "update_failed" });
+      return;
+    }
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "medical_signature_captured",
+      actorType: "driver",
+      actorId: auth.fleetDriverId,
+      payload: { fileKey: rel }
+    });
+    res.json({ ok: true, fileKey: rel, signedAt });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.get("/rides/:rideId/support/preview", requireCustomerSession, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(403).json({ ok: false, error: "ride_not_owned" });
+      return;
+    }
+    const items = await listRideSupportTicketsForPassengerRide(rideId, passengerId);
+    const lines = items.map((t) => `[${t.createdAtIso}] ${t.category} \u2014 ${t.status}: ${t.messageSnippet || "(ohne Text)"}`);
+    res.json({ ok: true, summary: { lines } });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:rideId/support", requireCustomerSession, async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(403).json({ ok: false, error: "ride_not_owned" });
+      return;
+    }
+    const category = typeof req.body?.category === "string" ? req.body.category.trim() : "other";
+    const message2 = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    const source = typeof req.body?.source === "string" ? req.body.source.trim() : "mobile";
+    const priorityRaw = typeof req.body?.priority === "string" ? req.body.priority.trim() : "normal";
+    if (message2.length > 0 && message2.length < 5) {
+      res.status(400).json({ ok: false, error: "message_too_short" });
+      return;
+    }
+    const ins = await insertRideSupportTicket({
+      rideId,
+      passengerId,
+      companyId: ride.companyId ?? null,
+      category: category || "other",
+      message: message2 ? message2.slice(0, 4e3) : null,
+      priority: priorityRaw || "normal",
+      source: source || "mobile",
+      createdByActorKind: "customer",
+      createdByActorId: passengerId,
+      snapshot: buildRideSupportContextSnapshot(ride)
+    });
+    if (!ins) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    console.log(`[customer-support] rideId=${rideId} ticketId=${ins.id} category=${category}`);
+    res.json({ ok: true, ticketId: ins.id });
+  } catch (e) {
+    next(e);
+  }
+});
+function formatEuroHtml(amount) {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  return safe.toFixed(2).replace(".", ",") + " \u20AC";
+}
+function escapeHtml(s) {
+  return String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+}
+function buildReceiptHtmlFromRide(r) {
+  const date2 = new Date(r.createdAt);
+  const dateStr = date2.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = date2.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const amount = effectiveTaxiGrossEur(r);
+  const rideNr = String(r.id).slice(0, 8).toUpperCase();
+  return `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quittung #${escapeHtml(rideNr)}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #111; padding: 32px 16px; }
+    .receipt { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 2px 20px rgba(0,0,0,0.10); overflow: hidden; }
+    .header { background: #DC2626; color: #fff; padding: 26px 26px 18px; text-align: center; }
+    .logo { font-size: 24px; font-weight: 900; letter-spacing: 1.2px; margin-bottom: 4px; }
+    .receipt-title { font-size: 12px; font-weight: 600; opacity: 0.9; letter-spacing: 1px; text-transform: uppercase; }
+    .receipt-id { font-size: 12px; opacity: 0.75; margin-top: 6px; }
+    .body { padding: 22px 26px; }
+    .row { display:flex; justify-content:space-between; gap:12px; margin-bottom: 10px; }
+    .k { color:#6b7280; font-size: 12px; font-weight: 600; }
+    .v { color:#111827; font-size: 12px; font-weight: 600; text-align:right; }
+    .route { margin-top: 14px; background:#f9fafb; border:1px solid #eef2f7; border-radius: 12px; padding: 14px; }
+    .route h3 { font-size: 12px; color:#6b7280; letter-spacing:0.08em; text-transform:uppercase; margin-bottom: 10px; }
+    .route .pt { font-size: 13px; font-weight: 600; margin-bottom: 8px; color:#111827; }
+    .muted { color:#6b7280; font-size: 12px; font-weight: 500; }
+    .total { margin-top: 14px; background:#DC2626; color:#fff; border-radius: 12px; padding: 14px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .total .lbl { font-size: 13px; font-weight: 700; opacity:0.9; }
+    .total .amt { font-size: 22px; font-weight: 900; }
+    .footer { text-align:center; padding: 16px 26px; background:#fafafa; border-top:1px solid #f0f0f0; font-size: 11px; color:#9ca3af; line-height: 1.6; }
+    @media print { body { background:#fff; padding:0; } .receipt { box-shadow:none; border-radius:0; } }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="header">
+      <div class="logo">ONRODA</div>
+      <div class="receipt-title">Fahrtquittung</div>
+      <div class="receipt-id">Nr. ${escapeHtml(rideNr)}</div>
+    </div>
+    <div class="body">
+      <div class="row"><div><div class="k">Datum</div><div class="v">${escapeHtml(dateStr)}</div></div><div><div class="k">Uhrzeit</div><div class="v">${escapeHtml(timeStr)} Uhr</div></div></div>
+      <div class="route">
+        <h3>Route</h3>
+        <div class="muted">Abfahrt</div>
+        <div class="pt">${escapeHtml(r.from ?? "\u2014")}</div>
+        <div class="muted">Ziel</div>
+        <div class="pt">${escapeHtml(r.to ?? "\u2014")}</div>
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="row"><div class="k">Strecke</div><div class="v">${escapeHtml(String(r.distanceKm ?? 0))} km</div></div>
+        <div class="row"><div class="k">Dauer</div><div class="v">${escapeHtml(String(r.durationMinutes ?? 0))} Min</div></div>
+        <div class="row"><div class="k">Zahlungsart</div><div class="v">${escapeHtml(r.paymentMethod ?? "\u2014")}</div></div>
+        <div class="row"><div class="k">Produkt</div><div class="v">${escapeHtml(r.vehicle ?? "\u2014")}</div></div>
+      </div>
+      <div class="total"><div class="lbl">Gesamtbetrag</div><div class="amt">${formatEuroHtml(amount)}</div></div>
+    </div>
+    <div class="footer">
+      ONRODA \xB7 Deutschland<br/>
+      Vielen Dank f\xFCr Ihre Fahrt!<br/>
+      Diese Quittung dient als Beleg.
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', function() { setTimeout(function() { try { window.print(); } catch(e) {} }, 250); });
+  </script>
+</body>
+</html>`;
+}
+router2.get("/rides/:rideId/receipt", async (req, res, next) => {
+  try {
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await tryAuthorizeReceiptRide(req, rideId);
+    if (!ride) {
+      res.status(401).json({
+        error: "receipt_unauthorized",
+        message: "Quittung nur mit Kunden-Session (Authorization: Bearer) oder g\xFCltigem rt-Token."
+      });
+      return;
+    }
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(buildReceiptHtmlFromRide(ride));
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/access-code/verify", async (req, res, next) => {
+  try {
+    const body = req.body;
+    const accessCode = typeof body.accessCode === "string" ? body.accessCode.trim() : "";
+    const driverId = typeof body.driverId === "string" ? body.driverId.trim() : "";
+    if (!accessCode || !driverId) {
+      res.status(400).json({ error: "access_code_or_driver_missing" });
+      return;
+    }
+    const probe = await verifyAccessCode(accessCode, null);
+    if (!probe.ok) {
+      res.status(400).json({ error: probe.error });
+      return;
+    }
+    cleanupCodeVerifySessions();
+    const verifyToken = `acv-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    codeVerifySessions.set(verifyToken, {
+      driverId,
+      normalized: probe.normalized,
+      expiresAt: Date.now() + CODE_VERIFY_TTL_MS
+    });
+    res.json({
+      ok: true,
+      verifyToken,
+      expiresInSeconds: Math.floor(CODE_VERIFY_TTL_MS / 1e3),
+      summary: { codeType: probe.codeType, label: probe.label }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides", async (req, res, next) => {
+  try {
+    const raw = req.body;
+    if (!raw.customerName || String(raw.customerName).trim() === "" || !raw.passengerId) {
+      res.status(401).json({ error: "Unauthorized: Bitte anmelden, um eine Fahrt zu buchen." });
+      return;
+    }
+    if (raw.rideKind != null && raw.rideKind !== "" && (typeof raw.rideKind !== "string" || parseRideKind(raw.rideKind) === null)) {
+      res.status(400).json({ error: "ride_kind_invalid" });
+      return;
+    }
+    if (raw.payerKind != null && raw.payerKind !== "" && (typeof raw.payerKind !== "string" || parsePayerKind(raw.payerKind) === null)) {
+      res.status(400).json({ error: "payer_kind_invalid" });
+      return;
+    }
+    if (raw.authorizationSource != null && raw.authorizationSource !== "" && (typeof raw.authorizationSource !== "string" || parseAuthorizationSource(raw.authorizationSource) === null)) {
+      res.status(400).json({ error: "authorization_source_invalid" });
+      return;
+    }
+    const rawPricingModeStr = raw.pricingMode != null && raw.pricingMode !== "" ? String(raw.pricingMode).trim() : "";
+    const fromFull = String(raw.fromFull ?? raw.from ?? "").trim();
+    const toFull = String(raw.toFull ?? raw.to ?? "").trim();
+    if (!fromFull || !toFull) {
+      res.status(400).json({ error: "from_to_required" });
+      return;
+    }
+    const fromLatB = optCoord(
+      raw.fromLat ?? raw.from_lat
+    );
+    const fromLonB = optCoord(
+      raw.fromLon ?? raw.from_lon
+    );
+    const toLatB = optCoord(
+      raw.toLat ?? raw.to_lat
+    );
+    const toLonB = optCoord(
+      raw.toLon ?? raw.to_lon
+    );
+    const fromAddressOk = isAddressAcceptedForBooking(fromFull, fromLatB, fromLonB);
+    const toAddressOk = isAddressAcceptedForBooking(toFull, toLatB, toLonB);
+    if (!fromAddressOk || !toAddressOk) {
+      console.warn("RIDES_ADDRESS_VALIDATION_REJECT", {
+        error: "address_house_number_required",
+        fromFull,
+        toFull,
+        fromLat: fromLatB,
+        fromLon: fromLonB,
+        toLat: toLatB,
+        toLon: toLonB,
+        fromHasHouseNumber: hasHouseNumberInFirstAddressPart(fromFull),
+        toHasHouseNumber: hasHouseNumberInFirstAddressPart(toFull),
+        fromHasPoiKeyword: hasPoiKeyword(fromFull),
+        toHasPoiKeyword: hasPoiKeyword(toFull)
+      });
+      res.status(400).json({
+        error: "address_house_number_required",
+        message: ADDRESS_HOUSE_NUMBER_REQUIRED_MESSAGE
+      });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const sysGate = assertPlatformNewRideAllowed(opPayload);
+    if (!sysGate.ok) {
+      res.status(sysGate.status).json({ error: sysGate.error, message: sysGate.message });
+      return;
+    }
+    const regions = await listServiceRegionsForApi();
+    if (anyActiveRegionRequiresClientCoordinates(regions) && (fromLatB == null || fromLonB == null || toLatB == null || toLonB == null)) {
+      res.status(400).json({
+        error: "ride_coordinates_required",
+        message: "F\xFCr Einfahrt-Regionen (Radius) sind fromLat, fromLon, toLat und toLon erforderlich."
+      });
+      return;
+    }
+    const regGate = assertCustomerFromFullInActiveServiceRegion(fromFull, opPayload, regions, { lat: fromLatB, lon: fromLonB });
+    if (!regGate.ok) {
+      res.status(400).json({ error: regGate.error, message: regGate.message });
+      return;
+    }
+    const area = await checkCustomerRideServiceArea(fromFull, toFull, { fromLat: fromLatB, fromLon: fromLonB, toLat: toLatB, toLon: toLonB });
+    if (!area.ok) {
+      res.status(400).json({
+        error: "service_area_not_covered",
+        message: getOutOfServiceAreaMessage(opPayload)
+      });
+      return;
+    }
+    const tBook = opPayload.tariffs;
+    if (tBook?.active === false) {
+      res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
+      return;
+    }
+    const distanceKmRaw = raw.distanceKm ?? raw.distance_km;
+    const distanceKmParsed = Number(distanceKmRaw);
+    const computedDistanceKm = fromLatB != null && fromLonB != null && toLatB != null && toLonB != null ? haversineDistanceKm2(fromLatB, fromLonB, toLatB, toLonB) : null;
+    const distanceKmB = Number.isFinite(distanceKmParsed) && distanceKmParsed > 0 ? distanceKmParsed : computedDistanceKm != null && Number.isFinite(computedDistanceKm) && computedDistanceKm > 0 ? computedDistanceKm : distanceKmParsed;
+    if (!Number.isFinite(distanceKmB) || distanceKmB <= 0) {
+      console.warn("RIDES_DISTANCE_INVALID", {
+        distanceKmRaw,
+        computedDistanceKm,
+        originLat: fromLatB,
+        originLon: fromLonB,
+        destinationLat: toLatB,
+        destinationLon: toLonB,
+        pricingMode: rawPricingModeStr || null,
+        vehicle: vehicleB,
+        scheduledAt: pickScheduledAtFromBody(raw),
+        routeSnapshot: raw.routeSnapshot ?? raw.route_snapshot ?? null,
+        fareBreakdown: raw.fareBreakdown ?? raw.fare_breakdown ?? null
+      });
+      res.status(400).json({ error: "distance_km_invalid" });
+      return;
+    }
+    const tripMRaw = Number(
+      raw.tripMinutes ?? raw.trip_minutes ?? raw.durationMinutes ?? raw.duration_minutes ?? 0
+    );
+    const tripMinutesB = Number.isFinite(tripMRaw) ? Math.max(0, tripMRaw) : 0;
+    const waitMRaw = Number(
+      raw.waitingMinutes ?? raw.waiting_minutes ?? 0
+    );
+    const waitingMinutesB = Number.isFinite(waitMRaw) ? Math.max(0, waitMRaw) : 0;
+    const paxRaw = Number(raw.passengerCount ?? raw.passenger_count);
+    const passengerCountB = Number.isFinite(paxRaw) ? Math.max(1, Math.round(paxRaw)) : void 0;
+    const vehicleB = String(raw.vehicle ?? "standard").trim().toLowerCase() || "standard";
+    const accessibilityRaw = raw.accessibilityOptions ?? raw.accessibility_options;
+    let accessibilityOptions = null;
+    if (accessibilityRaw != null) {
+      accessibilityOptions = parseAccessibilityOptionsFromBody(accessibilityRaw);
+      if (!accessibilityOptions) {
+        res.status(400).json({ error: "accessibility_options_invalid" });
+        return;
+      }
+    }
+    if (vehicleB.includes("rollstuhl") || vehicleB.includes("wheelchair")) {
+      if (!accessibilityOptions) {
+        res.status(400).json({ error: "accessibility_options_required_for_wheelchair" });
+        return;
+      }
+    }
+    const atBooking = /* @__PURE__ */ new Date();
+    const bookingPricing = computeRideBookingPricing({
+      opPayload,
+      regions,
+      fromFull,
+      fromLat: fromLatB,
+      fromLon: fromLonB,
+      distanceKm: distanceKmB,
+      tripMinutes: tripMinutesB,
+      waitingMinutes: waitingMinutesB,
+      vehicle: vehicleB,
+      passengerCount: passengerCountB,
+      at: atBooking
+    });
+    const finalPriceB = bookingPricing.finalPrice;
+    const snapB = bookingPricing.snapshot;
+    const serverPricingMode = bookingPricing.pricingMode;
+    if (rawPricingModeStr && rawPricingModeStr !== serverPricingMode) {
+      res.status(400).json({ error: "pricing_mode_conflict" });
+      return;
+    }
+    const clientFareRaw = raw.estimatedFare ?? raw.estimated_fare;
+    const fareMatch = assertClientEstimatedFareMatchesServer(clientFareRaw, finalPriceB);
+    if (!fareMatch.ok) {
+      const providedFareBreakdown = raw.fareBreakdown ?? raw.fare_breakdown ?? null;
+      const expectedFareBreakdown = {
+        ...snapB.breakdown,
+        finalPriceEur: finalPriceB
+      };
+      console.warn("RIDES_ESTIMATE_MISMATCH", {
+        providedEstimate: clientFareRaw ?? null,
+        expectedEstimate: finalPriceB,
+        providedFareBreakdown,
+        expectedFareBreakdown,
+        origin: fromFull,
+        destination: toFull,
+        scheduledAt: pickScheduledAtFromBody(raw),
+        pricingMode: rawPricingModeStr || null,
+        vehicle: vehicleB
+      });
+      res.status(400).json({ error: fareMatch.error });
+      return;
+    }
+    const durationInt = Math.max(0, Math.round(tripMinutesB));
+    const bodyForAssert = {
+      ...raw,
+      estimatedFare: finalPriceB,
+      estimated_fare: finalPriceB,
+      distanceKm: distanceKmB,
+      distance_km: distanceKmB,
+      durationMinutes: durationInt,
+      duration_minutes: durationInt
+    };
+    const opCheck = assertCustomerRideOperational(bodyForAssert, opPayload);
+    if (!opCheck.ok) {
+      res.status(400).json({ error: opCheck.error, message: opCheck.message });
+      return;
+    }
+    const rideKind = parseRideKind(raw.rideKind) ?? DEFAULT_RIDE_KIND;
+    const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
+    const authorizationSource = parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
+    const scheduledAtNormalized = pickScheduledAtFromBody(raw);
+    const customerPhoneClean = String(
+      raw.customerPhone ?? raw.passengerPhone ?? raw.phone ?? ""
+    ).trim();
+    const partnerMetaRaw = raw.partnerBookingMeta ?? raw.partner_booking_meta ?? raw.medicalMeta;
+    if (process.env.NODE_ENV !== "production") {
+      const rb = raw;
+      console.log(
+        "[RESNOTE] POST /rides raw.partnerBookingMeta / raw.partner_booking_meta:",
+        rb.partnerBookingMeta ?? rb.partner_booking_meta
+      );
+    }
+    const medicalMeta = pickMedicalMeta(partnerMetaRaw);
+    let normalizedPartnerMeta = rideKind === "medical" ? {
+      ...medicalMeta,
+      medical_ride: true,
+      medical_qr_token: createMedicalQrToken(),
+      approval_status: typeof medicalMeta.approval_status === "string" ? medicalMeta.approval_status : "pending",
+      payer_kind: payerKind === "insurance" || payerKind === "passenger" || payerKind === "company" ? payerKind : "insurance",
+      signature_required: typeof medicalMeta.signature_required === "boolean" ? medicalMeta.signature_required : true,
+      signature_done: false,
+      signature_file_key: "",
+      signature_signed_at: "",
+      qr_required: typeof medicalMeta.qr_required === "boolean" ? medicalMeta.qr_required : true,
+      qr_done: false,
+      transport_document_required: typeof medicalMeta.transport_document_required === "boolean" ? medicalMeta.transport_document_required : true,
+      transport_document_status: typeof medicalMeta.transport_document_status === "string" ? medicalMeta.transport_document_status : "missing",
+      approval_proof_mode: typeof medicalMeta.approval_proof_mode === "string" ? medicalMeta.approval_proof_mode : "none",
+      transport_document_file_key: "",
+      transport_document_uploaded_at: "",
+      copayment_required: typeof medicalMeta.copayment_required === "string" ? medicalMeta.copayment_required : "unknown",
+      copayment_amount_estimated: typeof medicalMeta.copayment_amount_estimated === "number" ? medicalMeta.copayment_amount_estimated : 0,
+      copayment_collected_status: typeof medicalMeta.copayment_collected_status === "string" ? medicalMeta.copayment_collected_status : "open",
+      copayment_collection_method: typeof medicalMeta.copayment_collection_method === "string" ? medicalMeta.copayment_collection_method : "unknown",
+      ...medicalFinanceSnapshot(finalPriceB)
+    } : {};
+    if (rideKind === "medical") {
+      if (medicalMeta.medical_demo_mode === true) {
+        normalizedPartnerMeta.medical_demo_mode = true;
+        normalizedPartnerMeta.medical_billing_demo_disclaimer = "TESTDOKUMENT / NICHT ZUR ABRECHNUNG";
+        const insNow = typeof normalizedPartnerMeta.insurance_name === "string" ? normalizedPartnerMeta.insurance_name.trim() : "";
+        const ccNow = typeof normalizedPartnerMeta.cost_center === "string" ? normalizedPartnerMeta.cost_center.trim() : "";
+        if (!insNow) normalizedPartnerMeta.insurance_name = MEDICAL_DEMO_INSURANCE_LABEL;
+        if (!ccNow) normalizedPartnerMeta.cost_center = MEDICAL_DEMO_COST_CENTER_LABEL;
+        const demoSrcRaw = typeof medicalMeta.medical_demo_transport_source === "string" ? medicalMeta.medical_demo_transport_source : "";
+        const demoSrc = demoSrcRaw.trim().toLowerCase();
+        const wantsDriverUpload = demoSrc === "driver_upload" || demoSrc === "driver_test_upload" || demoSrc === "test_upload";
+        if (wantsDriverUpload) {
+          normalizedPartnerMeta.medical_demo_transport_source = demoSrc === "driver_test_upload" ? "driver_test_upload" : "driver_upload";
+          const ds = loweredTrim(normalizedPartnerMeta.transport_document_status);
+          if (!ds || ds === "missing") normalizedPartnerMeta.transport_document_status = "missing";
+        } else {
+          normalizedPartnerMeta.medical_demo_transport_source = demoSrcRaw.trim() ? demoSrcRaw.trim().slice(0, 48) : "synthetic_provided";
+          normalizedPartnerMeta.transport_document_status = "provided";
+          normalizedPartnerMeta.transport_document_provided_demo = true;
+        }
+        const appr = loweredTrim(normalizedPartnerMeta.approval_status);
+        if (!appr || appr === "pending") normalizedPartnerMeta.approval_status = "approved";
+      }
+      const ready = calculateMedicalBillingReadiness(normalizedPartnerMeta);
+      normalizedPartnerMeta.billing_ready = ready.billingReady;
+      normalizedPartnerMeta.billing_missing_reasons = ready.missingReasons;
+    }
+    const customerDriverNoteFromBody = extractCustomerDriverNoteFromRawBody(raw);
+    if (customerDriverNoteFromBody) {
+      normalizedPartnerMeta = { ...normalizedPartnerMeta, customer_driver_note: customerDriverNoteFromBody };
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        "[RESNOTE] POST /rides normalizedPartnerMeta.customer_driver_note:",
+        typeof normalizedPartnerMeta.customer_driver_note === "string" ? String(normalizedPartnerMeta.customer_driver_note).slice(0, 120) : "(none)"
+      );
+    }
+    const newReq = {
+      ...raw,
+      id: `REQ-${Date.now()}`,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      status: initialCustomerRideStatus(scheduledAtNormalized),
+      scheduledAt: scheduledAtNormalized,
+      rejectedBy: [],
+      driverId: null,
+      customerPhone: customerPhoneClean || null,
+      partnerBookingMeta: normalizedPartnerMeta,
+      rideKind,
+      payerKind,
+      voucherCode: parseOptionalBillingTag(raw.voucherCode, 64),
+      billingReference: parseOptionalBillingTag(raw.billingReference, 256),
+      authorizationSource,
+      accessCodeId: null,
+      pricingMode: serverPricingMode,
+      distanceKm: distanceKmB,
+      durationMinutes: durationInt,
+      estimatedFare: finalPriceB,
+      vehicle: vehicleB,
+      accessibilityOptions,
+      tariffSnapshot: snapB
+    };
+    const accessCodeRaw = raw.accessCode;
+    const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
+    const accessCodeVerifyToken = typeof raw.accessCodeVerifyToken === "string" ? raw.accessCodeVerifyToken.trim() : "";
+    const driverIdForCodeRide = typeof raw.driverId === "string" ? raw.driverId.trim() : "";
+    const normalizedCode = accessCodePlain ? normalizeAccessCodeInput(accessCodePlain) : null;
+    if (normalizedCode && driverIdForCodeRide) {
+      cleanupCodeVerifySessions();
+      const session = accessCodeVerifyToken ? codeVerifySessions.get(accessCodeVerifyToken) : null;
+      const isSessionValid = !!session && session.expiresAt > Date.now() && session.driverId === driverIdForCodeRide && session.normalized === normalizedCode;
+      if (!isSessionValid) {
+        res.status(409).json({ error: "access_code_verify_required" });
+        return;
+      }
+      codeVerifySessions.delete(accessCodeVerifyToken);
+    }
+    const ins = await insertRideWithOptionalAccessCode(newReq, accessCodePlain);
+    if (!ins.ok) {
+      res.status(400).json({ error: ins.error });
+      return;
+    }
+    const created = await findRide(newReq.id);
+    if (!created) {
+      res.status(500).json({ error: "ride_insert_inconsistent" });
+      return;
+    }
+    const pcCreated = resolveFinancePricingContextFromOperational(created, opPayload, regions);
+    void upsertRideFinancialSnapshot({
+      ride: created,
+      pricingContext: pcCreated,
+      reason: "ride_created"
+    });
+    const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
+    res.status(201).json(withSummary);
+  } catch (e) {
+    next(e);
+  }
+});
+router2.patch("/rides/:id/driver-note", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const editableStatuses = /* @__PURE__ */ new Set([
+      "scheduled",
+      "scheduled_assigned",
+      "ready_for_dispatch",
+      "accepted",
+      "driver_arriving",
+      "driver_waiting"
+    ]);
+    if (!editableStatuses.has(cur.status)) {
+      res.status(409).json({ error: "driver_note_not_editable_for_status" });
+      return;
+    }
+    const rawNote = typeof req.body?.driverNote === "string" ? req.body.driverNote : "";
+    const driverNote = rawNote.trim().slice(0, 500);
+    const nextAccessibilityOptions = {
+      ...cur.accessibilityOptions && typeof cur.accessibilityOptions === "object" ? cur.accessibilityOptions : {},
+      driverNote: driverNote || null
+    };
+    const currentPartnerMeta = cur.partnerBookingMeta && typeof cur.partnerBookingMeta === "object" && !Array.isArray(cur.partnerBookingMeta) ? cur.partnerBookingMeta : {};
+    const nextPartnerBookingMeta = {
+      ...currentPartnerMeta,
+      customer_driver_note: driverNote || ""
+    };
+    const updated = await updateRide(
+      id,
+      {
+        accessibilityOptions: nextAccessibilityOptions,
+        partnerBookingMeta: nextPartnerBookingMeta
+      },
+      { mutationActor: { actorType: "customer", actorId: cur.passengerId ?? null } }
+    );
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(updated)]);
+    res.json(withSummary);
+  } catch (e) {
+    next(e);
+  }
+});
+router2.patch("/rides/:id/status", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, driverId, cancelReason } = req.body;
+    const parsedFinalFare = parseOptionalFinalFareFromBody(req.body);
+    const nextStatus = normalizeStatusInput(status);
+    if (!nextStatus) {
+      res.status(400).json({ error: "status_invalid" });
+      return;
+    }
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const TERMINAL_STATUS_REPLAY_SKIP = /* @__PURE__ */ new Set([
+      "completed",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "cancelled",
+      "rejected",
+      "expired"
+    ]);
+    if (cur.status === nextStatus && TERMINAL_STATUS_REPLAY_SKIP.has(nextStatus)) {
+      res.json({
+        ...stripPartnerOnlyRideFields(cur),
+        cancelReason: customerCancelReasons.get(id) ?? null
+      });
+      return;
+    }
+    if (!canTransitionStatus(cur.status, nextStatus)) {
+      res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
+      return;
+    }
+    const cancelReasonClean = typeof cancelReason === "string" ? cancelReason.trim() : "";
+    if (nextStatus === "cancelled_by_customer" && !cancelReasonClean) {
+      res.status(400).json({ error: "cancel_reason_required" });
+      return;
+    }
+    const bodyDriverIdTrim = typeof driverId === "string" ? driverId.trim() : "";
+    const actor = await resolveRideMutateActor(req);
+    const gate = authorizePatchRideStatusForActor(nextStatus, cur, actor, {
+      bodyDriverId: bodyDriverIdTrim.length > 0 ? bodyDriverIdTrim : null
+    });
+    if (!gate.ok) {
+      res.status(gate.status).json({ error: gate.code });
+      return;
+    }
+    const mutActor = mutationActorFromRideMutator(actor);
+    let companyIdOnAccept;
+    if (nextStatus === "accepted" && driverId) {
+      const driverAuth = await findFleetDriverAuthRow(driverId);
+      const capabilityCompanyId = cur.companyId ?? driverAuth?.company_id ?? null;
+      if (!capabilityCompanyId) {
+        res.status(409).json({
+          error: "ride_not_assignable",
+          message: "Fahrt/Fahrer konnten keinem Unternehmen zugeordnet werden."
+        });
+        return;
+      }
+      if (cur.companyId && driverAuth?.company_id && cur.companyId !== driverAuth.company_id) {
+        res.status(409).json({
+          error: "ride_company_mismatch",
+          message: "Diese Fahrt geh\xF6rt zu einem anderen Unternehmen."
+        });
+        return;
+      }
+      const readinessR = await getFleetDriverReadinessById(driverId, capabilityCompanyId);
+      if (!("error" in readinessR) && !readinessR.ready) {
+        res.status(409).json({
+          error: "driver_not_einsatzbereit",
+          blockReasons: readinessR.blockReasons,
+          message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen)."
+        });
+        return;
+      }
+      const capability = await getFleetDriverCapability(driverId, capabilityCompanyId);
+      if (!capability || !isRideCompatibleWithCapability(cur, capability)) {
+        res.status(409).json({
+          error: "no_matching_vehicle_available",
+          message: "Aktuell kein passendes Fahrzeug verf\xFCgbar"
+        });
+        return;
+      }
+      companyIdOnAccept = capabilityCompanyId;
+    }
+    let finalFareForPatch = parsedFinalFare;
+    let customerCancelFeeAudit = null;
+    if (nextStatus === "cancelled_by_customer") {
+      const opPayloadCancel = await getOperationalConfigPayload();
+      const ev = await evaluateCustomerCancellationFeeEur(
+        {
+          status: cur.status,
+          scheduledAt: cur.scheduledAt ?? null,
+          createdAt: cur.createdAt,
+          fromFull: cur.fromFull
+        },
+        opPayloadCancel
+      );
+      customerCancelFeeAudit = ev;
+      if (ev.feeEur > 0) {
+        const chosen = parsedFinalFare !== void 0 ? parsedFinalFare : ev.feeEur;
+        if (chosen < ev.feeEur - 1e-9) {
+          res.status(400).json({
+            error: "cancel_fee_too_low",
+            message: `F\xFCr dieses Storno ist mindestens ${ev.feeEur.toFixed(2)} EUR als Endpreis vorgesehen.`,
+            minFinalFareEur: ev.feeEur
+          });
+          return;
+        }
+        const cap = Math.max(cur.estimatedFare ?? 0, ev.feeEur);
+        finalFareForPatch = Math.min(Math.max(chosen, ev.feeEur), cap);
+      }
+    } else if (nextStatus === "completed") {
+      if (cur.tariffSnapshot) {
+        const v = Number(cur.tariffSnapshot.finalPriceEur);
+        if (!Number.isFinite(v) || v < 0) {
+          res.status(400).json({ error: "tariff_snapshot_invalid" });
+          return;
+        }
+      }
+      const mergedFinal = parsedFinalFare !== void 0 && Number.isFinite(parsedFinalFare) ? parsedFinalFare : cur.finalFare != null && Number.isFinite(Number(cur.finalFare)) ? Number(cur.finalFare) : void 0;
+      finalFareForPatch = effectiveTaxiGrossEur({
+        ...cur,
+        finalFare: mergedFinal
+      });
+    }
+    const atomicAccept = nextStatus === "accepted" && bodyDriverIdTrim.length > 0 && actor && actor.kind !== "customer_session";
+    let updated = null;
+    if (atomicAccept) {
+      const claimed = await tryFleetAcceptRideAtomic({
+        rideId: id,
+        driverId: bodyDriverIdTrim,
+        companyId: companyIdOnAccept ?? null
+      });
+      if (!claimed.ok) {
+        if (claimed.reason === "ride_already_claimed") {
+          res.status(409).json({
+            error: "ride_already_claimed",
+            message: "Die Fahrt wurde bereits angenommen."
+          });
+          return;
+        }
+        res.status(404).json({ error: "not found" });
+        return;
+      }
+      await applyRideMutationPersistence(id, claimed.previous, claimed.ride, mutActor);
+      updated = claimed.ride;
+    } else {
+      updated = await updateRide(
+        id,
+        {
+          status: nextStatus,
+          ...finalFareForPatch !== void 0 ? { finalFare: finalFareForPatch } : {},
+          ...driverId != null ? { driverId } : {},
+          ...companyIdOnAccept != null ? { companyId: companyIdOnAccept } : {}
+        },
+        { mutationActor: mutActor }
+      );
+      if (!updated) {
+        res.status(500).json({ error: "update_failed" });
+        return;
+      }
+    }
+    if (cancelReasonClean) {
+      const isCancel = [
+        "cancelled",
+        "cancelled_by_customer",
+        "cancelled_by_driver",
+        "cancelled_by_system",
+        "rejected",
+        "expired"
+      ].includes(nextStatus);
+      if (isCancel) {
+        const crActor = nextStatus === "cancelled_by_customer" ? {
+          actorType: "passenger",
+          actorId: actor?.kind === "customer_session" ? actor.passengerGoogleId : null
+        } : nextStatus === "cancelled_by_driver" ? { actorType: "driver", actorId: driverId ?? null } : { actorType: "system", actorId: null };
+        await insertSupplementalRideEvent(id, {
+          eventType: "cancel_reason",
+          fromStatus: cur.status,
+          toStatus: nextStatus,
+          actorType: crActor.actorType,
+          actorId: crActor.actorId,
+          payload: {
+            reason: cancelReasonClean,
+            nextStatus,
+            ...nextStatus === "cancelled_by_customer" && customerCancelFeeAudit ? {
+              cancellationFeeEur: customerCancelFeeAudit.feeEur,
+              cancellationFeeRule: customerCancelFeeAudit.reason,
+              appliedFinalFareEur: finalFareForPatch ?? null
+            } : {}
+          }
+        });
+      }
+    }
+    if (nextStatus === "cancelled_by_customer") {
+      customerCancelReasons.set(id, cancelReasonClean);
+    }
+    if (nextStatus === "cancelled_by_customer" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled_by_system" || nextStatus === "cancelled") {
+      const opPayloadCf = await getOperationalConfigPayload();
+      const regionsCf = await listServiceRegionsForApi();
+      const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+      const financeCf = await upsertRideFinancialSnapshot({
+        ride: updated,
+        pricingContext: pcCf,
+        reason: `ride_status_${nextStatus}`,
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId
+      });
+      if (!financeCf.ok) {
+        res.status(500).json({ error: financeCf.error });
+        return;
+      }
+    }
+    if (nextStatus === "completed") {
+      const opPayloadComplete = await getOperationalConfigPayload();
+      const regionsComplete = await listServiceRegionsForApi();
+      const pcComplete = resolveFinancePricingContextFromOperational(updated, opPayloadComplete, regionsComplete);
+      const finance = await upsertRideFinancialSnapshot({
+        ride: updated,
+        pricingContext: pcComplete,
+        reason: "ride_completed_status_transition",
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId
+      });
+      if (!finance.ok) {
+        res.status(500).json({ error: finance.error });
+        return;
+      }
+    }
+    if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
+      customerCancelReasons.delete(id);
+    }
+    res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/driver-location", async (req, res, next) => {
+  try {
+    const fleet = await resolveFleetActorOrNull(req);
+    if (!fleet) {
+      res.status(401).json({ error: "unauthorized", hint: "Fleet driver Bearer token required." });
+      return;
+    }
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride || (ride.driverId ?? "").trim() !== fleet.fleetDriverId) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const { lat, lon } = req.body;
+    if (typeof lat !== "number" || typeof lon !== "number") {
+      res.status(400).json({ error: "lat and lon required" });
+      return;
+    }
+    const loc = { lat, lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    driverLocations.set(id, loc);
+    res.json(loc);
+  } catch (e) {
+    next(e);
+  }
+});
+router2.get("/rides/:id/driver-location", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const loc = driverLocations.get(id);
+    if (!loc) {
+      res.status(404).json({ error: "no location yet" });
+      return;
+    }
+    const fleet = await resolveFleetActorOrNull(req);
+    const cust = await resolveCustomerActorOrNull(req);
+    const assignedDriver = (ride.driverId ?? "").trim();
+    const allowedFleet = fleet != null && assignedDriver !== "" && assignedDriver === fleet.fleetDriverId;
+    const allowedPassenger = cust != null && passengerOwnsRide(ride, cust.passengerGoogleId);
+    if (!allowedFleet && !allowedPassenger) {
+      res.status(401).json({ error: "unauthorized", hint: "Fleet driver token or passenger session required." });
+      return;
+    }
+    res.json(loc);
+  } catch (e) {
+    next(e);
+  }
+});
+function passengerOwnsRide(ride, passengerGoogleId) {
+  return (ride.passengerId ?? "").trim() === passengerGoogleId.trim();
+}
+router2.post("/rides/:id/customer-location", async (req, res, next) => {
+  try {
+    const cust = await resolveCustomerActorOrNull(req);
+    if (!cust) {
+      res.status(401).json({ error: "unauthorized", hint: "Customer session Bearer required." });
+      return;
+    }
+    const { id } = req.params;
+    const ride = await findRide(id);
+    if (!ride || !passengerOwnsRide(ride, cust.passengerGoogleId)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const { lat, lon } = req.body;
+    if (typeof lat !== "number" || typeof lon !== "number") {
+      res.status(400).json({ error: "lat and lon required" });
+      return;
+    }
+    const loc = { lat, lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    customerLocations.set(id, loc);
+    res.json(loc);
+  } catch (e) {
+    next(e);
+  }
+});
+router2.get("/rides/:id/customer-location", async (req, res, next) => {
+  try {
+    const fleet = await resolveFleetActorOrNull(req);
+    const { id } = req.params;
+    const ride = await findRide(id);
+    const loc = customerLocations.get(id);
+    if (!loc) {
+      res.status(404).json({ error: "no location yet" });
+      return;
+    }
+    const assignedDriver = ride ? (ride.driverId ?? "").trim() : "";
+    if (!fleet || !assignedDriver || fleet.fleetDriverId !== assignedDriver) {
+      res.status(401).json({ error: "unauthorized", hint: "Assigned fleet driver Bearer required." });
+      return;
+    }
+    res.json(loc);
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/reject", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverIdRaw = req.body.driverId;
+    const driverId = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const authFleet = req.fleetDriverAuth?.fleetDriverId;
+    if (!driverId || !authFleet || driverId !== authFleet) {
+      res.status(403).json({ error: "driver_actor_mismatch" });
+      return;
+    }
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const existing = cur.rejectedBy ?? [];
+    const rejectIsNew = !existing.includes(driverId);
+    const rejectedBy = existing.includes(driverId) ? existing : [...existing, driverId];
+    const updated = await updateRide(id, { rejectedBy }, { mutationActor: { actorType: "driver", actorId: driverId } });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    if (rejectIsNew) {
+      await insertSupplementalRideEvent(id, {
+        eventType: "driver_rejected",
+        fromStatus: cur.status,
+        toStatus: cur.status,
+        actorType: "driver",
+        actorId: driverId,
+        payload: { driverId }
+      });
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverIdRaw = req.body.driverId;
+    const driverFromBody = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const authFleet = req.fleetDriverAuth?.fleetDriverId;
+    if (!authFleet) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const driverId = driverFromBody || authFleet;
+    if (driverFromBody && driverFromBody !== authFleet) {
+      res.status(403).json({ error: "driver_actor_mismatch" });
+      return;
+    }
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (cur.status === "cancelled_by_customer" || cur.status === "cancelled_by_system" || cur.status === "cancelled_by_driver" || cur.status === "cancelled" || cur.status === "completed") {
+      res.json(stripPartnerOnlyRideFields(cur));
+      return;
+    }
+    const existing = cur.rejectedBy ?? [];
+    const rejectedBy = driverId ? existing.includes(driverId) ? existing : [...existing, driverId] : existing;
+    const revertStatus = cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "searching_driver";
+    const updated = await updateRide(
+      id,
+      {
+        status: revertStatus,
+        driverId: null,
+        rejectedBy
+      },
+      { mutationActor: { actorType: "driver", actorId: driverId } }
+    );
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
+  } catch (e) {
+    next(e);
+  }
+});
+router2.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const driverIdRaw = req.body.driverId;
+    const driverFromBody = typeof driverIdRaw === "string" ? driverIdRaw.trim() : "";
+    const authFleet = req.fleetDriverAuth?.fleetDriverId;
+    if (!authFleet) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const driverId = driverFromBody || authFleet;
+    if (driverFromBody && driverFromBody !== authFleet) {
+      res.status(403).json({ error: "driver_actor_mismatch" });
+      return;
+    }
+    const cur = await findRide(id);
+    if (!cur) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    const updated = await updateRide(
+      id,
+      {
+        status: "cancelled_by_driver",
+        driverId: null,
+        rejectedBy: driverId ? [.../* @__PURE__ */ new Set([...cur.rejectedBy ?? [], driverId])] : cur.rejectedBy ?? []
+      },
+      { mutationActor: { actorType: "driver", actorId: driverId } }
+    );
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    res.json(stripPartnerOnlyRideFields(updated));
+  } catch (e) {
+    next(e);
+  }
+});
+router2.delete("/rides/demo", async (req, res, next) => {
+  try {
+    const bearer = extractBearerAuthorization(req);
+    let adminOk = Boolean(bearer && await tryResolveAdminApiAuthPrincipal(bearer ?? ""));
+    if (!adminOk && !String(process.env.ADMIN_API_BEARER_TOKEN ?? "").trim() && process.env.NODE_ENV !== "production") {
+      adminOk = true;
+    }
+    if (!adminOk) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    await resetRidesDemo([...DEMO]);
+    driverLocations.clear();
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+var rides_default = router2;
+
+// src/routes/auth.ts
+var import_express3 = __toESM(require_express2(), 1);
+import { ClientAuthentication, OAuth2Client } from "google-auth-library";
+import { createHash, randomBytes as randomBytes4 } from "crypto";
+
+// src/lib/firebaseAdmin.ts
+import admin from "firebase-admin";
+function isFirebaseAdminConfigured() {
+  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
+  const path11 = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  return raw.length > 0 || path11.length > 0;
+}
+function ensureFirebaseApp() {
+  if (admin.apps.length > 0) {
+    return admin.app();
+  }
+  const rawJson = (process.env.FIREBASE_SERVICE_ACCOUNT ?? "").trim();
+  const credPath = (process.env.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim();
+  if (rawJson) {
+    let parsed;
+    try {
+      parsed = JSON.parse(rawJson);
+    } catch {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT ist kein g\xFCltiges JSON.");
+    }
+    return admin.initializeApp({ credential: admin.credential.cert(parsed) });
+  }
+  if (credPath) {
+    return admin.initializeApp({ credential: admin.credential.cert(credPath) });
+  }
+  throw new Error(
+    "Firebase Admin nicht konfiguriert: GOOGLE_APPLICATION_CREDENTIALS oder FIREBASE_SERVICE_ACCOUNT setzen."
+  );
+}
+function getFirebaseAuth() {
+  return admin.auth(ensureFirebaseApp());
 }
 
 // src/routes/auth.ts
@@ -52152,15 +56591,15 @@ function sendGoogleOAuthStart(req, res, returnUrl) {
     });
     return;
   }
-  const state = base64url(randomBytes2(16));
-  const secret = googleClientSecret();
+  const state = base64url(randomBytes4(16));
+  const secret2 = googleClientSecret();
   const redirectUri = callbackUriFromReq(req);
   console.log("GOOGLE REDIRECT URI:", redirectUri);
   console.log(
-    `[auth/start] state=${state} returnUrl=${returnUrl} pkce=${!secret}`
+    `[auth/start] state=${state} returnUrl=${returnUrl} pkce=${!secret2}`
   );
   let codeVerifier = null;
-  if (!secret) {
+  if (!secret2) {
     codeVerifier = generateCodeVerifier();
   }
   pending.set(state, {
@@ -52192,7 +56631,7 @@ function base64url(buf) {
   return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 function generateCodeVerifier() {
-  return base64url(randomBytes2(32));
+  return base64url(randomBytes4(32));
 }
 function codeChallenge(verifier) {
   return base64url(createHash("sha256").update(verifier).digest());
@@ -52261,8 +56700,8 @@ router3.get("/auth/google/callback", async (req, res) => {
     return raw.trim().slice(0, 200);
   };
   try {
-    const secret = googleClientSecret();
-    const oauth2Client = secret ? new OAuth2Client(clientId, secret, redirectUri) : new OAuth2Client({
+    const secret2 = googleClientSecret();
+    const oauth2Client = secret2 ? new OAuth2Client(clientId, secret2, redirectUri) : new OAuth2Client({
       clientId,
       redirectUri,
       clientAuthentication: ClientAuthentication.None
@@ -52447,12 +56886,404 @@ router3.get("/auth/google/profile", async (req, res) => {
 });
 var auth_default = router3;
 
+// src/routes/emailAuth.ts
+var import_express4 = __toESM(require_express2(), 1);
+
+// src/lib/emailVerificationFlow.ts
+init_client();
+import { randomUUID as randomUUID13 } from "node:crypto";
+
+// src/db/emailVerificationCodesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+async function deleteUnconsumedCodesForEmailPurpose(normalizedEmail, purpose) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  await db2.delete(emailVerificationCodesTable).where(
+    and(
+      eq(emailVerificationCodesTable.email, normalizedEmail),
+      eq(emailVerificationCodesTable.purpose, purpose),
+      isNull(emailVerificationCodesTable.consumed_at)
+    )
+  );
+}
+async function insertVerificationCode(row) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  await db2.insert(emailVerificationCodesTable).values({
+    id: row.id,
+    email: row.email,
+    code_hash: row.codeHash,
+    purpose: row.purpose,
+    expires_at: row.expiresAt,
+    attempts: 0,
+    consumed_at: null
+  });
+}
+async function countSendsInRollingHour(normalizedEmail) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1e3);
+  const r = await db2.select({ c: sql`count(*)::int` }).from(emailVerificationCodesTable).where(
+    and(eq(emailVerificationCodesTable.email, normalizedEmail), gte(emailVerificationCodesTable.created_at, hourAgo))
+  );
+  const n4 = r[0]?.c;
+  return typeof n4 === "number" ? n4 : 0;
+}
+async function incrementAttempts(id) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const updated = await db2.update(emailVerificationCodesTable).set({ attempts: sql`${emailVerificationCodesTable.attempts} + 1` }).where(eq(emailVerificationCodesTable.id, id)).returning({ attempts: emailVerificationCodesTable.attempts });
+  return updated[0]?.attempts ?? null;
+}
+async function getLatestUnconsumedRowAnyExpiry(normalizedEmail, purpose) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const rows = await db2.select({
+    id: emailVerificationCodesTable.id,
+    code_hash: emailVerificationCodesTable.code_hash,
+    attempts: emailVerificationCodesTable.attempts,
+    expires_at: emailVerificationCodesTable.expires_at,
+    consumed_at: emailVerificationCodesTable.consumed_at
+  }).from(emailVerificationCodesTable).where(
+    and(
+      eq(emailVerificationCodesTable.email, normalizedEmail),
+      eq(emailVerificationCodesTable.purpose, purpose),
+      isNull(emailVerificationCodesTable.consumed_at)
+    )
+  ).orderBy(desc(emailVerificationCodesTable.created_at)).limit(1);
+  return rows[0] ?? null;
+}
+async function deleteVerificationCodeById(id) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  await db2.delete(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.id, id));
+}
+async function markConsumed(id) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  await db2.update(emailVerificationCodesTable).set({ consumed_at: /* @__PURE__ */ new Date() }).where(eq(emailVerificationCodesTable.id, id));
+}
+async function getLastCreatedAtForEmail(normalizedEmail) {
+  const db2 = getDb();
+  if (!db2) throw new Error("database_not_configured");
+  const rows = await db2.select({ created_at: emailVerificationCodesTable.created_at }).from(emailVerificationCodesTable).where(eq(emailVerificationCodesTable.email, normalizedEmail)).orderBy(desc(emailVerificationCodesTable.created_at)).limit(1);
+  return rows[0]?.created_at ?? null;
+}
+
+// src/lib/emailVerificationCode.ts
+import { createHash as createHash2, randomInt } from "node:crypto";
+var EMAIL_VERIFICATION_TTL_MS = 10 * 60 * 1e3;
+var EMAIL_VERIFICATION_MAX_ATTEMPTS = 5;
+var CUSTOMER_REGISTRATION_PURPOSE = "customer_registration";
+var PURPOSE_SAFE = /^[a-z][a-z0-9_]{0,62}$/;
+function normalizeCustomerEmail(raw) {
+  return raw.trim().toLowerCase();
+}
+function isPlausibleRegistrationEmail(normalized) {
+  if (normalized.length < 6 || normalized.length > 254) return false;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return false;
+  return true;
+}
+function sanitizePurpose(raw) {
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : CUSTOMER_REGISTRATION_PURPOSE;
+  return PURPOSE_SAFE.test(s) ? s : CUSTOMER_REGISTRATION_PURPOSE;
+}
+function pepper() {
+  const p = (process.env.EMAIL_VERIFICATION_CODE_PEPPER ?? "").trim();
+  if (p.length >= 16) return p;
+  const j = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (j.length >= 32) return j.slice(0, 64);
+  return "";
+}
+function hashEmailVerificationCode(normalizedEmail, sixDigitCode) {
+  const p = pepper();
+  if (!p) {
+    throw new Error("EMAIL_VERIFICATION_CODE_PEPPER oder AUTH_JWT_SECRET (lang) fehlt");
+  }
+  const digits = sixDigitCode.replace(/\D/g, "").trim();
+  return createHash2("sha256").update(`${p}|${normalizedEmail}|${digits}`, "utf8").digest("hex");
+}
+function isPepperConfigured() {
+  return pepper().length >= 16;
+}
+function generateSixDigitCode() {
+  return String(randomInt(1e5, 1e6));
+}
+
+// src/lib/emailVerificationMail.ts
+import nodemailer from "nodemailer";
+async function sendOnrodaVerificationEmailPlain(to, sixDigitCode) {
+  const smtpUrl = (process.env.SMTP_URL ?? "").trim();
+  const from = (process.env.MAIL_FROM ?? "").trim();
+  const r = to.trim();
+  if (!r.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    logger.warn(
+      { to: r },
+      "email verification mail skipped (set SMTP_URL and MAIL_FROM in API environment)"
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const text2 = `Dein ONRODA Best\xE4tigungscode: ${sixDigitCode}`;
+  try {
+    const transport = nodemailer.createTransport(smtpUrl);
+    await transport.sendMail({
+      from,
+      to: r,
+      subject: "ONRODA Best\xE4tigungscode",
+      text: text2
+      /** Keine zusätzlichen sensiblen Daten im HTML-Zweig — rein textuell. */
+    });
+    logger.info({ to: r, event: "email_verification.sent" }, "verification email sent");
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to: r }, "email verification send failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
+// src/lib/emailVerificationJwt.ts
+function secret() {
+  const raw = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (!raw) return null;
+  return new TextEncoder().encode(raw);
+}
+function issuer3() {
+  return (process.env.AUTH_JWT_ISSUER ?? "onroda-api").trim() || "onroda-api";
+}
+async function signEmailVerificationProofJwt(email, purpose, expiresIn = "24h") {
+  const s = secret();
+  if (!s) return null;
+  return new SignJWT({ verification_kind: "onroda_email", purpose }).setProtectedHeader({ alg: "HS256" }).setSubject(email).setIssuedAt().setIssuer(issuer3()).setExpirationTime(expiresIn).sign(s);
+}
+
+// src/lib/emailVerificationIpThrottle.ts
+var buckets = /* @__PURE__ */ new Map();
+function prune(arr, windowMs, now) {
+  return arr.filter((t) => now - t < windowMs);
+}
+function throttleIpRollingHour(ipKey, maxHits, windowMs) {
+  const now = Date.now();
+  const hits = prune(buckets.get(ipKey) ?? [], windowMs, now);
+  if (hits.length >= maxHits) {
+    const oldest = Math.min(...hits);
+    const retryAfterMs = Math.max(0, windowMs - (now - oldest));
+    return { ok: false, retryAfterMs };
+  }
+  hits.push(now);
+  buckets.set(ipKey, hits);
+  return { ok: true };
+}
+
+// src/lib/emailVerificationFlow.ts
+function maxSendsEmailPerHour() {
+  const n4 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_EMAIL_HOUR ?? "5");
+  return Number.isFinite(n4) && n4 >= 1 && n4 <= 100 ? Math.floor(n4) : 5;
+}
+function maxSendsIpPerHour() {
+  const n4 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_IP_PER_HOUR ?? "30");
+  return Number.isFinite(n4) && n4 >= 1 && n4 <= 500 ? Math.floor(n4) : 30;
+}
+function minSecondsBetweenSends() {
+  const n4 = Number(process.env.EMAIL_VERIFICATION_MIN_SECONDS_BETWEEN_SENDS ?? "60");
+  return Number.isFinite(n4) && n4 >= 10 && n4 <= 600 ? Math.floor(n4) : 60;
+}
+function clientIpKey(reqIp) {
+  return (reqIp ?? "unknown").trim() || "unknown";
+}
+async function dispatchEmailVerificationCode(opts) {
+  if (!isPostgresConfigured() || !getDb()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  if (!isPepperConfigured()) {
+    return { ok: false, error: "email_verification_not_configured", status: 503 };
+  }
+  const normalized = normalizeCustomerEmail(typeof opts.bodyEmail === "string" ? opts.bodyEmail : "");
+  const purpose = sanitizePurpose(opts.bodyPurpose);
+  if (!isPlausibleRegistrationEmail(normalized)) {
+    return { ok: false, error: "invalid_email", status: 400 };
+  }
+  const ipKey = clientIpKey(opts.ip);
+  const rollingHour = 60 * 60 * 1e3;
+  const ipTh = throttleIpRollingHour(ipKey, maxSendsIpPerHour(), rollingHour);
+  if (!ipTh.ok) {
+    const sec = Math.ceil(ipTh.retryAfterMs / 1e3);
+    return { ok: false, error: "rate_limit_ip", status: 429, retryAfterSeconds: sec };
+  }
+  const nHour = await countSendsInRollingHour(normalized);
+  if (nHour >= maxSendsEmailPerHour()) {
+    return {
+      ok: false,
+      error: "rate_limit_email",
+      status: 429,
+      retryAfterSeconds: Math.ceil(rollingHour / 1e3)
+    };
+  }
+  const lastCreated = await getLastCreatedAtForEmail(normalized);
+  if (lastCreated) {
+    const deltaSec = (Date.now() - lastCreated.getTime()) / 1e3;
+    const minSec = minSecondsBetweenSends();
+    if (deltaSec < minSec) {
+      return {
+        ok: false,
+        error: "rate_limit_resend",
+        status: 429,
+        retryAfterSeconds: Math.ceil(minSec - deltaSec)
+      };
+    }
+  }
+  await deleteUnconsumedCodesForEmailPurpose(normalized, purpose);
+  const plain = generateSixDigitCode();
+  let codeHash;
+  try {
+    codeHash = hashEmailVerificationCode(normalized, plain);
+  } catch {
+    return { ok: false, error: "email_verification_not_configured", status: 503 };
+  }
+  const id = randomUUID13();
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
+  await insertVerificationCode({
+    id,
+    email: normalized,
+    codeHash,
+    purpose,
+    expiresAt
+  });
+  const sent = await sendOnrodaVerificationEmailPlain(normalized, plain);
+  if (!sent.ok && sent.reason === "smtp_not_configured") {
+    await deleteVerificationCodeById(id).catch(() => {
+    });
+    return { ok: false, error: "smtp_not_configured", status: 503 };
+  }
+  if (!sent.ok) {
+    await deleteVerificationCodeById(id).catch(() => {
+    });
+    return { ok: false, error: "email_send_failed", status: 502 };
+  }
+  return { ok: true };
+}
+async function verifyEmailCode(opts) {
+  if (!isPostgresConfigured() || !getDb()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+  if (!isPepperConfigured()) {
+    return { ok: false, error: "email_verification_not_configured", status: 503 };
+  }
+  const normalized = normalizeCustomerEmail(typeof opts.bodyEmail === "string" ? opts.bodyEmail : "");
+  const purpose = sanitizePurpose(opts.bodyPurpose);
+  const digits = typeof opts.bodyCode === "string" ? opts.bodyCode.replace(/\D/g, "").trim() : "";
+  if (!isPlausibleRegistrationEmail(normalized) || digits.length !== 6) {
+    return { ok: false, error: "invalid_params", status: 400 };
+  }
+  const row = await getLatestUnconsumedRowAnyExpiry(normalized, purpose);
+  if (!row) {
+    return { ok: false, error: "invalid_code", status: 400 };
+  }
+  if (row.expires_at.getTime() <= Date.now()) {
+    return { ok: false, error: "code_expired", status: 400 };
+  }
+  if (row.attempts >= EMAIL_VERIFICATION_MAX_ATTEMPTS) {
+    return { ok: false, error: "too_many_attempts", status: 400 };
+  }
+  let expectedHash;
+  try {
+    expectedHash = hashEmailVerificationCode(normalized, digits);
+  } catch {
+    return { ok: false, error: "email_verification_not_configured", status: 503 };
+  }
+  if (expectedHash !== row.code_hash) {
+    const next = await incrementAttempts(row.id);
+    if ((next ?? 0) >= EMAIL_VERIFICATION_MAX_ATTEMPTS) {
+      return { ok: false, error: "too_many_attempts", status: 400 };
+    }
+    return { ok: false, error: "invalid_code", status: 400 };
+  }
+  await markConsumed(row.id);
+  let proofToken = null;
+  try {
+    proofToken = await signEmailVerificationProofJwt(normalized, purpose);
+  } catch {
+    proofToken = null;
+  }
+  return { ok: true, email: normalized, proofToken };
+}
+
+// src/routes/emailAuth.ts
+var router4 = (0, import_express4.Router)();
+function forwardedIp(req) {
+  const xf = req.get("x-forwarded-for");
+  const head = typeof xf === "string" ? xf.split(",")[0]?.trim() : "";
+  if (head) return head;
+  return typeof req.socket?.remoteAddress === "string" ? req.socket.remoteAddress : "";
+}
+router4.post("/auth/email/start", async (req, res) => {
+  const ip = forwardedIp(req);
+  const outcome = await dispatchEmailVerificationCode({
+    bodyEmail: req.body?.email,
+    bodyPurpose: req.body?.purpose,
+    ip
+  });
+  if (!outcome.ok) {
+    if (typeof outcome.retryAfterSeconds === "number") {
+      res.setHeader("Retry-After", String(outcome.retryAfterSeconds));
+    }
+    res.status(outcome.status).json({
+      ok: false,
+      error: outcome.error,
+      ...typeof outcome.retryAfterSeconds === "number" ? { retryAfterSeconds: outcome.retryAfterSeconds } : {}
+    });
+    return;
+  }
+  res.json({ ok: true });
+});
+router4.post("/auth/email/resend", async (req, res) => {
+  const ip = forwardedIp(req);
+  const outcome = await dispatchEmailVerificationCode({
+    bodyEmail: req.body?.email,
+    bodyPurpose: req.body?.purpose,
+    ip
+  });
+  if (!outcome.ok) {
+    if (typeof outcome.retryAfterSeconds === "number") {
+      res.setHeader("Retry-After", String(outcome.retryAfterSeconds));
+    }
+    res.status(outcome.status).json({
+      ok: false,
+      error: outcome.error,
+      ...typeof outcome.retryAfterSeconds === "number" ? { retryAfterSeconds: outcome.retryAfterSeconds } : {}
+    });
+    return;
+  }
+  res.json({ ok: true });
+});
+router4.post("/auth/email/verify", async (req, res) => {
+  const outcome = await verifyEmailCode({
+    bodyEmail: req.body?.email,
+    bodyCode: req.body?.code,
+    bodyPurpose: req.body?.purpose
+  });
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ ok: false, error: outcome.error });
+    return;
+  }
+  res.json({
+    ok: true,
+    email: outcome.email,
+    ...outcome.proofToken ? { proofToken: outcome.proofToken } : {}
+  });
+});
+var emailAuth_default = router4;
+
 // src/routes/adminApi.ts
-var import_express5 = __toESM(require_express2(), 1);
-import { createHash as createHash2, randomBytes as randomBytes5, randomUUID as randomUUID15 } from "node:crypto";
+var import_express8 = __toESM(require_express2(), 1);
+import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID23 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
-import path4 from "node:path";
+import path6 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/domain/adminCompanyKindPanelModules.ts
@@ -52501,9 +57332,9 @@ function computeAccessCodePublicStatus(row) {
 
 // src/db/partnerRegistrationRequestsData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID9 } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path2 from "node:path";
+import { randomUUID as randomUUID14 } from "node:crypto";
+import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
+import path3 from "node:path";
 init_client();
 init_schema2();
 var PARTNER_TYPES = [
@@ -52608,20 +57439,20 @@ function mapTimelineRow(r) {
 function uploadsBaseDir() {
   const fromEnv = (process.env.PARTNER_REGISTRATION_UPLOAD_DIR ?? "").trim();
   if (fromEnv) return fromEnv;
-  return path2.resolve(process.cwd(), "artifacts/api-server/uploads/partner-registration");
+  return path3.resolve(process.cwd(), "artifacts/api-server/uploads/partner-registration");
 }
 async function persistDocFile(opts) {
   const base = uploadsBaseDir();
   const safeName = opts.originalFileName.replace(/[^\w.\-]+/g, "_").slice(0, 120) || "document.bin";
-  const ext = path2.extname(safeName) || ".bin";
-  const dir = path2.join(base, opts.requestId);
-  await mkdir(dir, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID9()}${ext}`;
-  const absPath = path2.join(dir, fileName);
-  const relPath = path2.relative(base, absPath);
+  const ext = path3.extname(safeName) || ".bin";
+  const dir = path3.join(base, opts.requestId);
+  await mkdir2(dir, { recursive: true });
+  const fileName = `${Date.now()}-${randomUUID14()}${ext}`;
+  const absPath = path3.join(dir, fileName);
+  const relPath = path3.relative(base, absPath);
   const cleaned = opts.contentBase64.includes(",") ? opts.contentBase64.split(",").pop() ?? "" : opts.contentBase64;
   const buf = Buffer.from(cleaned, "base64");
-  await writeFile(absPath, buf);
+  await writeFile2(absPath, buf);
   return { absPath, relPath, sizeBytes: buf.byteLength };
 }
 function isPartnerType(v) {
@@ -52633,7 +57464,7 @@ function isRegistrationStatus(v) {
 async function createPartnerRegistrationRequest(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prr-${randomUUID9()}`;
+  const id = `prr-${randomUUID14()}`;
   await db2.insert(partnerRegistrationRequestsTable).values({
     id,
     company_name: input.companyName,
@@ -52832,7 +57663,7 @@ async function attachCompanyToPartnerRegistrationRequest(id, companyId, opts = {
 async function addPartnerRegistrationTimelineEvent(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prtl-${randomUUID9()}`;
+  const id = `prtl-${randomUUID14()}`;
   await db2.insert(partnerRegistrationTimelineTable).values({
     id,
     request_id: input.requestId,
@@ -52856,7 +57687,7 @@ async function addPartnerRegistrationMessage(requestId, actorType, actorLabel, m
 async function addPartnerRegistrationDocument(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prdoc-${randomUUID9()}`;
+  const id = `prdoc-${randomUUID14()}`;
   const persisted = await persistDocFile({
     requestId: input.requestId,
     originalFileName: input.originalFileName,
@@ -52914,10 +57745,10 @@ async function getPartnerRegistrationDetailAdmin(requestId) {
   return { request: req, documents, timeline, linkedCompany };
 }
 function resolvePartnerRegistrationStorageAbsolutePath(relPath) {
-  const base = path2.resolve(uploadsBaseDir());
-  const resolved = path2.resolve(base, relPath);
-  const rel = path2.relative(base, resolved);
-  if (rel.startsWith("..") || path2.isAbsolute(rel)) {
+  const base = path3.resolve(uploadsBaseDir());
+  const resolved = path3.resolve(base, relPath);
+  const rel = path3.relative(base, resolved);
+  if (rel.startsWith("..") || path3.isAbsolute(rel)) {
     throw new Error("invalid_storage_path");
   }
   return resolved;
@@ -53165,7 +57996,7 @@ init_rideBillingProfile();
 init_drizzle_orm();
 init_client();
 init_schema2();
-function n(v) {
+function n2(v) {
   const x = typeof v === "number" ? v : Number(v);
   return Number.isFinite(x) ? x : 0;
 }
@@ -53259,13 +58090,13 @@ async function getAdminFinanceSummary(args) {
     }).from(settlementsTable).where(settlementConds.length ? and(...settlementConds) : void 0)
   ]);
   return {
-    totalRevenue: n(rf[0]?.totalRevenue),
-    openReceivables: n(rf[0]?.openReceivables),
-    invoicesPaidCount: n(inv[0]?.paidCount),
-    invoicesOpenCount: n(inv[0]?.openCount),
-    invoicesOverdueCount: n(inv[0]?.overdueCount),
-    openSettlementsCount: n(set[0]?.openSettlementsCount),
-    openPlatformCommission: n(rf[0]?.openPlatformCommission),
+    totalRevenue: n2(rf[0]?.totalRevenue),
+    openReceivables: n2(rf[0]?.openReceivables),
+    invoicesPaidCount: n2(inv[0]?.paidCount),
+    invoicesOpenCount: n2(inv[0]?.openCount),
+    invoicesOverdueCount: n2(inv[0]?.overdueCount),
+    openSettlementsCount: n2(set[0]?.openSettlementsCount),
+    openPlatformCommission: n2(rf[0]?.openPlatformCommission),
     currency: "EUR"
   };
 }
@@ -53274,7 +58105,7 @@ async function countRideFinancialsAdmin(filters) {
   if (!db2) return 0;
   const cond = buildRideFinancialWhere(filters);
   const [row] = await db2.select({ n: sql`count(*)::int` }).from(rideFinancialsTable).where(cond.length ? and(...cond) : void 0);
-  return n(row?.n);
+  return n2(row?.n);
 }
 async function listRideFinancialsAdmin(args) {
   const db2 = getDb();
@@ -53333,7 +58164,7 @@ async function countInvoicesAdmin(filters) {
   if (filters.status?.trim()) cond.push(eq(invoicesTable.status, filters.status.trim()));
   if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
   const [row] = await db2.select({ n: sql`count(*)::int` }).from(invoicesTable).where(cond.length ? and(...cond) : void 0);
-  return n(row?.n);
+  return n2(row?.n);
 }
 async function listInvoicesAdmin(args) {
   const db2 = getDb();
@@ -53367,7 +58198,7 @@ async function countSettlementsAdmin(filters) {
   if (filters.companyId?.trim()) cond.push(eq(settlementsTable.company_id, filters.companyId.trim()));
   if (filters.status?.trim()) cond.push(eq(settlementsTable.status, filters.status.trim()));
   const [row] = await db2.select({ n: sql`count(*)::int` }).from(settlementsTable).where(cond.length ? and(...cond) : void 0);
-  return n(row?.n);
+  return n2(row?.n);
 }
 async function listSettlementsAdmin(args) {
   const db2 = getDb();
@@ -53400,7 +58231,7 @@ async function countPaymentsAdmin(filters) {
   if (filters.status?.trim()) cond.push(eq(paymentsTable.status, filters.status.trim()));
   if (filters.companyId?.trim()) cond.push(eq(paymentsTable.company_id, filters.companyId.trim()));
   const [row] = await db2.select({ n: sql`count(*)::int` }).from(paymentsTable).where(cond.length ? and(...cond) : void 0);
-  return n(row?.n);
+  return n2(row?.n);
 }
 async function listPaymentsAdmin(args) {
   const db2 = getDb();
@@ -53421,7 +58252,7 @@ async function countFinancialAuditAdmin(filters) {
   if (filters.action?.trim()) cond.push(eq(financialAuditLogTable.action, filters.action.trim()));
   if (filters.entityId?.trim()) cond.push(eq(financialAuditLogTable.entity_id, filters.entityId.trim()));
   const [row] = await db2.select({ n: sql`count(*)::int` }).from(financialAuditLogTable).where(cond.length ? and(...cond) : void 0);
-  return n(row?.n);
+  return n2(row?.n);
 }
 async function listFinancialAuditAdmin(args) {
   const db2 = getDb();
@@ -53480,6 +58311,231 @@ async function getFinanceEligibilitySummaryForRide(rideId) {
   };
 }
 
+// src/db/financeSettlementsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID15 } from "node:crypto";
+async function insertFinancialAuditInTx(tx, input) {
+  await tx.insert(financialAuditLogTable).values({
+    id: `fal-${randomUUID15()}`,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    action: input.action,
+    old_value_json: input.oldValue ?? {},
+    new_value_json: input.newValue,
+    actor_type: input.actorType,
+    actor_id: input.actorId ?? null
+  });
+}
+async function adminCreateSettlementWithRideAllocations(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const companyId = input.companyId.trim();
+  const periodStart = input.periodStart.trim();
+  const periodEnd = input.periodEnd.trim();
+  const rideIds = [...new Set(input.rideIds.map((x) => String(x ?? "").trim()).filter(Boolean))];
+  const keyFiltered = typeof input.idempotencyKey === "string" ? input.idempotencyKey.trim() : "";
+  if (!companyId || !periodStart || !periodEnd || rideIds.length === 0) {
+    return { ok: false, error: "invalid_input" };
+  }
+  if (keyFiltered) {
+    const prior = await db2.select().from(settlementsTable).where(eq(settlementsTable.idempotency_key, keyFiltered)).limit(1);
+    const p = prior[0];
+    if (p) {
+      if (p.company_id !== companyId) {
+        return { ok: false, error: "idempotency_company_mismatch", conflictSettlementId: p.id };
+      }
+      const allocs = await db2.select({ rideId: settlementRideAllocationsTable.ride_id }).from(settlementRideAllocationsTable).where(eq(settlementRideAllocationsTable.settlement_id, p.id));
+      const sortedExpected = [...rideIds].sort().join("|");
+      const sortedGot = allocs.map((a) => a.rideId).sort().join("|");
+      if (sortedExpected !== sortedGot) {
+        return { ok: false, error: "idempotency_ride_set_mismatch", conflictSettlementId: p.id };
+      }
+      return { ok: true, settlementId: p.id, idempotent: true };
+    }
+  }
+  try {
+    return await db2.transaction(async (tx) => {
+      const sortedRideIds = [...rideIds].sort();
+      const lockedRows = [];
+      for (const rideId of sortedRideIds) {
+        const rows = await tx.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, rideId)).for("update").limit(1);
+        const rf = rows[0];
+        if (!rf) {
+          throw Object.assign(new Error("ride_financial_not_found"), { code: "ride_financial_not_found", rideId });
+        }
+        if ((rf.partner_company_id ?? "").trim() !== companyId) {
+          throw Object.assign(new Error("ride_company_mismatch"), { code: "ride_company_mismatch", rideId });
+        }
+        if (!["open", "calculated"].includes(String(rf.settlement_status ?? ""))) {
+          throw Object.assign(new Error("settlement_status_not_eligible"), {
+            code: "settlement_status_not_eligible",
+            rideId
+          });
+        }
+        const dup = await tx.select({ settlement_id: settlementRideAllocationsTable.settlement_id }).from(settlementRideAllocationsTable).where(eq(settlementRideAllocationsTable.ride_id, rideId)).limit(1);
+        if (dup[0]) {
+          throw Object.assign(new Error("ride_already_allocated"), {
+            code: "ride_already_allocated",
+            rideId,
+            settlementId: dup[0].settlement_id
+          });
+        }
+        lockedRows.push({ rideId, rf });
+      }
+      const settlementNumber = `ST-${Date.now().toString(36)}-${randomUUID15().slice(0, 8)}`;
+      const settlementId = `setl-${randomUUID15().replace(/-/g, "").slice(0, 22)}`;
+      await tx.insert(settlementsTable).values({
+        id: settlementId,
+        company_id: companyId,
+        settlement_number: settlementNumber,
+        period_start: periodStart,
+        period_end: periodEnd,
+        gross_revenue: 0,
+        platform_commission: 0,
+        adjustments: 0,
+        payout_amount: 0,
+        status: "draft",
+        payment_reference: "",
+        ...keyFiltered ? { idempotency_key: keyFiltered } : {},
+        metadata_json: { createdByActor: input.actorLabel, rideIds: sortedRideIds }
+      });
+      let sumGross = 0;
+      let sumComm = 0;
+      let sumPay = 0;
+      for (const { rideId, rf } of lockedRows) {
+        await tx.insert(settlementRideAllocationsTable).values({
+          settlement_id: settlementId,
+          ride_id: rideId,
+          ride_financial_id: rf.id,
+          gross_amount_snap: rf.gross_amount,
+          commission_amount_snap: rf.commission_amount,
+          operator_payout_snap: rf.operator_payout_amount
+        });
+        sumGross += Number(rf.gross_amount ?? 0);
+        sumComm += Number(rf.commission_amount ?? 0);
+        sumPay += Number(rf.operator_payout_amount ?? 0);
+        await tx.update(rideFinancialsTable).set({
+          settlement_status: "calculated",
+          updated_at: /* @__PURE__ */ new Date()
+        }).where(eq(rideFinancialsTable.id, rf.id));
+      }
+      await tx.update(settlementsTable).set({
+        gross_revenue: Math.round(sumGross * 100) / 100,
+        platform_commission: Math.round(sumComm * 100) / 100,
+        payout_amount: Math.round(sumPay * 100) / 100,
+        updated_at: /* @__PURE__ */ new Date()
+      }).where(eq(settlementsTable.id, settlementId));
+      await insertFinancialAuditInTx(tx, {
+        entityType: "settlement",
+        entityId: settlementId,
+        action: "settlement_created_with_allocations",
+        newValue: {
+          companyId,
+          rideCount: rideIds.length,
+          gross: sumGross,
+          idempotencyKey: keyFiltered || null
+        },
+        actorType: "admin",
+        actorId: input.actorLabel
+      });
+      return { ok: true, settlementId };
+    });
+  } catch (e) {
+    const err = e;
+    if (err.code === "ride_financial_not_found") return { ok: false, error: "ride_financial_not_found" };
+    if (err.code === "ride_company_mismatch") return { ok: false, error: "ride_company_mismatch" };
+    if (err.code === "settlement_status_not_eligible") return { ok: false, error: "settlement_status_not_eligible" };
+    if (err.code === "ride_already_allocated") {
+      return {
+        ok: false,
+        error: "ride_already_allocated",
+        conflictSettlementId: e.settlementId
+      };
+    }
+    const msg = String(err.message ?? "");
+    if ((msg.includes("settlements_idempotency_key_unique") || msg.includes("duplicate key")) && keyFiltered) {
+      const dupq = await db2.select().from(settlementsTable).where(eq(settlementsTable.idempotency_key, keyFiltered)).limit(1);
+      const dup = dupq[0];
+      if (dup && dup.company_id === companyId) {
+        const allocs = await db2.select({ rideId: settlementRideAllocationsTable.ride_id }).from(settlementRideAllocationsTable).where(eq(settlementRideAllocationsTable.settlement_id, dup.id));
+        const sortedExpected = [...rideIds].sort().join("|");
+        const sortedGot = allocs.map((a) => a.rideId).sort().join("|");
+        if (sortedExpected === sortedGot) return { ok: true, settlementId: dup.id, idempotent: true };
+      }
+    }
+    throw e;
+  }
+}
+async function adminRecordSettlementPayoutAttempt(input) {
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const sid = input.settlementId.trim();
+  if (!sid) return { ok: false, error: "settlement_required" };
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount)) return { ok: false, error: "bad_amount" };
+  try {
+    return await db2.transaction(async (tx) => {
+      const stRows = await tx.select().from(settlementsTable).where(eq(settlementsTable.id, sid)).for("update").limit(1);
+      const st = stRows[0];
+      if (!st) throw Object.assign(new Error("not_found"), { code: "settlement_not_found" });
+      if (input.companyId && st.company_id !== String(input.companyId).trim()) {
+        throw Object.assign(new Error("company_mismatch"), { code: "company_mismatch" });
+      }
+      const openpay = await tx.select().from(paymentsTable).where(
+        and(
+          eq(paymentsTable.target_type, "settlement"),
+          eq(paymentsTable.target_id, sid),
+          inArray(paymentsTable.status, ["pending", "booked"])
+        )
+      ).orderBy(desc(paymentsTable.created_at)).limit(2);
+      if (openpay[0]) {
+        await insertFinancialAuditInTx(tx, {
+          entityType: "payment",
+          entityId: openpay[0].id,
+          action: "settlement_payment_idempotent_skip",
+          newValue: { settlementId: sid, existingStatus: openpay[0].status },
+          actorType: "admin",
+          actorId: input.actorLabel
+        });
+        return { ok: true, paymentId: openpay[0].id, idempotent: true };
+      }
+      const pid = `pay-${randomUUID15()}`;
+      await tx.insert(paymentsTable).values({
+        id: pid,
+        target_type: "settlement",
+        target_id: sid,
+        company_id: st.company_id,
+        payment_method: (input.paymentMethod ?? "bank_transfer").trim() || "bank_transfer",
+        amount,
+        paid_at: null,
+        reference: (input.reference ?? "").trim(),
+        status: "pending",
+        metadata_json: { createdByActor: input.actorLabel }
+      });
+      await insertFinancialAuditInTx(tx, {
+        entityType: "payment",
+        entityId: pid,
+        action: "settlement_payment_created",
+        newValue: { settlementId: sid, amount, reference: (input.reference ?? "").trim() },
+        actorType: "admin",
+        actorId: input.actorLabel
+      });
+      return { ok: true, paymentId: pid };
+    });
+  } catch (e) {
+    const err = e;
+    if (err.code === "settlement_not_found") return { ok: false, error: "settlement_not_found" };
+    if (err.code === "company_mismatch") return { ok: false, error: "company_mismatch" };
+    const msg = String(err.message ?? "");
+    if (msg.includes("payments_settlement_single_open")) {
+      return { ok: false, error: "duplicate_payment_blocked" };
+    }
+    throw e;
+  }
+}
+
 // src/routes/adminApi.ts
 init_accessCodesData();
 
@@ -53526,7 +58582,7 @@ async function listPanelAuditForCompany(companyId, opts) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID10 } from "node:crypto";
+import { randomUUID as randomUUID16 } from "node:crypto";
 function toPublic(r) {
   return {
     id: r.id,
@@ -53583,7 +58639,7 @@ async function insertPanelUser(input) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID10();
+  const id = randomUUID16();
   const username = input.username.trim();
   const email = input.email.trim();
   try {
@@ -53666,10 +58722,10 @@ async function panelUsernameTaken(normalized, excludeUserId) {
   if (!isPostgresConfigured()) return false;
   const db2 = getDb();
   if (!db2) return false;
-  const n3 = normalized.trim().toLowerCase();
-  if (!n3) return false;
+  const n4 = normalized.trim().toLowerCase();
+  if (!n4) return false;
   const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
-    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n3}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n3}`
+    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n4}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n4}`
   ).limit(1);
   return rows.length > 0;
 }
@@ -54259,11 +59315,15 @@ async function patchHomepageContentAdmin(patch, actorAdminUserId) {
   return rows[0] ? toDto(rows[0]) : null;
 }
 
+// src/routes/adminApi.ts
+init_appOperationalData();
+init_operationalTariffEngine();
+
 // src/db/homepageModulesData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID11 } from "node:crypto";
+import { randomUUID as randomUUID17 } from "node:crypto";
 var FAQ_DEFAULTS = [
   {
     id: "faq-default-1",
@@ -54332,7 +59392,7 @@ async function createHomepageFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID11();
+  const id = randomUUID17();
   await db2.insert(homepageFaqItemsTable).values({
     id,
     question: input.question,
@@ -54384,7 +59444,7 @@ async function createHomepageHowStep(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID11();
+  const id = randomUUID17();
   await db2.insert(homepageHowStepsTable).values({
     id,
     icon: input.icon,
@@ -54438,7 +59498,7 @@ async function createHomepageTrustMetric(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID11();
+  const id = randomUUID17();
   await db2.insert(homepageTrustMetricsTable).values({
     id,
     value: input.value,
@@ -54486,7 +59546,7 @@ async function deleteHomepageTrustMetric(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID12 } from "node:crypto";
+import { randomUUID as randomUUID18 } from "node:crypto";
 function normalizeHomepageHintType(raw) {
   const t = String(raw ?? "").trim().toLowerCase();
   if (t === "success") return "success";
@@ -54545,7 +59605,7 @@ async function createHomepagePlaceholder(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = `hpb-${randomUUID12()}`;
+  const id = `hpb-${randomUUID18()}`;
   const storedType = normalizeHomepageHintType(input.type);
   await db2.insert(homepagePlaceholdersTable).values({
     id,
@@ -54614,6 +59674,7 @@ async function getAdminOperatorSnapshot() {
     registration: { pendingCount: 0, latest: [] },
     support: { openCount: 0, inProgressCount: 0, answeredCount: 0, latestOpenThreads: [] },
     fleet: { pendingApprovalCount: 0, latest: [] },
+    fleetDrivers: { pendingApprovalCount: 0, latest: [] },
     companies: { blockedCount: 0, incompleteComplianceCount: 0, latestProblematic: [] },
     recentTasks: []
   };
@@ -54627,6 +59688,8 @@ async function getAdminOperatorSnapshot() {
     supportOpen,
     fleetPendingN,
     fleetPreview,
+    fleetDriversPendingN,
+    fleetDriversPreview,
     blockedRow,
     incompleteRow,
     probRows
@@ -54653,6 +59716,8 @@ async function getAdminOperatorSnapshot() {
     }),
     countPendingFleetVehiclesForAdmin(),
     listPendingFleetVehiclesForAdmin(5),
+    countPendingFleetDriversForAdmin(),
+    listPendingFleetDriversForAdmin(5),
     db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_blocked, true)),
     db2.select({ n: count() }).from(adminCompaniesTable).where(ne(adminCompaniesTable.compliance_status, "compliant")),
     db2.select({
@@ -54705,6 +59770,19 @@ async function getAdminOperatorSnapshot() {
       approvalStatus: r.vehicle.approvalStatus
     }))
   };
+  const fleetDrivers = {
+    pendingApprovalCount: fleetDriversPendingN,
+    latest: fleetDriversPreview.map((r) => ({
+      driverId: r.driverId,
+      companyId: r.companyId,
+      companyName: r.companyName,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      email: r.email,
+      approvalStatus: r.approvalStatus,
+      updatedAt: r.updatedAt
+    }))
+  };
   const companies = {
     blockedCount: Number(blockedRow[0]?.n ?? 0),
     incompleteComplianceCount: Number(incompleteRow[0]?.n ?? 0),
@@ -54749,12 +59827,25 @@ async function getAdminOperatorSnapshot() {
       severity: "medium"
     });
   }
+  for (const d of fleetDrivers.latest) {
+    const name = `${d.firstName} ${d.lastName}`.trim() || d.email;
+    recentTasks.push({
+      kind: "fleet_driver",
+      at: d.updatedAt,
+      title: name,
+      subtitle: `${d.companyName} \xB7 Fahrer-Freigabe`,
+      pageKey: "taxi-fleet-drivers",
+      refId: d.driverId,
+      severity: "medium"
+    });
+  }
   recentTasks.sort((a, b) => parseIsoToMs(b.at) - parseIsoToMs(a.at));
   const trimmedTasks = recentTasks.slice(0, 10);
   return {
     registration,
     support,
     fleet,
+    fleetDrivers,
     companies,
     recentTasks: trimmedTasks
   };
@@ -54767,9 +59858,9 @@ init_accessCodesData();
 init_ridesData();
 init_schema2();
 var OPEN_RIDE_STATUSES = ["pending", "accepted", "arrived", "in_progress"];
-var ACTIVE_RIDE_STATUSES3 = ["accepted", "arrived", "in_progress"];
+var ACTIVE_RIDE_STATUSES2 = ["accepted", "arrived", "in_progress"];
 var SETTLEMENT_OPEN = ["draft", "issued", "approved"];
-function n2(v) {
+function n3(v) {
   const x = typeof v === "number" ? v : Number(v);
   return Number.isFinite(x) ? x : 0;
 }
@@ -54850,12 +59941,52 @@ var KPI_FALLBACK = {
   openRides: 0,
   voucherLimitAvailable: null
 };
+function emptyTaxiQueues() {
+  return {
+    drivers: { openRequests: [], rejected: [], accessSuspended: [] },
+    vehicles: { waitingApproval: [], missingDocuments: [], rejected: [], blocked: [] }
+  };
+}
+function buildTaxiMandateQueues(drivers, vehicles) {
+  const openApproval = /* @__PURE__ */ new Set(["pending", "in_review", "missing_documents"]);
+  const driverRows = drivers.map((d) => ({
+    id: d.id,
+    firstName: d.firstName,
+    lastName: d.lastName,
+    email: d.email,
+    approvalStatus: d.approvalStatus,
+    workflowKey: d.workflow?.key ?? "",
+    workflowLabel: d.workflow?.label ?? "",
+    accessStatus: d.accessStatus,
+    updatedAt: d.updatedAt ?? null
+  }));
+  const vehicleRows = vehicles.map((v) => ({
+    id: v.id,
+    licensePlate: v.licensePlate,
+    model: v.model?.trim() ? v.model : null,
+    approvalStatus: v.approvalStatus,
+    updatedAt: v.updatedAt ?? null
+  }));
+  return {
+    drivers: {
+      openRequests: driverRows.filter((x) => openApproval.has(x.approvalStatus) && x.accessStatus === "active"),
+      rejected: driverRows.filter((x) => x.approvalStatus === "rejected"),
+      accessSuspended: driverRows.filter((x) => x.accessStatus === "suspended")
+    },
+    vehicles: {
+      waitingApproval: vehicleRows.filter((x) => x.approvalStatus === "draft" || x.approvalStatus === "pending_approval"),
+      missingDocuments: vehicleRows.filter((x) => x.approvalStatus === "missing_documents"),
+      rejected: vehicleRows.filter((x) => x.approvalStatus === "rejected"),
+      blocked: vehicleRows.filter((x) => x.approvalStatus === "blocked")
+    }
+  };
+}
 async function memPathRidesSummary(companyId) {
   const rides = await listRidesForCompany(companyId);
   const { monthStart, nextMonthStart } = utcMonthBounds();
   const by = (s) => rides.filter((r) => r.status === s).length;
   const openPipeline = rides.filter((r) => OPEN_RIDE_STATUSES.includes(r.status)).length;
-  const active = rides.filter((r) => ACTIVE_RIDE_STATUSES3.includes(r.status)).length;
+  const active = rides.filter((r) => ACTIVE_RIDE_STATUSES2.includes(r.status)).length;
   const completed = by("completed");
   const medicalRides = rides.filter((r) => r.rideKind === "medical").length;
   const insurancePayerRides = rides.filter((r) => r.payerKind === "insurance").length;
@@ -54951,8 +60082,9 @@ async function getCompanyMandateRead(companyId) {
           vehiclesTotal: vehicles.length,
           vehiclesApproved: vehicles.filter((v) => v.approvalStatus === "approved").length,
           vehiclesPendingReview: vehicles.filter(
-            (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval"
-          ).length
+            (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval" || v.approvalStatus === "missing_documents"
+          ).length,
+          queues: buildTaxiMandateQueues(drivers, vehicles)
         };
       })() : company.company_kind === "taxi" ? emptyTaxi() : null,
       hotel: company.company_kind === "hotel" ? emptyHotel() : null,
@@ -54988,8 +60120,9 @@ async function getCompanyMandateRead(companyId) {
           vehiclesTotal: vehicles.length,
           vehiclesApproved: vehicles.filter((v) => v.approvalStatus === "approved").length,
           vehiclesPendingReview: vehicles.filter(
-            (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval"
-          ).length
+            (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval" || v.approvalStatus === "missing_documents"
+          ).length,
+          queues: buildTaxiMandateQueues(drivers, vehicles)
         };
       })() : company.company_kind === "taxi" ? emptyTaxi() : null,
       hotel: company.company_kind === "hotel" ? emptyHotel() : null,
@@ -55069,7 +60202,7 @@ async function getCompanyMandateRead(companyId) {
     (acc, s) => acc + (st[s] ?? 0),
     0
   );
-  const active = ACTIVE_RIDE_STATUSES3.reduce(
+  const active = ACTIVE_RIDE_STATUSES2.reduce(
     (acc, s) => acc + (st[s] ?? 0),
     0
   );
@@ -55081,18 +60214,18 @@ async function getCompanyMandateRead(companyId) {
     completed: st.completed ?? 0,
     cancelled: st.cancelled ?? 0,
     rejected: st.rejected ?? 0,
-    revenueCompletedGross: n2(completedRevRow[0]?.rev),
+    revenueCompletedGross: n3(completedRevRow[0]?.rev),
     medicalRides: Number(medicalN[0]?.n ?? 0),
     insurancePayerRides: Number(insuranceN[0]?.n ?? 0)
   };
-  const monthCompletedRev = n2(ridesInMonthRow[0]?.monthCompletedRev);
+  const monthCompletedRev = n3(ridesInMonthRow[0]?.monthCompletedRev);
   const financials = {
     revenueCompletedGrossAllTime: ridesSummary.revenueCompletedGross,
     revenueCompletedGrossCurrentMonth: monthCompletedRev,
-    openPlatformCommissionEur: n2(finAggRow[0]?.openComm),
-    paidPlatformCommissionEur: n2(finAggRow[0]?.paidComm),
-    totalPlatformCommissionEur: n2(finAggRow[0]?.totalComm),
-    onrodaCommissionCurrentMonthEur: n2(commMonthRow[0]?.s),
+    openPlatformCommissionEur: n3(finAggRow[0]?.openComm),
+    paidPlatformCommissionEur: n3(finAggRow[0]?.paidComm),
+    totalPlatformCommissionEur: n3(finAggRow[0]?.totalComm),
+    onrodaCommissionCurrentMonthEur: n3(commMonthRow[0]?.s),
     openSettlementsCount: Number(settlementOpenRow[0]?.n ?? 0)
   };
   const kind = company.company_kind;
@@ -55112,7 +60245,7 @@ async function getCompanyMandateRead(companyId) {
     const vehiclesTotal = vehicles.length;
     const vehiclesApproved = vehicles.filter((v) => v.approvalStatus === "approved").length;
     const vehiclesPendingReview = vehicles.filter(
-      (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval"
+      (v) => v.approvalStatus === "draft" || v.approvalStatus === "pending_approval" || v.approvalStatus === "missing_documents"
     ).length;
     taxi = {
       driversTotal,
@@ -55122,7 +60255,8 @@ async function getCompanyMandateRead(companyId) {
       pScheinDeficient,
       vehiclesTotal,
       vehiclesApproved,
-      vehiclesPendingReview
+      vehiclesPendingReview,
+      queues: buildTaxiMandateQueues(drivers, vehicles)
     };
   }
   let hotel = null;
@@ -55177,7 +60311,8 @@ function emptyTaxi() {
     pScheinDeficient: 0,
     vehiclesTotal: 0,
     vehiclesApproved: 0,
-    vehiclesPendingReview: 0
+    vehiclesPendingReview: 0,
+    queues: emptyTaxiQueues()
   };
 }
 function emptyHotel() {
@@ -55193,399 +60328,6 @@ function emptyInsurer(company, sampleBillingReferences) {
     insurancePayerRides: 0,
     sampleBillingReferences
   };
-}
-
-// src/db/adminAuthData.ts
-init_drizzle_orm();
-import { randomUUID as randomUUID13 } from "node:crypto";
-
-// src/lib/adminConsoleRoles.ts
-var ADMIN_ROLE_VALUES = ["admin", "service", "taxi", "insurance", "hotel"];
-function parseAdminRole(raw) {
-  const s = raw.trim();
-  return ADMIN_ROLE_VALUES.includes(s) ? s : null;
-}
-function canAccessAdminStats(role) {
-  return role !== "hotel";
-}
-function canAccessAdminDashboardOverview(role) {
-  return role !== "hotel";
-}
-function canReadAdminCompaniesList(role) {
-  return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
-}
-function canMutateAdminCompanies(role) {
-  return role === "admin" || role === "service";
-}
-function canMutateScopedTaxiAdminCompany(role, scopeCompanyId, company) {
-  if (role !== "taxi") return false;
-  if (String(company.company_kind ?? "").trim() !== "taxi") return false;
-  const scope = scopeCompanyId?.trim();
-  if (scope) return scope === company.id;
-  return true;
-}
-function canMutateAdminFareAreas(role) {
-  return role === "admin" || role === "taxi";
-}
-function canAccessAdminAccessCodes(role) {
-  return role === "admin" || role === "service" || role === "taxi";
-}
-function canAccessInsurerAdminApi(role) {
-  return role === "admin" || role === "service" || role === "insurance";
-}
-function canAdminReleaseRide(role) {
-  return role === "admin" || role === "service" || role === "taxi" || role === "hotel";
-}
-var HOTEL_NO_SCOPE_COMPANY_ID = "__onroda_hotel_no_scope__";
-function mergeAdminRideListQueryForPrincipal(role, scopeCompanyId, query) {
-  if (role === "insurance") {
-    return { ...query, payerKind: "insurance" };
-  }
-  if (role === "hotel") {
-    const id = scopeCompanyId?.trim();
-    return { ...query, companyId: id || HOTEL_NO_SCOPE_COMPANY_ID };
-  }
-  return query;
-}
-function adminRideRowVisibleToPrincipal(role, scopeCompanyId, ride) {
-  if (role === "insurance") {
-    return ride.payerKind === "insurance";
-  }
-  if (role === "hotel") {
-    const id = scopeCompanyId?.trim();
-    if (!id) return false;
-    return String(ride.companyId ?? "") === id;
-  }
-  return true;
-}
-
-// src/db/adminAuthData.ts
-init_client();
-init_schema2();
-async function findActiveAdminAuthUserByUsername(username) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const normalized = username.trim().toLowerCase();
-  if (!normalized) return null;
-  const rows = await db2.select({
-    id: adminAuthUsersTable.id,
-    username: adminAuthUsersTable.username,
-    email: adminAuthUsersTable.email,
-    passwordHash: adminAuthUsersTable.password_hash,
-    role: adminAuthUsersTable.role,
-    scopeCompanyId: adminAuthUsersTable.scope_company_id,
-    sessionVersion: adminAuthUsersTable.session_version,
-    isActive: adminAuthUsersTable.is_active
-  }).from(adminAuthUsersTable).where(
-    and(
-      sql`lower(${adminAuthUsersTable.username}) = ${normalized}`,
-      eq(adminAuthUsersTable.is_active, true)
-    )
-  ).limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  const role = parseAdminRole(row.role);
-  if (!role) return null;
-  return {
-    id: row.id,
-    username: row.username,
-    email: row.email,
-    passwordHash: row.passwordHash,
-    role,
-    sessionVersion: row.sessionVersion,
-    isActive: row.isActive,
-    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null
-  };
-}
-async function findActiveAdminAuthUserByIdentity(identity) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const normalized = identity.trim().toLowerCase();
-  if (!normalized) return null;
-  const rows = await db2.select({
-    id: adminAuthUsersTable.id,
-    username: adminAuthUsersTable.username,
-    email: adminAuthUsersTable.email,
-    passwordHash: adminAuthUsersTable.password_hash,
-    role: adminAuthUsersTable.role,
-    scopeCompanyId: adminAuthUsersTable.scope_company_id,
-    sessionVersion: adminAuthUsersTable.session_version,
-    isActive: adminAuthUsersTable.is_active
-  }).from(adminAuthUsersTable).where(
-    and(
-      eq(adminAuthUsersTable.is_active, true),
-      sql`(lower(${adminAuthUsersTable.username}) = ${normalized} OR lower(${adminAuthUsersTable.email}) = ${normalized})`
-    )
-  ).limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  const role = parseAdminRole(row.role);
-  if (!role) return null;
-  return {
-    id: row.id,
-    username: row.username,
-    email: row.email,
-    passwordHash: row.passwordHash,
-    role,
-    sessionVersion: row.sessionVersion,
-    isActive: row.isActive,
-    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null
-  };
-}
-async function upsertAdminAuthUser(input) {
-  if (!isPostgresConfigured()) return;
-  const db2 = getDb();
-  if (!db2) return;
-  const username = input.username.trim();
-  if (!username) return;
-  const existingRows = await db2.select({ id: adminAuthUsersTable.id }).from(adminAuthUsersTable).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).limit(1);
-  const existing = existingRows[0];
-  if (existing) {
-    await db2.update(adminAuthUsersTable).set({
-      password_hash: input.passwordHash,
-      email: (input.email ?? "").trim(),
-      role: input.role,
-      session_version: sql`${adminAuthUsersTable.session_version}`,
-      is_active: true,
-      updated_at: /* @__PURE__ */ new Date()
-    }).where(eq(adminAuthUsersTable.id, existing.id));
-    return;
-  }
-  await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID13(),
-    username,
-    email: (input.email ?? "").trim(),
-    password_hash: input.passwordHash,
-    role: input.role,
-    scope_company_id: null,
-    session_version: 1,
-    is_active: true,
-    created_at: /* @__PURE__ */ new Date(),
-    updated_at: /* @__PURE__ */ new Date()
-  });
-}
-async function updateAdminAuthPasswordByUsername(input) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const username = input.username.trim();
-  if (!username) return false;
-  const rows = await db2.update(adminAuthUsersTable).set({
-    password_hash: input.passwordHash,
-    session_version: sql`${adminAuthUsersTable.session_version} + 1`,
-    updated_at: /* @__PURE__ */ new Date()
-  }).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).returning({ id: adminAuthUsersTable.id });
-  return rows.length > 0;
-}
-async function listAdminAuthUsers() {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select({
-    id: adminAuthUsersTable.id,
-    username: adminAuthUsersTable.username,
-    email: adminAuthUsersTable.email,
-    role: adminAuthUsersTable.role,
-    scopeCompanyId: adminAuthUsersTable.scope_company_id,
-    sessionVersion: adminAuthUsersTable.session_version,
-    isActive: adminAuthUsersTable.is_active,
-    createdAt: adminAuthUsersTable.created_at,
-    updatedAt: adminAuthUsersTable.updated_at
-  }).from(adminAuthUsersTable).orderBy(sql`lower(${adminAuthUsersTable.username}) asc`);
-  return rows.map((row) => {
-    const role = parseAdminRole(row.role);
-    if (!role) return null;
-    return {
-      id: row.id,
-      username: row.username,
-      email: row.email,
-      role,
-      scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
-      sessionVersion: row.sessionVersion,
-      isActive: row.isActive,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt
-    };
-  }).filter((row) => row !== null);
-}
-async function createAdminAuthUser(input) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const username = input.username.trim();
-  if (!username) return null;
-  const scope = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
-  const createdRows = await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID13(),
-    username,
-    email: (input.email ?? "").trim(),
-    password_hash: input.passwordHash,
-    role: input.role,
-    scope_company_id: scope,
-    session_version: 1,
-    is_active: input.isActive ?? true,
-    created_at: /* @__PURE__ */ new Date(),
-    updated_at: /* @__PURE__ */ new Date()
-  }).onConflictDoNothing().returning({
-    id: adminAuthUsersTable.id,
-    username: adminAuthUsersTable.username,
-    email: adminAuthUsersTable.email,
-    role: adminAuthUsersTable.role,
-    scopeCompanyId: adminAuthUsersTable.scope_company_id,
-    sessionVersion: adminAuthUsersTable.session_version,
-    isActive: adminAuthUsersTable.is_active,
-    createdAt: adminAuthUsersTable.created_at,
-    updatedAt: adminAuthUsersTable.updated_at
-  });
-  const created = createdRows[0];
-  if (!created) return null;
-  const role = parseAdminRole(created.role);
-  if (!role) return null;
-  return {
-    id: created.id,
-    username: created.username,
-    email: created.email,
-    role,
-    scopeCompanyId: created.scopeCompanyId?.trim() ? created.scopeCompanyId.trim() : null,
-    sessionVersion: created.sessionVersion,
-    isActive: created.isActive,
-    createdAt: created.createdAt,
-    updatedAt: created.updatedAt
-  };
-}
-async function findAdminAuthUserRowById(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: adminAuthUsersTable.id,
-    username: adminAuthUsersTable.username,
-    role: adminAuthUsersTable.role,
-    isActive: adminAuthUsersTable.is_active
-  }).from(adminAuthUsersTable).where(eq(adminAuthUsersTable.id, id)).limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  const role = parseAdminRole(row.role);
-  if (!role) return null;
-  return { id: row.id, username: row.username, role, isActive: row.isActive };
-}
-async function countActiveAdminRoleUsers() {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({
-    n: sql`count(*)::int`
-  }).from(adminAuthUsersTable).where(and(eq(adminAuthUsersTable.role, "admin"), eq(adminAuthUsersTable.is_active, true)));
-  const raw = rows[0]?.n;
-  return typeof raw === "number" ? raw : Number(raw) || 0;
-}
-async function deleteAdminAuthUserById(id) {
-  if (!isPostgresConfigured()) return false;
-  const db2 = getDb();
-  if (!db2) return false;
-  const deleted = await db2.delete(adminAuthUsersTable).where(eq(adminAuthUsersTable.id, id)).returning({ id: adminAuthUsersTable.id });
-  return deleted.length > 0;
-}
-async function patchAdminAuthUserById(input) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const patch = { updated_at: /* @__PURE__ */ new Date() };
-  if (typeof input.role === "string") patch.role = input.role;
-  if (typeof input.email === "string") patch.email = input.email.trim();
-  if (typeof input.isActive === "boolean") patch.is_active = input.isActive;
-  if (input.scopeCompanyId !== void 0) {
-    patch.scope_company_id = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
-  }
-  if (typeof input.passwordHash === "string" && input.passwordHash) {
-    patch.password_hash = input.passwordHash;
-    patch.session_version = sql`${adminAuthUsersTable.session_version} + 1`;
-  }
-  const rows = await db2.update(adminAuthUsersTable).set(patch).where(eq(adminAuthUsersTable.id, input.id)).returning({
-    id: adminAuthUsersTable.id,
-    username: adminAuthUsersTable.username,
-    email: adminAuthUsersTable.email,
-    role: adminAuthUsersTable.role,
-    scopeCompanyId: adminAuthUsersTable.scope_company_id,
-    sessionVersion: adminAuthUsersTable.session_version,
-    isActive: adminAuthUsersTable.is_active,
-    createdAt: adminAuthUsersTable.created_at,
-    updatedAt: adminAuthUsersTable.updated_at
-  });
-  const row = rows[0];
-  if (!row) return null;
-  const role = parseAdminRole(row.role);
-  if (!role) return null;
-  return {
-    id: row.id,
-    username: row.username,
-    email: row.email,
-    role,
-    scopeCompanyId: row.scopeCompanyId?.trim() ? row.scopeCompanyId.trim() : null,
-    sessionVersion: row.sessionVersion,
-    isActive: row.isActive,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt
-  };
-}
-async function createAdminPasswordResetToken(input) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.insert(adminAuthPasswordResetsTable).values({
-    id: randomUUID13(),
-    admin_user_id: input.adminUserId,
-    token_hash: input.tokenHash,
-    expires_at: input.expiresAt,
-    created_at: /* @__PURE__ */ new Date()
-  }).returning({
-    id: adminAuthPasswordResetsTable.id,
-    adminUserId: adminAuthPasswordResetsTable.admin_user_id,
-    tokenHash: adminAuthPasswordResetsTable.token_hash,
-    expiresAt: adminAuthPasswordResetsTable.expires_at,
-    usedAt: adminAuthPasswordResetsTable.used_at,
-    createdAt: adminAuthPasswordResetsTable.created_at
-  });
-  return rows[0] ?? null;
-}
-async function findUsableAdminPasswordResetByTokenHash(tokenHash) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: adminAuthPasswordResetsTable.id,
-    adminUserId: adminAuthPasswordResetsTable.admin_user_id,
-    tokenHash: adminAuthPasswordResetsTable.token_hash,
-    expiresAt: adminAuthPasswordResetsTable.expires_at,
-    usedAt: adminAuthPasswordResetsTable.used_at,
-    createdAt: adminAuthPasswordResetsTable.created_at
-  }).from(adminAuthPasswordResetsTable).where(eq(adminAuthPasswordResetsTable.token_hash, tokenHash)).limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  if (row.usedAt) return null;
-  if (row.expiresAt.getTime() <= Date.now()) return null;
-  return row;
-}
-async function markAdminPasswordResetUsed(id) {
-  if (!isPostgresConfigured()) return;
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.update(adminAuthPasswordResetsTable).set({ used_at: /* @__PURE__ */ new Date() }).where(eq(adminAuthPasswordResetsTable.id, id));
-}
-async function insertAdminAuthAuditLog(input) {
-  if (!isPostgresConfigured()) return;
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.insert(adminAuthAuditLogTable).values({
-    id: randomUUID13(),
-    admin_user_id: input.adminUserId ?? null,
-    username: (input.username ?? "").trim(),
-    action: input.action,
-    meta: input.meta ?? {},
-    created_at: /* @__PURE__ */ new Date()
-  });
 }
 
 // src/routes/adminApi.ts
@@ -55644,46 +60386,125 @@ async function getAdminTaxiFleetVehicleDetail(companyId, vehicleId) {
   };
 }
 
-// src/lib/password.ts
-import { randomBytes as randomBytes3, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-var scryptAsync = promisify(scrypt);
-var PREFIX = "v1";
-var KEYLEN = 64;
-var SCRYPT_OPTS = {
-  N: 16384,
-  r: 8,
-  p: 1,
-  /** Node/scrypt Speicherlimit — zu niedrig → `scrypt` schlägt fehl, `verifyPassword` wirkt wie „falsches Passwort“. Nicht wieder verkleinern. */
-  maxmem: 64 * 1024 * 1024
-};
-async function hashPassword(plain) {
-  const salt = randomBytes3(16);
-  const key = await scryptAsync(plain, salt, KEYLEN, SCRYPT_OPTS);
-  return `${PREFIX}.${salt.toString("base64url")}.${key.toString("base64url")}`;
+// src/lib/persistPanelUserManualAttachment.ts
+import { mkdir as mkdir3, writeFile as writeFile3 } from "node:fs/promises";
+import path4 from "node:path";
+import { randomUUID as randomUUID19 } from "node:crypto";
+var MAX_BYTES = 6 * 1024 * 1024;
+function uploadsRoot() {
+  const fromEnv = (process.env.PANEL_USER_MANUAL_UPLOAD_DIR ?? "").trim();
+  if (fromEnv) return path4.resolve(fromEnv);
+  return path4.resolve(process.cwd(), "artifacts/api-server/uploads/panel-user-manual");
 }
-async function verifyPassword(plain, stored) {
-  if (!stored.startsWith(`${PREFIX}.`)) return false;
-  const parts = stored.split(".");
-  if (parts.length !== 3) return false;
-  const [, saltB64, hashB64] = parts;
-  if (!saltB64 || !hashB64) return false;
-  let salt;
-  let expected;
+async function persistPanelUserManualAttachment(input) {
+  const safeName = input.originalFileName.replace(/[^\w.\-]+/g, "_").slice(0, 120) || "document.bin";
+  const ext = path4.extname(safeName) || ".bin";
+  const cleaned = input.contentBase64.includes(",") ? input.contentBase64.split(",").pop() ?? "" : input.contentBase64;
+  let buf;
   try {
-    salt = Buffer.from(saltB64, "base64url");
-    expected = Buffer.from(hashB64, "base64url");
+    buf = Buffer.from(cleaned, "base64");
   } catch {
-    return false;
+    return { ok: false, reason: "invalid_base64" };
   }
-  if (salt.length === 0 || expected.length !== KEYLEN) return false;
-  let key;
+  if (buf.byteLength === 0) {
+    return { ok: false, reason: "empty_file" };
+  }
+  if (buf.byteLength > MAX_BYTES) {
+    return { ok: false, reason: "file_too_large" };
+  }
+  const base = uploadsRoot();
+  const dir = path4.join(base, input.companyId, input.panelUserId);
+  await mkdir3(dir, { recursive: true });
+  const fileName = `${Date.now()}-${randomUUID19()}${ext}`;
+  const absPath = path4.join(dir, fileName);
+  const baseR = path4.resolve(base);
+  const resolved = path4.resolve(absPath);
+  if (!resolved.startsWith(baseR + path4.sep)) {
+    return { ok: false, reason: "invalid_path" };
+  }
+  const relPath = path4.relative(baseR, resolved);
+  await writeFile3(resolved, buf);
+  return { ok: true, relPath, sizeBytes: buf.byteLength };
+}
+
+// src/lib/panelUserWelcomeMail.ts
+import nodemailer2 from "nodemailer";
+function panelBaseUrl() {
+  return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
+}
+function marketingLogoSrc() {
+  const u = (process.env.PARTNER_REGISTRATION_STATUS_PAGE_URL ?? "https://www.onroda.de/partner/anfrage-status").replace(
+    /\/$/,
+    ""
+  );
   try {
-    key = await scryptAsync(plain, salt, expected.length, SCRYPT_OPTS);
+    return `${new URL(u).origin}/onroda-mark.png`;
   } catch {
-    return false;
+    return "https://www.onroda.de/onroda-mark.png";
   }
-  return key.length === expected.length && timingSafeEqual(key, expected);
+}
+function escapeHtml3(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+async function sendPanelUserWelcomeEmail(input) {
+  const smtpUrl = (process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+  const from = (process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+  const to = input.to.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to },
+      "panel user welcome mail skipped (set PARTNER_REGISTRATION_SMTP_URL and PARTNER_REGISTRATION_MAIL_FROM)"
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const panel = panelBaseUrl();
+  const company = input.companyName.trim() || "Ihr Unternehmen";
+  const user = input.username.trim();
+  const pw = input.initialPassword;
+  const kind = (input.accessKindLabel ?? "").trim();
+  const subject = `Onroda: Zugang zum Partner-Portal \u2014 ${company}`;
+  const text2 = [
+    "Guten Tag,",
+    "",
+    `f\xFCr \u201E${company}\u201C wurde ein Zugang zum Onroda-Partner-Portal angelegt.`,
+    kind ? `Art / Hinweis: ${kind}` : "",
+    "",
+    `Partner-Portal: ${panel}`,
+    `Benutzername: ${user}`,
+    `Einmalpasswort: ${pw}`,
+    "",
+    "Bitte \xE4ndern Sie das Passwort nach dem ersten Login.",
+    "",
+    "Mit freundlichen Gr\xFC\xDFen",
+    "Onroda"
+  ].filter(Boolean).join("\n");
+  const logoSrc = marketingLogoSrc();
+  const kindHtml = kind ? `<p><strong>Art / Hinweis:</strong> ${escapeHtml3(kind)}</p>` : "";
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p style="margin:0 0 16px"><img src="${escapeHtml3(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
+  <p>Guten Tag,</p>
+  <p>f\xFCr <strong>${escapeHtml3(company)}</strong> wurde ein Zugang zum <strong>Onroda-Partner-Portal</strong> angelegt.</p>
+  ${kindHtml}
+  <p><a href="${escapeHtml3(panel)}">Zum Partner-Portal</a></p>
+  <p><strong>Benutzername:</strong> <code>${escapeHtml3(user)}</code><br/>
+     <strong>Einmalpasswort:</strong> <code>${escapeHtml3(pw)}</code></p>
+  <p>Bitte \xE4ndern Sie das Passwort nach dem ersten Login.</p>
+  <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
+</body></html>`;
+  try {
+    const transport = nodemailer2.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text: text2, html });
+    logger.info({ to, event: "admin.panel_user.welcome_mail.sent" }, "panel user welcome mail sent");
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err, to }, "panel user welcome mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
 }
 
 // src/lib/panelPermissions.ts
@@ -55756,11 +60577,11 @@ function canPartnerAssignPanelRole(actor, target) {
 }
 
 // src/lib/tempPassword.ts
-import { randomBytes as randomBytes4 } from "node:crypto";
+import { randomBytes as randomBytes5 } from "node:crypto";
 var ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
 function generateTemporaryPassword(length = 14) {
   const size = Math.max(12, Math.min(32, Math.floor(length)));
-  const bytes = randomBytes4(size);
+  const bytes = randomBytes5(size);
   let out = "";
   for (let i = 0; i < size; i += 1) {
     out += ALPHABET[bytes[i] % ALPHABET.length];
@@ -55768,9 +60589,98 @@ function generateTemporaryPassword(length = 14) {
   return out;
 }
 
+// src/lib/adminPasswordResetMail.ts
+import nodemailer3 from "nodemailer";
+function escapeHtml4(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function resolveSmtpUrl() {
+  return (process.env.ADMIN_AUTH_MAIL_SMTP_URL ?? process.env.PARTNER_REGISTRATION_SMTP_URL ?? "").trim();
+}
+function resolveMailFrom() {
+  return (process.env.ADMIN_AUTH_MAIL_FROM ?? process.env.PARTNER_REGISTRATION_MAIL_FROM ?? "").trim();
+}
+function adminPasswordResetPageBaseUrl() {
+  const raw = process.env.ADMIN_AUTH_PASSWORD_RESET_PAGE_URL?.trim() || "https://admin.onroda.de/partners/password-reset";
+  return raw.replace(/\/$/, "");
+}
+function buildAdminPasswordResetLink(rawToken) {
+  const base = adminPasswordResetPageBaseUrl();
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}token=${encodeURIComponent(rawToken)}`;
+}
+async function sendAdminPasswordResetMail(input) {
+  const smtpUrl = resolveSmtpUrl();
+  const from = resolveMailFrom();
+  const to = input.to.trim();
+  if (!to || !to.includes("@")) {
+    return { ok: false, reason: "invalid_to" };
+  }
+  if (!smtpUrl || !from) {
+    logger.info(
+      { to: to.replace(/(.{2}).*(@.*)/, "$1\u2026$2") },
+      "admin password reset mail skipped (set ADMIN_AUTH_MAIL_SMTP_URL + ADMIN_AUTH_MAIL_FROM, or PARTNER_REGISTRATION_*)"
+    );
+    return { ok: false, reason: "smtp_not_configured" };
+  }
+  const subject = "Passwort zur\xFCcksetzen";
+  const until = input.expiresAt.toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
+  const ttlMinutes = Math.max(1, Math.round((input.expiresAt.getTime() - Date.now()) / 6e4));
+  const resetLinkEsc = escapeHtml4(input.resetLink);
+  const text2 = [
+    "Du hast eine Anfrage zum Zur\xFCcksetzen deines Passworts f\xFCr die Admin-Konsole gestellt.",
+    "",
+    input.resetLink,
+    "",
+    `Dieser Link ist etwa ${ttlMinutes} Minuten g\xFCltig (bis ${until}, Europe/Berlin), sofern nicht bereits verwendet.`,
+    `Zugang: ${input.username}`,
+    "",
+    "Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht."
+  ].join("\n");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;">
+  <div style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;">
+    Du hast eine Anfrage zum Zur\xFCcksetzen deines Passworts. Der Link ist nur begrenzt g\xFCltig.
+  </div>
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;padding:20px;">
+    <div style="max-width:500px;margin:auto;background:white;padding:30px;border-radius:10px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:28px;font-weight:800;letter-spacing:0.02em;line-height:1.2;">
+          <span style="color:#e30613;">On</span><span style="color:#111111;">roda</span>
+        </div>
+      </div>
+      <h2 style="text-align:center;margin:24px 0 16px;font-size:20px;color:#111;">Passwort zur\xFCcksetzen</h2>
+      <p style="margin:0 0 12px;line-height:1.5;color:#333;">Du hast eine Anfrage zum Zur\xFCcksetzen deines Passworts gestellt.</p>
+      <div style="text-align:center;margin:30px 0;">
+        <a href="${resetLinkEsc}"
+           style="display:inline-block;background:#e30613;color:#ffffff;padding:15px 25px;text-decoration:none;border-radius:6px;font-weight:bold;">
+          Passwort zur\xFCcksetzen
+        </a>
+      </div>
+      <p style="font-size:12px;color:#888;margin:0;line-height:1.5;">
+        Dieser Link ist ${ttlMinutes} Minuten g\xFCltig (bis ${escapeHtml4(until)}, Europe/Berlin).
+      </p>
+      <p style="font-size:12px;color:#888;margin:12px 0 0;line-height:1.5;">
+        Wenn du keinen Reset angefordert hast, ignoriere diese Nachricht.
+      </p>
+    </div>
+  </div>
+</body></html>`;
+  try {
+    const transport = nodemailer3.createTransport(smtpUrl);
+    await transport.sendMail({ from, to, subject, text: text2, html });
+    logger.info({ event: "admin.auth.password_reset_mail.sent" }, "admin password reset mail sent");
+    return { ok: true };
+  } catch (err) {
+    logger.warn({ err }, "admin password reset mail failed");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
 // src/lib/partnerApprovalMail.ts
-import nodemailer from "nodemailer";
-function panelBaseUrl() {
+import nodemailer4 from "nodemailer";
+function panelBaseUrl2() {
   return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
 }
 function statusPageUrl() {
@@ -55779,7 +60689,15 @@ function statusPageUrl() {
     ""
   );
 }
-function escapeHtml3(s) {
+function marketingDocumentMarkUrl() {
+  try {
+    const o = new URL(statusPageUrl());
+    return `${o.origin}/onroda-mark.png`;
+  } catch {
+    return "https://www.onroda.de/onroda-mark.png";
+  }
+}
+function escapeHtml5(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function buildBodies(input) {
@@ -55812,17 +60730,19 @@ function buildBodies(input) {
   ].join("\n");
   const pwHtml = input.ownerUsername && input.ownerInitialPassword ? `<p><strong>Erstzugang Partner-Portal</strong></p>
          <ul>
-           <li>Benutzername: <code>${escapeHtml3(input.ownerUsername)}</code></li>
-           <li>Einmalpasswort: <code>${escapeHtml3(input.ownerInitialPassword)}</code></li>
+           <li>Benutzername: <code>${escapeHtml5(input.ownerUsername)}</code></li>
+           <li>Einmalpasswort: <code>${escapeHtml5(input.ownerInitialPassword)}</code></li>
          </ul>
          <p>Bitte \xE4ndern Sie das Passwort nach dem ersten Login.</p>` : `<p>Die Zugangsdaten zum Partner-Portal erhalten Sie separat von uns, falls noch nicht angelegt.</p>`;
+  const logoSrc = marketingDocumentMarkUrl();
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
+  <p style="margin:0 0 16px"><img src="${escapeHtml5(logoSrc)}" alt="ONRODA" width="120" height="40" style="display:block;max-width:100%;height:auto;border:0" /></p>
   <p>Guten Tag,</p>
-  <p>Ihre Partneranfrage f\xFCr <strong>${escapeHtml3(company)}</strong> wurde <strong>freigegeben</strong>.</p>
-  <p><a href="${escapeHtml3(panel)}">Zum Partner-Portal</a></p>
-  <p><a href="${escapeHtml3(status)}">Anfrage-Status ansehen</a></p>
+  <p>Ihre Partneranfrage f\xFCr <strong>${escapeHtml5(company)}</strong> wurde <strong>freigegeben</strong>.</p>
+  <p><a href="${escapeHtml5(panel)}">Zum Partner-Portal</a></p>
+  <p><a href="${escapeHtml5(status)}">Anfrage-Status ansehen</a></p>
   ${pwHtml}
   <p style="margin-top:24px;color:#6b7280;font-size:12px;">Onroda</p>
 </body></html>`;
@@ -55842,7 +60762,7 @@ async function sendPartnerRegistrationApprovedEmail(input) {
     );
     return { ok: false, reason: "smtp_not_configured" };
   }
-  const panelUrl = panelBaseUrl();
+  const panelUrl = panelBaseUrl2();
   const { subject, text: text2, html } = buildBodies({
     companyName: input.companyName,
     panelUrl,
@@ -55850,7 +60770,7 @@ async function sendPartnerRegistrationApprovedEmail(input) {
     ownerInitialPassword: input.ownerInitialPassword
   });
   try {
-    const transport = nodemailer.createTransport(smtpUrl);
+    const transport = nodemailer4.createTransport(smtpUrl);
     await transport.sendMail({ from, to, subject, text: text2, html });
     logger.info({ to, event: "partner.registration.approval_mail.sent" }, "partner approval mail sent");
     return { ok: true };
@@ -55878,7 +60798,7 @@ async function sendPartnerRegistrationAdminMessageEmail(input) {
     return { ok: false, reason: "smtp_not_configured" };
   }
   const status = statusPageUrl();
-  const ref = escapeHtml3(input.requestId);
+  const ref = escapeHtml5(input.requestId);
   const company = input.companyName.trim() || "Ihre Anfrage";
   const subject = `Onroda: R\xFCckmeldung zu Ihrer Partneranfrage \u2014 ${company}`;
   const text2 = [
@@ -55899,16 +60819,16 @@ async function sendPartnerRegistrationAdminMessageEmail(input) {
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
   <p>Guten Tag,</p>
   <p>Sie erhalten eine R\xFCckmeldung zu Ihrer <strong>Partner-Registrierung</strong> (Referenz: <code>${ref}</code>).</p>
-  <blockquote style="border-left:3px solid #0ea5e9;padding-left:12px;margin:12px 0;white-space:pre-wrap;">${escapeHtml3(
+  <blockquote style="border-left:3px solid #0ea5e9;padding-left:12px;margin:12px 0;white-space:pre-wrap;">${escapeHtml5(
     message2
   )}</blockquote>
-  <p><a href="${escapeHtml3(status)}">Zum Anfrage-Status (Homepage)</a></p>
-  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Absender: ${escapeHtml3(
+  <p><a href="${escapeHtml5(status)}">Zum Anfrage-Status (Homepage)</a></p>
+  <p style="margin-top:16px;font-size:12px;color:#6b7280;">Absender: ${escapeHtml5(
     input.adminLabel
   )} \xB7 Onroda-Plattform (kein Support-Ticket-Posteingang)</p>
 </body></html>`;
   try {
-    const transport = nodemailer.createTransport(smtpUrl);
+    const transport = nodemailer4.createTransport(smtpUrl);
     await transport.sendMail({ from, to, subject, text: text2, html });
     logger.info(
       { to, requestId: input.requestId, event: "partner.registration.admin_reply_mail.sent" },
@@ -55956,17 +60876,17 @@ async function sendPartnerRegistrationRejectionEmail(input) {
 <html lang="de"><head><meta charset="utf-8" /></head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111827;">
   <p>Guten Tag,</p>
-  <p>Leider wurde Ihre <strong>Registrierungsanfrage</strong> (Referenz: <code>${escapeHtml3(
+  <p>Leider wurde Ihre <strong>Registrierungsanfrage</strong> (Referenz: <code>${escapeHtml5(
     input.requestId
-  )}</code>) f\xFCr <strong>${escapeHtml3(company)}</strong> abgelehnt.</p>
-  <p style="white-space: pre-wrap; border-left:3px solid #ef4444; padding-left:12px;">${escapeHtml3(
+  )}</code>) f\xFCr <strong>${escapeHtml5(company)}</strong> abgelehnt.</p>
+  <p style="white-space: pre-wrap; border-left:3px solid #ef4444; padding-left:12px;">${escapeHtml5(
     textBody
   )}</p>
-  <p><a href="${escapeHtml3(status)}">Hinweis: Statusseite (Homepage)</a></p>
+  <p><a href="${escapeHtml5(status)}">Hinweis: Statusseite (Homepage)</a></p>
   <p style="margin-top:16px;font-size:12px;color:#6b7280;">Dieser Vorgang betrifft die Homepage-Registrierung, nicht den Mandanten-Support-Posteingang.</p>
 </body></html>`;
   try {
-    const transport = nodemailer.createTransport(smtpUrl);
+    const transport = nodemailer4.createTransport(smtpUrl);
     await transport.sendMail({ from, to, subject, text: text2, html });
     logger.info(
       { to, requestId: input.requestId, event: "partner.registration.rejection_mail.sent" },
@@ -55980,15 +60900,15 @@ async function sendPartnerRegistrationRejectionEmail(input) {
 }
 
 // src/routes/adminInsuranceApi.ts
-var import_express4 = __toESM(require_express2(), 1);
+var import_express5 = __toESM(require_express2(), 1);
 init_client();
 import { createReadStream, existsSync as existsSync2 } from "node:fs";
 
 // src/db/insurerRideProjectionData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID14 } from "node:crypto";
-import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
-import path3 from "node:path";
+import { randomUUID as randomUUID20 } from "node:crypto";
+import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
+import path5 from "node:path";
 
 // src/lib/insurerRideDto.ts
 function parsePlzOrtFromLabel(label) {
@@ -56035,7 +60955,7 @@ var CANCELLED_STATUSES = [
 function insurerExportDir() {
   const fromEnv = (process.env.ONRODA_INSURER_EXPORT_DIR ?? "").trim();
   if (fromEnv) return fromEnv;
-  return path3.resolve(process.cwd(), "artifacts/api-server/uploads/insurer-exports");
+  return path5.resolve(process.cwd(), "artifacts/api-server/uploads/insurer-exports");
 }
 function rowAmountGross(r, g) {
   if (g != null && !Number.isNaN(g)) return g;
@@ -56398,7 +61318,7 @@ async function createInsurerExportBatch(input) {
   const coIds = [...new Set(visible.map((r) => r.company_id).filter(Boolean))];
   const companies = coIds.length > 0 ? await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable).where(inArray(adminCompaniesTable.id, coIds)) : [];
   const coName = new Map(companies.map((c) => [c.id, c.name]));
-  const batchId = `insx-${randomUUID14()}`;
+  const batchId = `insx-${randomUUID20()}`;
   const lines = [];
   lines.push(
     "schema_version;ref_id;company_id;company_name;driver_id;vehicle;datetime_utc;from_plz;from_ort;to_plz;to_ort;amount_gross;ride_status;settlement_status;payer_kind;passenger_pseudonym_id;billing_ref"
@@ -56432,11 +61352,11 @@ async function createInsurerExportBatch(input) {
     );
   }
   const fileName = `insurer-export-${batchId}.csv`;
-  const rel = path3.join(batchId, fileName);
+  const rel = path5.join(batchId, fileName);
   const base = insurerExportDir();
-  await mkdir2(path3.join(base, batchId), { recursive: true });
-  const abs = path3.join(base, rel);
-  await writeFile2(abs, lines.join("\n"), "utf8");
+  await mkdir4(path5.join(base, batchId), { recursive: true });
+  const abs = path5.join(base, rel);
+  await writeFile4(abs, lines.join("\n"), "utf8");
   const rideIds = visible.map((r) => r.id);
   await db2.insert(billingExportBatchesTable).values({
     id: batchId,
@@ -56454,7 +61374,7 @@ async function createInsurerExportBatch(input) {
 }
 function resolveInsurerExportFilePath(rel) {
   if (!rel?.trim()) return "";
-  return path3.join(insurerExportDir(), rel);
+  return path5.join(insurerExportDir(), rel);
 }
 async function getInsurerExportBatchById(id) {
   const db2 = getDb();
@@ -56463,124 +61383,9 @@ async function getInsurerExportBatchById(id) {
   return rows[0] ?? null;
 }
 
-// src/middleware/requireAdminApiBearer.ts
-init_client();
-function getAdminSessionSecret() {
-  const s = (process.env.ADMIN_PANEL_JWT_SECRET ?? process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (!s) throw new Error("ADMIN_PANEL_JWT_SECRET not configured");
-  return new TextEncoder().encode(s);
-}
-function readConfiguredUsers() {
-  const users = [];
-  const ownerUser = (process.env.ADMIN_PANEL_USERNAME ?? "").trim();
-  const ownerPass = (process.env.ADMIN_PANEL_PASSWORD ?? "").trim();
-  if (ownerUser && ownerPass) users.push({ username: ownerUser, password: ownerPass, role: "admin" });
-  const svcUser = (process.env.ADMIN_PANEL_SERVICE_USERNAME ?? "").trim();
-  const svcPass = (process.env.ADMIN_PANEL_SERVICE_PASSWORD ?? "").trim();
-  if (svcUser && svcPass) users.push({ username: svcUser, password: svcPass, role: "service" });
-  return users;
-}
-async function signAdminSessionJwt(input) {
-  const user = await findActiveAdminAuthUserByUsername(input.username);
-  const secret = getAdminSessionSecret();
-  return new SignJWT({
-    kind: "admin_panel",
-    username: input.username,
-    role: input.role,
-    sv: user?.sessionVersion ?? 1
-  }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setIssuer("onroda-admin").setExpirationTime("12h").sign(secret);
-}
-async function verifyAdminSessionJwt(token) {
-  try {
-    const secret = getAdminSessionSecret();
-    const { payload } = await jwtVerify(token, secret, {
-      algorithms: ["HS256"],
-      issuer: "onroda-admin"
-    });
-    if (payload.kind !== "admin_panel") return null;
-    const username = typeof payload.username === "string" ? payload.username : "";
-    const role = parseAdminRole(typeof payload.role === "string" ? payload.role : "");
-    const sessionVersion = typeof payload.sv === "number" ? payload.sv : 1;
-    if (!username || !role) return null;
-    const user = await findActiveAdminAuthUserByUsername(username);
-    if (!user) return null;
-    if (user.sessionVersion !== sessionVersion) return null;
-    return {
-      username,
-      role,
-      kind: "session",
-      scopeCompanyId: user.scopeCompanyId ?? null
-    };
-  } catch {
-    return null;
-  }
-}
-async function authenticateAdminCredentials(username, password) {
-  const u = username.trim();
-  const p = password;
-  if (!u || !p) return { ok: false, error: "invalid_credentials", detail: "empty_identity" };
-  const dbUser = await findActiveAdminAuthUserByIdentity(u);
-  if (dbUser) {
-    const pwOk = await verifyPassword(p, dbUser.passwordHash);
-    if (!pwOk) return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_db" };
-    return { ok: true, role: dbUser.role, source: "db" };
-  }
-  const users = readConfiguredUsers();
-  const hit = users.find((x) => x.username === u && x.password === p);
-  if (!hit) {
-    const envUsernameMatch = users.find((x) => x.username === u);
-    if (envUsernameMatch) {
-      return { ok: false, error: "invalid_credentials", detail: "admin_password_rejected_env" };
-    }
-    return { ok: false, error: "invalid_credentials", detail: "admin_identity_unknown" };
-  }
-  if (!isPostgresConfigured()) {
-    return { ok: false, error: "bootstrap_persist_failed" };
-  }
-  try {
-    const hash = await hashPassword(p);
-    await upsertAdminAuthUser({
-      username: hit.username,
-      email: "",
-      passwordHash: hash,
-      role: hit.role
-    });
-  } catch {
-    return { ok: false, error: "bootstrap_persist_failed" };
-  }
-  return { ok: true, role: hit.role, source: "env_bootstrap" };
-}
-var requireAdminApiBearer = (req, res, next) => {
-  const token = (process.env.ADMIN_API_BEARER_TOKEN ?? "").trim();
-  const auth = req.get("authorization") ?? "";
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  if (token && bearer === token) {
-    req.adminAuth = { username: "api_bearer", role: "admin", kind: "bearer", scopeCompanyId: null };
-    next();
-    return;
-  }
-  if (bearer) {
-    void verifyAdminSessionJwt(bearer).then((principal) => {
-      if (principal) {
-        req.adminAuth = principal;
-        next();
-        return;
-      }
-      res.status(401).json({ error: "unauthorized" });
-    });
-    return;
-  }
-  if (!token && process.env.NODE_ENV !== "production") {
-    req.adminAuth = { username: "dev_local", role: "admin", kind: "bearer", scopeCompanyId: null };
-    next();
-    return;
-  }
-  res.status(401).json({ error: "unauthorized" });
-};
-
 // src/routes/adminInsuranceApi.ts
-var router4 = (0, import_express4.Router)();
-router4.use(requireAdminApiBearer);
+var router5 = (0, import_express5.Router)();
+router5.use(requireAdminApiBearer);
 function insurerRole(req) {
   return req.adminAuth?.role ?? "admin";
 }
@@ -56591,7 +61396,7 @@ function requireInsurer(_req, res, next) {
   }
   next();
 }
-router4.use(requireInsurer);
+router5.use(requireInsurer);
 function parseDate(v, endOfDay) {
   if (typeof v !== "string" || !v.trim()) return null;
   const d = new Date(v.trim());
@@ -56606,16 +61411,16 @@ function parsePagination(req) {
 }
 function parseNum(v) {
   if (typeof v !== "string" || !v.trim()) return void 0;
-  const n3 = Number(v.trim().replace(",", "."));
-  if (!Number.isFinite(n3)) return void 0;
-  return n3;
+  const n4 = Number(v.trim().replace(",", "."));
+  if (!Number.isFinite(n4)) return void 0;
+  return n4;
 }
 function csvCell(v) {
   const raw = String(v ?? "");
   if (/[",\n\r;]/.test(raw)) return `"${raw.replaceAll('"', '""')}"`;
   return raw;
 }
-router4.get("/summary", async (req, res, next) => {
+router5.get("/summary", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56641,7 +61446,7 @@ router4.get("/summary", async (req, res, next) => {
     next(e);
   }
 });
-router4.get("/rides", async (req, res, next) => {
+router5.get("/rides", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56697,7 +61502,7 @@ router4.get("/rides", async (req, res, next) => {
     next(e);
   }
 });
-router4.get("/rides/:rideId", async (req, res, next) => {
+router5.get("/rides/:rideId", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56718,7 +61523,7 @@ router4.get("/rides/:rideId", async (req, res, next) => {
     next(e);
   }
 });
-router4.get("/rides/:rideId/pruefakte.csv", async (req, res, next) => {
+router5.get("/rides/:rideId/pruefakte.csv", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56783,7 +61588,7 @@ router4.get("/rides/:rideId/pruefakte.csv", async (req, res, next) => {
     next(e);
   }
 });
-router4.get("/exports", async (req, res, next) => {
+router5.get("/exports", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56796,7 +61601,7 @@ router4.get("/exports", async (req, res, next) => {
     next(e);
   }
 });
-router4.post("/exports", async (req, res, next) => {
+router5.post("/exports", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56831,7 +61636,7 @@ router4.post("/exports", async (req, res, next) => {
     next(e);
   }
 });
-router4.get("/exports/:id/download", async (req, res, next) => {
+router5.get("/exports/:id/download", async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.status(503).json({ error: "database_not_configured" });
@@ -56868,7 +61673,706 @@ router4.get("/exports/:id/download", async (req, res, next) => {
     next(e);
   }
 });
-var adminInsuranceApi_default = router4;
+var adminInsuranceApi_default = router5;
+
+// src/routes/adminAppNewsRouter.ts
+var import_express6 = __toESM(require_express2(), 1);
+init_client();
+
+// src/db/appNewsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID21 } from "node:crypto";
+var AUDIENCES = /* @__PURE__ */ new Set([
+  "all",
+  "customer",
+  "driver",
+  "taxi_partner",
+  "hotel",
+  "insurer"
+]);
+function parseAppNewsAudience(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (AUDIENCES.has(s)) return s;
+  return "customer";
+}
+function parseAppNewsTargetType(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (s === "internal_screen") return "internal_screen";
+  if (s === "external_url") return "external_url";
+  return "none";
+}
+function rowToPublicDto2(r) {
+  return {
+    id: r.id,
+    title: r.title,
+    body: r.body,
+    imageUrl: r.image_url,
+    buttonText: r.button_text,
+    targetType: parseAppNewsTargetType(r.target_type),
+    targetValue: r.target_value,
+    audience: parseAppNewsAudience(r.audience)
+  };
+}
+function rowToAdminDto2(r) {
+  return {
+    ...rowToPublicDto2(r),
+    sortOrder: r.sort_order,
+    isActive: r.is_active,
+    startsAt: r.starts_at ? r.starts_at.toISOString() : null,
+    endsAt: r.ends_at ? r.ends_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function listAppNewsPublic(audience, limit = 5) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const now = /* @__PURE__ */ new Date();
+  const audFilter = or(eq(appNewsItemsTable.audience, "all"), eq(appNewsItemsTable.audience, audience));
+  const rows = await db2.select().from(appNewsItemsTable).where(
+    and(
+      eq(appNewsItemsTable.is_active, true),
+      audFilter,
+      or(isNull(appNewsItemsTable.starts_at), lte(appNewsItemsTable.starts_at, now)),
+      or(isNull(appNewsItemsTable.ends_at), gte(appNewsItemsTable.ends_at, now))
+    )
+  ).orderBy(asc(appNewsItemsTable.sort_order), desc(appNewsItemsTable.created_at)).limit(Math.min(20, Math.max(1, limit)));
+  return rows.map(rowToPublicDto2);
+}
+async function listAppNewsAdmin() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(appNewsItemsTable).orderBy(asc(appNewsItemsTable.sort_order), desc(appNewsItemsTable.created_at));
+  return rows.map(rowToAdminDto2);
+}
+async function findAppNewsAdmin(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(appNewsItemsTable).where(eq(appNewsItemsTable.id, id)).limit(1);
+  const r = rows[0];
+  return r ? rowToAdminDto2(r) : null;
+}
+async function createAppNewsItem(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = randomUUID21();
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(appNewsItemsTable).values({
+    id,
+    title: input.title,
+    body: input.body,
+    image_url: input.imageUrl ?? null,
+    button_text: input.buttonText ?? null,
+    target_type: input.targetType,
+    target_value: input.targetValue ?? null,
+    audience: input.audience,
+    sort_order: input.sortOrder,
+    is_active: input.isActive,
+    starts_at: input.startsAt ?? null,
+    ends_at: input.endsAt ?? null,
+    created_at: now,
+    updated_at: now
+  });
+  return findAppNewsAdmin(id);
+}
+async function patchAppNewsItem(id, patch) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const row = { updated_at: now };
+  if (patch.title !== void 0) row.title = patch.title;
+  if (patch.body !== void 0) row.body = patch.body;
+  if (patch.imageUrl !== void 0) row.image_url = patch.imageUrl;
+  if (patch.buttonText !== void 0) row.button_text = patch.buttonText;
+  if (patch.targetType !== void 0) row.target_type = patch.targetType;
+  if (patch.targetValue !== void 0) row.target_value = patch.targetValue;
+  if (patch.audience !== void 0) row.audience = patch.audience;
+  if (patch.sortOrder !== void 0) row.sort_order = patch.sortOrder;
+  if (patch.isActive !== void 0) row.is_active = patch.isActive;
+  if (patch.startsAt !== void 0) row.starts_at = patch.startsAt;
+  if (patch.endsAt !== void 0) row.ends_at = patch.endsAt;
+  await db2.update(appNewsItemsTable).set(row).where(eq(appNewsItemsTable.id, id));
+  return findAppNewsAdmin(id);
+}
+async function deactivateAppNewsItem(id) {
+  return patchAppNewsItem(id, { isActive: false });
+}
+
+// src/routes/adminAppNewsRouter.ts
+var router6 = (0, import_express6.Router)();
+function adminRole(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+var INTERNAL_PATH_RE = /^\/(help|wallet|my-rides|profile|booking-center|status|ride-detail|personal-info|google-auth|login-success)(\/|$)/;
+function isValidInternalPath(raw) {
+  const p = String(raw ?? "").trim();
+  if (!p.startsWith("/") || p.includes("..")) return false;
+  return INTERNAL_PATH_RE.test(p);
+}
+function isValidExternalUrl(raw) {
+  const u = String(raw ?? "").trim();
+  if (!u) return false;
+  if (u.startsWith("https://")) return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(u)) return true;
+  return false;
+}
+function parseBody(req) {
+  return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+}
+router6.get("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listAppNewsAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.post("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = parseBody(req);
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!title || !body) {
+      res.status(400).json({ error: "title_and_body_required" });
+      return;
+    }
+    const targetType = parseAppNewsTargetType(typeof b.targetType === "string" ? b.targetType : b.target_type);
+    const targetValueRaw = typeof b.targetValue === "string" ? b.targetValue : typeof b.target_value === "string" ? b.target_value : "";
+    const targetValue = targetValueRaw.trim() || null;
+    if (targetType === "internal_screen" && !isValidInternalPath(targetValue)) {
+      res.status(400).json({ error: "invalid_internal_path" });
+      return;
+    }
+    if (targetType === "external_url" && !isValidExternalUrl(targetValue)) {
+      res.status(400).json({ error: "invalid_external_url" });
+      return;
+    }
+    const audience = parseAppNewsAudience(typeof b.audience === "string" ? b.audience : void 0);
+    const sortOrder = Number.isFinite(Number(b.sortOrder ?? b.sort_order)) ? Number(b.sortOrder ?? b.sort_order) : 0;
+    const isActive = b.isActive === false || b.is_active === false ? false : true;
+    const imageUrl = typeof b.imageUrl === "string" ? b.imageUrl.trim() || null : typeof b.image_url === "string" ? b.image_url.trim() || null : null;
+    const buttonText = typeof b.buttonText === "string" ? b.buttonText.trim() || null : typeof b.button_text === "string" ? b.button_text.trim() || null : null;
+    const startsAt = typeof b.startsAt === "string" && b.startsAt.trim() ? new Date(b.startsAt) : typeof b.starts_at === "string" && b.starts_at.trim() ? new Date(b.starts_at) : null;
+    const endsAt = typeof b.endsAt === "string" && b.endsAt.trim() ? new Date(b.endsAt) : typeof b.ends_at === "string" && b.ends_at.trim() ? new Date(b.ends_at) : null;
+    if (startsAt && Number.isNaN(startsAt.getTime())) {
+      res.status(400).json({ error: "invalid_starts_at" });
+      return;
+    }
+    if (endsAt && Number.isNaN(endsAt.getTime())) {
+      res.status(400).json({ error: "invalid_ends_at" });
+      return;
+    }
+    const row = await createAppNewsItem({
+      title,
+      body,
+      imageUrl,
+      buttonText,
+      targetType,
+      targetValue,
+      audience,
+      sortOrder,
+      isActive,
+      startsAt: startsAt && !Number.isNaN(startsAt.getTime()) ? startsAt : null,
+      endsAt: endsAt && !Number.isNaN(endsAt.getTime()) ? endsAt : null
+    });
+    if (!row) {
+      res.status(500).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item: row });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.patch("/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const b = parseBody(req);
+    const patch = {};
+    if (typeof b.title === "string") patch.title = b.title.trim();
+    if (typeof b.body === "string") patch.body = b.body.trim();
+    if (b.imageUrl !== void 0 || b.image_url !== void 0) {
+      const s = typeof b.imageUrl === "string" ? b.imageUrl : typeof b.image_url === "string" ? b.image_url : "";
+      patch.imageUrl = s.trim() || null;
+    }
+    if (b.buttonText !== void 0 || b.button_text !== void 0) {
+      const s = typeof b.buttonText === "string" ? b.buttonText : typeof b.button_text === "string" ? b.button_text : "";
+      patch.buttonText = s.trim() || null;
+    }
+    if (typeof b.targetType === "string" || typeof b.target_type === "string") {
+      patch.targetType = parseAppNewsTargetType(typeof b.targetType === "string" ? b.targetType : String(b.target_type));
+    }
+    if (b.targetValue !== void 0 || b.target_value !== void 0) {
+      const s = typeof b.targetValue === "string" ? b.targetValue : typeof b.target_value === "string" ? b.target_value : "";
+      patch.targetValue = s.trim() || null;
+    }
+    if (typeof b.audience === "string") patch.audience = parseAppNewsAudience(b.audience);
+    if (b.sortOrder !== void 0 || b.sort_order !== void 0) {
+      patch.sortOrder = Number(b.sortOrder ?? b.sort_order) || 0;
+    }
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    if (typeof b.is_active === "boolean") patch.isActive = b.is_active;
+    if (b.startsAt !== void 0 || b.starts_at !== void 0) {
+      const raw = typeof b.startsAt === "string" ? b.startsAt : typeof b.starts_at === "string" ? b.starts_at : "";
+      patch.startsAt = raw.trim() ? new Date(raw.trim()) : null;
+    }
+    if (b.endsAt !== void 0 || b.ends_at !== void 0) {
+      const raw = typeof b.endsAt === "string" ? b.endsAt : typeof b.ends_at === "string" ? b.ends_at : "";
+      patch.endsAt = raw.trim() ? new Date(raw.trim()) : null;
+    }
+    const existing = await findAppNewsAdmin(id);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const effType = patch.targetType ?? existing.targetType;
+    const effValue = patch.targetValue !== void 0 ? patch.targetValue : existing.targetValue;
+    if (effType === "internal_screen" && !isValidInternalPath(effValue ?? "")) {
+      res.status(400).json({ error: "invalid_internal_path" });
+      return;
+    }
+    if (effType === "external_url" && effValue && !isValidExternalUrl(effValue)) {
+      res.status(400).json({ error: "invalid_external_url" });
+      return;
+    }
+    const row = await patchAppNewsItem(id, patch);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: row });
+  } catch (e) {
+    next(e);
+  }
+});
+router6.delete("/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const row = await deactivateAppNewsItem(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: row });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminAppNewsRouter_default = router6;
+
+// src/routes/adminAppSponsorsRouter.ts
+var import_express7 = __toESM(require_express2(), 1);
+init_client();
+
+// src/db/appSponsorsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID22 } from "node:crypto";
+var AUDIENCES2 = /* @__PURE__ */ new Set(["all", "customer", "driver"]);
+var CATEGORIES = /* @__PURE__ */ new Set(["sponsor", "partner", "angebot", "event"]);
+function parseAppSponsorAudience(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (AUDIENCES2.has(s)) return s;
+  return "all";
+}
+function parseAppSponsorCategory(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (CATEGORIES.has(s)) return s;
+  return "partner";
+}
+function rowToPublicDto3(r) {
+  const targetType = r.external_url ? "external_url" : "none";
+  const qrEnabled = r.qr_from_link === true || typeof r.qr_code_url === "string" && r.qr_code_url.trim().length > 0;
+  return {
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    imageUrl: r.image_url,
+    logoUrl: r.logo_url,
+    externalUrl: r.external_url,
+    buttonText: r.button_text,
+    qrCodeUrl: r.qr_code_url,
+    qrFromLink: r.qr_from_link,
+    qrEnabled,
+    category: parseAppSponsorCategory(r.category),
+    audience: parseAppSponsorAudience(r.audience),
+    sortOrder: r.sort_order,
+    targetType,
+    targetValue: r.external_url
+  };
+}
+function rowToAdminDto3(r) {
+  return {
+    ...rowToPublicDto3(r),
+    isActive: r.is_active,
+    startsAt: r.starts_at ? r.starts_at.toISOString() : null,
+    endsAt: r.ends_at ? r.ends_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function listAppSponsorsPublic(audience, limit = 10) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const now = /* @__PURE__ */ new Date();
+  const audFilter = or(eq(appSponsorsTable.audience, "all"), eq(appSponsorsTable.audience, audience));
+  const rows = await db2.select().from(appSponsorsTable).where(
+    and(
+      eq(appSponsorsTable.is_active, true),
+      audFilter,
+      or(isNull(appSponsorsTable.starts_at), lte(appSponsorsTable.starts_at, now)),
+      or(isNull(appSponsorsTable.ends_at), gte(appSponsorsTable.ends_at, now))
+    )
+  ).orderBy(asc(appSponsorsTable.sort_order), desc(appSponsorsTable.created_at)).limit(Math.min(20, Math.max(1, limit)));
+  return rows.map(rowToPublicDto3);
+}
+async function listAppSponsorsAdmin() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(appSponsorsTable).orderBy(asc(appSponsorsTable.sort_order), desc(appSponsorsTable.created_at));
+  return rows.map(rowToAdminDto3);
+}
+async function findAppSponsorAdmin(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(appSponsorsTable).where(eq(appSponsorsTable.id, id)).limit(1);
+  const r = rows[0];
+  return r ? rowToAdminDto3(r) : null;
+}
+async function createAppSponsorItem(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = randomUUID22();
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(appSponsorsTable).values({
+    id,
+    title: input.title,
+    description: input.description,
+    image_url: input.imageUrl ?? null,
+    logo_url: input.logoUrl ?? null,
+    external_url: input.externalUrl ?? null,
+    button_text: input.buttonText ?? null,
+    qr_code_url: input.qrEnabled === false ? null : input.qrCodeUrl ?? null,
+    qr_from_link: input.qrEnabled === false ? false : input.qrFromLink === true,
+    category: input.category,
+    audience: input.audience,
+    sort_order: input.sortOrder,
+    is_active: input.isActive,
+    starts_at: input.startsAt ?? null,
+    ends_at: input.endsAt ?? null,
+    created_at: now,
+    updated_at: now
+  });
+  return findAppSponsorAdmin(id);
+}
+async function patchAppSponsorItem(id, patch) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const row = { updated_at: now };
+  if (patch.title !== void 0) row.title = patch.title;
+  if (patch.description !== void 0) row.description = patch.description;
+  if (patch.imageUrl !== void 0) row.image_url = patch.imageUrl;
+  if (patch.logoUrl !== void 0) row.logo_url = patch.logoUrl;
+  if (patch.externalUrl !== void 0) row.external_url = patch.externalUrl;
+  if (patch.buttonText !== void 0) row.button_text = patch.buttonText;
+  if (patch.qrCodeUrl !== void 0) row.qr_code_url = patch.qrCodeUrl;
+  if (patch.qrFromLink !== void 0) row.qr_from_link = patch.qrFromLink;
+  if (patch.qrEnabled === false) {
+    row.qr_from_link = false;
+    row.qr_code_url = null;
+  }
+  if (patch.category !== void 0) row.category = patch.category;
+  if (patch.audience !== void 0) row.audience = patch.audience;
+  if (patch.sortOrder !== void 0) row.sort_order = patch.sortOrder;
+  if (patch.isActive !== void 0) row.is_active = patch.isActive;
+  if (patch.startsAt !== void 0) row.starts_at = patch.startsAt;
+  if (patch.endsAt !== void 0) row.ends_at = patch.endsAt;
+  await db2.update(appSponsorsTable).set(row).where(eq(appSponsorsTable.id, id));
+  return findAppSponsorAdmin(id);
+}
+async function deactivateAppSponsorItem(id) {
+  return patchAppSponsorItem(id, { isActive: false });
+}
+
+// src/routes/adminAppSponsorsRouter.ts
+var router7 = (0, import_express7.Router)();
+function adminRole2(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+function parseBody2(req) {
+  return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+}
+function isValidHttpsUrl(raw) {
+  const u = String(raw ?? "").trim();
+  if (!u) return false;
+  return /^https:\/\//i.test(u);
+}
+function qrCodeUrlFromExternalLink(url) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(url)}`;
+}
+router7.get("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole2(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listAppSponsorsAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.post("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole2(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = parseBody2(req);
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const description = typeof b.description === "string" ? b.description.trim() : "";
+    if (!title || !description) {
+      res.status(400).json({ error: "title_and_description_required" });
+      return;
+    }
+    const externalUrlRaw = typeof b.externalUrl === "string" ? b.externalUrl : typeof b.external_url === "string" ? b.external_url : "";
+    const externalUrl = externalUrlRaw.trim() || null;
+    if (externalUrl && !isValidHttpsUrl(externalUrl)) {
+      res.status(400).json({ error: "invalid_external_url" });
+      return;
+    }
+    const qrEnabled = b.qrEnabled === false || b.qr_enabled === false ? false : true;
+    const qrFromLink = b.qrFromLink === true || b.qr_from_link === true;
+    const qrRaw = typeof b.qrCodeUrl === "string" ? b.qrCodeUrl : typeof b.qr_code_url === "string" ? b.qr_code_url : "";
+    const qrTrimmed = qrRaw.trim();
+    const qrCodeUrl = !qrEnabled ? null : qrFromLink && externalUrl ? qrCodeUrlFromExternalLink(externalUrl) : qrTrimmed || null;
+    if (qrCodeUrl && !isValidHttpsUrl(qrCodeUrl)) {
+      res.status(400).json({ error: "invalid_qr_code_url" });
+      return;
+    }
+    const imageUrl = typeof b.imageUrl === "string" ? b.imageUrl.trim() || null : typeof b.image_url === "string" ? b.image_url.trim() || null : null;
+    if (imageUrl && !isValidHttpsUrl(imageUrl)) {
+      res.status(400).json({ error: "invalid_image_url" });
+      return;
+    }
+    const logoUrl = typeof b.logoUrl === "string" ? b.logoUrl.trim() || null : typeof b.logo_url === "string" ? b.logo_url.trim() || null : null;
+    if (logoUrl && !isValidHttpsUrl(logoUrl)) {
+      res.status(400).json({ error: "invalid_logo_url" });
+      return;
+    }
+    const buttonText = typeof b.buttonText === "string" ? b.buttonText.trim() || null : typeof b.button_text === "string" ? b.button_text.trim() || null : null;
+    const category = parseAppSponsorCategory(typeof b.category === "string" ? b.category : void 0);
+    const audience = parseAppSponsorAudience(typeof b.audience === "string" ? b.audience : void 0);
+    const sortOrder = Number.isFinite(Number(b.sortOrder ?? b.sort_order)) ? Number(b.sortOrder ?? b.sort_order) : 0;
+    const isActive = b.isActive === false || b.is_active === false ? false : true;
+    const startsAt = typeof b.startsAt === "string" && b.startsAt.trim() ? new Date(b.startsAt) : typeof b.starts_at === "string" && b.starts_at.trim() ? new Date(b.starts_at) : null;
+    const endsAt = typeof b.endsAt === "string" && b.endsAt.trim() ? new Date(b.endsAt) : typeof b.ends_at === "string" && b.ends_at.trim() ? new Date(b.ends_at) : null;
+    if (startsAt && Number.isNaN(startsAt.getTime())) {
+      res.status(400).json({ error: "invalid_starts_at" });
+      return;
+    }
+    if (endsAt && Number.isNaN(endsAt.getTime())) {
+      res.status(400).json({ error: "invalid_ends_at" });
+      return;
+    }
+    const row = await createAppSponsorItem({
+      title,
+      description,
+      imageUrl,
+      logoUrl,
+      externalUrl,
+      buttonText,
+      qrCodeUrl,
+      qrFromLink,
+      qrEnabled,
+      category,
+      audience,
+      sortOrder,
+      isActive,
+      startsAt: startsAt && !Number.isNaN(startsAt.getTime()) ? startsAt : null,
+      endsAt: endsAt && !Number.isNaN(endsAt.getTime()) ? endsAt : null
+    });
+    if (!row) {
+      res.status(500).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item: row });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.patch("/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole2(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const b = parseBody2(req);
+    const patch = {};
+    if (typeof b.title === "string") patch.title = b.title.trim();
+    if (typeof b.description === "string") patch.description = b.description.trim();
+    if (b.imageUrl !== void 0 || b.image_url !== void 0) {
+      const s = typeof b.imageUrl === "string" ? b.imageUrl : typeof b.image_url === "string" ? b.image_url : "";
+      const v = s.trim() || null;
+      if (v && !isValidHttpsUrl(v)) {
+        res.status(400).json({ error: "invalid_image_url" });
+        return;
+      }
+      patch.imageUrl = v;
+    }
+    if (b.logoUrl !== void 0 || b.logo_url !== void 0) {
+      const s = typeof b.logoUrl === "string" ? b.logoUrl : typeof b.logo_url === "string" ? b.logo_url : "";
+      const v = s.trim() || null;
+      if (v && !isValidHttpsUrl(v)) {
+        res.status(400).json({ error: "invalid_logo_url" });
+        return;
+      }
+      patch.logoUrl = v;
+    }
+    if (b.externalUrl !== void 0 || b.external_url !== void 0) {
+      const s = typeof b.externalUrl === "string" ? b.externalUrl : typeof b.external_url === "string" ? b.external_url : "";
+      const v = s.trim() || null;
+      if (v && !isValidHttpsUrl(v)) {
+        res.status(400).json({ error: "invalid_external_url" });
+        return;
+      }
+      patch.externalUrl = v;
+    }
+    if (b.buttonText !== void 0 || b.button_text !== void 0) {
+      const s = typeof b.buttonText === "string" ? b.buttonText : typeof b.button_text === "string" ? b.button_text : "";
+      patch.buttonText = s.trim() || null;
+    }
+    if (typeof b.category === "string") patch.category = parseAppSponsorCategory(b.category);
+    if (typeof b.audience === "string") patch.audience = parseAppSponsorAudience(b.audience);
+    if (b.sortOrder !== void 0 || b.sort_order !== void 0) patch.sortOrder = Number(b.sortOrder ?? b.sort_order) || 0;
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    if (typeof b.is_active === "boolean") patch.isActive = b.is_active;
+    if (b.startsAt !== void 0 || b.starts_at !== void 0) {
+      const raw = typeof b.startsAt === "string" ? b.startsAt : typeof b.starts_at === "string" ? b.starts_at : "";
+      patch.startsAt = raw.trim() ? new Date(raw.trim()) : null;
+    }
+    if (b.endsAt !== void 0 || b.ends_at !== void 0) {
+      const raw = typeof b.endsAt === "string" ? b.endsAt : typeof b.ends_at === "string" ? b.ends_at : "";
+      patch.endsAt = raw.trim() ? new Date(raw.trim()) : null;
+    }
+    const existing = await findAppSponsorAdmin(id);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const effExternal = patch.externalUrl !== void 0 ? patch.externalUrl : existing.externalUrl;
+    const qrEnabled = b.qrEnabled === false || b.qr_enabled === false ? false : b.qrEnabled === true || b.qr_enabled === true ? true : existing.qrEnabled !== false;
+    const qrFromLink = b.qrFromLink === true || b.qr_from_link === true || (b.qrFromLink === false || b.qr_from_link === false ? false : existing.qrFromLink);
+    patch.qrEnabled = qrEnabled;
+    patch.qrFromLink = qrFromLink;
+    if (b.qrCodeUrl !== void 0 || b.qr_code_url !== void 0) {
+      const s = typeof b.qrCodeUrl === "string" ? b.qrCodeUrl : typeof b.qr_code_url === "string" ? b.qr_code_url : "";
+      const v = s.trim() || null;
+      if (v && !isValidHttpsUrl(v)) {
+        res.status(400).json({ error: "invalid_qr_code_url" });
+        return;
+      }
+      patch.qrCodeUrl = v;
+    } else if (qrEnabled && qrFromLink && effExternal) {
+      patch.qrCodeUrl = qrCodeUrlFromExternalLink(effExternal);
+    }
+    const row = await patchAppSponsorItem(id, patch);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: row });
+  } catch (e) {
+    next(e);
+  }
+});
+router7.delete("/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole2(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const row = await deactivateAppSponsorItem(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: row });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminAppSponsorsRouter_default = router7;
 
 // src/routes/adminApi.ts
 async function requireCompanyRowForMutation(req, res, companyId) {
@@ -56956,7 +62460,7 @@ function adminConsoleRole(req) {
 }
 async function resolveAdminAuthUserIdForSupport(req) {
   const u = req.adminAuth?.username?.trim();
-  if (!u || u === "api_bearer" || u === "dev_local") return null;
+  if (!u || u === "api_bearer") return null;
   const row = await findActiveAdminAuthUserByUsername(u);
   return row?.id ?? null;
 }
@@ -56985,14 +62489,14 @@ function sanitizePreferredPanelUsernameBase(raw) {
   let s = local.replace(/[^a-z0-9._-]+/g, "_").replace(/_+/g, "_");
   s = s.replace(/^\.+|\.+$/g, "").replace(/^[_-]+|[_-]+$/g, "");
   if (s.length < 3) {
-    s = `partner${randomBytes5(3).toString("hex")}`;
+    s = `partner${randomBytes6(3).toString("hex")}`;
   }
   return s.slice(0, 36);
 }
 async function allocateUniquePanelUsername(preferred) {
   const base = sanitizePreferredPanelUsernameBase(preferred || "partner");
   for (let attempt = 0; attempt < 40; attempt++) {
-    const candidate = attempt === 0 ? base : `${base}-${randomBytes5(2).toString("hex")}`;
+    const candidate = attempt === 0 ? base : `${base}-${randomBytes6(2).toString("hex")}`;
     if (!await panelUsernameTaken(candidate.toLowerCase())) {
       return candidate;
     }
@@ -57000,10 +62504,10 @@ async function allocateUniquePanelUsername(preferred) {
   throw new Error("panel_username_exhausted");
 }
 function hashResetToken(token) {
-  return createHash2("sha256").update(token).digest("hex");
+  return createHash3("sha256").update(token).digest("hex");
 }
-var router5 = (0, import_express5.Router)();
-router5.post("/admin/auth/login", async (req, res) => {
+var router8 = (0, import_express8.Router)();
+router8.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok2 = await authenticateAdminCredentials(username, password);
@@ -57053,13 +62557,13 @@ router5.post("/admin/auth/login", async (req, res) => {
     authSource: ok2.source
   });
 });
-router5.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+router8.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const role = req.adminAuth?.role ?? "admin";
   const username = req.adminAuth?.username ?? "admin";
   const scopeCompanyId = typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim() ? req.adminAuth.scopeCompanyId.trim() : null;
   res.json({ ok: true, user: { username, role, scopeCompanyId } });
 });
-router5.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+router8.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({ error: "session_required" });
@@ -57095,14 +62599,12 @@ router5.post("/admin/auth/change-password", requireAdminApiBearer, async (req, r
   });
   res.json({ ok: true });
 });
-router5.post("/admin/auth/password-reset/request", async (req, res) => {
+router8.post("/admin/auth/password-reset/request", async (req, res) => {
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
   const generic = {
     ok: true,
-    message: "Wenn ein passender Zugang existiert, wurde ein Passwort-Reset gestartet. Bitte Support/Administrator kontaktieren."
+    message: "Wenn ein passender Zugang existiert, erhalten Sie in K\xFCrze eine E-Mail mit einem Link zum Zur\xFCcksetzen des Passworts."
   };
-  const isProduction2 = process.env.NODE_ENV === "production";
-  const allowResetDebugResponse = !isProduction2 && process.env.ADMIN_AUTH_RESET_DEBUG_TOKEN_RESPONSE === "1";
   if (!identity || !isPostgresConfigured()) {
     res.json(generic);
     return;
@@ -57113,12 +62615,20 @@ router5.post("/admin/auth/password-reset/request", async (req, res) => {
       username: identity,
       action: "admin.auth.password_reset_requested_unknown_identity"
     });
-    res.json(
-      allowResetDebugResponse ? { ...generic, debugResetToken: null, debugResetExpiresAt: null } : generic
-    );
+    res.json(generic);
     return;
   }
-  const rawToken = randomBytes5(32).toString("base64url");
+  const recipient = (user.email ?? "").trim();
+  if (!recipient.includes("@")) {
+    await insertAdminAuthAuditLog({
+      adminUserId: user.id,
+      username: user.username,
+      action: "admin.auth.password_reset_requested_no_recipient_email"
+    });
+    res.json(generic);
+    return;
+  }
+  const rawToken = randomBytes6(32).toString("base64url");
   const tokenHash = hashResetToken(rawToken);
   const configuredTtlMin = Number(process.env.ADMIN_AUTH_RESET_TOKEN_TTL_MINUTES ?? "30");
   const ttlMsDefault = Math.max(1, Number.isFinite(configuredTtlMin) ? configuredTtlMin : 30) * 60 * 1e3;
@@ -57133,19 +62643,26 @@ router5.post("/admin/auth/password-reset/request", async (req, res) => {
     tokenHash,
     expiresAt
   });
+  const resetLink = buildAdminPasswordResetLink(rawToken);
+  const mailResult = await sendAdminPasswordResetMail({
+    to: recipient,
+    resetLink,
+    username: user.username,
+    expiresAt
+  });
   await insertAdminAuthAuditLog({
     adminUserId: user.id,
     username: user.username,
     action: "admin.auth.password_reset_requested",
-    meta: { expiresAt: expiresAt.toISOString(), delivery: "email_link_phase_a" }
+    meta: {
+      expiresAt: expiresAt.toISOString(),
+      mailSent: mailResult.ok,
+      ...mailResult.ok ? {} : { mailFailureReason: mailResult.reason }
+    }
   });
-  if (allowResetDebugResponse) {
-    res.json({ ...generic, debugResetToken: rawToken, debugResetExpiresAt: expiresAt.toISOString() });
-    return;
-  }
   res.json(generic);
 });
-router5.post("/admin/auth/password-reset/confirm", async (req, res) => {
+router8.post("/admin/auth/password-reset/confirm", async (req, res) => {
   const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
   const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
   if (!token || newPassword.length < 10) {
@@ -57184,7 +62701,7 @@ router5.post("/admin/auth/password-reset/confirm", async (req, res) => {
   });
   res.json({ ok: true });
 });
-router5.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+router8.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
   if (!isAdminPrincipal(req)) {
     res.status(403).json({ error: "forbidden" });
     return;
@@ -57199,7 +62716,7 @@ router5.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, asy
     res.status(404).json({ error: "not_found" });
     return;
   }
-  const rawToken = randomBytes5(32).toString("base64url");
+  const rawToken = randomBytes6(32).toString("base64url");
   const tokenHash = hashResetToken(rawToken);
   const expiresRaw = Number(req.body?.expiresInSeconds);
   const ttlSeconds = Number.isFinite(expiresRaw) && expiresRaw >= 1 ? expiresRaw : 30 * 60;
@@ -57225,7 +62742,7 @@ router5.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, asy
     expiresAt: expiresAt.toISOString()
   });
 });
-router5.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router8.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -57241,7 +62758,7 @@ router5.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
     next(e);
   }
 });
-router5.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router8.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -57293,7 +62810,7 @@ router5.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) 
     next(e);
   }
 });
-router5.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router8.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -57350,7 +62867,7 @@ router5.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, n
     next(e);
   }
 });
-router5.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router8.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -57397,10 +62914,12 @@ router5.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, 
     next(e);
   }
 });
-var adminJson = (0, import_express5.Router)();
+var adminJson = (0, import_express8.Router)();
 adminJson.use(requireAdminApiBearer);
 adminJson.use("/insurance", adminInsuranceApi_default);
-var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path4.join(path4.dirname(fileURLToPath2(import.meta.url)), "..", "..", "data", "fleet-uploads");
+adminJson.use("/app-news", adminAppNewsRouter_default);
+adminJson.use("/app-sponsors", adminAppSponsorsRouter_default);
+var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path6.join(path6.dirname(fileURLToPath2(import.meta.url)), "..", "..", "data", "fleet-uploads");
 adminJson.get("/stats", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -57621,6 +63140,69 @@ adminJson.get("/finance/settlements/:settlementId", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.post("/finance/settlements/create", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body;
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
+    const periodStart = typeof body.periodStart === "string" ? body.periodStart.trim() : "";
+    const periodEnd = typeof body.periodEnd === "string" ? body.periodEnd.trim() : "";
+    const rideIdsRaw = Array.isArray(body.rideIds) ? body.rideIds : [];
+    const rideIds = rideIdsRaw.map((x) => String(x ?? "").trim()).filter(Boolean);
+    const idempotencyKey = typeof body.idempotencyKey === "string" ? body.idempotencyKey.trim() : "";
+    const out = await adminCreateSettlementWithRideAllocations({
+      companyId,
+      periodStart,
+      periodEnd,
+      rideIds,
+      idempotencyKey: idempotencyKey || null,
+      actorLabel: `admin_console:${role}`
+    });
+    if (!out.ok) {
+      const code = out.error;
+      const status = code === "ride_already_allocated" || code === "idempotency_ride_set_mismatch" || code === "idempotency_company_mismatch" ? 409 : 400;
+      res.status(status).json({ error: code, conflictSettlementId: out.conflictSettlementId });
+      return;
+    }
+    res.json({ ok: true, settlementId: out.settlementId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/finance/settlements/:settlementId/record-payment", async (req, res, next) => {
+  try {
+    if (!canAccessAdminStats(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    const body = req.body;
+    const amount = typeof body.amount === "number" ? body.amount : Number(body.amount);
+    const companyId = typeof body.companyId === "string" ? body.companyId.trim() : void 0;
+    const reference = typeof body.reference === "string" ? body.reference : "";
+    const paymentMethod = typeof body.paymentMethod === "string" ? body.paymentMethod : void 0;
+    const out = await adminRecordSettlementPayoutAttempt({
+      settlementId: req.params.settlementId,
+      companyId: companyId || null,
+      amount,
+      reference,
+      paymentMethod,
+      actorLabel: `admin_console:${role}`
+    });
+    if (!out.ok) {
+      const st = out.error === "settlement_not_found" ? 404 : out.error === "company_mismatch" ? 403 : 400;
+      res.status(st).json({ error: out.error });
+      return;
+    }
+    res.json({ ok: true, paymentId: out.paymentId, idempotent: out.idempotent === true });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.get("/finance/payments", async (req, res, next) => {
   try {
     if (!canAccessAdminStats(adminConsoleRole(req))) {
@@ -57785,20 +63367,98 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
     const driverId = String(req.params.driverId ?? "").trim();
     const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
     if (!allowed) return;
-    const raw = typeof req.body?.status === "string" ? req.body.status.trim().toLowerCase() : "";
-    const allowedS = ["pending", "in_review", "approved", "rejected"];
+    const body = req.body ?? {};
+    const raw = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
+    const ackIncomplete = body.acknowledgeIncompleteDocuments === true;
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    if (raw === "approved") {
+      const r2 = await approveFleetDriverForCompany(companyId, driverId, {
+        acknowledgeIncompleteDocuments: ackIncomplete
+      });
+      if (!r2.ok) {
+        const m = {
+          not_found: 404,
+          not_pending: 409,
+          incomplete_documents_ack_required: 409
+        };
+        const gaps = !r2.ok && r2.error === "incomplete_documents_ack_required" && Array.isArray(r2.gaps) ? r2.gaps : void 0;
+        res.status(m[r2.error] ?? 400).json(
+          gaps ? { error: r2.error, gaps } : { error: r2.error }
+        );
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID23(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_driver.approval",
+        subjectType: "fleet_driver",
+        subjectId: driverId,
+        meta: {
+          nextStatus: raw,
+          adminUserId: adminId,
+          incompleteDocumentsAcknowledged: ackIncomplete
+        }
+      });
+      res.json({ ok: true });
+      return;
+    }
+    if (raw === "rejected") {
+      const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+      const r2 = await rejectFleetDriverForCompany(companyId, driverId, reason);
+      if (!r2.ok) {
+        const m = {
+          not_found: 404,
+          not_pending: 409,
+          rejection_reason_required: 400
+        };
+        res.status(m[r2.error] ?? 400).json({ error: r2.error });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID23(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_driver.approval",
+        subjectType: "fleet_driver",
+        subjectId: driverId,
+        meta: { nextStatus: raw, reason: reason.slice(0, 500), adminUserId: adminId }
+      });
+      res.json({ ok: true });
+      return;
+    }
+    if (raw === "missing_documents") {
+      const r2 = await markFleetDriverMissingDocumentsForCompany(companyId, driverId);
+      if (!r2.ok) {
+        res.status(r2.error === "not_found" ? 404 : r2.error === "invalid_state" ? 409 : 400).json({
+          error: r2.error
+        });
+        return;
+      }
+      await insertPanelAuditLog({
+        id: randomUUID23(),
+        companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_driver.missing_documents",
+        subjectType: "fleet_driver",
+        subjectId: driverId,
+        meta: { adminUserId: adminId }
+      });
+      res.json({ ok: true });
+      return;
+    }
+    const allowedS = ["pending", "in_review"];
     if (!allowedS.includes(raw)) {
       res.status(400).json({ error: "status_invalid" });
       return;
     }
-    const r = await setFleetDriverApprovalForCompany(companyId, driverId, raw);
+    const r = await setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, raw);
     if (!r.ok) {
       res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
       return;
     }
-    const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.approval",
@@ -57834,7 +63494,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.suspended",
@@ -57864,7 +63524,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.activated",
@@ -57873,6 +63533,43 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
       meta: { adminUserId: adminId }
     });
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-override-system", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const driverId = String(req.params.driverId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    const raw = req.body?.enabled;
+    const enabled = raw === true;
+    const disabled = raw === false;
+    if (!enabled && !disabled) {
+      res.status(400).json({ error: "body_enabled_boolean_required", hint: 'Send {"enabled": true} or false.' });
+      return;
+    }
+    const ok2 = await setFleetDriverReadinessOverrideSystem(companyId, driverId, enabled);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    await insertPanelAuditLog({
+      id: randomUUID23(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_driver.readiness_override_system",
+      subjectType: "fleet_driver",
+      subjectId: driverId,
+      meta: { enabled, adminUserId: adminId }
+    });
+    res.json({ ok: true, enabled });
   } catch (e) {
     next(e);
   }
@@ -57904,7 +63601,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.notes_patched",
@@ -57991,21 +63688,32 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
       return;
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
-    const r = await setFleetVehicleApprovalByAdmin(vehicleId, { nextStatus: "approved", adminUserId: adminId });
+    const ack = req.body?.acknowledgeIncompleteDocuments === true;
+    const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
+      nextStatus: "approved",
+      adminUserId: adminId,
+      acknowledgeIncompleteDocuments: ack
+    });
     if (!r.ok) {
-      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      const m = {
+        not_found: 404,
+        not_pending: 409,
+        incomplete_documents_ack_required: 409
+      };
+      const gaps = !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray(r.gaps) ? r.gaps : void 0;
+      res.status(m[r.error] ?? 400).json(gaps ? { error: r.error, gaps } : { error: r.error });
       return;
     }
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
         subjectType: "fleet_vehicle",
         subjectId: vehicleId,
-        meta: { adminUserId: adminId }
+        meta: { adminUserId: adminId, incompleteDocumentsAcknowledged: ack }
       });
     }
     res.json({ ok: true });
@@ -58046,7 +63754,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -58055,6 +63763,40 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
         meta: { reason: reason.slice(0, 500), adminUserId: adminId }
       });
     }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing-documents", async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const companyId = String(req.params.companyId ?? "").trim();
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const allowed = await requireTaxiCompanyForAdminPanel(req, res, companyId);
+    if (!allowed) return;
+    if (!await findFleetVehicleInCompany(vehicleId, companyId)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleMissingDocumentsByAdmin(vehicleId, { adminUserId: adminId });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "invalid_state" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID23(),
+      companyId,
+      actorPanelUserId: null,
+      action: "admin.fleet_vehicle.missing_documents",
+      subjectType: "fleet_vehicle",
+      subjectId: vehicleId,
+      meta: { adminUserId: adminId }
+    });
     res.json({ ok: true });
   } catch (e) {
     next(e);
@@ -58090,7 +63832,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", asyn
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -58127,7 +63869,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.unblocked",
@@ -58165,7 +63907,7 @@ adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", asy
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.notes_patched",
@@ -58702,6 +64444,203 @@ adminJson.patch("/homepage-placeholders/:id", async (req, res, next) => {
     next(e);
   }
 });
+adminJson.get("/app-operational", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const [config2, serviceRegions] = await Promise.all([
+      getOperationalConfigPayload(),
+      listServiceRegionsForApi()
+    ]);
+    res.json({ ok: true, config: config2, serviceRegions });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/app-operational", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const before = await getOperationalConfigPayload();
+    const body = req.body ?? {};
+    const patch = {};
+    if (body.messages !== void 0) patch.messages = body.messages;
+    if (body.commission !== void 0) patch.commission = body.commission;
+    if (body.tariffs !== void 0) patch.tariffs = body.tariffs;
+    if (body.dispatch !== void 0) patch.dispatch = body.dispatch;
+    if (body.features !== void 0) patch.features = body.features;
+    if (body.driverRules !== void 0) patch.driverRules = body.driverRules;
+    if (body.bookingRules !== void 0) patch.bookingRules = body.bookingRules;
+    if (body.system !== void 0) patch.system = body.system;
+    if (body.version !== void 0) patch.version = body.version;
+    const out = await updateOperationalConfigPayload(patch);
+    if ("error" in out) {
+      res.status(503).json({ error: "unavailable" });
+      return;
+    }
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.config_patched",
+      meta: { before, after: out, keys: Object.keys(patch) }
+    });
+    res.json({ ok: true, config: out });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/app-operational/service-regions/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const beforeList = await listServiceRegionsForApi();
+    const before = beforeList.find((r) => r.id === id) ?? null;
+    const b = req.body ?? {};
+    const matchTerms = b.matchTerms !== void 0 ? Array.isArray(b.matchTerms) ? b.matchTerms.map((x) => typeof x === "string" ? x.trim() : String(x)).filter((s) => s.length > 0) : void 0 : void 0;
+    const pickNum = (k) => {
+      if (!(k in b)) return void 0;
+      if (b[k] === null) return null;
+      const n4 = Number(b[k]);
+      return Number.isFinite(n4) ? n4 : void 0;
+    };
+    const upd = await updateServiceRegionById(id, {
+      label: typeof b.label === "string" ? b.label : void 0,
+      matchTerms,
+      isActive: typeof b.isActive === "boolean" ? b.isActive : void 0,
+      sortOrder: Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : void 0,
+      matchMode: typeof b.matchMode === "string" ? b.matchMode : void 0,
+      centerLat: pickNum("centerLat"),
+      centerLng: pickNum("centerLng"),
+      radiusKm: pickNum("radiusKm")
+    });
+    if (!upd) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const after = (await listServiceRegionsForApi()).find((r) => r.id === id) ?? null;
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.service_region_patched",
+      meta: { id, before, after }
+    });
+    res.json({ ok: true, serviceRegion: after });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/app-operational/service-regions", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const b = req.body ?? {};
+    const label = typeof b.label === "string" ? b.label.trim() : "";
+    const matchTerms = Array.isArray(b.matchTerms) ? b.matchTerms.map((x) => typeof x === "string" ? x.trim() : String(x)).filter((s) => s.length > 0) : [];
+    const matchMode = typeof b.matchMode === "string" && b.matchMode.trim() ? b.matchMode.trim() : "substring";
+    const cLat = b.centerLat != null && Number.isFinite(Number(b.centerLat)) ? Number(b.centerLat) : null;
+    const cLng = b.centerLng != null && Number.isFinite(Number(b.centerLng)) ? Number(b.centerLng) : null;
+    const rKm = b.radiusKm != null && Number.isFinite(Number(b.radiusKm)) ? Number(b.radiusKm) : null;
+    const isRadius = matchMode === "radius";
+    if (!label) {
+      res.status(400).json({ error: "label_required" });
+      return;
+    }
+    if (isRadius) {
+      if (cLat == null || cLng == null || rKm == null || rKm <= 0) {
+        res.status(400).json({ error: "radius_region_requires_center_and_radius" });
+        return;
+      }
+    } else if (matchTerms.length === 0) {
+      res.status(400).json({ error: "label_and_matchTerms_required" });
+      return;
+    }
+    const id = await insertServiceRegion({
+      label,
+      matchTerms,
+      isActive: b.isActive !== false,
+      matchMode,
+      centerLat: cLat,
+      centerLng: cLng,
+      radiusKm: rKm
+    });
+    const serviceRegions = await listServiceRegionsForApi();
+    const serviceRegion = serviceRegions.find((r) => r.id === id) ?? null;
+    await insertAdminAuthAuditLog({
+      username: req.adminAuth?.username ?? "",
+      action: "admin.app_operational.service_region_created",
+      meta: { id, serviceRegion }
+    });
+    res.status(201).json({ ok: true, id, serviceRegion });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/app-operational/preview-tariff-estimate", async (req, res, next) => {
+  try {
+    if (!canReadAdminCompaniesList(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const b = req.body ?? {};
+    const op = await getOperationalConfigPayload();
+    const tRaw = op.tariffs;
+    const tSec = isPlainTariffObject(tRaw) ? tRaw : {};
+    const regionT = b.regionTariff;
+    const merged = mergeTariffsForServiceRegion(
+      tSec,
+      isPlainTariffObject(regionT) ? regionT : null
+    );
+    const atStr = typeof b.at === "string" ? b.at.trim() : "";
+    const at = atStr ? new Date(atStr) : /* @__PURE__ */ new Date();
+    const n0 = (v) => {
+      const x = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(x) ? x : 0;
+    };
+    const distanceKm = n0(b.distanceKm);
+    const tripMinutes = n0(b.tripMinutes);
+    const waitingMinutes = n0(b.waitingMinutes);
+    const vehicle = typeof b.vehicle === "string" && b.vehicle.trim() ? b.vehicle.trim().toLowerCase() : "standard";
+    const serviceRegionId = typeof b.serviceRegionId === "string" && b.serviceRegionId.trim() ? b.serviceRegionId.trim() : null;
+    const applyHolidaySurcharge = b.applyHolidaySurcharge === true;
+    const applyAirportFlat = b.applyAirportFlat === true;
+    const est = estimateTaxiFromMergedTariff(merged, {
+      distanceKm: Math.max(0, distanceKm),
+      tripMinutes: Math.max(0, tripMinutes),
+      waitingMinutes: Math.max(0, waitingMinutes),
+      vehicle,
+      at: Number.isFinite(at.getTime()) ? at : /* @__PURE__ */ new Date(),
+      applyHolidaySurcharge,
+      applyAirportFlat
+    });
+    const regions = await listServiceRegionsForApi();
+    const label = serviceRegionId ? regions.find((r) => r.id === serviceRegionId)?.label ?? "Region" : "Vorschau";
+    const profile = mergedTariffToPublicProfile(merged, serviceRegionId, label, null);
+    res.json({
+      ok: true,
+      profile,
+      estimate: {
+        total: est.finalRounded,
+        taxiTotal: est.finalRounded,
+        onrodaTotal: est.finalRounded,
+        breakdown: est.breakdown,
+        engine: { subtotal: est.subtotal, afterMinFare: est.afterMinFare, afterSurcharges: est.afterSurcharges }
+      }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 adminJson.get("/companies/:companyId/kpis", async (req, res, next) => {
   try {
     const role = adminConsoleRole(req);
@@ -58918,7 +64857,7 @@ adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => 
     }
     const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
     const result = await insertAdminSupportMessage({
-      messageId: randomUUID15(),
+      messageId: randomUUID23(),
       threadId,
       body,
       senderAdminUserId
@@ -59327,6 +65266,17 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
       });
       return;
     }
+    if (reqRow.partnerType === "taxi") {
+      const regDocs = await listPartnerRegistrationDocuments(reqRow.id);
+      const hasConcessionPdf = regDocs.some((d) => d.category === "concession");
+      if (!hasConcessionPdf) {
+        res.status(400).json({
+          error: "taxi_registration_incomplete",
+          hint: "Konzessionsnachweis (PDF) fehlt. Bitte Nachweise beim Partner einfordern, ein Dokument der Kategorie \u201EKonzession\u201C als Administrator hochladen oder die Anfrage ablehnen."
+        });
+        return;
+      }
+    }
     const companyExtras = policy?.buildCompanyApproveExtras(reqRow) ?? {};
     const createdCompany = await insertAdminCompany({
       name: reqRow.companyName,
@@ -59425,7 +65375,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID15(),
+            id: randomUUID23(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -59508,6 +65458,8 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
     const generatedPassword = rawPassword ? "" : generateTemporaryPassword();
     const password = rawPassword || generatedPassword;
     const roleRaw = typeof body.role === "string" ? body.role.trim() : "";
+    const sendWelcomeEmail = body.sendWelcomeEmail === true;
+    const accessKind = typeof body.accessKind === "string" ? body.accessKind.trim().slice(0, 160) : "";
     if (!username || !password || password.length < 10) {
       res.status(400).json({ error: "username_password_required", hint: "password min length 10" });
       return;
@@ -59515,6 +65467,25 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
     if (!isPanelRoleString(roleRaw)) {
       res.status(400).json({ error: "invalid_role" });
       return;
+    }
+    if (sendWelcomeEmail && !email) {
+      res.status(400).json({ error: "email_required_for_welcome_mail" });
+      return;
+    }
+    const att = body.attachment;
+    let attFileName = "";
+    let attMime = "";
+    let attB64 = "";
+    if (att && typeof att === "object") {
+      attFileName = typeof att.fileName === "string" ? att.fileName.trim() : "";
+      attMime = typeof att.mimeType === "string" ? att.mimeType.trim() : "";
+      attB64 = typeof att.contentBase64 === "string" ? att.contentBase64.trim() : "";
+      const any = !!(attFileName || attMime || attB64);
+      const all = !!(attFileName && attB64);
+      if (any && !all) {
+        res.status(400).json({ error: "attachment_incomplete", hint: "fileName und contentBase64 erforderlich" });
+        return;
+      }
     }
     const targetRole = roleRaw;
     if (await panelUsernameTaken(username.toLowerCase())) {
@@ -59534,14 +65505,47 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       res.status(409).json({ error: "username_taken" });
       return;
     }
+    let attachmentResult = null;
+    if (attFileName && attB64) {
+      const saved = await persistPanelUserManualAttachment({
+        companyId,
+        panelUserId: created.id,
+        originalFileName: attFileName,
+        contentBase64: attB64
+      });
+      if (saved.ok) {
+        attachmentResult = { ok: true, relPath: saved.relPath, sizeBytes: saved.sizeBytes };
+      } else {
+        attachmentResult = { ok: false, reason: saved.reason };
+      }
+    }
+    let welcomeEmail = { sent: false, reason: "not_requested" };
+    if (sendWelcomeEmail && email) {
+      const mail = await sendPanelUserWelcomeEmail({
+        to: email,
+        companyName: company.name ?? companyId,
+        username,
+        initialPassword: password,
+        accessKindLabel: accessKind || void 0
+      });
+      welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
+    }
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
       subjectType: "panel_user",
       subjectId: created.id,
-      meta: { username, role: targetRole, source: "platform_admin_api" }
+      meta: {
+        username,
+        role: targetRole,
+        source: "platform_admin_api",
+        ...accessKind ? { accessKind } : {},
+        ...attachmentResult?.ok ? { manualAttachment: attachmentResult } : {},
+        ...attachmentResult && !attachmentResult.ok ? { manualAttachmentError: attachmentResult.reason } : {},
+        welcomeEmail
+      }
     });
     res.status(201).json({
       ok: true,
@@ -59550,7 +65554,9 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
         username,
         ...generatedPassword ? { initialPassword: generatedPassword } : {},
         mustChangePassword: true
-      }
+      },
+      welcomeEmail,
+      ...attachmentResult ? { attachment: attachmentResult } : {}
     });
   } catch (e) {
     next(e);
@@ -59602,7 +65608,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -59638,7 +65644,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID15(),
+      id: randomUUID23(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -59669,6 +65675,96 @@ adminJson.get("/rides", async (req, res, next) => {
     ]);
     const items = await attachAccessCodeSummariesToRides(rows);
     res.json({ ok: true, items, total, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/rides/:id/record", async (req, res, next) => {
+  try {
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const row = await findRideAdminById(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const [ride] = await attachAccessCodeSummariesToRides([row]);
+    const [events, panelAudit] = await Promise.all([
+      listAdminRideEventsByRideId(id),
+      row.companyId ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 }) : Promise.resolve([])
+    ]);
+    const auditAsc = [...panelAudit].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const meta = row.partnerBookingMeta;
+    const supportThreadId = meta && typeof meta === "object" && typeof meta.supportThreadId === "string" ? meta.supportThreadId : null;
+    const supportTicketId = meta && typeof meta === "object" && typeof meta.supportTicketId === "string" ? meta.supportTicketId : null;
+    res.json({
+      ok: true,
+      ride,
+      events,
+      panelAudit: auditAsc,
+      links: {
+        billingReference: row.billingReference ?? null,
+        supportTicketId: supportTicketId || null,
+        supportThreadId: supportThreadId || null
+      }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/rides/:id/medical-signature-file", async (req, res, next) => {
+  try {
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const row = await findRideAdminById(id);
+    if (!row) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const role = adminConsoleRole(req);
+    if (!adminRideRowVisibleToPrincipal(role, req.adminAuth?.scopeCompanyId, row)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const meta = row.partnerBookingMeta;
+    const key = meta && typeof meta === "object" && typeof meta.signature_file_key === "string" ? meta.signature_file_key.trim() : "";
+    if (!key) {
+      res.status(404).json({ error: "signature_not_found" });
+      return;
+    }
+    const uploadRoot = path6.resolve(process.cwd(), "uploads", "medical-rides");
+    const normalized = path6.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
+    const filePath = path6.resolve(uploadRoot, normalized);
+    if (!filePath.startsWith(uploadRoot + path6.sep) && filePath !== uploadRoot) {
+      res.status(400).json({ error: "invalid_signature_key" });
+      return;
+    }
+    const ext = path6.extname(filePath).toLowerCase();
+    const contentType = ext === ".png" ? "image/png" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "";
+    if (!contentType) {
+      res.status(415).json({ error: "unsupported_signature_type" });
+      return;
+    }
+    try {
+      await readFile(filePath);
+    } catch {
+      res.status(404).json({ error: "signature_not_found" });
+      return;
+    }
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "private, max-age=60");
+    res.sendFile(filePath);
   } catch (e) {
     next(e);
   }
@@ -59731,12 +65827,12 @@ adminJson.patch("/companies/:companyId/panel-modules", async (req, res, next) =>
     if (raw === null) {
       modules = null;
     } else if (Array.isArray(raw)) {
-      const n3 = normalizeStoredPanelModules(raw) ?? [];
-      if (n3.length === 0) {
+      const n4 = normalizeStoredPanelModules(raw) ?? [];
+      if (n4.length === 0) {
         res.status(400).json({ error: "panel_modules_empty", hint: "Mindestens ein Modul, oder panel_modules: null f\xFCr alle." });
         return;
       }
-      modules = n3;
+      modules = n4;
     } else {
       res.status(400).json({ error: "panel_modules_invalid" });
       return;
@@ -60008,15 +66104,36 @@ adminJson.post("/fleet-drivers/:driverId/approval", async (req, res, next) => {
       res.status(400).json({ error: "driver_id_required" });
       return;
     }
-    const raw = typeof req.body?.status === "string" ? req.body.status.trim().toLowerCase() : "";
-    const allowed = ["pending", "in_review", "approved", "rejected"];
+    const body = req.body ?? {};
+    const raw = typeof body.status === "string" ? body.status.trim().toLowerCase() : "";
+    const ackIncomplete = body.acknowledgeIncompleteDocuments === true;
+    const allowed = [
+      "pending",
+      "in_review",
+      "approved",
+      "rejected",
+      "missing_documents"
+    ];
     if (!allowed.includes(raw)) {
       res.status(400).json({ error: "status_invalid" });
       return;
     }
-    const r = await setFleetDriverApprovalByAdmin(driverId, raw);
+    const reason = typeof body.reason === "string" ? body.reason.trim() : "";
+    const r = await setFleetDriverApprovalByAdmin(driverId, raw, {
+      rejectionReason: reason,
+      acknowledgeIncompleteDocuments: ackIncomplete
+    });
     if (!r.ok) {
-      res.status(r.error === "not_found" ? 404 : 400).json({ error: r.error });
+      const m = {
+        not_found: 404,
+        not_pending: 409,
+        invalid_state: 409,
+        rejection_reason_required: 400,
+        incomplete_documents_ack_required: 409,
+        invalid_status: 400
+      };
+      const gaps = !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray(r.gaps) ? r.gaps : void 0;
+      res.status(m[r.error] ?? 400).json(gaps ? { error: r.error, gaps } : { error: r.error });
       return;
     }
     res.json({ ok: true });
@@ -60032,24 +66149,36 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     }
     const vehicleId = String(req.params.vehicleId ?? "").trim();
     const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const ack = req.body?.acknowledgeIncompleteDocuments === true;
     const r = await setFleetVehicleApprovalByAdmin(vehicleId, {
       nextStatus: "approved",
-      adminUserId: adminId
+      adminUserId: adminId,
+      acknowledgeIncompleteDocuments: ack
     });
     if (!r.ok) {
-      res.status(r.error === "not_found" ? 404 : r.error === "not_pending" ? 409 : 400).json({ error: r.error });
+      const m = {
+        not_found: 404,
+        not_pending: 409,
+        incomplete_documents_ack_required: 409
+      };
+      const gaps = !r.ok && r.error === "incomplete_documents_ack_required" && Array.isArray(r.gaps) ? r.gaps : void 0;
+      res.status(m[r.error] ?? 400).json(gaps ? { error: r.error, gaps } : { error: r.error });
       return;
     }
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
         subjectType: "fleet_vehicle",
         subjectId: vehicleId,
-        meta: { adminUserId: adminId, source: "fleet_vehicles_review" }
+        meta: {
+          adminUserId: adminId,
+          source: "fleet_vehicles_review",
+          incompleteDocumentsAcknowledged: ack
+        }
       });
     }
     res.json({ ok: true });
@@ -60083,13 +66212,43 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
         subjectType: "fleet_vehicle",
         subjectId: vehicleId,
         meta: { reason: reason.slice(0, 500), adminUserId: adminId, source: "fleet_vehicles_review" }
+      });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const vehicleId = String(req.params.vehicleId ?? "").trim();
+    const adminId = await resolveAdminAuthUserIdForSupport(req);
+    const r = await setFleetVehicleMissingDocumentsByAdmin(vehicleId, { adminUserId: adminId });
+    if (!r.ok) {
+      res.status(r.error === "not_found" ? 404 : r.error === "invalid_state" ? 409 : 400).json({ error: r.error });
+      return;
+    }
+    const d0 = await getFleetVehicleAdminDetail(vehicleId);
+    if (d0) {
+      await insertPanelAuditLog({
+        id: randomUUID23(),
+        companyId: d0.vehicle.companyId,
+        actorPanelUserId: null,
+        action: "admin.fleet_vehicle.missing_documents",
+        subjectType: "fleet_vehicle",
+        subjectId: vehicleId,
+        meta: { adminUserId: adminId, source: "fleet_vehicles_review" }
       });
     }
     res.json({ ok: true });
@@ -60120,7 +66279,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID15(),
+        id: randomUUID23(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -60155,9 +66314,9 @@ adminJson.get("/fleet-vehicles/:vehicleId/documents/file", async (req, res, next
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path4.resolve(path4.join(adminFleetUploadRoot, storageKey));
-    const base = path4.resolve(adminFleetUploadRoot);
-    if (!abs.startsWith(base + path4.sep) && abs !== base) {
+    const abs = path6.resolve(path6.join(adminFleetUploadRoot, storageKey));
+    const base = path6.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path6.sep) && abs !== base) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -60193,9 +66352,9 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path4.resolve(path4.join(adminFleetUploadRoot, storageKey));
-    const base = path4.resolve(adminFleetUploadRoot);
-    if (!abs.startsWith(base + path4.sep) && abs !== base) {
+    const abs = path6.resolve(path6.join(adminFleetUploadRoot, storageKey));
+    const base = path6.resolve(adminFleetUploadRoot);
+    if (!abs.startsWith(base + path6.sep) && abs !== base) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -60207,11 +66366,11 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
     next(e);
   }
 });
-router5.use("/admin", adminJson);
-var adminApi_default = router5;
+router8.use("/admin", adminJson);
+var adminApi_default = router8;
 
 // src/routes/panelAuth.ts
-var import_express6 = __toESM(require_express2(), 1);
+var import_express9 = __toESM(require_express2(), 1);
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
@@ -60378,17 +66537,17 @@ init_client();
 // src/lib/panelLoginRateLimit.ts
 var WINDOW_MS = 6e4;
 var MAX_ATTEMPTS = 25;
-var buckets = /* @__PURE__ */ new Map();
+var buckets2 = /* @__PURE__ */ new Map();
 function keyForReq(ip) {
   return ip.trim() || "unknown";
 }
 function rateLimitPanelLogin(ip) {
   const k = keyForReq(ip);
   const now = Date.now();
-  let b = buckets.get(k);
+  let b = buckets2.get(k);
   if (!b || now >= b.resetAt) {
     b = { count: 0, resetAt: now + WINDOW_MS };
-    buckets.set(k, b);
+    buckets2.set(k, b);
   }
   b.count += 1;
   if (b.count > MAX_ATTEMPTS) {
@@ -60408,13 +66567,13 @@ var LOOKUP_MAX = 120;
 var ipBuckets = /* @__PURE__ */ new Map();
 var emailBuckets = /* @__PURE__ */ new Map();
 var publicLookupBuckets = /* @__PURE__ */ new Map();
-function bump(buckets3, key, windowMs, max) {
+function bump(buckets4, key, windowMs, max) {
   const k = key.trim() || "unknown";
   const now = Date.now();
-  let b = buckets3.get(k);
+  let b = buckets4.get(k);
   if (!b || now >= b.resetAt) {
     b = { count: 0, resetAt: now + windowMs };
-    buckets3.set(k, b);
+    buckets4.set(k, b);
   }
   b.count += 1;
   if (b.count > max) {
@@ -60491,7 +66650,7 @@ function toPublicPartnerRegistrationTimeline(rows) {
 }
 
 // src/lib/panelJwt.ts
-function getSecretKey2() {
+function getSecretKey3() {
   const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
   if (panel) {
     return new TextEncoder().encode(panel);
@@ -60505,7 +66664,7 @@ function getSecretKey2() {
   }
   return new TextEncoder().encode(auth);
 }
-function issuer2() {
+function issuer4() {
   return (process.env.PANEL_JWT_ISSUER ?? "onroda-panel").trim() || "onroda-panel";
 }
 function isPanelJwtConfigured() {
@@ -60518,22 +66677,22 @@ function isPanelJwtConfigured() {
   return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
 }
 async function signPanelJwt(claims, expiresIn = "7d") {
-  const secret = getSecretKey2();
+  const secret2 = getSecretKey3();
   return new SignJWT({
     kind: "panel",
     companyId: claims.companyId,
     username: claims.username,
     email: claims.email,
     role: claims.role
-  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer2()).setExpirationTime(expiresIn).sign(secret);
+  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.panelUserId).setIssuedAt().setIssuer(issuer4()).setExpirationTime(expiresIn).sign(secret2);
 }
 function isPanelRole(v) {
   return v === "owner" || v === "manager" || v === "staff" || v === "readonly";
 }
 async function verifyPanelJwt(token) {
-  const secret = getSecretKey2();
-  const { payload } = await jwtVerify(token, secret, {
-    issuer: issuer2(),
+  const secret2 = getSecretKey3();
+  const { payload } = await jwtVerify(token, secret2, {
+    issuer: issuer4(),
     algorithms: ["HS256"]
   });
   return payloadToPanelClaims(payload);
@@ -60553,8 +66712,54 @@ function payloadToPanelClaims(payload) {
 }
 
 // src/routes/panelAuth.ts
-var router6 = (0, import_express6.Router)();
-router6.post("/panel-auth/login", async (req, res) => {
+var MAX_TAXI_REG_PDF_BYTES = 4 * 1024 * 1024;
+function parseTaxiRegistrationPdfSlot(v) {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const o = v;
+  const fileName = typeof o.fileName === "string" ? o.fileName.trim() : "";
+  const mimeRaw = typeof o.mimeType === "string" ? o.mimeType.trim().toLowerCase() : "";
+  const mimeType = mimeRaw || "application/pdf";
+  const raw64 = typeof o.contentBase64 === "string" ? o.contentBase64.trim() : "";
+  if (!fileName || !raw64) return null;
+  if (mimeType !== "application/pdf") return null;
+  if (!fileName.toLowerCase().endsWith(".pdf")) return null;
+  const cleaned = raw64.includes(",") ? (raw64.split(",").pop() ?? "").trim() : raw64;
+  const buf = Buffer.from(cleaned, "base64");
+  if (!buf.byteLength || buf.byteLength > MAX_TAXI_REG_PDF_BYTES) return null;
+  if (buf[0] !== 37 || buf[1] !== 80 || buf[2] !== 68 || buf[3] !== 70) return null;
+  return { fileName, mimeType: "application/pdf", contentBase64: cleaned };
+}
+function parseOptionalTaxiPdfSlot(v) {
+  if (v == null) return null;
+  const slot = parseTaxiRegistrationPdfSlot(v);
+  return slot ?? "invalid";
+}
+function parseTaxiRegistrationDocumentsFromBody(body) {
+  const td = body.taxiDocuments;
+  if (!td || typeof td !== "object" || Array.isArray(td)) {
+    return { ok: false, error: "taxi_documents_required" };
+  }
+  const o = td;
+  const concession = parseTaxiRegistrationPdfSlot(o.concession);
+  if (!concession) {
+    return { ok: false, error: "taxi_concession_pdf_required" };
+  }
+  const docs = [{ category: "concession", ...concession }];
+  const gewerbe = parseOptionalTaxiPdfSlot(o.gewerbe);
+  if (gewerbe === "invalid") return { ok: false, error: "taxi_pdf_invalid" };
+  if (gewerbe) docs.push({ category: "gewerbe", ...gewerbe });
+  const insurance = parseOptionalTaxiPdfSlot(o.insurance);
+  if (insurance === "invalid") return { ok: false, error: "taxi_pdf_invalid" };
+  if (insurance) docs.push({ category: "insurance", ...insurance });
+  return { ok: true, docs };
+}
+var TAXI_DOC_ERROR_HINTS = {
+  taxi_documents_required: "Bitte laden Sie f\xFCr Taxiunternehmen die Nachweise als PDF mit.",
+  taxi_concession_pdf_required: "Bitte laden Sie die Konzession als PDF hoch (Pflicht).",
+  taxi_pdf_invalid: "Mindestens eine PDF-Datei ist ung\xFCltig oder zu gro\xDF (max. 4 MB pro Datei, nur PDF)."
+};
+var router9 = (0, import_express9.Router)();
+router9.post("/panel-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPanelLogin(ip);
   if (!rl.ok) {
@@ -60661,11 +66866,11 @@ router6.post("/panel-auth/login", async (req, res) => {
     }
   });
 });
-router6.post("/panel-auth/logout", (_req, res) => {
+router9.post("/panel-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
 var PENDING_PUBLIC_REGISTRATION = /* @__PURE__ */ new Set(["open", "in_review", "documents_required"]);
-router6.post("/panel-auth/registration-request", async (req, res) => {
+router9.post("/panel-auth/registration-request", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -60712,6 +66917,18 @@ router6.post("/panel-auth/registration-request", async (req, res) => {
   if (publicPolicyError) {
     res.status(400).json({ error: "partner_registration_incomplete", hint: publicPolicyError });
     return;
+  }
+  let taxiPdfDocs = null;
+  if (partnerTypeRaw === "taxi") {
+    const parsedDocs = parseTaxiRegistrationDocumentsFromBody(body);
+    if (!parsedDocs.ok) {
+      res.status(400).json({
+        error: parsedDocs.error,
+        hint: TAXI_DOC_ERROR_HINTS[parsedDocs.error] ?? "Ung\xFCltige Unterlagen."
+      });
+      return;
+    }
+    taxiPdfDocs = parsedDocs.docs;
   }
   const taxId = str2("taxId");
   const vatId = str2("vatId");
@@ -60785,13 +67002,38 @@ router6.post("/panel-auth/registration-request", async (req, res) => {
     res.status(503).json({ error: "create_failed" });
     return;
   }
+  if (taxiPdfDocs && taxiPdfDocs.length > 0) {
+    for (const d of taxiPdfDocs) {
+      const doc = await addPartnerRegistrationDocument({
+        requestId: created.id,
+        category: d.category,
+        originalFileName: d.fileName,
+        mimeType: d.mimeType,
+        contentBase64: d.contentBase64,
+        uploadedByActorType: "partner",
+        uploadedByActorLabel: email
+      });
+      if (!doc) {
+        logger.error(
+          { event: "partner.registration.taxi_doc_failed", requestId: created.id, category: d.category },
+          "partner registration taxi document persist failed"
+        );
+        res.status(503).json({
+          error: "document_persist_failed",
+          requestId: created.id,
+          hint: "Die Anfrage wurde angelegt, aber ein Dokument konnte nicht gespeichert werden. Bitte notieren Sie die Referenz-ID und kontaktieren Sie uns \u2014 oder versuchen Sie es sp\xE4ter erneut."
+        });
+        return;
+      }
+    }
+  }
   logger.info(
     { event: "partner.registration.submitted", requestId: created.id, email, clientIp: ip },
     "partner registration request created"
   );
   res.status(201).json({ ok: true, request: created });
 });
-router6.get("/panel-auth/registration-request-status", async (req, res) => {
+router9.get("/panel-auth/registration-request-status", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -60816,7 +67058,7 @@ router6.get("/panel-auth/registration-request-status", async (req, res) => {
   }
   res.json({ ok: true, request: toPublicPartnerRegistrationSnapshot(row) });
 });
-router6.get("/panel-auth/registration-request/:id", async (req, res) => {
+router9.get("/panel-auth/registration-request/:id", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -60850,7 +67092,7 @@ router6.get("/panel-auth/registration-request/:id", async (req, res) => {
     timeline: toPublicPartnerRegistrationTimeline(detail.timeline)
   });
 });
-router6.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+router9.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -60896,7 +67138,7 @@ router6.post("/panel-auth/registration-request/:id/messages", async (req, res) =
   await addPartnerRegistrationMessage(id, "partner", email, message2);
   res.status(201).json({ ok: true });
 });
-router6.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
+router9.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -60929,7 +67171,7 @@ router6.post("/panel-auth/registration-request/:id/change-request", async (req, 
   await patchPartnerRegistrationRequest(id, { status: "in_review" });
   res.status(201).json({ ok: true });
 });
-router6.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+router9.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -60986,13 +67228,15 @@ router6.post("/panel-auth/registration-request/:id/documents", async (req, res) 
   }
   res.status(201).json({ ok: true, document: toPublicPartnerRegistrationDocument(doc) });
 });
-var panelAuth_default = router6;
+var panelAuth_default = router9;
 
 // src/routes/panelApi.ts
-var import_express7 = __toESM(require_express2(), 1);
+var import_express10 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID17 } from "node:crypto";
+import { randomUUID as randomUUID25 } from "node:crypto";
+import { mkdir as mkdir5, readFile as readFile2, writeFile as writeFile5 } from "node:fs/promises";
+import path7 from "node:path";
 
 // src/db/panelCompanyData.ts
 init_drizzle_orm();
@@ -61231,13 +67475,15 @@ async function patchPanelCompanyProfile(companyId, patch) {
 // src/routes/panelApi.ts
 init_accessCodesData();
 init_ridesData();
+init_rideFinancialsData();
+init_appOperationalData();
 init_dispatchStatus();
 
 // src/db/partnerRideSeriesData.ts
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID16 } from "node:crypto";
+import { randomUUID as randomUUID24 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -61255,7 +67501,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID16()}`;
+  const id = `SRS-${randomUUID24()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -61338,15 +67584,18 @@ function denyUnlessPanelPermission(res, profileRole, permission) {
 }
 
 // src/middleware/requirePanelAuth.ts
-function bearerToken(req) {
+function bearerToken3(req) {
   const raw = req.get("authorization")?.trim();
-  if (!raw) return null;
+  if (!raw) {
+    const qt = typeof req.query?.token === "string" ? req.query.token.trim() : "";
+    return qt.length > 0 ? qt : null;
+  }
   const m = raw.match(/^Bearer\s+(.+)$/i);
   const t = m?.[1]?.trim();
   return t && t.length > 0 ? t : null;
 }
 var requirePanelAuth = async (req, res, next) => {
-  const token = bearerToken(req);
+  const token = bearerToken3(req);
   if (!token) {
     res.status(401).json({
       error: "unauthorized",
@@ -61364,8 +67613,68 @@ var requirePanelAuth = async (req, res, next) => {
 };
 
 // src/routes/panelApi.ts
-var router7 = (0, import_express7.Router)();
-router7.use((_req, res, next) => {
+var router10 = (0, import_express10.Router)();
+var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path7.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
+function invoiceLine(text2) {
+  return text2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+function buildSimpleInvoicePdf(lines) {
+  const content = [
+    "BT",
+    "/F1 11 Tf",
+    "50 780 Td",
+    ...lines.flatMap(
+      (line2, idx) => idx === 0 ? [`(${invoiceLine(line2)}) Tj`] : ["0 -16 Td", `(${invoiceLine(line2)}) Tj`]
+    ),
+    "ET"
+  ].join("\n");
+  const contentBytes = Buffer.from(content, "utf8");
+  const objects = [
+    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj",
+    `4 0 obj << /Length ${contentBytes.length} >> stream
+${content}
+endstream endobj`,
+    "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj"
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (const obj of objects) {
+    offsets.push(Buffer.byteLength(pdf, "utf8"));
+    pdf += `${obj}
+`;
+  }
+  const xrefOffset = Buffer.byteLength(pdf, "utf8");
+  pdf += `xref
+0 ${objects.length + 1}
+`;
+  pdf += "0000000000 65535 f \n";
+  for (let i = 1; i < offsets.length; i += 1) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n 
+`;
+  }
+  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>
+startxref
+${xrefOffset}
+%%EOF
+`;
+  return Buffer.from(pdf, "utf8");
+}
+function nextInvoiceNumber(existing, date2 = /* @__PURE__ */ new Date()) {
+  const year2 = date2.getUTCFullYear();
+  const prefix = `ONR-${year2}-`;
+  let maxSeq = 0;
+  for (const item of existing) {
+    const t = item.trim();
+    if (!t.startsWith(prefix)) continue;
+    const seqPart = t.slice(prefix.length);
+    const n4 = Number(seqPart);
+    if (Number.isFinite(n4) && n4 > maxSeq) maxSeq = n4;
+  }
+  return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
+}
+router10.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -61395,6 +67704,41 @@ async function assertActivePanelProfile(req, res, opts) {
     return null;
   }
   return { claims, profile };
+}
+async function assertOperationalGateForPanelRoutes(res, checks) {
+  const opPayload = await getOperationalConfigPayload();
+  const gate = assertPlatformNewRideAllowed(opPayload);
+  if (!gate.ok) {
+    res.status(gate.status).json({ error: gate.error, message: gate.message });
+    return false;
+  }
+  for (const c of checks) {
+    const area = await checkCustomerRideServiceArea(c.fromFull, c.toFull, {
+      fromLat: c.fromLat,
+      fromLon: c.fromLon,
+      toLat: c.toLat,
+      toLon: c.toLon
+    });
+    if (!area.ok) {
+      res.status(400).json({
+        error: "service_area_not_covered",
+        message: getOutOfServiceAreaMessage(opPayload)
+      });
+      return false;
+    }
+    const op = assertCustomerRideOperational(c.raw, opPayload);
+    if (!op.ok) {
+      res.status(400).json({ error: op.error, message: op.message });
+      return false;
+    }
+  }
+  return true;
+}
+async function upsertFinanceAfterPartnerRideCreated(ride) {
+  const opPayload = await getOperationalConfigPayload();
+  const regions = await listServiceRegionsForApi();
+  const pc = resolveFinancePricingContextFromOperational(ride, opPayload, regions);
+  void upsertRideFinancialSnapshot({ ride, pricingContext: pc, reason: "ride_created" });
 }
 function enabledPanelModules(profile) {
   return resolveEffectivePanelModules(profile.panelModules, profile.companyKind);
@@ -61465,7 +67809,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID17()}`;
+  return `REQ-${randomUUID25()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -61566,8 +67910,8 @@ function rideRevenueEuro(r) {
   const a = Number(r.finalFare ?? r.estimatedFare ?? 0);
   return Number.isFinite(a) ? a : 0;
 }
-function formatEuroDe(n3) {
-  return `${n3.toFixed(2).replace(".", ",")} \u20AC`;
+function formatEuroDe(n4) {
+  return `${n4.toFixed(2).replace(".", ",")} \u20AC`;
 }
 function ridePaymentLabelDe(r) {
   const pm = String(r.paymentMethod ?? "").trim().toLowerCase();
@@ -61751,10 +68095,10 @@ function companyRidesFiltersFromQuery(query) {
   };
   return { ok: true, filters };
 }
-router7.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
+router10.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
-router7.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
+router10.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res, {
     allowPasswordChangeRequired: true
   });
@@ -61779,7 +68123,7 @@ router7.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
     }
   });
 });
-router7.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
+router10.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
   if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
@@ -61791,7 +68135,7 @@ router7.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
-router7.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -61805,7 +68149,7 @@ router7.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router7.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+router10.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -61876,7 +68220,7 @@ router7.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -61889,7 +68233,7 @@ router7.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router7.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -61900,7 +68244,7 @@ router7.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, r
     next(e);
   }
 });
-router7.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -61914,7 +68258,7 @@ router7.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -61926,7 +68270,7 @@ router7.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -61939,7 +68283,7 @@ router7.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router7.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -61951,7 +68295,7 @@ router7.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router7.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -61969,8 +68313,8 @@ router7.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, nex
       res.status(400).json({ error: "body_invalid", hint: "max 10000" });
       return;
     }
-    const threadId = randomUUID17();
-    const messageId = randomUUID17();
+    const threadId = randomUUID25();
+    const messageId = randomUUID25();
     const created = await insertSupportThreadWithFirstMessage({
       threadId,
       messageId,
@@ -61989,7 +68333,7 @@ router7.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router7.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62010,7 +68354,7 @@ router7.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req,
     next(e);
   }
 });
-router7.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62028,7 +68372,7 @@ router7.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, a
       return;
     }
     const result = await insertPartnerSupportMessage({
-      messageId: randomUUID17(),
+      messageId: randomUUID25(),
       threadId,
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
@@ -62047,7 +68391,7 @@ router7.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, a
     next(e);
   }
 });
-router7.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62059,14 +68403,14 @@ router7.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const ridesOut = rides.map((r) => ({
       ...r,
       createdByUsername: r.createdByPanelUserId ? names[r.createdByPanelUserId] ?? null : null
-    }));
+    })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({ ok: true, rides: withTrace });
   } catch (e) {
     next(e);
   }
 });
-router7.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62085,7 +68429,7 @@ router7.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) 
     const ridesOut = list.map((r) => ({
       ...r,
       createdByUsername: r.createdByPanelUserId ? names[r.createdByPanelUserId] ?? null : null
-    }));
+    })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({
       ok: true,
@@ -62096,7 +68440,148 @@ router7.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router7.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.create")) return;
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const ride = await findRide(rideId);
+    if (!ride || ride.companyId !== ctx.claims.companyId) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const meta = ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" ? { ...ride.partnerBookingMeta } : {};
+    if (meta.medical_ride !== true) {
+      res.status(400).json({ error: "ride_not_medical" });
+      return;
+    }
+    if (meta.billing_ready !== true) {
+      res.status(409).json({ error: "ride_not_ready_for_billing" });
+      return;
+    }
+    const existingStatus = typeof meta.invoice_status === "string" ? meta.invoice_status : "";
+    if (existingStatus === "created" || existingStatus === "sent" || existingStatus === "paid") {
+      res.status(409).json({ error: "invoice_already_created" });
+      return;
+    }
+    const allCompanyRides = await listRidesForCompany(ctx.claims.companyId);
+    const usedInvoiceNumbers = allCompanyRides.map(
+      (r) => r.partnerBookingMeta && typeof r.partnerBookingMeta === "object" ? r.partnerBookingMeta.invoice_number : null
+    ).filter((v) => typeof v === "string" && v.trim().length > 0);
+    const invoiceNumber = nextInvoiceNumber(usedInvoiceNumbers);
+    const createdAt = (/* @__PURE__ */ new Date()).toISOString();
+    const gross = Number(meta.gross_ride_amount ?? ride.finalFare ?? ride.estimatedFare ?? 0);
+    const commissionRate = Number(meta.onroda_commission_rate ?? 0.07);
+    const commissionAmount = Number(
+      meta.onroda_commission_amount ?? Math.round((gross * commissionRate + Number.EPSILON) * 100) / 100
+    );
+    const payoutAmount = Number(meta.partner_payout_amount ?? Math.max(0, gross - commissionAmount));
+    const insurer = typeof meta.insurance_name === "string" ? meta.insurance_name : "";
+    const costCenter = typeof meta.cost_center === "string" ? meta.cost_center : "";
+    const companyName = ctx.profile.companyName || "Taxiunternehmen";
+    const companyAddress = "siehe Partner-Stammdaten";
+    const pdfLines = [
+      `Rechnung ${invoiceNumber}`,
+      `Unternehmen: ${companyName}`,
+      `Adresse: ${companyAddress || "n. a."}`,
+      `Fahrgast: ${ride.customerName || "n. a."}`,
+      `Datum: ${ride.scheduledAt || ride.createdAt}`,
+      `Strecke: ${ride.from} -> ${ride.to}`,
+      `Preis: ${gross.toFixed(2)} EUR`,
+      `Krankenkasse: ${insurer || "n. a."}`,
+      `Kostenstelle: ${costCenter || "n. a."}`,
+      `Nachweis/Ride-ID: ${ride.id}`,
+      `ONRODA Provision: ${(commissionRate * 100).toFixed(2)} %`,
+      `Provision Betrag: ${commissionAmount.toFixed(2)} EUR`,
+      `Auszahlung: ${payoutAmount.toFixed(2)} EUR`,
+      "Hinweis: Rechnung im Namen des Taxiunternehmens, ohne automatische Kassen-\xDCbermittlung."
+    ];
+    const companyKey = ctx.claims.companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const relKey = path7.join(companyKey, "invoices", `${invoiceNumber}.pdf`).replace(/\\/g, "/");
+    const absPath = path7.join(INVOICE_UPLOAD_ROOT, relKey);
+    await mkdir5(path7.dirname(absPath), { recursive: true });
+    await writeFile5(absPath, buildSimpleInvoicePdf(pdfLines));
+    const nextMeta = {
+      ...meta,
+      gross_ride_amount: gross,
+      onroda_commission_rate: commissionRate,
+      onroda_commission_amount: commissionAmount,
+      partner_payout_amount: payoutAmount,
+      invoice_status: "created",
+      invoice_number: invoiceNumber,
+      invoice_created_at: createdAt,
+      invoice_pdf_file_key: relKey,
+      invoice_sent_at: typeof meta.invoice_sent_at === "string" ? meta.invoice_sent_at : "",
+      invoice_paid_at: typeof meta.invoice_paid_at === "string" ? meta.invoice_paid_at : ""
+    };
+    const updated = await updateRide(ride.id, {
+      partnerBookingMeta: nextMeta
+    });
+    if (!updated) {
+      res.status(500).json({ error: "update_failed" });
+      return;
+    }
+    await insertPanelAuditLog({
+      id: randomUUID25(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "billing.invoice_created",
+      subjectType: "ride",
+      subjectId: ride.id,
+      meta: { invoiceNumber }
+    });
+    res.json({
+      ok: true,
+      invoice: {
+        status: "created",
+        number: invoiceNumber,
+        createdAt,
+        pdfFileKey: relKey
+      }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router10.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
+  try {
+    const ctx = await assertActivePanelProfile(req, res);
+    if (!ctx) return;
+    if (!denyUnlessPanelModule(res, ctx.profile, "company_rides")) return;
+    if (!denyUnlessPanelPermission(res, ctx.profile.role, "rides.read")) return;
+    const rideId = String(req.params.id ?? "").trim();
+    const ride = await findRide(rideId);
+    if (!ride || ride.companyId !== ctx.claims.companyId) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const meta = ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" ? ride.partnerBookingMeta : {};
+    const fileKey = typeof meta.invoice_pdf_file_key === "string" ? meta.invoice_pdf_file_key.trim() : "";
+    if (!fileKey) {
+      res.status(404).json({ error: "invoice_not_found" });
+      return;
+    }
+    const absPath = path7.join(INVOICE_UPLOAD_ROOT, fileKey);
+    const buf = await readFile2(absPath).catch(() => null);
+    if (!buf) {
+      res.status(404).json({ error: "pdf_file_missing" });
+      return;
+    }
+    const invoiceNumber = typeof meta.invoice_number === "string" ? meta.invoice_number : "rechnung";
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="Rechnung-${invoiceNumber}.pdf"`);
+    res.send(buf);
+  } catch (e) {
+    next(e);
+  }
+});
+router10.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62128,7 +68613,7 @@ router7.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, r
     next(e);
   }
 });
-router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62183,6 +68668,41 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     }
     const rideKind = parseRideKind(rawRk) ?? DEFAULT_RIDE_KIND;
     const payerKind = parsePayerKind(rawPk) ?? DEFAULT_PAYER_KIND;
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
+    const customerPhonePanel = typeof body.customerPhone === "string" ? body.customerPhone.trim() : typeof body.passengerPhone === "string" ? body.passengerPhone.trim() : "";
+    const rawOperational = {
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: customerPhonePanel,
+      distanceKm,
+      durationMinutes,
+      estimatedFare,
+      paymentMethod,
+      vehicle,
+      scheduledAt: scheduledAtVal,
+      fromFull,
+      toFull,
+      from,
+      to,
+      voucherCode: voucherCode ?? void 0,
+      billingReference: billingReference ?? void 0,
+      accessCode: typeof body.accessCode === "string" ? body.accessCode : void 0
+    };
+    if (!await assertOperationalGateForPanelRoutes(res, [
+      {
+        fromFull,
+        toFull,
+        fromLat: optNum("fromLat") ?? null,
+        fromLon: optNum("fromLon") ?? null,
+        toLat: optNum("toLat") ?? null,
+        toLon: optNum("toLon") ?? null,
+        raw: rawOperational
+      }
+    ]))
+      return;
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -62193,9 +68713,26 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
-    const scheduledAtVal = scheduledRaw && scheduledRaw.length > 0 ? scheduledRaw : null;
+    const opPayloadPanel = await getOperationalConfigPayload();
+    const regionsPanel = await listServiceRegionsForApi();
+    const panelVehicleNorm = vehicle.trim().toLowerCase() || "standard";
+    const panelBookingPricing = computeRideBookingPricing({
+      opPayload: opPayloadPanel,
+      regions: regionsPanel,
+      fromFull,
+      fromLat: optNum("fromLat") ?? null,
+      fromLon: optNum("fromLon") ?? null,
+      distanceKm,
+      tripMinutes: durationMinutes,
+      waitingMinutes: 0,
+      vehicle: panelVehicleNorm,
+      at: /* @__PURE__ */ new Date()
+    });
+    const panelFareChk = assertClientEstimatedFareMatchesServer(estimatedFare, panelBookingPricing.finalPrice);
+    if (!panelFareChk.ok) {
+      res.status(400).json({ error: panelFareChk.error });
+      return;
+    }
     const newReq = {
       id: reqRideId(),
       companyId: ctx.claims.companyId,
@@ -62206,6 +68743,7 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       rejectedBy: [],
       driverId: null,
       customerName,
+      customerPhone: customerPhonePanel || null,
       ...passengerId ? { passengerId } : {},
       from,
       fromFull,
@@ -62217,7 +68755,7 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       toLon: optNum("toLon"),
       distanceKm,
       durationMinutes,
-      estimatedFare,
+      estimatedFare: panelBookingPricing.finalPrice,
       finalFare: null,
       paymentMethod,
       vehicle,
@@ -62226,7 +68764,9 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       voucherCode,
       billingReference,
       authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
-      accessCodeId: null
+      accessCodeId: null,
+      pricingMode: panelBookingPricing.pricingMode,
+      tariffSnapshot: panelBookingPricing.snapshot
     };
     const accessCodeRaw = body.accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
@@ -62245,9 +68785,10 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
       return;
     }
     const saved = await findRide(newReq.id);
-    const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
+    const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
+    if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -62266,7 +68807,7 @@ router7.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62300,6 +68841,38 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     }
     const rideKind = parseRideKind(rawRk) ?? "standard";
     const payerKind = parsePayerKind(rawPk) ?? "company";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const guestPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : typeof body.guestPhone === "string" ? body.guestPhone.trim() : "";
+    const rawHotel = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName: guestName,
+      customerPhone: guestPhone,
+      distanceKm: leg.distanceKm,
+      durationMinutes: leg.durationMinutes,
+      estimatedFare: leg.estimatedFare,
+      paymentMethod: leg.paymentMethod,
+      vehicle: leg.vehicle,
+      scheduledAt: leg.scheduledAt,
+      fromFull: leg.fromFull,
+      toFull: leg.toFull,
+      billingReference: billingReference ?? void 0,
+      voucherCode: voucherCode ?? void 0
+    };
+    if (!await assertOperationalGateForPanelRoutes(res, [
+      {
+        fromFull: leg.fromFull,
+        toFull: leg.toFull,
+        fromLat: leg.fromLat ?? null,
+        fromLon: leg.fromLon ?? null,
+        toLat: leg.toLat ?? null,
+        toLon: leg.toLon ?? null,
+        raw: rawHotel
+      }
+    ]))
+      return;
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -62310,8 +68883,26 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const opPayloadHotel = await getOperationalConfigPayload();
+    const regionsHotel = await listServiceRegionsForApi();
+    const hotelVehicleNorm = leg.vehicle.trim().toLowerCase() || "standard";
+    const hotelBookingPricing = computeRideBookingPricing({
+      opPayload: opPayloadHotel,
+      regions: regionsHotel,
+      fromFull: leg.fromFull,
+      fromLat: leg.fromLat ?? null,
+      fromLon: leg.fromLon ?? null,
+      distanceKm: leg.distanceKm,
+      tripMinutes: leg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: hotelVehicleNorm,
+      at: /* @__PURE__ */ new Date()
+    });
+    const hotelFareChk = assertClientEstimatedFareMatchesServer(leg.estimatedFare, hotelBookingPricing.finalPrice);
+    if (!hotelFareChk.ok) {
+      res.status(400).json({ error: hotelFareChk.error });
+      return;
+    }
     const partnerBookingMeta = {
       flow: "hotel_guest",
       hotel: {
@@ -62331,6 +68922,7 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
       rejectedBy: [],
       driverId: null,
       customerName: guestName,
+      customerPhone: guestPhone || null,
       ...passengerId ? { passengerId } : {},
       from: leg.from,
       fromFull: leg.fromFull,
@@ -62342,7 +68934,7 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
       toLon: leg.toLon,
       distanceKm: leg.distanceKm,
       durationMinutes: leg.durationMinutes,
-      estimatedFare: leg.estimatedFare,
+      estimatedFare: hotelBookingPricing.finalPrice,
       finalFare: null,
       paymentMethod: leg.paymentMethod,
       vehicle: leg.vehicle,
@@ -62352,7 +68944,9 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
       billingReference,
       authorizationSource: DEFAULT_AUTHORIZATION_SOURCE,
       accessCodeId: null,
-      partnerBookingMeta
+      partnerBookingMeta,
+      pricingMode: hotelBookingPricing.pricingMode,
+      tariffSnapshot: hotelBookingPricing.snapshot
     };
     const accessCodeRaw = body.accessCode;
     const accessCodePlain = typeof accessCodeRaw === "string" ? accessCodeRaw : void 0;
@@ -62371,9 +68965,10 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
       return;
     }
     const saved = await findRide(newReq.id);
-    const rideOut = saved ? (await enrichPanelRidesForResponse([saved]))[0] : newReq;
+    const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
+    if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -62386,7 +68981,7 @@ router7.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62431,6 +69026,64 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const medPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : typeof body.passengerPhone === "string" ? body.passengerPhone.trim() : "";
+    const rawOutMed = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: medPhone,
+      distanceKm: outLeg.distanceKm,
+      durationMinutes: outLeg.durationMinutes,
+      estimatedFare: outLeg.estimatedFare,
+      paymentMethod: outLeg.paymentMethod,
+      vehicle: outLeg.vehicle,
+      scheduledAt: outLeg.scheduledAt,
+      fromFull: outLeg.fromFull,
+      toFull: outLeg.toFull,
+      billingReference: billingReference ?? void 0,
+      voucherCode: voucherCode ?? void 0
+    };
+    const rawRetMed = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: medPhone,
+      distanceKm: retLeg.distanceKm,
+      durationMinutes: retLeg.durationMinutes,
+      estimatedFare: retLeg.estimatedFare,
+      paymentMethod: retLeg.paymentMethod,
+      vehicle: retLeg.vehicle,
+      scheduledAt: retLeg.scheduledAt,
+      fromFull: retLeg.fromFull,
+      toFull: retLeg.toFull,
+      billingReference: billingReference ?? void 0,
+      voucherCode: voucherCode ?? void 0
+    };
+    if (!await assertOperationalGateForPanelRoutes(res, [
+      {
+        fromFull: outLeg.fromFull,
+        toFull: outLeg.toFull,
+        fromLat: outLeg.fromLat ?? null,
+        fromLon: outLeg.fromLon ?? null,
+        toLat: outLeg.toLat ?? null,
+        toLon: outLeg.toLon ?? null,
+        raw: rawOutMed
+      },
+      {
+        fromFull: retLeg.fromFull,
+        toFull: retLeg.toFull,
+        fromLat: retLeg.fromLat ?? null,
+        fromLon: retLeg.fromLon ?? null,
+        toLat: retLeg.toLat ?? null,
+        toLon: retLeg.toLon ?? null,
+        raw: rawRetMed
+      }
+    ]))
+      return;
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -62444,8 +69097,45 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const opPayloadMedRt = await getOperationalConfigPayload();
+    const regionsMedRt = await listServiceRegionsForApi();
+    const atMedRt = /* @__PURE__ */ new Date();
+    const outVehicleNorm = outLeg.vehicle.trim().toLowerCase() || "standard";
+    const retVehicleNorm = retLeg.vehicle.trim().toLowerCase() || "standard";
+    const medOutPricing = computeRideBookingPricing({
+      opPayload: opPayloadMedRt,
+      regions: regionsMedRt,
+      fromFull: outLeg.fromFull,
+      fromLat: outLeg.fromLat ?? null,
+      fromLon: outLeg.fromLon ?? null,
+      distanceKm: outLeg.distanceKm,
+      tripMinutes: outLeg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: outVehicleNorm,
+      at: atMedRt
+    });
+    const medRetPricing = computeRideBookingPricing({
+      opPayload: opPayloadMedRt,
+      regions: regionsMedRt,
+      fromFull: retLeg.fromFull,
+      fromLat: retLeg.fromLat ?? null,
+      fromLon: retLeg.fromLon ?? null,
+      distanceKm: retLeg.distanceKm,
+      tripMinutes: retLeg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: retVehicleNorm,
+      at: atMedRt
+    });
+    const medOutFareChk = assertClientEstimatedFareMatchesServer(outLeg.estimatedFare, medOutPricing.finalPrice);
+    if (!medOutFareChk.ok) {
+      res.status(400).json({ error: medOutFareChk.error });
+      return;
+    }
+    const medRetFareChk = assertClientEstimatedFareMatchesServer(retLeg.estimatedFare, medRetPricing.finalPrice);
+    if (!medRetFareChk.ok) {
+      res.status(400).json({ error: medRetFareChk.error });
+      return;
+    }
     const idOut = reqRideId();
     const idRet = reqRideId();
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
@@ -62456,6 +69146,7 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       rejectedBy: [],
       driverId: null,
       customerName,
+      customerPhone: medPhone || null,
       rideKind,
       payerKind,
       voucherCode,
@@ -62479,10 +69170,12 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       toLon: outLeg.toLon,
       distanceKm: outLeg.distanceKm,
       durationMinutes: outLeg.durationMinutes,
-      estimatedFare: outLeg.estimatedFare,
+      estimatedFare: medOutPricing.finalPrice,
       finalFare: null,
       paymentMethod: outLeg.paymentMethod,
       vehicle: outLeg.vehicle,
+      pricingMode: medOutPricing.pricingMode,
+      tariffSnapshot: medOutPricing.snapshot,
       partnerBookingMeta: {
         flow: "medical_patient",
         medical: {
@@ -62507,10 +69200,12 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       toLon: retLeg.toLon,
       distanceKm: retLeg.distanceKm,
       durationMinutes: retLeg.durationMinutes,
-      estimatedFare: retLeg.estimatedFare,
+      estimatedFare: medRetPricing.finalPrice,
       finalFare: null,
       paymentMethod: retLeg.paymentMethod,
       vehicle: retLeg.vehicle,
+      pricingMode: medRetPricing.pricingMode,
+      tariffSnapshot: medRetPricing.snapshot,
       partnerBookingMeta: {
         flow: "medical_patient",
         medical: {
@@ -62537,11 +69232,14 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
       return;
     }
     const [savedOut, savedRet] = await Promise.all([findRide(idOut), findRide(idRet)]);
-    const enriched = await enrichPanelRidesForResponse(
+    const enriched = (await enrichPanelRidesForResponse(
       [savedOut, savedRet].filter((x) => Boolean(x))
-    );
+    )).map(toPartnerRideView);
+    for (const r of [savedOut, savedRet]) {
+      if (r) await upsertFinanceAfterPartnerRideCreated(r);
+    }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -62554,7 +69252,7 @@ router7.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (r
     next(e);
   }
 });
-router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62615,6 +69313,38 @@ router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
     }
     const rideKind = parseRideKind(rawRk) ?? "medical";
     const payerKind = parsePayerKind(rawPk) ?? "insurance";
+    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
+    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const seriesPhone = typeof body.customerPhone === "string" ? body.customerPhone.trim() : typeof body.passengerPhone === "string" ? body.passengerPhone.trim() : "";
+    const rawSeriesLeg = {
+      ...body,
+      rideKind,
+      payerKind,
+      customerName,
+      customerPhone: seriesPhone,
+      distanceKm: leg.distanceKm,
+      durationMinutes: leg.durationMinutes,
+      estimatedFare: leg.estimatedFare,
+      paymentMethod: leg.paymentMethod,
+      vehicle: leg.vehicle,
+      scheduledAt: leg.scheduledAt,
+      fromFull: leg.fromFull,
+      toFull: leg.toFull,
+      billingReference: billingReference ?? void 0,
+      voucherCode: voucherCode ?? void 0
+    };
+    if (!await assertOperationalGateForPanelRoutes(res, [
+      {
+        fromFull: leg.fromFull,
+        toFull: leg.toFull,
+        fromLat: leg.fromLat ?? null,
+        fromLon: leg.fromLon ?? null,
+        toLat: leg.toLat ?? null,
+        toLon: leg.toLon ?? null,
+        raw: rawSeriesLeg
+      }
+    ]))
+      return;
     const g = await getCompanyGovernanceGate(ctx.claims.companyId);
     const gov = checkCompanyBookingGovernance(g, {
       rideKind,
@@ -62625,8 +69355,26 @@ router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
       res.status(403).json({ error: gov.error });
       return;
     }
-    const voucherCode = parseOptionalBillingTag(body.voucherCode, 64);
-    const billingReference = parseOptionalBillingTag(body.billingReference, 256);
+    const opPayloadSeries = await getOperationalConfigPayload();
+    const regionsSeries = await listServiceRegionsForApi();
+    const seriesVehicle = leg.vehicle.trim().toLowerCase() || "standard";
+    const seriesPricing = computeRideBookingPricing({
+      opPayload: opPayloadSeries,
+      regions: regionsSeries,
+      fromFull: leg.fromFull,
+      fromLat: leg.fromLat ?? null,
+      fromLon: leg.fromLon ?? null,
+      distanceKm: leg.distanceKm,
+      tripMinutes: leg.durationMinutes,
+      waitingMinutes: 0,
+      vehicle: seriesVehicle,
+      at: /* @__PURE__ */ new Date()
+    });
+    const seriesFareChk = assertClientEstimatedFareMatchesServer(leg.estimatedFare, seriesPricing.finalPrice);
+    if (!seriesFareChk.ok) {
+      res.status(400).json({ error: seriesFareChk.error });
+      return;
+    }
     const seriesRow = await insertPartnerRideSeries({
       companyId: ctx.claims.companyId,
       createdByPanelUserId: ctx.claims.panelUserId,
@@ -62653,6 +69401,7 @@ router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
         rejectedBy: [],
         driverId: null,
         customerName,
+        customerPhone: seriesPhone || null,
         from: leg.from,
         fromFull: leg.fromFull,
         fromLat: leg.fromLat,
@@ -62663,10 +69412,12 @@ router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
         toLon: leg.toLon,
         distanceKm: leg.distanceKm,
         durationMinutes: leg.durationMinutes,
-        estimatedFare: leg.estimatedFare,
+        estimatedFare: seriesPricing.finalPrice,
         finalFare: null,
         paymentMethod: leg.paymentMethod,
         vehicle: leg.vehicle,
+        pricingMode: seriesPricing.pricingMode,
+        tariffSnapshot: seriesPricing.snapshot,
         rideKind,
         payerKind,
         voucherCode,
@@ -62705,9 +69456,14 @@ router7.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, 
       return;
     }
     const loaded = await Promise.all(rides.map((r) => findRide(r.id)));
-    const enriched = await enrichPanelRidesForResponse(loaded.filter((x) => Boolean(x)));
+    const enriched = (await enrichPanelRidesForResponse(loaded.filter((x) => Boolean(x)))).map(
+      toPartnerRideView
+    );
+    for (const r of loaded) {
+      if (r) await upsertFinanceAfterPartnerRideCreated(r);
+    }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -62727,7 +69483,7 @@ function normalizeQueryRecord(raw) {
   }
   return q;
 }
-router7.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62744,7 +69500,7 @@ router7.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) 
     const ridesOut = list.map((r) => ({
       ...r,
       createdByUsername: r.createdByPanelUserId ? names[r.createdByPanelUserId] ?? null : null
-    }));
+    })).map(toPartnerRideView);
     const withTrace = await enrichPanelRidesForResponse(ridesOut);
     res.json({
       ok: true,
@@ -62756,7 +69512,7 @@ router7.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router7.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62779,7 +69535,7 @@ router7.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router7.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62791,7 +69547,7 @@ router7.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router7.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62803,7 +69559,7 @@ router7.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router7.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62836,7 +69592,7 @@ router7.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -62857,7 +69613,7 @@ router7.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router7.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
+router10.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62883,7 +69639,7 @@ router7.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -62896,7 +69652,7 @@ router7.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router7.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res, {
       allowPasswordChangeRequired: true
@@ -62928,7 +69684,7 @@ router7.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -62941,7 +69697,7 @@ router7.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router7.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router10.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62953,7 +69709,7 @@ router7.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router7.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -62997,7 +69753,7 @@ router7.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -63018,7 +69774,7 @@ router7.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router7.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router10.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -63084,7 +69840,7 @@ router7.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -63102,7 +69858,7 @@ router7.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =>
     next(e);
   }
 });
-router7.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router10.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -63139,7 +69895,7 @@ router7.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -63152,7 +69908,7 @@ router7.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router7.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router10.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -63189,7 +69945,7 @@ router7.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID17(),
+      id: randomUUID25(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -63202,81 +69958,23 @@ router7.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req,
     next(e);
   }
 });
-var panelApi_default = router7;
+var panelApi_default = router10;
 
 // src/routes/fleetAuth.ts
-var import_express8 = __toESM(require_express2(), 1);
+var import_express11 = __toESM(require_express2(), 1);
 init_client();
-
-// src/lib/fleetDriverJwt.ts
-function getSecretKey3() {
-  const fleet = (process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim();
-  if (fleet) {
-    return new TextEncoder().encode(fleet);
-  }
-  const panel = (process.env.PANEL_JWT_SECRET ?? "").trim();
-  if (panel) {
-    return new TextEncoder().encode(panel);
-  }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("FLEET_DRIVER_JWT_SECRET or PANEL_JWT_SECRET is required for fleet driver tokens in production");
-  }
-  const auth = (process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (!auth) {
-    throw new Error("FLEET_DRIVER_JWT_SECRET, PANEL_JWT_SECRET, or AUTH_JWT_SECRET must be set");
-  }
-  return new TextEncoder().encode(auth);
-}
-function issuer3() {
-  return (process.env.FLEET_DRIVER_JWT_ISSUER ?? "onroda-fleet-driver").trim() || "onroda-fleet-driver";
-}
-function isFleetDriverJwtConfigured() {
-  if ((process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim()) return true;
-  if ((process.env.PANEL_JWT_SECRET ?? "").trim()) return true;
-  if (process.env.NODE_ENV === "production") return false;
-  return Boolean((process.env.AUTH_JWT_SECRET ?? "").trim());
-}
-async function signFleetDriverJwt(claims, expiresIn = "14d") {
-  const secret = getSecretKey3();
-  return new SignJWT({
-    kind: "fleet_driver",
-    companyId: claims.companyId,
-    email: claims.email,
-    sv: claims.sessionVersion
-  }).setProtectedHeader({ alg: "HS256" }).setSubject(claims.fleetDriverId).setIssuedAt().setIssuer(issuer3()).setExpirationTime(expiresIn).sign(secret);
-}
-async function verifyFleetDriverJwt(token) {
-  const secret = getSecretKey3();
-  const { payload } = await jwtVerify(token, secret, {
-    issuer: issuer3(),
-    algorithms: ["HS256"]
-  });
-  return payloadToFleetDriverClaims(payload);
-}
-function payloadToFleetDriverClaims(payload) {
-  const sub = typeof payload.sub === "string" ? payload.sub : "";
-  if (!sub) throw new Error("invalid fleet driver token: missing sub");
-  if (payload.kind !== "fleet_driver") throw new Error("invalid fleet driver token: wrong kind");
-  const companyId = typeof payload.companyId === "string" ? payload.companyId : "";
-  const email = typeof payload.email === "string" ? payload.email : "";
-  const sv = typeof payload.sv === "number" ? payload.sv : Number(payload.sv);
-  if (!companyId || !email || !Number.isFinite(sv)) {
-    throw new Error("invalid fleet driver token: missing claims");
-  }
-  return { fleetDriverId: sub, companyId, email, sessionVersion: Math.floor(sv) };
-}
 
 // src/lib/fleetLoginRateLimit.ts
 var WINDOW_MS2 = 6e4;
 var MAX_ATTEMPTS2 = 25;
-var buckets2 = /* @__PURE__ */ new Map();
+var buckets3 = /* @__PURE__ */ new Map();
 function rateLimitFleetLogin(ip) {
   const k = ip.trim() || "unknown";
   const now = Date.now();
-  let b = buckets2.get(k);
+  let b = buckets3.get(k);
   if (!b || now >= b.resetAt) {
     b = { count: 0, resetAt: now + WINDOW_MS2 };
-    buckets2.set(k, b);
+    buckets3.set(k, b);
   }
   b.count += 1;
   if (b.count > MAX_ATTEMPTS2) {
@@ -63287,8 +69985,8 @@ function rateLimitFleetLogin(ip) {
 }
 
 // src/routes/fleetAuth.ts
-var router8 = (0, import_express8.Router)();
-router8.post("/fleet-auth/login", async (req, res) => {
+var router11 = (0, import_express11.Router)();
+router11.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitFleetLogin(ip);
   if (!rl.ok) {
@@ -63328,8 +70026,12 @@ router8.post("/fleet-auth/login", async (req, res) => {
     res.status(403).json({ error: deny });
     return;
   }
-  if (!row.is_active || row.access_status !== "active") {
-    res.status(403).json({ error: "driver_suspended" });
+  if (!row.is_active) {
+    res.status(403).json({ error: "driver_account_inactive" });
+    return;
+  }
+  if (String(row.access_status ?? "").toLowerCase() !== "active") {
+    res.status(403).json({ error: "driver_access_suspended" });
     return;
   }
   const ok2 = await verifyPassword(password, row.password_hash);
@@ -63365,59 +70067,18 @@ router8.post("/fleet-auth/login", async (req, res) => {
     }
   });
 });
-router8.post("/fleet-auth/logout", (_req, res) => {
+router11.post("/fleet-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
-var fleetAuth_default = router8;
+var fleetAuth_default = router11;
 
 // src/routes/fleetDriverApi.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express12 = __toESM(require_express2(), 1);
 init_client();
 init_accessCodesData();
 init_ridesData();
-
-// src/middleware/requireFleetDriverAuth.ts
-function bearerToken2(req) {
-  const raw = req.get("authorization")?.trim();
-  if (!raw) return null;
-  const m = raw.match(/^Bearer\s+(.+)$/i);
-  const t = m?.[1]?.trim();
-  return t && t.length > 0 ? t : null;
-}
-var requireFleetDriverAuth = async (req, res, next) => {
-  const token = bearerToken2(req);
-  if (!token) {
-    res.status(401).json({
-      error: "unauthorized",
-      hint: "Send Authorization: Bearer <fleet_jwt> from POST /api/fleet-auth/login."
-    });
-    return;
-  }
-  try {
-    const claims = await verifyFleetDriverJwt(token);
-    const row = await findFleetDriverAuthRow(claims.fleetDriverId);
-    if (!row || row.company_id !== claims.companyId) {
-      res.status(401).json({ error: "invalid_token" });
-      return;
-    }
-    if (!row.is_active || row.access_status !== "active") {
-      res.status(403).json({ error: "driver_suspended" });
-      return;
-    }
-    if (row.session_version !== claims.sessionVersion) {
-      res.status(401).json({ error: "token_revoked" });
-      return;
-    }
-    req.fleetDriverAuth = claims;
-    next();
-  } catch {
-    res.status(401).json({ error: "invalid_token" });
-  }
-};
-
-// src/routes/fleetDriverApi.ts
-var router9 = (0, import_express9.Router)();
-router9.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+var router12 = (0, import_express12.Router)();
+router12.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -63432,14 +70093,28 @@ router9.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
     res.status(401).json({ error: "not_found" });
     return;
   }
+  const [assignments, vehicles] = await Promise.all([
+    listAssignmentsForCompany(a.companyId),
+    listFleetVehiclesForCompany(a.companyId)
+  ]);
+  const assigned = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
+  const assignedVehicle = assigned ? vehicles.find((v) => v.id === assigned.vehicleId) ?? null : null;
+  const assignedVehicleVisible = assignedVehicle && assignedVehicle.isActive && assignedVehicle.approvalStatus === "approved" ? assignedVehicle : null;
   const listRow = fleetDriverTableRowToList(row);
   const readinessR = await getFleetDriverReadinessById(a.fleetDriverId, a.companyId);
   const einsatzbereit = "error" in readinessR ? false : readinessR.ready;
   const driverWorkflow = deriveDriverWorkflowLabel(listRow);
+  const hints = "error" in readinessR ? {
+    notFreigegebenMessage: "Einsatzbereitschaft konnte nicht geladen werden.",
+    blockBannerTitle: "Hinweis",
+    driverBlockKind: "other"
+  } : einsatzbereit ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" } : buildFleetDriverMeClientHints(readinessR, listRow);
   res.json({
     ok: true,
     einsatzbereit,
-    notFreigegebenMessage: einsatzbereit ? null : "Noch nicht freigegeben oder Voraussetzungen unvollst\xE4ndig \u2014 bitte wenden Sie sich ggf. an Ihr Unternehmen oder an Onroda.",
+    notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
+    blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
+    driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
     driverWorkflow,
     ..."error" in readinessR ? { readiness: { ready: false, blockReasons: [] } } : { readiness: readinessR },
     driver: {
@@ -63453,10 +70128,100 @@ router9.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       mustChangePassword: row.must_change_password,
       vehicleLegalType: row.vehicle_legal_type,
       vehicleClass: row.vehicle_class
-    }
+    },
+    assignedVehicle: assignedVehicleVisible ? {
+      vehicleId: assignedVehicleVisible.id,
+      plate: assignedVehicleVisible.licensePlate,
+      license_plate: assignedVehicleVisible.licensePlate,
+      licensePlate: assignedVehicleVisible.licensePlate,
+      model: assignedVehicleVisible.model,
+      vehicleType: assignedVehicleVisible.vehicleType,
+      vehicleClass: assignedVehicleVisible.vehicleClass
+    } : null
   });
 });
-router9.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+router12.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
+  const a = req.fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+  if (!row) {
+    res.status(401).json({ error: "not_found" });
+    return;
+  }
+  const [assignments, vehicles] = await Promise.all([
+    listAssignmentsForCompany(a.companyId),
+    listFleetVehiclesForCompany(a.companyId)
+  ]);
+  const currentAssignment = assignments.find((x) => x.driverId === a.fleetDriverId) ?? null;
+  const items = vehicles.filter((v) => v.isActive && v.approvalStatus === "approved").map((v) => ({
+    id: v.id,
+    plate: v.licensePlate,
+    license_plate: v.licensePlate,
+    licensePlate: v.licensePlate,
+    model: v.model,
+    vehicleType: v.vehicleType,
+    vehicleClass: v.vehicleClass,
+    isActive: v.isActive,
+    approvalStatus: v.approvalStatus,
+    selectable: true,
+    selected: currentAssignment?.vehicleId === v.id
+  }));
+  res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
+});
+router12.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
+  const a = req.fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const row = await findFleetDriverInCompany(a.fleetDriverId, a.companyId);
+  if (!row) {
+    res.status(401).json({ error: "not_found" });
+    return;
+  }
+  const vehicleId = typeof req.body?.vehicleId === "string" ? req.body.vehicleId.trim() : "";
+  if (!vehicleId) {
+    res.status(400).json({ error: "vehicle_id_required" });
+    return;
+  }
+  const vehicles = await listFleetVehiclesForCompany(a.companyId);
+  const selectedVehicle = vehicles.find((v) => v.id === vehicleId) ?? null;
+  if (!selectedVehicle) {
+    res.status(400).json({ error: "vehicle_not_found" });
+    return;
+  }
+  if (!selectedVehicle.isActive || selectedVehicle.approvalStatus !== "approved") {
+    res.status(400).json({ error: "vehicle_not_selectable" });
+    return;
+  }
+  const r = await setDriverVehicleAssignment({
+    companyId: a.companyId,
+    driverId: a.fleetDriverId,
+    vehicleId
+  });
+  if (!r.ok) {
+    res.status(400).json({ error: r.error });
+    return;
+  }
+  const refreshedVehicles = await listFleetVehiclesForCompany(a.companyId);
+  const selectedVehicleAfter = refreshedVehicles.find((v) => v.id === vehicleId) ?? null;
+  res.json({
+    ok: true,
+    selectedVehicle: selectedVehicleAfter ? {
+      vehicleId: selectedVehicleAfter.id,
+      plate: selectedVehicleAfter.licensePlate,
+      license_plate: selectedVehicleAfter.licensePlate,
+      licensePlate: selectedVehicleAfter.licensePlate,
+      model: selectedVehicleAfter.model,
+      vehicleType: selectedVehicleAfter.vehicleType,
+      vehicleClass: selectedVehicleAfter.vehicleClass
+    } : null
+  });
+});
+router12.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -63495,13 +70260,13 @@ router9.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req,
     }
     const all = await listRides();
     const marketRows = all.filter((ride) => {
-      if (ride.status === "scheduled") return false;
+      if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
       const isAssignedToDriver = ride.driverId === a.fleetDriverId;
       const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
       if (isAssignedToOtherDriver) return false;
       if (ride.companyId && ride.companyId !== a.companyId) return false;
       if (isAssignedToDriver) {
-        return ride.status === "accepted" || ride.status === "driver_arriving" || ride.status === "driver_waiting" || ride.status === "passenger_onboard" || ride.status === "arrived" || ride.status === "in_progress";
+        return ride.status === "ready_for_dispatch" || ride.status === "accepted" || ride.status === "driver_arriving" || ride.status === "driver_waiting" || ride.status === "passenger_onboard" || ride.status === "arrived" || ride.status === "in_progress";
       }
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
       const inMarket = ride.status === "pending" || ride.status === "requested" || ride.status === "searching_driver" || ride.status === "offered";
@@ -63520,7 +70285,7 @@ router9.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req,
     next(e);
   }
 });
-router9.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+router12.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -63559,9 +70324,17 @@ router9.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (r
     }
     const all = await listRides();
     const pool2 = all.filter((ride) => {
-      if (ride.status !== "scheduled") return false;
-      if (ride.driverId) return false;
+      const isFutureReservationStatus = ride.status === "scheduled" || ride.status === "scheduled_assigned";
+      if (!isFutureReservationStatus) return false;
+      if (ride.status === "scheduled" && ride.scheduledAt) {
+        const scheduledMs = new Date(ride.scheduledAt).getTime();
+        if (Number.isFinite(scheduledMs) && scheduledMs < Date.now()) return false;
+      }
       if (ride.companyId && ride.companyId !== a.companyId) return false;
+      const assignedDriverId = typeof ride.driverId === "string" ? ride.driverId.trim() : "";
+      const isAssignedToThisDriver = assignedDriverId === a.fleetDriverId;
+      const isAssignedToOtherDriver = assignedDriverId.length > 0 && !isAssignedToThisDriver;
+      if (isAssignedToOtherDriver) return false;
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
@@ -63577,7 +70350,7 @@ router9.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (r
     next(e);
   }
 });
-router9.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+router12.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -63586,7 +70359,7 @@ router9.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) =
   await touchFleetDriverHeartbeat(a.fleetDriverId);
   res.json({ ok: true });
 });
-router9.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+router12.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -63617,25 +70390,34 @@ router9.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (
   }
   res.json({ ok: true });
 });
-var fleetDriverApi_default = router9;
+router12.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = req.fleetDriverAuth;
+    const rides = await listRidesForDriver(a.fleetDriverId);
+    res.json({ rides });
+  } catch (err) {
+    next(err);
+  }
+});
+var fleetDriverApi_default = router12;
 
 // src/routes/fleetPanelApi.ts
-var import_express10 = __toESM(require_express2(), 1);
-import { randomUUID as randomUUID18 } from "node:crypto";
+var import_express13 = __toESM(require_express2(), 1);
+import { randomUUID as randomUUID26 } from "node:crypto";
 import fs from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
-import path5 from "node:path";
+import path8 from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 init_client();
-var router10 = (0, import_express10.Router)();
-router10.use((_req, res, next) => {
+var router13 = (0, import_express13.Router)();
+router13.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
   next();
 });
-var pkgRoot = path5.join(path5.dirname(fileURLToPath3(import.meta.url)), "..", "..");
-var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path5.join(pkgRoot, "data", "fleet-uploads");
+var pkgRoot = path8.join(path8.dirname(fileURLToPath3(import.meta.url)), "..", "..");
+var FLEET_UPLOAD_ROOT = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path8.join(pkgRoot, "data", "fleet-uploads");
 var ALLOWED_VEHICLE_LEGAL_TYPES = ["taxi"];
 var ALLOWED_VEHICLE_CLASSES = ["standard", "xl", "wheelchair"];
 function enabledPanelModules2(panelModules, companyKind) {
@@ -63671,18 +70453,14 @@ async function assertFleetPanel(req, res) {
   }
   return { claims, profile };
 }
-async function requireFleetProvisioningReady(companyId) {
-  const gate = await getCompanyGovernanceGate(companyId);
-  if (!gate) return { ok: false, error: "company_not_found" };
-  if (gate.companyKind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
-  if (gate.isBlocked) return { ok: false, error: "company_blocked" };
-  if (gate.verificationStatus !== "verified") return { ok: false, error: "company_not_verified" };
-  if (gate.complianceStatus !== "compliant") return { ok: false, error: "company_not_compliant" };
-  if (gate.contractStatus !== "active") return { ok: false, error: "contract_not_active" };
-  if (!gate.requiredProfileComplete) return { ok: false, error: "company_profile_incomplete" };
-  return { ok: true };
+async function requireFleetOnboardingEntityCreateAllowed(companyId) {
+  const company = await findCompanyById(companyId);
+  if (!company) return { ok: false, error: "company_not_found" };
+  if (company.company_kind !== "taxi") return { ok: false, error: "fleet_only_taxi_company" };
+  if (company.is_blocked) return { ok: false, error: "company_blocked" };
+  return { ok: true, company };
 }
-router10.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+router13.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63707,7 +70485,7 @@ router10.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router10.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router13.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63726,32 +70504,41 @@ router10.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
         return d.pScheinExpiry >= t0 && d.pScheinExpiry <= t1;
       });
     }
-    res.json({ ok: true, drivers: rows });
+    const publicRows = rows.map((d) => {
+      const { adminInternalNote: _a, readinessOverrideSystem: _o, ...rest } = d;
+      return rest;
+    });
+    res.json({ ok: true, drivers: publicRows });
   } catch (e) {
     next(e);
   }
 });
-router10.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
     const b = req.body;
-    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    const gate = await requireFleetOnboardingEntityCreateAllowed(ctx.claims.companyId);
     if (!gate.ok) {
       res.status(403).json({ error: gate.error });
       return;
     }
     const c = await countFleetDriversForCompany(ctx.claims.companyId);
-    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
-    if (limits && c >= limits.maxDrivers) {
-      res.status(403).json({ error: "driver_limit_reached", maxDrivers: limits.maxDrivers });
+    const maxDrivers = Number.isFinite(Number(gate.company.max_drivers)) ? Number(gate.company.max_drivers) : 100;
+    if (c >= maxDrivers) {
+      res.status(403).json({ error: "driver_limit_reached", maxDrivers });
       return;
     }
     const email = typeof b.email === "string" ? b.email : "";
     const firstName = typeof b.firstName === "string" ? b.firstName : "";
     const lastName = typeof b.lastName === "string" ? b.lastName : "";
     const phone = typeof b.phone === "string" ? b.phone : "";
+    const pScheinNumber = typeof b.pScheinNumber === "string" ? b.pScheinNumber : "";
+    const pScheinExpiry = b.pScheinExpiry === null ? null : typeof b.pScheinExpiry === "string" ? b.pScheinExpiry : void 0;
+    const homeAddress = typeof b.homeAddress === "string" ? b.homeAddress : "";
+    const driversLicenseNumber = typeof b.driversLicenseNumber === "string" ? b.driversLicenseNumber : "";
+    const driversLicenseExpiry = b.driversLicenseExpiry === null ? null : typeof b.driversLicenseExpiry === "string" ? b.driversLicenseExpiry : void 0;
     const vehicleLegalType = "taxi";
     const vehicleClass = typeof b.vehicleClass === "string" ? b.vehicleClass : "standard";
     if (!ALLOWED_VEHICLE_LEGAL_TYPES.includes(vehicleLegalType)) {
@@ -63773,7 +70560,13 @@ router10.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       passwordHash: hash,
       mustChangePassword: true,
       vehicleLegalType,
-      vehicleClass
+      vehicleClass,
+      pScheinNumber: pScheinNumber.trim() || void 0,
+      pScheinExpiry,
+      homeAddress: homeAddress.trim() || void 0,
+      driversLicenseNumber: driversLicenseNumber.trim() || void 0,
+      driversLicenseExpiry,
+      approvalStatus: "approved"
     });
     if (!ins.ok) {
       const code = ins.error;
@@ -63781,7 +70574,7 @@ router10.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID18(),
+      id: randomUUID26(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -63794,7 +70587,7 @@ router10.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router10.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+router13.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63805,7 +70598,13 @@ router10.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     if (typeof b.firstName === "string") patch.firstName = b.firstName;
     if (typeof b.lastName === "string") patch.lastName = b.lastName;
     if (typeof b.phone === "string") patch.phone = b.phone;
+    if (typeof b.email === "string") patch.email = b.email;
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    else if (b.isActive === "true") patch.isActive = true;
+    else if (b.isActive === "false") patch.isActive = false;
     if (typeof b.pScheinNumber === "string") patch.pScheinNumber = b.pScheinNumber;
+    if (typeof b.homeAddress === "string") patch.homeAddress = b.homeAddress;
+    if (typeof b.driversLicenseNumber === "string") patch.driversLicenseNumber = b.driversLicenseNumber;
     if (typeof b.vehicleLegalType === "string") {
       patch.vehicleLegalType = "taxi";
     }
@@ -63819,17 +70618,47 @@ router10.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     if (b.pScheinExpiry === null || typeof b.pScheinExpiry === "string") {
       patch.pScheinExpiry = b.pScheinExpiry === null ? null : b.pScheinExpiry;
     }
-    const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
-    if (!r.ok) {
-      res.status(404).json({ error: r.error });
+    if (b.driversLicenseExpiry === null || typeof b.driversLicenseExpiry === "string") {
+      patch.driversLicenseExpiry = b.driversLicenseExpiry === null ? null : b.driversLicenseExpiry;
+    }
+    const hasProfileKeys = Object.keys(patch).length > 0;
+    const newPw = typeof b.newPassword === "string" ? b.newPassword : "";
+    const hasPassword = newPw.length >= 10;
+    if (!hasProfileKeys && !hasPassword) {
+      res.status(400).json({ error: "no_updates" });
       return;
     }
+    if (hasProfileKeys) {
+      const r = await patchFleetDriverProfile(id, ctx.claims.companyId, patch);
+      if (!r.ok) {
+        const st = r.error === "email_taken" ? 409 : r.error === "email_invalid" ? 400 : r.error === "not_found" ? 404 : 400;
+        res.status(st).json({ error: r.error });
+        return;
+      }
+    }
+    if (hasPassword) {
+      const hash = await hashPassword(newPw);
+      const pwOk = await updateFleetDriverPassword(id, ctx.claims.companyId, hash, true);
+      if (!pwOk) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+    }
+    await insertPanelAuditLog({
+      id: randomUUID26(),
+      companyId: ctx.claims.companyId,
+      actorPanelUserId: ctx.claims.panelUserId,
+      action: "fleet.driver_updated",
+      subjectType: "fleet_driver",
+      subjectId: id,
+      meta: { fields: Object.keys(patch), passwordReset: hasPassword }
+    });
     res.json({ ok: true });
   } catch (e) {
     next(e);
   }
 });
-router10.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63840,7 +70669,7 @@ router10.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID18(),
+      id: randomUUID26(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -63853,7 +70682,7 @@ router10.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
     next(e);
   }
 });
-router10.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63864,7 +70693,7 @@ router10.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID18(),
+      id: randomUUID26(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -63877,7 +70706,7 @@ router10.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
     next(e);
   }
 });
-router10.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63891,7 +70720,7 @@ router10.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID18(),
+      id: randomUUID26(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -63904,10 +70733,10 @@ router10.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
     next(e);
   }
 });
-router10.post(
+router13.post(
   "/panel/v1/fleet/drivers/:id/p-schein-doc",
   requirePanelAuth,
-  import_express10.default.raw({ type: "application/pdf", limit: "6mb" }),
+  import_express13.default.raw({ type: "application/pdf", limit: "6mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -63924,9 +70753,9 @@ router10.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path5.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID18()}.pdf`);
-      const dest = path5.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path5.dirname(dest), { recursive: true });
+      const rel = path8.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID26()}.pdf`);
+      const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const pr = await patchFleetDriverProfile(id, ctx.claims.companyId, { pScheinDocStorageKey: storageKey });
@@ -63940,7 +70769,7 @@ router10.post(
     }
   }
 );
-router10.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router13.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -63949,26 +70778,30 @@ router10.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     if (String(req.query.activeOnly ?? "") === "1") {
       rows = rows.filter((v) => v.approvalStatus === "approved");
     }
-    res.json({ ok: true, vehicles: rows });
+    const publicV = rows.map((v) => {
+      const { adminInternalNote: _a, ...rest } = v;
+      return rest;
+    });
+    res.json({ ok: true, vehicles: publicV });
   } catch (e) {
     next(e);
   }
 });
-router10.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
     if (!denyUnlessPanelPermission(res, ctx.profile.role, "fleet.manage")) return;
     const b = req.body;
-    const gate = await requireFleetProvisioningReady(ctx.claims.companyId);
+    const gate = await requireFleetOnboardingEntityCreateAllowed(ctx.claims.companyId);
     if (!gate.ok) {
       res.status(403).json({ error: gate.error });
       return;
     }
     const c = await countFleetVehiclesForCompany(ctx.claims.companyId);
-    const limits = await getCompanyGovernanceGate(ctx.claims.companyId);
-    if (limits && c >= limits.maxVehicles) {
-      res.status(403).json({ error: "vehicle_limit_reached", maxVehicles: limits.maxVehicles });
+    const maxVehicles = Number.isFinite(Number(gate.company.max_vehicles)) ? Number(gate.company.max_vehicles) : 100;
+    if (c >= maxVehicles) {
+      res.status(403).json({ error: "vehicle_limit_reached", maxVehicles });
       return;
     }
     const licensePlate = typeof b.licensePlate === "string" ? b.licensePlate : "";
@@ -64001,14 +70834,14 @@ router10.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       taxiOrderNumber: typeof b.taxiOrderNumber === "string" ? b.taxiOrderNumber : "",
       konzessionNumber: konzessionRaw,
       nextInspectionDate: typeof b.nextInspectionDate === "string" ? b.nextInspectionDate : null,
-      approvalStatus: "draft"
+      approvalStatus: "pending_approval"
     });
     if (!ins.ok) {
       res.status(400).json({ error: ins.error });
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID18(),
+      id: randomUUID26(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -64021,7 +70854,7 @@ router10.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router10.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+router13.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -64037,6 +70870,9 @@ router10.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res
     if (typeof b.nextInspectionDate === "string" || b.nextInspectionDate === null) {
       patch.nextInspectionDate = b.nextInspectionDate === null ? null : b.nextInspectionDate;
     }
+    if (typeof b.isActive === "boolean") patch.isActive = b.isActive;
+    else if (b.isActive === "true") patch.isActive = true;
+    else if (b.isActive === "false") patch.isActive = false;
     if (typeof b.vehicleLegalType === "string") {
       patch.vehicleLegalType = "taxi";
     }
@@ -64067,7 +70903,7 @@ router10.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router10.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router13.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -64078,7 +70914,7 @@ router10.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router10.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -64100,7 +70936,7 @@ router10.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router10.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+router13.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -64111,10 +70947,10 @@ router10.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async
     next(e);
   }
 });
-router10.post(
+router13.post(
   "/panel/v1/fleet/vehicles/:id/documents",
   requirePanelAuth,
-  import_express10.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express13.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -64126,25 +70962,34 @@ router10.post(
         return;
       }
       const id = req.params.id;
-      const rel = path5.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID18()}.pdf`);
-      const dest = path5.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path5.dirname(dest), { recursive: true });
+      const kindRaw = typeof req.query.kind === "string" ? req.query.kind.trim().toLowerCase() : "";
+      const kind = parseFleetVehicleDocumentKind(kindRaw);
+      if (!kind) {
+        res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
+        return;
+      }
+      const rel = path8.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID26()}.pdf`);
+      const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
-      const ar = await appendFleetVehicleDocument(id, ctx.claims.companyId, storageKey);
+      const ar = await addFleetVehicleDocumentVersion(id, ctx.claims.companyId, storageKey, {
+        kind,
+        uploadedByPanelUserId: ctx.claims.panelUserId
+      });
       if (!ar.ok) {
         const code = ar.error;
         res.status(code === "not_found" ? 404 : code === "documents_locked" ? 409 : 400).json({ error: code });
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID18(),
+        id: randomUUID26(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
         subjectType: "fleet_vehicle",
         subjectId: id,
-        meta: {}
+        meta: { kind, storageKey, uploadedByPanelUserId: ctx.claims.panelUserId }
       });
       res.json({ ok: true, storageKey });
     } catch (e) {
@@ -64152,7 +70997,7 @@ router10.post(
     }
   }
 );
-router10.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+router13.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -64170,7 +71015,7 @@ router10.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID18(),
+      id: randomUUID26(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -64183,7 +71028,7 @@ router10.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
     next(e);
   }
 });
-router10.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+router13.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -64202,9 +71047,9 @@ router10.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
       res.status(403).json({ error: "forbidden" });
       return;
     }
-    const abs = path5.resolve(path5.join(FLEET_UPLOAD_ROOT, storageKey));
-    const root = path5.resolve(path5.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
-    if (!abs.startsWith(root + path5.sep) && abs !== root) {
+    const abs = path8.resolve(path8.join(FLEET_UPLOAD_ROOT, storageKey));
+    const root = path8.resolve(path8.join(FLEET_UPLOAD_ROOT, ctx.claims.companyId));
+    if (!abs.startsWith(root + path8.sep) && abs !== root) {
       res.status(403).json({ error: "forbidden" });
       return;
     }
@@ -64216,10 +71061,10 @@ router10.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
     next(e);
   }
 });
-router10.post(
+router13.post(
   "/panel/v1/fleet/compliance/:kind",
   requirePanelAuth,
-  import_express10.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express13.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -64235,9 +71080,9 @@ router10.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path5.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID18()}.pdf`);
-      const dest = path5.join(FLEET_UPLOAD_ROOT, rel);
-      await fs.mkdir(path5.dirname(dest), { recursive: true });
+      const rel = path8.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID26()}.pdf`);
+      const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
+      await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       if (!isPostgresConfigured()) {
@@ -64260,7 +71105,7 @@ router10.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID18(),
+        id: randomUUID26(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -64274,15 +71119,15 @@ router10.post(
     }
   }
 );
-var fleetPanelApi_default = router10;
+var fleetPanelApi_default = router13;
 
 // src/routes/insurerPanelApi.ts
-var import_express11 = __toESM(require_express2(), 1);
+var import_express14 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID20 } from "node:crypto";
+import { randomUUID as randomUUID28 } from "node:crypto";
 import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
-import path6 from "node:path";
+import path9 from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 
 // src/db/insurerPanelData.ts
@@ -64291,7 +71136,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID19 } from "node:crypto";
+import { randomUUID as randomUUID27 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -64414,7 +71259,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID19();
+  const id = randomUUID27();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -64506,7 +71351,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID19();
+  const id = randomUUID27();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -64540,10 +71385,10 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 }
 
 // src/routes/insurerPanelApi.ts
-var router11 = (0, import_express11.Router)();
-var pkgRoot2 = path6.join(path6.dirname(fileURLToPath4(import.meta.url)), "..", "..");
-var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path6.join(pkgRoot2, "uploads", "insurer-transport");
-router11.use((_req, res, next) => {
+var router14 = (0, import_express14.Router)();
+var pkgRoot2 = path9.join(path9.dirname(fileURLToPath4(import.meta.url)), "..", "..");
+var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path9.join(pkgRoot2, "uploads", "insurer-transport");
+router14.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -64590,7 +71435,7 @@ function denyUnlessInsurerPerm(res, role, perm) {
   if (!denyUnlessPanelPermission(res, role, perm)) return false;
   return true;
 }
-router11.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
+router14.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -64602,7 +71447,7 @@ router11.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router11.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
+router14.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -64614,7 +71459,7 @@ router11.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router11.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router14.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -64626,7 +71471,7 @@ router11.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router11.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router14.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -64645,7 +71490,7 @@ router11.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router11.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
+router14.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -64665,7 +71510,7 @@ router11.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (re
     next(e);
   }
 });
-router11.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
+router14.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -64684,7 +71529,7 @@ router11.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID20(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -64697,7 +71542,7 @@ router11.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
     next(e);
   }
 });
-router11.get(
+router14.get(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
   async (req, res, next) => {
@@ -64713,10 +71558,10 @@ router11.get(
     }
   }
 );
-router11.post(
+router14.post(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
-  import_express11.default.raw({ type: "*/*", limit: "8mb" }),
+  import_express14.default.raw({ type: "*/*", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertInsurerPanel(req, res);
@@ -64737,9 +71582,9 @@ router11.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path6.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID20()}.${ext}`);
-      const dest = path6.join(INSURER_UPLOAD_ROOT, rel);
-      await fs2.mkdir(path6.dirname(dest), { recursive: true });
+      const rel = path9.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID28()}.${ext}`);
+      const dest = path9.join(INSURER_UPLOAD_ROOT, rel);
+      await fs2.mkdir(path9.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
       const storageKey = rel.replace(/\\/g, "/");
       const out = await insertInsurerTransportDocument(
@@ -64763,7 +71608,7 @@ router11.post(
     }
   }
 );
-router11.get(
+router14.get(
   "/panel/v1/insurer/transport-documents/:docId/file",
   requirePanelAuth,
   async (req, res, next) => {
@@ -64777,7 +71622,7 @@ router11.get(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const full = path6.join(INSURER_UPLOAD_ROOT, meta.storageKey);
+      const full = path9.join(INSURER_UPLOAD_ROOT, meta.storageKey);
       res.setHeader("Content-Type", meta.contentType);
       res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(meta.originalFilename)}"`);
       createReadStream4(full).pipe(res);
@@ -64786,13 +71631,14 @@ router11.get(
     }
   }
 );
-var insurerPanelApi_default = router11;
+var insurerPanelApi_default = router14;
 
 // src/routes/publicHomepageApi.ts
-var import_express12 = __toESM(require_express2(), 1);
+var import_express15 = __toESM(require_express2(), 1);
 init_client();
-var router12 = (0, import_express12.Router)();
-router12.get("/public/homepage-placeholders", async (_req, res, next) => {
+init_appOperationalData();
+var router15 = (0, import_express15.Router)();
+router15.get("/public/homepage-placeholders", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -64805,7 +71651,7 @@ router12.get("/public/homepage-placeholders", async (_req, res, next) => {
     next(e);
   }
 });
-router12.get("/public/homepage-hints", async (_req, res, next) => {
+router15.get("/public/homepage-hints", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -64818,7 +71664,7 @@ router12.get("/public/homepage-hints", async (_req, res, next) => {
     next(e);
   }
 });
-router12.get("/public/homepage-content", async (_req, res, next) => {
+router15.get("/public/homepage-content", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, item: null });
@@ -64831,7 +71677,7 @@ router12.get("/public/homepage-content", async (_req, res, next) => {
     next(e);
   }
 });
-router12.get("/public/homepage-faq", async (_req, res, next) => {
+router15.get("/public/homepage-faq", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -64844,7 +71690,7 @@ router12.get("/public/homepage-faq", async (_req, res, next) => {
     next(e);
   }
 });
-router12.get("/public/homepage-how", async (_req, res, next) => {
+router15.get("/public/homepage-how", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -64857,7 +71703,7 @@ router12.get("/public/homepage-how", async (_req, res, next) => {
     next(e);
   }
 });
-router12.get("/public/homepage-trust", async (_req, res, next) => {
+router15.get("/public/homepage-trust", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -64870,27 +71716,261 @@ router12.get("/public/homepage-trust", async (_req, res, next) => {
     next(e);
   }
 });
-var publicHomepageApi_default = router12;
+router15.get("/public/app-operational", async (_req, res, next) => {
+  try {
+    const [config2, serviceRegions] = await Promise.all([
+      getOperationalConfigPayload(),
+      listServiceRegionsForApi()
+    ]);
+    res.setHeader("Cache-Control", "public, max-age=15");
+    res.json({ ok: true, config: config2, serviceRegions });
+  } catch (e) {
+    next(e);
+  }
+});
+var publicHomepageApi_default = router15;
+
+// src/routes/appConfigApi.ts
+var import_express16 = __toESM(require_express2(), 1);
+init_appOperationalData();
+var router16 = (0, import_express16.Router)();
+router16.get("/app/config", async (_req, res, next) => {
+  try {
+    const data = await getAppConfigForPublic();
+    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+router16.get("/app/pricing", async (_req, res, next) => {
+  try {
+    const data = await getAppPricingForPublic();
+    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+router16.get("/app/news", async (req, res, next) => {
+  try {
+    const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
+    const audience = parseAppNewsAudience(q);
+    const rawLimit = req.query.limit;
+    const limit = typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? Math.min(20, Math.max(1, parseInt(rawLimit.trim(), 10))) : 5;
+    const items = await listAppNewsPublic(audience, limit);
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router16.get("/app/sponsors", async (req, res, next) => {
+  try {
+    const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
+    const audience = parseAppSponsorAudience(q);
+    const rawLimit = req.query.limit;
+    const limit = typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? Math.min(20, Math.max(1, parseInt(rawLimit.trim(), 10))) : 10;
+    const items = await listAppSponsorsPublic(audience, limit);
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+var appConfigApi_default = router16;
+
+// src/routes/customerApi.ts
+var import_express17 = __toESM(require_express2(), 1);
+init_ridesData();
+var router17 = (0, import_express17.Router)();
+async function buildRidePlateMap(rides) {
+  const companyIds = Array.from(
+    new Set(
+      rides.map((r) => typeof r.companyId === "string" ? r.companyId.trim() : "").filter((v) => v.length > 0)
+    )
+  );
+  const driverPlateByCompany = /* @__PURE__ */ new Map();
+  await Promise.all(
+    companyIds.map(async (companyId) => {
+      const [assignments, vehicles] = await Promise.all([
+        listAssignmentsForCompany(companyId),
+        listFleetVehiclesForCompany(companyId)
+      ]);
+      const vehiclePlateById = new Map(vehicles.map((v) => [v.id, v.licensePlate]));
+      const driverPlateById = /* @__PURE__ */ new Map();
+      for (const a of assignments) {
+        const plate = vehiclePlateById.get(a.vehicleId);
+        if (plate && plate.trim().length > 0) {
+          driverPlateById.set(a.driverId, plate.trim());
+        }
+      }
+      driverPlateByCompany.set(companyId, driverPlateById);
+    })
+  );
+  const plateByRideId = /* @__PURE__ */ new Map();
+  for (const ride of rides) {
+    const rideId = typeof ride.id === "string" ? ride.id.trim() : "";
+    const companyId = typeof ride.companyId === "string" ? ride.companyId.trim() : "";
+    const driverId = typeof ride.driverId === "string" ? ride.driverId.trim() : "";
+    if (!rideId || !companyId || !driverId) continue;
+    const plate = driverPlateByCompany.get(companyId)?.get(driverId);
+    if (plate) plateByRideId.set(rideId, plate);
+  }
+  return plateByRideId;
+}
+function attachDriverPlate(ride, plateByRideId) {
+  const rideId = typeof ride.id === "string" ? ride.id.trim() : "";
+  if (!rideId) return ride;
+  const plate = plateByRideId.get(rideId);
+  if (!plate) return ride;
+  return {
+    ...ride,
+    vehicle: plate,
+    plate,
+    driverPlate: plate
+  };
+}
+router17.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const rides = await listRidesForPassenger(passengerId);
+    const views = rides.map(toCustomerRideView);
+    const plateByRideId = await buildRidePlateMap(rides);
+    res.json({ ok: true, items: views.map((r) => attachDriverPlate(r, plateByRideId)) });
+  } catch (e) {
+    next(e);
+  }
+});
+router17.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const view = toCustomerRideView(ride);
+    const plateByRideId = await buildRidePlateMap([ride]);
+    res.json({ ok: true, item: attachDriverPlate(view, plateByRideId) });
+  } catch (e) {
+    next(e);
+  }
+});
+router17.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const paymentMethod = String(req.body?.paymentMethod ?? "").trim();
+    if (!paymentMethod) {
+      res.status(400).json({ error: "payment_method_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (ride.status === "completed" || ride.status === "cancelled" || ride.status === "cancelled_by_customer" || ride.status === "cancelled_by_driver" || ride.status === "cancelled_by_system" || ride.status === "expired" || ride.status === "rejected") {
+      res.status(409).json({ error: "payment_method_locked_for_status" });
+      return;
+    }
+    const updated = await updateRide(ride.id, { paymentMethod });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+router17.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const noteRaw = String(req.body?.note ?? "");
+    const note = noteRaw.trim().slice(0, 500);
+    const passengerId = customerPassengerId(sess);
+    const ride = await findRideForPassenger(rideId, passengerId);
+    if (!ride) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const nextPartnerMeta = ride.partnerBookingMeta && typeof ride.partnerBookingMeta === "object" ? { ...ride.partnerBookingMeta } : {};
+    if (note) {
+      nextPartnerMeta.customer_driver_note = note;
+    } else {
+      delete nextPartnerMeta.customer_driver_note;
+    }
+    const updated = await updateRide(ride.id, {
+      partnerBookingMeta: nextPartnerMeta
+    });
+    if (!updated) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+var customerApi_default = router17;
 
 // src/routes/index.ts
-var router13 = (0, import_express13.Router)();
-router13.use(health_default);
-router13.use(auth_default);
-router13.use(panelAuth_default);
-router13.use(fleetAuth_default);
-router13.use(fleetDriverApi_default);
-router13.use(fleetPanelApi_default);
-router13.use(insurerPanelApi_default);
-router13.use(publicHomepageApi_default);
-router13.use(panelApi_default);
-router13.use(adminApi_default);
-router13.use(rides_default);
-var routes_default = router13;
+var router18 = (0, import_express18.Router)();
+router18.use(health_default);
+router18.use(appConfigApi_default);
+router18.use(auth_default);
+router18.use(emailAuth_default);
+router18.use(panelAuth_default);
+router18.use(fleetAuth_default);
+router18.use(fleetDriverApi_default);
+router18.use(fleetPanelApi_default);
+router18.use(insurerPanelApi_default);
+router18.use(publicHomepageApi_default);
+router18.use(panelApi_default);
+router18.use(adminApi_default);
+router18.use(customerApi_default);
+router18.use(rides_default);
+var routes_default = router18;
 
 // src/routes/admin.ts
-var import_express14 = __toESM(require_express2(), 1);
-var router14 = (0, import_express14.Router)();
-router14.get("/admin", (_req, res) => {
+var import_express19 = __toESM(require_express2(), 1);
+var router19 = (0, import_express19.Router)();
+router19.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -64910,10 +71990,10 @@ router14.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router14;
+var admin_default = router19;
 
 // src/app.ts
-var app = (0, import_express15.default)();
+var app = (0, import_express20.default)();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
@@ -64994,16 +72074,23 @@ app.use(
     maxAge: 86400
   })
 );
-app.use(import_express15.default.json());
-app.use(import_express15.default.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
+  const medicalUpload = req.method === "POST" && u.includes("/rides/") && (u.includes("/medical/transport-document") || u.includes("/medical/signature"));
+  const partnerRegInitialPost = req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);
+  const partnerRegDocPost = req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
+  const limit = medicalUpload ? "6mb" : partnerRegInitialPost ? "25mb" : partnerRegDocPost ? "12mb" : "200kb";
+  import_express20.default.json({ limit })(req, res, next);
+});
+app.use(import_express20.default.urlencoded({ extended: true, limit: "200kb" }));
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
-var __dirname2 = path7.dirname(fileURLToPath5(import.meta.url));
-var staticRoot = path7.join(__dirname2, "../static");
-var panelPublicRoot = path7.join(__dirname2, "../../partner-panel/dist");
+var __dirname2 = path10.dirname(fileURLToPath5(import.meta.url));
+var staticRoot = path10.join(__dirname2, "../static");
+var panelPublicRoot = path10.join(__dirname2, "../../partner-panel/dist");
 function resolvePublicRoot() {
-  return path7.join(__dirname2, "../../admin-panel/dist");
+  return path10.join(__dirname2, "../../admin-panel/dist");
 }
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -65013,7 +72100,7 @@ app.use((req, res, next) => {
 var adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
-  import_express15.default.static(adminPublicRoot)(req, res, (err) => {
+  import_express20.default.static(adminPublicRoot)(req, res, (err) => {
     if (err) return next(err);
     return next();
   });
@@ -65021,46 +72108,46 @@ app.use("/partners", (req, res, next) => {
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
-  res.sendFile(path7.join(adminPublicRoot, "index.html"), (err) => {
+  res.sendFile(path10.join(adminPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
-  import_express15.default.static(panelPublicRoot)(req, res, next);
+  import_express20.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
   if (req.method !== "GET" && req.method !== "HEAD") return next();
   if (req.path.startsWith("/partners")) return next();
-  res.sendFile(path7.join(panelPublicRoot, "index.html"), (err) => {
+  res.sendFile(path10.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
 });
 app.use((req, res, next) => {
   const p = req.path;
   if (p === "/partners" || p.startsWith("/partners/")) return next();
-  import_express15.default.static(staticRoot, { index: false })(req, res, next);
+  import_express20.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path7.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path10.join(staticRoot, "index.html"));
   return next();
 });
 app.get(["/partner/anfrage-status", "/partner-status"], (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path7.join(staticRoot, "partner-status.html"), (err) => {
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path10.join(staticRoot, "partner-status.html"), (err) => {
     if (err) next(err);
   });
   return next();
 });
 app.get("/", (req, res, next) => {
   const host = hostname(req);
-  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path7.join(staticRoot, "index.html"));
+  if (host === "onroda.de" || host === "www.onroda.de") return res.sendFile(path10.join(staticRoot, "index.html"));
   if (isApiHost(host)) {
     return res.json({ ok: true, service: "onroda-api" });
   }
-  if (isPanelBrowserHost(host)) return res.sendFile(path7.join(panelPublicRoot, "index.html"), (err) => {
+  if (isPanelBrowserHost(host)) return res.sendFile(path10.join(panelPublicRoot, "index.html"), (err) => {
     if (err) next(err);
   });
   if (isAdminBrowserHost(host)) return res.redirect(302, "/partners/");
