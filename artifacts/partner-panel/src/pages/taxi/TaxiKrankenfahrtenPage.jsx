@@ -468,6 +468,7 @@ export default function TaxiKrankenfahrtenPage() {
                             )}
                             {hasInvoice && (
                               
+                              <a
                                 className="partner-btn partner-btn--sm"
                                 href={`${API_BASE}/panel/v1/rides/${r.id}/invoice-pdf`}
                                 target="_blank"
