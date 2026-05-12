@@ -407,8 +407,8 @@
       border: 1px solid rgba(15, 23, 42, 0.08);
       background:
         radial-gradient(circle at 16% 22%, rgba(232, 24, 65, 0.13), rgba(232, 24, 65, 0) 46%),
-        radial-gradient(circle at 86% 24%, rgba(56, 189, 248, 0.15), rgba(56, 189, 248, 0) 44%),
-        linear-gradient(145deg, #ffffff 0%, #f7f9fc 72%, #eef2f8 100%);
+        radial-gradient(circle at 86% 24%, rgba(213, 188, 160, 0.2), rgba(213, 188, 160, 0) 44%),
+        linear-gradient(145deg, #FAF4EC 0%, #F5F0EB 72%, #EDE6DC 100%);
       overflow: hidden;
       box-shadow: 0 24px 56px rgba(15, 23, 42, 0.12);
       isolation: isolate;
