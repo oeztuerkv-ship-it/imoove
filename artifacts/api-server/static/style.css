@@ -1,7 +1,7 @@
     :root {
-      --hp-card-border: #ececec;
+      --hp-card-border: #DDD4C8;
       --hp-icon-bg: #fde8ec;
-      --hp-section-bg: #fafafa;
+      --hp-section-bg: #EDE6DC;
       --hp-footer-bg: #060606;
       --hp-footer-line: rgba(255, 255, 255, 0.08);
       --hp-footer-muted: rgba(255, 255, 255, 0.72);
@@ -31,7 +31,7 @@
       font-family: var(--font-sans);
       font-size: 1rem;
       color: var(--onroda-text-dark);
-      background: #fff;
+      background: #F5F0EB;
       line-height: 1.55;
     }
 
@@ -320,7 +320,7 @@
       position: relative;
       z-index: 20;
       padding: 14px 0 0;
-      background: #fff;
+      background: #FAF4EC;
     }
 
     .hp-header-inner {
@@ -352,7 +352,7 @@
       padding: 4rem 0 6.1rem;
       color: var(--onroda-text-dark);
       overflow: hidden;
-      background: #fff;
+      background: #FAF4EC;
     }
 
     .hp-hero-layout {
@@ -795,7 +795,7 @@
       padding: 18px;
       border: 1px solid var(--hp-card-border);
       border-radius: 14px;
-      background: #fff;
+      background: #FAF4EC;
     }
 
     .hp-mini-icon {
@@ -1066,7 +1066,7 @@
       transform: translateY(-1px);
       box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
       color: #000;
-      background: #fff;
+      background: #FAF4EC;
     }
 
     .hp-store-link svg {
