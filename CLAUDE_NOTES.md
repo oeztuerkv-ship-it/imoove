@@ -1,154 +1,136 @@
-# imoove – Claude Projektnotes
-Stand: 10.05.2026
+# imoove / ONRODA – Claude Projektnotes
+Stand: 11.05.2026 04:00
+
+## Projekt-Übersicht
+- **App:** imoove / ONRODA – Taxi-App (Fahrer + Kunde)
+- **Repo:** https://github.com/oeztuerkv-ship-it/imoove
+- **Lokaler Pfad:** /Users/vedo/Downloads/imoove
+- **Server:** root@ubuntu-8gb-nbg1-2 (SSH)
+- **Live:** https://api.onroda.de, https://admin.onroda.de, https://partner.onroda.de
 
 ## Stack
-- React Native + Expo v54
-- Expo Router, TypeScript
+- React Native + Expo v54 (Mobile)
+- Node.js + Express + PostgreSQL (API)
+- Vite + React (Admin Panel, Partner Panel)
 - pnpm Monorepo
-- Pfad: /Users/vedo/Downloads/imoove
-- Mobile: /artifacts/mobile/app/driver/dashboard.tsx
 
-## Dev Befehle
-cd /Users/vedo/Downloads/imoove/artifacts/mobile && npx expo start --port 8081 --clear --lan --go
-pnpm --filter @workspace/mobile run typecheck
+## Wichtige Pfade
+- Mobile App: artifacts/mobile/app/
+- Fahrer Dashboard: artifacts/mobile/app/driver/dashboard.tsx
+- Kunden Profil: artifacts/mobile/app/profile.tsx
+- API Routes: artifacts/api-server/src/routes/
+- Partner Panel: artifacts/partner-panel/src/
+- Admin Panel: artifacts/admin-panel/src/
 
-## Fonts (nur diese 4 geladen in _layout.tsx)
+## Deploy-Ablauf (IMMER SO!)
+### Mac → Server
+1. Mac: testen, typecheck, build
+2. Mac: git add (selektiv!) → commit → push
+3. SSH: cd /root/imoove && git reset --hard && git pull --ff-only origin main
+4. SSH: ./scripts/deploy-onroda-production.sh
+5. SSH: curl -i https://api.onroda.de/api/healthz
+
+### Wichtige Befehle
+- Mobile Dev: cd /Users/vedo/Downloads/imoove/artifacts/mobile && npx expo start --port 8081 --clear --lan --go
+- Typecheck: pnpm --filter @workspace/mobile run typecheck
+- API Build: pnpm --filter @workspace/api-server run build
+- Port killen: kill -9 $(lsof -t -i :8081) 2>/dev/null || true
+- PM2 logs: pm2 logs onroda-api
+
+## Fonts (NUR DIESE 4 in Mobile!)
 - Inter_400Regular
 - Inter_500Medium
 - Inter_600SemiBold
 - Inter_700Bold
 
-## Header Style (modernDriverHeader)
-- backgroundColor: #F2F2F7
-- borderRadius: 0 (oben eckig, unten rund kommt noch)
+## Design System (Apple-Style)
+- Primärfarbe: #EF1D26 (imoove Rot)
+- Header BG: #F2F2F7
+- Tab aktiv: #EF1D26 (rot), inaktiv: #8E8E93 (grau)
+- Toggle Container: #E5E5EA
+- Toggle aktiv: #FFFFFF + roter Text
+- Border: #C6C6C8
+- Text schwarz: #000000
+- Text grau: #8E8E93
+
+## Fahrer Dashboard (dashboard.tsx) – Wichtige Zeilenbereiche
+- Header View: ~2589
+- Tab-Buttons (Anfragen/Angenommene/Code): ~2682
+- modernDriverHeader Style: ~3149
+- driverNameModern Style: ~3192
+- driverPlateModern Style: ~3198
+- segmentSwitch Style: ~3220
+- tabScroll Style: ~3270
+- mapStatusChip Style: ~3398
+
+## Fahrer Dashboard – Design
+- Header: #F2F2F7, borderRadius 20, kein Shadow
 - Name: #000000, fontSize 22, Inter_400Regular, letterSpacing -0.5
 - Kennzeichen: #6B6B6B, fontSize 13, Inter_400Regular
-- Toggle BG: #E5E5EA
-- Toggle aktiv: #22C55E (Online) grün
-- Tab Container: #E5E5EA, borderRadius 12
-- Tab aktiv: weiss + #EF1D26 rot
-- Tab inaktiv: transparent + #8E8E93 grau
+- Toggle BG: #E5E5EA, aktiv: #22C55E grün
+- Tab Container: #E5E5EA, borderRadius 12, padding 3
+- Tab aktiv: #FFFFFF + #EF1D26 rot, Inter_700Bold, fontSize 14
+- Tab inaktiv: transparent + #8E8E93 grau, Inter_500Medium
 
-## Design Prinzip
-- Apple Style: hell, clean, SF-feel mit Inter
-- Rot: #EF1D26 (imoove Markenfarbe)
-- Aktive Tabs/Buttons: rot, inaktiv: grau
-- Keine Schatten, keine dunklen Hintergründe
+## Kunden Account (profile.tsx)
+- Avatar zentriert: 80x80, #EF1D26, Initiale weiß
+- ZAHLUNG & ABRECHNUNG zusammen in einer SectionCard
+- BillingModal: Privat / Firma / Kasse
+- hideChevron prop bei Abmelden
+- UserProfile hat: billingType, companyName, companyAddress, companyCity, vatNumber, costCenter, billingEmail
 
-## Bekannte Screens
-- driver/dashboard.tsx – Hauptscreen Fahrer
-  - Tab: Übersicht (Karte)
-  - Tab: Aufträge (Anfragen / Angenommene / Code)
-  - Tab: Meine Fahrten (Heute / Woche / Alle)
-  - Tab: Geldbeutel
-  - Tab: Profil
+## Billing/Kostenstelle Flow
+1. Kunde → Profil → Abrechnung → Firma wählen + Kostenstelle eingeben
+2. Bei Buchung → billingReference automatisch mitgeschickt
+3. Server speichert in billing_reference Spalte
+4. Partner Panel / Admin Panel sieht Kostenstelle bei Fahrt
 
-## Offene TODOs
-- Meine Fahrten Filter auf Aufträge-Style bringen (gerade in Arbeit)
-- Bereit für Aufträge Pill in Header integrieren
-- Alle Tabs auf gleiches Design bringen
+## API Endpunkte (neu heute)
+- GET /api/fleet-driver/v1/completed-rides → Fahrer-History vom Server
+- GET /api/panel/v1/rides/:id/invoice-pdf → PDF Download (auth: Bearer oder ?token=)
+- POST /api/panel/v1/rides/:id/create-invoice → Rechnung erstellen
 
-## Update 10.05.2026 22:20
+## Partner Panel – Was vorhanden ist
+### Taxi
+- Fahrerverwaltung, Fahrzeuge, Tarife ✅
+- Krankenfahrten + Abrechnungsstatus ✅
+- "Rechnung erstellen" Button ✅ (heute gebaut)
+- "PDF ↓" Download-Link ✅ (heute gebaut)
 
-### Aufträge Tab - Segment Control
-- Container: backgroundColor #E5E5EA, borderRadius 12, padding 3
-- Anfragen/Angenommene: flex 1, borderRadius 10, paddingVertical 10
-- Aktiv: backgroundColor #FFFFFF, Text #EF1D26, Inter_700Bold, fontSize 14
-- Inaktiv: transparent, Text #8E8E93, Inter_500Medium, fontSize 14
-- Code Button: gleiche Logik, paddingHorizontal 12, Feather Plus Icon färbt sich mit
+### Krankenkasse
+- Dashboard (offen/aktiv/abgeschlossen) ✅
+- Fahrtenübersicht mit Kostenstellen ✅
+- Serien-Buchung ✅
+- Kostenstellen anlegen ✅
 
-### Meine Fahrten Tab - Filter
-- filterRow: backgroundColor #E5E5EA, borderRadius 12, padding 3, marginBottom 18
-- filterBtn: flex 1, paddingVertical 10, borderRadius 10
-- filterBtnActive: backgroundColor #FFFFFF, borderRadius 9
-- Text aktiv: #EF1D26, Inter_700Bold, fontSize 14
-- Text inaktiv: #8E8E93, Inter_500Medium, fontSize 14
+### Hotel/Agentur
+- Gast-Buchung ✅
+- Gutschein-Buchung ✅
 
-### Fonts - NUR DIESE 4 verwenden!
-- Inter_400Regular
-- Inter_500Medium  
-- Inter_600SemiBold
-- Inter_700Bold
+## TODO (nächste Sessions)
+- [ ] Transportschein-OCR mit Claude API (Foto → Daten → Rechnung an Kasse)
+- [ ] Gutschein-Generator QR+PDF für Hotel
+- [ ] Live-Tracking für Hotel-Rezeption
+- [ ] Krankenkasse Abrechnungs-Dashboard (Kosten pro Patient/Kostenstelle)
+- [ ] E-Mail Versand Rechnung
+- [ ] PayPal Integration (braucht Zugangsdaten)
+- [ ] Stripe/Kreditkarte (braucht Zugangsdaten)
+- [ ] Datenschutzerklärung Seite
+- [ ] Encoding-Bug Umlaute bei Google Login (Datenproblem, neu einloggen)
 
-## Profil Tab - Stand 11.05.2026 01:02
-- Avatar: 72x72, borderRadius 36, backgroundColor #EF1D26, Buchstabe weiß 28px
-- Name: #000, fontSize 20, Inter_700Bold
-- Kennzeichen: #8E8E93, fontSize 13, Inter_400Regular
-- Fahrzeug Card: profilCard style, colors.card background
-- Exklusive Angebote: profilCard style, onPress → /sponsors
-- Abmelden: profilLogoutBtn style, rot
+## PM2 Prozesse (Server)
+- onroda-api (id: 0) → Port 3000
+- onroda-partner (id: 4)
 
-## Update 11.05.2026 01:15 - Datenbereinigung
-- MOCK_RIDES entfernt - nur echte Fahrten aus RideContext.history
-- RideEntry Type definiert (id, date, time, from, to, km, duration, amount, payment)
-- allRides nutzt jetzt createdAt für echtes Datum
-- Wochen-Filter: echter 7-Tage-Filter statt slice(0,12)
-- TabFahrten + TabGeldbeutel: typeof MOCK_RIDES → RideEntry[]
-- Performance Stats (acceptanceRate etc.) noch hardcoded - TODO echte API
+## Wichtige URLs
+- API Health: https://api.onroda.de/api/healthz
+- Admin: https://admin.onroda.de
+- Partner: https://partner.onroda.de
 
-## Update 11.05.2026 01:45 - Server-History
-- Neuer DB-Endpunkt: listRidesForDriver(driverId) in ridesData.ts
-- Neuer API-Endpunkt: GET /fleet-driver/v1/completed-rides
-- Mobile: allRides lädt jetzt vom Server (driver.authToken Bearer)
-- Fallback: lokale appRides wenn Server leer
-- API-Server Build: ✅ erfolgreich
-- Mobile Typecheck: ✅ sauber
-
-## App Struktur - Mobile
-Eine App, zwei Ansichten:
-- Kunde: /app/index.tsx, my-rides.tsx, wallet.tsx, profile.tsx, reserve-ride.tsx, booking-medical.tsx
-- Fahrer: /app/driver/dashboard.tsx (unser Hauptfile)
-- Admin: /app/admin/
-- Shared: booking-center.tsx, ride-select.tsx, new-booking.tsx
-
-## Kunden-App Design (Stand 11.05.2026)
-- Tab-Bar: abgerundet, moderner Stil
-- Mitte: grüner "Buchen" Button
-- Karte im Hintergrund
-- Suchleiste: "Ziel eingeben"
-- Buttons: Reservieren (rot) + Krankenfahrt (grün)
-
-## Update 11.05.2026 02:10 - Billing/Rechnungsadresse
-- UserProfile erweitert: billingType, companyName, companyAddress, companyCity, vatNumber, costCenter, billingEmail
-- BillingModal Component in profile.tsx erstellt
-- 3 Typen: Privat / Firma / Kasse
-- Firma: Firmenname, Adresse, USt-ID, Kostenstelle, Rechnungs-Email
-- Kasse: zeigt Krankenkasse+Versichertennr aus Patientenprofil (readonly)
-- Profil-Screen: neue ABRECHNUNG Section zwischen ZAHLUNG und PROFIL
-- TODO: Billing-Daten bei Buchung an API senden
-- TODO: Admin-Panel Rechnungsversand
-
-## Update 11.05.2026 02:30 - wallet.tsx Billing
-- wallet.tsx: useUser updateProfile hinzugefügt
-- billingSublabel kommt jetzt aus UserContext (billingType/companyName/krankenkasse)
-- BillingModal onClose speichert in UserContext statt lokalem State
-- Alter BillingModal in wallet.tsx bleibt (Name/Straße/PLZ) - TODO später durch neuen ersetzen
-
-## Update 11.05.2026 02:40
-- wallet.tsx: Rechnungsadresse Section entfernt
-- Rechnungsadresse nur noch in Profil → Abrechnung (BillingModal)
-- Geldbörse zeigt nur: Bar, PayPal, Kreditkarte, Gutschein, Sicherheit
-
-## Update 11.05.2026 03:00 - Kostenstelle & Account Screen
-- new-booking.tsx: billingReference wird automatisch mitgeschickt wenn billingType === "company" und costCenter gesetzt
-- profile.tsx: Avatar zentriert, ZAHLUNG & ABRECHNUNG zusammengefasst, hideChevron bei Abmelden
-- BillingModal in profile.tsx: Privat/Firma/Kasse Auswahl
-- Kostenstelle Flow: Kunde setzt Kostenstelle in Profil → Abrechnung → wird automatisch bei jeder Firmenbuchung mitgeschickt
-- TODO: Admin Panel zeigt billingReference in Fahrtenübersicht
-
-## Update 11.05.2026 03:45 - Invoice/PDF System
-- API: GET /panel/v1/rides/:id/invoice-pdf → PDF Download
-- API: requirePanelAuth unterstützt jetzt auch ?token= Query-Parameter (für PDF-Links)
-- Partner Panel TaxiKrankenfahrtenPage: "Rechnung erstellen" Button + "PDF ↓" Download-Link
-- Build: ✅ erfolgreich
-
-## TODO (Zahlung fehlen Zugangsdaten)
-- PayPal Integration
-- Stripe/Kreditkarte Integration
-
-## TODO (nächste Schritte)
-- Transportschein-OCR mit Claude API (Foto → Daten → Rechnung an Kasse)
-- Gutschein-Generator QR+PDF für Hotel
-- Live-Tracking für Hotel-Rezeption
-- Krankenkasse Abrechnungs-Dashboard (Kosten pro Patient/Kostenstelle)
-- E-Mail Versand Rechnung
+## TODO - Homepage Deploy Fix
+- CSS Änderungen (style.css) sind im Repo korrekt
+- Aber onroda.de zeigt noch alte Version
+- Problem: rsync von artifacts/api-server/static/ → Webroot fehlt
+- Fragen an Entwickler gesendet (Webroot, rsync-Pfad, CDN, Cache-Purge)
+- Sobald Antwort: ONRODA_RSYNC_MARKETING_STATIC_TO in .env setzen
+- Dann: style.css Änderungen live → warmes Beige #F5F0EB sichtbar
