@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
@@ -469,8 +469,46 @@ export default function NewBookingScreen() {
   const [accessCode, setAccessCode] = useState("");
   const [driverNote, setDriverNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [fareEstimates, setFareEstimates] = useState<Record<string, number | null>>({});
+  const [fareLoading, setFareLoading] = useState(false);
+  const [wheelchairFoldable, setWheelchairFoldable] = useState(false);
+  const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
+
+  useEffect(() => {
+    setFrom(EMPTY_SELECTED_ADDRESS);
+    setTo(EMPTY_SELECTED_ADDRESS);
+    setScheduledAt(null);
+    setSelectedVehicle("standard");
+    setAccessCode("");
+    setDriverNote("");
+    setFareEstimates({});
+  }, []);
 
   const formComplete = from.name.length > 0 && to.name.length > 0 && scheduledAt !== null;
+
+  useEffect(() => {
+    if (!from.lat || !from.lon || !to.lat || !to.lon) {
+      setFareEstimates({});
+      return;
+    }
+    setFareLoading(true);
+    const base = `${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://api.onroda.de/api"}`;
+    Promise.all(
+      ["standard", "xl", "wheelchair"].map(async (vehicle) => {
+        try {
+          const url = `${base}/fare-estimate?vehicle=${vehicle}&fromLat=${from.lat}&fromLng=${from.lon}&toLat=${to.lat}&toLng=${to.lon}&distanceKm=0`;
+          const r = await fetch(url);
+          const j = await r.json();
+          return [vehicle, j?.est?.total ?? j?.total ?? null] as [string, number | null];
+        } catch {
+          return [vehicle, null] as [string, number | null];
+        }
+      })
+    ).then((results) => {
+      setFareEstimates(Object.fromEntries(results));
+      setFareLoading(false);
+    });
+  }, [from.lat, from.lon, to.lat, to.lon]);
   const swapFromTo = () => {
     setFrom(to);
     setTo(from);
@@ -599,7 +637,7 @@ export default function NewBookingScreen() {
         toLon: destinationLon ?? undefined,
         distanceKm: 0,
         durationMinutes: 0,
-        estimatedFare: Number.NaN,
+        estimatedFare: fareEstimates[selectedVehicle] ?? 0,
         paymentMethod: "Bar",
         vehicle: vehicleLabel,
         customerName,
@@ -624,7 +662,14 @@ export default function NewBookingScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.back();
+          }}
+          style={styles.backBtn}
+          hitSlop={10}
+        >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={styles.headerTitle}>Buchung</Text>
@@ -735,6 +780,14 @@ export default function NewBookingScreen() {
                     <Text style={[styles.vehicleName, { color: active ? "#DC2626" : colors.foreground }]} numberOfLines={2}>
                       {v.name}
                     </Text>
+                    {fareEstimates[v.id] != null && (
+                      <Text style={{ fontSize: 11, color: active ? "#DC2626" : colors.mutedForeground, fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
+                        {`ab ${fareEstimates[v.id]!.toFixed(2)} €`}
+                      </Text>
+                    )}
+                    {fareLoading && fareEstimates[v.id] == null && (
+                      <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2 }}>…</Text>
+                    )}
                     {active && (
                       <View style={styles.vehicleCheck}>
                         <Feather name="check-circle" size={14} color="#DC2626" />
@@ -744,6 +797,35 @@ export default function NewBookingScreen() {
                 );
               })}
             </View>
+            {selectedVehicle === "wheelchair" && (
+              <View style={{ marginTop: 12, backgroundColor: colors.muted, borderRadius: 12, padding: 14, gap: 12 }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginBottom: 4 }}>Rollstuhl-Optionen</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View>
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Rollstuhl klappbar</Text>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Kann zusammengeklappt werden</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => { setWheelchairFoldable(!wheelchairFoldable); Haptics.selectionAsync(); }}
+                    style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: wheelchairFoldable ? "#34C759" : colors.border, justifyContent: "center", paddingHorizontal: 2 }}
+                  >
+                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", alignSelf: wheelchairFoldable ? "flex-end" : "flex-start", shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 }} />
+                  </Pressable>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View>
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Begleitperson</Text>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Eine Begleitperson mitfahrend</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => { setWheelchairCompanion(!wheelchairCompanion); Haptics.selectionAsync(); }}
+                    style={{ width: 50, height: 28, borderRadius: 14, backgroundColor: wheelchairCompanion ? "#34C759" : colors.border, justifyContent: "center", paddingHorizontal: 2 }}
+                  >
+                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", alignSelf: wheelchairCompanion ? "flex-end" : "flex-start", shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 }} />
+                  </Pressable>
+                </View>
+              </View>
+            )}
             <Text style={[styles.cardLabel, { color: colors.foreground, marginTop: 4 }]}>Freigabe-Code (optional)</Text>
             <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
               Digitale Kostenübernahme durch Firma, Hotel oder anderen Auftraggeber — wird im System geprüft. Ohne Code: normale Direktbuchung.

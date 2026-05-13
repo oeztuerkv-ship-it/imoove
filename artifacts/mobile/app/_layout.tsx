@@ -11,6 +11,7 @@ import { Stack } from "expo-router";
 import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
+import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -20,6 +21,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { HOME_SHEET_BG } from "@/constants/homeSheetChrome";
 import { AppConfigProvider } from "@/context/AppConfigContext";
 import { DriverProvider } from "@/context/DriverContext";
 import { RideProvider } from "@/context/RideContext";
@@ -48,7 +50,12 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: HOME_SHEET_BG },
+      }}
+    >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="ride" options={{ headerShown: false }} />
       <Stack.Screen name="status" options={{ headerShown: false }} />
@@ -63,8 +70,9 @@ function RootLayoutNav() {
       <Stack.Screen name="wallet" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="reserve-ride" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="fahrt-reservieren" options={{ headerShown: false, presentation: "modal" }} />
-      <Stack.Screen name="booking-center" options={{ headerShown: false }} />
-      <Stack.Screen name="booking-medical" options={{ headerShown: false }} />
+      <Stack.Screen name="new-booking" options={{ headerShown: false, gestureEnabled: false, animation: "slide_from_bottom" }} />
+      <Stack.Screen name="booking-center" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="booking-medical" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
@@ -100,9 +108,10 @@ export default function RootLayout() {
   /** Kein frühes `return null`: sonst fehlt `UserProvider` kurz → useUser in Screens wirft. */
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" backgroundColor={HOME_SHEET_BG} />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: HOME_SHEET_BG }}>
             <KeyboardProvider>
               <UserProvider>
                 <AppConfigProvider>

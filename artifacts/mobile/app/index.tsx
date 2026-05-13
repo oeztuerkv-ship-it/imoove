@@ -27,9 +27,11 @@ import {
   BottomTabBar,
   BOTTOM_TAB_BAR_HOME_OFFSET_Y,
   BOTTOM_TAB_BAR_INNER_HEIGHT,
+  BOTTOM_TAB_BAR_OUTER_PADDING_X,
 } from "@/components/BottomTabBar";
 import { RealMapView } from "@/components/RealMapView";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { onrodaTheme } from "@/src/theme";
 import { useDriver } from "@/context/DriverContext";
 import {
   type RideHistoryEntry,
@@ -70,6 +72,10 @@ function isPlausibleEmail(s: string): boolean {
 }
 
 const SEARCH_OVERLAY_BG = "#FFFFFF";
+
+/** „Exklusive Angebote“ / „Neuigkeiten“: klassisches Weiß (nicht Creme / Theme-Offwhite). */
+const SPONSOR_NEWS_CARD_WHITE = "#FFFFFF";
+const SPONSOR_NEWS_CARD_BORDER = "#E5E7EB";
 
 const HOME_MEDICAL_GREEN = "#059669";
 const HOME_MEDICAL_GREEN_DARK = "#047857";
@@ -138,13 +144,20 @@ export default function HomeScreen() {
   const isSmallScreen = screenHeight < 700;    // iPhone SE / iPhone 8
   const isMediumScreen = screenHeight < 850;   // iPhone 13/14
   const obGap = isSmallScreen ? 14 : isMediumScreen ? 18 : 24;
-  const obTitleSize = isSmallScreen ? 28 : 36;
+  const obTitleSize = isSmallScreen ? 24 : 30;
   const obBlockPad = isSmallScreen ? 14 : 20;
 
   const [isHomeFocused, setIsHomeFocused] = useState(true);
   useFocusEffect(
     useCallback(() => {
       setIsHomeFocused(true);
+      setIsSearchActive(false);
+      setDestQuery("");
+      setDestResults([]);
+      setOriginQuery("");
+      setOriginResults([]);
+      setIsEditingOrigin(false);
+      setViaStops([]);
       return () => setIsHomeFocused(false);
     }, []),
   );
@@ -374,8 +387,12 @@ export default function HomeScreen() {
   const [isSearchActive, setIsSearchActive] = useState(false);
 
   /* ── Auto-open search when navigated with ?search=1 (z. B. Sofortfahrt aus Buchungszentrale) ── */
-  const { search: searchParam } = useLocalSearchParams<{ search?: string }>();
+  const { search: searchParam, closeSearch: closeSearchParam } = useLocalSearchParams<{ search?: string; closeSearch?: string }>();
   useEffect(() => {
+    if (closeSearchParam === "1") {
+      closeSearch();
+      router.setParams({ closeSearch: undefined });
+    }
     if (searchParam === "1") {
       setIsSearchActive(true);
       requestAnimationFrame(() => {
@@ -1124,7 +1141,7 @@ export default function HomeScreen() {
   /* ── Driver guard: while AsyncStorage loads, show nothing; when logged in, redirect ── */
   if (driverLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#fff", justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1, backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#DC2626" />
       </View>
     );
@@ -1139,6 +1156,12 @@ export default function HomeScreen() {
   }
   if (isDriverLoggedIn && !isHomeFocused) {
     return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
+  }
+  /* Unterliegende Home-UI (Sheet, Chips, …) nicht rendern, wenn ein anderer Stack-Screen oben liegt —
+     sonst wirkt es wie „Doppel-UI“ / mischt sich mit z. B. /new-booking (zusätzlich zur MapView-Problematik). */
+  if (!isHomeFocused) {
+    const underlay = profile.isLoggedIn ? colors.background : "#FFFFFF";
+    return <View style={{ flex: 1, backgroundColor: underlay }} />;
   }
 
   const mapDockBottom = TAB_HEIGHT + bottomPad;
@@ -1194,6 +1217,7 @@ export default function HomeScreen() {
             backgroundColor: colors.surface,
             maxHeight: destination ? "86%" : "66%",
             bottom: mapDockBottom,
+            transform: [{ translateY: rs(12) }],
             zIndex: 20,
             ...(Platform.OS === "android" ? { elevation: 26 } : {}),
           },
@@ -1330,7 +1354,7 @@ export default function HomeScreen() {
           ) : null}
           {!showOnboarding && homeTopOrder !== "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
-              style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
+              style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: SPONSOR_NEWS_CARD_BORDER, backgroundColor: SPONSOR_NEWS_CARD_WHITE }]}
               onPress={() => router.push(SPONSORS_DETAIL_ROUTE as Href)}
             >
               <View style={{ flex: 1 }}>
@@ -1353,7 +1377,7 @@ export default function HomeScreen() {
                   <Pressable
                     style={[
                       styles.appNewsSlideCard,
-                      { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, width: "100%" },
+                      { backgroundColor: SPONSOR_NEWS_CARD_WHITE, borderColor: SPONSOR_NEWS_CARD_BORDER, width: "100%" },
                     ]}
                     onPress={() => {
                       Haptics.selectionAsync();
@@ -1369,7 +1393,7 @@ export default function HomeScreen() {
                       <Text style={[styles.appNewsSlideTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={2}>
                         {appNewsItems[0].title}
                       </Text>
-                      <Text style={[styles.appNewsSlideBodyText, { color: HOME_SHEET_MUTED }]} numberOfLines={4}>
+                      <Text style={[styles.appNewsSlideBodyText, { color: HOME_SHEET_MUTED }]} numberOfLines={2}>
                         {appNewsItems[0].body}
                       </Text>
                       {appNewsItems[0].buttonText ? (
@@ -1411,7 +1435,7 @@ export default function HomeScreen() {
                         <Pressable
                           style={[
                             styles.appNewsSlideCard,
-                            { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, width: "100%" },
+                            { backgroundColor: SPONSOR_NEWS_CARD_WHITE, borderColor: SPONSOR_NEWS_CARD_BORDER, width: "100%" },
                           ]}
                           onPress={() => {
                             Haptics.selectionAsync();
@@ -1427,7 +1451,7 @@ export default function HomeScreen() {
                             <Text style={[styles.appNewsSlideTitle, { color: HOME_SHEET_TEXT }]} numberOfLines={2}>
                               {it.title}
                             </Text>
-                            <Text style={[styles.appNewsSlideBodyText, { color: HOME_SHEET_MUTED }]} numberOfLines={4}>
+                            <Text style={[styles.appNewsSlideBodyText, { color: HOME_SHEET_MUTED }]} numberOfLines={2}>
                               {it.body}
                             </Text>
                             {it.buttonText ? (
@@ -1457,7 +1481,7 @@ export default function HomeScreen() {
           ) : null}
           {!showOnboarding && homeTopOrder === "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
-              style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: colors.border, backgroundColor: colors.card }]}
+              style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: SPONSOR_NEWS_CARD_BORDER, backgroundColor: SPONSOR_NEWS_CARD_WHITE }]}
               onPress={() => router.push(SPONSORS_DETAIL_ROUTE as Href)}
             >
               <View style={{ flex: 1 }}>
@@ -1475,8 +1499,16 @@ export default function HomeScreen() {
           {!destination ? (
             <>
               <View style={styles.homeQuickSection}>
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: rs(4) }}>
-                  <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED }]}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: rs(4),
+                    paddingHorizontal: rs(14),
+                  }}
+                >
+                  <Text style={[styles.homeQuickSectionHeading, { color: HOME_SHEET_MUTED, paddingHorizontal: 0 }]}>
                     Favoriten
                   </Text>
                   {searchFavorites.length < MAX_FAVORITES_STORED ? (
@@ -1686,7 +1718,7 @@ export default function HomeScreen() {
           )}
         </ScrollView>
 
-        {destination && !isLoadingRoute && !routeError && route && (
+        {destination && selectedVehicle && !isLoadingRoute && !routeError && route && (
           <View style={[styles.stickyBookRow, { backgroundColor: colors.surface, borderTopColor: colors.border, paddingBottom: 18 + bottomPad + 12 }]}>
             <View style={styles.stickyBookCol}>
               <Pressable
@@ -2136,9 +2168,9 @@ export default function HomeScreen() {
             position: "absolute", bottom: 160 + bottomPad, left: 0, right: 0,
             alignItems: "center", gap: 10,
           }}>
-            <OnrodaOrMark size={76} style={{ marginBottom: 4 }} />
-            <Text style={{ fontSize: 38, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -1.5 }}>Onroda</Text>
-            <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.70)", textAlign: "center", paddingHorizontal: 40 }}>
+            <OnrodaOrMark size={56} style={{ marginBottom: 4 }} />
+            <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: "#fff", letterSpacing: -1.2 }}>Onroda</Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.70)", textAlign: "center", paddingHorizontal: 40 }}>
               Mobilität ohne Grenzen
             </Text>
           </View>
@@ -2163,7 +2195,7 @@ export default function HomeScreen() {
             {/* Logo + Branding */}
             <View style={[styles.onboardingBranding, { gap: isSmallScreen ? 4 : 6, marginBottom: isSmallScreen ? 4 : 8 }]}>
               <OnrodaOrMark
-                size={isSmallScreen ? 64 : 80}
+                size={isSmallScreen ? 52 : 62}
                 style={{ marginBottom: isSmallScreen ? 4 : 8 }}
               />
               <Text style={[styles.onboardingTitle, { color: colors.foreground, fontSize: obTitleSize }]}>
@@ -2180,7 +2212,7 @@ export default function HomeScreen() {
                   marginBottom: 2,
                 }}
               />
-              <Text style={[styles.onboardingTagline, { color: colors.mutedForeground, fontSize: isSmallScreen ? 13 : 15 }]}>
+              <Text style={[styles.onboardingTagline, { color: colors.mutedForeground, fontSize: isSmallScreen ? 12 : 14 }]}>
                 Mobilität ohne Grenzen
               </Text>
             </View>
@@ -2732,7 +2764,7 @@ const styles = StyleSheet.create({
   /* ── Bottom sheet ── */
   sheet: {
     position: "absolute", bottom: TAB_HEIGHT + 12, left: 0, right: 0,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderTopLeftRadius: 30, borderTopRightRadius: 30,
     shadowColor: "#000", shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 16, maxHeight: "76%",
   },
@@ -2741,12 +2773,16 @@ const styles = StyleSheet.create({
 
   /* Route card (Option B – zwei Zeilen mit Trennlinie) */
   routeCard: {
-    marginHorizontal: 16, marginTop: 10, marginBottom: 2,
-    borderRadius: 14, borderWidth: 1, overflow: "hidden",
+    marginHorizontal: BOTTOM_TAB_BAR_OUTER_PADDING_X,
+    marginTop: 8,
+    marginBottom: 0,
+    borderRadius: rs(22),
+    borderWidth: 1,
+    overflow: "hidden",
   },
   routeCardRow: {
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 13, gap: 10,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 10,
   },
   routeCardDotOrigin: {
     width: 9, height: 9, borderRadius: 5,
@@ -2757,7 +2793,7 @@ const styles = StyleSheet.create({
   routeCardSep: { height: 1, marginLeft: 14, marginRight: 14 },
 
   miniSearchPill: {
-    marginHorizontal: rs(14),
+    marginHorizontal: BOTTOM_TAB_BAR_OUTER_PADDING_X,
     marginTop: rs(2),
     marginBottom: rs(10),
     flexDirection: "row",
@@ -2765,16 +2801,16 @@ const styles = StyleSheet.create({
     gap: rs(8),
     paddingLeft: rs(6),
     paddingRight: rs(12),
-    paddingVertical: rs(10),
-    borderRadius: rs(999),
-    backgroundColor: HOME_SHEET_PANEL,
+    paddingVertical: rs(8),
+    borderRadius: rs(34),
+    backgroundColor: onrodaTheme.colors.surface,
     borderWidth: 1,
-    borderColor: HOME_SHEET_RIM,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: rs(4) },
-    shadowOpacity: 0.34,
-    shadowRadius: rs(12),
-    elevation: 14,
+    borderColor: onrodaTheme.colors.border,
+    shadowColor: onrodaTheme.colors.text,
+    shadowOffset: { width: 0, height: rs(10) },
+    shadowOpacity: 0.08,
+    shadowRadius: rs(24),
+    elevation: 8,
   },
   miniSearchPillMain: {
     flex: 1,
@@ -2808,7 +2844,7 @@ const styles = StyleSheet.create({
   miniActionRow: {
     flexDirection: "row",
     gap: rs(10),
-    marginHorizontal: rs(14),
+    marginHorizontal: BOTTOM_TAB_BAR_OUTER_PADDING_X,
     marginBottom: rs(14),
     alignItems: "stretch",
   },
@@ -3105,10 +3141,10 @@ const styles = StyleSheet.create({
     alignItems: "center", gap: 6, marginBottom: 8,
   },
   onboardingTitle: {
-    fontSize: 36, fontFamily: "Inter_700Bold", letterSpacing: -1.5,
+    fontSize: 30, fontFamily: "Inter_700Bold", letterSpacing: -1.2,
   },
   onboardingTagline: {
-    fontSize: 16, fontFamily: "Inter_400Regular",
+    fontSize: 15, fontFamily: "Inter_400Regular",
   },
   onboardingBlock: {
     borderRadius: 20, borderWidth: 1, padding: 20, gap: 14,
@@ -3142,8 +3178,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  appNewsSlideImage: { width: "100%", height: rs(112), backgroundColor: "#f1f5f9" },
-  appNewsSlideImagePlaceholder: { backgroundColor: "#f8fafc" },
+  appNewsSlideImage: { width: "100%", height: rs(112), backgroundColor: SPONSOR_NEWS_CARD_WHITE },
+  appNewsSlideImagePlaceholder: { backgroundColor: SPONSOR_NEWS_CARD_WHITE },
   appNewsSlideBody: { padding: rs(14) },
   appNewsSlideTitle: { fontSize: rf(16), fontFamily: "Inter_700Bold", marginBottom: rs(6) },
   appNewsSlideBodyText: { fontSize: rf(14), fontFamily: "Inter_400Regular", lineHeight: rf(20) },
