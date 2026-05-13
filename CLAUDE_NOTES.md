@@ -134,3 +134,46 @@ Stand: 11.05.2026 04:00
 - Fragen an Entwickler gesendet (Webroot, rsync-Pfad, CDN, Cache-Purge)
 - Sobald Antwort: ONRODA_RSYNC_MARKETING_STATIC_TO in .env setzen
 - Dann: style.css Änderungen live → warmes Beige #F5F0EB sichtbar
+
+## Server-Struktur (WICHTIG!)
+- Homepage live: /var/www/onroda/ (index.html, style.css, onroda-brand.css, script.js)
+- Deploy-Script: /root/deploy-home.sh → kopiert von /root/imoove/artifacts/api-server/static/ nach /var/www/onroda/
+- Nginx Config: /etc/nginx/sites-enabled/final-try.bak.2026-04-21-174118
+- API läuft via PM2: onroda-api (Port 3000)
+- Partner Panel: onroda-partner (PM2 id: 4)
+- Nach CSS-Änderungen: bash /root/deploy-home.sh auf Server ausführen
+
+## TODO - Vollständige Prioritätenliste (Stand 14.05.2026)
+
+### 🔴 KRITISCH (sofort)
+- [ ] WebSocket Security: JWT-Check beim "join" einbauen (Datenschutz!)
+- [ ] Push-Notifications: Expo Notifications einrichten (Fahrer verpasst Aufträge!)
+- [ ] SMTP einrichten: PARTNER_REGISTRATION_SMTP_URL in .env setzen
+
+### 🟡 WICHTIG (kurzfristig)
+- [ ] Provision pro Firma: "Pro Firma" JSON-Feld in Admin durch echte UI ersetzen (kein JSON tippen)
+- [ ] Transportschein OCR: Claude API → Foto → Muster 4 Daten → Rechnung → Kasse
+- [ ] Navigation-Bug: Google Maps durchscheinen fixen (Entwickler hat Lösung)
+- [ ] Encoding-Bug: Umlaute bei Google Login (Datenproblem)
+
+### 🟢 MEHRWERT (mittelfristig)
+- [ ] PayPal/Stripe Integration (braucht API-Keys)
+- [ ] Gutschein-Generator QR+PDF für Hotel
+- [ ] Krankenkasse Abrechnungs-Dashboard (Kosten pro Patient/Kostenstelle)
+- [ ] Live-Tracking für Hotel-Rezeption
+- [ ] Datenschutzerklärung Seite
+
+### 💡 ZUKUNFT
+- [ ] Google Places API: Arztpraxen Stuttgart exportieren
+- [ ] Sammel-Rufnummer für Praxen
+- [ ] Auto-Kennzeichen/Dokument-Erkennung
+- [ ] Claude Project "imoove ONRODA" anlegen mit CLAUDE_NOTES.md
+
+### ✅ BEREITS VORHANDEN (nicht nochmal bauen!)
+- Provision Admin Panel: Standard%, pro Fahrtart, pro Region, pro Firma ✅
+- Tarife Admin Panel: Grundgebühr, km-Preis, Nachtzuschlag, Feiertag ✅
+- WebSocket: GPS-Tracking, Chat, Auto-Reconnect ✅
+- Partner Freigabe-Flow ✅
+- PDF Rechnungen ✅
+- Kostenstellen-Flow ✅
+- fare-estimate API ✅
