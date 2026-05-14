@@ -17,6 +17,34 @@ export interface RouteResult {
 const OSRM_BASE = "https://router.project-osrm.org";
 const PHOTON    = "https://photon.komoot.io/api";
 
+const ROUTING_FETCH_TIMEOUT_MS = 12_000;
+
+export async function fetchWithTimeout(
+  input: string,
+  init: RequestInit & { timeoutMs?: number } = {},
+): Promise<Response> {
+  const { timeoutMs = ROUTING_FETCH_TIMEOUT_MS, ...rest } = init;
+  const ext = rest.signal;
+  const { signal: _ignored, ...restNoSignal } = rest;
+  void _ignored;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  const onExtAbort = () => ctrl.abort();
+  if (ext) {
+    if (ext.aborted) {
+      clearTimeout(t);
+      throw Object.assign(new Error("Aborted"), { name: "AbortError" });
+    }
+    ext.addEventListener("abort", onExtAbort);
+  }
+  try {
+    return await fetch(input, { ...restNoSignal, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+    if (ext) ext.removeEventListener("abort", onExtAbort);
+  }
+}
+
 /* Fallback-Bias: Esslingen am Neckar */
 const FALLBACK_LAT = 48.7395;
 const FALLBACK_LON = 9.3072;
@@ -80,7 +108,7 @@ export async function searchLocation(
     `&bbox=${DE_BBOX}`;
 
   try {
-    const resp = await fetch(url, { headers: { "Accept": "application/json" } });
+    const resp = await fetchWithTimeout(url, { headers: { "Accept": "application/json" } });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data: { features: PhotonFeature[] } = await resp.json();
 
@@ -147,7 +175,7 @@ async function tryOsrmDrivingCoordPath(
 
   let resp: Response;
   try {
-    resp = await fetch(url, {
+    resp = await fetchWithTimeout(url, {
       headers: {
         Accept: "application/json",
         "User-Agent": "OnrodaMobile/1.0 (routing)",

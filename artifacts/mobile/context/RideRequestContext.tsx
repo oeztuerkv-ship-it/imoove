@@ -283,6 +283,21 @@ function parseFinalFareFromApi(raw: Record<string, unknown>): number | null {
   return null;
 }
 
+function parsePartnerBookingMetaField(raw: unknown): Record<string, unknown> | null {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return null;
+    try {
+      const p = JSON.parse(t) as unknown;
+      return p && typeof p === "object" && !Array.isArray(p) ? (p as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function normalizeRequest(r: any): RideRequest {
   const pickNonEmpty = (...values: unknown[]): string => {
     for (const v of values) {
@@ -363,11 +378,9 @@ function normalizeRequest(r: any): RideRequest {
         ? String(r.billingReference ?? r.billing_reference)
         : null,
     partnerBookingMeta:
-      r.partnerBookingMeta && typeof r.partnerBookingMeta === "object"
-        ? (r.partnerBookingMeta as Record<string, unknown>)
-        : r.partner_booking_meta && typeof r.partner_booking_meta === "object"
-          ? (r.partner_booking_meta as Record<string, unknown>)
-          : null,
+      parsePartnerBookingMetaField(r.partnerBookingMeta) ??
+      parsePartnerBookingMetaField(r.partner_booking_meta) ??
+      null,
     from: pickNonEmpty(r.from, r.from_location, fromFull, "—"),
     fromFull,
     fromLat: r.fromLat ?? r.from_lat ?? undefined,

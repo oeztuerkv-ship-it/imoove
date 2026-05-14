@@ -35,7 +35,7 @@ import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
-import { stopRideSound } from "@/utils/notifications";
+import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 
 /** Krankenkassen-/Eigenanteil-Fahrten (vom Kunden gebucht). */
@@ -81,9 +81,15 @@ function accessCodeRideLine(req: RideRequest): string | null {
   return "Freigabe · Zugangscode (gültig)";
 }
 
+function isWheelchairVehicleLabel(vehicle: string | undefined): boolean {
+  const v = (vehicle ?? "").toLowerCase();
+  return v === "wheelchair" || v.includes("rollstuhl");
+}
+
 function wheelchairInfoLine(req: RideRequest): string | null {
+  if (!isWheelchairVehicleLabel(req.vehicle)) return null;
   const ao = (req as RideRequest & { accessibilityOptions?: any }).accessibilityOptions;
-  if (!ao || typeof ao !== "object") return null;
+  if (!ao || typeof ao !== "object") return "Rollstuhl-Fahrt";
   const assistanceMap: Record<string, string> = {
     boarding: "Hilfe beim Einsteigen",
     to_door: "Hilfe bis Haustür",
@@ -2195,6 +2201,7 @@ export default function DriverDashboard() {
   const prevPendingIds = useRef<Set<string>>(new Set());
   const firstRender = useRef(true);
   const prevDriverOnline = useRef(false);
+  const audioPrimedRef = useRef(false);
 
   // In-app notification banner
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
@@ -2210,6 +2217,13 @@ export default function DriverDashboard() {
       Animated.timing(bannerAnim, { toValue: -140, useNativeDriver: true, duration: 300 }).start(() => setBannerRide(null));
     }, 8000);
   }, [bannerAnim]);
+
+  useEffect(() => {
+    if (driver?.einsatzbereit && driver?.isAvailable && !audioPrimedRef.current) {
+      audioPrimedRef.current = true;
+      void requestNotificationPermissions();
+    }
+  }, [driver?.einsatzbereit, driver?.isAvailable]);
 
   // Fire notification + vibration only for truly new instant ride requests while driver is already online
   useEffect(() => {
@@ -2244,6 +2258,12 @@ export default function DriverDashboard() {
         ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
         : null;
       showBanner(req);
+      void sendNewRideNotification({
+        customerName: req.customerName || "Kunde",
+        fromAddress: req.fromFull || req.from || "—",
+        distanceKm: distKm,
+        estimatedFare: Number.isFinite(req.estimatedFare) ? req.estimatedFare : 0,
+      });
     }
     prevPendingIds.current = currentIds;
   }, [allPending, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner]);

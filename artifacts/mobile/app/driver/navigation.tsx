@@ -11,6 +11,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -182,10 +183,20 @@ export default function DriverNavigationScreen() {
   const [sliderWidth, setSliderWidth] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [lastCustomerMsg, setLastCustomerMsg] = useState("");
-  const [lastSentDriverMsg, setLastSentDriverMsg] = useState("");
+  const [chatMsgs, setChatMsgs] = useState<Array<{ id: string; from: "customer" | "driver"; text: string }>>([]);
   const [chatUnread, setChatUnread] = useState(false);
+  const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
+
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+  }, [chatOpen]);
+
+  useEffect(() => {
+    setChatMsgs([]);
+    setChatInput("");
+    setChatUnread(false);
+  }, [params.rideId]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const sliderX = useRef(new Animated.Value(0)).current;
@@ -365,17 +376,24 @@ export default function DriverNavigationScreen() {
     connectToRide(
       params.rideId,
       (msg) => {
-        if (msg.type === "chat:ride:update" && msg.sender === "customer") {
-          const text = typeof msg.text === "string" ? msg.text : "";
+        if (msg.type === "chat:ride:update") {
+          const sender = msg.sender === "customer" ? "customer" : msg.sender === "driver" ? "driver" : null;
+          if (!sender) return;
+          const text = typeof msg.text === "string" ? msg.text.trim() : "";
           if (!text) return;
-          setLastCustomerMsg(text);
-          if (!chatOpen) setChatUnread(true);
+          const ts = typeof msg.ts === "string" ? msg.ts : "";
+          const id = `${ts}|${sender}|${text}`;
+          const row = { id, from: sender as "customer" | "driver", text };
+          setChatMsgs((prev) =>
+            prev.some((p) => p.id === id) ? prev : [...prev, row].slice(-100),
+          );
+          if (sender === "customer" && !chatOpenRef.current) setChatUnread(true);
         }
       },
       readFleetJwtForWsJoin,
     );
     return () => disconnectSocket();
-  }, [params.rideId, chatOpen]);
+  }, [params.rideId]);
 
   useEffect(() => {
     if (!params.rideId) return;
@@ -866,22 +884,23 @@ export default function DriverNavigationScreen() {
             <Text style={styles.cancelReasonTitle}>Chat</Text>
             <Text style={styles.driverChatSubtitle}>Kunde</Text>
             <View style={styles.driverChatThreadBox}>
-              {lastCustomerMsg ? (
-                <View style={styles.driverChatBubbleIncoming}>
-                  <Text style={styles.driverChatBubbleMeta}>Kunde</Text>
-                  <Text style={styles.driverChatBubbleText}>{lastCustomerMsg}</Text>
-                </View>
-              ) : (
-                <Text style={styles.driverChatEmptyHint}>
-                  Noch keine Nachricht. Vorlage unten antippen oder selbst tippen.
-                </Text>
-              )}
-              {lastSentDriverMsg ? (
-                <View style={styles.driverChatBubbleOutgoing}>
-                  <Text style={styles.driverChatBubbleMeta}>Sie</Text>
-                  <Text style={styles.driverChatBubbleText}>{lastSentDriverMsg}</Text>
-                </View>
-              ) : null}
+              <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+                {chatMsgs.length === 0 ? (
+                  <Text style={styles.driverChatEmptyHint}>
+                    Noch keine Nachricht. Vorlage unten antippen oder selbst tippen.
+                  </Text>
+                ) : (
+                  chatMsgs.map((m) => (
+                    <View
+                      key={m.id}
+                      style={m.from === "customer" ? styles.driverChatBubbleIncoming : styles.driverChatBubbleOutgoing}
+                    >
+                      <Text style={styles.driverChatBubbleMeta}>{m.from === "customer" ? "Kunde" : "Sie"}</Text>
+                      <Text style={styles.driverChatBubbleText}>{m.text}</Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
               <Text style={styles.driverChatTemplatesLabel}>Vorlagen</Text>
               <View style={styles.driverChatTemplatesWrap}>
                 {["Ich bin gleich da", "Bin vor Ort", "Bitte kurz warten"].map((q) => (
@@ -913,9 +932,7 @@ export default function DriverNavigationScreen() {
                   const msg = chatInput.trim();
                   if (!msg) return;
                   sendRideChat(msg, "driver");
-                  setLastSentDriverMsg(msg);
                   setChatInput("");
-                  setChatOpen(false);
                 }}
               >
                 <Text style={styles.cancelReasonBtnDangerText}>Senden</Text>

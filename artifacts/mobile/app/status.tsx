@@ -199,8 +199,9 @@ export default function StatusScreen() {
   const [driverMarker, setDriverMarker] = useState<{ lat: number; lon: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [lastDriverMsg, setLastDriverMsg] = useState<string>("");
+  const [chatMsgs, setChatMsgs] = useState<Array<{ id: string; from: "driver" | "customer"; text: string }>>([]);
   const [chatUnread, setChatUnread] = useState(false);
+  const chatOpenRef = useRef(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -229,6 +230,15 @@ export default function StatusScreen() {
     cancelRequestRef.current = cancelRequest;
     refreshRequestsRef.current = refreshRequests;
   }, [currentRideId, requests, cancelRequest, refreshRequests]);
+
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+  }, [chatOpen]);
+
+  useEffect(() => {
+    setChatMsgs([]);
+    setChatUnread(false);
+  }, [acceptedRequest?.id]);
 
   const pickupDiffMs = acceptedRequest?.scheduledAt
     ? new Date(acceptedRequest.scheduledAt).getTime() - now
@@ -293,11 +303,18 @@ export default function StatusScreen() {
         if (msg.type === "location:driver:update") {
           setDriverMarker({ lat: msg.lat as number, lon: msg.lon as number });
         }
-        if (msg.type === "chat:ride:update" && msg.sender === "driver") {
-          const text = typeof msg.text === "string" ? msg.text : "";
+        if (msg.type === "chat:ride:update") {
+          const sender = msg.sender === "driver" ? "driver" : msg.sender === "customer" ? "customer" : null;
+          if (!sender) return;
+          const text = typeof msg.text === "string" ? msg.text.trim() : "";
           if (!text) return;
-          setLastDriverMsg(text);
-          if (!chatOpen) setChatUnread(true);
+          const ts = typeof msg.ts === "string" ? msg.ts : "";
+          const id = `${ts}|${sender}|${text}`;
+          const row = { id, from: sender as "driver" | "customer", text };
+          setChatMsgs((prev) =>
+            prev.some((p) => p.id === id) ? prev : [...prev, row].slice(-100),
+          );
+          if (sender === "driver" && !chatOpenRef.current) setChatUnread(true);
         }
       },
       readCustomerSessionJwtForWsJoin,
@@ -1166,16 +1183,27 @@ export default function StatusScreen() {
             <Text style={styles.chatTitle}>Chat</Text>
             <Text style={styles.chatSubtitle}>{driverFirstName}</Text>
             <View style={styles.chatThreadBox}>
-              {lastDriverMsg ? (
-                <View style={styles.chatBubbleIncoming}>
-                  <Text style={styles.chatBubbleMeta}>Fahrer</Text>
-                  <Text style={styles.chatBubbleText}>{lastDriverMsg}</Text>
-                </View>
-              ) : (
-                <Text style={styles.chatEmptyHint}>
-                  Noch keine Nachrichten. Vorlage unten antippen oder selbst tippen.
-                </Text>
-              )}
+              <ScrollView
+                style={{ maxHeight: 220 }}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+              >
+                {chatMsgs.length === 0 ? (
+                  <Text style={styles.chatEmptyHint}>
+                    Noch keine Nachrichten. Vorlage unten antippen oder selbst tippen.
+                  </Text>
+                ) : (
+                  chatMsgs.map((m) => (
+                    <View
+                      key={m.id}
+                      style={m.from === "driver" ? styles.chatBubbleIncoming : styles.chatBubbleOutgoing}
+                    >
+                      <Text style={styles.chatBubbleMeta}>{m.from === "driver" ? "Fahrer" : "Sie"}</Text>
+                      <Text style={styles.chatBubbleText}>{m.text}</Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
               <Text style={styles.chatTemplatesLabel}>Vorlagen</Text>
               <View style={styles.chatTemplatesWrap}>
                 {["Ich bin gleich da", "Bitte kurz warten", "Wo sind Sie gerade?"].map((q) => (
@@ -1207,7 +1235,6 @@ export default function StatusScreen() {
                 if (!msg) return;
                 sendRideChat(msg, "customer");
                 setChatInput("");
-                setChatOpen(false);
               }}
             >
               <Text style={styles.chatSendBtnText}>Senden</Text>
@@ -1487,6 +1514,18 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     padding: rs(10),
     gap: rs(4),
+    marginBottom: rs(8),
+  },
+  chatBubbleOutgoing: {
+    alignSelf: "flex-end",
+    maxWidth: "88%",
+    backgroundColor: "#DCFCE7",
+    borderRadius: rs(12),
+    borderWidth: 1,
+    borderColor: "#86EFAC",
+    padding: rs(10),
+    gap: rs(4),
+    marginBottom: rs(8),
   },
   chatBubbleMeta: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   chatBubbleText: { fontSize: rf(14), fontFamily: "Inter_400Regular", color: "#111827", lineHeight: rf(20) },

@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router, useFocusEffect, useLocalSearchParams, usePathname, useSegments } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import { getRoute, type GeoLocation } from "@/utils/routing";
+import { getRoute, fetchWithTimeout, type GeoLocation } from "@/utils/routing";
 
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
@@ -67,7 +67,7 @@ const QUICK_SUGGESTIONS: { label: string; sub: string; lat: number; lon: number;
   { label: "Messe Stuttgart", sub: "Messepiazza 1, Leinfelden-Echterdingen", lat: 48.6952, lon: 9.2003, icon: "grid" },
 ];
 
-async function nominatimSearch(query: string): Promise<GeoResult[]> {
+async function nominatimSearch(query: string, signal?: AbortSignal): Promise<GeoResult[]> {
   try {
     const params = new URLSearchParams({
       q: query,
@@ -78,9 +78,13 @@ async function nominatimSearch(query: string): Promise<GeoResult[]> {
       viewbox: VIEWBOX,
       bounded: "0",
     });
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-      { headers: { "Accept-Language": "de", "User-Agent": "OnrodaApp/1.0" } }
+      {
+        headers: { "Accept-Language": "de", "User-Agent": "OnrodaApp/1.0" },
+        signal,
+        timeoutMs: 12_000,
+      },
     );
     if (!res.ok) return [];
     return await res.json();
@@ -192,10 +196,18 @@ function AddressInput({
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
+
+  useEffect(
+    () => () => {
+      searchAbortRef.current?.abort();
+    },
+    [],
+  );
 
   const showQuick = focused && query.length === 0;
   const showResults = results.length > 0 && query.length >= 2;
@@ -206,10 +218,16 @@ function AddressInput({
     if (debounce.current) clearTimeout(debounce.current);
     if (text.length < 2) return;
     debounce.current = setTimeout(async () => {
+      searchAbortRef.current?.abort();
+      const ac = new AbortController();
+      searchAbortRef.current = ac;
       setLoading(true);
-      const r = await nominatimSearch(text);
-      setResults(r);
-      setLoading(false);
+      try {
+        const r = await nominatimSearch(text, ac.signal);
+        if (!ac.signal.aborted) setResults(r);
+      } finally {
+        if (searchAbortRef.current === ac) setLoading(false);
+      }
     }, 350);
   };
 
@@ -222,6 +240,7 @@ function AddressInput({
   };
 
   const handleClear = () => {
+    searchAbortRef.current?.abort();
     setQuery("");
     setResults([]);
     onSelect(EMPTY_SELECTED_ADDRESS);
@@ -458,52 +477,13 @@ export default function NewBookingScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const pathname = usePathname();
-  const segments = useSegments();
-  const params = useLocalSearchParams();
-
-  useEffect(() => {
-    console.log(
-      `[NAV TRACE] MOUNT ${pathname}`,
-      JSON.stringify(
-        {
-          screen: "new-booking",
-          pathname,
-          segments,
-          params,
-        },
-        null,
-        2,
-      ),
-    );
-    return () => {
-      console.log(`[NAV TRACE] UNMOUNT ${pathname}`);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- NAV trace: einmaliger Mount-Log
-  }, []);
-
-  useEffect(() => {
-    console.log(
-      `[NAV TRACE] UPDATE ${pathname}`,
-      JSON.stringify(
-        {
-          screen: "new-booking",
-          pathname,
-          segments,
-          params,
-        },
-        null,
-        2,
-      ),
-    );
-  }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
 
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
 
   const [from, setFrom] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
   const [to, setTo] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isInstant = mode === "instant";
   const [scheduledAt, setScheduledAt] = useState<Date | null>(isInstant ? new Date() : null);
   const [showDtPicker, setShowDtPicker] = useState(false);
