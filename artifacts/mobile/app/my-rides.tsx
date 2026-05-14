@@ -526,14 +526,7 @@ export default function MyRidesScreen() {
           })}
         </ScrollView>
 
-        {/* ── Stats ── */}
-        {completed.length > 0 && (
-          <View style={styles.statsRow}>
-            <StatCard icon="navigation" value={String(completed.length)} label="Fahrten"  color="#2563EB" />
-            <StatCard icon="map"        value={totalKm.toFixed(0) + " km"} label="Gesamt"  color="#D97706" />
-            <StatCard icon="credit-card" value={formatEuro(totalSpent)} label="Ausgaben" color="#16A34A" />
-          </View>
-        )}
+
 
         {/* ── Aktive Aufträge ── */}
         {showActive && activeRequestsToRender.length > 0 && (
@@ -777,12 +770,7 @@ export default function MyRidesScreen() {
                   style={[styles.rideCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}
                   onPress={() => openRideDetail(ride.id)}
                 >
-                  {/* Static route map image */}
-                  <Image
-                    source={{ uri: buildStaticMapUrl(ride.origin ?? "Esslingen am Neckar", ride.destination) }}
-                    style={styles.staticMap}
-                    resizeMode="cover"
-                  />
+
 
                   <View style={[styles.rideHeader, { marginTop: 12 }]}>
                     <StatusBadge status="completed" />
@@ -825,21 +813,18 @@ export default function MyRidesScreen() {
                     </View>
                   </View>
 
-                  {/* Aktionen: PDF-Quittung + Nochmal */}
-                  <Pressable
-                    style={styles.pdfBtn}
-                    onPress={(ev) => {
-                      // Do not trigger card navigation.
-                      ev?.stopPropagation?.();
-                      handleDownloadReceipt(ride);
-                    }}
-                  >
-                    <Feather name="file-text" size={15} color="#fff" />
-                    <Text style={styles.pdfBtnText}>PDF-Quittung herunterladen</Text>
-                    <Feather name="download" size={14} color="#fff" />
-                  </Pressable>
-
-                  <View style={styles.actionRow}>
+                  {/* Aktionen: Quittung + Hilfe */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <Pressable
+                      style={[styles.pdfBtn, { flex: 1 }]}
+                      onPress={(ev) => {
+                        ev?.stopPropagation?.();
+                        handleDownloadReceipt(ride);
+                      }}
+                    >
+                      <Feather name='file-text' size={15} color='#fff' />
+                      <Text style={styles.pdfBtnText}>Quittung</Text>
+                    </Pressable>
                     <Pressable
                       style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1 }]}
                       onPress={(ev) => {
@@ -847,20 +832,8 @@ export default function MyRidesScreen() {
                         openRideDetail(ride.id, { focusSupport: true });
                       }}
                     >
-                      <Feather name="help-circle" size={15} color={colors.primary} />
-                      <Text style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
-                        Hilfe
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.repeatBtn, { flex: 1 }]}
-                      onPress={(ev) => {
-                        ev?.stopPropagation?.();
-                        handleRepeatRide();
-                      }}
-                    >
-                      <Feather name="repeat" size={14} color="#DC2626" />
-                      <Text style={[styles.actionBtnText, { color: "#DC2626" }]}>Nochmal buchen</Text>
+                      <Feather name='help-circle' size={15} color={colors.primary} />
+                      <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Hilfe</Text>
                     </Pressable>
                   </View>
                 </Pressable>
@@ -1217,7 +1190,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rs(5),
-    paddingVertical: rs(9),
+    paddingVertical: rs(12),
     paddingHorizontal: rs(6),
     borderRadius: rs(10),
     borderWidth: 1,
@@ -1243,8 +1216,6 @@ const styles = StyleSheet.create({
     paddingVertical: rs(12),
     borderRadius: rs(10),
     backgroundColor: "#DC2626",
-    marginTop: rs(8),
-    marginBottom: rs(6),
   },
   pdfBtnText: {
     fontSize: rf(14),
