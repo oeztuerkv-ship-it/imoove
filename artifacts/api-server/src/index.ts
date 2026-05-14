@@ -102,4 +102,30 @@ httpServer.listen(port, () => {
   void seedAdminDefaultsIfEmpty().catch((err) => {
     logger.error({ err }, "seedAdminDefaultsIfEmpty failed");
   });
+
+  // ── Hintergrund-Job: abgelaufene Reservierungen alle 2 Minuten expired setzen ──
+  setInterval(async () => {
+    try {
+      const { db } = await import("./db/client.js");
+      const { ridesTable } = await import("./db/schema.js");
+      const { and, eq, isNotNull, lt, inArray } = await import("drizzle-orm");
+      // Alle scheduled Fahrten die in der Vergangenheit liegen
+      const expired = await db
+        .update(ridesTable)
+        .set({ status: "expired" })
+        .where(
+          and(
+            eq(ridesTable.status, "scheduled"),
+            isNotNull(ridesTable.scheduled_at),
+            lt(ridesTable.scheduled_at, new Date()),
+          ),
+        )
+        .returning({ id: ridesTable.id });
+      if (expired.length > 0) {
+        logger.info({ count: expired.length }, "[Cron] Reservierungen abgelaufen → expired");
+      }
+    } catch (err) {
+      logger.error({ err }, "[Cron] expireReservations failed");
+    }
+  }, 2 * 60 * 1000); // alle 2 Minuten
 });

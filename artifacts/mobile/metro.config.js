@@ -11,13 +11,16 @@ const mobileNodeModules = path.join(projectRoot, "node_modules");
  * Ohne das landen `react` und `react/jsx-runtime` leicht in zwei Kopien → „Invalid hook call“.
  */
 function resolvePkgDir(packageName) {
-  try {
-    return path.dirname(
-      require.resolve(`${packageName}/package.json`, { paths: [projectRoot] }),
-    );
-  } catch {
-    return null;
+  for (const root of [projectRoot, workspaceRoot]) {
+    try {
+      return path.dirname(
+        require.resolve(`${packageName}/package.json`, { paths: [root] }),
+      );
+    } catch {
+      /* nächster root */
+    }
   }
+  return null;
 }
 
 const config = getDefaultConfig(projectRoot);
@@ -39,9 +42,11 @@ const extra = {};
 const reactDir = resolvePkgDir("react");
 const reactDomDir = resolvePkgDir("react-dom");
 const expoMetroRuntimeDir = resolvePkgDir("@expo/metro-runtime");
+const expoClipboardDir = resolvePkgDir("expo-clipboard");
 if (reactDir) extra.react = reactDir;
 if (reactDomDir) extra["react-dom"] = reactDomDir;
 if (expoMetroRuntimeDir) extra["@expo/metro-runtime"] = expoMetroRuntimeDir;
+if (expoClipboardDir) extra["expo-clipboard"] = expoClipboardDir;
 
 const schedulerDir = resolvePkgDir("scheduler");
 if (schedulerDir) extra.scheduler = schedulerDir;

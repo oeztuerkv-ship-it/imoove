@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRide, type PaymentMethod, type RideHistoryEntry, type VehicleType, VEHICLES } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
+import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -460,7 +461,7 @@ export default function MyRidesScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* Header — wie `wallet.tsx` / Profil „Mein Konto“ */}
-      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
         <View style={{ width: 36 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Meine Fahrten</Text>
         <View style={{ width: 36 }} />
@@ -485,8 +486,8 @@ export default function MyRidesScreen() {
                 style={[
                   styles.tab,
                   {
-                    backgroundColor: "#FFFFFF",
-                    borderColor: isActive ? activeBorderColor : LIST_FRAME_BORDER,
+                    backgroundColor: HOME_SHEET_PANEL,
+                    borderColor: isActive ? activeBorderColor : HOME_SHEET_RIM,
                     borderWidth: isActive ? 1 : StyleSheet.hairlineWidth,
                   },
                 ]}
@@ -952,7 +953,7 @@ export default function MyRidesScreen() {
                 : "Plane deine nächste Fahrt direkt hier."}
             </Text>
             {(activeTab === "alle" || activeTab === "abgeschlossen") && (
-              <Pressable style={styles.newBookingBtn} onPress={() => router.push("/booking-center")}>
+              <Pressable style={styles.newBookingBtn} onPress={() => router.replace("/booking-center")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
               </Pressable>

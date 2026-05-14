@@ -1,5 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
+import { router, useLocalSearchParams, usePathname, useSegments } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
@@ -16,8 +17,50 @@ const CAR_ICON_COLOR = "#171717";
 const WHEELCHAIR_ICON_COLOR = "#0369A1";
 
 export default function RideSelectScreen() {
+  const isFocused = useIsFocused();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+
+  const pathname = usePathname();
+  const segments = useSegments();
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] MOUNT ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "ride-select",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+    return () => {
+      console.log(`[NAV TRACE] UNMOUNT ${pathname}`);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- NAV trace: einmaliger Mount-Log
+  }, []);
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] UPDATE ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "ride-select",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+  }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
+
   const { config: appCfg } = useOnrodaAppConfig();
   const mapRef = useRef<MapView>(null);
   const {
@@ -56,6 +99,10 @@ export default function RideSelectScreen() {
     );
   }, [route?.distanceKm, appCfg, origin.displayName]);
 
+  if (!isFocused) {
+    return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
+  }
+
   if (!destination) {
     return (
       <View style={[styles.emptyWrap, { backgroundColor: "#FFFFFF" }]}>
@@ -72,7 +119,7 @@ export default function RideSelectScreen() {
   return (
     <View style={[styles.root, { backgroundColor: "#FFFFFF", paddingTop: insets.top + 10 }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => { setSelectedVehicle(null); setWheelchairSelectCompleted(false); router.replace("/"); }} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>Wähle deine Fahrt</Text>

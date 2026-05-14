@@ -2,7 +2,15 @@ import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { Redirect, router, useFocusEffect, useLocalSearchParams, type Href } from "expo-router";
+import {
+  Redirect,
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  usePathname,
+  useSegments,
+  type Href,
+} from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -158,6 +166,7 @@ export default function HomeScreen() {
       setOriginResults([]);
       setIsEditingOrigin(false);
       setViaStops([]);
+      resetRide();
       return () => setIsHomeFocused(false);
     }, []),
   );
@@ -201,7 +210,7 @@ export default function HomeScreen() {
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/booking-center" as Href);
+    router.replace("/booking-center" as Href);
   }, [customerAppBlocked, blockedCustomerAlert]);
 
   const goReserveNewBooking = useCallback(() => {
@@ -211,7 +220,7 @@ export default function HomeScreen() {
     }
     setScheduledTime(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/new-booking" as Href);
+    router.replace("/new-booking" as Href);
   }, [customerAppBlocked, blockedCustomerAlert, setScheduledTime]);
 
   const goMedicalBooking = useCallback(() => {
@@ -386,24 +395,55 @@ export default function HomeScreen() {
   /* ── Search overlay state ── */
   const [isSearchActive, setIsSearchActive] = useState(false);
 
-  /* ── Auto-open search when navigated with ?search=1 (z. B. Sofortfahrt aus Buchungszentrale) ── */
-  const { search: searchParam, closeSearch: closeSearchParam } = useLocalSearchParams<{ search?: string; closeSearch?: string }>();
+  /* ── Such-/Buchungs-Steuerung per URL (?openBooking=instant, Legacy ?search=1, ?closeSearch=1) ── */
+  const pathname = usePathname();
+  const segments = useSegments();
+  const params = useLocalSearchParams<{
+    search?: string;
+    closeSearch?: string;
+    openBooking?: string;
+  }>();
+  const searchParam = params.search;
+  const closeSearchParam = params.closeSearch;
+  const openBookingParam = params.openBooking;
+
   useEffect(() => {
-    if (closeSearchParam === "1") {
-      closeSearch();
-      router.setParams({ closeSearch: undefined });
-    }
-    if (searchParam === "1") {
-      setIsSearchActive(true);
-      requestAnimationFrame(() => {
-        try {
-          router.setParams({ search: undefined });
-        } catch {
-          /* ignore */
-        }
-      });
-    }
-  }, [searchParam]);
+    console.log(
+      `[NAV TRACE] MOUNT ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "index",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+    return () => {
+      console.log(`[NAV TRACE] UNMOUNT ${pathname}`);
+    };
+    // Nur Mount/Unmount des Screens loggen (bewusst ohne pathname/params in deps).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- NAV trace: einmaliger Mount-Log
+  }, []);
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] UPDATE ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "index",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+  }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
+
   const [isEditingOrigin, setIsEditingOrigin] = useState(false);
 
   const [userGps, setUserGps] = useState<{ lat: number; lon: number } | null>(null);
@@ -1084,6 +1124,30 @@ export default function HomeScreen() {
     setEditingViaIndex(null);
     setViaStops([]);
   };
+
+  useEffect(() => {
+    if (closeSearchParam === "1") {
+      closeSearch();
+      void router.setParams({ closeSearch: undefined });
+    }
+  }, [closeSearchParam]);
+
+  /** Sofortfahrt: nach useFocusEffect (setTimeout 0), damit die Suchmaske nicht sofort wieder zu gemacht wird. */
+  useEffect(() => {
+    const wantsInstantSheet = searchParam === "1" || openBookingParam === "instant";
+    if (!wantsInstantSheet) return undefined;
+    const t = setTimeout(() => {
+      setBookingMode("immediate");
+      setScheduledTime(null);
+      setIsSearchActive(true);
+      try {
+        void router.setParams({ search: undefined, openBooking: undefined });
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [searchParam, openBookingParam, setScheduledTime]);
 
   const goToDirectCheckout = useCallback(() => {
     if (!selectedVehicle) {

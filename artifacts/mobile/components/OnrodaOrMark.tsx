@@ -11,12 +11,17 @@ type Props = {
 
 /**
  * Schriftzug „onroda“ im App-UI — keine Bildmarke im Header/Login.
+ * Default bewusst kompakt für ruhigen, professionellen Eindruck.
  */
-export function OnrodaOrMark({ size = 88, style }: Props) {
-  const fontSize = Math.max(18, Math.round(size * 0.26));
+export function OnrodaOrMark({ size = 72, style }: Props) {
+  const fontSize = Math.max(16, Math.round(size * 0.24));
   return (
     <View style={[{ justifyContent: "center", alignItems: "center" }, style]}>
-      <Text style={{ fontSize }} accessibilityRole="text" accessibilityLabel="onroda">
+      <Text
+        style={{ fontSize, letterSpacing: -0.4 }}
+        accessibilityRole="text"
+        accessibilityLabel="onroda"
+      >
         <Text style={{ fontFamily: "Inter_700Bold", color: ONRODA_MARK_RED }}>on</Text>
         <Text style={{ fontFamily: "Inter_700Bold", color: "#111827" }}>roda</Text>
       </Text>

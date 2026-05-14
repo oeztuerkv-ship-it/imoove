@@ -1,0 +1,53 @@
+---
+description: Tab-Hauptscreens — helle Chrome-Kopfzeile (Fahrten, Hilfe, Geldbörse-Screen, Konto eingeloggt & Gast).
+globs: artifacts/mobile/app/my-rides.tsx, artifacts/mobile/app/wallet.tsx, artifacts/mobile/app/help.tsx, artifacts/mobile/app/profile.tsx
+alwaysApply: false
+---
+
+# Mobile: Kopfzeile Fahrten / Hilfe / Wallet / Konto (gemeinsamer Schritt)
+
+## `profile.tsx` eingeloggt
+
+- **Kopfzeile** wie **Wallet (`wallet.tsx`):** `styles.header` mit **`paddingHorizontal: rs(8)`**, **`paddingTop: topPad + 8`**, **`HOME_SHEET_PANEL`**, **`HOME_SHEET_RIM`** — **`36` / `headerTitle` „Konto“ / `36`** (kein Hilfe-Element im Header).
+- **Scroll-Inhalt** wie **`wallet.tsx`** `scroll`: **`paddingHorizontal: rs(8)`**, **`paddingTop: rs(40)`** (eingeloggt mehr als Wallet, damit Sektionen nicht zu hoch), **`gap: rs(10)`** (`scrollAccountLoggedIn`) — Abstand **zwischen** Sektions-Blöcken.
+- **Kompakte Karten** (`SectionCard compact`): Rahmen `StyleSheet.hairlineWidth`; in `accountSection` Abstand Pill→Karte `rs(4)`; `accountRow` mit optional `isFirst` / `isLast` für minimalen Innenabstand oben/unten (Profil-Zeile oben „kurz vor null“).
+- **„Hilfe“ / Abmelden:** zwei **getrennte** `SectionCard compact` untereinander (`gap: rs(10)` zwischen den Karten) — keine gemeinsame Karte mit Zwischen-Trennlinie.
+
+## `help.tsx` (Tab **Hilfe**)
+
+- **Kopfzeile** wie **Wallet:** gleiche `styles.header`-Struktur, Titel **„Hilfe“**, **`BottomTabBar` mit `active="hilfe"`**.
+
+## `profile.tsx` Gast
+
+- **„Mein Konto“** zentriert, symmetrisch **`36`** / Titel / **`36`**, gleiche Chrome-Optik.
+
+## Zielbild (alle genannten Screens)
+
+- **Seite:** `backgroundColor: colors.background` (Beige aus `constants/colors.ts` / `useColors()`).
+- **Obere Titelzeile:** **helle „Karten“-Optik**, nicht durchgehend beige — **`HOME_SHEET_PANEL`** + **`HOME_SHEET_RIM`** aus `@/constants/homeSheetChrome`.
+
+## Verbindlich
+
+1. Änderungen an der **Chrome-Kopfzeile** in **`my-rides.tsx`**, **`wallet.tsx`**, **`help.tsx`** und **`profile.tsx`** (Gast + eingeloggt) **parallel** halten (Padding, Farben, `headerTitle`-Größe).
+2. **`imoove-mobile-my-rides-ui-baseline.mdc`** — My-Rides-Header-Struktur; Farben wie hier.
+
+## Kurzreferenz (Inline-Stil)
+
+```tsx
+<View
+  style={[
+    styles.header,
+    {
+      paddingTop: topPad + 8,
+      backgroundColor: HOME_SHEET_PANEL,
+      borderBottomColor: HOME_SHEET_RIM,
+    },
+  ]}
+>
+```
+
+Root-/Container-`View` bleibt mit `{ backgroundColor: colors.background }`.
+
+## Für Agents
+
+Nicht wieder auf `colors.background` in der Kopfzeile umstellen, **außer** der Nutzer verlangt ausdrücklich die durchgehend beige Leiste.

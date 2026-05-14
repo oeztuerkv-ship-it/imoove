@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams, usePathname, useSegments } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -138,6 +138,46 @@ export default function RideScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
 
+  const pathname = usePathname();
+  const segments = useSegments();
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] MOUNT ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "ride",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+    return () => {
+      console.log(`[NAV TRACE] UNMOUNT ${pathname}`);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- NAV trace: einmaliger Mount-Log
+  }, []);
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] UPDATE ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "ride",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+  }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
+
   const {
     origin,
     destination,
@@ -149,6 +189,7 @@ export default function RideScreen() {
     isExempted,
     scheduledTime,
     customerDriverNote,
+    resetRide,
     setPaymentMethod,
     setIsExempted,
   } = useRide();
@@ -399,7 +440,8 @@ export default function RideScreen() {
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.back();
+    resetRide();
+    router.replace("/");
   };
 
   const schedDateStr = scheduledTime
@@ -493,45 +535,24 @@ export default function RideScreen() {
           </View>
         ) : null}
 
-        <View style={styles.statsRow}>
+        <View style={[styles.tripSummaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
             { icon: "map" as const, value: `${route?.distanceKm ?? 0} km`, label: "Strecke" },
+            { vehicleIcon: vehicle.icon as any, value: vehicle.name, label: "Fahrzeug" },
             { icon: "users" as const, value: `${vehicle.minSeats}`, label: "Plätze" },
           ].map((s) => (
-            <View key={s.label} style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name={s.icon} size={18} color={colors.primary} />
-              <Text style={[styles.statValue, { color: colors.foreground }]}>{s.value}</Text>
+            <View key={s.label} style={styles.tripSummaryItem}>
+              <View style={[styles.tripSummaryIcon, { backgroundColor: colors.background }]}>
+                {"vehicleIcon" in s ? (
+                  <MaterialCommunityIcons name={s.vehicleIcon} size={18} color={colors.primary} />
+                ) : (
+                  <Feather name={s.icon} size={17} color={colors.primary} />
+                )}
+              </View>
+              <Text style={[styles.statValue, { color: colors.foreground }]} numberOfLines={1}>{s.value}</Text>
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
             </View>
           ))}
-        </View>
-
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>FAHRZEUG</Text>
-          <View style={styles.vehicleRow}>
-            <View style={[styles.vehicleIcon, {
-              backgroundColor: selectedVehicle === "wheelchair" ? "#E0F2FE" : "#F3F4F6",
-            }]}
-            >
-              <MaterialCommunityIcons
-                name={vehicle.icon as any}
-                size={22}
-                color={selectedVehicle === "wheelchair" ? "#0369A1" : "#171717"}
-              />
-            </View>
-            <View style={{ gap: 2 }}>
-              <Text style={[styles.vehicleName, { color: colors.foreground }]}>{vehicle.name}</Text>
-              <Text style={[styles.vehicleDesc, { color: colors.mutedForeground }]}>{vehicle.description}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.card, { backgroundColor: "#F8FAFC", borderColor: "#CBD5E1" }]}>
-          <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>WER ZAHLT?</Text>
-          <Text style={{ fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{payerBlock.title}</Text>
-          <Text style={{ fontSize: rf(13), fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: rf(19) }}>
-            {payerBlock.subtitle}
-          </Text>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -692,7 +713,7 @@ export default function RideScreen() {
               style={[
                 styles.orderBtn,
                 {
-                  backgroundColor: preAuthLoading || !paymentMethod ? colors.muted : colors.success,
+                  backgroundColor: preAuthLoading || !paymentMethod ? colors.muted : "#16A34A",
                   opacity: !paymentMethod ? 0.85 : 1,
                 },
               ]}
@@ -858,8 +879,9 @@ const styles = StyleSheet.create({
   locationLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   locationValue: { fontSize: rf(15), fontFamily: "Inter_500Medium", lineHeight: rf(22) },
   routeConnector: { width: 1, height: rs(20), marginLeft: rs(6) },
-  statsRow: { flexDirection: "row", gap: rs(10) },
-  statCard: { flex: 1, borderRadius: rs(14), borderWidth: 1, padding: rs(14), alignItems: "center", gap: rs(5) },
+  tripSummaryCard: { flexDirection: "row", borderRadius: rs(18), borderWidth: 1, paddingVertical: rs(14), paddingHorizontal: rs(8), gap: rs(4) },
+  tripSummaryItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: rs(5), minWidth: 0 },
+  tripSummaryIcon: { width: rs(34), height: rs(34), borderRadius: rs(17), alignItems: "center", justifyContent: "center" },
   statValue: { fontSize: rf(15), fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   vehicleRow: { flexDirection: "row", alignItems: "center", gap: rs(12) },
@@ -893,8 +915,8 @@ const styles = StyleSheet.create({
   priceBox: { borderWidth: 1.5, borderRadius: rs(12), paddingHorizontal: rs(12), paddingVertical: rs(8), gap: rs(2) },
   bottomLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },
   bottomPrice: { fontSize: rf(22), fontFamily: "Inter_700Bold" },
-  orderBtn: { flex: 1, paddingVertical: rs(12), borderRadius: rs(12), alignItems: "center", justifyContent: "center" },
-  orderBtnText: { fontSize: rf(13), fontFamily: "Inter_700Bold", textAlign: "center" },
+  orderBtn: { flex: 1, paddingVertical: rs(15), borderRadius: rs(14), alignItems: "center", justifyContent: "center" },
+  orderBtnText: { fontSize: rf(17), fontFamily: "Inter_700Bold", textAlign: "center" },
   noTokenOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: rs(24) },
   noTokenCard: { width: "100%", borderRadius: rs(20), borderWidth: 1, padding: rs(24), alignItems: "center", gap: rs(12) },
   noTokenIcon: { width: rs(60), height: rs(60), borderRadius: rs(18), justifyContent: "center", alignItems: "center", marginBottom: rs(4) },

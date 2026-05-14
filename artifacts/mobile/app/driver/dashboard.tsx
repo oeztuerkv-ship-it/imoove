@@ -769,7 +769,7 @@ function TabKarte({ pendingRequests }: { pendingRequests: RideRequest[] }) {
     <View style={styles.mapTabContainer}>
       <RealMapView origin={origin} destination={destination ?? undefined} style={StyleSheet.absoluteFillObject} />
       <View style={styles.mapOverlay}>
-        <View style={styles.mapCard}>
+        <View style={[styles.mapCard, { backgroundColor: colors.surface }]}>
           {activeReq ? (
             <>
               <View style={styles.mapCardRow}>
@@ -815,10 +815,13 @@ function TabFahrten({ allRides }: { allRides: RideEntry[] }) {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-      <View style={styles.filterRow}>
+      <View style={[styles.filterRow, { backgroundColor: colors.muted }]}>
         {(["heute", "woche", "alle"] as const).map((f) => (
-          <Pressable key={f} style={[styles.filterBtn, activeFilter === f && styles.filterBtnActive]}
-            onPress={() => setActiveFilter(f)}>
+          <Pressable
+            key={f}
+            style={[styles.filterBtn, activeFilter === f && [styles.filterBtnActive, { backgroundColor: colors.surface }]]}
+            onPress={() => setActiveFilter(f)}
+          >
             <Text style={[styles.filterText, { color: activeFilter === f ? "#EF1D26" : "#8E8E93", fontFamily: activeFilter === f ? "Inter_700Bold" : "Inter_500Medium", fontSize: 14 }]}>
               {f === "heute" ? "Heute" : f === "woche" ? "Woche" : "Alle"}
             </Text>
@@ -2623,14 +2626,19 @@ export default function DriverDashboard() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Modern driver header */}
-      <View style={[styles.modernDriverHeader, { top: topPad }]}>
+      <View
+        style={[
+          styles.modernDriverHeader,
+          { top: topPad, backgroundColor: colors.background, borderBottomColor: colors.border },
+        ]}
+      >
         <View style={styles.driverIdentity}>
           <View style={styles.driverTextBlock}>
             <Text style={styles.driverNameModern} numberOfLines={1}>{driver.name}</Text>
             <Text style={styles.driverPlateModern} numberOfLines={1}>{driver.plate}</Text>
           </View>
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: colors.border }]} />
 
         <Pressable
           onPress={() => {
@@ -2651,7 +2659,7 @@ export default function DriverDashboard() {
           }}
           style={[
             styles.segmentSwitch,
-            { opacity: driver.einsatzbereit ? 1 : 0.7 },
+            { opacity: driver.einsatzbereit ? 1 : 0.7, backgroundColor: colors.muted },
           ]}
         >
           <View
@@ -2717,7 +2725,7 @@ export default function DriverDashboard() {
             )}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-                <View style={{ flexDirection: "row", marginBottom: 18, backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3 }}>
+                <View style={{ flexDirection: "row", marginBottom: 18, backgroundColor: colors.muted, borderRadius: 12, padding: 3 }}>
                   <Pressable
                     onPress={() => setOrdersView("anfragen")}
                     style={{
@@ -2726,7 +2734,7 @@ export default function DriverDashboard() {
                       paddingVertical: 10,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: ordersView === "anfragen" ? "#FFFFFF" : "transparent",
+                      backgroundColor: ordersView === "anfragen" ? colors.surface : "transparent",
                       shadowColor: "#000",
                       shadowOpacity: ordersView === "anfragen" ? 0.08 : 0,
                       shadowRadius: 4,
@@ -2752,7 +2760,7 @@ export default function DriverDashboard() {
                       paddingVertical: 10,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: ordersView === "angenommen" ? "#FFFFFF" : "transparent",
+                      backgroundColor: ordersView === "angenommen" ? colors.surface : "transparent",
                       shadowColor: "#000",
                       shadowOpacity: ordersView === "angenommen" ? 0.08 : 0,
                       shadowRadius: 4,
@@ -2781,7 +2789,7 @@ export default function DriverDashboard() {
                       paddingVertical: 10,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: ordersView === "code" ? "#FFFFFF" : "transparent",
+                      backgroundColor: ordersView === "code" ? colors.surface : "transparent",
                       borderRadius: 9,
                       flexDirection: "row",
                       gap: 4,
@@ -2931,7 +2939,7 @@ export default function DriverDashboard() {
       )}
 
       {/* Bottom Tab Bar */}
-      <View style={[styles.tabBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: bottomPad }]}>
+      <View style={[styles.tabBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad }]}>
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -3190,13 +3198,11 @@ const styles = StyleSheet.create({
     zIndex: 20,
     minHeight: 72,
     borderRadius: 20,
-    backgroundColor: "#F2F2F7",
     paddingHorizontal: 20,
     paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
     borderBottomWidth: 0.5,
-    borderBottomColor: "#C6C6C8",
   },
   driverIdentity: {
     flex: 1,
@@ -3240,13 +3246,11 @@ const styles = StyleSheet.create({
   headerDivider: {
     width: 1,
     height: 38,
-    backgroundColor: "#C6C6C8",
     marginHorizontal: 10,
   },
   segmentSwitch: {
     height: 38,
     borderRadius: 24,
-    backgroundColor: "#E5E5EA",
     padding: 3,
     flexDirection: "row",
     alignItems: "center",
@@ -3330,7 +3334,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_500Medium",
     color: "#111827",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#EDE6DE",
   },
   codeRideInputDisabled: {
     opacity: 0.55,
@@ -3448,9 +3452,9 @@ const styles = StyleSheet.create({
   mapStatDivider: { width: 1, height: 28, backgroundColor: "#E5E7EB" },
 
   /* Fahrten tab */
-  filterRow: { flexDirection: "row", backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3, marginBottom: 18, marginHorizontal: 0 },
+  filterRow: { flexDirection: "row", borderRadius: 12, padding: 3, marginBottom: 18, marginHorizontal: 0 },
   filterBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
-  filterBtnActive: { backgroundColor: "#FFFFFF", borderRadius: 9 },
+  filterBtnActive: { borderRadius: 9 },
   filterText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   rideCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 10 },
   rideTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },

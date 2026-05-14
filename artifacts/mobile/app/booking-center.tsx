@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React from "react";
+import { router, useLocalSearchParams, usePathname, useSegments, type Href } from "expo-router";
+import React, { useEffect } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -22,19 +22,59 @@ export default function BookingCenterScreen() {
   const insets = useSafeAreaInsets();
   const topPad = (typeof window !== "undefined" ? 67 : insets.top) + 10;
 
+  const pathname = usePathname();
+  const segments = useSegments();
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] MOUNT ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "booking-center",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+    return () => {
+      console.log(`[NAV TRACE] UNMOUNT ${pathname}`);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- NAV trace: einmaliger Mount-Log
+  }, []);
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] UPDATE ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "booking-center",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+  }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
+
   const cards: BookingCard[] = [
     {
       key: "instant",
-      title: "Sofortfahrt",
-      subtitle: "Direkt starten, Fahrer wird sofort gesucht.",
-      icon: "zap",
+      title: "Jetzt fahren",
+      subtitle: "Start & Ziel eingeben – Fahrer kommt sofort.",
+      icon: "navigation",
       color: "#DC2626",
-      onPress: () => router.push("/?search=1"),
+      onPress: () => router.replace("/?openBooking=instant"),
     },
     {
       key: "reserve",
       title: "Reservierung",
-      subtitle: "Fahrt für später planen (Datum/Uhrzeit).",
+      subtitle: "Fahrt für später planen – Datum & Uhrzeit wählen.",
       icon: "calendar",
       color: "#2563EB",
       onPress: () => router.push("/new-booking"),

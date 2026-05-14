@@ -22,6 +22,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
+import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
+import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
@@ -70,61 +72,237 @@ function GoogleGLogo({ size = 22 }: { size?: number }) {
 
 const API_URL = getApiBaseUrl();
 
+/** Kachel-Glyphe in Konto-Listenzeilen (Profil … Abmelden) */
+const ACCOUNT_TILE_ICON = 16;
+const ACCOUNT_VALUE_ACCENT = "#C2186B";
+
 function isPlausibleEmail(s: string): boolean {
   const t = s.trim();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
-/* ── Menu row ── */
-function Row({
-  iconName,
+/* ── Konto-Liste: neutrale Icon-Kacheln, Wert rechts ── */
+function AccountRow({
+  icon,
   iconBg,
-  iconColor,
   label,
   sublabel,
+  valueText,
+  valueTint,
   onPress,
   danger,
+  isFirst,
   isLast,
   hideChevron,
+  trailingReorder,
+  comfortable = false,
 }: {
-  iconName: string;
+  icon: React.ReactNode;
   iconBg?: string;
-  iconColor?: string;
   label: string;
   sublabel?: string;
+  valueText?: string;
+  valueTint?: "default" | "accent" | "success";
   onPress: () => void;
   danger?: boolean;
+  isFirst?: boolean;
   isLast?: boolean;
   hideChevron?: boolean;
+  trailingReorder?: boolean;
+  comfortable?: boolean;
 }) {
   const colors = useColors();
+  const valueColor =
+    valueTint === "accent"
+      ? ACCOUNT_VALUE_ACCENT
+      : valueTint === "success"
+        ? "#16A34A"
+        : colors.mutedForeground;
+  const tileBg = iconBg ?? (danger ? colors.border : colors.muted);
+  const rowComfort = comfortable
+    ? {
+        gap: rs(11),
+        paddingHorizontal: rs(5),
+        paddingVertical: rs(7),
+        minHeight: rs(46),
+      }
+    : {};
+  const iconWrapComfort = comfortable
+    ? { width: rs(29), height: rs(29), borderRadius: rs(11) }
+    : {};
+  const labelComfort = comfortable
+    ? { fontSize: rf(15), lineHeight: rf(20), fontFamily: "Inter_500Medium" as const }
+    : {};
+  const subComfort = comfortable ? { fontSize: rf(12), lineHeight: rf(17) } : {};
+  const valueComfort = comfortable ? { fontSize: rf(15), lineHeight: rf(20) } : {};
+  const chevronSize = comfortable ? 20 : 18;
+  const reorderSize = comfortable ? 19 : 17;
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.row,
+        styles.accountRow,
+        comfortable && rowComfort,
+        isFirst && styles.accountRowFirst,
+        isLast && styles.accountRowLast,
         { backgroundColor: pressed ? colors.muted : "transparent" },
         !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
       ]}
       onPress={onPress}
     >
-      <View style={[styles.rowIcon, { backgroundColor: iconBg ?? (danger ? "#FEE2E2" : colors.muted) }]}>
-        <Feather name={iconName as any} size={17} color={iconColor ?? (danger ? "#DC2626" : colors.foreground)} />
+      <View style={[styles.accountRowIconWrap, comfortable && iconWrapComfort, { backgroundColor: tileBg }]}>
+        {icon}
       </View>
-      <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, { color: danger ? "#DC2626" : colors.foreground }]}>{label}</Text>
-        {sublabel && <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>{sublabel}</Text>}
+      <View style={styles.accountRowText}>
+        <Text style={[styles.accountRowLabel, comfortable && labelComfort, { color: danger ? "#DC2626" : colors.foreground }]}>{label}</Text>
+        {sublabel ? (
+          <Text style={[styles.accountRowSub, comfortable && subComfort, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {sublabel}
+          </Text>
+        ) : null}
       </View>
-      {!hideChevron && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+      {valueText ? (
+        <Text style={[styles.accountRowValue, comfortable && valueComfort, { color: valueColor }]} numberOfLines={1}>
+          {valueText}
+        </Text>
+      ) : null}
+      {trailingReorder ? (
+        <MaterialCommunityIcons name="swap-vertical" size={reorderSize} color={colors.mutedForeground} />
+      ) : !hideChevron ? (
+        <Feather name="chevron-right" size={chevronSize} color={colors.mutedForeground} />
+      ) : null}
     </Pressable>
   );
 }
 
-function SectionCard({ children }: { children: React.ReactNode }) {
-  const colors = useColors();
+function SectionCard({ children, compact }: { children: React.ReactNode; compact?: boolean }) {
   return (
-    <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View
+      style={[
+        styles.sectionCard,
+        compact && styles.sectionCardCompact,
+        { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM },
+      ]}
+    >
       {children}
     </View>
+  );
+}
+
+/** Konto: kleine Großbuchstaben-Überschrift wie im Referenz-Layout (ABRECHNUNG, PRÄFERENZEN) */
+function AccountSectionTitle({ title, comfortable }: { title: string; comfortable?: boolean }) {
+  const colors = useColors();
+  return (
+    <Text
+      style={{
+        marginLeft: rs(4),
+        marginBottom: comfortable ? rs(9) : rs(8),
+        fontSize: comfortable ? rf(12) : rf(11),
+        fontFamily: "Inter_600SemiBold",
+        letterSpacing: 0.8,
+        color: colors.mutedForeground,
+      }}
+    >
+      {title.toUpperCase()}
+    </Text>
+  );
+}
+
+/** Vorbild Rechnungsadresse: weiße Karten, Rand, Scroll-Padding, Feld-Typografie (Persönliche Daten + Patienten-Profil gleich). */
+const BILLING_FIELD_CARD = "#FFFFFF";
+const BILLING_CARD_INSET = rs(8);
+const BILLING_SCROLL_H_PAD = rs(8);
+const billingCardShell = { marginHorizontal: BILLING_CARD_INSET, alignSelf: "stretch" as const };
+const billingFieldPad = { paddingHorizontal: rs(11), paddingVertical: rs(12) };
+const billingModalBlockMargin = { marginHorizontal: BILLING_SCROLL_H_PAD + BILLING_CARD_INSET };
+const billingLabel = (muted: string) => [styles.modalFieldLabel, { color: muted, fontSize: rf(13), marginBottom: rs(5) }];
+const billingInput = (fg: string) => [styles.modalFieldInput, { color: fg, backgroundColor: "#FFFFFF", fontSize: rf(17) }];
+
+function formatKontoBalanceEur(amount: number): string {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(amount);
+}
+
+/** Obere Profilkarte: Avatar mit Häkchen-Badge bei Verifizierung, Name, E-Mail */
+function AccountProfileHeroCard({
+  name,
+  email,
+  isVerified,
+  photoUri,
+  onPress,
+}: {
+  name: string;
+  email: string;
+  isVerified: boolean;
+  photoUri?: string | null;
+  onPress: () => void;
+}) {
+  const colors = useColors();
+  const hasPhoto = typeof photoUri === "string" && photoUri.trim().length > 0;
+  const glyphColor = colors.foreground;
+  return (
+    <SectionCard compact>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.accountRow,
+          styles.accountRowFirst,
+          styles.accountRowLast,
+          {
+            alignItems: "center",
+            backgroundColor: pressed ? colors.muted : "transparent",
+            paddingVertical: rs(16),
+            minHeight: rs(64),
+          },
+        ]}
+      >
+        <View style={{ position: "relative" }}>
+          <View
+            style={{
+              width: rs(48),
+              height: rs(48),
+              borderRadius: rs(24),
+              backgroundColor: colors.muted,
+              justifyContent: "center",
+              alignItems: "center",
+              overflow: "hidden",
+            }}
+          >
+            {hasPhoto ? (
+              <Image source={{ uri: photoUri!.trim() }} style={{ width: rs(48), height: rs(48) }} resizeMode="cover" />
+            ) : (
+              <MaterialCommunityIcons name="account" size={26} color={glyphColor} />
+            )}
+          </View>
+          {isVerified ? (
+            <View
+              style={{
+                position: "absolute",
+                right: -rs(2),
+                bottom: -rs(2),
+                width: rs(20),
+                height: rs(20),
+                borderRadius: rs(10),
+                backgroundColor: "#FFFFFF",
+                borderWidth: 2,
+                borderColor: HOME_SHEET_PANEL,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Feather name="check" size={11} color={glyphColor} />
+            </View>
+          ) : null}
+        </View>
+        <View style={[styles.accountRowText, { flex: 1, gap: rs(6) }]}>
+          <Text style={[styles.accountRowLabel, { color: colors.foreground, fontSize: rf(18) }]} numberOfLines={2}>
+            {(name || "").trim() || "—"}
+          </Text>
+          <Text style={[styles.accountRowSub, { fontSize: rf(13) }]} numberOfLines={1}>
+            {email.trim() || "—"}
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </Pressable>
+    </SectionCard>
   );
 }
 
@@ -154,6 +332,19 @@ function PersonalDataModal({
   const [address, setAddress] = useState(initialAddress ?? "");
   const [city, setCity] = useState(initialCity ?? "");
 
+  const divider = { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border };
+  /** Eingegebene Werte kräftiger als Standard-Input */
+  const personalAnswerInput = [
+    styles.modalFieldInput,
+    {
+      color: colors.foreground,
+      backgroundColor: "#FFFFFF",
+      fontSize: rf(17),
+      fontFamily: "Inter_500Medium" as const,
+    },
+  ];
+  const readonlyValue = (c: string) => ({ fontSize: rf(17), fontFamily: "Inter_400Regular" as const, color: c });
+
   const handleSave = () => {
     onClose({ name: initialName ?? "", email: initialEmail ?? "", phone: (phone ?? "").trim(), address: (address ?? "").trim(), city: (city ?? "").trim() });
   };
@@ -161,7 +352,7 @@ function PersonalDataModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose(null)}>
       <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
           <Pressable hitSlop={12} onPress={() => onClose(null)} style={styles.modalClose}>
             <Feather name="x" size={20} color={colors.foreground} />
           </Pressable>
@@ -170,36 +361,31 @@ function PersonalDataModal({
         </View>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
           <ScrollView
-            contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 16 }}
+            contentContainerStyle={{ paddingHorizontal: BILLING_SCROLL_H_PAD, paddingTop: 16, paddingBottom: insets.bottom + 32, gap: 16 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {/* Karte 1: Name + E-Mail (von Google, read-only) */}
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.modalField, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-                <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>Name</Text>
-                <Text style={[styles.modalFieldInput, { color: isGoogleUser ? colors.mutedForeground : colors.foreground }]}>
-                  {initialName || "—"}
-                </Text>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+              <View style={[styles.modalField, billingFieldPad, divider]}>
+                <Text style={billingLabel(colors.mutedForeground)}>Name</Text>
+                <Text style={readonlyValue(colors.foreground)}>{initialName || "—"}</Text>
               </View>
-              <View style={styles.modalField}>
-                <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>E-Mail</Text>
-                <Text style={[styles.modalFieldInput, { color: isGoogleUser ? colors.mutedForeground : colors.foreground }]}>
-                  {initialEmail || "—"}
-                </Text>
+              <View style={[styles.modalField, billingFieldPad]}>
+                <Text style={billingLabel(colors.mutedForeground)}>E-Mail</Text>
+                <Text style={readonlyValue(colors.foreground)}>{initialEmail || "—"}</Text>
               </View>
             </View>
 
             {/* Karte 2: Telefon + Adresse (optional, editierbar) */}
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {/* Telefon */}
-              <View style={[styles.modalField, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                  <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>Telefon</Text>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+              <View style={[styles.modalField, billingFieldPad, divider]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: rs(5) }}>
+                  <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground, fontSize: rf(13) }]}>Telefon</Text>
                   <View style={styles.optionalBadge}><Text style={styles.optionalText}>optional</Text></View>
                 </View>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={personalAnswerInput}
                   value={phone}
                   onChangeText={setPhone}
                   placeholder="+49 711 000000"
@@ -208,14 +394,13 @@ function PersonalDataModal({
                   returnKeyType="next"
                 />
               </View>
-              {/* Straße / Hausnummer */}
-              <View style={[styles.modalField, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                  <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>Straße / Nr.</Text>
+              <View style={[styles.modalField, billingFieldPad, divider]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: rs(5) }}>
+                  <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground, fontSize: rf(13) }]}>Straße / Nr.</Text>
                   <View style={styles.optionalBadge}><Text style={styles.optionalText}>optional</Text></View>
                 </View>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={personalAnswerInput}
                   value={address}
                   onChangeText={setAddress}
                   placeholder="Musterstraße 12"
@@ -224,14 +409,13 @@ function PersonalDataModal({
                   returnKeyType="next"
                 />
               </View>
-              {/* PLZ / Ort */}
-              <View style={styles.modalField}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                  <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>PLZ / Ort</Text>
+              <View style={[styles.modalField, billingFieldPad]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: rs(5) }}>
+                  <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground, fontSize: rf(13) }]}>PLZ / Ort</Text>
                   <View style={styles.optionalBadge}><Text style={styles.optionalText}>optional</Text></View>
                 </View>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={personalAnswerInput}
                   value={city}
                   onChangeText={setCity}
                   placeholder="73728 Esslingen"
@@ -243,20 +427,19 @@ function PersonalDataModal({
             </View>
 
             {isGoogleUser && (
-              <View style={[styles.googleInfoBox, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
+              <View style={[styles.googleInfoBox, billingModalBlockMargin, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
                 <Image
                   source={require("../assets/images/google-icon.png")}
-                  style={{ width: 20, height: 20 }}
+                  style={{ width: 16, height: 16 }}
                   resizeMode="contain"
                 />
                 <Text style={styles.googleInfoText}>
-                  Name und E-Mail werden von deinem Google-Konto übernommen und können hier nicht geändert werden.
+                  Von Google übernommen — Name und E-Mail hier nicht änderbar.
                 </Text>
               </View>
             )}
 
-            {/* DSGVO Hinweis */}
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 4 }}>
+            <View style={[{ flexDirection: "row", alignItems: "flex-start", gap: 8 }, billingModalBlockMargin]}>
               <Feather name="shield" size={14} color="#6B7280" style={{ marginTop: 2 }} />
               <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#6B7280", lineHeight: 18 }}>
                 Die Angaben zu Telefon und Adresse sind <Text style={{ fontFamily: "Inter_500Medium" }}>freiwillig</Text>. Sie können diese Daten jederzeit ändern oder löschen (DSGVO Art. 17).
@@ -264,11 +447,14 @@ function PersonalDataModal({
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.modalSaveBtn, { opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [
+                billingModalBlockMargin,
+                { backgroundColor: "#EF1D26", borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, opacity: pressed ? 0.88 : 1 },
+              ]}
               onPress={handleSave}
             >
               <Feather name="save" size={16} color="#fff" />
-              <Text style={styles.modalSaveBtnText}>Speichern</Text>
+              <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }}>Speichern</Text>
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -282,8 +468,8 @@ function ToggleSwitchRow({
   label, value, onToggle, colors,
 }: { label: string; value: boolean; onToggle: (v: boolean) => void; colors: ReturnType<typeof useColors> }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14 }}>
-      <Text style={{ fontSize: 17, fontFamily: "Inter_500Medium", color: colors.foreground, flex: 1 }}>{label}</Text>
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: rs(11), paddingVertical: rs(12) }}>
+      <Text style={{ fontSize: rf(16), fontFamily: "Inter_500Medium", color: colors.foreground, flex: 1 }}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onToggle}
@@ -296,6 +482,7 @@ function ToggleSwitchRow({
 
 function BillingModal({ visible, profile, onClose }: { visible: boolean; profile: any; onClose: (data: any | null) => void; }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [billingType, setBillingType] = useState<"private" | "company" | "insurance">(profile.billingType ?? "private");
   const [companyName, setCompanyName] = useState(profile.companyName ?? "");
   const [companyAddress, setCompanyAddress] = useState(profile.companyAddress ?? "");
@@ -303,44 +490,157 @@ function BillingModal({ visible, profile, onClose }: { visible: boolean; profile
   const [vatNumber, setVatNumber] = useState(profile.vatNumber ?? "");
   const [costCenter, setCostCenter] = useState(profile.costCenter ?? "");
   const [billingEmail, setBillingEmail] = useState(profile.billingEmail ?? "");
+
+  const divider = { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border };
+  const fieldInputOnWhite = billingInput(colors.foreground);
+  const fieldInputMuted = [styles.modalFieldInput, { color: colors.mutedForeground, backgroundColor: "#FFFFFF", fontSize: rf(17) }];
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 20, borderBottomWidth: 0.5, borderBottomColor: "#E5E7EB" }}>
-          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>Rechnungsadresse</Text>
-          <Pressable onPress={() => onClose(null)}><Feather name="x" size={24} color={colors.mutedForeground} /></Pressable>
-        </View>
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-          <View style={{ flexDirection: "row", backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3, marginBottom: 8 }}>
-            {(["private", "company", "insurance"] as const).map((t) => (
-              <Pressable key={t} onPress={() => setBillingType(t)} style={{ flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center", backgroundColor: billingType === t ? "#FFFFFF" : "transparent" }}>
-                <Text style={{ fontSize: 13, fontFamily: billingType === t ? "Inter_700Bold" : "Inter_500Medium", color: billingType === t ? "#EF1D26" : "#8E8E93" }}>
-                  {t === "private" ? "Privat" : t === "company" ? "Firma" : "Kasse"}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          {billingType === "company" && (<>
-            <TextInput placeholder="Firmenname" value={companyName} onChangeText={setCompanyName} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-            <TextInput placeholder="Straße & Hausnummer" value={companyAddress} onChangeText={setCompanyAddress} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-            <TextInput placeholder="PLZ & Stadt" value={companyCity} onChangeText={setCompanyCity} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-            <TextInput placeholder="USt-ID (optional)" value={vatNumber} onChangeText={setVatNumber} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-            <TextInput placeholder="Kostenstelle (optional)" value={costCenter} onChangeText={setCostCenter} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-            <TextInput placeholder="Rechnungs-E-Mail" value={billingEmail} onChangeText={setBillingEmail} keyboardType="email-address" style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-          </>)}
-          {billingType === "insurance" && (<>
-            <TextInput placeholder="Krankenkasse" value={profile.krankenkasse} editable={false} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: "#9CA3AF", backgroundColor: "#F9FAFB" }} />
-            <TextInput placeholder="Versichertennummer" value={profile.versichertennummer} editable={false} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: "#9CA3AF", backgroundColor: "#F9FAFB" }} />
-            <TextInput placeholder="Kostenstelle (optional)" value={costCenter} onChangeText={setCostCenter} style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-            <TextInput placeholder="Rechnungs-E-Mail" value={billingEmail} onChangeText={setBillingEmail} keyboardType="email-address" style={{ borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground }} placeholderTextColor="#9CA3AF" />
-          </>)}
-          {billingType === "private" && (
-            <Text style={{ fontSize: 14, color: "#6B7280", textAlign: "center", paddingVertical: 20 }}>Privatabrechnung – keine weiteren Angaben nötig.</Text>
-          )}
-          <Pressable onPress={() => onClose({ billingType, companyName, companyAddress, companyCity, vatNumber, costCenter, billingEmail })} style={{ backgroundColor: "#EF1D26", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 8 }}>
-            <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }}>Speichern</Text>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose(null)}>
+      <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+          <Pressable hitSlop={12} onPress={() => onClose(null)} style={styles.modalClose}>
+            <Feather name="x" size={20} color={colors.foreground} />
           </Pressable>
-        </ScrollView>
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>Rechnungsadresse</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={{ paddingHorizontal: BILLING_SCROLL_H_PAD, paddingTop: 16, paddingBottom: insets.bottom + 32, gap: 16 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+              <View style={[styles.modalField, billingFieldPad, { paddingBottom: rs(12) }]}>
+                <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground, fontSize: rf(14), marginBottom: rs(5), fontFamily: "Inter_600SemiBold" }]}>
+                  Abrechnung
+                </Text>
+                <View style={{ flexDirection: "row", backgroundColor: "#E5E5EA", borderRadius: 12, padding: 3, marginTop: rs(4) }}>
+                  {(["private", "company", "insurance"] as const).map((t) => (
+                    <Pressable
+                      key={t}
+                      onPress={() => setBillingType(t)}
+                      style={{ flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: "center", backgroundColor: billingType === t ? "#FFFFFF" : "transparent" }}
+                    >
+                      <Text style={{ fontSize: rf(13), fontFamily: billingType === t ? "Inter_700Bold" : "Inter_600SemiBold", color: billingType === t ? "#EF1D26" : "#8E8E93" }}>
+                        {t === "private" ? "Privat" : t === "company" ? "Firma" : "Kasse"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {billingType === "company" && (
+              <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Firmenname</Text>
+                  <TextInput placeholder="Firmenname" value={companyName} onChangeText={setCompanyName} style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} returnKeyType="next" />
+                </View>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Straße & Hausnummer</Text>
+                  <TextInput placeholder="Musterstraße 12" value={companyAddress} onChangeText={setCompanyAddress} style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} autoCapitalize="words" returnKeyType="next" />
+                </View>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>PLZ & Ort</Text>
+                  <TextInput placeholder="73728 Esslingen" value={companyCity} onChangeText={setCompanyCity} style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} autoCapitalize="words" returnKeyType="next" />
+                </View>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>USt-ID (optional)</Text>
+                  <TextInput placeholder="DE123456789" value={vatNumber} onChangeText={setVatNumber} style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} returnKeyType="next" />
+                </View>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Kostenstelle (optional)</Text>
+                  <TextInput placeholder="Kostenstelle" value={costCenter} onChangeText={setCostCenter} style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} returnKeyType="next" />
+                </View>
+                <View style={[styles.modalField, billingFieldPad]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Rechnungs-E-Mail</Text>
+                  <TextInput placeholder="rechnung@firma.de" value={billingEmail} onChangeText={setBillingEmail} keyboardType="email-address" style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} returnKeyType="done" />
+                </View>
+              </View>
+            )}
+
+            {billingType === "insurance" && (
+              <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Krankenkasse</Text>
+                  <TextInput placeholder="Krankenkasse" value={profile.krankenkasse} editable={false} style={fieldInputMuted} />
+                </View>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Versichertennummer</Text>
+                  <TextInput placeholder="Versichertennummer" value={profile.versichertennummer} editable={false} style={fieldInputMuted} />
+                </View>
+                <View style={[styles.modalField, billingFieldPad, divider]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Kostenstelle (optional)</Text>
+                  <TextInput placeholder="Kostenstelle" value={costCenter} onChangeText={setCostCenter} style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} returnKeyType="next" />
+                </View>
+                <View style={[styles.modalField, billingFieldPad]}>
+                  <Text style={billingLabel(colors.mutedForeground)}>Rechnungs-E-Mail</Text>
+                  <TextInput placeholder="rechnung@…" value={billingEmail} onChangeText={setBillingEmail} keyboardType="email-address" style={fieldInputOnWhite} placeholderTextColor={colors.mutedForeground} returnKeyType="done" />
+                </View>
+              </View>
+            )}
+
+            {billingType === "private" && (
+              <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+                <View style={[styles.modalField, billingFieldPad, { paddingVertical: rs(20) }]}>
+                  <Text style={{ fontSize: rf(14), fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" }}>
+                    Privatabrechnung – keine weiteren Angaben nötig.
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View
+              style={[
+                {
+                  marginTop: rs(8),
+                  marginBottom: rs(14),
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: rs(10),
+                  padding: rs(14),
+                  borderRadius: rs(12),
+                  backgroundColor: "#F0FDFA",
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: "#99F6E4",
+                },
+                billingModalBlockMargin,
+                Platform.select({
+                  ios: {
+                    shadowColor: "#0F766E",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 8,
+                  },
+                  android: { elevation: 4 },
+                  default: {},
+                }),
+              ]}
+            >
+              <MaterialCommunityIcons name="information-outline" size={22} color="#EF1D26" style={{ marginTop: 1 }} />
+              <View style={{ flex: 1, gap: rs(6) }}>
+                <Text style={{ fontSize: rf(12) }}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", color: "#EF1D26" }}>Hinweis</Text>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>:</Text>
+                </Text>
+                <Text style={{ fontSize: rf(12), fontFamily: "Inter_400Regular", lineHeight: rf(17), color: colors.foreground }}>
+                  Die Rechnungsadresse wird auf allen Belegen und Rechnungen angezeigt.
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => onClose({ billingType, companyName, companyAddress, companyCity, vatNumber, costCenter, billingEmail })}
+              style={({ pressed }) => [
+                billingModalBlockMargin,
+                { backgroundColor: "#EF1D26", borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: pressed ? 0.88 : 1 },
+              ]}
+            >
+              <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }}>Speichern</Text>
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -386,11 +686,14 @@ function PatientProfileModal({
   };
 
   const divider = { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border };
+  const fieldOnWhite = billingInput(colors.foreground);
+  const notfallLabel = [styles.modalFieldLabel, { color: "#B91C1C", fontSize: rf(13), marginBottom: rs(5) }];
+  const notfallInput = [styles.modalFieldInput, { color: colors.foreground, backgroundColor: "#FFFFFF", fontSize: rf(17) }];
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose(null)}>
       <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
           <Pressable hitSlop={12} onPress={() => onClose(null)} style={styles.modalClose}>
             <Feather name="x" size={20} color={colors.foreground} />
           </Pressable>
@@ -399,17 +702,18 @@ function PatientProfileModal({
         </View>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
           <ScrollView
-            contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32, gap: 16 }}
+            contentContainerStyle={{ paddingHorizontal: BILLING_SCROLL_H_PAD, paddingTop: 16, paddingBottom: insets.bottom + 32, gap: 16 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Krankenversicherung */}
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.mutedForeground, letterSpacing: 0.8, marginLeft: 4 }}>KRANKENVERSICHERUNG</Text>
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.modalField, divider]}>
-                <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>Krankenkasse</Text>
+            <View style={{ paddingHorizontal: 0 }}>
+              <AccountSectionTitle title="Krankenversicherung" />
+            </View>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+              <View style={[styles.modalField, billingFieldPad, divider]}>
+                <Text style={billingLabel(colors.mutedForeground)}>Krankenkasse</Text>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={fieldOnWhite}
                   value={krankenkasse}
                   onChangeText={setKrankenkasse}
                   placeholder="z.B. AOK Baden-Württemberg"
@@ -417,10 +721,10 @@ function PatientProfileModal({
                   returnKeyType="next"
                 />
               </View>
-              <View style={styles.modalField}>
-                <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>Versichertennummer</Text>
+              <View style={[styles.modalField, billingFieldPad]}>
+                <Text style={billingLabel(colors.mutedForeground)}>Versichertennummer</Text>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={fieldOnWhite}
                   value={versichertennummer}
                   onChangeText={setVersichertennummer}
                   placeholder="A000000000"
@@ -431,9 +735,10 @@ function PatientProfileModal({
               </View>
             </View>
 
-            {/* Mobilitätsbedarf */}
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.mutedForeground, letterSpacing: 0.8, marginLeft: 4 }}>MOBILITÄTSBEDARF</Text>
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={{ paddingHorizontal: 0 }}>
+              <AccountSectionTitle title="Mobilitätsbedarf" />
+            </View>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
               <View style={divider}><ToggleSwitchRow label="Rollstuhl" value={rollstuhl} onToggle={setRollstuhl} colors={colors} /></View>
               <View style={divider}><ToggleSwitchRow label="Gehilfe / Rollator" value={rollator} onToggle={setRollator} colors={colors} /></View>
               <View style={divider}><ToggleSwitchRow label="Blindenhund / Assistenzhund" value={blindenhund} onToggle={setBlindhund} colors={colors} /></View>
@@ -441,16 +746,17 @@ function PatientProfileModal({
               <ToggleSwitchRow label="Begleitperson" value={begleitperson} onToggle={setBegleitperson} colors={colors} />
             </View>
 
-            {/* Service-Optionen */}
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.mutedForeground, letterSpacing: 0.8, marginLeft: 4 }}>SERVICE-OPTIONEN</Text>
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={{ paddingHorizontal: 0 }}>
+              <AccountSectionTitle title="Service-Optionen" />
+            </View>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
               <View style={divider}>
                 <ToggleSwitchRow label="Abholung an der Wohnungstür" value={abholungTuer} onToggle={setAbholungTuer} colors={colors} />
-                {abholungTuer && (
-                  <View style={[styles.modalField, { paddingTop: 0 }]}>
-                    <Text style={[styles.modalFieldLabel, { color: colors.mutedForeground }]}>Stockwerk</Text>
+                {abholungTuer ? (
+                  <View style={[styles.modalField, billingFieldPad, { paddingTop: 0, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }]}>
+                    <Text style={billingLabel(colors.mutedForeground)}>Stockwerk</Text>
                     <TextInput
-                      style={[styles.modalFieldInput, { color: colors.foreground }]}
+                      style={fieldOnWhite}
                       value={abholungStockwerk}
                       onChangeText={setAbholungStockwerk}
                       placeholder="z.B. 3. OG"
@@ -458,23 +764,22 @@ function PatientProfileModal({
                       returnKeyType="done"
                     />
                   </View>
-                )}
+                ) : null}
               </View>
               <View style={divider}><ToggleSwitchRow label="Dialyse-Transport" value={dialyse} onToggle={setDialyse} colors={colors} /></View>
               <View style={divider}><ToggleSwitchRow label="Begleitung bis zur Anmeldung" value={begleitungAnmeldung} onToggle={setBegleitungAnmeldung} colors={colors} /></View>
               <ToggleSwitchRow label="Tragehilfe (2. Fahrer erforderlich)" value={tragehilfe} onToggle={setTragehilfe} colors={colors} />
             </View>
 
-            {/* Notfallkontakt */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginLeft: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginLeft: BILLING_CARD_INSET }}>
               <Feather name="bell" size={17} color="#DC2626" />
-              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#DC2626", letterSpacing: 0.6 }}>NOTFALLKONTAKT</Text>
+              <Text style={{ fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#DC2626", letterSpacing: 0.8 }}>NOTFALLKONTAKT</Text>
             </View>
-            <View style={[styles.sectionCard, { backgroundColor: "#FFF5F5", borderColor: "#FCA5A5", borderWidth: 1.5 }]}>
-              <View style={[styles.modalField, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#FCA5A5" }]}>
-                <Text style={[styles.modalFieldLabel, { color: "#B91C1C" }]}>Name</Text>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: "#FFF5F5", borderColor: "#FCA5A5", borderWidth: StyleSheet.hairlineWidth }]}>
+              <View style={[styles.modalField, billingFieldPad, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#FCA5A5" }]}>
+                <Text style={notfallLabel}>Name</Text>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={notfallInput}
                   value={notfallName}
                   onChangeText={setNotfallName}
                   placeholder="Vertrauensperson"
@@ -483,10 +788,10 @@ function PatientProfileModal({
                   returnKeyType="next"
                 />
               </View>
-              <View style={styles.modalField}>
-                <Text style={[styles.modalFieldLabel, { color: "#B91C1C" }]}>Telefon</Text>
+              <View style={[styles.modalField, billingFieldPad]}>
+                <Text style={notfallLabel}>Telefon</Text>
                 <TextInput
-                  style={[styles.modalFieldInput, { color: colors.foreground }]}
+                  style={notfallInput}
                   value={notfallTelefon}
                   onChangeText={setNotfallTelefon}
                   placeholder="+49 711 000000"
@@ -497,20 +802,18 @@ function PatientProfileModal({
               </View>
             </View>
 
-            {/* Notiz für den Fahrer */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginLeft: 4 }}>
-              <Feather name="file-text" size={15} color={colors.mutedForeground} />
-              <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.mutedForeground, letterSpacing: 0.8 }}>NOTIZ FÜR DEN FAHRER</Text>
+            <View style={{ paddingHorizontal: 0 }}>
+              <AccountSectionTitle title="Notiz für den Fahrer" />
             </View>
-            <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginLeft: 4, marginTop: -8 }}>
+            <Text style={{ fontSize: rf(12), fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginLeft: BILLING_CARD_INSET, marginTop: -rs(4) }}>
               Freiwillig — alle Angaben sind optional. Nur für den Fahrer sichtbar.
             </Text>
-            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={{ paddingHorizontal: 18, paddingVertical: 14 }}>
+            <View style={[styles.sectionCard, styles.sectionCardCompact, billingCardShell, { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM }]}>
+              <View style={[styles.modalField, billingFieldPad]}>
                 <TextInput
                   style={{
-                    fontSize: 16, fontFamily: "Inter_400Regular", color: colors.foreground,
-                    minHeight: 90, textAlignVertical: "top",
+                    fontSize: rf(17), fontFamily: "Inter_400Regular", color: colors.foreground,
+                    backgroundColor: "#FFFFFF", minHeight: 90, textAlignVertical: "top",
                   }}
                   value={patientNotiz}
                   onChangeText={setPatientNotiz}
@@ -520,14 +823,13 @@ function PatientProfileModal({
                   maxLength={300}
                   returnKeyType="default"
                 />
-                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "right", marginTop: 6 }}>
+                <Text style={{ fontSize: rf(11), fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "right", marginTop: rs(6) }}>
                   {patientNotiz.length}/300
                 </Text>
               </View>
             </View>
 
-            {/* Einwilligung */}
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 4 }}>
+            <View style={[{ flexDirection: "row", alignItems: "flex-start", gap: 8 }, billingModalBlockMargin]}>
               <Feather name="shield" size={14} color="#6B7280" style={{ marginTop: 2 }} />
               <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#6B7280", lineHeight: 18 }}>
                 Alle Angaben sind <Text style={{ fontFamily: "Inter_500Medium" }}>freiwillig</Text> und werden nur zur Fahrtoptimierung gespeichert. Du kannst sie jederzeit ändern oder löschen (DSGVO Art. 17).
@@ -535,11 +837,14 @@ function PatientProfileModal({
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.modalSaveBtn, { opacity: pressed ? 0.8 : 1 }]}
+              style={({ pressed }) => [
+                billingModalBlockMargin,
+                { backgroundColor: "#EF1D26", borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, opacity: pressed ? 0.88 : 1 },
+              ]}
               onPress={handleSave}
             >
               <Feather name="save" size={16} color="#fff" />
-              <Text style={styles.modalSaveBtnText}>Speichern</Text>
+              <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }}>Speichern</Text>
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -766,137 +1071,146 @@ export default function ProfileScreen() {
     setRegSubStep("email");
   };
 
+  const kontoBalanceEuro = 0;
+  const kontoBalanceLabel = formatKontoBalanceEur(kontoBalanceEuro);
+  const isAccountVerified =
+    !!profile.googleId ||
+    !!(typeof profile.sessionToken === "string" && profile.sessionToken.trim()) ||
+    !!(typeof profile.emailVerificationProofToken === "string" && profile.emailVerificationProofToken.trim());
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, {
-        paddingTop: topPad + 8,
-        backgroundColor: colors.card,
-        borderBottomColor: colors.border,
-      }]}>
-        <View style={{ width: 36 }} />
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
-        <View style={{ width: 36 }} />
-      </View>
+      {profile.isLoggedIn ? (
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: topPad + 8,
+              backgroundColor: HOME_SHEET_PANEL,
+              borderBottomColor: HOME_SHEET_RIM,
+            },
+          ]}
+        >
+          <View style={{ width: 36 }} />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Konto</Text>
+          <View style={{ width: 36 }} />
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: topPad + 8,
+              backgroundColor: HOME_SHEET_PANEL,
+              borderBottomColor: HOME_SHEET_RIM,
+            },
+          ]}
+        >
+          <View style={{ width: 36 }} />
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
+          <View style={{ width: 36 }} />
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scroll,
+          profile.isLoggedIn && styles.scrollAccountLoggedIn,
           { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) },
         ]}
       >
         {profile.isLoggedIn ? (
           /* ══ LOGGED IN ══ */
           <>
-            {/* Profile header */}
-            <View style={{ alignItems: "center", paddingVertical: 24, gap: 6 }}>
-              {profile.photoUri ? (
-                <Image source={{ uri: profile.photoUri }} style={{ width: 80, height: 80, borderRadius: 40 }} />
-              ) : (
-                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#EF1D26", alignItems: "center", justifyContent: "center" }}>
-                  <Text style={{ color: "#fff", fontSize: 32, fontFamily: "Inter_700Bold" }}>
-                    {profile.name ? profile.name[0].toUpperCase() : "?"}
-                  </Text>
-                </View>
-              )}
-              <Text style={{ color: "#000", fontSize: 20, fontFamily: "Inter_700Bold", marginTop: 8 }}>
-                {profile.name || "Kein Name"}
-              </Text>
-              <Text style={{ color: "#8E8E93", fontSize: 13, fontFamily: "Inter_400Regular" }}>
-                {profile.email || "Keine E-Mail"}
-              </Text>
-              {profile.googleId && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 0.5, borderColor: "#E5E5EA", marginTop: 4 }}>
-                  <Image source={require("../assets/images/google-icon.png")} style={{ width: 14, height: 14 }} resizeMode="contain" />
-                  <Text style={{ fontSize: 12, color: "#1D4ED8", fontFamily: "Inter_500Medium" }}>Anmeldung via Google</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Fahrten */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>FAHRTEN</Text>
-              <SectionCard>
-                <Row
-                  iconName="clock"
-                  iconBg="#EFF6FF"
-                  iconColor="#3B82F6"
-                  label="Meine Fahrten"
-                  sublabel="Historie & Quittungen"
-                  onPress={() => router.push("/my-rides")}
-                  isLast
-                />
-              </SectionCard>
-            </View>
-
-            {/* Zahlung */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>ZAHLUNG & ABRECHNUNG</Text>
-              <SectionCard>
-                <Row
-                  iconName="credit-card"
-                  iconBg="#F0FDF4"
-                  iconColor="#16A34A"
-                  label="Zahlungsmittel"
-                  sublabel="Kreditkarte, PayPal verwalten"
-                  onPress={() => router.push("/wallet")}
-                />
-                <Row
-                  iconName="file-text"
-                  iconBg="#FFF7ED"
-                  iconColor="#EA580C"
-                  label="Rechnungsadresse"
-                  sublabel={profile.billingType === "company" ? profile.companyName || "Firma hinterlegen" : profile.billingType === "insurance" ? profile.krankenkasse || "Krankenkasse hinterlegen" : "Privatperson"}
-                  onPress={() => setBillingOpen(true)}
-                  isLast
-                />
-              </SectionCard>
-            </View>
-
-            {/* Profil */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>PROFIL</Text>
-              <SectionCard>
-                <Row
-                  iconName="user"
-                  iconBg="#F5F3FF"
-                  iconColor="#7C3AED"
-                  label="Persönliche Daten"
-                  sublabel="Name, Telefon, E-Mail bearbeiten"
+              <View style={styles.accountSection}>
+                <AccountProfileHeroCard
+                  name={profile.name ?? ""}
+                  email={profile.email ?? ""}
+                  isVerified={isAccountVerified}
+                  photoUri={profile.photoUri}
                   onPress={() => setPersonalDataOpen(true)}
                 />
-                <Row
-                  iconName="heart"
-                  iconBg="#FFF1F2"
-                  iconColor="#E11D48"
-                  label="Patienten-Profil"
-                  sublabel="Rollstuhl, Tragehilfe, Besonderheiten"
-                  onPress={() => setPatientProfileOpen(true)}
-                  isLast
-                />
-              </SectionCard>
-            </View>
 
-            {/* Abmelden */}
-            <View style={[styles.section, { marginTop: 8 }]}>
-              <SectionCard>
-                <Row
-                  iconName="log-out"
-                  label="Abmelden"
-                  danger
-                  isLast
-                  hideChevron
-                  onPress={() => {
-                    Alert.alert("Abmelden", "Möchtest du dich wirklich abmelden?", [
-                      { text: "Abbrechen", style: "cancel" },
-                      { text: "Abmelden", style: "destructive", onPress: logout },
-                    ]);
-                  }}
-                />
-              </SectionCard>
-            </View>
+                <View style={{ marginTop: rs(12) }}>
+                  <SectionCard compact>
+                    <AccountRow comfortable
+                      icon={<MaterialCommunityIcons name="account" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                      label="Profil"
+                      isFirst
+                      onPress={() => setPersonalDataOpen(true)}
+                    />
+                    <AccountRow comfortable
+                      icon={<MaterialCommunityIcons name="hospital-box" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                      label="Patienten-Profil"
+                      onPress={() => setPatientProfileOpen(true)}
+                      isLast
+                    />
+                  </SectionCard>
+                </View>
+              </View>
+
+              <View style={[styles.accountSection, { marginTop: rs(30) }]}>
+                <AccountSectionTitle comfortable title="Abrechnung" />
+                <SectionCard compact>
+                  <AccountRow comfortable
+                    icon={<MaterialCommunityIcons name="wallet" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Zahlungsmethoden"
+                    isFirst
+                    onPress={() => router.push("/wallet")}
+                  />
+                  <AccountRow comfortable
+                    icon={<MaterialCommunityIcons name="history" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Transaktionsverlauf"
+                    onPress={() => router.push("/wallet")}
+                  />
+                  <AccountRow comfortable
+                    icon={<MaterialCommunityIcons name="file-document-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Rechnungsadresse"
+                    onPress={() => setBillingOpen(true)}
+                    isLast
+                  />
+                </SectionCard>
+              </View>
+
+              <View style={[styles.accountSection, { marginTop: rs(30) }]}>
+                <AccountSectionTitle comfortable title="Präferenzen" />
+                <SectionCard compact>
+                  <AccountRow comfortable
+                    icon={<MaterialCommunityIcons name="web" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Sprache"
+                    valueText="Deutsch"
+                    valueTint="accent"
+                    trailingReorder
+                    isFirst
+                    onPress={() =>
+                      Alert.alert("Sprache", "Aktuell ist die App auf Deutsch eingestellt. Weitere Sprachen folgen.")
+                    }
+                  />
+                  <AccountRow comfortable
+                    icon={<MaterialCommunityIcons name="help-circle-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Hilfe & Support"
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      router.replace("/help");
+                    }}
+                  />
+                  <AccountRow comfortable
+                    icon={<Feather name="log-out" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Abmelden"
+                    danger
+                    isLast
+                    hideChevron
+                    onPress={() => {
+                      Alert.alert("Abmelden", "Möchtest du dich wirklich abmelden?", [
+                        { text: "Abbrechen", style: "cancel" },
+                        { text: "Abmelden", style: "destructive", onPress: logout },
+                      ]);
+                    }}
+                  />
+                </SectionCard>
+              </View>
 
             {/* Personal Data Modal */}
             <PersonalDataModal
@@ -943,7 +1257,9 @@ export default function ProfileScreen() {
             <View style={styles.loginSection}>
               {/* App branding */}
               <View style={styles.brandBlock}>
-                <OnrodaOrMark size={rs(72)} />
+                <View style={{ alignSelf: "center", marginLeft: rs(22) }}>
+                  <OnrodaOrMark size={rs(42)} />
+                </View>
                 <Text style={[styles.brandTitle, { color: colors.foreground }]}>Onroda</Text>
                 <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
                   Mobilität ohne Grenzen
@@ -952,7 +1268,7 @@ export default function ProfileScreen() {
 
               {profileStep === "social" ? (
                 <>
-                <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
                   <NeuBeiOnrodaRegisterRow
                     mutedColor={colors.mutedForeground}
                     marginBottom={rs(10)}
@@ -964,8 +1280,8 @@ export default function ProfileScreen() {
                       style={({ pressed }) => [
                         styles.socialBtn,
                         {
-                          backgroundColor: "#FFFFFF",
-                          borderColor: colors.border,
+                          backgroundColor: HOME_SHEET_PANEL,
+                          borderColor: HOME_SHEET_RIM,
                           opacity: (pressed || googleLoading) ? 0.9 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
@@ -989,8 +1305,8 @@ export default function ProfileScreen() {
                       style={({ pressed }) => [
                         styles.socialBtn,
                         {
-                          backgroundColor: "#FFFFFF",
-                          borderColor: colors.border,
+                          backgroundColor: HOME_SHEET_PANEL,
+                          borderColor: HOME_SHEET_RIM,
                           opacity: pressed ? 0.9 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
@@ -1029,7 +1345,7 @@ export default function ProfileScreen() {
                   <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
                 </View>
 
-                <View style={[styles.loginCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
                   <Pressable
                     style={({ pressed }) => ({
                       flexDirection: "row",
@@ -1065,7 +1381,7 @@ export default function ProfileScreen() {
                     Bestätigungscode per E-Mail (ca. 10 Minuten gültig).
                   </Text>
 
-                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="mail" size={16} color={colors.mutedForeground} />
                     <TextInput
                       style={[styles.inputField, { color: colors.foreground }]}
@@ -1113,7 +1429,7 @@ export default function ProfileScreen() {
                     E-Mail <Text style={{ fontFamily: "Inter_600SemiBold" }}>{regEmail.trim()}</Text>
                   </Text>
 
-                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="hash" size={16} color={colors.mutedForeground} />
                     <TextInput
                       style={[styles.inputField, { color: colors.foreground, letterSpacing: 3 }]}
@@ -1172,7 +1488,7 @@ export default function ProfileScreen() {
                     E-Mail bestätigt. Name und Telefon für Buchungen angeben.
                   </Text>
 
-                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="user" size={16} color={colors.mutedForeground} />
                     <TextInput
                       style={[styles.inputField, { color: colors.foreground }]}
@@ -1185,7 +1501,7 @@ export default function ProfileScreen() {
                     />
                   </View>
 
-                  <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="phone" size={16} color={colors.mutedForeground} />
                     <TextInput
                       style={[styles.inputField, { color: colors.foreground }]}
@@ -1226,7 +1542,7 @@ export default function ProfileScreen() {
 
         {/* ── Horizontal footer links ── */}
         <View style={styles.footerLinks}>
-          <Pressable onPress={() => router.push("/help")} style={styles.footerLinkBtn}>
+          <Pressable onPress={() => router.replace("/help")} style={styles.footerLinkBtn}>
             <Text style={[styles.footerLinkText, { color: colors.mutedForeground }]}>Hilfe</Text>
           </Pressable>
           <Text style={[styles.footerSep, { color: colors.border }]}>|</Text>
@@ -1253,7 +1569,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: rs(16),
+    paddingHorizontal: rs(8),
     paddingBottom: rs(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -1261,12 +1577,17 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
 
   scroll: { paddingTop: rs(20), gap: 0 },
+  /** Eingeloggt-Konto: mehr Luft unter der Kopfzeile als Wallet (`scroll`), damit die Sektionsblöcke nicht zu hoch kleben. */
+  scrollAccountLoggedIn: {
+    paddingHorizontal: rs(8),
+    paddingTop: rs(40),
+    gap: rs(10),
+  },
 
-  /* Login section */
   loginSection: { paddingHorizontal: rs(24), marginBottom: rs(8), gap: rs(28) },
-  brandBlock: { alignItems: "center", gap: rs(10), paddingTop: rs(16) },
-  brandTitle: { fontSize: rf(28), fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  brandSub: { fontSize: rf(14), fontFamily: "Inter_400Regular", textAlign: "center" },
+  brandBlock: { alignItems: "center", gap: rs(8), paddingTop: rs(12) },
+  brandTitle: { fontSize: rf(22), fontFamily: "Inter_700Bold", letterSpacing: -0.4 },
+  brandSub: { fontSize: rf(13), fontFamily: "Inter_400Regular", textAlign: "center" },
 
   signInBlock: { gap: rs(10) },
 
@@ -1353,19 +1674,58 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8, marginLeft: rs(4),
   },
   sectionCard: {
-    borderRadius: rs(16), borderWidth: 1, overflow: "hidden",
+    borderRadius: rs(24),
+    borderWidth: 1,
+    overflow: "hidden",
   },
-  row: {
-    flexDirection: "row", alignItems: "center",
-    gap: rs(12), paddingHorizontal: rs(16), paddingVertical: rs(14),
+  sectionCardCompact: {
+    borderRadius: rs(16),
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  rowIcon: {
-    width: rs(38), height: rs(38), borderRadius: rs(11),
-    justifyContent: "center", alignItems: "center",
+  accountSection: {
+    gap: rs(4),
   },
-  rowText: { flex: 1, gap: rs(2) },
-  rowLabel: { fontSize: rf(15), fontFamily: "Inter_500Medium" },
-  rowSub: { fontSize: rf(12), fontFamily: "Inter_400Regular" },
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    paddingHorizontal: rs(4),
+    paddingVertical: rs(5),
+    minHeight: rs(40),
+  },
+  accountRowFirst: {
+    paddingTop: 0,
+  },
+  accountRowLast: {
+    paddingBottom: 0,
+  },
+  accountRowIconWrap: {
+    width: rs(28),
+    height: rs(28),
+    borderRadius: rs(7),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  accountRowText: {
+    flex: 1,
+    minWidth: 0,
+    gap: rs(1),
+  },
+  accountRowLabel: {
+    ...accountSheetPrimaryLabel,
+  },
+  accountRowSub: {
+    fontSize: rf(12),
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  accountRowValue: {
+    flexShrink: 1,
+    maxWidth: "40%",
+    ...accountSheetPrimaryLabel,
+    textAlign: "right",
+    marginRight: rs(4),
+  },
 
   /* Personal Data Modal */
   modalRoot: { flex: 1 },
@@ -1419,7 +1779,7 @@ const styles = StyleSheet.create({
     borderRadius: rs(14),
     borderWidth: 1,
   },
-  googleInfoText: { flex: 1, fontSize: rf(15), fontFamily: "Inter_400Regular", color: "#1D4ED8", lineHeight: rf(22) },
+  googleInfoText: { flex: 1, fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#1e40af", lineHeight: rf(17) },
 
   /* Logout row (simple, no card) */
   logoutRow: {

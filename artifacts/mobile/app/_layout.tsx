@@ -57,7 +57,8 @@ function RootLayoutNav() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="ride" options={{ headerShown: false }} />
+      <Stack.Screen name="ride-select" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="ride" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="status" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="google-auth" options={{ headerShown: false, animation: "none" }} />
@@ -70,8 +71,16 @@ function RootLayoutNav() {
       <Stack.Screen name="wallet" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="reserve-ride" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="fahrt-reservieren" options={{ headerShown: false, presentation: "modal" }} />
-      <Stack.Screen name="new-booking" options={{ headerShown: false, gestureEnabled: false, animation: "slide_from_bottom" }} />
-      <Stack.Screen name="booking-center" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen
+        name="new-booking"
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+          gestureEnabled: false,
+          animation: "none",
+        }}
+      />
+      <Stack.Screen name="booking-center" options={{ headerShown: false, gestureEnabled: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="booking-medical" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />

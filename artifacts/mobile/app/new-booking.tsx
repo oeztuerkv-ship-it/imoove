@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams, usePathname, useSegments } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
@@ -458,12 +458,54 @@ export default function NewBookingScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
+  const pathname = usePathname();
+  const segments = useSegments();
+  const params = useLocalSearchParams();
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] MOUNT ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "new-booking",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+    return () => {
+      console.log(`[NAV TRACE] UNMOUNT ${pathname}`);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- NAV trace: einmaliger Mount-Log
+  }, []);
+
+  useEffect(() => {
+    console.log(
+      `[NAV TRACE] UPDATE ${pathname}`,
+      JSON.stringify(
+        {
+          screen: "new-booking",
+          pathname,
+          segments,
+          params,
+        },
+        null,
+        2,
+      ),
+    );
+  }, [pathname, JSON.stringify(params), JSON.stringify(segments)]);
+
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
 
   const [from, setFrom] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
   const [to, setTo] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
-  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isInstant = mode === "instant";
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(isInstant ? new Date() : null);
   const [showDtPicker, setShowDtPicker] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>("standard");
   const [accessCode, setAccessCode] = useState("");
@@ -484,7 +526,7 @@ export default function NewBookingScreen() {
     setFareEstimates({});
   }, []);
 
-  const formComplete = from.name.length > 0 && to.name.length > 0 && scheduledAt !== null;
+  const formComplete = from.name.length > 0 && to.name.length > 0 && (isInstant || scheduledAt !== null);
 
   useEffect(() => {
     if (!from.lat || !from.lon || !to.lat || !to.lon) {
@@ -659,18 +701,18 @@ export default function NewBookingScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, styles.rootScreen]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.back();
+            router.replace("/");
           }}
           style={styles.backBtn}
           hitSlop={10}
         >
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
+          <Feather name="x" size={24} color={colors.foreground} />
         </Pressable>
         <Text style={styles.headerTitle}>Buchung</Text>
         <View style={{ width: 40 }} />
@@ -714,17 +756,27 @@ export default function NewBookingScreen() {
 
         {/* Date / Time */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.foreground }]}>Abholzeit</Text>
-          <Pressable
-            style={[styles.dtField, { borderColor: colors.border, backgroundColor: colors.muted }]}
-            onPress={() => setShowDtPicker(true)}
-          >
-            <Feather name="clock" size={16} color={colors.mutedForeground} />
-            <Text style={[styles.dtFieldText, { color: scheduledAt ? colors.foreground : colors.mutedForeground }]}>
-              {scheduledAt ? formatDateTime(scheduledAt) : "Termin wählen (Pflichtfeld)"}
-            </Text>
-            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-          </Pressable>
+          {!isInstant && (
+            <>
+              <Text style={[styles.cardLabel, { color: colors.foreground }]}>Abholzeit</Text>
+              <Pressable
+                style={[styles.dtField, { borderColor: colors.border, backgroundColor: colors.muted }]}
+                onPress={() => setShowDtPicker(true)}
+              >
+                <Feather name="clock" size={16} color={colors.mutedForeground} />
+                <Text style={[styles.dtFieldText, { color: scheduledAt ? colors.foreground : colors.mutedForeground }]}>
+                  {scheduledAt ? formatDateTime(scheduledAt) : "Termin wählen (Pflichtfeld)"}
+                </Text>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            </>
+          )}
+          {isInstant && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 }}>
+              <Feather name="clock" size={16} color="#22C55E" />
+              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#22C55E" }}>Sofort – Fahrer wird gesucht</Text>
+            </View>
+          )}
           <Text style={[styles.dtNote, { color: colors.foreground }]}>
             Alle Zeitangaben basieren auf dem Abholort.
           </Text>
@@ -882,6 +934,8 @@ export default function NewBookingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  /** Volle Fläche opak weiß — kein durchscheinender Stack darunter (iOS). */
+  rootScreen: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth,

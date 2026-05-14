@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import { SectionHeadingPill } from "@/components/SectionHeadingPill";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,23 +17,27 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
+import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
 import { useUser } from "@/context/UserContext";
 import { rs, rf } from "@/utils/scale";
 
 const isWeb = Platform.OS === "web";
 
-/* ── Section label ── */
-function SectionLabel({ text }: { text: string }) {
-  const colors = useColors();
-  return <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>{text}</Text>;
-}
+/** Wie Konto: Vollton-Kachel + weiße Glyphe */
+const WALLET_TILE = {
+  green: "#34C759",
+  blue: "#007AFF",
+  purple: "#AF52DE",
+  indigo: "#5856D6",
+} as const;
+const WALLET_TILE_ICON = 16;
 
 /* ── Card wrapper ── */
 function Card({ children }: { children: React.ReactNode }) {
-  const colors = useColors();
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
       {children}
     </View>
   );
@@ -117,7 +122,7 @@ function BillingModal({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose(null)}>
       <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
         {/* Modal Header */}
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
           <Pressable hitSlop={12} onPress={() => onClose(null)} style={styles.modalClose}>
             <Feather name="x" size={20} color={colors.foreground} />
           </Pressable>
@@ -132,7 +137,7 @@ function BillingModal({
             showsVerticalScrollIndicator={false}
           >
             {/* Form Card */}
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 16 }]}>
+            <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, marginBottom: 16 }]}>
               {/* Name */}
               <View style={[styles.formRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
                 <Text style={[styles.formLabel, { color: colors.mutedForeground }]}>Name / Firma</Text>
@@ -226,7 +231,6 @@ export default function WalletScreen() {
   const { profile, updateProfile } = useUser();
 
   const [billingOpen, setBillingOpen] = useState(false);
-  const billingSublabel = profile.billingType === "company" ? profile.companyName || "Firma hinterlegen" : profile.billingType === "insurance" ? profile.krankenkasse || "Krankenkasse hinterlegen" : "Noch keine Adresse hinterlegt";
 
 
 
@@ -235,7 +239,7 @@ export default function WalletScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
         <View style={{ width: 36 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Geldbörse</Text>
         <View style={{ width: 36 }} />
@@ -247,35 +251,35 @@ export default function WalletScreen() {
       >
         {/* ── Zahlungsmethoden ── */}
         <View style={styles.section}>
-          <SectionLabel text="ZAHLUNGSMETHODEN" />
+          <SectionHeadingPill label="Zahlungsmethoden" />
           <Card>
             <ListRow
-              icon={<Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#16A34A" }}>€</Text>}
-              iconBg="#F0FDF4"
+              icon={<MaterialCommunityIcons name="cash" size={WALLET_TILE_ICON} color="#FFFFFF" />}
+              iconBg={WALLET_TILE.green}
               label="Bar"
               sublabel="Bezahlung direkt beim Fahrer"
               isActive
               onPress={() => Alert.alert("Bar", "Barzahlung ist immer verfügbar.")}
             />
             <ListRow
-              icon={<Text style={{ fontSize: 15, fontWeight: "700", color: "#1565C0" }}>P</Text>}
-              iconBg="#EFF6FF"
+              icon={<Text style={{ fontSize: rf(14), fontFamily: "Inter_700Bold", color: "#FFFFFF" }}>P</Text>}
+              iconBg={WALLET_TILE.blue}
               label="PayPal"
               sublabel="Verknüpftes Konto: —"
               badge="Bald"
               onPress={() => Alert.alert("PayPal", "PayPal-Integration folgt in Kürze.")}
             />
             <ListRow
-              icon={<Feather name="credit-card" size={17} color="#7C3AED" />}
-              iconBg="#F5F3FF"
+              icon={<MaterialCommunityIcons name="credit-card" size={WALLET_TILE_ICON} color="#FFFFFF" />}
+              iconBg={WALLET_TILE.indigo}
               label="Kreditkarte"
               sublabel="Visa, Mastercard, Amex"
               badge="Bald"
               onPress={() => Alert.alert("Kreditkarte", "Kartenzahlung via Stripe folgt in Kürze.")}
             />
             <ListRow
-              icon={<MaterialCommunityIcons name="shield-check-outline" size={17} color="#15803D" />}
-              iconBg="#F0FDF4"
+              icon={<MaterialCommunityIcons name="ticket-percent" size={WALLET_TILE_ICON} color="#FFFFFF" />}
+              iconBg={WALLET_TILE.purple}
               label="Gutschein / Freigabe-Code"
               sublabel="Hotel, Firma, Krankenhaus — bei der Buchung eingeben"
               onPress={() =>
@@ -286,8 +290,8 @@ export default function WalletScreen() {
               }
             />
             <ListRow
-              icon={<MaterialCommunityIcons name="ticket-percent-outline" size={17} color="#2563EB" />}
-              iconBg="#EFF6FF"
+              icon={<MaterialCommunityIcons name="file-document-outline" size={WALLET_TILE_ICON} color="#FFFFFF" />}
+              iconBg={WALLET_TILE.blue}
               label="Transportschein"
               sublabel="Krankenkasse / Sozialamt"
               isLast
@@ -300,11 +304,11 @@ export default function WalletScreen() {
 
         {/* ── Sicherheit ── */}
         <View style={styles.section}>
-          <SectionLabel text="SICHERHEIT & ZAHLUNG" />
+          <SectionHeadingPill label="Sicherheit & Zahlung" />
           <Card>
             <View style={styles.infoBox}>
-              <View style={[styles.infoIcon, { backgroundColor: "#F0FDF4" }]}>
-                <Feather name="shield" size={20} color="#16A34A" />
+              <View style={[styles.infoIcon, { backgroundColor: WALLET_TILE.green }]}>
+                <Feather name="shield" size={16} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={[styles.infoTitle, { color: colors.foreground }]}>Sichere Zahlungen</Text>
@@ -329,7 +333,7 @@ export default function WalletScreen() {
           setBillingOpen(false);
         }}
       />
-      <BottomTabBar active="geldborse" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
+      <BottomTabBar active="account" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }
@@ -341,34 +345,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: rs(16),
+    paddingHorizontal: rs(8),
     paddingBottom: rs(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { width: rs(36), height: rs(36), justifyContent: "center" },
   headerTitle: { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
 
-  scroll: { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(4) },
-  section: { gap: rs(8), marginBottom: rs(16) },
-  sectionLabel: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, marginLeft: rs(4) },
-
-  card: { borderRadius: rs(16), borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  scroll: { paddingHorizontal: rs(8), paddingTop: rs(24), gap: rs(10) },
+  section: { gap: rs(10), marginBottom: rs(20) },
+  card: { borderRadius: rs(16), borderWidth: 1, overflow: "hidden" },
 
   payRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: rs(16),
-    paddingVertical: rs(14),
-    gap: rs(14),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(10),
+    gap: rs(10),
   },
-  payIcon: { width: rs(38), height: rs(38), borderRadius: rs(11), justifyContent: "center", alignItems: "center" },
-  payLabel: { fontSize: rf(15), fontFamily: "Inter_500Medium" },
+  payIcon: { width: rs(28), height: rs(28), borderRadius: rs(7), justifyContent: "center", alignItems: "center" },
+  payLabel: { ...accountSheetPrimaryLabel },
   paySub: { fontSize: rf(12), fontFamily: "Inter_400Regular", marginTop: 1 },
   payBadge: { backgroundColor: "#FEF3C7", borderRadius: rs(8), paddingHorizontal: rs(8), paddingVertical: rs(3) },
   payBadgeText: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#D97706" },
 
-  infoBox: { flexDirection: "row", gap: rs(14), padding: rs(16), alignItems: "flex-start" },
-  infoIcon: { width: rs(40), height: rs(40), borderRadius: rs(12), justifyContent: "center", alignItems: "center" },
+  infoBox: { flexDirection: "row", gap: rs(10), paddingVertical: rs(12), paddingHorizontal: rs(8), alignItems: "flex-start" },
+  infoIcon: { width: rs(28), height: rs(28), borderRadius: rs(7), justifyContent: "center", alignItems: "center" },
   infoTitle: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   infoText: { fontSize: rf(13), fontFamily: "Inter_400Regular", lineHeight: rf(19) },
 

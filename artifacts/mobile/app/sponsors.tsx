@@ -124,7 +124,7 @@ export default function SponsorsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => (selected ? setSelected(null) : router.back())} hitSlop={10} style={styles.backBtn}>
+        <Pressable onPress={() => (selected ? router.replace("/") : router.back())} hitSlop={10} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>

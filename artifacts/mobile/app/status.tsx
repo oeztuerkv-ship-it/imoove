@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
@@ -126,6 +127,8 @@ const SEARCH_SPIN_DURATION_MS = 1300;
 const SEARCH_LOADER_RED = "#DC2626";
 const SEARCH_RING_BORDER = 2.5;
 const NO_DRIVER_WAIT_MS = 60_000;
+/** Storno-Grund für API + Anzeige, wenn die Fahrersuche ohne Annahme endet. */
+const NO_DRIVER_CANCEL_REASON = "Kein Fahrer gefunden (Wartezeit abgelaufen)";
 
 export default function StatusScreen() {
   const colors = useColors();
@@ -146,7 +149,8 @@ export default function StatusScreen() {
   } = useRideRequests();
 
   const scheduledPassengerRide = useMemo(
-    () => myActiveRequests.find((r) => r.status === "scheduled") ?? null,
+    () =>
+      myActiveRequests.find((r) => r.status === "scheduled" || r.status === "scheduled_assigned") ?? null,
     [myActiveRequests],
   );
 
@@ -188,8 +192,6 @@ export default function StatusScreen() {
   const [userRating, setUserRating] = useState(5);
   const [now, setNow] = useState(() => Date.now());
   const [driverMarker, setDriverMarker] = useState<{ lat: number; lon: number } | null>(null);
-  const [noDriverModal, setNoDriverModal] = useState(false);
-  const [searchWave, setSearchWave] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [lastDriverMsg, setLastDriverMsg] = useState<string>("");
@@ -198,6 +200,12 @@ export default function StatusScreen() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const cancelFlowStartedRef = useRef(false);
+  const currentRideIdRef = useRef<string | null>(null);
+  const requestsRef = useRef(requests);
+  const cancelRequestRef = useRef(cancelRequest);
+  const refreshRequestsRef = useRef(refreshRequests);
+  /** Verhindert doppelte Meldung bei wiederholtem Poll nach `expired`/`rejected`. */
+  const handledReservationUnfulfilledRef = useRef<string | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -206,9 +214,16 @@ export default function StatusScreen() {
   const prevPhaseRef = useRef<string>("searching");
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000);
+    const timer = setInterval(() => setNow(Date.now()), 10000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    currentRideIdRef.current = currentRideId;
+    requestsRef.current = requests;
+    cancelRequestRef.current = cancelRequest;
+    refreshRequestsRef.current = refreshRequests;
+  }, [currentRideId, requests, cancelRequest, refreshRequests]);
 
   const pickupDiffMs = acceptedRequest?.scheduledAt
     ? new Date(acceptedRequest.scheduledAt).getTime() - now
@@ -222,6 +237,7 @@ export default function StatusScreen() {
   const rawPhase:
     | "searching"
     | "reserved"
+    | "reservation_unfulfilled"
     | "accepted"
     | "preparing"
     | "arrived"
@@ -233,7 +249,18 @@ export default function StatusScreen() {
     : acceptedRequest && acceptedRequest.scheduledAt && withinPickupHour ? "preparing"
     : acceptedRequest?.status === "accepted" || acceptedRequest?.status === "driver_arriving" ? "accepted"
     : acceptedRequest ? "accepted"
-    : rideMatchingCurrentId?.status === "scheduled" ? "reserved"
+    : (() => {
+        const cur = rideMatchingCurrentId;
+        const st = cur?.scheduledAt;
+        const hasSched =
+          st != null &&
+          (st instanceof Date ? Number.isFinite(st.getTime()) : String(st).trim().length > 0);
+        const term = cur?.status === "expired" || cur?.status === "rejected";
+        return term && hasSched;
+      })()
+      ? "reservation_unfulfilled"
+    : rideMatchingCurrentId?.status === "scheduled" || rideMatchingCurrentId?.status === "scheduled_assigned"
+      ? "reserved"
     : "searching";
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
@@ -245,7 +272,14 @@ export default function StatusScreen() {
 
   // WebSocket for real-time driver GPS + HTTP fallback
   useEffect(() => {
-    if (!acceptedRequest || rawPhase === "searching" || rawPhase === "reserved" || rawPhase === "completed") return;
+    if (
+      !acceptedRequest ||
+      rawPhase === "searching" ||
+      rawPhase === "reserved" ||
+      rawPhase === "reservation_unfulfilled" ||
+      rawPhase === "completed"
+    )
+      return;
     const rid = acceptedRequest.id;
 
     connectToRide(rid, (msg) => {
@@ -279,7 +313,14 @@ export default function StatusScreen() {
 
   // Send customer GPS to driver every ~4s when ride is active
   useEffect(() => {
-    if (!acceptedRequest || rawPhase === "searching" || rawPhase === "reserved" || rawPhase === "completed") return;
+    if (
+      !acceptedRequest ||
+      rawPhase === "searching" ||
+      rawPhase === "reserved" ||
+      rawPhase === "reservation_unfulfilled" ||
+      rawPhase === "completed"
+    )
+      return;
     const rid = acceptedRequest.id;
     let sub: Location.LocationSubscription | null = null;
     (async () => {
@@ -419,6 +460,7 @@ export default function StatusScreen() {
     const active = myActiveRequests.find((r) =>
       r.status === "pending" ||
       r.status === "scheduled" ||
+      r.status === "scheduled_assigned" ||
       r.status === "requested" ||
       r.status === "searching_driver" ||
       r.status === "offered" ||
@@ -437,7 +479,6 @@ export default function StatusScreen() {
     cancelFlowStartedRef.current = true;
     setCancelModalOpen(false);
     setCancelReason("");
-    setNoDriverModal(false);
     router.replace("/");
     requestAnimationFrame(() => {
       cancelRide();
@@ -450,7 +491,6 @@ export default function StatusScreen() {
     if (cancelSubmitting) return;
     setCancelSubmitting(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    setNoDriverModal(false);
     const finalReason = (reasonOverride ?? cancelReason).trim() || "Manueller Abbruch durch Nutzer";
     const cancelId = resolveCancelableRequestId();
     console.log("!!! VERSUCHE STORNO FÜR ID:", cancelId);
@@ -469,23 +509,87 @@ export default function StatusScreen() {
     }
   };
 
+  /**
+   * Keine Fahrerannahme: nach Wartezeit automatisch stornieren (aus aktiven Fahrten raus),
+   * Meldung „Kein Fahrer gefunden!“, dann zurück zur Startseite.
+   */
   useEffect(() => {
-    if (customerPhase !== "searching") {
-      setNoDriverModal(false);
-      return;
-    }
-    setNoDriverModal(false);
+    if (customerPhase !== "searching") return;
     const t = setTimeout(() => {
       if (customerPhaseRef.current !== "searching") return;
       if (acceptedRequestRef.current != null) return;
-      setNoDriverModal(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (cancelFlowStartedRef.current) return;
+      const id = currentRideIdRef.current;
+      const list = requestsRef.current;
+      const ride = id ? list.find((r) => r.id === id) : undefined;
+      if (!id || !ride) return;
+      const stillOpen = new Set<RideRequest["status"]>(["searching_driver", "offered", "requested", "pending"]);
+      if (!stillOpen.has(ride.status)) return;
+      void (async () => {
+        try {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          await cancelRequestRef.current(id, undefined, NO_DRIVER_CANCEL_REASON);
+          await refreshRequestsRef.current();
+          finishCancelLocally();
+          Alert.alert(
+            "Kein Fahrer gefunden!",
+            "Es hat sich innerhalb der Wartezeit leider kein Fahrer gemeldet. Die Buchung wurde beendet und erscheint nicht mehr bei Ihren aktiven Fahrten.",
+            [{ text: "OK" }],
+            { cancelable: false },
+          );
+        } catch {
+          finishCancelLocally();
+          Alert.alert(
+            "Kein Fahrer gefunden",
+            "Die Wartezeit ist abgelaufen, die Buchung konnte aber nicht automatisch beendet werden. Bitte in „Meine Fahrten“ stornieren.",
+            [{ text: "OK" }],
+          );
+        }
+      })();
     }, NO_DRIVER_WAIT_MS);
     return () => clearTimeout(t);
-  }, [customerPhase, searchWave]);
+  }, [customerPhase]);
 
   useEffect(() => {
-    if (customerPhase === "searching" || customerPhase === "reserved" || customerPhase === "completed") return;
+    if (handledReservationUnfulfilledRef.current && handledReservationUnfulfilledRef.current !== currentRideId) {
+      handledReservationUnfulfilledRef.current = null;
+    }
+  }, [currentRideId]);
+
+  /**
+   * Reservierung: Server setzt z. B. `expired`, wenn zur Abholzeit kein Fahrer die Fahrt übernommen hat.
+   * Kunde informieren, Buchungs-State leeren, zur Startseite.
+   */
+  useEffect(() => {
+    if (customerPhase !== "reservation_unfulfilled") return;
+    const id = currentRideId;
+    if (!id) return;
+    if (handledReservationUnfulfilledRef.current === id) return;
+    if (cancelFlowStartedRef.current) return;
+    const ride = requests.find((r) => r.id === id);
+    if (!ride) return;
+    handledReservationUnfulfilledRef.current = id;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    const isExpired = ride.status === "expired";
+    finishCancelLocally();
+    Alert.alert(
+      "Kein Fahrer gefunden!",
+      isExpired
+        ? "Für Ihre Reservierung hat sich leider kein Fahrer gefunden. Die Buchung ist abgelaufen und wurde beendet."
+        : "Ihre Reservierung konnte nicht bedient werden und wurde beendet.",
+      [{ text: "OK" }],
+      { cancelable: false },
+    );
+  }, [customerPhase, currentRideId, requests]);
+
+  useEffect(() => {
+    if (
+      customerPhase === "searching" ||
+      customerPhase === "reserved" ||
+      customerPhase === "reservation_unfulfilled" ||
+      customerPhase === "completed"
+    )
+      return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       Alert.alert(
         "Fahrt aktiv",
@@ -690,6 +794,22 @@ export default function StatusScreen() {
     );
   }
 
+  if (customerPhase === "reservation_unfulfilled") {
+    return (
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, justifyContent: "center", alignItems: "center", padding: rs(24) },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#DC2626" />
+        <Text style={{ marginTop: rs(16), fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: colors.foreground, textAlign: "center" }}>
+          Reservierung wird beendet…
+        </Text>
+      </View>
+    );
+  }
+
   if (customerPhase === "searching") {
     return (
       <View style={styles.container}>
@@ -783,39 +903,6 @@ export default function StatusScreen() {
             ) : null}
           </View>
         </View>
-
-        <Modal visible={noDriverModal} transparent animationType="fade" onRequestClose={() => setNoDriverModal(false)}>
-          <Pressable style={styles.noDriverOverlay} onPress={() => setNoDriverModal(false)}>
-            <Pressable style={styles.noDriverCard} onPress={() => {}}>
-              <Text style={styles.noDriverTitle}>Kein Fahrer gefunden</Text>
-              <Text style={styles.noDriverBody}>
-                Innerhalb einer Minute hat sich niemand gemeldet. Du kannst die Suche erneut starten oder die Fahrt stornieren.
-              </Text>
-              <View style={styles.noDriverBtnRow}>
-                <Pressable
-                  style={[styles.noDriverBtnSecondary, { borderColor: "#D4D4D4" }]}
-                  onPress={() => {
-                    setNoDriverModal(false);
-                    void submitCancel("Kein Fahrer gefunden - Suche abgebrochen");
-                  }}
-                >
-                  <Text style={styles.noDriverBtnSecondaryText}>Fahrt stornieren</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.noDriverBtnPrimary}
-                  onPress={() => {
-                    setNoDriverModal(false);
-                    setSearchWave((w) => w + 1);
-                    void refreshRequests();
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  }}
-                >
-                  <Text style={styles.noDriverBtnPrimaryText}>Erneut suchen</Text>
-                </Pressable>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Modal>
       </View>
     );
   }
@@ -846,10 +933,25 @@ export default function StatusScreen() {
                 </View>
               </View>
               <View style={styles.searchAnimTextCol}>
-                <Text style={styles.searchCardTitle}>Vorbestellung</Text>
-                <Text style={styles.searchCardSub}>
-                  Fahrer sehen den Auftrag im Planer — es wird nicht wie eine Sofortfahrt angeklingelt.
-                  {schedLabel ? `\nAbholung: ${schedLabel}` : ""}
+                <Text style={styles.searchCardTitle}>
+                  {pickupDiffMs !== null && pickupDiffMs > 0
+                    ? pickupDiffMs < 15 * 60 * 1000
+                      ? "⚠️ Abholung in Kürze!"
+                      : pickupDiffMs < 60 * 60 * 1000
+                        ? "Fahrer wird bald gesucht"
+                        : "Vorbestellung bestätigt"
+                    : pickupDiffMs !== null && pickupDiffMs <= 0
+                      ? "🔴 Abholzeit überschritten"
+                      : "Vorbestellung"}
+                </Text>
+                <Text style={[styles.searchCardSub, pickupDiffMs !== null && pickupDiffMs <= 0 ? { color: "#DC2626" } : pickupDiffMs !== null && pickupDiffMs < 15 * 60 * 1000 ? { color: "#D97706" } : {}]}>
+                  {pickupDiffMs !== null && pickupDiffMs > 0
+                    ? pickupDiffMs < 60 * 60 * 1000
+                      ? `Noch ${Math.ceil(pickupDiffMs / 60000)} Min. bis Abholung`
+                      : `Abholung in ${Math.floor(pickupDiffMs / 3600000)}h ${Math.ceil((pickupDiffMs % 3600000) / 60000)}min`
+                    : pickupDiffMs !== null && pickupDiffMs <= 0
+                      ? "Kein Fahrer gefunden – wird automatisch storniert"
+                      : `Fahrer sehen den Auftrag im Planer.${schedLabel ? `\nAbholung: ${schedLabel}` : ""}`}
                 </Text>
               </View>
               <Pressable
@@ -1317,55 +1419,6 @@ const styles = StyleSheet.create({
   searchPayerTitle: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#1D4ED8" },
   searchPayerSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#1E40AF", marginTop: rs(4), lineHeight: rf(17) },
 
-  noDriverOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: rs(22),
-  },
-  noDriverCard: {
-    width: "100%",
-    maxWidth: rs(360),
-    backgroundColor: "#FFFFFF",
-    borderRadius: rs(18),
-    borderWidth: 2,
-    borderColor: "#111111",
-    paddingHorizontal: rs(20),
-    paddingVertical: rs(22),
-    gap: rs(14),
-  },
-  noDriverTitle: {
-    fontSize: rf(19),
-    fontFamily: "Inter_700Bold",
-    color: "#111111",
-    textAlign: "center",
-  },
-  noDriverBody: {
-    fontSize: rf(15),
-    fontFamily: "Inter_400Regular",
-    color: "#404040",
-    textAlign: "center",
-    lineHeight: rf(22),
-  },
-  noDriverBtnRow: { flexDirection: "row", gap: rs(10), marginTop: rs(4) },
-  noDriverBtnPrimary: {
-    flex: 1,
-    backgroundColor: "#DC2626",
-    paddingVertical: rs(14),
-    borderRadius: rs(12),
-    alignItems: "center",
-  },
-  noDriverBtnPrimaryText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  noDriverBtnSecondary: {
-    flex: 1,
-    borderWidth: 1.5,
-    paddingVertical: rs(14),
-    borderRadius: rs(12),
-    alignItems: "center",
-    backgroundColor: "#FAFAFA",
-  },
-  noDriverBtnSecondaryText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#111111" },
   chatOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

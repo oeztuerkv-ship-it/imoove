@@ -8,6 +8,8 @@ alwaysApply: false
 
 Dieser Stand ist **bewusst** an **Geldbörse** (`artifacts/mobile/app/wallet.tsx`) und **Mein Konto** (`artifacts/mobile/app/profile.tsx`) ausgerichtet. **Keine** Layout-„Verbesserungen“ in dieser Datei ohne **explizite** Nutzeranweisung.
 
+Gemeinsame Kopf-Farben (helle Leiste auf Beige) für alle drei Screens: **`imoove-mobile-tab-main-headers.mdc`**.
+
 ## Shell & Scroll
 
 - Äußerer Container: **`styles.root`** (`flex: 1`), Hintergrund `colors.background` — wie Geldbörse (`root`).
@@ -18,7 +20,8 @@ Dieser Stand ist **bewusst** an **Geldbörse** (`artifacts/mobile/app/wallet.tsx
 ## Header (verbindlich)
 
 - **Eine** Header-`View` mit Inline:  
-  `paddingTop: topPad + 8`, `borderBottomColor: colors.border`, `backgroundColor: colors.card`  
+  `paddingTop: topPad + 8`, `borderBottomColor: HOME_SHEET_RIM`, `backgroundColor: HOME_SHEET_PANEL`  
+  (helle Kopfzeile auf beigem Seitengrund — wie Geldbörse / Mein Konto)  
   plus `styles.header` (u. a. `paddingHorizontal: rs(16)`, `paddingBottom: rs(12)`, `borderBottomWidth: hairline`).
 - **Drei Kinder**, symmetrisch wie Geldbörse / Mein Konto:
   1. `<View style={{ width: 36 }} />`
