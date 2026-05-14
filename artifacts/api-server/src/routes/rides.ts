@@ -39,7 +39,7 @@ import {
 import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
 import { getPublicFareProfile } from "../db/adminData";
 import { computeTaxiPriceLikeFareEstimate, TARIFF_ENGINE_SCHEMA_VERSION } from "../lib/bookingTariffEstimate";
-import { assertClientEstimatedFareMatchesServer, computeRideBookingPricing } from "../lib/rideBookingPricing";
+import { assertClientEstimatedFareMatchesServer, bookingPriceToleranceEur, computeRideBookingPricing } from "../lib/rideBookingPricing";
 import { effectiveTaxiGrossEur } from "../lib/financeCalculationService";
 import { anyActiveRegionRequiresClientCoordinates } from "../lib/serviceRegionMatch";
 import { verifyAccessCode } from "../db/accessCodesData";
@@ -1334,13 +1334,23 @@ router.post("/rides", async (req, res, next) => {
         ...snapB.breakdown,
         finalPriceEur: finalPriceB,
       };
+      const tolMismatch = bookingPriceToleranceEur(finalPriceB);
       console.warn("RIDES_ESTIMATE_MISMATCH", {
         providedEstimate: clientFareRaw ?? null,
         expectedEstimate: finalPriceB,
+        toleranceEur: tolMismatch,
+        distanceKm: distanceKmB,
+        computedDistanceKm,
+        tripMinutes: tripMinutesB,
+        waitingMinutes: waitingMinutesB,
         providedFareBreakdown,
         expectedFareBreakdown,
         origin: fromFull,
         destination: toFull,
+        fromLat: fromLatB,
+        fromLon: fromLonB,
+        toLat: toLatB,
+        toLon: toLonB,
         scheduledAt: pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>),
         pricingMode: rawPricingModeStr || null,
         vehicle: vehicleB,

@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import type { GeoLocation } from "@/utils/routing";
+import { getRoute, type GeoLocation } from "@/utils/routing";
 
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
@@ -533,24 +533,59 @@ export default function NewBookingScreen() {
       setFareEstimates({});
       return;
     }
+
+    let cancelled = false;
     setFareLoading(true);
+
     const base = `${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://api.onroda.de/api"}`;
-    Promise.all(
-      ["standard", "xl", "wheelchair"].map(async (vehicle) => {
-        try {
-          const url = `${base}/fare-estimate?vehicle=${vehicle}&fromLat=${from.lat}&fromLng=${from.lon}&toLat=${to.lat}&toLng=${to.lon}&distanceKm=0`;
-          const r = await fetch(url);
-          const j = await r.json();
-          return [vehicle, j?.est?.total ?? j?.total ?? null] as [string, number | null];
-        } catch {
-          return [vehicle, null] as [string, number | null];
-        }
-      })
-    ).then((results) => {
-      setFareEstimates(Object.fromEntries(results));
-      setFareLoading(false);
-    });
-  }, [from.lat, from.lon, to.lat, to.lon]);
+
+    (async () => {
+      try {
+        const route = await getRoute(
+          { lat: from.lat!, lon: from.lon!, displayName: from.fullName || from.name },
+          { lat: to.lat!, lon: to.lon!, displayName: to.fullName || to.name },
+        );
+
+        const results = await Promise.all(
+          ["standard", "xl", "wheelchair"].map(async (vehicle) => {
+            try {
+              const qs = new URLSearchParams({
+                vehicle,
+                fromLat: String(from.lat),
+                fromLng: String(from.lon),
+                fromFull: from.fullName || from.name,
+                distanceKm: String(route.distanceKm),
+                durationMinutes: String(route.durationMinutes),
+              });
+              const r = await fetch(`${base}/fare-estimate?${qs.toString()}`);
+              const j = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+              if (!r.ok || j?.ok !== true) {
+                return [vehicle, null] as [string, number | null];
+              }
+              // API liefert `estimate.total` (gleiches Schema wie RideContext), nicht `est.total`.
+              const est = j?.estimate;
+              const rawTotal =
+                est && typeof est === "object" && est !== null
+                  ? (est as Record<string, unknown>).total
+                  : undefined;
+              const n = typeof rawTotal === "number" ? rawTotal : Number(rawTotal);
+              return [vehicle, Number.isFinite(n) ? n : null] as [string, number | null];
+            } catch {
+              return [vehicle, null] as [string, number | null];
+            }
+          }),
+        );
+
+        if (!cancelled) setFareEstimates(Object.fromEntries(results));
+      } finally {
+        if (!cancelled) setFareLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [from.lat, from.lon, from.fullName, from.name, to.lat, to.lon, to.fullName, to.name]);
   const swapFromTo = () => {
     setFrom(to);
     setTo(from);
@@ -581,10 +616,7 @@ export default function NewBookingScreen() {
   const handleSubmit = async () => {
     if (!formComplete || submitting) return;
     setSubmitting(true);
-    const vehicleLabel =
-      selectedVehicle === "standard" ? "Standard" :
-      selectedVehicle === "xl" ? "XL" :
-      "Rollstuhl";
+    const vehicleApiValue = selectedVehicle;
     const customerName = profile?.name
       ? profile.name.split(" ")[0] + " " + (profile.name.split(" ")[1]?.[0] ?? "") + "."
       : "Gast";
@@ -670,6 +702,11 @@ export default function NewBookingScreen() {
         Alert.alert("Buchung nicht möglich", area.message);
         return;
       }
+      const bookingRoute = await getRoute(
+        { lat: originLat!, lon: originLon!, displayName: fromFull },
+        { lat: destinationLat!, lon: destinationLon!, displayName: toFull },
+      );
+
       await addRequest({
         from: from.name,
         fromFull,
@@ -679,11 +716,11 @@ export default function NewBookingScreen() {
         toFull,
         toLat: destinationLat ?? undefined,
         toLon: destinationLon ?? undefined,
-        distanceKm: 0,
-        durationMinutes: 0,
+        distanceKm: bookingRoute.distanceKm,
+        durationMinutes: bookingRoute.durationMinutes,
         estimatedFare: fareEstimates[selectedVehicle] ?? 0,
         paymentMethod: "Bar",
-        vehicle: vehicleLabel,
+        vehicle: vehicleApiValue,
         customerName,
         passengerId: passengerId || undefined,
         scheduledAt: isInstant ? null : scheduledAt,
