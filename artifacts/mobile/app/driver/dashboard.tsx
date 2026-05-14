@@ -658,7 +658,7 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
   const instantReqs = pendingRequests.filter(
     (r) =>
       r.status !== "scheduled" &&
-      !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 30 * 60 * 1000),
+      !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 60 * 60 * 1000),
   );
   const firstReq = instantReqs[0] ?? null;
 
@@ -2235,7 +2235,7 @@ export default function DriverDashboard() {
         DRIVER_MARKET_STATUSES.has(r.status) &&
         !r.driverId &&
         r.status !== "scheduled" &&
-        !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 30 * 60 * 1000) &&
+        !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 60 * 60 * 1000) &&
         !prevPendingIds.current.has(r.id),
     );
     if (newReqs.length > 0) {

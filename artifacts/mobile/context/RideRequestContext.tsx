@@ -688,7 +688,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           sched != null &&
           sched instanceof Date &&
           Number.isFinite(sched.getTime()) &&
-          sched.getTime() > Date.now() + 30 * 60 * 1000
+          sched.getTime() >= Date.now() + 60 * 60 * 1000
             ? "scheduled"
             : "searching_driver";
         const newReq: RideRequest = {
@@ -764,6 +764,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         const err = new Error(code) as Error & { userMessage?: string };
         if (code === "prebook_lead_too_short") {
           err.userMessage = "Diese Reservierung ist zu kurzfristig. Bitte wähle eine spätere Abholzeit.";
+        } else if (code === "reservation_lead_time_too_short") {
+          err.userMessage =
+            "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.";
         } else if (typeof body.message === "string" && body.message.trim()) {
           err.userMessage = body.message.trim();
         }

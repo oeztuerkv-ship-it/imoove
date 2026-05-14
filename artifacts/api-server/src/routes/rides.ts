@@ -1368,6 +1368,16 @@ router.post("/rides", async (req, res, next) => {
     const authorizationSource =
       parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
     const scheduledAtNormalized = pickScheduledAtFromBody(raw as Partial<RideRequest> & Record<string, unknown>);
+    if (scheduledAtNormalized !== null) {
+      if (!isFarFutureReservation(scheduledAtNormalized)) {
+        res.status(400).json({
+          error: "reservation_lead_time_too_short",
+          message:
+            "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
+        });
+        return;
+      }
+    }
     const customerPhoneClean = String(
       (raw as { customerPhone?: unknown }).customerPhone ??
         (raw as { passengerPhone?: unknown }).passengerPhone ??

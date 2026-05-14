@@ -571,6 +571,8 @@ export default function NewBookingScreen() {
       access_code_expired: "Dieser Code ist abgelaufen.",
       access_code_exhausted: "Dieser Code wurde bereits vollständig eingelöst.",
       access_code_wrong_company: "Dieser Code passt nicht zu dieser Buchung.",
+      reservation_lead_time_too_short:
+        "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
       request_failed: "Die Buchung konnte nicht gesendet werden.",
     };
     return m[code] ?? "Die Buchung ist fehlgeschlagen. Bitte erneut versuchen.";
@@ -684,7 +686,7 @@ export default function NewBookingScreen() {
         vehicle: vehicleLabel,
         customerName,
         passengerId: passengerId || undefined,
-        scheduledAt: scheduledAt,
+        scheduledAt: isInstant ? null : scheduledAt,
         ...(pricingMode ? { pricingMode } : {}),
         ...(driverNote.trim() ? { partnerBookingMeta: { customer_driver_note: driverNote.trim() } } : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),

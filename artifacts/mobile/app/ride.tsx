@@ -66,6 +66,8 @@ function accessCodeBookingErrorMessage(code: string): string {
     access_code_exhausted: "Code bereits eingelöst oder Kontingent aufgebraucht.",
     access_code_wrong_company: "Code passt nicht zu dieser Buchung.",
     access_code_in_use: "Code ist gerade für eine andere Fahrt reserviert — bitte kurz warten oder später erneut versuchen.",
+    reservation_lead_time_too_short:
+      "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf möglich. Bitte buche eine Sofortfahrt.",
     request_failed: "Buchung konnte nicht gesendet werden.",
   };
   if (m[code]) return m[code];
