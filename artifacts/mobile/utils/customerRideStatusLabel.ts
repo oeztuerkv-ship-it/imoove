@@ -18,7 +18,7 @@ export function customerReservationFlowHeadline(status: RequestStatus | string):
     case "scheduled":
       return "Reservierung angefragt";
     case "scheduled_assigned":
-      return "Fahrer bestätigt – wartet auf Aktivierung";
+      return "Fahrer bestätigt";
     case "ready_for_dispatch":
       return "Fahrer ist aktiv – Live-Standort verfügbar";
     case "cancelled_by_system":

@@ -638,7 +638,7 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
             <View style={{ flex: 2, justifyContent: "center", paddingHorizontal: 8 }}>
               <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#6B7280", textAlign: "center" }}>
                 {minsLeft > 45
-                  ? `Aktivierung ab 45 Min. vor Abholung (in ca. ${minsLeft - 45} Min.)`
+                  ? "Aktivierung ab 45 Min. vor Abholung"
                   : minsLeft < 0
                     ? "Abholzeit liegt in der Vergangenheit — bitte bei der Zentrale nachfragen."
                     : "Aktivierung derzeit nicht möglich."}
