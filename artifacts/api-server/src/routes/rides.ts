@@ -1793,10 +1793,11 @@ router.patch("/rides/:id/status", async (req, res, next) => {
           : cur.finalFare != null && Number.isFinite(Number(cur.finalFare))
             ? Number(cur.finalFare)
             : undefined;
-      finalFareForPatch = effectiveTaxiGrossEur({
-        ...cur,
-        finalFare: mergedFinal,
-      } as RideRequest);
+      // Fahrer hat explizit Preis eingegeben → direkt nehmen, kein Snapshot-Override
+      finalFareForPatch =
+        parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
+          ? parsedFinalFare
+          : effectiveTaxiGrossEur({ ...cur, finalFare: mergedFinal } as RideRequest);
     }
 
     const atomicAccept =
