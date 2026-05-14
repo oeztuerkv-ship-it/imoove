@@ -2087,6 +2087,7 @@ export default function DriverDashboard() {
     refreshRequests,
     markDriverArriving,
     activateForDispatch,
+    isConnected,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
@@ -2230,6 +2231,22 @@ export default function DriverDashboard() {
     const currentIds = new Set(allPending.map((r) => r.id));
     const driverOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
 
+    /* Erster Mount: oft online + leere Liste, solange der erste Markt-Fetch läuft (isConnected noch false).
+     * Wenn wir firstRender hier beenden, gelten alle IDs nach dem Fetch als „neu“ → falscher Auftragston. */
+    if (firstRender.current && driverOnline && currentIds.size === 0 && !isConnected) {
+      prevPendingIds.current = currentIds;
+      prevDriverOnline.current = driverOnline;
+      return;
+    }
+
+    /* Nach erstem Fetch: Markt wirklich leer → Baseline setzen, ohne Ton. */
+    if (firstRender.current && driverOnline && currentIds.size === 0 && isConnected) {
+      prevPendingIds.current = currentIds;
+      firstRender.current = false;
+      prevDriverOnline.current = driverOnline;
+      return;
+    }
+
     if (
       firstRender.current ||
       !driverOnline ||
@@ -2266,7 +2283,7 @@ export default function DriverDashboard() {
       });
     }
     prevPendingIds.current = currentIds;
-  }, [allPending, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner]);
+  }, [allPending, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner, isConnected]);
 
   // GPS für Distanzanzeige auf Auftragskarten (vor Annahme)
   useEffect(() => {
