@@ -109,6 +109,7 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),
 });
 
 export const fleetVehiclesTable = pgTable("fleet_vehicles", {

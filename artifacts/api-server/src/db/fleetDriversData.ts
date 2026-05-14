@@ -51,6 +51,8 @@ export interface FleetDriverListRow {
   adminInternalNote: string;
   /** Operator: Readiness ohne Nachweis-/Fahrzeug-/Mandanten-Gate (Sperre & Freigabe bleiben). */
   readinessOverrideSystem: boolean;
+  /** Temporäre 24h-Sperre (Reservierung nicht aktiviert). */
+  reservationSuspendedUntil: string | null;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -110,6 +112,7 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     suspensionReason: (r as { suspension_reason?: string | null }).suspension_reason ?? "",
     adminInternalNote: (r as { admin_internal_note?: string | null }).admin_internal_note ?? "",
     readinessOverrideSystem: Boolean((r as { readiness_override_system?: boolean | null }).readiness_override_system),
+    reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
   };
 }
 
@@ -366,6 +369,31 @@ export async function suspendFleetDriver(id: string, companyId: string): Promise
     .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)))
     .returning({ id: fleetDriversTable.id });
   return r.length > 0;
+}
+
+/** Temporäre 24h-Sperre: Fahrer hat Reservierung nicht rechtzeitig aktiviert. */
+export async function setReservationSuspension(
+  id: string,
+  companyId: string,
+  suspendedUntil: Date | null,
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  const r = await db
+    .update(fleetDriversTable)
+    .set({
+      reservation_suspended_until: suspendedUntil,
+      updated_at: new Date(),
+    })
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)))
+    .returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+
+/** Prüft ob Fahrer aktuell temporär gesperrt ist (24h Reservierungs-Sperre). */
+export function isDriverReservationSuspendedSync(suspendedUntil: Date | null | undefined): boolean {
+  if (!suspendedUntil) return false;
+  return new Date(suspendedUntil) > new Date();
 }
 
 export async function activateFleetDriver(id: string, companyId: string): Promise<boolean> {

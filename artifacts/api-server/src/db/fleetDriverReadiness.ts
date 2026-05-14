@@ -183,6 +183,7 @@ export function computeDriverReadiness(
     | "pScheinDocStorageKey"
     | "suspensionReason"
     | "readinessOverrideSystem"
+    | "reservationSuspendedUntil"
   >,
   hasVehicleAssignment: boolean,
   assignedVehicle: FleetVehicleRow | null,
@@ -197,6 +198,10 @@ export function computeDriverReadiness(
     const sr = (d.suspensionReason ?? "").trim();
     const msg = sr ? `${MSG.driver_suspended} Grund: ${sr}` : MSG.driver_suspended;
     blockReasons.push({ code: "driver_suspended", message: msg });
+  }
+  if (d.reservationSuspendedUntil && new Date(d.reservationSuspendedUntil) > new Date()) {
+    const until = new Date(d.reservationSuspendedUntil).toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
+    blockReasons.push({ code: "driver_suspended", message: `Temporäre Sperre bis ${until}: Reservierung nicht rechtzeitig aktiviert.` });
   }
   if (d.approvalStatus === "rejected") {
     blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
