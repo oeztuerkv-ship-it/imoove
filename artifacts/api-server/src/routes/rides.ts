@@ -1233,6 +1233,7 @@ router.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
       return;
     }
+    const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
     const distanceKmRaw = (raw as { distanceKm?: unknown }).distanceKm ?? (raw as { distance_km?: unknown }).distance_km;
     const distanceKmParsed = Number(distanceKmRaw);
     const computedDistanceKm =
@@ -1280,7 +1281,6 @@ router.post("/rides", async (req, res, next) => {
     const waitingMinutesB = Number.isFinite(waitMRaw) ? Math.max(0, waitMRaw) : 0;
     const paxRaw = Number((raw as { passengerCount?: unknown; passenger_count?: unknown }).passengerCount ?? (raw as { passenger_count?: unknown }).passenger_count);
     const passengerCountB = Number.isFinite(paxRaw) ? Math.max(1, Math.round(paxRaw)) : undefined;
-    const vehicleB = String((raw as { vehicle?: unknown }).vehicle ?? "standard").trim().toLowerCase() || "standard";
     const accessibilityRaw = (raw as { accessibilityOptions?: unknown; accessibility_options?: unknown })
       .accessibilityOptions ?? (raw as { accessibility_options?: unknown }).accessibility_options;
     let accessibilityOptions: RideAccessibilityOptions | null = null;
