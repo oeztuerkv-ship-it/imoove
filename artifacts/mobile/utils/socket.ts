@@ -14,6 +14,7 @@ const WS_URL = API_BASE
 let _ws: WebSocket | null = null;
 let _rideId: string | null = null;
 let _onMessage: ((msg: Record<string, unknown>) => void) | null = null;
+let _getJoinToken: (() => Promise<string | null>) | null = null;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let _pendingMessages: string[] = [];
 
@@ -23,27 +24,53 @@ function _connect() {
     _ws = socket;
 
     socket.onopen = () => {
-      if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
-      if (_rideId) {
-        socket.send(JSON.stringify({ type: "join", rideId: _rideId }));
+      if (_reconnectTimer) {
+        clearTimeout(_reconnectTimer);
+        _reconnectTimer = null;
       }
-      if (_pendingMessages.length > 0) {
-        const queued = _pendingMessages;
-        _pendingMessages = [];
-        queued.forEach((msg) => {
-          try { socket.send(msg); } catch { /* ignore */ }
-        });
-      }
+      void (async () => {
+        if (socket !== _ws) return;
+        if (_rideId && _getJoinToken) {
+          const token = await _getJoinToken();
+          try {
+            socket.send(
+              JSON.stringify({
+                type: "join",
+                rideId: _rideId,
+                token: token ?? "",
+              }),
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+        if (socket !== _ws) return;
+        if (_pendingMessages.length > 0) {
+          const queued = _pendingMessages;
+          _pendingMessages = [];
+          queued.forEach((msg) => {
+            try {
+              socket.send(msg);
+            } catch {
+              /* ignore */
+            }
+          });
+        }
+      })();
     };
 
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data as string) as Record<string, unknown>;
         _onMessage?.(msg);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
 
-    socket.onerror = () => { /* ignore */ };
+    socket.onerror = () => {
+      /* ignore */
+    };
 
     socket.onclose = () => {
       _ws = null;
@@ -52,14 +79,24 @@ function _connect() {
         _reconnectTimer = setTimeout(_connect, 4000);
       }
     };
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
-/** Connect to the backend WebSocket and join the given ride room. */
-export function connectToRide(rideId: string, onMessage: (msg: Record<string, unknown>) => void) {
+/**
+ * Connect to the backend WebSocket and join the given ride room.
+ * `getJoinToken` muss das Fleet-JWT bzw. Kunden-Session-JWT liefern (Server prüft Zuordnung zur Fahrt).
+ */
+export function connectToRide(
+  rideId: string,
+  onMessage: (msg: Record<string, unknown>) => void,
+  getJoinToken: () => Promise<string | null>,
+) {
   disconnectSocket();
   _rideId = rideId;
   _onMessage = onMessage;
+  _getJoinToken = getJoinToken;
   _connect();
 }
 
@@ -94,10 +131,14 @@ export function sendRideChat(text: string, sender: "customer" | "driver") {
 
 /** Disconnect and clean up. */
 export function disconnectSocket() {
-  if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  if (_reconnectTimer) {
+    clearTimeout(_reconnectTimer);
+    _reconnectTimer = null;
+  }
   _ws?.close();
   _ws = null;
   _rideId = null;
   _onMessage = null;
+  _getJoinToken = null;
   _pendingMessages = [];
 }

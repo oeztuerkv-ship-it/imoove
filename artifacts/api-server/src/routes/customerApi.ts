@@ -2,6 +2,7 @@ import { Router } from "express";
 import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { findRideForPassenger, listRidesForPassenger, updateRide } from "../db/ridesData";
+import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
 import { toCustomerRideView } from "../domain/ridePublic";
 import {
   customerPassengerId,
@@ -193,6 +194,27 @@ router.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async
       return;
     }
     res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const raw = (req.body as { expoPushToken?: unknown })?.expoPushToken;
+    const expoPushToken = typeof raw === "string" ? raw.trim() : "";
+    if (!expoPushToken) {
+      res.status(400).json({ error: "expo_push_token_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    await upsertPassengerExpoPushToken(passengerId, expoPushToken);
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

@@ -830,11 +830,21 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const driverCancelRequest = useCallback(
     async (id: string, driverId: string) => {
       if (!API_BASE) return;
-      await fetch(`${API_BASE}/rides/${id}/driver-cancel`, {
+      const res = await fetch(`${API_BASE}/rides/${id}/driver-cancel`, {
         method: "POST",
         headers: await headersForFleetRidePost(),
         body: JSON.stringify({ driverId }),
       });
+      if (!res.ok) {
+        let code = "driver_cancel_failed";
+        try {
+          const body = (await res.json()) as { error?: unknown };
+          if (typeof body.error === "string" && body.error.trim()) code = body.error.trim();
+        } catch {
+          /* ignore */
+        }
+        throw new Error(code);
+      }
       await fetchAll();
     },
     [fetchAll],

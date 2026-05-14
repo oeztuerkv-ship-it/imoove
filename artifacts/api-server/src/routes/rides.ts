@@ -13,6 +13,7 @@ import {
 } from "../domain/rideBillingProfile";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { isPostgresConfigured } from "../db/client";
+import { tryMarkCustomerReservationAssignedPushSent } from "../db/ridePushNotificationMarkers";
 import {
   applyRideMutationPersistence,
   findRide,
@@ -72,6 +73,15 @@ import {
   resolveFleetActorOrNull,
   extractBearerAuthorization,
 } from "../lib/rideRouteAuth";
+import {
+  isReservationCustomerDriverStornoLocked,
+  msUntilScheduledPickup,
+} from "../lib/rideReservationStornoDeadline";
+import {
+  notifyPassengerReservationActivated,
+  notifyPassengerReservationConfirmed,
+  notifyPassengerRideCancelledBySystem,
+} from "../lib/passengerRideExpoPush";
 import { isSessionJwtConfigured, verifySessionJwt } from "../lib/sessionJwt";
 import { tryResolveAdminApiAuthPrincipal } from "../middleware/requireAdminApiBearer";
 import { customerPassengerId, requireCustomerSession, type CustomerSessionRequest } from "../middleware/requireCustomerSession";
@@ -1667,6 +1677,22 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       return;
     }
 
+    if (
+      (nextStatus === "cancelled_by_customer" || nextStatus === "cancelled_by_driver") &&
+      actor &&
+      actor.kind !== "admin" &&
+      isReservationCustomerDriverStornoLocked(cur.scheduledAt)
+    ) {
+      const ms = msUntilScheduledPickup(cur.scheduledAt);
+      res.status(403).json({
+        error: "reservation_storno_locked",
+        message:
+          "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+        minutesUntilPickupApprox: ms == null ? null : Math.round(ms / 60000),
+      });
+      return;
+    }
+
     const mutActor = mutationActorFromRideMutator(actor);
     let companyIdOnAccept: string | undefined;
     if (nextStatus === "accepted" && driverId) {
@@ -1880,6 +1906,21 @@ router.patch("/rides/:id/status", async (req, res, next) => {
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);
     }
+    if (updated.status === "scheduled_assigned" && cur.status === "scheduled") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) {
+        const marked = await tryMarkCustomerReservationAssignedPushSent(id);
+        if (marked) void notifyPassengerReservationConfirmed(pid, id);
+      }
+    }
+    if (nextStatus === "ready_for_dispatch" && cur.status === "scheduled_assigned") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerReservationActivated(pid, updated.id);
+    }
+    if (nextStatus === "cancelled_by_system") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerRideCancelledBySystem(pid, updated.id);
+    }
     res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
   } catch (e) {
     next(e);
@@ -2062,6 +2103,14 @@ router.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res,
       res.json(stripPartnerOnlyRideFields(cur));
       return;
     }
+    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+      res.status(403).json({
+        error: "reservation_storno_locked",
+        message:
+          "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+      });
+      return;
+    }
     const existing = cur.rejectedBy ?? [];
     const rejectedBy = driverId
       ? (existing.includes(driverId) ? existing : [...existing, driverId])
@@ -2105,6 +2154,14 @@ router.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req,
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+      res.status(403).json({
+        error: "reservation_storno_locked",
+        message:
+          "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+      });
       return;
     }
     const updated = await updateRide(

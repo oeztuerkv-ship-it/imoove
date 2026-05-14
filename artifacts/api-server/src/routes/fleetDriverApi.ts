@@ -11,6 +11,7 @@ import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
+import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { hashPassword, verifyPassword } from "../lib/password";
@@ -332,6 +333,30 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       rides: withCodes,
       message: withCodes.length === 0 ? "Keine Vorbestellungen im Planer" : null,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const raw = (req.body as { expoPushToken?: unknown })?.expoPushToken;
+    const expoPushToken = typeof raw === "string" ? raw.trim() : "";
+    if (!expoPushToken.startsWith("ExponentPushToken[")) {
+      res.status(400).json({ error: "invalid_expo_push_token" });
+      return;
+    }
+    await upsertFleetDriverExpoPushToken(a.fleetDriverId, a.companyId, expoPushToken);
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

@@ -27,6 +27,7 @@ import {
   sendDriverLocation as socketSendDriver,
   sendRideChat,
 } from "@/utils/socket";
+import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
 
 const API_BASE = getApiBaseUrl();
@@ -361,14 +362,18 @@ export default function DriverNavigationScreen() {
 
   useEffect(() => {
     if (!params.rideId) return;
-    connectToRide(params.rideId, (msg) => {
-      if (msg.type === "chat:ride:update" && msg.sender === "customer") {
-        const text = typeof msg.text === "string" ? msg.text : "";
-        if (!text) return;
-        setLastCustomerMsg(text);
-        if (!chatOpen) setChatUnread(true);
-      }
-    });
+    connectToRide(
+      params.rideId,
+      (msg) => {
+        if (msg.type === "chat:ride:update" && msg.sender === "customer") {
+          const text = typeof msg.text === "string" ? msg.text : "";
+          if (!text) return;
+          setLastCustomerMsg(text);
+          if (!chatOpen) setChatUnread(true);
+        }
+      },
+      readFleetJwtForWsJoin,
+    );
     return () => disconnectSocket();
   }, [params.rideId, chatOpen]);
 
@@ -815,12 +820,33 @@ export default function DriverNavigationScreen() {
                     return;
                   }
                   try {
-                    await fetch(`${API_BASE}/rides/${params.rideId}/driver-cancel`, {
+                    const res = await fetch(`${API_BASE}/rides/${params.rideId}/driver-cancel`, {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
+                      headers: await fleetAuthHeadersJson(),
                       body: JSON.stringify({ reason, driverId: params.driverId ?? "" }),
                     });
-                  } catch (_) {}
+                    if (!res.ok) {
+                      let code = "driver_cancel_failed";
+                      try {
+                        const body = (await res.json()) as { error?: string };
+                        if (typeof body?.error === "string" && body.error) code = body.error;
+                      } catch {
+                        /* ignore */
+                      }
+                      throw new Error(code);
+                    }
+                  } catch (e) {
+                    const code = e instanceof Error ? e.message : "driver_cancel_failed";
+                    if (code === "reservation_storno_locked") {
+                      Alert.alert(
+                        "Storno nicht möglich",
+                        "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
+                      );
+                      return;
+                    }
+                    Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
+                    return;
+                  }
                   setShowCancelReasonModal(false);
                   setCancelReason("");
                   setCustomCancelReason("");

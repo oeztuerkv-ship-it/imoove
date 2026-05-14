@@ -1007,5 +1007,29 @@ ON CONFLICT (id) DO NOTHING;
 CREATE INDEX IF NOT EXISTS app_service_regions_active_sort_idx
   ON app_service_regions (is_active, sort_order);
 
+-- Kunden-App Expo Push (Migration 063, für frische DB gespiegelt)
+CREATE TABLE IF NOT EXISTS passenger_expo_push_tokens (
+  expo_push_token TEXT PRIMARY KEY,
+  passenger_id TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS passenger_expo_push_tokens_passenger_id_idx
+  ON passenger_expo_push_tokens (passenger_id);
+
+-- Fahrer-App Expo Push (Migration 064, für frische DB gespiegelt)
+CREATE TABLE IF NOT EXISTS fleet_driver_expo_push_tokens (
+  expo_push_token TEXT PRIMARY KEY,
+  fleet_driver_id TEXT NOT NULL,
+  company_id TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS fleet_driver_expo_push_tokens_driver_company_idx
+  ON fleet_driver_expo_push_tokens (fleet_driver_id, company_id);
+
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_customer_reservation_assigned_at TIMESTAMPTZ NULL;
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_driver_activation_reminder_at TIMESTAMPTZ NULL;
+
 -- Ersten Benutzer: company_id = bestehende admin_companies.id; password_hash = Ausgabe von
 -- hashPassword() (artifacts/api-server/src/lib/password.ts), Präfix v1.*.

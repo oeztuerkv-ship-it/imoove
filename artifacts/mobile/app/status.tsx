@@ -28,9 +28,14 @@ import { type RideRequest, useRideRequests } from "@/context/RideRequestContext"
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
+import {
+  CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
+  customerReservationFlowHeadline,
+} from "@/utils/customerRideStatusLabel";
 import { formatEuro } from "@/utils/fareCalculator";
 import { rs, rf } from "@/utils/scale";
 import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
+import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
 
 const FALLBACK_DRIVER = {
   name: "Vedat Öztürk",
@@ -282,17 +287,21 @@ export default function StatusScreen() {
       return;
     const rid = acceptedRequest.id;
 
-    connectToRide(rid, (msg) => {
-      if (msg.type === "location:driver:update") {
-        setDriverMarker({ lat: msg.lat as number, lon: msg.lon as number });
-      }
-      if (msg.type === "chat:ride:update" && msg.sender === "driver") {
-        const text = typeof msg.text === "string" ? msg.text : "";
-        if (!text) return;
-        setLastDriverMsg(text);
-        if (!chatOpen) setChatUnread(true);
-      }
-    });
+    connectToRide(
+      rid,
+      (msg) => {
+        if (msg.type === "location:driver:update") {
+          setDriverMarker({ lat: msg.lat as number, lon: msg.lon as number });
+        }
+        if (msg.type === "chat:ride:update" && msg.sender === "driver") {
+          const text = typeof msg.text === "string" ? msg.text : "";
+          if (!text) return;
+          setLastDriverMsg(text);
+          if (!chatOpen) setChatUnread(true);
+        }
+      },
+      readCustomerSessionJwtForWsJoin,
+    );
 
     // HTTP fallback polling every 5s
     const poll = async () => {
@@ -501,11 +510,23 @@ export default function StatusScreen() {
       } else {
         console.log("[CancelFlow] No cancel ID resolved; finishing locally");
       }
+      finishCancelLocally();
     } catch (e) {
-      console.log("Silent Cancel Error (API):", e);
+      const code = e instanceof Error ? e.message.trim() : "";
+      if (code === "reservation_storno_locked") {
+        Alert.alert(
+          "Storno nicht möglich",
+          "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
+        );
+      } else {
+        console.log("Cancel Error (API):", e);
+        Alert.alert(
+          "Storno fehlgeschlagen",
+          "Die Stornierung konnte nicht durchgeführt werden. Bitte erneut versuchen oder die Zentrale kontaktieren.",
+        );
+      }
     } finally {
       setCancelSubmitting(false);
-      finishCancelLocally();
     }
   };
 
@@ -804,7 +825,10 @@ export default function StatusScreen() {
       >
         <ActivityIndicator size="large" color="#DC2626" />
         <Text style={{ marginTop: rs(16), fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: colors.foreground, textAlign: "center" }}>
-          Reservierung wird beendet…
+          {CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED}
+        </Text>
+        <Text style={{ marginTop: rs(8), fontSize: rf(13), fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center" }}>
+          Wird beendet…
         </Text>
       </View>
     );
@@ -913,6 +937,25 @@ export default function StatusScreen() {
       st instanceof Date && Number.isFinite(st.getTime())
         ? `${st.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short" })} · ${st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`
         : "";
+    const rsSt = rideMatchingCurrentId?.status;
+    const headline =
+      rsSt === "scheduled" || rsSt === "scheduled_assigned"
+        ? customerReservationFlowHeadline(rsSt)
+        : "Reservierung";
+    const subLines: string[] = [];
+    if (pickupDiffMs !== null && pickupDiffMs > 0) {
+      if (pickupDiffMs < 60 * 60 * 1000) {
+        subLines.push(`Noch ${Math.ceil(pickupDiffMs / 60000)} Min. bis Abholung`);
+      } else {
+        subLines.push(`Abholung in ${Math.floor(pickupDiffMs / 3600000)}h ${Math.ceil((pickupDiffMs % 3600000) / 60000)}min`);
+      }
+    } else if (pickupDiffMs !== null && pickupDiffMs <= 0) {
+      subLines.push("Kein Fahrer gefunden – wird automatisch storniert");
+    } else {
+      subLines.push("Fahrer sehen den Auftrag im Planer.");
+      if (schedLabel) subLines.push(`Abholung: ${schedLabel}`);
+    }
+    const subText = subLines.join("\n");
 
     return (
       <View style={styles.container}>
@@ -933,25 +976,9 @@ export default function StatusScreen() {
                 </View>
               </View>
               <View style={styles.searchAnimTextCol}>
-                <Text style={styles.searchCardTitle}>
-                  {pickupDiffMs !== null && pickupDiffMs > 0
-                    ? pickupDiffMs < 15 * 60 * 1000
-                      ? "⚠️ Abholung in Kürze!"
-                      : pickupDiffMs < 60 * 60 * 1000
-                        ? "Fahrer wird bald gesucht"
-                        : "Vorbestellung bestätigt"
-                    : pickupDiffMs !== null && pickupDiffMs <= 0
-                      ? "🔴 Abholzeit überschritten"
-                      : "Vorbestellung"}
-                </Text>
+                <Text style={styles.searchCardTitle}>{headline}</Text>
                 <Text style={[styles.searchCardSub, pickupDiffMs !== null && pickupDiffMs <= 0 ? { color: "#DC2626" } : pickupDiffMs !== null && pickupDiffMs < 15 * 60 * 1000 ? { color: "#D97706" } : {}]}>
-                  {pickupDiffMs !== null && pickupDiffMs > 0
-                    ? pickupDiffMs < 60 * 60 * 1000
-                      ? `Noch ${Math.ceil(pickupDiffMs / 60000)} Min. bis Abholung`
-                      : `Abholung in ${Math.floor(pickupDiffMs / 3600000)}h ${Math.ceil((pickupDiffMs % 3600000) / 60000)}min`
-                    : pickupDiffMs !== null && pickupDiffMs <= 0
-                      ? "Kein Fahrer gefunden – wird automatisch storniert"
-                      : `Fahrer sehen den Auftrag im Planer.${schedLabel ? `\nAbholung: ${schedLabel}` : ""}`}
+                  {subText}
                 </Text>
               </View>
               <Pressable
@@ -1019,8 +1046,9 @@ export default function StatusScreen() {
 
   const isDriving = customerPhase === "driving";
   const isPreparing = customerPhase === "preparing";
-  const isAccepted = customerPhase === "accepted";
   const isArrived = customerPhase === "arrived";
+  const readyForDispatch = acceptedRequest?.status === "ready_for_dispatch";
+  const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
 
   return (
     <View style={styles.container}>
@@ -1072,10 +1100,12 @@ export default function StatusScreen() {
             {isDriving
               ? `${driverFirstName} ist unterwegs · ${driverCar}`
               : isArrived
-              ? `${driverFirstName} ist angekommen · ${driverPlate}`
-              : isPreparing
-              ? `${driverFirstName} bereitet sich vor`
-              : `Fahrer gefunden · ${driverPlate}`}
+                ? `${driverFirstName} ist angekommen · ${driverPlate}`
+                : readyForDispatch
+                  ? readyDispatchHeadline
+                  : isPreparing
+                    ? `${driverFirstName} bereitet sich vor`
+                    : `Fahrer gefunden · ${driverPlate}`}
           </Text>
           {acceptedRequest ? (
             <Text style={styles.uberBarPayer} numberOfLines={2}>

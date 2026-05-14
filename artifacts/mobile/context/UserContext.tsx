@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { syncCustomerExpoPushToken } from "@/utils/syncCustomerExpoPushToken";
 
 export interface UserProfile {
   isLoggedIn: boolean;
@@ -126,6 +127,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!profile.isLoggedIn || !profile.sessionToken?.trim() || !profile.googleId?.trim()) return;
+    void syncCustomerExpoPushToken({
+      sessionToken: profile.sessionToken.trim(),
+      googleId: profile.googleId.trim(),
+    });
+  }, [profile.isLoggedIn, profile.sessionToken, profile.googleId]);
 
   const save = useCallback((updated: UserProfile) => {
     setProfile(updated);

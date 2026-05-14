@@ -44,6 +44,8 @@
 --   059 → ride_support_tickets erweitert (company_id, priority, source, Actor-Felder)
 --   060 → medical_document_extractions (OCR-Struktur ohne API-Pflicht)
 --   061 → settlements.idempotency_key, settlement_ride_allocations, payments partial unique
+--   063 → passenger_expo_push_tokens (Kunden-Expo-Push)
+--   064 → fleet_driver_expo_push_tokens + rides.push_*_at (Push-Dedupe)
 
 DO $$
 DECLARE
@@ -767,6 +769,62 @@ BEGIN
     WHERE schemaname = 'public' AND indexname = 'payments_settlement_single_open'
   ) THEN
     errs := array_append(errs, 'index payments_settlement_single_open (Migration 061)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'passenger_expo_push_tokens'
+  ) THEN
+    errs := array_append(errs, 'table passenger_expo_push_tokens (Migration 063)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'passenger_expo_push_tokens' AND column_name = 'passenger_id'
+  ) THEN
+    errs := array_append(errs, 'passenger_expo_push_tokens.passenger_id (Migration 063)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'passenger_expo_push_tokens_passenger_id_idx'
+  ) THEN
+    errs := array_append(errs, 'index passenger_expo_push_tokens_passenger_id_idx (Migration 063)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'fleet_driver_expo_push_tokens'
+  ) THEN
+    errs := array_append(errs, 'table fleet_driver_expo_push_tokens (Migration 064)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_driver_expo_push_tokens' AND column_name = 'fleet_driver_id'
+  ) THEN
+    errs := array_append(errs, 'fleet_driver_expo_push_tokens.fleet_driver_id (Migration 064)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'fleet_driver_expo_push_tokens_driver_company_idx'
+  ) THEN
+    errs := array_append(errs, 'index fleet_driver_expo_push_tokens_driver_company_idx (Migration 064)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'push_customer_reservation_assigned_at'
+  ) THEN
+    errs := array_append(errs, 'rides.push_customer_reservation_assigned_at (Migration 064)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'push_driver_activation_reminder_at'
+  ) THEN
+    errs := array_append(errs, 'rides.push_driver_activation_reminder_at (Migration 064)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

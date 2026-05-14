@@ -459,6 +459,25 @@ export const ridesTable = pgTable("rides", {
     .$type<Record<string, unknown>>()
     .notNull()
     .default({}),
+  /** Kunde: einmaliger Push bei Zuweisung (scheduled → scheduled_assigned). */
+  push_customer_reservation_assigned_at: timestamp("push_customer_reservation_assigned_at", { withTimezone: true }),
+  /** Fahrer: einmaliger Push ca. 45 Min. vor Abholung (Aktivierung erinnern). */
+  push_driver_activation_reminder_at: timestamp("push_driver_activation_reminder_at", { withTimezone: true }),
+});
+
+/** Expo Push: Fahrer-App, Token pro Gerät (Mandant + Fahrer). */
+export const fleetDriverExpoPushTokensTable = pgTable("fleet_driver_expo_push_tokens", {
+  expo_push_token: text("expo_push_token").primaryKey(),
+  fleet_driver_id: text("fleet_driver_id").notNull(),
+  company_id: text("company_id").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Expo Push: ein Token pro Gerät; bei Login dem Passagier (Google-Sub) zugeordnet. */
+export const passengerExpoPushTokensTable = pgTable("passenger_expo_push_tokens", {
+  expo_push_token: text("expo_push_token").primaryKey(),
+  passenger_id: text("passenger_id").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Event-Historie pro Fahrt (Statuswechsel, Matching, Storno, Abschluss, etc.). */

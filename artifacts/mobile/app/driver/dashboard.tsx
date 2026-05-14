@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import { useKeepAwake } from "expo-keep-awake";
 import { router } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
+import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -213,8 +214,10 @@ function minutesUntil(d: Date) {
   return Math.round((d.getTime() - Date.now()) / 60000);
 }
 
+/** Aktivierung nur im Fenster 0–45 Minuten vor Abholzeit (nicht nach Abholzeit). */
 function canActivate(scheduledAt: Date) {
-  return minutesUntil(scheduledAt) <= 45;
+  const m = minutesUntil(scheduledAt);
+  return m >= 0 && m <= 45;
 }
 
 /* ─── Pulsing dot ─── */
@@ -485,8 +488,15 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; onActivate: () => void; onCancelAssigned: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const isAssignedUpcoming = req.status === "scheduled_assigned";
   const { date, time } = fmt(new Date(req.scheduledAt!));
-  const minsLeft = minutesUntil(new Date(req.scheduledAt!));
-  const activatable = minsLeft <= 45;
+  const [activationTick, setActivationTick] = useState(0);
+  useEffect(() => {
+    if (!isAssignedUpcoming || !req.scheduledAt) return;
+    const t = setInterval(() => setActivationTick((n: number) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, [isAssignedUpcoming, req.scheduledAt]);
+  const scheduledAtDate = new Date(req.scheduledAt!);
+  const minsLeft = useMemo(() => minutesUntil(scheduledAtDate), [req.scheduledAt, activationTick]);
+  const activatable = isAssignedUpcoming && canActivate(scheduledAtDate);
 
   const splitAddress = (value?: string | null) => {
     const parts = String(value || "").split(",").map((part) => part.trim()).filter(Boolean);
@@ -616,9 +626,19 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
           </Pressable>
           {activatable ? (
             <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#16A34A", paddingVertical: 15, borderRadius: 14 }]} onPress={onActivate}>
-              <Text style={styles.acceptText}>Fahrt aktivieren</Text>
+              <Text style={styles.acceptText}>Aktivieren</Text>
             </Pressable>
-          ) : null}
+          ) : (
+            <View style={{ flex: 2, justifyContent: "center", paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#6B7280", textAlign: "center" }}>
+                {minsLeft > 45
+                  ? `Aktivierung ab 45 Min. vor Abholung (in ca. ${minsLeft - 45} Min.)`
+                  : minsLeft < 0
+                    ? "Abholzeit liegt in der Vergangenheit — bitte bei der Zentrale nachfragen."
+                    : "Aktivierung derzeit nicht möglich."}
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -1370,11 +1390,15 @@ function ActiveRideScreen({
 
   // WebSocket — connect to ride room and receive customer live GPS
   useEffect(() => {
-    connectToRide(req.id, (msg) => {
-      if (msg.type === "location:customer:update") {
-        setCustomerLiveMarker({ lat: msg.lat as number, lon: msg.lon as number });
-      }
-    });
+    connectToRide(
+      req.id,
+      (msg) => {
+        if (msg.type === "location:customer:update") {
+          setCustomerLiveMarker({ lat: msg.lat as number, lon: msg.lon as number });
+        }
+      },
+      readFleetJwtForWsJoin,
+    );
     // HTTP fallback polling for customer location
     const poll = async () => {
       try {
@@ -2407,15 +2431,27 @@ export default function DriverDashboard() {
   const handleCancel = async (id: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const req = activeDriverRequest;
-    await driverCancelRequest(id, driverId);
-    if (req?.scheduledAt) {
-      const pickupMs = new Date(req.scheduledAt).getTime();
-      const diffMin = (pickupMs - Date.now()) / 60000;
-      if (diffMin >= 0 && diffMin < 60) {
-        await blockDriver48h();
+    try {
+      await driverCancelRequest(id, driverId);
+      if (req?.scheduledAt) {
+        const pickupMs = new Date(req.scheduledAt).getTime();
+        const diffMin = (pickupMs - Date.now()) / 60000;
+        if (diffMin >= 0 && diffMin < 60) {
+          await blockDriver48h();
+        }
       }
+      setActiveTab("uebersicht");
+    } catch (e) {
+      const code = e instanceof Error ? e.message.trim() : "";
+      if (code === "reservation_storno_locked") {
+        Alert.alert(
+          "Storno nicht möglich",
+          "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
+        );
+        return;
+      }
+      Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
     }
-    setActiveTab("uebersicht");
   };
 
   const handleCancelScheduled = async (req: RideRequest) => {
@@ -2434,11 +2470,23 @@ export default function DriverDashboard() {
           style: "destructive",
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            await driverCancelRequest(req.id, driverId);
-            if (nearPickup) {
-              await blockDriver48h();
+            try {
+              await driverCancelRequest(req.id, driverId);
+              if (nearPickup) {
+                await blockDriver48h();
+              }
+              await refreshRequests?.();
+            } catch (e) {
+              const code = e instanceof Error ? e.message.trim() : "";
+              if (code === "reservation_storno_locked") {
+                Alert.alert(
+                  "Storno nicht möglich",
+                  "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
+                );
+                return;
+              }
+              Alert.alert("Storno fehlgeschlagen", code ? `Technisch: ${code}` : "Bitte erneut versuchen.");
             }
-            await refreshRequests?.();
           },
         },
       ],
@@ -2446,10 +2494,20 @@ export default function DriverDashboard() {
   };
 
   const handleActivateScheduled = async (id: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await activateForDispatch(id);
-    await refreshRequests?.();
-    setActiveTab("uebersicht");
+    try {
+      await activateForDispatch(id);
+      await refreshRequests?.();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setActiveTab("uebersicht");
+    } catch (e) {
+      const code = e instanceof Error ? e.message : String(e);
+      Alert.alert(
+        "Aktivierung fehlgeschlagen",
+        code === "status_update_failed" || !code
+          ? "Status konnte nicht geändert werden. Bitte Verbindung prüfen und erneut versuchen."
+          : code,
+      );
+    }
   };
   const handleLogout = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

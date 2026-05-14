@@ -47,42 +47,6 @@ import { createRideBillingCorrection } from "./rideBillingCorrectionsData";
 
 /** In-Memory-Fallback wenn kein DATABASE_URL (lokal / ohne Postgres). */
 let memoryRides: RideRequest[] = [];
-const DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
-
-function readyForDispatchThreshold(nowMs = Date.now()): Date {
-  return new Date(nowMs + DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1000);
-}
-
-function isReservationActivatable(ride: RideRequest, nowMs = Date.now()): boolean {
-  if (ride.status !== "scheduled_assigned") return false;
-  if (!ride.scheduledAt) return false;
-  const scheduledMs = new Date(ride.scheduledAt).getTime();
-  if (!Number.isFinite(scheduledMs)) return false;
-  return nowMs >= scheduledMs - DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1000;
-}
-
-async function promoteDueReservationsByIds(
-  db: NodePgDatabase<typeof schemaNs>,
-  rideIds: string[],
-): Promise<Set<string>> {
-  const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
-  if (ids.length === 0) return new Set<string>();
-  const threshold = readyForDispatchThreshold();
-  const rows = await db
-    .update(ridesTable)
-    .set({ status: "ready_for_dispatch" })
-    .where(
-      and(
-        inArray(ridesTable.id, ids),
-        eq(ridesTable.status, "scheduled_assigned"),
-        isNotNull(ridesTable.scheduled_at),
-        lte(ridesTable.scheduled_at, threshold),
-      ),
-    )
-    .returning({ id: ridesTable.id });
-  return new Set(rows.map((r) => r.id));
-}
-
 
 async function expirePastOpenReservationsByIds(
   db: NodePgDatabase<typeof schemaNs>,
@@ -107,15 +71,14 @@ async function expirePastOpenReservationsByIds(
   return new Set(rows.map((r) => r.id));
 }
 
-function withLifecycleStatuses(
+/** Nur `scheduled` + Abholzeit in der Vergangenheit → `expired` (Read-Pfad, DB-Update). Kein Auto-`ready_for_dispatch`. */
+function withLifecycleExpiredRows(
   rows: Array<typeof ridesTable.$inferSelect>,
-  promotedIds: Set<string>,
   expiredIds: Set<string>,
 ): Array<typeof ridesTable.$inferSelect> {
-  if (promotedIds.size === 0 && expiredIds.size === 0) return rows;
+  if (expiredIds.size === 0) return rows;
   return rows.map((r) => {
     if (expiredIds.has(r.id)) return { ...r, status: "expired" };
-    if (promotedIds.has(r.id)) return { ...r, status: "ready_for_dispatch" };
     return r;
   });
 }
@@ -414,10 +377,6 @@ export async function listRidesForCompanyFiltered(
 ): Promise<RideRequest[]> {
   const db = getDb();
   if (!db) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map((r) =>
-      isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r,
-    );
     const list = memoryRides.filter((r) => r.companyId === companyId);
     const filtered = applyMemoryRideFilters(list, filters);
     return filtered.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -457,33 +416,23 @@ export async function listRidesForCompanyFiltered(
     .where(and(...cond))
     .orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 
 export async function listRides(): Promise<RideRequest[]> {
   const db = getDb();
   if (!db) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map((r) =>
-      isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r,
-    );
     return [...memoryRides];
   }
   const rows = await db.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 
 /** Nur Fahrten mit gesetzter company_id = Mandant (Partner-Panel-Scope). */
 export async function listRidesForCompany(companyId: string): Promise<RideRequest[]> {
   const db = getDb();
   if (!db) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map((r) =>
-      isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r,
-    );
     return memoryRides
       .filter((r) => r.companyId === companyId)
       .slice()
@@ -495,8 +444,7 @@ export async function listRidesForCompany(companyId: string): Promise<RideReques
     .where(companyIdMatchCondition(companyId))
     .orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 
 /** Kunde: nur eigene Fahrten über `passenger_id`. */
@@ -505,10 +453,6 @@ export async function listRidesForPassenger(passengerId: string): Promise<RideRe
   if (!pid) return [];
   const db = getDb();
   if (!db) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map((r) =>
-      isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r,
-    );
     return memoryRides
       .filter((r) => (r.passengerId ?? "").trim() === pid)
       .slice()
@@ -520,8 +464,7 @@ export async function listRidesForPassenger(passengerId: string): Promise<RideRe
     .where(eq(ridesTable.passenger_id, pid))
     .orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 
 /** Letzte Fahrt des Fahrers im Mandanten (Näherung: kein Fahrzeug-FK auf rides). */
@@ -714,17 +657,12 @@ export async function insertRidesWithSharedAccessCode(
 export async function findRide(id: string): Promise<RideRequest | null> {
   const db = getDb();
   if (!db) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map((r) =>
-      isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r,
-    );
     return memoryRides.find((x) => x.id === id) ?? null;
   }
   const rows = await db.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
   if (!rows[0]) return null;
   const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
-  const promoted = await promoteDueReservationsByIds(db, [rows[0].id]);
-  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
+  const row = withLifecycleExpiredRows([rows[0]], expired)[0];
   return rowToRide(row);
 }
 
@@ -735,10 +673,6 @@ export async function findRideForPassenger(id: string, passengerId: string): Pro
   if (!rideId || !pid) return null;
   const db = getDb();
   if (!db) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map((r) =>
-      isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r,
-    );
     const row = memoryRides.find((x) => x.id === rideId);
     if (!row) return null;
     return (row.passengerId ?? "").trim() === pid ? row : null;
@@ -750,8 +684,7 @@ export async function findRideForPassenger(id: string, passengerId: string): Pro
     .limit(1);
   if (!rows[0]) return null;
   const expired = await expirePastOpenReservationsByIds(db, [rows[0].id]);
-  const promoted = await promoteDueReservationsByIds(db, [rows[0].id]);
-  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
+  const row = withLifecycleExpiredRows([rows[0]], expired)[0];
   return rowToRide(row);
 }
 

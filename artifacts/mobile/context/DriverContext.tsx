@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { syncDriverExpoPushToken } from "@/utils/syncDriverExpoPushToken";
 
 const STORAGE_KEY = "@Onroda_driver_session";
 const DRIVER_HEARTBEAT_MS = 45_000;
@@ -211,6 +212,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!driver?.authToken || !driver.id || !driver.companyId) return;
+    void syncDriverExpoPushToken({
+      authToken: driver.authToken,
+      fleetDriverId: driver.id,
+      companyId: driver.companyId,
+    });
+  }, [driver?.authToken, driver?.id, driver?.companyId]);
 
   const login = useCallback(
     async (

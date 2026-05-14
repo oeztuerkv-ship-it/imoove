@@ -23,6 +23,11 @@ import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
+import {
+  CUSTOMER_RIDE_STATUS_CANCELLED_BY_SYSTEM,
+  CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
+  customerRideListStatusLabel,
+} from "@/utils/customerRideStatusLabel";
 import { downloadReceipt } from "@/utils/receipt";
 import { rs, rf } from "@/utils/scale";
 
@@ -181,11 +186,19 @@ function formatRideAddress(full: string | null | undefined, label?: string | nul
   return splitAddressLines(full, label);
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, scheduledAt }: { status: string; scheduledAt?: Date | string | null }) {
   const colors = useColors();
-  const config = {
-    scheduled:   { label: "Reserviert", bg: "#16A34A22", fg: "#16A34A" },
-    scheduled_assigned: { label: "Reserviert", bg: "#16A34A22", fg: "#16A34A" },
+  const specLabel = customerRideListStatusLabel(status, scheduledAt);
+  const config = specLabel
+    ? {
+        label: specLabel,
+        bg:
+          status === "cancelled_by_system" || status === "expired" || status === "rejected"
+            ? "#EF444422"
+            : "#16A34A22",
+        fg: status === "cancelled_by_system" || status === "expired" || status === "rejected" ? "#EF4444" : "#16A34A",
+      }
+    : ({
     requested:   { label: "Anfrage erfasst",    bg: "#F59E0B22", fg: "#D97706" },
     searching_driver: { label: "Fahrersuche", bg: "#F59E0B22", fg: "#D97706" },
     offered:     { label: "Angebot läuft",      bg: "#F59E0B22", fg: "#D97706" },
@@ -203,7 +216,7 @@ function StatusBadge({ status }: { status: string }) {
     expired: { label: "Storniert", bg: "#EF444422", fg: "#EF4444" },
     cancelled:   { label: "Storniert",        bg: "#EF444422", fg: "#EF4444" },
     rejected:    { label: "Abgelehnt",        bg: "#EF444422", fg: "#EF4444" },
-  }[status] ?? { label: status, bg: "#9CA3AF22", fg: "#9CA3AF" };
+  }[status] ?? { label: status, bg: "#9CA3AF22", fg: "#9CA3AF" });
 
   return (
     <View style={[styles.statusBadge, { backgroundColor: config.bg }]}>
@@ -371,14 +384,21 @@ export default function MyRidesScreen() {
     status: r.status as string,
     cancelledBy: "customer" as const,
     distanceKm: r.distanceKm,
+    scheduledAt: null as Date | null,
   })), ...serverCancelled.map((r) => ({
     id: r.id,
     createdAt: r.createdAt,
     from: r.from,
     to: r.to,
     status: r.status as string,
-    cancelledBy: r.status === "rejected" ? "driver" as const : "customer" as const,
+    cancelledBy:
+      r.status === "rejected"
+        ? ("driver" as const)
+        : r.status === "cancelled_by_system"
+          ? ("system" as const)
+          : ("customer" as const),
     distanceKm: r.distanceKm,
+    scheduledAt: r.scheduledAt ?? null,
   }))].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const totalKm    = completed.reduce((s, r) => s + r.distanceKm, 0);
@@ -537,7 +557,7 @@ export default function MyRidesScreen() {
               return (
                 <View key={req.id} style={[styles.activeCard, { backgroundColor: "#FFFFFF", borderColor: LIST_FRAME_BORDER }]}>
                   <View style={styles.rideHeader}>
-                    <StatusBadge status={req.status} />
+                    <StatusBadge status={req.status} scheduledAt={req.scheduledAt} />
                     <View style={{ alignItems: "flex-end" }}>
                       {hasPickup && (
                         <Text style={[styles.footerText, { color: LIST_TEXT_STRONG, marginBottom: 2 }]}>Abholung</Text>
@@ -857,6 +877,22 @@ export default function MyRidesScreen() {
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
               const byDriver = ride.cancelledBy === "driver";
+              const bySystem = ride.cancelledBy === "system" || ride.status === "cancelled_by_system";
+              const hasSched =
+                ride.scheduledAt != null &&
+                (ride.scheduledAt instanceof Date
+                  ? Number.isFinite(ride.scheduledAt.getTime())
+                  : String(ride.scheduledAt).trim().length > 0);
+              const reservationUnfulfilled =
+                hasSched && (ride.status === "expired" || ride.status === "rejected");
+              const noticeTitle = bySystem
+                ? CUSTOMER_RIDE_STATUS_CANCELLED_BY_SYSTEM
+                : reservationUnfulfilled
+                  ? CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED
+                  : byDriver
+                    ? "Vom Fahrer abgelehnt"
+                    : "Von dir storniert";
+              const noticeStrong = byDriver || reservationUnfulfilled;
               const fromMain = normalizeAddressDisplay(ride.from).split(",")[0]?.trim() ?? normalizeAddressDisplay(ride.from);
               const toMain = normalizeAddressDisplay(ride.to).split(",")[0]?.trim() ?? normalizeAddressDisplay(ride.to);
               return (
@@ -865,7 +901,7 @@ export default function MyRidesScreen() {
                   style={[styles.cancelledRideCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}
                 >
                   <View style={styles.cancelledHeaderRow}>
-                    <StatusBadge status={byDriver ? "rejected" : "cancelled"} />
+                    <StatusBadge status={ride.status} scheduledAt={ride.scheduledAt} />
                     <View style={styles.cancelledWhenRow}>
                       <Feather name="calendar" size={14} color={LIST_TEXT_STRONG} />
                       <Text style={[styles.cancelledWhenText, { color: LIST_TEXT_STRONG }]}>{dateStr}</Text>
@@ -901,23 +937,23 @@ export default function MyRidesScreen() {
                     style={[
                       styles.cancelledNotice,
                       {
-                        backgroundColor: byDriver ? "#FEF2F2" : "#FFF7ED",
-                        borderColor: byDriver ? "#FECACA" : "#FDBA74",
+                        backgroundColor: noticeStrong ? "#FEF2F2" : "#FFF7ED",
+                        borderColor: noticeStrong ? "#FECACA" : "#FDBA74",
                       },
                     ]}
                   >
                     <MaterialCommunityIcons
                       name="information"
                       size={16}
-                      color={byDriver ? "#EF4444" : "#EA580C"}
+                      color={noticeStrong ? "#EF4444" : "#EA580C"}
                     />
                     <Text
                       style={[
                         styles.cancelledNoticeTitle,
-                        { color: byDriver ? "#B91C1C" : "#C2410C" },
+                        { color: noticeStrong ? "#B91C1C" : "#C2410C" },
                       ]}
                     >
-                      {byDriver ? "Vom Fahrer abgelehnt" : "Von dir storniert"}
+                      {noticeTitle}
                     </Text>
                   </View>
 

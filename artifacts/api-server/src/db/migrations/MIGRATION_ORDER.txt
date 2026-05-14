@@ -68,6 +68,8 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   ride_support_tickets erweitert (firmenbezogen, Priority, Actor)        → 059_ride_support_tickets_extend.sql
   OCR-Vorbereitung Medical (Extraktionszeilen, keine finale Auto-Freigabe) → 060_medical_document_extractions_placeholder.sql
   Financial Double-Booking (Settlement-Allocations, Idempotency, Payout-Dedupe) → 061_financial_double_booking_hardening.sql
+  Kunden-Expo-Push-Tokens (Gerät ↔ Passagier)                         → 063_passenger_expo_push_tokens.sql
+  Fahrer-Expo-Push + Push-Marker (Reservierung)                       → 064_fleet_driver_push_and_ride_push_markers.sql
 
 Nach Migrationen Schema prüfen:
 
