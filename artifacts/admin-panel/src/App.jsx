@@ -135,8 +135,8 @@ const PAGE_META = {
     subtitle: "Preisregeln, Zonen und Zuschläge",
   },
   "app-op-tariffs": {
-    title: "App / Betrieb — Preise & Tarife",
-    subtitle: "Globale Preislogik, Gebietstarife, Zuschläge; öffentlich GET /api/app/pricing und /app/config",
+    title: "App / Betrieb — Betrieb & Preise",
+    subtitle: "Gebiet (Orte/Synonyme), Standard-Taxi-Tarif, XL/Rollstuhl; öffentlich GET /api/app/pricing, /fare-estimate und Buchung POST /rides",
   },
   "app-op-regions": {
     title: "App / Betrieb — Gebiete & Zonen",

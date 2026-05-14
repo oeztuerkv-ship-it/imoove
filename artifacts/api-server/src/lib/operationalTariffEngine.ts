@@ -68,6 +68,24 @@ export function mergeTariffsForServiceRegion(
 }
 
 /**
+ * Wendet optional `vehicleTariffOverrides.<vehicleClass>` auf den (bereits regions-)mergierten Tarif an.
+ * Fahrzeug-Multiplikatoren (`vehicleClassMultipliers`) bleiben auf dem Root-Objekt und werden separat gelesen.
+ */
+export function pickTariffSliceForVehicleClass(
+  mergedRoot: Record<string, unknown>,
+  vClassRaw: string,
+): Record<string, unknown> {
+  const vClass = String(vClassRaw || "standard").trim().toLowerCase();
+  const root = { ...mergedRoot };
+  const vtoRaw = root.vehicleTariffOverrides;
+  delete (root as { vehicleTariffOverrides?: unknown }).vehicleTariffOverrides;
+  const vto = isPlainTariffObject(vtoRaw) ? (vtoRaw as Record<string, unknown>) : {};
+  const ov = vClass && isPlainTariffObject(vto[vClass]) ? (vto[vClass] as Record<string, unknown>) : null;
+  if (!ov) return root;
+  return mergeTariffsForServiceRegion(root, ov);
+}
+
+/**
  * Wählt die erste passende Einfahrt-Region (Reihenfolge wie in der API).
  * Optional: `pickup` für match_mode=radius; sonst Substring in `fromFull` (oder Polygon später).
  */
@@ -183,20 +201,33 @@ export function estimateTaxiFromMergedTariff(
     vehicleClassMultiplier: number;
   };
 } {
-  const m = merged;
-  const multRaw = isPlainTariffObject(m.vehicleClassMultipliers)
-    ? (m.vehicleClassMultipliers as Record<string, unknown>)
+  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
+  const m = pickTariffSliceForVehicleClass(merged, vClass);
+  const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers)
+    ? (merged.vehicleClassMultipliers as Record<string, unknown>)
     : {
         standard: 1,
         xl: 1.2,
         wheelchair: 1.15,
         onroda: 1,
       };
-  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
-  const vehicleClassMultiplier = n(
+  let vehicleClassMultiplier = n(
     multRaw[vClass] ?? (typeof multRaw["standard"] === "number" ? multRaw["standard"] : 1),
     1,
   );
+  /** XL: Multiplikator, fester Zuschlag oder beides (Konfig auf Root-Tarif). */
+  let xlFixedEur = 0;
+  if (vClass === "xl") {
+    const mode = String(merged.xlPricingMode || "multiplier").trim().toLowerCase();
+    const fix = Math.max(0, n(merged.xlFixedSurchargeEur, 0));
+    if (mode === "fixed") {
+      vehicleClassMultiplier = 1;
+      xlFixedEur = fix;
+    } else if (mode === "both") {
+      xlFixedEur = fix;
+    }
+  }
+  const wheelchairFixedEur = vClass === "wheelchair" ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) : 0;
   if (m.active === false) {
     return {
       subtotal: 0,
@@ -299,12 +330,12 @@ export function estimateTaxiFromMergedTariff(
     sur.push({ type: "large_vehicle", amount: largeAmount });
   }
 
-  const withVehicle = withExtra * vehicleClassMultiplier;
+  const withVehicle = withExtra * vehicleClassMultiplier + xlFixedEur + wheelchairFixedEur;
   const rounding = typeof m.rounding === "string" ? m.rounding : "ceil_tenth";
   return {
     subtotal,
     afterMinFare: afterMinFare,
-    afterSurcharges: withExtra * vehicleClassMultiplier,
+    afterSurcharges: withExtra * vehicleClassMultiplier + xlFixedEur + wheelchairFixedEur,
     finalRounded: applyRounding(withVehicle, rounding),
     breakdown: {
       baseFare,

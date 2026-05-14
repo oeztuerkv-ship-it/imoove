@@ -104,8 +104,8 @@ const ADMIN_NAV_GROUPS_RAW = [
     items: [
       { pageKey: "app-news", label: "App-Neuigkeiten", icon: "document", navOrder: 0, roles: R.adminSvc },
       { pageKey: "app-sponsors", label: "Exklusive Angebote", icon: "building", navOrder: 1, roles: R.adminSvc },
-      { pageKey: "app-op-tariffs", label: "Preise & Tarife", icon: "map", navOrder: 2, roles: R.adminSvc },
-      { pageKey: "app-op-regions", label: "Gebiete & Zonen", icon: "map", navOrder: 3, roles: R.adminSvc },
+      { pageKey: "app-op-tariffs", label: "Betrieb & Preise", icon: "map", navOrder: 2, roles: R.adminSvc },
+      { pageKey: "app-op-regions", label: "Gebiete (Radius, Erweitert)", icon: "map", navOrder: 3, roles: R.adminSvc },
       { pageKey: "app-op-commission", label: "Provision", icon: "wallet", navOrder: 4, roles: R.adminSvc },
       { pageKey: "app-op-dispatch", label: "Dispatch", icon: "rides", navOrder: 5, roles: R.adminSvc },
       { pageKey: "app-op-features", label: "Funktionen", icon: "key", navOrder: 6, roles: R.adminSvc },
@@ -338,8 +338,8 @@ const ADMIN_TOP_NAV = [
     children: [
       { pageKey: "app-news", label: "App-Neuigkeiten" },
       { pageKey: "app-sponsors", label: "Exklusive Angebote" },
-      { pageKey: "app-op-tariffs", label: "Tarife & Preise" },
-      { pageKey: "app-op-regions", label: "Gebiete & Zonen" },
+      { pageKey: "app-op-tariffs", label: "Betrieb & Preise" },
+      { pageKey: "app-op-regions", label: "Gebiete (Radius, Erweitert)" },
       { pageKey: "app-op-commission", label: "Provision" },
       { pageKey: "app-op-dispatch", label: "Dispatch" },
       { pageKey: "app-op-features", label: "Funktionen" },
