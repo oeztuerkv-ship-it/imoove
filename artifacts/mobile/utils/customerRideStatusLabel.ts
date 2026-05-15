@@ -16,9 +16,9 @@ function hasScheduledPickup(scheduledAt: Date | string | null | undefined): bool
 export function customerReservationFlowHeadline(status: RequestStatus | string): string {
   switch (status) {
     case "scheduled":
-      return "Reservierung angefragt";
+      return "Suche Fahrer";
     case "scheduled_assigned":
-      return "Fahrer bestätigt";
+      return "Fahrer gefunden";
     case "ready_for_dispatch":
       return "Fahrer ist aktiv – Live-Standort verfügbar";
     case "cancelled_by_system":

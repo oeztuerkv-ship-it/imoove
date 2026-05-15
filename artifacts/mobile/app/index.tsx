@@ -1287,7 +1287,6 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
 
         {/* Suche / Route-Anzeige */}
         {destination ? (
@@ -2827,7 +2826,7 @@ const styles = StyleSheet.create({
 
   /* ── Bottom sheet ── */
   sheet: {
-    position: "absolute", bottom: TAB_HEIGHT + 12, left: 0, right: 0,
+    position: "absolute", bottom: TAB_HEIGHT + 4, left: 0, right: 0,
     borderTopLeftRadius: 30, borderTopRightRadius: 30,
     shadowColor: "#000", shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 16, maxHeight: "76%",
@@ -2866,15 +2865,15 @@ const styles = StyleSheet.create({
     paddingLeft: rs(6),
     paddingRight: rs(12),
     paddingVertical: rs(8),
-    borderRadius: rs(34),
+    borderRadius: rs(22),
     backgroundColor: onrodaTheme.colors.surface,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: onrodaTheme.colors.border,
     shadowColor: onrodaTheme.colors.text,
     shadowOffset: { width: 0, height: rs(10) },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: rs(24),
-    elevation: 8,
+    elevation: 4,
   },
   miniSearchPillMain: {
     flex: 1,

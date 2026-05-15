@@ -71,7 +71,7 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   access_code: "ticket-confirmation",
 };
 
-type FilterTab = "alle" | "aktiv" | "reservierungen" | "abgeschlossen" | "storniert";
+type FilterTab = "reservierungen" | "abgeschlossen" | "storniert";
 
 function normalizeAddressDisplay(raw: string | null | undefined): string {
   const text = String(raw ?? "").trim();
@@ -327,7 +327,7 @@ export default function MyRidesScreen() {
     updateRequestPaymentMethod,
     updateRequestDriverNote,
   } = useRideRequests();
-  const [activeTab, setActiveTab] = useState<FilterTab>("alle");
+  const [activeTab, setActiveTab] = useState<FilterTab>("reservierungen");
   const reservationRequests = useMemo(
     () => myActiveRequests.filter((r) => r.status === "scheduled" || r.status === "scheduled_assigned"),
     [myActiveRequests],
@@ -457,22 +457,15 @@ export default function MyRidesScreen() {
   }, [completed]);
 
   const TABS: { id: FilterTab; label: string; count?: number }[] = [
-    { id: "alle",          label: "Alle" },
-    { id: "aktiv",         label: "Aktiv",         count: nonReservationActiveRequests.length || undefined },
     { id: "reservierungen", label: "Reservierungen", count: reservationRequests.length || undefined },
     { id: "abgeschlossen", label: "Abgeschlossen",  count: completed.length || undefined },
     { id: "storniert",     label: "Storniert",      count: cancelled.length || undefined },
   ];
 
-  const showActive    = activeTab === "alle" || activeTab === "aktiv" || activeTab === "reservierungen";
-  const showCompleted = activeTab === "alle" || activeTab === "abgeschlossen";
+  const showActive    = activeTab === "reservierungen";
+  const showCompleted = activeTab === "abgeschlossen";
   const showCancelled = activeTab === "storniert";
-  const activeRequestsToRender =
-    activeTab === "reservierungen"
-      ? reservationRequests
-      : activeTab === "aktiv"
-        ? nonReservationActiveRequests
-        : myActiveRequests;
+  const activeRequestsToRender = reservationRequests;
   const isEmpty       =
     (showActive    && activeRequestsToRender.length === 0) &&
     (showCompleted && completed.length === 0) &&
@@ -531,12 +524,6 @@ export default function MyRidesScreen() {
         {/* ── Aktive Aufträge ── */}
         {showActive && activeRequestsToRender.length > 0 && (
           <>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionDot, { backgroundColor: "#2563EB" }]} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                {activeTab === "reservierungen" ? "Reservierungen" : "Aktive Aufträge"}
-              </Text>
-            </View>
 
             {activeRequestsToRender.map((req) => {
               const fromAddr = formatRideAddress(req.fromFull, req.from);
@@ -686,7 +673,7 @@ export default function MyRidesScreen() {
                   {isReservation && (
                     <View style={styles.actionRow}>
                       <Pressable
-                        style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1, backgroundColor: "#F3F4F6" }]}
+                        style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1 }]}
                         onPress={() => {
                           setDriverNoteRideId(req.id);
                           setDriverNoteDraft(req.accessibilityOptions?.driverNote ?? "");
@@ -697,7 +684,7 @@ export default function MyRidesScreen() {
                         <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Notiz an Fahrer</Text>
                       </Pressable>
                       <Pressable
-                        style={[styles.rideSupportRowCompact, { borderColor: "#EF444466", flex: 1, backgroundColor: "#EF4444" }]}
+                        style={[styles.pdfBtn, { flex: 1 }]}
                         onPress={() =>
                           Alert.alert("Fahrt stornieren?", "Möchtest du diese Reservierung wirklich stornieren?", [
                             { text: "Nein", style: "cancel" },
@@ -712,7 +699,7 @@ export default function MyRidesScreen() {
                         }
                       >
                         <Feather name="trash-2" size={15} color="#FFFFFF" />
-                        <Text style={[styles.actionBtnText, { color: "#FFFFFF" }]}>Stornieren</Text>
+                        <Text style={styles.pdfBtnText}>Stornieren</Text>
                       </Pressable>
                     </View>
                   )}
@@ -1027,13 +1014,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: rs(16),
+    paddingHorizontal: rs(8),
     paddingBottom: rs(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn:         { width: rs(36), height: rs(36), justifyContent: "center" },
   headerTitle:     { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
-  scroll:          { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(4) },
+  scroll:          { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(12) },
 
   statsRow:        { flexDirection: "row", gap: rs(10) },
   statCard:        { flex: 1, borderRadius: rs(14), borderWidth: 2, padding: rs(12), alignItems: "center", gap: rs(6) },
@@ -1041,18 +1028,18 @@ const styles = StyleSheet.create({
   statValue:       { fontSize: rf(16), fontFamily: "Inter_700Bold" },
   statLabel:       { fontSize: rf(11), fontFamily: "Inter_600SemiBold" },
 
-  tabsRow:         { flexDirection: "row", gap: rs(8), paddingBottom: rs(4), alignItems: "center" },
+  tabsRow:         { flexDirection: "row", gap: rs(8), paddingBottom: rs(12), paddingTop: rs(4), alignItems: "center" },
   tab: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: rs(5),
-    minHeight: rs(38),
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(8),
-    borderRadius: rs(18),
+    minHeight: rs(30),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(5),
+    borderRadius: rs(14),
   },
-  tabText:         { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  tabText:         { fontSize: rf(13), fontFamily: "Inter_500Medium" },
   tabBadge: {
     minWidth: rs(19),
     height: rs(19),
@@ -1190,9 +1177,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rs(5),
-    paddingVertical: rs(12),
+    paddingVertical: rs(8),
     paddingHorizontal: rs(6),
-    borderRadius: rs(10),
+    borderRadius: rs(8),
     borderWidth: 1,
   },
   rideSupportText: { flex: 1, fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
@@ -1213,16 +1200,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rs(8),
-    paddingVertical: rs(12),
-    borderRadius: rs(10),
+    paddingVertical: rs(8),
+    borderRadius: rs(8),
     backgroundColor: "#DC2626",
   },
   pdfBtnText: {
-    fontSize: rf(14),
+    fontSize: rf(12),
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
   },
-  actionBtnText:   { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
+  actionBtnText:   { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
   noteModalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
