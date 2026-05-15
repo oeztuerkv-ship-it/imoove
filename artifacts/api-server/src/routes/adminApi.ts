@@ -69,6 +69,18 @@ import {
   parseSupportCategory,
   parseSupportThreadStatus,
 } from "../db/supportThreadsData";
+import {
+  getAppHelpTicketAdmin,
+  listAppHelpTicketsAdminPage,
+  updateAppHelpTicketAdmin,
+  APP_HELP_TICKET_STATUSES,
+} from "../db/appHelpTicketsData";
+import {
+  getRideSupportTicketAdmin,
+  listRideSupportTicketsAdminPage,
+  updateRideSupportTicketAdmin,
+  RIDE_SUPPORT_TICKET_STATUSES,
+} from "../db/rideSupportData";
 import { setCurrentComplianceDocumentReview } from "../db/companyComplianceDocumentsData";
 import { getHomepageContentAdmin, patchHomepageContentAdmin } from "../db/homepageContentData";
 import {
@@ -2954,6 +2966,181 @@ adminJson.patch("/support/threads/:threadId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, thread: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+
+function adminScopeCompanyId(req: Request): string | null {
+  return typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim()
+    ? req.adminAuth.scopeCompanyId.trim()
+    : null;
+}
+
+adminJson.get("/ride-support-tickets", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const { page, pageSize } = parsePagination(req);
+    const status = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+    const data = await listRideSupportTicketsAdminPage({
+      role: adminConsoleRole(req),
+      scopeCompanyId: adminScopeCompanyId(req),
+      page,
+      pageSize,
+      status: status || undefined,
+      q: q || undefined,
+    });
+    res.json({ ok: true, total: data.total, items: data.items, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/ride-support-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await getRideSupportTicketAdmin(id, adminConsoleRole(req), adminScopeCompanyId(req));
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/ride-support-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    const b = req.body as { status?: unknown; internalNote?: unknown };
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    const status = (RIDE_SUPPORT_TICKET_STATUSES as readonly string[]).includes(statusRaw)
+      ? (statusRaw as (typeof RIDE_SUPPORT_TICKET_STATUSES)[number])
+      : undefined;
+    const internalNote = Object.prototype.hasOwnProperty.call(b, "internalNote")
+      ? typeof b.internalNote === "string"
+        ? b.internalNote
+        : b.internalNote === null
+          ? null
+          : undefined
+      : undefined;
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await updateRideSupportTicketAdmin(
+      id,
+      { status, internalNote },
+      adminConsoleRole(req),
+      adminScopeCompanyId(req),
+    );
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/app-help-tickets", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const { page, pageSize } = parsePagination(req);
+    const status = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+    const data = await listAppHelpTicketsAdminPage({
+      page,
+      pageSize,
+      status: status || undefined,
+      q: q || undefined,
+    });
+    res.json({ ok: true, total: data.total, items: data.items, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.get("/app-help-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await getAppHelpTicketAdmin(id);
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminJson.patch("/app-help-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    const b = req.body as { status?: unknown; internalNote?: unknown };
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    const status = (APP_HELP_TICKET_STATUSES as readonly string[]).includes(statusRaw)
+      ? (statusRaw as (typeof APP_HELP_TICKET_STATUSES)[number])
+      : undefined;
+    const internalNote = Object.prototype.hasOwnProperty.call(b, "internalNote")
+      ? typeof b.internalNote === "string"
+        ? b.internalNote
+        : b.internalNote === null
+          ? null
+          : undefined
+      : undefined;
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await updateAppHelpTicketAdmin(id, { status, internalNote });
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
   } catch (e) {
     next(e);
   }

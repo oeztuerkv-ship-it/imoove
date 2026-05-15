@@ -46,6 +46,7 @@
 --   061 → settlements.idempotency_key, settlement_ride_allocations, payments partial unique
 --   063 → passenger_expo_push_tokens (Kunden-Expo-Push)
 --   064 → fleet_driver_expo_push_tokens + rides.push_*_at (Push-Dedupe)
+--   065 → app_help_tickets (Kunden-App Tab Hilfe)
 
 DO $$
 DECLARE
@@ -825,6 +826,20 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'rides' AND column_name = 'push_driver_activation_reminder_at'
   ) THEN
     errs := array_append(errs, 'rides.push_driver_activation_reminder_at (Migration 064)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'app_help_tickets'
+  ) THEN
+    errs := array_append(errs, 'table app_help_tickets (Migration 065)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_help_tickets' AND column_name = 'message'
+  ) THEN
+    errs := array_append(errs, 'app_help_tickets.message (Migration 065)');
   END IF;
 
   IF coalesce(array_length(errs, 1), 0) > 0 THEN

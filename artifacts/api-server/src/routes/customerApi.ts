@@ -3,6 +3,8 @@ import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { findRideForPassenger, listRidesForPassenger, updateRide } from "../db/ridesData";
 import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
+import { createAppHelpTicket, parseAppHelpCategory } from "../db/appHelpTicketsData";
+import { isPostgresConfigured } from "../db/client";
 import { toCustomerRideView } from "../domain/ridePublic";
 import {
   customerPassengerId,
@@ -194,6 +196,79 @@ router.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async
       return;
     }
     res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const body = req.body as {
+      message?: unknown;
+      category?: unknown;
+      subject?: unknown;
+      passengerName?: unknown;
+      passengerEmail?: unknown;
+      passengerPhone?: unknown;
+    };
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    if (message.length < 5) {
+      res.status(400).json({ ok: false, error: "message_too_short" });
+      return;
+    }
+    if (message.length > 8000) {
+      res.status(400).json({ ok: false, error: "message_too_long" });
+      return;
+    }
+    const category = parseAppHelpCategory(typeof body.category === "string" ? body.category : "other");
+    const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 200) : null;
+    const passengerId = customerPassengerId(sess);
+    const passengerEmail =
+      typeof body.passengerEmail === "string" && body.passengerEmail.trim()
+        ? body.passengerEmail.trim()
+        : typeof sess.email === "string" && sess.email.trim()
+          ? sess.email.trim()
+          : "";
+    if (!passengerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(passengerEmail)) {
+      res.status(400).json({ ok: false, error: "email_required" });
+      return;
+    }
+    const passengerName =
+      typeof body.passengerName === "string" && body.passengerName.trim()
+        ? body.passengerName.trim()
+        : typeof sess.name === "string" && sess.name.trim()
+          ? sess.name.trim()
+          : null;
+    const passengerPhone =
+      typeof body.passengerPhone === "string" && body.passengerPhone.trim()
+        ? body.passengerPhone.trim()
+        : null;
+
+    const ticket = await createAppHelpTicket({
+      passengerId,
+      passengerName,
+      passengerEmail,
+      passengerPhone,
+      category,
+      subject,
+      message,
+      source: "mobile_help",
+    });
+    if (!ticket) {
+      res.status(503).json({ ok: false, error: "create_failed" });
+      return;
+    }
+    console.log(`[app-help-ticket] id=${ticket.id} passenger=${passengerId} category=${category}`);
+    res.status(201).json({ ok: true, ticketId: ticket.id });
   } catch (e) {
     next(e);
   }

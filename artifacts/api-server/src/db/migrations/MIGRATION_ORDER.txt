@@ -70,6 +70,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Financial Double-Booking (Settlement-Allocations, Idempotency, Payout-Dedupe) → 061_financial_double_booking_hardening.sql
   Kunden-Expo-Push-Tokens (Gerät ↔ Passagier)                         → 063_passenger_expo_push_tokens.sql
   Fahrer-Expo-Push + Push-Marker (Reservierung)                       → 064_fleet_driver_push_and_ride_push_markers.sql
+  App-Hilfe-Tickets (Kunden-App Tab Hilfe, ohne Fahrt)                 → 065_app_help_tickets.sql
 
 Nach Migrationen Schema prüfen:
 

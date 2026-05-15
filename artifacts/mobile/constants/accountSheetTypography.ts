@@ -14,3 +14,11 @@ export const accountSheetPrimaryLabel: TextStyle = {
   fontFamily: "Inter_500Medium",
   ...androidLabel,
 };
+
+/** Sekundärtext (Hilfe-Antworten, Meta-Zeilen, Unterzeilen) */
+export const accountSheetSecondaryLabel: TextStyle = {
+  fontSize: rf(13),
+  lineHeight: rf(19),
+  fontFamily: "Inter_400Regular",
+  ...androidLabel,
+};

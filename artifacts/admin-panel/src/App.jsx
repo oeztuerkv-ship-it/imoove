@@ -24,6 +24,8 @@ import FinanceRideFinancialsPage from "./pages/FinanceRideFinancialsPage.jsx";
 import FinanceInvoicesPage from "./pages/FinanceInvoicesPage.jsx";
 import FinanceAuditPage from "./pages/FinanceAuditPage.jsx";
 import SupportInboxPage from "./pages/SupportInboxPage.jsx";
+import RideSupportTicketsPage from "./pages/RideSupportTicketsPage.jsx";
+import AppHelpTicketsPage from "./pages/AppHelpTicketsPage.jsx";
 import FleetVehiclesReviewPage from "./pages/FleetVehiclesReviewPage.jsx";
 import CompanyRegistrationQueuePage from "./pages/CompanyRegistrationQueuePage.jsx";
 import InsurerOverviewPage from "./pages/InsurerOverviewPage.jsx";
@@ -227,6 +229,10 @@ const PAGE_META = {
   "ride-support": {
     title: "Fahrt-Support",
     subtitle: "Kund*innen-Meldungen je Fahrt mit unveränderbarem Kontext (Snapshot) — Plattform-Bearbeitung, keine E-Mail, kein Chat",
+  },
+  "app-help": {
+    title: "App-Hilfe",
+    subtitle: "Allgemeine Anfragen aus dem Hilfe-Tab der Kunden-App (ohne Fahrtbezug)",
   },
   "fleet-vehicles-review": {
     title: "Fahrzeuge prüfen",
@@ -692,16 +698,10 @@ export default function App() {
         );
       case "support-inbox":
         return <SupportInboxPage />;
-      case "ride-support": {
-        const m = PAGE_META["ride-support"];
-        return (
-          <AdminPlaceholderPage
-            title={m.title}
-            intro={`${m.subtitle} (Support-Ticket-UI folgt mit gesonderter API/PR.)`}
-            bullets={[]}
-          />
-        );
-      }
+      case "ride-support":
+        return <RideSupportTicketsPage />;
+      case "app-help":
+        return <AppHelpTicketsPage />;
       case "fleet-vehicles-review":
         return <FleetVehiclesReviewPage />;
       case "company-registration-requests":

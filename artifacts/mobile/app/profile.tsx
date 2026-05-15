@@ -95,7 +95,6 @@ function AccountRow({
   isLast,
   hideChevron,
   trailingReorder,
-  comfortable = false,
 }: {
   icon: React.ReactNode;
   iconBg?: string;
@@ -109,7 +108,6 @@ function AccountRow({
   isLast?: boolean;
   hideChevron?: boolean;
   trailingReorder?: boolean;
-  comfortable?: boolean;
 }) {
   const colors = useColors();
   const valueColor =
@@ -119,56 +117,35 @@ function AccountRow({
         ? "#16A34A"
         : colors.mutedForeground;
   const tileBg = iconBg ?? (danger ? colors.border : colors.muted);
-  const rowComfort = comfortable
-    ? {
-        gap: rs(11),
-        paddingHorizontal: rs(5),
-        paddingVertical: rs(7),
-        minHeight: rs(46),
-      }
-    : {};
-  const iconWrapComfort = comfortable
-    ? { width: rs(29), height: rs(29), borderRadius: rs(11) }
-    : {};
-  const labelComfort = comfortable
-    ? { fontSize: rf(15), lineHeight: rf(20), fontFamily: "Inter_500Medium" as const }
-    : {};
-  const subComfort = comfortable ? { fontSize: rf(12), lineHeight: rf(17) } : {};
-  const valueComfort = comfortable ? { fontSize: rf(15), lineHeight: rf(20) } : {};
-  const chevronSize = comfortable ? 20 : 18;
-  const reorderSize = comfortable ? 19 : 17;
   return (
     <Pressable
       style={({ pressed }) => [
         styles.accountRow,
-        comfortable && rowComfort,
-        isFirst && styles.accountRowFirst,
-        isLast && styles.accountRowLast,
         { backgroundColor: pressed ? colors.muted : "transparent" },
         !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
       ]}
       onPress={onPress}
     >
-      <View style={[styles.accountRowIconWrap, comfortable && iconWrapComfort, { backgroundColor: tileBg }]}>
+      <View style={[styles.accountRowIconWrap, { backgroundColor: tileBg }]}>
         {icon}
       </View>
       <View style={styles.accountRowText}>
-        <Text style={[styles.accountRowLabel, comfortable && labelComfort, { color: danger ? "#DC2626" : colors.foreground }]}>{label}</Text>
+        <Text style={[styles.accountRowLabel, { color: danger ? "#DC2626" : colors.foreground }]}>{label}</Text>
         {sublabel ? (
-          <Text style={[styles.accountRowSub, comfortable && subComfort, { color: colors.mutedForeground }]} numberOfLines={2}>
+          <Text style={[styles.accountRowSub, { color: colors.mutedForeground }]} numberOfLines={2}>
             {sublabel}
           </Text>
         ) : null}
       </View>
       {valueText ? (
-        <Text style={[styles.accountRowValue, comfortable && valueComfort, { color: valueColor }]} numberOfLines={1}>
+        <Text style={[styles.accountRowValue, { color: valueColor }]} numberOfLines={1}>
           {valueText}
         </Text>
       ) : null}
       {trailingReorder ? (
-        <MaterialCommunityIcons name="swap-vertical" size={reorderSize} color={colors.mutedForeground} />
+        <MaterialCommunityIcons name="swap-vertical" size={rs(17)} color={colors.mutedForeground} />
       ) : !hideChevron ? (
-        <Feather name="chevron-right" size={chevronSize} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={rs(17)} color={colors.mutedForeground} />
       ) : null}
     </Pressable>
   );
@@ -244,8 +221,6 @@ function AccountProfileHeroCard({
         onPress={onPress}
         style={({ pressed }) => [
           styles.accountRow,
-          styles.accountRowFirst,
-          styles.accountRowLast,
           {
             alignItems: "center",
             backgroundColor: pressed ? colors.muted : "transparent",
@@ -292,15 +267,15 @@ function AccountProfileHeroCard({
             </View>
           ) : null}
         </View>
-        <View style={[styles.accountRowText, { flex: 1, gap: rs(6) }]}>
-          <Text style={[styles.accountRowLabel, { color: colors.foreground, fontSize: rf(18) }]} numberOfLines={2}>
+        <View style={[styles.accountRowText, { flex: 1, gap: rs(2) }]}>
+          <Text style={[styles.accountHeroName, { color: colors.foreground }]} numberOfLines={2}>
             {(name || "").trim() || "—"}
           </Text>
-          <Text style={[styles.accountRowSub, { fontSize: rf(13) }]} numberOfLines={1}>
+          <Text style={[styles.accountRowSub, { color: colors.mutedForeground }]} numberOfLines={1}>
             {email.trim() || "—"}
           </Text>
         </View>
-        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        <Feather name="chevron-right" size={rs(17)} color={colors.mutedForeground} />
       </Pressable>
     </SectionCard>
   );
@@ -1135,13 +1110,13 @@ export default function ProfileScreen() {
 
                 <View style={{ marginTop: rs(12) }}>
                   <SectionCard compact>
-                    <AccountRow comfortable
+                    <AccountRow
                       icon={<MaterialCommunityIcons name="account" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                       label="Profil"
                       isFirst
                       onPress={() => setPersonalDataOpen(true)}
                     />
-                    <AccountRow comfortable
+                    <AccountRow
                       icon={<MaterialCommunityIcons name="hospital-box" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                       label="Patienten-Profil"
                       onPress={() => setPatientProfileOpen(true)}
@@ -1151,21 +1126,20 @@ export default function ProfileScreen() {
                 </View>
               </View>
 
-              <View style={[styles.accountSection, { marginTop: rs(30) }]}>
-                <AccountSectionTitle comfortable title="Abrechnung" />
+              <View style={styles.accountSection}>
                 <SectionCard compact>
-                  <AccountRow comfortable
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="wallet" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label="Zahlungsmethoden"
                     isFirst
                     onPress={() => router.push("/wallet")}
                   />
-                  <AccountRow comfortable
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="history" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label="Transaktionsverlauf"
                     onPress={() => router.push("/wallet")}
                   />
-                  <AccountRow comfortable
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="file-document-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label="Rechnungsadresse"
                     onPress={() => setBillingOpen(true)}
@@ -1174,10 +1148,9 @@ export default function ProfileScreen() {
                 </SectionCard>
               </View>
 
-              <View style={[styles.accountSection, { marginTop: rs(30) }]}>
-                <AccountSectionTitle comfortable title="Präferenzen" />
+              <View style={styles.accountSection}>
                 <SectionCard compact>
-                  <AccountRow comfortable
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="web" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label="Sprache"
                     valueText="Deutsch"
@@ -1188,7 +1161,7 @@ export default function ProfileScreen() {
                       Alert.alert("Sprache", "Aktuell ist die App auf Deutsch eingestellt. Weitere Sprachen folgen.")
                     }
                   />
-                  <AccountRow comfortable
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="help-circle-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label="Hilfe & Support"
                     onPress={() => {
@@ -1196,7 +1169,7 @@ export default function ProfileScreen() {
                       router.replace("/help");
                     }}
                   />
-                  <AccountRow comfortable
+                  <AccountRow
                     icon={<Feather name="log-out" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label="Abmelden"
                     danger
@@ -1580,7 +1553,7 @@ const styles = StyleSheet.create({
   /** Eingeloggt-Konto: mehr Luft unter der Kopfzeile als Wallet (`scroll`), damit die Sektionsblöcke nicht zu hoch kleben. */
   scrollAccountLoggedIn: {
     paddingHorizontal: rs(8),
-    paddingTop: rs(40),
+    paddingTop: rs(24),
     gap: rs(10),
   },
 
@@ -1683,21 +1656,18 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   accountSection: {
-    gap: rs(4),
+    gap: rs(10),
   },
   accountRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: rs(10),
-    paddingHorizontal: rs(4),
-    paddingVertical: rs(5),
-    minHeight: rs(40),
+    padding: rs(16),
   },
-  accountRowFirst: {
-    paddingTop: 0,
-  },
-  accountRowLast: {
-    paddingBottom: 0,
+  accountHeroName: {
+    fontSize: rf(14),
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: rf(20),
   },
   accountRowIconWrap: {
     width: rs(28),
@@ -1715,9 +1685,9 @@ const styles = StyleSheet.create({
     ...accountSheetPrimaryLabel,
   },
   accountRowSub: {
-    fontSize: rf(12),
+    fontSize: rf(13),
     fontFamily: "Inter_400Regular",
-    marginTop: 1,
+    lineHeight: rf(19),
   },
   accountRowValue: {
     flexShrink: 1,

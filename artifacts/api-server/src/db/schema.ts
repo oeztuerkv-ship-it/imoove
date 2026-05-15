@@ -523,6 +523,23 @@ export const rideSupportTicketsTable = pgTable("ride_support_tickets", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Allgemeine Hilfe-Anfragen aus der Kunden-App (Tab Hilfe, ohne Fahrtbezug). */
+export const appHelpTicketsTable = pgTable("app_help_tickets", {
+  id: text("id").primaryKey(),
+  passenger_id: text("passenger_id").notNull(),
+  passenger_name: text("passenger_name"),
+  passenger_email: text("passenger_email").notNull(),
+  passenger_phone: text("passenger_phone"),
+  category: text("category").notNull().default("other"),
+  subject: text("subject"),
+  message: text("message").notNull(),
+  status: text("status").notNull().default("open"),
+  internal_note: text("internal_note"),
+  source: text("source").notNull().default("mobile_help"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /**
  * OCR / Krankenkassen-Vorbereitung: strukturierte Extraktionszeilen (policy: keine Diagnose).
  * Vorerst optional; API-Endpunkte können später geschrieben werden.

@@ -43,6 +43,7 @@ export const ADMIN_PAGE_ROLES = {
   "company-registration-requests": ["admin", "service"],
   "support-inbox": ["admin", "service"],
   "ride-support": ["admin", "service", "taxi", "insurance", "hotel"],
+  "app-help": ["admin", "service"],
   "fleet-vehicles-review": ["admin", "service"],
 
   "drivers-overview": ["admin", "service", "taxi"],
@@ -199,6 +200,7 @@ const ADMIN_NAV_GROUPS_RAW = [
       { pageKey: "company-registration-requests", label: "Registrierungsanfragen", icon: "document", roles: R.adminSvc },
       { pageKey: "support-inbox", label: "Partner-Anfragen", icon: "document", roles: R.adminSvc },
       { pageKey: "ride-support", label: "Fahrt-Support (Kund*innen)", icon: "document", roles: ["admin", "service", "taxi", "insurance", "hotel"] },
+      { pageKey: "app-help", label: "App-Hilfe (Kund*innen)", icon: "document", roles: R.adminSvc },
       { pageKey: "fleet-vehicles-review", label: "Fahrzeuge prüfen", icon: "rides", roles: R.adminSvc },
     ],
   },

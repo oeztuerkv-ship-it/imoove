@@ -1,10 +1,12 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   Modal,
   Platform,
@@ -19,7 +21,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRide, type PaymentMethod, type RideHistoryEntry, type VehicleType, VEHICLES } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
-import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
+import { accountSheetPrimaryLabel, accountSheetSecondaryLabel } from "@/constants/accountSheetTypography";
+import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -73,10 +76,17 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
 
 type FilterTab = "reservierungen" | "abgeschlossen" | "storniert";
 
-function normalizeAddressDisplay(raw: string | null | undefined): string {
+const ADDRESS_UNKNOWN = "Unbekannt";
+
+function trimAddressInput(raw: string | null | undefined): string {
   const text = String(raw ?? "").trim();
-  if (!text) return "Unbekannt";
-  const parts = text
+  if (!text || text === "—" || text === "-") return "";
+  if (text.toLowerCase() === ADDRESS_UNKNOWN.toLowerCase()) return "";
+  return text;
+}
+
+function normalizeAddressDisplay(raw: string): string {
+  const parts = raw
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean);
@@ -85,109 +95,184 @@ function normalizeAddressDisplay(raw: string | null | undefined): string {
     parts[0] = `${parts[0]} ${number}`.trim();
     return parts.join(", ");
   }
-  return text;
+  return raw;
+}
+
+function isAdminAddressPart(part: string): boolean {
+  const s = part.trim().toLowerCase();
+  return (
+    s.includes("landkreis") ||
+    s.includes("region") ||
+    s.includes("regierungsbezirk") ||
+    s.includes("baden-württemberg") ||
+    s.includes("deutschland")
+  );
+}
+
+function mergeAddressSources(
+  primary: string | null | undefined,
+  secondary?: string | null | undefined,
+): string {
+  const p = trimAddressInput(primary);
+  const s = trimAddressInput(secondary);
+  if (!p && !s) return "";
+  if (!p) return s;
+  if (!s || p === s) return p;
+  if (p.includes(s) || s.includes(p)) return p.length >= s.length ? p : s;
+
+  const pHasPlz = /\b\d{5}\b/.test(p);
+  const sHasPlz = /\b\d{5}\b/.test(s);
+  if (!pHasPlz && sHasPlz) return `${p}, ${s}`;
+  if (pHasPlz && !sHasPlz) return p;
+
+  return pickBestAddressString(p, s);
+}
+
+function pickBestAddressString(...sources: string[]): string {
+  const uniq = [...new Set(sources.filter(Boolean))];
+  if (uniq.length === 0) return "";
+  if (uniq.length === 1) return uniq[0];
+  const withPlz = uniq.filter((s) => /\b\d{5}\b/.test(s));
+  if (withPlz.length === 1) return withPlz[0];
+  if (withPlz.length > 1) {
+    return withPlz.sort((a, b) => b.length - a.length)[0];
+  }
+  return uniq.sort((a, b) => b.length - a.length)[0];
+}
+
+function looksLikeStreetPart(part: string): boolean {
+  return /\b\d{1,5}[a-zA-Z]?\b/.test(part) && !/\b\d{5}\b/.test(part);
+}
+
+function splitSingleAddress(full: string): { line1: string; line2: string } {
+  const parts = normalizeAddressDisplay(full)
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && p.toLowerCase() !== ADDRESS_UNKNOWN.toLowerCase());
+
+  if (parts.length === 0) return { line1: ADDRESS_UNKNOWN, line2: "" };
+
+  let plz = "";
+  let city = "";
+  let plzIdx = -1;
+
+  for (let i = 0; i < parts.length; i++) {
+    const match = parts[i].match(/\b(\d{5})\b(?:\s*(.*))?$/);
+    if (!match) continue;
+    plzIdx = i;
+    plz = match[1];
+    const inlineCity = String(match[2] ?? "").trim();
+    if (inlineCity && !isAdminAddressPart(inlineCity)) {
+      city = inlineCity;
+      break;
+    }
+    for (let j = i + 1; j < parts.length; j++) {
+      const next = parts[j];
+      if (isAdminAddressPart(next) || /\b\d{5}\b/.test(next)) continue;
+      city = next;
+      break;
+    }
+    break;
+  }
+
+  const usable = parts.filter((p) => !isAdminAddressPart(p));
+  const beforePlz = plzIdx >= 0 ? parts.slice(0, plzIdx).filter((p) => !isAdminAddressPart(p)) : usable;
+  const streetLine = beforePlz.find((p) => looksLikeStreetPart(p));
+  const poiOrNameLine = beforePlz.find((p) => !/\b\d{5}\b/.test(p));
+  let line1 = streetLine ?? poiOrNameLine ?? "";
+
+  if (!city && plzIdx < 0 && usable.length >= 2) {
+    const localityCandidates = usable.filter(
+      (p) => p !== line1 && !looksLikeStreetPart(p) && !/\b\d{5}\b/.test(p),
+    );
+    if (localityCandidates.length > 0) {
+      city = localityCandidates[localityCandidates.length - 1];
+    }
+  }
+
+  if (!line1) {
+    line1 = usable.find((p) => looksLikeStreetPart(p) || !/\b\d{5}\b/.test(p)) ?? usable[0];
+  }
+
+  if (city && line1.toLowerCase() === city.toLowerCase()) {
+    line1 =
+      streetLine ??
+      beforePlz.find((p) => p.toLowerCase() !== city.toLowerCase()) ??
+      usable.find((p) => looksLikeStreetPart(p)) ??
+      line1;
+  }
+
+  const line2 = [plz, city].filter(Boolean).join(" ").trim();
+
+  return {
+    line1: line1 || ADDRESS_UNKNOWN,
+    line2,
+  };
 }
 
 function splitAddressLines(
   primary: string | null | undefined,
   secondary?: string | null | undefined,
 ): { line1: string; line2: string } {
-  const isAdminPart = (part: string): boolean => {
-    const s = part.trim().toLowerCase();
-    return (
-      s.includes("landkreis") ||
-      s.includes("region") ||
-      s.includes("regierungsbezirk") ||
-      s.includes("baden-württemberg") ||
-      s.includes("deutschland")
-    );
-  };
-  const isPoiLikePart = (part: string): boolean => {
-    const s = part.trim().toLowerCase();
-    return (
-      s.startsWith("gvv ") ||
-      s.includes(" gvv ") ||
-      s.includes("bahnhof") ||
-      s.includes("flughafen") ||
-      s.includes("terminal") ||
-      s.includes("haltestelle") ||
-      s.includes("station") ||
-      s.includes("zentrum")
-    );
-  };
-  const dedupeOverlappingLocalities = (items: string[]): string[] => {
-    const cleaned = items
-      .map((x) => x.trim())
-      .filter(Boolean);
-    return cleaned.filter((candidate, idx) => {
-      const low = candidate.toLowerCase();
-      return !cleaned.some((other, j) => {
-        if (j === idx) return false;
-        const otherLow = other.toLowerCase();
-        return otherLow.length > low.length && otherLow.includes(low);
-      });
-    });
-  };
-  const candidates = [primary, secondary]
-    .map((v) => normalizeAddressDisplay(v))
-    .filter((v) => v.length > 0);
-  const merged = candidates.join(", ");
-  const parts = merged
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  let plz = "";
-  let city = "";
-  const postalIdx = parts.findIndex((p) => /\b\d{5}\b/.test(p));
-  if (postalIdx >= 0) {
-    const postalRaw = parts[postalIdx];
-    const plzMatch = postalRaw.match(/\b(\d{5})\b\s*,?\s*(.*)$/);
-    plz = plzMatch?.[1]?.trim() ?? "";
-    const citySameSegment = String(plzMatch?.[2] ?? "").trim();
-
-    if (citySameSegment && !isPoiLikePart(citySameSegment) && !isAdminPart(citySameSegment)) {
-      city = citySameSegment;
-    } else {
-      const after = (parts[postalIdx + 1] ?? "").trim();
-      if (after && !isAdminPart(after) && !/\d/.test(after)) {
-        city = isPoiLikePart(after) ? "" : after;
-      } else {
-        const localityCandidates = parts
-          .slice(0, postalIdx)
-          .filter((p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p));
-        city = dedupeOverlappingLocalities(localityCandidates).slice(-2).join(", ").trim();
-      }
-    }
-  } else {
-    const localityCandidates = parts.filter(
-      (p) => !isAdminPart(p) && !/\d/.test(p) && !isPoiLikePart(p),
-    );
-    city = dedupeOverlappingLocalities(localityCandidates).slice(-2).join(", ").trim();
-  }
-
-  const postalCity = plz && city ? `${plz} ${city}` : city || plz;
-  const streetWithNumber = parts.find(
-    (p) =>
-      /\b\d{1,5}[a-zA-Z]?\b/.test(p) &&
-      !/\b\d{5}\b/.test(p) &&
-      !isAdminPart(p) &&
-      !isPoiLikePart(p),
-  );
-  const firstStreetish = parts.find((p) => !isAdminPart(p) && !isPoiLikePart(p) && !/\b\d{5}\b/.test(p));
-  if (parts.length === 0) return { line1: "Unbekannt", line2: "" };
-  return {
-    line1: streetWithNumber ?? firstStreetish ?? parts[0],
-    line2: postalCity,
-  };
+  const full = mergeAddressSources(primary, secondary);
+  if (!full) return { line1: ADDRESS_UNKNOWN, line2: "" };
+  return splitSingleAddress(full);
 }
 
-function formatRideAddress(full: string | null | undefined, label?: string | null): { line1: string; line2: string } {
-  return splitAddressLines(full, label);
+function formatRideAddress(full: string | null | undefined, alt?: string | null): { line1: string; line2: string } {
+  return splitAddressLines(full, alt);
+}
+
+const SEARCHING_SPINNER_MS = 1500;
+
+function SearchingDriverSpinner() {
+  const spin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: SEARCHING_SPINNER_MS,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spin]);
+
+  const rotate = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  return (
+    <Animated.View style={[styles.searchingSpinnerRing, { transform: [{ rotate }] }]}>
+      <View style={styles.searchingSpinnerArc} />
+    </Animated.View>
+  );
 }
 
 function StatusBadge({ status, scheduledAt }: { status: string; scheduledAt?: Date | string | null }) {
   const colors = useColors();
+
+  if (status === "scheduled") {
+    return (
+      <View style={[styles.statusBadge, styles.statusBadgeSearching]}>
+        <SearchingDriverSpinner />
+        <Text style={[styles.statusText, styles.statusBadgeSearchingText]}>Suche Fahrer</Text>
+      </View>
+    );
+  }
+
+  if (status === "scheduled_assigned") {
+    return (
+      <View style={[styles.statusBadge, styles.statusBadgeDriverFound]}>
+        <Feather name="check-circle" size={12} color="#16A34A" style={styles.statusBadgeIcon} />
+        <Text style={[styles.statusText, styles.statusBadgeDriverFoundText]}>Fahrer gefunden</Text>
+      </View>
+    );
+  }
+
   const specLabel = customerRideListStatusLabel(status, scheduledAt);
   const config = specLabel
     ? {
@@ -239,6 +324,91 @@ function StatCard({ icon, value, label, color }: { icon: string; value: string; 
       <Text style={[styles.statLabel, { color: LIST_TEXT_STRONG }]}>{label}</Text>
     </View>
   );
+}
+
+type AddressLines = { line1: string; line2: string };
+
+function RideRouteStops({ from, to }: { from: AddressLines; to: AddressLines }) {
+  const colors = useColors();
+  return (
+    <View style={styles.routeStops}>
+      <View style={styles.routeStopRow}>
+        <View style={styles.routeStopRailCol}>
+          <View style={styles.routeDotStart} />
+          <View style={[styles.routeRailLine, { backgroundColor: LIST_FRAME_BORDER }]} />
+        </View>
+        <View style={styles.routeStopContent}>
+          <Text style={[styles.routeStopPlace, { color: colors.foreground }]} numberOfLines={2}>
+            {from.line1}
+          </Text>
+          {from.line2 ? (
+            <Text style={[styles.routeStopMeta, { color: colors.mutedForeground }]} numberOfLines={2}>
+              {from.line2}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      <View style={styles.routeStopRow}>
+        <View style={styles.routeStopRailCol}>
+          <View style={[styles.routeDotEnd, { borderColor: "#DC2626" }]} />
+        </View>
+        <View style={[styles.routeStopContent, styles.routeStopContentLast]}>
+          <Text style={[styles.routeStopPlace, { color: colors.foreground }]} numberOfLines={2}>
+            {to.line1}
+          </Text>
+          {to.line2 ? (
+            <Text style={[styles.routeStopMeta, { color: colors.mutedForeground }]} numberOfLines={2}>
+              {to.line2}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+type RideMetaChip = {
+  value: string;
+  valueColor?: string;
+  onPress?: () => void;
+};
+
+function RideMetaStrip({ items }: { items: RideMetaChip[] }) {
+  const colors = useColors();
+  const visible = items.filter((item) => item.value.trim().length > 0 && item.value !== "—");
+  if (visible.length === 0) return null;
+  return (
+    <View style={[styles.metaStrip, { borderColor: LIST_FRAME_BORDER, backgroundColor: HOME_SHEET_INNER }]}>
+      {visible.map((item, i) => {
+        const text = (
+          <Text
+            style={[styles.metaStripText, { color: item.valueColor ?? colors.foreground }]}
+            numberOfLines={1}
+          >
+            {item.value}
+          </Text>
+        );
+        return (
+          <React.Fragment key={`${item.value}-${i}`}>
+            {i > 0 ? (
+              <View style={[styles.metaStripDivider, { backgroundColor: LIST_FRAME_BORDER }]} />
+            ) : null}
+            {item.onPress ? (
+              <Pressable onPress={item.onPress} style={styles.metaStripItem}>
+                {text}
+              </Pressable>
+            ) : (
+              <View style={styles.metaStripItem}>{text}</View>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
+function vehicleLabelFromType(type: VehicleType): string {
+  return VEHICLES.find((v) => v.id === type)?.name ?? "Standard";
 }
 
 function guessPaymentMethodFromRide(pm: string | undefined): PaymentMethod {
@@ -296,16 +466,214 @@ function serverCompletedToHistoryEntry(r: RideRequest): RideHistoryEntry {
   };
 }
 
-function dateGroupLabel(date: Date): string {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const rideDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((today.getTime() - rideDay.getTime()) / 86400000);
-  if (diffDays === 0) return "Heute";
-  if (diffDays === 1) return "Gestern";
-  if (diffDays < 7) return "Diese Woche";
-  if (diffDays < 30) return "Diesen Monat";
-  return date.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+const COMPLETED_FILTER_ALL = "__all__";
+
+function currentCalendarYearKey(): string {
+  return String(new Date().getFullYear());
+}
+
+function currentCalendarMonthKey(): string {
+  return String(new Date().getMonth() + 1).padStart(2, "0");
+}
+
+function completedMonthKeyFromCreatedAt(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function completedYearFromCreatedAt(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return String(d.getFullYear());
+}
+
+function completedMonthOnlyFromCreatedAt(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return String(d.getMonth() + 1).padStart(2, "0");
+}
+
+function completedMonthTabLabel(key: string): string {
+  const [y, m] = key.split("-");
+  const monthIndex = Number(m) - 1;
+  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return key;
+  const d = new Date(Number(y), monthIndex, 1);
+  return d.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+}
+
+function completedMonthOnlyTabLabel(monthKey: string): string {
+  const monthIndex = Number(monthKey) - 1;
+  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return monthKey;
+  return new Date(2000, monthIndex, 1).toLocaleDateString("de-DE", { month: "long" });
+}
+
+type CompletedPickerKind = "year" | "month";
+
+function CompletedFilterDropdownPill({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.completedDropdownPill} onPress={onPress}>
+      <MaterialCommunityIcons name="calendar-month-outline" size={rs(14)} color={LIST_TEXT_STRONG} />
+      <Text style={styles.completedDropdownText} numberOfLines={1}>
+        {label}
+      </Text>
+      <Feather name="chevron-down" size={rs(13)} color={LIST_TEXT_STRONG} />
+    </Pressable>
+  );
+}
+
+function cancelledByHintText(ride: {
+  status: string;
+  cancelledBy: "customer" | "driver" | "system";
+  scheduledAt: Date | null;
+}): string {
+  const spec = customerRideListStatusLabel(ride.status, ride.scheduledAt);
+  if (spec) return spec;
+
+  const hasSched =
+    ride.scheduledAt != null &&
+    (ride.scheduledAt instanceof Date
+      ? Number.isFinite(ride.scheduledAt.getTime())
+      : String(ride.scheduledAt).trim().length > 0);
+  const reservationUnfulfilled = hasSched && (ride.status === "expired" || ride.status === "rejected");
+
+  if (ride.cancelledBy === "system" || ride.status === "cancelled_by_system") {
+    return CUSTOMER_RIDE_STATUS_CANCELLED_BY_SYSTEM;
+  }
+  if (reservationUnfulfilled) {
+    return CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED;
+  }
+  if (ride.cancelledBy === "driver") {
+    return "Vom Fahrer storniert";
+  }
+  return "Von dir storniert";
+}
+
+function monthShortLabel(monthKey: string): string {
+  const monthIndex = Number(monthKey) - 1;
+  if (!Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) return monthKey;
+  return new Date(2000, monthIndex, 1).toLocaleDateString("de-DE", { month: "short" });
+}
+
+function CompletedDateFilterSheet({
+  kind,
+  yearOptions,
+  monthOptions,
+  selectedYear,
+  selectedMonth,
+  bottomInset,
+  onClose,
+  onSelectYear,
+  onSelectMonth,
+}: {
+  kind: CompletedPickerKind;
+  yearOptions: string[];
+  monthOptions: string[];
+  selectedYear: string;
+  selectedMonth: string;
+  bottomInset: number;
+  onClose: () => void;
+  onSelectYear: (year: string) => void;
+  onSelectMonth: (monthKey: string) => void;
+}) {
+  const isYear = kind === "year";
+
+  const selectYear = (year: string) => {
+    void Haptics.selectionAsync();
+    onSelectYear(year);
+    onClose();
+  };
+
+  const selectMonth = (monthKey: string) => {
+    void Haptics.selectionAsync();
+    onSelectMonth(monthKey);
+    onClose();
+  };
+
+  return (
+    <Pressable style={styles.pickerBackdrop} onPress={onClose}>
+      <Pressable
+        style={[styles.pickerSheetModern, { paddingBottom: Math.max(bottomInset, rs(16)) + rs(8) }]}
+        onPress={() => {}}
+      >
+        <View style={styles.pickerHandle} />
+        <View style={styles.pickerSheetHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pickerSheetTitle}>{isYear ? "Jahr wählen" : "Monat wählen"}</Text>
+            <Text style={styles.pickerSheetSub}>
+              {isYear ? "Zeitraum für abgeschlossene Fahrten" : `Fahrten in ${selectedYear}`}
+            </Text>
+          </View>
+          <Pressable style={styles.pickerCloseBtn} onPress={onClose} hitSlop={10}>
+            <Feather name="x" size={rs(20)} color="#6B7280" />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.pickerChipGrid}
+        >
+          {isYear ? (
+            yearOptions.map((year) => {
+              const active = selectedYear === year;
+              return (
+                <Pressable
+                  key={year}
+                  style={[styles.pickerChip, active && styles.pickerChipActive]}
+                  onPress={() => selectYear(year)}
+                >
+                  <Text style={[styles.pickerChipText, active && styles.pickerChipTextActive]}>{year}</Text>
+                </Pressable>
+              );
+            })
+          ) : (
+            <>
+              <Pressable
+                style={[
+                  styles.pickerChip,
+                  styles.pickerChipWide,
+                  selectedMonth === COMPLETED_FILTER_ALL && styles.pickerChipActive,
+                ]}
+                onPress={() => selectMonth(COMPLETED_FILTER_ALL)}
+              >
+                <Text
+                  style={[
+                    styles.pickerChipText,
+                    selectedMonth === COMPLETED_FILTER_ALL && styles.pickerChipTextActive,
+                  ]}
+                >
+                  Alle Monate
+                </Text>
+              </Pressable>
+              {monthOptions.map((key) => {
+                const active = selectedMonth === key;
+                return (
+                  <Pressable
+                    key={key}
+                    style={[styles.pickerChip, active && styles.pickerChipActive]}
+                    onPress={() => selectMonth(key)}
+                  >
+                    <Text style={[styles.pickerChipText, active && styles.pickerChipTextActive]}>
+                      {monthShortLabel(key)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
+        </ScrollView>
+      </Pressable>
+    </Pressable>
+  );
 }
 
 export default function MyRidesScreen() {
@@ -328,6 +696,10 @@ export default function MyRidesScreen() {
     updateRequestDriverNote,
   } = useRideRequests();
   const [activeTab, setActiveTab] = useState<FilterTab>("reservierungen");
+  const [completedYearKey, setCompletedYearKey] = useState(currentCalendarYearKey);
+  const [completedMonthKey, setCompletedMonthKey] = useState(currentCalendarMonthKey);
+  const [completedPickerOpen, setCompletedPickerOpen] = useState<CompletedPickerKind | null>(null);
+  const completedFilterInitRef = useRef(false);
   const reservationRequests = useMemo(
     () => myActiveRequests.filter((r) => r.status === "scheduled" || r.status === "scheduled_assigned"),
     [myActiveRequests],
@@ -442,24 +814,93 @@ export default function MyRidesScreen() {
     router.push(`/ride-detail?id=${encodeURIComponent(id)}${q}` as any);
   };
 
-  const groupedCompleted = useMemo(() => {
-    const groups: { label: string; rides: typeof completed }[] = [];
-    const seen: Record<string, number> = {};
-    completed.forEach((ride) => {
-      const label = dateGroupLabel(new Date(ride.createdAt));
-      if (seen[label] === undefined) {
-        seen[label] = groups.length;
-        groups.push({ label, rides: [] });
-      }
-      groups[seen[label]].rides.push(ride);
-    });
-    return groups;
+  const completedYearOptions = useMemo(() => {
+    const years = new Set<string>();
+    for (const ride of completed) {
+      const y = completedYearFromCreatedAt(ride.createdAt);
+      if (y) years.add(y);
+    }
+    return [...years].sort((a, b) => b.localeCompare(a));
   }, [completed]);
 
+  const completedMonthOptions = useMemo(() => {
+    const months = new Set<string>();
+    for (const ride of completed) {
+      if (completedYearFromCreatedAt(ride.createdAt) !== completedYearKey) continue;
+      const m = completedMonthOnlyFromCreatedAt(ride.createdAt);
+      if (m) months.add(m);
+    }
+    return [...months].sort((a, b) => b.localeCompare(a));
+  }, [completed, completedYearKey]);
+
+  const filteredCompleted = useMemo(() => {
+    return completed.filter((r) => {
+      const fullKey = completedMonthKeyFromCreatedAt(r.createdAt);
+      if (!fullKey) return false;
+      const [y, m] = fullKey.split("-");
+      if (y !== completedYearKey) return false;
+      if (completedMonthKey === COMPLETED_FILTER_ALL) return true;
+      return m === completedMonthKey;
+    });
+  }, [completed, completedYearKey, completedMonthKey]);
+
+  const pickCompletedYear = (yearKey: string) => {
+    setCompletedYearKey(yearKey);
+    setCompletedMonthKey(COMPLETED_FILTER_ALL);
+  };
+
+  const pickCompletedMonth = (key: string) => {
+    if (key === COMPLETED_FILTER_ALL) {
+      setCompletedMonthKey(COMPLETED_FILTER_ALL);
+      return;
+    }
+    setCompletedMonthKey(key);
+  };
+
+  const completedYearLabel = completedYearKey;
+
+  const completedMonthLabel = useMemo(() => {
+    if (completedMonthKey === COMPLETED_FILTER_ALL) return "Alle";
+    return completedMonthOnlyTabLabel(completedMonthKey);
+  }, [completedMonthKey]);
+
+  React.useEffect(() => {
+    if (completed.length === 0) return;
+    if (!completedFilterInitRef.current) {
+      completedFilterInitRef.current = true;
+      const curY = currentCalendarYearKey();
+      const curM = currentCalendarMonthKey();
+      const year = completedYearOptions.includes(curY) ? curY : (completedYearOptions[0] ?? curY);
+      setCompletedYearKey(year);
+      const hasCurMonth = completed.some((r) => {
+        return (
+          completedYearFromCreatedAt(r.createdAt) === year &&
+          completedMonthOnlyFromCreatedAt(r.createdAt) === curM
+        );
+      });
+      setCompletedMonthKey(hasCurMonth ? curM : COMPLETED_FILTER_ALL);
+      return;
+    }
+    if (!completedYearOptions.includes(completedYearKey)) {
+      const fallback = completedYearOptions.includes(currentCalendarYearKey())
+        ? currentCalendarYearKey()
+        : (completedYearOptions[0] ?? currentCalendarYearKey());
+      setCompletedYearKey(fallback);
+      setCompletedMonthKey(COMPLETED_FILTER_ALL);
+    }
+  }, [completed, completedYearKey, completedYearOptions]);
+
+  React.useEffect(() => {
+    if (completedMonthKey === COMPLETED_FILTER_ALL) return;
+    if (!completedMonthOptions.includes(completedMonthKey)) {
+      setCompletedMonthKey(COMPLETED_FILTER_ALL);
+    }
+  }, [completedMonthKey, completedMonthOptions]);
+
   const TABS: { id: FilterTab; label: string; count?: number }[] = [
-    { id: "reservierungen", label: "Reservierungen", count: reservationRequests.length || undefined },
-    { id: "abgeschlossen", label: "Abgeschlossen",  count: completed.length || undefined },
-    { id: "storniert",     label: "Storniert",      count: cancelled.length || undefined },
+    { id: "abgeschlossen", label: "Abgeschlossen" },
+    { id: "reservierungen", label: "Buchungen", count: reservationRequests.length || undefined },
+    { id: "storniert", label: "Storniert" },
   ];
 
   const showActive    = activeTab === "reservierungen";
@@ -540,85 +981,40 @@ export default function MyRidesScreen() {
                     <StatusBadge status={req.status} scheduledAt={req.scheduledAt} />
                     <View style={{ alignItems: "flex-end" }}>
                       {hasPickup && (
-                        <Text style={[styles.footerText, { color: LIST_TEXT_STRONG, marginBottom: 2 }]}>Abholung</Text>
+                        <Text style={[styles.rideAddressSub, { color: colors.mutedForeground, marginBottom: 2 }]}>Abholung</Text>
                       )}
-                      <Text style={[styles.rideDate, { color: LIST_TEXT_STRONG }]} numberOfLines={2}>
+                      <Text style={[styles.rideDate, { color: colors.mutedForeground }]} numberOfLines={2}>
                         {whenLabel}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.routeRow}>
-                    <View style={styles.routeDots}>
-                      <View style={[styles.dotFilled, { backgroundColor: "#111" }]} />
-                      <View style={[styles.routeLine, { backgroundColor: LIST_FRAME_BORDER }]} />
-                      <View style={[styles.dotOutline, { borderColor: "#DC2626" }]} />
-                    </View>
-                    <View style={styles.routeLabels}>
-                      <View>
-                        <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
-                          {fromAddr.line1}
-                        </Text>
-                        {fromAddr.line2 ? (
-                          <Text style={[styles.footerText, { color: LIST_TEXT_STRONG, marginTop: 2 }]} numberOfLines={1}>
-                            {fromAddr.line2}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <View>
-                        <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
-                          {toAddr.line1}
-                        </Text>
-                        {toAddr.line2 ? (
-                          <Text style={[styles.footerText, { color: LIST_TEXT_STRONG, marginTop: 2 }]} numberOfLines={1}>
-                            {toAddr.line2}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-                  </View>
+                  <RideRouteStops from={fromAddr} to={toAddr} />
 
-                  <View style={[styles.rideFooter, { borderTopColor: LIST_FRAME_BORDER }]}>
-                    <View style={[styles.compactInfoBlock, { borderColor: LIST_FRAME_BORDER }]}>
-                      <View style={styles.footerItem}>
-                        <Feather name="map" size={13} color={LIST_TEXT_STRONG} />
-                        <Text style={[styles.footerText, { color: LIST_TEXT_STRONG }]}>{req.distanceKm.toFixed(1)} km</Text>
-                      </View>
-                      <View style={[styles.compactInfoDivider, { backgroundColor: LIST_FRAME_BORDER }]} />
-                      <View style={styles.footerItem}>
-                        <Text style={[styles.footerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>{req.vehicle}</Text>
-                      </View>
-                      <View style={[styles.compactInfoDivider, { backgroundColor: LIST_FRAME_BORDER }]} />
-                      {isReservation ? (
-                        <Pressable onPress={() => choosePaymentMethod(req)} style={styles.footerItem}>
-                          <Text style={[styles.footerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
-                            {paymentMethodDisplay(req.paymentMethod)}
-                          </Text>
-                        </Pressable>
-                      ) : (
-                        <View style={styles.footerItem}>
-                          <Text style={[styles.footerText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
-                            {paymentMethodDisplay(req.paymentMethod)}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={[styles.compactInfoDivider, { backgroundColor: LIST_FRAME_BORDER }]} />
-                      <View style={styles.footerItem}>
-                        <Text style={[styles.footerText, { color: "#2563EB", fontFamily: "Inter_700Bold" }]}>
-                          {Number.isFinite(req.estimatedFare) && req.estimatedFare > 0
+                  <RideMetaStrip
+                    items={[
+                      { value: `${req.distanceKm.toFixed(1)} km` },
+                      { value: req.vehicle },
+                      {
+                        value: paymentMethodDisplay(req.paymentMethod),
+                        onPress: () => choosePaymentMethod(req),
+                      },
+                      {
+                        value:
+                          Number.isFinite(req.estimatedFare) && req.estimatedFare > 0
                             ? `ca. ${Math.round(req.estimatedFare / 1.08)}–${Math.round(req.estimatedFare)} €`
-                            : "—"}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
+                            : "",
+                        valueColor: "#2563EB",
+                      },
+                    ]}
+                  />
 
                   {!isReservation && (
-                    <View style={[styles.payerLine, { backgroundColor: "#FFFFFF", borderColor: LIST_FRAME_BORDER }]}>
+                    <View style={[styles.payerLine, { backgroundColor: HOME_SHEET_INNER, borderColor: LIST_FRAME_BORDER }]}>
                       <MaterialCommunityIcons name="wallet-outline" size={16} color={LIST_TEXT_STRONG} />
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.payerLineTitle, { color: colors.foreground }]}>Zahlung</Text>
-                        <Text style={[styles.payerLineSub, { color: LIST_TEXT_STRONG }]}>
+                        <Text style={[styles.payerLineTitle, { color: colors.mutedForeground }]}>Zahlung & Abrechnung</Text>
+                        <Text style={[styles.payerLineSub, { color: colors.foreground }]}>
                           {customerPayerBlockFromRideRequest(req).subtitle}
                         </Text>
                       </View>
@@ -739,15 +1135,22 @@ export default function MyRidesScreen() {
           </>
         )}
 
-        {/* ── Abgeschlossene Fahrten (gruppiert) ── */}
-        {showCompleted && groupedCompleted.map((group) => (
-          <View key={group.label}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.sectionDot, { backgroundColor: "#16A34A" }]} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{group.label}</Text>
-            </View>
+        {/* ── Abgeschlossene Fahrten: Jahr + Monat (Dropdown) ── */}
+        {showCompleted && completed.length > 0 && (
+          <View style={styles.completedDropdownRow}>
+            <CompletedFilterDropdownPill
+              label={completedYearLabel}
+              onPress={() => setCompletedPickerOpen("year")}
+            />
+            <CompletedFilterDropdownPill
+              label={completedMonthLabel}
+              onPress={() => setCompletedPickerOpen("month")}
+            />
+          </View>
+        )}
 
-            {group.rides.map((ride) => {
+        {showCompleted &&
+          filteredCompleted.map((ride) => {
               const date    = new Date(ride.createdAt);
               const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -761,44 +1164,23 @@ export default function MyRidesScreen() {
 
                   <View style={[styles.rideHeader, { marginTop: 12 }]}>
                     <StatusBadge status="completed" />
-                    <Text style={[styles.rideDate, { color: LIST_TEXT_STRONG }]}>{dateStr} · {timeStr}</Text>
+                    <Text style={[styles.rideDate, { color: colors.mutedForeground }]}>{dateStr} · {timeStr}</Text>
                   </View>
 
-                  <View style={styles.routeRow}>
-                    <View style={styles.routeDots}>
-                      <View style={[styles.dotFilled, { backgroundColor: "#111" }]} />
-                      <View style={[styles.routeLine, { backgroundColor: "#6B7280" }]} />
-                      <View style={[styles.dotOutline, { borderColor: colors.primary }]} />
-                    </View>
-                    <View style={styles.routeLabels}>
-                      <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
-                        {normalizeAddressDisplay(ride.origin)?.split(",")[0] ?? "Unbekannt"}
-                      </Text>
-                      <Text style={[styles.routeLabel, { color: colors.foreground }]} numberOfLines={1}>
-                        {normalizeAddressDisplay(ride.destination).split(",")[0]}
-                      </Text>
-                    </View>
-                  </View>
+                  <RideRouteStops
+                    from={formatRideAddress(ride.origin)}
+                    to={formatRideAddress(ride.destination)}
+                  />
 
-                  <View style={[styles.rideFooter, { borderTopColor: LIST_FRAME_BORDER }]}>
-                    <View style={styles.footerItem}>
-                      <Feather name="map" size={13} color={LIST_TEXT_STRONG} />
-                      <Text style={[styles.footerText, { color: LIST_TEXT_STRONG }]}>{ride.distanceKm} km</Text>
-                    </View>
-                    <View style={styles.footerItem}>
-                      <Feather name="clock" size={13} color={LIST_TEXT_STRONG} />
-                      <Text style={[styles.footerText, { color: LIST_TEXT_STRONG }]}>{Math.round(ride.distanceKm * 3)} Min.</Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={[styles.ridePrice, { color: colors.foreground }]}>{formatEuro(ride.totalFare)}</Text>
-                      {ride.estimatedFare != null &&
-                      Math.abs(ride.estimatedFare - ride.totalFare) > 0.005 ? (
-                        <Text style={[styles.footerText, { color: LIST_TEXT_STRONG, fontSize: rf(11), marginTop: 2 }]}>
-                          Schätzung war {formatEuro(ride.estimatedFare)}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
+                  <RideMetaStrip
+                    items={[
+                      { value: `${ride.distanceKm} km` },
+                      { value: `ca. ${Math.round(ride.distanceKm * 3)} Min.` },
+                      { value: vehicleLabelFromType(ride.vehicleType) },
+                      { value: PAYMENT_LABELS[ride.paymentMethod] },
+                      { value: formatEuro(ride.totalFare) },
+                    ]}
+                  />
 
                   {/* Aktionen: Quittung + Hilfe */}
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
@@ -825,105 +1207,43 @@ export default function MyRidesScreen() {
                   </View>
                 </Pressable>
               );
-            })}
-          </View>
-        ))}
+          })}
+
+        {showCompleted && completed.length > 0 && filteredCompleted.length === 0 && (
+          <Text style={[styles.monthFilterEmpty, { color: colors.mutedForeground }]}>
+            Keine Fahrten für diese Auswahl.
+          </Text>
+        )}
 
         {/* ── Stornierte Fahrten ── */}
         {showCancelled && cancelled.length > 0 && (
           <>
             {cancelled.map((ride) => {
-              const date    = new Date(ride.createdAt);
-              const dateStr = date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+              const date = new Date(ride.createdAt);
+              const dateStr = date.toLocaleDateString("de-DE", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              });
               const timeStr = date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-              const byDriver = ride.cancelledBy === "driver";
-              const bySystem = ride.cancelledBy === "system" || ride.status === "cancelled_by_system";
-              const hasSched =
-                ride.scheduledAt != null &&
-                (ride.scheduledAt instanceof Date
-                  ? Number.isFinite(ride.scheduledAt.getTime())
-                  : String(ride.scheduledAt).trim().length > 0);
-              const reservationUnfulfilled =
-                hasSched && (ride.status === "expired" || ride.status === "rejected");
-              const noticeTitle = bySystem
-                ? CUSTOMER_RIDE_STATUS_CANCELLED_BY_SYSTEM
-                : reservationUnfulfilled
-                  ? CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED
-                  : byDriver
-                    ? "Vom Fahrer abgelehnt"
-                    : "Von dir storniert";
-              const noticeStrong = byDriver || reservationUnfulfilled;
-              const fromMain = normalizeAddressDisplay(ride.from).split(",")[0]?.trim() ?? normalizeAddressDisplay(ride.from);
-              const toMain = normalizeAddressDisplay(ride.to).split(",")[0]?.trim() ?? normalizeAddressDisplay(ride.to);
+              const fromAddr = formatRideAddress(ride.from);
+              const toAddr = formatRideAddress(ride.to);
+              const cancelledHint = cancelledByHintText(ride);
               return (
                 <View
                   key={ride.id}
                   style={[styles.cancelledRideCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}
                 >
-                  <View style={styles.cancelledHeaderRow}>
-                    <StatusBadge status={ride.status} scheduledAt={ride.scheduledAt} />
-                    <View style={styles.cancelledWhenRow}>
-                      <Feather name="calendar" size={14} color={LIST_TEXT_STRONG} />
-                      <Text style={[styles.cancelledWhenText, { color: LIST_TEXT_STRONG }]}>{dateStr}</Text>
-                      <Text style={[styles.cancelledWhenSep, { color: LIST_TEXT_STRONG }]}>|</Text>
-                      <Feather name="clock" size={14} color={LIST_TEXT_STRONG} />
-                      <Text style={[styles.cancelledWhenText, { color: LIST_TEXT_STRONG }]}>{timeStr}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.cancelledRouteWrap}>
-                    <View style={styles.cancelledRouteDotsCol}>
-                      <View style={styles.cancelledDotOrigin} />
-                      <View style={styles.cancelledRouteConnector} />
-                      <View style={[styles.cancelledDotDest, { borderColor: LIST_TEXT_STRONG }]} />
-                    </View>
-                    <View style={styles.cancelledRouteLabelsCol}>
-                      <View>
-                        <Text style={[styles.cancelledAddrMain, { color: colors.foreground }]} numberOfLines={2}>
-                          {fromMain}
-                        </Text>
-                        <Text style={[styles.cancelledAddrSub, { color: LIST_TEXT_STRONG }]}>Abholort</Text>
-                      </View>
-                      <View>
-                        <Text style={[styles.cancelledAddrMain, { color: colors.foreground }]} numberOfLines={2}>
-                          {toMain}
-                        </Text>
-                        <Text style={[styles.cancelledAddrSub, { color: LIST_TEXT_STRONG }]}>Zielort</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.cancelledNotice,
-                      {
-                        backgroundColor: noticeStrong ? "#FEF2F2" : "#FFF7ED",
-                        borderColor: noticeStrong ? "#FECACA" : "#FDBA74",
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name="information"
-                      size={16}
-                      color={noticeStrong ? "#EF4444" : "#EA580C"}
-                    />
-                    <Text
-                      style={[
-                        styles.cancelledNoticeTitle,
-                        { color: noticeStrong ? "#B91C1C" : "#C2410C" },
-                      ]}
-                    >
-                      {noticeTitle}
+                  <Text style={[styles.cancelledWhenText, { color: colors.mutedForeground }]}>
+                    {dateStr} · {timeStr} Uhr
+                  </Text>
+                  <RideRouteStops from={fromAddr} to={toAddr} />
+                  <View style={styles.cancelledByHintRow}>
+                    <Feather name="info" size={rs(14)} color="#DC2626" />
+                    <Text style={styles.cancelledByHint} numberOfLines={2}>
+                      {cancelledHint}
                     </Text>
                   </View>
-
-                  <Pressable
-                    style={styles.cancelledHelpSolid}
-                    onPress={() => openRideDetail(ride.id, { focusSupport: true })}
-                  >
-                    <MaterialCommunityIcons name="headset" size={17} color="#FFFFFF" />
-                    <Text style={styles.cancelledHelpSolidText}>Hilfe</Text>
-                  </Pressable>
                 </View>
               );
             })}
@@ -938,7 +1258,7 @@ export default function MyRidesScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               {(activeTab as string) === "aktiv"         ? "Keine aktiven Fahrten"     :
-               (activeTab as string) === "reservierungen" ? "Keine Reservierungen" :
+               (activeTab as string) === "reservierungen" ? "Keine Buchungen" :
                (activeTab as string) === "abgeschlossen" ? "Noch keine Fahrten"        :
                (activeTab as string) === "storniert"     ? "Keine stornierten Fahrten" :
                "Noch keine Fahrten"}
@@ -958,6 +1278,27 @@ export default function MyRidesScreen() {
         )}
 
       </ScrollView>
+
+      <Modal
+        visible={completedPickerOpen !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCompletedPickerOpen(null)}
+      >
+        {completedPickerOpen ? (
+          <CompletedDateFilterSheet
+            kind={completedPickerOpen}
+            yearOptions={completedYearOptions}
+            monthOptions={completedMonthOptions}
+            selectedYear={completedYearKey}
+            selectedMonth={completedMonthKey}
+            bottomInset={insets.bottom}
+            onClose={() => setCompletedPickerOpen(null)}
+            onSelectYear={pickCompletedYear}
+            onSelectMonth={pickCompletedMonth}
+          />
+        ) : null}
+      </Modal>
 
       <Modal visible={driverNoteModal} transparent animationType="fade" onRequestClose={() => setDriverNoteModal(false)}>
         <View style={styles.noteModalBackdrop}>
@@ -1034,12 +1375,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: rs(5),
-    minHeight: rs(30),
-    paddingHorizontal: rs(8),
+    minHeight: rs(32),
+    paddingHorizontal: rs(9),
     paddingVertical: rs(5),
-    borderRadius: rs(14),
+    borderRadius: rs(15),
   },
-  tabText:         { fontSize: rf(13), fontFamily: "Inter_500Medium" },
+  tabText:         { fontSize: rf(13), lineHeight: rf(17), fontFamily: "Inter_500Medium" },
   tabBadge: {
     minWidth: rs(19),
     height: rs(19),
@@ -1048,103 +1389,233 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tabBadgeText:    { fontSize: rf(10), fontFamily: "Inter_700Bold" },
+  tabBadgeText:    { fontSize: rf(10), fontFamily: "Inter_700Bold", lineHeight: rf(13) },
 
-  sectionHeader:   { flexDirection: "row", alignItems: "center", gap: rs(8), marginTop: rs(4), marginBottom: -2 },
-  sectionDot:      { width: rs(8), height: rs(8), borderRadius: rs(4) },
-  sectionTitle:    { fontSize: rf(15), fontFamily: "Inter_700Bold" },
+  completedDropdownRow: {
+    flexDirection: "row",
+    gap: rs(6),
+    marginBottom: 0,
+  },
+  completedDropdownPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(4),
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(5),
+    minHeight: rs(30),
+    borderRadius: rs(999),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+  },
+  completedDropdownText: {
+    flex: 1,
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    color: "#111827",
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.45)",
+    justifyContent: "flex-end",
+  },
+  pickerSheetModern: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: rs(22),
+    borderTopRightRadius: rs(22),
+    paddingTop: rs(8),
+    paddingHorizontal: rs(16),
+    maxHeight: "52%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  pickerHandle: {
+    alignSelf: "center",
+    width: rs(40),
+    height: rs(4),
+    borderRadius: rs(2),
+    backgroundColor: "#D1D5DB",
+    marginBottom: rs(12),
+  },
+  pickerSheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(10),
+    marginBottom: rs(14),
+  },
+  pickerSheetTitle: {
+    fontSize: rf(17),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  pickerSheetSub: {
+    fontSize: rf(12),
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    marginTop: rs(2),
+  },
+  pickerCloseBtn: {
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerChipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: rs(8),
+    paddingBottom: rs(4),
+  },
+  pickerChip: {
+    minWidth: "30%",
+    flexGrow: 1,
+    flexBasis: "30%",
+    paddingVertical: rs(12),
+    paddingHorizontal: rs(8),
+    borderRadius: rs(14),
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerChipWide: {
+    flexBasis: "100%",
+    minWidth: "100%",
+  },
+  pickerChipActive: {
+    backgroundColor: "#EF1D26",
+    shadowColor: "#EF1D26",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  pickerChipText: {
+    fontSize: rf(14),
+    fontFamily: "Inter_600SemiBold",
+    color: "#374151",
+  },
+  pickerChipTextActive: {
+    color: "#FFFFFF",
+  },
+  monthFilterEmpty: {
+    ...accountSheetSecondaryLabel,
+    textAlign: "center",
+    paddingVertical: rs(24),
+  },
 
   activeCard:      { borderRadius: rs(16), borderWidth: 1, padding: rs(16), gap: rs(12) },
   rideCard:        { borderRadius: rs(16), borderWidth: 1, padding: rs(16), gap: rs(12) },
   rideHeader:      { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   statusBadge:     { flexDirection: "row", alignItems: "center", paddingHorizontal: rs(10), paddingVertical: rs(4), borderRadius: rs(8) },
-  statusText:      { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-  rideDate:        { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-
-  routeRow:        { flexDirection: "row", gap: rs(12), alignItems: "center" },
-  routeDots:       { alignItems: "center", gap: rs(3) },
-  dotFilled:       { width: rs(10), height: rs(10), borderRadius: rs(5) },
-  routeLine:       { width: 2, height: rs(20) },
-  dotOutline:      { width: rs(10), height: rs(10), borderRadius: rs(5), borderWidth: 2, backgroundColor: "transparent" },
-  routeLabels:     { flex: 1, gap: rs(16) },
-  compactInfoBlock: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: rs(8),
-    paddingHorizontal: rs(9),
-    paddingVertical: rs(5),
-    gap: rs(8),
-  },
-  compactInfoDivider: { width: 1, height: rs(14), opacity: 0.6 },
-  routeLabel:      { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
-
-  cancelledRideCard: {
-    borderRadius: rs(16),
-    borderWidth: 3,
-    padding: rs(16),
-    gap: rs(14),
-    marginBottom: rs(4),
-  },
-  cancelledHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: rs(8),
-  },
-  cancelledWhenRow: { flexDirection: "row", alignItems: "center", gap: rs(6), flexShrink: 1 },
-  cancelledWhenText: { fontSize: rf(12), fontFamily: "Inter_700Bold" },
-  cancelledWhenSep: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", opacity: 0.45 },
-  cancelledRouteWrap: { flexDirection: "row", gap: rs(12), alignItems: "stretch" },
-  cancelledRouteDotsCol: { width: rs(14), alignItems: "center", paddingTop: rs(4) },
-  cancelledDotOrigin: {
-    width: rs(12),
-    height: rs(12),
-    borderRadius: rs(6),
-    backgroundColor: "#DC2626",
-  },
-  cancelledRouteConnector: {
-    width: rs(2),
-    flex: 1,
-    minHeight: rs(22),
-    backgroundColor: "#D1D5DB",
-    marginVertical: rs(4),
-  },
-  cancelledDotDest: {
-    width: rs(12),
-    height: rs(12),
-    borderRadius: rs(6),
-    borderWidth: rs(2),
-    backgroundColor: "#FFFFFF",
-  },
-  cancelledRouteLabelsCol: { flex: 1, gap: rs(20) },
-  cancelledAddrMain: { fontSize: rf(15), fontFamily: "Inter_700Bold", lineHeight: rf(20) },
-  cancelledAddrSub: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", marginTop: rs(4) },
-  cancelledNotice: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(6),
-    paddingVertical: rs(7),
-    paddingHorizontal: rs(10),
-    borderRadius: rs(10),
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  cancelledNoticeTitle: { flex: 1, fontSize: rf(12), fontFamily: "Inter_700Bold" },
-  cancelledHelpSolid: {
-    flexDirection: "row",
+  statusBadgeSearching: { backgroundColor: "#FEF3C7" },
+  statusBadgeSearchingText: { color: "#D97706" },
+  statusBadgeDriverFound: { backgroundColor: "#DCFCE7" },
+  statusBadgeDriverFoundText: { color: "#16A34A" },
+  statusBadgeIcon: { marginRight: rs(5) },
+  searchingSpinnerRing: {
+    width: rs(11),
+    height: rs(11),
+    marginRight: rs(7),
     alignItems: "center",
     justifyContent: "center",
-    gap: rs(6),
-    paddingVertical: rs(10),
-    borderRadius: rs(10),
-    backgroundColor: "#DC2626",
   },
-  cancelledHelpSolidText: { fontSize: rf(13), fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  searchingSpinnerArc: {
+    width: rs(9),
+    height: rs(9),
+    borderRadius: rs(5),
+    borderWidth: 1.5,
+    borderColor: "#FCD34D",
+    borderTopColor: "#D97706",
+    borderRightColor: "#D97706",
+    borderBottomColor: "transparent",
+    borderLeftColor: "transparent",
+  },
+  statusText:      { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
+  rideDate:        accountSheetSecondaryLabel,
 
-  rideFooter:      { flexDirection: "row", alignItems: "center", borderTopWidth: 1, paddingTop: rs(10), gap: rs(12) },
-  footerItem:      { flexDirection: "row", alignItems: "center", gap: rs(5) },
-  footerText:      { fontSize: rf(12), fontFamily: "Inter_600SemiBold" },
-  ridePrice:       { marginLeft: "auto", fontSize: rf(18), fontFamily: "Inter_700Bold" },
+  routeStops: { gap: 0 },
+  routeStopRow: { flexDirection: "row", gap: rs(12) },
+  routeStopRailCol: { width: rs(18), alignItems: "center" },
+  routeDotStart: {
+    width: rs(10),
+    height: rs(10),
+    borderRadius: rs(5),
+    backgroundColor: "#111827",
+    marginTop: rs(3),
+  },
+  routeDotEnd: {
+    width: rs(10),
+    height: rs(10),
+    borderRadius: rs(5),
+    borderWidth: 2,
+    backgroundColor: "transparent",
+    marginTop: rs(3),
+  },
+  routeRailLine: { width: 2, flex: 1, minHeight: rs(24), marginVertical: rs(4) },
+  routeStopContent: { flex: 1, gap: rs(2), paddingBottom: rs(12) },
+  routeStopContentLast: { paddingBottom: 0 },
+  routeStopPlace: accountSheetPrimaryLabel,
+  routeStopMeta: accountSheetSecondaryLabel,
+
+  metaStrip: {
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    alignItems: "center",
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(7),
+    gap: 0,
+  },
+  metaStripItem: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    paddingHorizontal: rs(3),
+    paddingVertical: rs(2),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  metaStripText: {
+    ...accountSheetPrimaryLabel,
+    fontSize: rf(12),
+    lineHeight: rf(16),
+    textAlign: "center",
+  },
+  metaStripDivider: {
+    width: 1,
+    height: rs(12),
+    opacity: 0.55,
+    flexShrink: 0,
+  },
+
+  cancelledRideCard: {
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(12),
+    gap: rs(10),
+    marginBottom: rs(4),
+  },
+  cancelledWhenText: accountSheetSecondaryLabel,
+  cancelledByHintRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(6),
+    marginTop: rs(4),
+  },
+  cancelledByHint: {
+    flex: 1,
+    ...accountSheetSecondaryLabel,
+    color: "#DC2626",
+  },
+  rideAddressSub: accountSheetSecondaryLabel,
 
   payerLine: {
     flexDirection: "row",
@@ -1155,8 +1626,15 @@ const styles = StyleSheet.create({
     borderRadius: rs(9),
     borderWidth: 1,
   },
-  payerLineTitle: { fontSize: rf(11), fontFamily: "Inter_600SemiBold" },
-  payerLineSub: { fontSize: rf(10.5), fontFamily: "Inter_600SemiBold", marginTop: rs(1), lineHeight: rf(14) },
+  payerLineTitle: {
+    ...accountSheetSecondaryLabel,
+    fontSize: rf(11),
+    fontFamily: "Inter_500Medium",
+  },
+  payerLineSub: {
+    ...accountSheetPrimaryLabel,
+    marginTop: rs(2),
+  },
 
   driverHint:      { flexDirection: "row", alignItems: "center", gap: rs(8), padding: rs(10), borderRadius: rs(10), borderWidth: 1 },
   driverHintText:  { fontSize: rf(13), fontFamily: "Inter_600SemiBold" },
