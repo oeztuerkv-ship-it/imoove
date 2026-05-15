@@ -27,7 +27,7 @@ const colors = {
     border: "#C6C6C8",
     input: "#F2F2F7",
 
-    surface: "#FFFFFF",
+    surface: "#F2F2F7",
     surfaceElevated: "#F2F2F7",
     success: "#34C759",
   },
