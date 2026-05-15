@@ -2868,7 +2868,7 @@ const styles = StyleSheet.create({
     borderRadius: rs(22),
     backgroundColor: onrodaTheme.colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: onrodaTheme.colors.border,
+    borderColor: "#A0A0A5",
     shadowColor: onrodaTheme.colors.text,
     shadowOffset: { width: 0, height: rs(10) },
     shadowOpacity: 0.06,
