@@ -676,6 +676,24 @@ function CompletedDateFilterSheet({
   );
 }
 
+/** Notiz bereits serverseitig / in Buchung — für dauerhaften grünen Haken neben „Notiz an Fahrer“. */
+function rideHasPersistedDriverNote(req: RideRequest): boolean {
+  const fromA11y = (req.accessibilityOptions?.driverNote ?? "").trim();
+  if (fromA11y.length > 0) return true;
+  const meta = req.partnerBookingMeta as Record<string, unknown> | null | undefined;
+  const raw = meta?.customer_driver_note;
+  const fromMeta = typeof raw === "string" ? raw.trim() : "";
+  return fromMeta.length > 0;
+}
+
+function rideDriverNoteDraftText(req: RideRequest): string {
+  const fromA11y = (req.accessibilityOptions?.driverNote ?? "").trim();
+  if (fromA11y.length > 0) return String(req.accessibilityOptions?.driverNote ?? "").trim();
+  const meta = req.partnerBookingMeta as Record<string, unknown> | null | undefined;
+  const raw = meta?.customer_driver_note;
+  return typeof raw === "string" ? raw.trim() : "";
+}
+
 export default function MyRidesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -683,6 +701,8 @@ export default function MyRidesScreen() {
   const [driverNoteModal, setDriverNoteModal] = useState(false);
   const [driverNoteRideId, setDriverNoteRideId] = useState<string | null>(null);
   const [driverNoteDraft, setDriverNoteDraft] = useState("");
+  const [driverNoteSavedVisible, setDriverNoteSavedVisible] = useState(false);
+  const driverNoteSaveBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const { history } = useRide();
@@ -865,6 +885,12 @@ export default function MyRidesScreen() {
   }, [completedMonthKey]);
 
   React.useEffect(() => {
+    return () => {
+      if (driverNoteSaveBannerTimerRef.current) clearTimeout(driverNoteSaveBannerTimerRef.current);
+    };
+  }, []);
+
+  React.useEffect(() => {
     if (completed.length === 0) return;
     if (!completedFilterInitRef.current) {
       completedFilterInitRef.current = true;
@@ -926,6 +952,15 @@ export default function MyRidesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
       >
+        {driverNoteSavedVisible ? (
+          <View style={styles.noteSavedBanner}>
+            <Feather name="check-circle" size={rs(18)} color="#16A34A" />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.noteSavedBannerTitle}>Notiz gespeichert</Text>
+              <Text style={styles.noteSavedBannerSub}>Der Fahrer sieht die aktualisierte Notiz bei dieser Fahrt.</Text>
+            </View>
+          </View>
+        ) : null}
         {/* ── Filter Tabs (direkt unter Kopfzeile wie Abstand Geldbörse → erster Inhalt) ── */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {TABS.map((tab) => {
@@ -1069,15 +1104,26 @@ export default function MyRidesScreen() {
                   {isReservation && (
                     <View style={styles.actionRow}>
                       <Pressable
-                        style={[styles.rideSupportRowCompact, { borderColor: LIST_FRAME_BORDER, flex: 1 }]}
+                        style={[
+                          styles.rideSupportRowCompact,
+                          { borderColor: LIST_FRAME_BORDER, flex: 1, justifyContent: "flex-start" },
+                        ]}
                         onPress={() => {
                           setDriverNoteRideId(req.id);
-                          setDriverNoteDraft(req.accessibilityOptions?.driverNote ?? "");
+                          setDriverNoteDraft(rideDriverNoteDraftText(req));
                           setDriverNoteModal(true);
                         }}
                       >
                         <Feather name="message-square" size={15} color={colors.foreground} />
-                        <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+                        <Text
+                          style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]}
+                          numberOfLines={1}
+                        >
+                          Notiz an Fahrer
+                        </Text>
+                        {rideHasPersistedDriverNote(req) ? (
+                          <Feather name="check-circle" size={16} color="#16A34A" accessibilityLabel="Notiz gespeichert" />
+                        ) : null}
                       </Pressable>
                       <Pressable
                         style={[styles.pdfBtn, { flex: 1 }]}
@@ -1303,7 +1349,12 @@ export default function MyRidesScreen() {
       <Modal visible={driverNoteModal} transparent animationType="fade" onRequestClose={() => setDriverNoteModal(false)}>
         <View style={styles.noteModalBackdrop}>
           <View style={[styles.noteModalCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}>
-            <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+            <View style={styles.noteModalTitleRow}>
+              <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+              {driverNoteDraft.trim().length > 0 ? (
+                <Feather name="check-circle" size={20} color="#16A34A" accessibilityLabel="Notiz vorhanden" />
+              ) : null}
+            </View>
             <Text style={[styles.noteModalSub, { color: LIST_TEXT_STRONG }]}>
               Diese Notiz sieht der Fahrer bei der Reservierung.
             </Text>
@@ -1329,6 +1380,15 @@ export default function MyRidesScreen() {
                   if (!driverNoteRideId) return;
                   void updateRequestDriverNote(driverNoteRideId, driverNoteDraft)
                     .then(() => {
+                      if (Platform.OS !== "web") {
+                        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      }
+                      setDriverNoteSavedVisible(true);
+                      if (driverNoteSaveBannerTimerRef.current) clearTimeout(driverNoteSaveBannerTimerRef.current);
+                      driverNoteSaveBannerTimerRef.current = setTimeout(() => {
+                        setDriverNoteSavedVisible(false);
+                        driverNoteSaveBannerTimerRef.current = null;
+                      }, 3200);
                       setDriverNoteModal(false);
                       setDriverNoteRideId(null);
                     })
@@ -1362,6 +1422,19 @@ const styles = StyleSheet.create({
   backBtn:         { width: rs(36), height: rs(36), justifyContent: "center" },
   headerTitle:     { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
   scroll:          { paddingHorizontal: rs(16), paddingTop: rs(20), gap: rs(12) },
+
+  noteSavedBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(10),
+    padding: rs(12),
+    borderRadius: rs(12),
+    borderWidth: 1,
+    backgroundColor: "#ECFDF5",
+    borderColor: "#86EFAC",
+  },
+  noteSavedBannerTitle: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", color: "#166534" },
+  noteSavedBannerSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", lineHeight: rf(17), marginTop: rs(2), color: "#15803D" },
 
   statsRow:        { flexDirection: "row", gap: rs(10) },
   statCard:        { flex: 1, borderRadius: rs(14), borderWidth: 2, padding: rs(12), alignItems: "center", gap: rs(6) },
@@ -1700,6 +1773,12 @@ const styles = StyleSheet.create({
     borderRadius: rs(18),
     borderWidth: 1,
     padding: rs(16),
+  },
+  noteModalTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    flexWrap: "wrap",
   },
   noteModalTitle: { fontSize: rf(18), fontFamily: "Inter_700Bold" },
   noteModalSub: { fontSize: rf(13), fontFamily: "Inter_500Medium", marginTop: rs(6), lineHeight: rf(18) },

@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -139,6 +140,10 @@ interface RideContextValue extends RideState {
   cancelRide: () => void;
   completeRide: (opts?: CompleteRideOptions) => void;
   resetRide: () => void;
+  /** Ziel für Startseite nach Navigation (Ref, kein URL-Param) — z. B. Orte-Detail „Taxi hierhin“. */
+  setPendingDestination: (loc: GeoLocation) => void;
+  peekPendingDestination: () => GeoLocation | null;
+  consumePendingDestination: () => GeoLocation | null;
   loadHistory: () => Promise<void>;
 }
 
@@ -270,6 +275,21 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
   const [routeError, setRouteError] = useState<string | null>(null);
   const [history, setHistory] = useState<RideHistoryEntry[]>([]);
   const [wheelchairSelectCompleted, setWheelchairSelectCompleted] = useState(false);
+  const pendingDestinationRef = useRef<GeoLocation | null>(null);
+
+  const setPendingDestination = useCallback((loc: GeoLocation) => {
+    pendingDestinationRef.current = loc;
+  }, []);
+
+  const peekPendingDestination = useCallback((): GeoLocation | null => {
+    return pendingDestinationRef.current;
+  }, []);
+
+  const consumePendingDestination = useCallback((): GeoLocation | null => {
+    const pending = pendingDestinationRef.current;
+    pendingDestinationRef.current = null;
+    return pending;
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(RESET_KEY).then((done) => {
@@ -448,7 +468,9 @@ function RideProviderInner({ children }: { children: React.ReactNode }) {
       route, fareBreakdown, finalFare, rideStatus, isLoadingRoute, routeError, history,
       wheelchairSelectCompleted, setWheelchairSelectCompleted,
       setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod, setIsExempted, setScheduledTime, setCustomerDriverNote,
-      fetchRoute, startRide, cancelRide, completeRide, resetRide, loadHistory,
+      fetchRoute, startRide, cancelRide, completeRide, resetRide,
+      setPendingDestination, peekPendingDestination, consumePendingDestination,
+      loadHistory,
     }}>
       {children}
     </RideContext.Provider>

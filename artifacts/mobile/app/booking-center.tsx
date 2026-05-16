@@ -1,12 +1,18 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams, usePathname, useSegments, type Href } from "expo-router";
 import React, { useEffect } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import {
+  accountSheetHeaderTitle,
+  accountSheetPrimaryLabel,
+  accountSheetSecondaryLabel,
+} from "@/constants/accountSheetTypography";
+import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
-import { rf, rs } from "@/utils/scale";
+import { rs } from "@/utils/scale";
 
 type BookingCard = {
   key: string;
@@ -20,7 +26,8 @@ type BookingCard = {
 export default function BookingCenterScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const topPad = (typeof window !== "undefined" ? 67 : insets.top) + 10;
+  const isWeb = Platform.OS === "web";
+  const topPad = isWeb ? 44 : insets.top;
 
   const pathname = usePathname();
   const segments = useSegments();
@@ -107,31 +114,33 @@ export default function BookingCenterScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad, borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Buchungszentrale</Text>
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Wähle den passenden Buchungsweg für deine Fahrt.
-        </Text>
+      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+        <View style={{ width: 36 }} />
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Buchungszentrale</Text>
+        <View style={{ width: 36 }} />
       </View>
-      <ScrollView contentContainerStyle={{ padding: rs(16), gap: rs(12), paddingBottom: rs(110) }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
+      >
         {cards.map((c) => (
           <Pressable
             key={c.key}
             onPress={c.onPress}
-            style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}
           >
-            <View style={[styles.iconWrap, { backgroundColor: `${c.color}20` }]}>
-              <Feather name={c.icon} size={20} color={c.color} />
+            <View style={[styles.iconWrap, { backgroundColor: `${c.color}14` }]}>
+              <Feather name={c.icon} size={16} color={c.color} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>{c.title}</Text>
               <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>{c.subtitle}</Text>
             </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
           </Pressable>
         ))}
         <View style={[styles.notice, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
-          <MaterialCommunityIcons name="shield-check-outline" size={18} color="#166534" />
+          <MaterialCommunityIcons name="shield-check-outline" size={16} color="#166534" />
           <Text style={styles.noticeText}>
             ONRODA speichert nur fahrtrelevante Daten für Disposition, Nachweis und Abrechnung.
           </Text>
@@ -144,27 +153,46 @@ export default function BookingCenterScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { paddingHorizontal: rs(18), paddingBottom: rs(12), borderBottomWidth: StyleSheet.hairlineWidth },
-  title: { fontSize: rf(22), fontFamily: "Inter_700Bold" },
-  sub: { fontSize: rf(13), fontFamily: "Inter_400Regular", marginTop: rs(4) },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rs(8),
+    paddingBottom: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerTitle: accountSheetHeaderTitle,
+  scroll: {
+    paddingHorizontal: rs(16),
+    paddingTop: rs(20),
+    gap: rs(10),
+  },
   card: {
-    borderRadius: rs(14),
-    borderWidth: 1,
-    padding: rs(14),
+    borderRadius: rs(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: rs(14),
+    paddingHorizontal: rs(14),
     flexDirection: "row",
     alignItems: "center",
     gap: rs(12),
   },
   iconWrap: {
-    width: rs(40),
-    height: rs(40),
-    borderRadius: rs(12),
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(9),
     alignItems: "center",
     justifyContent: "center",
   },
-  cardTitle: { fontSize: rf(15), fontFamily: "Inter_700Bold" },
-  cardSub: { fontSize: rf(12), fontFamily: "Inter_400Regular", marginTop: 2, lineHeight: rf(17) },
-  notice: { borderRadius: rs(12), borderWidth: 1, padding: rs(12), flexDirection: "row", gap: rs(10), alignItems: "flex-start" },
-  noticeText: { flex: 1, color: "#166534", fontSize: rf(12), fontFamily: "Inter_500Medium", lineHeight: rf(17) },
+  cardTitle: accountSheetPrimaryLabel,
+  cardSub: { ...accountSheetSecondaryLabel, marginTop: rs(2) },
+  notice: {
+    borderRadius: rs(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: rs(12),
+    flexDirection: "row",
+    gap: rs(10),
+    alignItems: "flex-start",
+  },
+  noticeText: { flex: 1, color: "#166534", ...accountSheetSecondaryLabel },
 });
 

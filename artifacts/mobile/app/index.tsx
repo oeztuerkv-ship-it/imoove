@@ -156,20 +156,8 @@ export default function HomeScreen() {
   const obBlockPad = isSmallScreen ? 14 : 20;
 
   const [isHomeFocused, setIsHomeFocused] = useState(true);
-  useFocusEffect(
-    useCallback(() => {
-      setIsHomeFocused(true);
-      setIsSearchActive(false);
-      setDestQuery("");
-      setDestResults([]);
-      setOriginQuery("");
-      setOriginResults([]);
-      setIsEditingOrigin(false);
-      setViaStops([]);
-      resetRide();
-      return () => setIsHomeFocused(false);
-    }, []),
-  );
+  /** Verhindert zweites useFocusEffect (Strict Mode / Re-Focus), das sonst frisch gesetztes Ziel wieder löscht. */
+  const homePendingDestinationGuardUntilRef = useRef(0);
   const { loading: driverLoading, isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
   const { profile, updateProfile, loginWithGoogle, registerLocalCustomer } = useUser();
 
@@ -178,7 +166,7 @@ export default function HomeScreen() {
     route, fareBreakdown, isLoadingRoute, routeError, scheduledTime,
     selectedServiceClass,
     setOrigin, setViaStops, setDestination, setSelectedVehicle, setSelectedServiceClass, setPaymentMethod,
-    setScheduledTime, fetchRoute, resetRide, history, setWheelchairSelectCompleted,
+    setScheduledTime, fetchRoute, resetRide, consumePendingDestination, history, setWheelchairSelectCompleted,
   } = useRide();
 
   useEffect(() => {
@@ -1133,6 +1121,34 @@ export default function HomeScreen() {
       void router.setParams({ closeSearch: undefined });
     }
   }, [closeSearchParam]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsHomeFocused(true);
+
+      if (Date.now() < homePendingDestinationGuardUntilRef.current) {
+        return () => setIsHomeFocused(false);
+      }
+
+      setIsSearchActive(false);
+      setDestQuery("");
+      setDestResults([]);
+      setOriginQuery("");
+      setOriginResults([]);
+      setIsEditingOrigin(false);
+      setViaStops([]);
+
+      const pendingDestination = consumePendingDestination();
+      resetRide();
+      if (pendingDestination) {
+        setDestination(pendingDestination);
+        homePendingDestinationGuardUntilRef.current = Date.now() + 500;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      return () => setIsHomeFocused(false);
+    }, [resetRide, consumePendingDestination, setDestination, setViaStops]),
+  );
 
   /** Sofortfahrt: nach useFocusEffect (setTimeout 0), damit die Suchmaske nicht sofort wieder zu gemacht wird. */
   useEffect(() => {

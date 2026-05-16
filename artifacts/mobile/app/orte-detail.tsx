@@ -15,8 +15,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useColors } from "@/hooks/useColors";
 import { useRide } from "@/context/RideContext";
+import { useColors } from "@/hooks/useColors";
 import { rf, rs } from "@/utils/scale";
 
 const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "";
@@ -46,7 +46,7 @@ export default function OrteDetailScreen() {
     katIcon: string;
   }>();
 
-  const { setDestination } = useRide();
+  const { setPendingDestination } = useRide();
   const [detail, setDetail] = useState<PlaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -100,14 +100,15 @@ export default function OrteDetailScreen() {
   };
 
   const handleTaxi = () => {
-    const addr = detail?.formatted_address ?? placeAddr;
+    const addr = detail?.formatted_address ?? String(placeAddr ?? "");
     const lat = detail?.geometry?.location?.lat ?? 0;
     const lng = detail?.geometry?.location?.lng ?? 0;
-    setDestination({
-      displayName: addr,
-      lat,
-      lon: lng,
-    });
+    if (!addr.trim() || !Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+      return;
+    }
+    const loc = { displayName: addr, lat, lon: lng };
+    /* Wie Zielwahl auf der Startseite: Context zuerst, dann Tab-Wechsel — kein URL-Param (Screen-Bug). */
+    setPendingDestination(loc);
     router.replace("/");
   };
 
@@ -144,19 +145,27 @@ export default function OrteDetailScreen() {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {/* Adresse */}
             <View style={styles.infoRow}>
-              <Feather name="map-pin" size={16} color={colors.mutedForeground} />
-              <Text style={[styles.infoText, { color: colors.foreground }]}>{detail.formatted_address}</Text>
-              <Pressable onPress={() => handleCopy(detail.formatted_address, "addr")} hitSlop={8}>
+              <Pressable style={styles.infoRowMain} onPress={() => void handleCopy(detail.formatted_address, "addr")}>
+                <Feather name="map-pin" size={16} color={colors.mutedForeground} />
+                <Text style={[styles.infoText, { color: colors.foreground }]}>{detail.formatted_address}</Text>
+              </Pressable>
+              <Pressable onPress={() => void handleCopy(detail.formatted_address, "addr")} hitSlop={8} style={styles.infoRowSide}>
                 <Feather name={copiedKey === "addr" ? "check" : "copy"} size={15} color={copiedKey === "addr" ? "#0F6E56" : colors.mutedForeground} />
               </Pressable>
             </View>
 
             {/* Telefon */}
             {detail.formatted_phone_number && (
-              <View style={[styles.infoRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: rs(10), marginTop: rs(10) }]}>
-                <Feather name="phone" size={16} color={colors.mutedForeground} />
-                <Text style={[styles.infoText, { color: "#185FA5" }]}>{detail.formatted_phone_number}</Text>
-                <Pressable onPress={() => handleCopy(detail.formatted_phone_number!, "phone")} hitSlop={8}>
+              <View style={[styles.infoRow, styles.infoRowDivider, { borderTopColor: colors.border }]}>
+                <Pressable style={styles.infoRowMain} onPress={handleCall}>
+                  <Feather name="phone" size={16} color={colors.mutedForeground} />
+                  <Text style={[styles.infoText, { color: "#185FA5" }]}>{detail.formatted_phone_number}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void handleCopy(detail.formatted_phone_number!, "phone")}
+                  hitSlop={8}
+                  style={styles.infoRowSide}
+                >
                   <Feather name={copiedKey === "phone" ? "check" : "copy"} size={15} color={copiedKey === "phone" ? "#0F6E56" : colors.mutedForeground} />
                 </Pressable>
               </View>
@@ -164,13 +173,16 @@ export default function OrteDetailScreen() {
 
             {/* Website */}
             {detail.website && (
-              <View style={[styles.infoRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: rs(10), marginTop: rs(10) }]}>
+              <Pressable
+                style={[styles.infoRow, styles.infoRowDivider, { borderTopColor: colors.border }]}
+                onPress={() => Linking.openURL(detail.website!)}
+              >
                 <Feather name="globe" size={16} color={colors.mutedForeground} />
-                <Text style={[styles.infoText, { color: "#185FA5" }, { flex: 1 }]} numberOfLines={1}>{detail.website}</Text>
-                <Pressable onPress={() => Linking.openURL(detail.website!)} hitSlop={8}>
-                  <Feather name="external-link" size={15} color={colors.mutedForeground} />
-                </Pressable>
-              </View>
+                <Text style={[styles.infoText, { color: "#185FA5" }]} numberOfLines={1}>
+                  {detail.website}
+                </Text>
+                <Feather name="external-link" size={15} color={colors.mutedForeground} />
+              </Pressable>
             )}
           </View>
 
@@ -220,7 +232,10 @@ const styles = StyleSheet.create({
   statusText: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   card: { borderRadius: rs(12), borderWidth: StyleSheet.hairlineWidth, padding: rs(14) },
   cardTitle: { fontSize: rf(14), fontFamily: "Inter_600SemiBold", marginBottom: rs(8) },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: rs(10) },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: rs(10), minHeight: rs(44), paddingVertical: rs(4) },
+  infoRowMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: rs(10), minHeight: rs(44) },
+  infoRowSide: { minWidth: rs(36), minHeight: rs(44), alignItems: "center", justifyContent: "center" },
+  infoRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(10), marginTop: rs(10) },
   infoText: { flex: 1, fontSize: rf(14), fontFamily: "Inter_400Regular" },
   hoursLine: { fontSize: rf(13), fontFamily: "Inter_400Regular", paddingVertical: rs(2) },
   actionsRow: { flexDirection: "row", gap: rs(10) },
