@@ -4,7 +4,10 @@ import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -44,6 +47,7 @@ export default function OrteDetailScreen() {
 
   const [detail, setDetail] = useState<PlaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -60,13 +64,16 @@ export default function OrteDetailScreen() {
     })();
   }, [placeId]);
 
-  const handleCopy = async (text: string) => {
+  const handleCopy = async (text: string, key: string) => {
     await Clipboard.setStringAsync(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
   };
 
   const handleCall = () => {
     if (detail?.formatted_phone_number) {
-      Linking.openURL(`tel:${detail.formatted_phone_number}`);
+      const phone = detail.formatted_phone_number.replace(/\s/g, "");
+      Linking.openURL(`tel:${phone}`);
     }
   };
 
@@ -74,7 +81,20 @@ export default function OrteDetailScreen() {
     const lat = detail?.geometry.location.lat;
     const lng = detail?.geometry.location.lng;
     const name = encodeURIComponent(detail?.name ?? "");
-    Linking.openURL(`maps://maps.google.com/maps?daddr=${lat},${lng}&q=${name}`);
+    const googleUrl = `comgooglemaps://?daddr=${lat},${lng}&q=${name}`;
+    const appleUrl = `maps://maps.apple.com/?daddr=${lat},${lng}&q=${name}`;
+    const googleWeb = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ["Abbrechen", "Google Maps", "Apple Maps"], cancelButtonIndex: 0 },
+        (idx) => {
+          if (idx === 1) Linking.openURL(googleUrl).catch(() => Linking.openURL(googleWeb));
+          if (idx === 2) Linking.openURL(appleUrl);
+        }
+      );
+    } else {
+      Linking.openURL(googleWeb);
+    }
   };
 
   const handleTaxi = () => {
@@ -117,8 +137,8 @@ export default function OrteDetailScreen() {
             <View style={styles.infoRow}>
               <Feather name="map-pin" size={16} color={colors.mutedForeground} />
               <Text style={[styles.infoText, { color: colors.foreground }]}>{detail.formatted_address}</Text>
-              <Pressable onPress={() => handleCopy(detail.formatted_address)} hitSlop={8}>
-                <Feather name="copy" size={15} color={colors.mutedForeground} />
+              <Pressable onPress={() => handleCopy(detail.formatted_address, "addr")} hitSlop={8}>
+                <Feather name={copiedKey === "addr" ? "check" : "copy"} size={15} color={copiedKey === "addr" ? "#0F6E56" : colors.mutedForeground} />
               </Pressable>
             </View>
 
@@ -127,8 +147,8 @@ export default function OrteDetailScreen() {
               <View style={[styles.infoRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: rs(10), marginTop: rs(10) }]}>
                 <Feather name="phone" size={16} color={colors.mutedForeground} />
                 <Text style={[styles.infoText, { color: "#185FA5" }]}>{detail.formatted_phone_number}</Text>
-                <Pressable onPress={() => handleCopy(detail.formatted_phone_number!)} hitSlop={8}>
-                  <Feather name="copy" size={15} color={colors.mutedForeground} />
+                <Pressable onPress={() => handleCopy(detail.formatted_phone_number!, "phone")} hitSlop={8}>
+                  <Feather name={copiedKey === "phone" ? "check" : "copy"} size={15} color={copiedKey === "phone" ? "#0F6E56" : colors.mutedForeground} />
                 </Pressable>
               </View>
             )}

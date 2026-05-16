@@ -142,7 +142,15 @@ export default function OrteScreen() {
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
-      setResults(data.results ?? []);
+      const places = (data.results ?? []) as PlaceResult[];
+      if (userLocation) {
+        places.sort((a, b) => {
+          const distA = a.geometry ? haversineKm(userLocation.lat, userLocation.lng, a.geometry.location.lat, a.geometry.location.lng) : 9999;
+          const distB = b.geometry ? haversineKm(userLocation.lat, userLocation.lng, b.geometry.location.lat, b.geometry.location.lng) : 9999;
+          return distA - distB;
+        });
+      }
+      setResults(places);
     } catch {
       setResults([]);
     } finally {
