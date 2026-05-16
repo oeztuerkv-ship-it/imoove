@@ -402,10 +402,12 @@ export default function HomeScreen() {
     search?: string;
     closeSearch?: string;
     openBooking?: string;
+    dest?: string;
   }>();
   const searchParam = params.search;
   const closeSearchParam = params.closeSearch;
   const openBookingParam = params.openBooking;
+  const destParam = params.dest;
 
   useEffect(() => {
     console.log(
@@ -453,6 +455,17 @@ export default function HomeScreen() {
   const [isSearchingOrigin, setIsSearchingOrigin] = useState(false);
   const originInputRef = useRef<TextInput>(null);
   const originDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!destParam) return;
+    const loc: GeoLocation = {
+      displayName: destParam,
+      lat: 0,
+      lon: 0,
+    };
+    setDestination(loc);
+    setIsSearchActive(false);
+  }, [destParam]);
 
   const [destQuery, setDestQuery] = useState("");
   const [destResults, setDestResults] = useState<GeoLocation[]>([]);
@@ -1195,7 +1208,7 @@ export default function HomeScreen() {
     (activeViaLeg.results.length > 0 || activeViaLeg.isSearching);
   const showFavoriteBlock =
     !isEditingOrigin && editingViaIndex === null && destResults.length === 0 && !isSearchingDest;
-  const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 70 : topPad + 12 + 46);
+  const mapEdgePaddingTop = Math.round(!destination ? topPad + 8 + 62 : topPad + 12 + 46);
   const mapEdgePaddingBottom = Math.round(
     destination
       ? Math.min(380, Math.max(260, screenHeight * 0.32 + TAB_HEIGHT))
@@ -1329,7 +1342,7 @@ export default function HomeScreen() {
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsSearchActive(true); }}
               >
                 <View style={[styles.miniSearchIconCircle, { backgroundColor: colors.primary }]}>
-                  <Feather name="search" size={21} color="#fff" />
+                  <Feather name="search" size={19} color="#fff" />
                 </View>
                 <Text style={styles.miniSearchPlaceholderText} numberOfLines={1}>
                   Ziel eingeben...
@@ -1346,7 +1359,7 @@ export default function HomeScreen() {
                 {gpsLoading ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Feather name="navigation" size={20} color={colors.primary} />
+                  <Feather name="navigation" size={19} color={colors.primary} />
                 )}
               </Pressable>
               <Pressable
@@ -1355,21 +1368,21 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Ziel suchen"
               >
-                <Feather name="chevron-right" size={22} color={HOME_SHEET_MUTED} />
+                <Feather name="chevron-right" size={20} color={HOME_SHEET_MUTED} />
               </Pressable>
             </View>
             <View style={styles.miniActionRow}>
               {preBookingOn ? (
                 <>
-                  <Pressable style={[styles.miniBtnPrimaryRed, styles.miniBtnPrimaryRedCompact, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
-                    <Feather name="calendar" size={17} color="#fff" />
-                    <Text style={[styles.miniBtnPrimaryRedText, styles.miniBtnPrimaryRedTextCompact]} numberOfLines={1}>
+                  <Pressable style={[styles.miniBtnSheetWhite, styles.miniBtnHalf]} onPress={goReserveNewBooking}>
+                    <Feather name="calendar" size={16} color={HOME_SHEET_TEXT} />
+                    <Text style={styles.miniBtnSheetWhiteText} numberOfLines={1}>
                       Reservieren
                     </Text>
                   </Pressable>
-                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnMedicalOutlineCompact, styles.miniBtnHalf]} onPress={goMedicalBooking}>
-                    <MaterialCommunityIcons name="medical-bag" size={18} color={HOME_MEDICAL_GREEN_DARK} />
-                    <Text style={[styles.miniBtnMedicalOutlineText, styles.miniBtnMedicalOutlineTextCompact]} numberOfLines={1}>
+                  <Pressable style={[styles.miniBtnSheetMedical, styles.miniBtnHalf]} onPress={goMedicalBooking}>
+                    <MaterialCommunityIcons name="medical-bag" size={17} color={HOME_MEDICAL_GREEN_DARK} />
+                    <Text style={styles.miniBtnSheetMedicalText} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
                   </Pressable>
@@ -1382,9 +1395,9 @@ export default function HomeScreen() {
                       Buchungszentrale
                     </Text>
                   </Pressable>
-                  <Pressable style={[styles.miniBtnMedicalOutline, styles.miniBtnMedicalOutlineCompact, styles.miniBtnHalf]} onPress={goMedicalBooking}>
-                    <MaterialCommunityIcons name="medical-bag" size={18} color={HOME_MEDICAL_GREEN_DARK} />
-                    <Text style={[styles.miniBtnMedicalOutlineText, styles.miniBtnMedicalOutlineTextCompact]} numberOfLines={1}>
+                  <Pressable style={[styles.miniBtnSheetMedical, styles.miniBtnHalf]} onPress={goMedicalBooking}>
+                    <MaterialCommunityIcons name="medical-bag" size={17} color={HOME_MEDICAL_GREEN_DARK} />
+                    <Text style={styles.miniBtnSheetMedicalText} numberOfLines={1}>
                       Krankenfahrt
                     </Text>
                   </Pressable>
@@ -2858,14 +2871,14 @@ const styles = StyleSheet.create({
   miniSearchPill: {
     marginHorizontal: BOTTOM_TAB_BAR_OUTER_PADDING_X,
     marginTop: rs(2),
-    marginBottom: rs(10),
+    marginBottom: rs(8),
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(8),
-    paddingLeft: rs(6),
-    paddingRight: rs(12),
-    paddingVertical: rs(8),
-    borderRadius: rs(22),
+    gap: rs(6),
+    paddingLeft: rs(4),
+    paddingRight: rs(8),
+    paddingVertical: rs(7),
+    borderRadius: rs(21),
     backgroundColor: onrodaTheme.colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#A0A0A5",
@@ -2879,39 +2892,76 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(12),
-    paddingVertical: rs(6),
-    paddingLeft: rs(10),
+    gap: rs(8),
+    paddingVertical: rs(5),
+    paddingLeft: rs(6),
     minWidth: 0,
   },
   miniGpsBtn: {
-    width: rs(40),
-    height: rs(40),
-    borderRadius: rs(20),
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
     alignItems: "center",
     justifyContent: "center",
   },
   miniSearchIconCircle: {
-    width: rs(36),
-    height: rs(36),
-    borderRadius: rs(18),
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(16),
     justifyContent: "center",
     alignItems: "center",
   },
   miniSearchPlaceholderText: {
     flex: 1,
-    fontSize: rf(16),
+    fontSize: rf(15),
+    lineHeight: rf(20),
     fontFamily: "Inter_400Regular",
     color: HOME_SHEET_MUTED,
   },
   miniActionRow: {
     flexDirection: "row",
-    gap: rs(10),
+    gap: rs(8),
     marginHorizontal: BOTTOM_TAB_BAR_OUTER_PADDING_X,
-    marginBottom: rs(14),
-    alignItems: "stretch",
+    marginBottom: rs(10),
+    alignItems: "center",
   },
   miniBtnHalf: { flex: 1, minWidth: 0 },
+  miniBtnSheetWhite: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(7),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(999),
+    backgroundColor: HOME_SHEET_PANEL,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HOME_SHEET_RIM,
+  },
+  miniBtnSheetWhiteText: {
+    fontSize: rf(14),
+    fontFamily: "Inter_600SemiBold",
+    color: HOME_SHEET_TEXT,
+    flexShrink: 1,
+  },
+  miniBtnSheetMedical: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(7),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(999),
+    backgroundColor: HOME_MEDICAL_SOFT_BG,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HOME_MEDICAL_GREEN,
+  },
+  miniBtnSheetMedicalText: {
+    fontSize: rf(14),
+    fontFamily: "Inter_600SemiBold",
+    color: HOME_MEDICAL_GREEN_DARK,
+    flexShrink: 1,
+  },
   miniBtnPrimaryRed: {
     flex: 1,
     flexDirection: "row",
