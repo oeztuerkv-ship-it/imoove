@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomTabBar } from "@/components/BottomTabBar";
+import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import { accountSheetHeaderTitle } from "@/constants/accountSheetTypography";
+import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
 import { rf, rs } from "@/utils/scale";
 
@@ -99,23 +102,40 @@ type PlaceResult = {
   place_id: string;
   name: string;
   vicinity: string;
-  distance?: number;
+  distanceKm?: number;
   opening_hours?: { open_now: boolean };
   types: string[];
   geometry?: { location: { lat: number; lng: number } };
 };
 
+const FALLBACK_CENTER = { lat: 48.7758, lng: 9.1829 };
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function withDistanceFrom(
+  places: PlaceResult[],
+  origin: { lat: number; lng: number },
+): PlaceResult[] {
+  return places
+    .map((p) => {
+      const g = p.geometry?.location;
+      const distanceKm = g != null ? haversineKm(origin.lat, origin.lng, g.lat, g.lng) : undefined;
+      return { ...p, distanceKm };
+    })
+    .sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
 }
 
 export default function OrteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const isWeb = Platform.OS === "web";
+  const topPad = isWeb ? 44 : insets.top;
   const [selectedKat, setSelectedKat] = useState<Kategorie | null>(null);
   const [selectedSub, setSelectedSub] = useState<string>("alle");
   const [search, setSearch] = useState("");
@@ -123,47 +143,62 @@ export default function OrteScreen() {
   const [loading, setLoading] = useState(false);
   const [notfallOnly, setNotfallOnly] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationReady, setLocationReady] = useState(false);
 
   React.useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      } finally {
+        setLocationReady(true);
+      }
     })();
   }, []);
 
   const searchPlaces = useCallback(async (kat: Kategorie, subKeyword: string, q: string) => {
+    if (!GOOGLE_PLACES_API_KEY) {
+      setResults([]);
+      return;
+    }
     setLoading(true);
     try {
       const keyword = q.trim() || subKeyword;
-      const lat = userLocation?.lat ?? 48.7758;
-      const lng = userLocation?.lng ?? 9.1829;
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
+      const origin = userLocation ?? FALLBACK_CENTER;
+      const { lat, lng } = origin;
+      const rankByDistance = userLocation != null;
+      const url = rankByDistance
+        ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&rankby=distance&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`
+        : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
       const places = (data.results ?? []) as PlaceResult[];
-      if (userLocation) {
-        places.sort((a, b) => {
-          const distA = a.geometry ? haversineKm(userLocation.lat, userLocation.lng, a.geometry.location.lat, a.geometry.location.lng) : 9999;
-          const distB = b.geometry ? haversineKm(userLocation.lat, userLocation.lng, b.geometry.location.lat, b.geometry.location.lng) : 9999;
-          return distA - distB;
-        });
-      }
-      setResults(places);
+      setResults(withDistanceFrom(places, origin));
     } catch {
       setResults([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userLocation]);
+
+  React.useEffect(() => {
+    if (!locationReady || !selectedKat) return;
+    const sub = selectedKat.subfilter?.find((s) => s.id === selectedSub);
+    const keyword = sub?.keyword ?? selectedKat.label;
+    searchPlaces(selectedKat, keyword, search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur neu laden wenn Standort bereit/wechselt
+  }, [locationReady, userLocation]);
 
   const selectKat = (kat: Kategorie) => {
     setSelectedKat(kat);
     setSelectedSub("alle");
     setSearch("");
     setResults([]);
-    searchPlaces(kat, kat.subfilter?.[0]?.keyword ?? kat.label, "");
+    if (locationReady) {
+      searchPlaces(kat, kat.subfilter?.[0]?.keyword ?? kat.label, "");
+    }
   };
 
   const selectSub = (sub: { id: string; keyword: string }) => {
@@ -192,11 +227,27 @@ export default function OrteScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: topPad + 8,
+            borderBottomColor: HOME_SHEET_RIM,
+            backgroundColor: HOME_SHEET_PANEL,
+          },
+        ]}
+      >
+        <View style={{ width: 36 }} />
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Orte</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabMainScreenScrollPaddingBottom(insets.bottom) }]}
+      >
 
         {/* Kategorien */}
         <View style={styles.katGrid}>
@@ -270,9 +321,9 @@ export default function OrteScreen() {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.resultName, { color: colors.foreground }]} numberOfLines={1}>{place.name}</Text>
                 <Text style={[styles.resultAddr, { color: colors.mutedForeground }]} numberOfLines={1}>
-                {place.vicinity}
-                {userLocation && place.geometry ? ` · ${haversineKm(userLocation.lat, userLocation.lng, place.geometry.location.lat, place.geometry.location.lng).toFixed(1)} km` : ""}
-              </Text>
+                  {place.vicinity}
+                  {place.distanceKm != null ? ` · ${place.distanceKm.toFixed(1)} km` : ""}
+                </Text>
               </View>
               {place.opening_hours != null && (
                 <Text style={[styles.openBadge, { color: isOpen ? "#0F6E56" : "#A32D2D", backgroundColor: isOpen ? "#E1F5EE" : "#FCEBEB" }]}>
@@ -294,25 +345,37 @@ export default function OrteScreen() {
 
       </ScrollView>
 
-      <BottomTabBar active="orte" />
+      <BottomTabBar active="orte" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { paddingHorizontal: rs(16), paddingBottom: rs(12), borderBottomWidth: StyleSheet.hairlineWidth },
-  headerTitle: { fontSize: rf(17), fontFamily: "Inter_600SemiBold" },
-  katGrid: { flexDirection: "row", flexWrap: "wrap", gap: rs(10), padding: rs(16) },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rs(8),
+    paddingBottom: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerTitle: accountSheetHeaderTitle,
+  scroll: {
+    paddingHorizontal: rs(16),
+    paddingTop: rs(20),
+    gap: rs(10),
+  },
+  katGrid: { flexDirection: "row", flexWrap: "wrap", gap: rs(10) },
   katCard: { width: "30%", alignItems: "center", gap: rs(8), padding: rs(12), borderRadius: rs(12), borderWidth: 1 },
   katIcon: { width: rs(44), height: rs(44), borderRadius: rs(22), alignItems: "center", justifyContent: "center" },
   katLabel: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", textAlign: "center" },
-  subRow: { flexDirection: "row", gap: rs(8), paddingHorizontal: rs(16), paddingBottom: rs(12) },
+  subRow: { flexDirection: "row", gap: rs(8), paddingBottom: rs(2) },
   subBtn: { paddingHorizontal: rs(14), paddingVertical: rs(6), borderRadius: rs(20), borderWidth: 1 },
   subBtnText: { fontSize: rf(13), fontFamily: "Inter_500Medium" },
-  searchWrap: { flexDirection: "row", alignItems: "center", gap: rs(8), marginHorizontal: rs(16), marginBottom: rs(12), paddingHorizontal: rs(12), paddingVertical: rs(10), borderRadius: rs(12), borderWidth: 1 },
+  searchWrap: { flexDirection: "row", alignItems: "center", gap: rs(8), paddingHorizontal: rs(12), paddingVertical: rs(10), borderRadius: rs(12), borderWidth: 1 },
   searchInput: { flex: 1, fontSize: rf(14), fontFamily: "Inter_400Regular", padding: 0 },
-  resultRow: { flexDirection: "row", alignItems: "center", gap: rs(12), marginHorizontal: rs(16), marginBottom: rs(8), padding: rs(12), borderRadius: rs(12), borderWidth: 1 },
+  resultRow: { flexDirection: "row", alignItems: "center", gap: rs(12), padding: rs(12), borderRadius: rs(12), borderWidth: 1 },
   resultIcon: { width: rs(36), height: rs(36), borderRadius: rs(18), alignItems: "center", justifyContent: "center", flexShrink: 0 },
   resultName: { fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   resultAddr: { fontSize: rf(12), fontFamily: "Inter_400Regular", marginTop: 2 },
