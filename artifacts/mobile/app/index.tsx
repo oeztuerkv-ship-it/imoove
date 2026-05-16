@@ -402,12 +402,10 @@ export default function HomeScreen() {
     search?: string;
     closeSearch?: string;
     openBooking?: string;
-    dest?: string;
   }>();
   const searchParam = params.search;
   const closeSearchParam = params.closeSearch;
   const openBookingParam = params.openBooking;
-  const destParam = params.dest;
 
   useEffect(() => {
     console.log(
@@ -456,16 +454,7 @@ export default function HomeScreen() {
   const originInputRef = useRef<TextInput>(null);
   const originDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (!destParam) return;
-    const loc: GeoLocation = {
-      displayName: destParam,
-      lat: 0,
-      lon: 0,
-    };
-    setDestination(loc);
-    setIsSearchActive(false);
-  }, [destParam]);
+
 
   const [destQuery, setDestQuery] = useState("");
   const [destResults, setDestResults] = useState<GeoLocation[]>([]);

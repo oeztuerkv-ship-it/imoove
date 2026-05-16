@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useRide } from "@/context/RideContext";
 import { rf, rs } from "@/utils/scale";
 
 const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "";
@@ -45,6 +46,7 @@ export default function OrteDetailScreen() {
     katIcon: string;
   }>();
 
+  const { setDestination } = useRide();
   const [detail, setDetail] = useState<PlaceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -99,7 +101,14 @@ export default function OrteDetailScreen() {
 
   const handleTaxi = () => {
     const addr = detail?.formatted_address ?? placeAddr;
-    router.push(`/?dest=${encodeURIComponent(addr)}` as any);
+    const lat = detail?.geometry?.location?.lat ?? 0;
+    const lng = detail?.geometry?.location?.lng ?? 0;
+    setDestination({
+      displayName: addr,
+      lat,
+      lon: lng,
+    });
+    router.replace("/");
   };
 
   const isOpen = detail?.opening_hours?.open_now;
