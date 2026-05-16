@@ -107,7 +107,7 @@ export default function OrteDetailScreen() {
       return;
     }
     const loc = { displayName: addr, lat, lon: lng };
-    /* Wie Zielwahl auf der Startseite: Context zuerst, dann Tab-Wechsel — kein URL-Param (Screen-Bug). */
+    /* Pending-Ref + Tab Start; index setzt Ziel und öffnet /ride-select wie normale Zielwahl. */
     setPendingDestination(loc);
     router.replace("/");
   };

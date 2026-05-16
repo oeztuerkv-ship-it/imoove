@@ -1,0 +1,37 @@
+---
+description: Mobile — Ziel von externen Screens (Orte-Detail) ohne URL-Params; danach /ride-select
+alwaysApply: true
+---
+
+# Mobile: Ziel setzen + Navigation (Startseite, Orte, Fahrzeugauswahl)
+
+**Symptome (wiedererkennen):**
+- Nach „Taxi hierhin“ / externem Screen: Ziel fehlt auf Start, oder Screen wirkt „kaputt“ / falscher Stack-State.
+- Ziel kommt an, aber Nutzer bleibt auf Start mit Text **„Ziel gesetzt. Wähle jetzt dein Fahrzeug …“** statt Fahrzeugauswahl.
+
+**Ursache (nicht primär „Reihenfolge resetRide“):**
+1. **`router.replace("/")` mit URL-Params** (`toFull`, `toLat`, …) → bekannter **Screen-Wechsel-/Stack-Bug** in Expo Router. **Nicht** wieder einführen.
+2. **`index` `useFocusEffect`** ruft bei jedem Fokus **`resetRide()`** auf. Doppelter Fokus (Strict Mode / Tab-Wechsel) kann ein frisch gesetztes Ziel wieder löschen → **`homePendingDestinationGuardUntilRef`** (ca. 500 ms) in `app/index.tsx`.
+3. **Normale Zielwahl** bleibt auf `index` und macht **`setDestination` + `router.push("/ride-select")`**. Nur Pending setzen + `replace("/")` zeigt die Zwischen-UI „Ziel gesetzt“ — **gewollt nicht** für Orte-Taxi.
+
+## Verbindlicher Ablauf (extern → Buchung)
+
+| Schritt | Wo | Was |
+|--------|-----|-----|
+| 1 | z. B. `orte-detail.tsx` | `setPendingDestination({ displayName, lat, lon })` dann **`router.replace("/")`** — **ohne** Query-Params |
+| 2 | `RideContext` | Ref `pendingDestinationRef` (kein React-State) |
+| 3 | `index.tsx` `useFocusEffect` | Such-UI leeren → `consumePendingDestination()` → `resetRide()` → `setDestination(pending)` → **`router.push("/ride-select")`** |
+| 4 | Fahrzeugauswahl | Route **`/ride-select`** (`app/ride-select.tsx`) — gleich wie `handleDestinationSelect` |
+
+**API Context:** `setPendingDestination`, `peekPendingDestination`, `consumePendingDestination` in `artifacts/mobile/context/RideContext.tsx`.
+
+## Was nicht tun
+
+- Kein `setDestination` + `router.replace("/")` allein von Orte-Detail (Fokus-Reset löscht oder Zwischenseite bleibt).
+- Keine URL-Params für Ziel-Prefill auf `/`.
+- Nach externem Ziel **nicht** nur Start mit „Ziel gesetzt“ — immer **`/ride-select`**, sofern Sofortfahrt-Flow wie Suche.
+
+## Referenz im Code
+
+- Normal: `handleDestinationSelect` in `app/index.tsx` → `setDestination` → `router.push("/ride-select")`.
+- Orte: `handleTaxi` in `app/orte-detail.tsx` → `setPendingDestination` → `replace("/")` → Index übernimmt + Push ride-select.

@@ -1144,6 +1144,8 @@ export default function HomeScreen() {
         setDestination(pendingDestination);
         homePendingDestinationGuardUntilRef.current = Date.now() + 500;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        /* Wie handleDestinationSelect: direkt Fahrzeugauswahl, nicht „Ziel gesetzt“-Zwischenseite */
+        router.push("/ride-select" as Href);
       }
 
       return () => setIsHomeFocused(false);

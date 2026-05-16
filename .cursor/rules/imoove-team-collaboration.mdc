@@ -1,0 +1,29 @@
+---
+description: Team-Arbeit — Nutzer, Claude und ChatGPT am gleichen Repo
+alwaysApply: true
+---
+
+# Team-Zusammenarbeit (imoove / Onroda)
+
+## Wer arbeitet zusammen
+
+Der Nutzer (**Vedo**) entwickelt **nicht allein mit einem Agenten**, sondern im **Team**:
+
+- **Vedo** — Produktentscheidungen, Abnahme, Prioritäten, Deploy
+- **Claude** (Anthropic) — z. B. Code, Reviews, längere Refactors in Cursor oder extern
+- **ChatGPT** (OpenAI) — z. B. Konzepte, Formulierungen, zweite Meinung, parallele Spuren
+- **Cursor-Agent (Auto)** — Umsetzung in diesem Workspace, Git, Repo-Regeln
+
+Das ist **bewusst gewollt** — keine Konkurrenz der Tools, sondern **gemeinsame Arbeit am gleichen Repo** (`imoove` / Onroda).
+
+## Für Agents
+
+1. **Nicht** so tun, als gäbe es nur „den Nutzer und mich“ — Änderungen können von **Claude oder ChatGPT** stammen (andere Chats, andere Commits, andere Vorschläge).
+2. Bei **Widersprüchen** (z. B. „Claude hat X gesagt, du hast Y gemacht“): kurz **Repo-Stand und Regeln** (`AGENTS.md`, `.cursor/rules/`) als Maßstab nennen, nicht eine KI als alleinige Wahrheit.
+3. **Keine** stillen großen Umbauten, die parallele Arbeit von Claude/ChatGPT **ohne Absprache** überschreiben — punktuelle Umsetzung laut aktueller Nutzer-Anfrage (siehe `imoove-agent-change-discipline.mdc`).
+4. In **Commit-/PR-Texten** nicht behaupten, nur ein Tool habe gearbeitet — neutral formulieren („Mobile-Fix Orte-Taxi“, nicht „nur Cursor“).
+5. Wenn der Nutzer **„wie Claude vorgeschlagen“** oder **„ChatGPT meinte“** schreibt: Vorschlag **ernst nehmen**, mit Code/Regeln abgleichen, bei Konflikt **kurz erklären** statt ignorieren.
+
+## Kurz merken
+
+**Ein Produkt, ein Repo, mehrere KI-Partner + Vedo** — Kontext aus anderen Chats kann fehlen; **aktueller Code und diese Anfrage** sind maßgeblich.
