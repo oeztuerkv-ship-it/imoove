@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as Location from "expo-location";
 import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
@@ -101,7 +102,16 @@ type PlaceResult = {
   distance?: number;
   opening_hours?: { open_now: boolean };
   types: string[];
+  geometry?: { location: { lat: number; lng: number } };
 };
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 export default function OrteScreen() {
   const colors = useColors();
@@ -112,12 +122,24 @@ export default function OrteScreen() {
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [notfallOnly, setNotfallOnly] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+    })();
+  }, []);
 
   const searchPlaces = useCallback(async (kat: Kategorie, subKeyword: string, q: string) => {
     setLoading(true);
     try {
       const keyword = q.trim() || subKeyword;
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=48.7758,9.1829&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
+      const lat = userLocation?.lat ?? 48.7758;
+      const lng = userLocation?.lng ?? 9.1829;
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
       setResults(data.results ?? []);
@@ -147,7 +169,17 @@ export default function OrteScreen() {
   };
 
   const handleSelect = (place: PlaceResult) => {
-    router.push(`/?dest=${encodeURIComponent(place.name + ", " + place.vicinity)}` as any);
+    router.push({
+      pathname: "/orte-detail",
+      params: {
+        placeId: place.place_id,
+        placeName: place.name,
+        placeAddr: place.vicinity,
+        katColor: selectedKat?.color ?? "#333",
+        katBg: selectedKat?.bgColor ?? "#F2F2F7",
+        katIcon: selectedKat?.icon ?? "map-pin",
+      },
+    } as any);
   };
 
   return (
@@ -229,7 +261,10 @@ export default function OrteScreen() {
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.resultName, { color: colors.foreground }]} numberOfLines={1}>{place.name}</Text>
-                <Text style={[styles.resultAddr, { color: colors.mutedForeground }]} numberOfLines={1}>{place.vicinity}</Text>
+                <Text style={[styles.resultAddr, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {place.vicinity}
+                {userLocation && place.geometry ? ` · ${haversineKm(userLocation.lat, userLocation.lng, place.geometry.location.lat, place.geometry.location.lng).toFixed(1)} km` : ""}
+              </Text>
               </View>
               {place.opening_hours != null && (
                 <Text style={[styles.openBadge, { color: isOpen ? "#0F6E56" : "#A32D2D", backgroundColor: isOpen ? "#E1F5EE" : "#FCEBEB" }]}>
