@@ -14,6 +14,10 @@ import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/
 import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
+import {
+  isFleetDriverMarketOnline,
+  setFleetDriverMarketOnline,
+} from "../lib/fleetDriverMarketAvailability";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
@@ -247,6 +251,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         ride.status === "searching_driver" ||
         ride.status === "offered";
       if (!inMarket) return false;
+      if (!isFleetDriverMarketOnline(a.fleetDriverId)) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
@@ -369,7 +374,24 @@ router.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) =>
     return;
   }
   await touchFleetDriverHeartbeat(a.fleetDriverId);
-  res.json({ ok: true });
+  res.json({ ok: true, marketOnline: isFleetDriverMarketOnline(a.fleetDriverId) });
+});
+
+/** ONLINE/OFFLINE am Auftragsmarkt — ohne diesen Schalter liefert market-rides keine neuen Sofortaufträge. */
+router.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
+  const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const body = req.body as { available?: unknown };
+  if (typeof body.available !== "boolean") {
+    res.status(400).json({ error: "available_boolean_required" });
+    return;
+  }
+  setFleetDriverMarketOnline(a.fleetDriverId, body.available);
+  await touchFleetDriverHeartbeat(a.fleetDriverId);
+  res.json({ ok: true, marketOnline: body.available });
 });
 
 router.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {

@@ -8,6 +8,23 @@ const STORAGE_KEY = "@Onroda_driver_session";
 const DRIVER_HEARTBEAT_MS = 45_000;
 const API_BASE = getApiBaseUrl() || "https://api.onroda.de/api";
 
+async function syncFleetMarketAvailability(authToken: string, available: boolean): Promise<void> {
+  const tok = authToken.trim();
+  if (!tok) return;
+  try {
+    await fetch(`${API_BASE}/fleet-driver/v1/market-availability`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${tok}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ available }),
+    });
+  } catch {
+    /* offline — lokaler Schalter bleibt */
+  }
+}
+
 /** Lesbare Meldung zu `POST /fleet-auth/login` — siehe `getFleetLoginCompanyDenyReason` / `fleetAuth.ts`. */
 function fleetLoginUserMessage(errorCode: string): string {
   switch (errorCode) {
@@ -394,6 +411,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       }
       const updated = { ...prev, isAvailable: v };
       patchStoredDriver(updated);
+      void syncFleetMarketAvailability(updated.authToken, v);
       return updated;
     });
   }, []);
@@ -419,9 +437,15 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       if (!prev || prev.einsatzbereit || !prev.isAvailable) return prev;
       const updated = { ...prev, isAvailable: false };
       patchStoredDriver(updated);
+      void syncFleetMarketAvailability(updated.authToken, false);
       return updated;
     });
   }, [driver?.einsatzbereit, driver?.isAvailable, driver?.authToken]);
+
+  useEffect(() => {
+    if (!driver?.authToken) return;
+    void syncFleetMarketAvailability(driver.authToken, driver.isAvailable);
+  }, [driver?.authToken, driver?.isAvailable]);
 
   useEffect(() => {
     if (!driver?.authToken) return;

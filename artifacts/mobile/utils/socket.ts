@@ -1,7 +1,8 @@
 /**
- * Native WebSocket client for real-time GPS sync.
- * React Native has WebSocket built-in — no extra packages needed.
+ * Native WebSocket client for real-time GPS sync + in-ride chat.
  */
+
+import { AppState, type AppStateStatus } from "react-native";
 
 import { getApiBaseUrl } from "./apiBase";
 
@@ -14,11 +15,52 @@ const WS_URL = API_BASE
 let _ws: WebSocket | null = null;
 let _rideId: string | null = null;
 let _onMessage: ((msg: Record<string, unknown>) => void) | null = null;
+let _onWsError: ((code: string) => void) | null = null;
 let _getJoinToken: (() => Promise<string | null>) | null = null;
 let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let _pendingMessages: string[] = [];
+let _appActive = true;
+
+function _scheduleReconnect() {
+  if (_reconnectTimer || !_rideId) return;
+  _reconnectTimer = setTimeout(() => {
+    _reconnectTimer = null;
+    if (_rideId && _appActive) _connect();
+  }, 2500);
+}
+
+async function _sendJoin(socket: WebSocket) {
+  if (socket !== _ws || !_rideId || !_getJoinToken) return;
+  const token = await _getJoinToken();
+  if (socket !== _ws) return;
+  try {
+    socket.send(
+      JSON.stringify({
+        type: "join",
+        rideId: _rideId,
+        token: token ?? "",
+      }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function _flushPending(socket: WebSocket) {
+  if (socket !== _ws || _pendingMessages.length === 0) return;
+  const queued = _pendingMessages;
+  _pendingMessages = [];
+  queued.forEach((msg) => {
+    try {
+      socket.send(msg);
+    } catch {
+      /* ignore */
+    }
+  });
+}
 
 function _connect() {
+  if (!_rideId || !_appActive) return;
   try {
     const socket = new WebSocket(WS_URL);
     _ws = socket;
@@ -29,39 +71,24 @@ function _connect() {
         _reconnectTimer = null;
       }
       void (async () => {
+        await _sendJoin(socket);
         if (socket !== _ws) return;
-        if (_rideId && _getJoinToken) {
-          const token = await _getJoinToken();
-          try {
-            socket.send(
-              JSON.stringify({
-                type: "join",
-                rideId: _rideId,
-                token: token ?? "",
-              }),
-            );
-          } catch {
-            /* ignore */
-          }
-        }
-        if (socket !== _ws) return;
-        if (_pendingMessages.length > 0) {
-          const queued = _pendingMessages;
-          _pendingMessages = [];
-          queued.forEach((msg) => {
-            try {
-              socket.send(msg);
-            } catch {
-              /* ignore */
-            }
-          });
-        }
+        _flushPending(socket);
       })();
     };
 
     socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+        const type = typeof msg.type === "string" ? msg.type : "";
+        if (type === "ws_error") {
+          const code = typeof msg.code === "string" ? msg.code : "ws_error";
+          _onWsError?.(code);
+          if (code === "join_auth_invalid" || code === "join_forbidden" || code === "join_token_required") {
+            void _sendJoin(socket);
+          }
+          return;
+        }
         _onMessage?.(msg);
       } catch {
         /* ignore */
@@ -69,18 +96,15 @@ function _connect() {
     };
 
     socket.onerror = () => {
-      /* ignore */
+      /* onclose handles reconnect */
     };
 
     socket.onclose = () => {
-      _ws = null;
-      if (_rideId) {
-        // Auto-reconnect after 4 seconds
-        _reconnectTimer = setTimeout(_connect, 4000);
-      }
+      if (_ws === socket) _ws = null;
+      _scheduleReconnect();
     };
   } catch {
-    /* ignore */
+    _scheduleReconnect();
   }
 }
 
@@ -92,11 +116,13 @@ export function connectToRide(
   rideId: string,
   onMessage: (msg: Record<string, unknown>) => void,
   getJoinToken: () => Promise<string | null>,
+  onWsError?: (code: string) => void,
 ) {
   disconnectSocket();
   _rideId = rideId;
   _onMessage = onMessage;
   _getJoinToken = getJoinToken;
+  _onWsError = onWsError ?? null;
   _connect();
 }
 
@@ -114,19 +140,36 @@ export function sendCustomerLocation(lat: number, lon: number) {
   }
 }
 
-/** Send a lightweight in-ride chat message. */
-export function sendRideChat(text: string, sender: "customer" | "driver") {
-  const trimmed = text.trim();
-  if (!trimmed) return;
-  if (!_rideId) return;
-  const payload = JSON.stringify({ type: "chat:ride", rideId: _rideId, text: trimmed, sender });
+export type RideChatSendOpts = {
+  text: string;
+  sender: "customer" | "driver";
+  replyTo?: { from: "customer" | "driver"; text: string };
+};
+
+/** Send a lightweight in-ride chat message (queued + reconnect if socket down). */
+export function sendRideChat(opts: RideChatSendOpts) {
+  const trimmed = opts.text.trim();
+  if (!trimmed || !_rideId) return;
+  const payload = JSON.stringify({
+    type: "chat:ride",
+    rideId: _rideId,
+    text: trimmed,
+    sender: opts.sender,
+    ...(opts.replyTo
+      ? { replyToText: opts.replyTo.text, replyToSender: opts.replyTo.from }
+      : {}),
+  });
   if (_ws?.readyState === WebSocket.OPEN) {
-    _ws.send(payload);
+    try {
+      _ws.send(payload);
+    } catch {
+      _pendingMessages.push(payload);
+      _connect();
+    }
     return;
   }
-  // Fallback: queue message and ensure reconnect, so chat does not silently disappear.
   _pendingMessages.push(payload);
-  if (!_ws) _connect();
+  _connect();
 }
 
 /** Disconnect and clean up. */
@@ -139,6 +182,23 @@ export function disconnectSocket() {
   _ws = null;
   _rideId = null;
   _onMessage = null;
+  _onWsError = null;
   _getJoinToken = null;
   _pendingMessages = [];
 }
+
+/** Pause reconnect while app is backgrounded; resume + reconnect when active. */
+let _appStateSub: { remove: () => void } | null = null;
+
+export function bindSocketAppStateLifecycle() {
+  if (_appStateSub) return;
+  _appStateSub = AppState.addEventListener("change", (next: AppStateStatus) => {
+    const active = next === "active";
+    _appActive = active;
+    if (active && _rideId && (!_ws || _ws.readyState !== WebSocket.OPEN)) {
+      _connect();
+    }
+  });
+}
+
+bindSocketAppStateLifecycle();

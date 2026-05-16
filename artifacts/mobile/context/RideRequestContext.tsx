@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSegments } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -7,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AppState } from "react-native";
 
 import { getApiBaseUrl } from "@/utils/apiBase";
 
@@ -418,6 +420,8 @@ function normalizeRequest(r: any): RideRequest {
 const POLL_INTERVAL_MS = 2500;
 
 export function RideRequestProvider({ children }: { children: React.ReactNode }) {
+  const segments = useSegments();
+  const isDriverSurface = segments[0] === "driver";
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [scheduledPoolRequests, setScheduledPoolRequests] = useState<RideRequest[]>([]);
   const [lastAddedRequestId, setLastAddedRequestId] = useState<string | null>(null);
@@ -425,6 +429,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const [passengerId, setPassengerId] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCountRef = useRef(0);
+  const isDriverSurfaceRef = useRef(isDriverSurface);
+  isDriverSurfaceRef.current = isDriverSurface;
 
   useEffect(() => {
     (async () => {
@@ -503,7 +509,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         }
       }
 
-      if (token) {
+      const customerIdentity = await readStoredCustomerIdentity();
+      const customerSessionToken = customerIdentity.sessionToken;
+
+      if (token && isDriverSurfaceRef.current) {
         const headers = { Authorization: `Bearer ${token}` };
         const [marketRes, schedRes] = await Promise.all([
           fetch(`${API_BASE}/fleet-driver/v1/market-rides`, { cache: "no-store", headers }),
@@ -533,8 +542,6 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         return;
       }
 
-      const customerIdentity = await readStoredCustomerIdentity();
-      const customerSessionToken = customerIdentity.sessionToken;
       if (customerIdentity.passengerId) {
         setPassengerId(customerIdentity.passengerId);
       }
@@ -581,6 +588,13 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
+  }, [fetchAll]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void fetchAll();
+    });
+    return () => sub.remove();
   }, [fetchAll]);
 
   const patchStatus = useCallback(

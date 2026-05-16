@@ -42,6 +42,8 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           lon?: number;
           text?: string;
           sender?: string;
+          replyToText?: string;
+          replyToSender?: string;
         };
         const msgType = typeof msg.type === "string" ? msg.type : "";
         const meta = socketMeta.get(socket);
@@ -138,6 +140,19 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           const sender = msg.sender === "driver" ? "driver" : "customer";
           if (!text) return;
           if (sender !== meta.role) return;
+          const replyToText =
+            typeof msg.replyToText === "string" ? msg.replyToText.trim() : "";
+          const replyToSender =
+            msg.replyToSender === "driver"
+              ? "driver"
+              : msg.replyToSender === "customer"
+                ? "customer"
+                : null;
+          const replyPayload =
+            replyToText && replyToSender
+              ? { replyTo: { sender: replyToSender, text: replyToText } }
+              : {};
+          const ts = new Date().toISOString();
           rooms.get(boundRideId)?.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) {
               client.send(
@@ -145,7 +160,8 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
                   type: "chat:ride:update",
                   sender,
                   text,
-                  ts: new Date().toISOString(),
+                  ts,
+                  ...replyPayload,
                 }),
               );
             }

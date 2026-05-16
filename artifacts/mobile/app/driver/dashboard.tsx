@@ -694,7 +694,7 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
         <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#111" }}>
           {isAvailable ? "Warte auf Aufträge..." : "Offline"}
         </Text>
-        {firstReq && (
+        {firstReq && isAvailable && (
           <InstantCard req={firstReq} driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)} />
@@ -728,8 +728,8 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
         </Text>
       </View>
 
-      {/* Ride request popup — slides up from bottom */}
-      {firstReq && (
+      {/* Ride request popup — slides up from bottom (nur wenn ONLINE) */}
+      {firstReq && isAvailable && (
         <Animated.View style={[styles.mapReqOverlay, { transform: [{ translateY: slideAnim }] }]}>
           <InstantCard
             req={firstReq}
@@ -2422,6 +2422,10 @@ export default function DriverDashboard() {
       );
       return;
     }
+    if (!driver.isAvailable) {
+      Alert.alert("Offline", "Schalten Sie auf ONLINE, um Aufträge anzunehmen.");
+      return;
+    }
     try {
       stopRideSound().catch(() => {});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -2437,6 +2441,10 @@ export default function DriverDashboard() {
           driver.notFreigegebenMessage ||
             "Sie sind derzeit nicht einsatzbereit. Bitte wenden Sie sich an Ihr Unternehmen.",
         );
+        return;
+      }
+      if (code === "driver_market_offline") {
+        Alert.alert("Offline", "Sie sind am Auftragsmarkt offline. Bitte ONLINE schalten.");
         return;
       }
       if (code === "no_matching_vehicle_available") {

@@ -49,6 +49,7 @@ import {
 } from "../db/fleetMatchingData";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow } from "../db/fleetDriversData";
+import { isFleetDriverMarketOnline } from "../lib/fleetDriverMarketAvailability";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import {
   assertCustomerFromFullInActiveServiceRegion,
@@ -1738,6 +1739,13 @@ router.patch("/rides/:id/status", async (req, res, next) => {
           error: "driver_not_einsatzbereit",
           blockReasons: readinessR.blockReasons,
           message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen).",
+        });
+        return;
+      }
+      if (!isFleetDriverMarketOnline(driverId)) {
+        res.status(409).json({
+          error: "driver_market_offline",
+          message: "Fahrer ist offline — Annahme am Auftragsmarkt nicht möglich.",
         });
         return;
       }

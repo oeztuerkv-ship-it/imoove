@@ -18,10 +18,18 @@ import {
   View,
   Animated,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getApiBaseUrl } from "@/utils/apiBase";
+import {
+  mergeRideChatMessages,
+  parseRideChatUpdate,
+  rideChatMessageId,
+  type RideChatMessage,
+  type RideChatSender,
+} from "@/utils/rideChat";
 import {
   connectToRide,
   disconnectSocket,
@@ -183,7 +191,8 @@ export default function DriverNavigationScreen() {
   const [sliderWidth, setSliderWidth] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [chatMsgs, setChatMsgs] = useState<Array<{ id: string; from: "customer" | "driver"; text: string }>>([]);
+  const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
+  const [chatReplyTo, setChatReplyTo] = useState<RideChatMessage | null>(null);
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
@@ -196,6 +205,7 @@ export default function DriverNavigationScreen() {
     setChatMsgs([]);
     setChatInput("");
     setChatUnread(false);
+    setChatReplyTo(null);
   }, [params.rideId]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -377,17 +387,10 @@ export default function DriverNavigationScreen() {
       params.rideId,
       (msg) => {
         if (msg.type === "chat:ride:update") {
-          const sender = msg.sender === "customer" ? "customer" : msg.sender === "driver" ? "driver" : null;
-          if (!sender) return;
-          const text = typeof msg.text === "string" ? msg.text.trim() : "";
-          if (!text) return;
-          const ts = typeof msg.ts === "string" ? msg.ts : "";
-          const id = `${ts}|${sender}|${text}`;
-          const row = { id, from: sender as "customer" | "driver", text };
-          setChatMsgs((prev) =>
-            prev.some((p) => p.id === id) ? prev : [...prev, row].slice(-100),
-          );
-          if (sender === "customer" && !chatOpenRef.current) setChatUnread(true);
+          const row = parseRideChatUpdate(msg);
+          if (!row) return;
+          setChatMsgs((prev) => mergeRideChatMessages(prev, row));
+          if (row.from === "customer" && !chatOpenRef.current) setChatUnread(true);
         }
       },
       readFleetJwtForWsJoin,
@@ -714,34 +717,19 @@ export default function DriverNavigationScreen() {
             </View>
           </View>
         </View>
-        {/* Full-width action button */}
-        <View style={styles.actionBtnWrapper}>
-          {actionBtn}
+        <View style={styles.actionBlock}>
+          <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+          <Pressable
+            onPress={() => setShowCancelReasonModal(true)}
+            style={({ pressed }) => [
+              styles.actionBlockCancel,
+              pressed && { backgroundColor: "#3F1515" },
+            ]}
+          >
+            <Feather name="x-circle" size={18} color="#DC2626" />
+            <Text style={styles.actionBlockCancelText}>Fahrt stornieren</Text>
+          </Pressable>
         </View>
-
-        {/* Stornieren */}
-        <Pressable
-          onPress={() =>
-            setShowCancelReasonModal(true)
-          }
-          style={({ pressed }) => ({
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            marginTop: 10,
-            paddingVertical: 12,
-            borderRadius: 14,
-            backgroundColor: pressed ? "#3F1515" : "#2A1010",
-            borderWidth: 1,
-            borderColor: "#DC2626",
-          })}
-        >
-          <Feather name="x-circle" size={18} color="#DC2626" />
-          <Text style={{ color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-            Fahrt stornieren
-          </Text>
-        </Pressable>
       </View>
 
       {/* Fare Modal */}
@@ -879,10 +867,24 @@ export default function DriverNavigationScreen() {
       </Modal>
 
       <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
-        <Pressable style={styles.modalOverlayCenter} onPress={() => setChatOpen(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlayCenter}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setChatOpen(false)} />
           <Pressable style={styles.cancelReasonCard} onPress={() => {}}>
             <Text style={styles.cancelReasonTitle}>Chat</Text>
             <Text style={styles.driverChatSubtitle}>Kunde</Text>
+            {chatReplyTo ? (
+              <View style={styles.driverChatReplyBanner}>
+                <Text style={styles.driverChatReplyBannerLabel} numberOfLines={1}>
+                  Antwort auf {chatReplyTo.from === "customer" ? "Kunde" : "Sie"}: {chatReplyTo.text}
+                </Text>
+                <Pressable onPress={() => setChatReplyTo(null)} hitSlop={8}>
+                  <Feather name="x" size={16} color="#6B7280" />
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.driverChatThreadBox}>
               <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
                 {chatMsgs.length === 0 ? (
@@ -891,13 +893,25 @@ export default function DriverNavigationScreen() {
                   </Text>
                 ) : (
                   chatMsgs.map((m) => (
-                    <View
+                    <Pressable
                       key={m.id}
                       style={m.from === "customer" ? styles.driverChatBubbleIncoming : styles.driverChatBubbleOutgoing}
+                      onLongPress={() => {
+                        setChatReplyTo(m);
+                        Haptics.selectionAsync();
+                      }}
                     >
-                      <Text style={styles.driverChatBubbleMeta}>{m.from === "customer" ? "Kunde" : "Sie"}</Text>
+                      {m.replyTo ? (
+                        <Text style={styles.driverChatReplyQuote} numberOfLines={2}>
+                          {m.replyTo.from === "customer" ? "Kunde" : "Sie"}: {m.replyTo.text}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.driverChatBubbleMeta}>
+                        {m.from === "customer" ? "Kunde" : "Sie"}
+                        {m.pending ? " · senden…" : ""}
+                      </Text>
                       <Text style={styles.driverChatBubbleText}>{m.text}</Text>
-                    </View>
+                    </Pressable>
                   ))
                 )}
               </ScrollView>
@@ -931,15 +945,29 @@ export default function DriverNavigationScreen() {
                 onPress={() => {
                   const msg = chatInput.trim();
                   if (!msg) return;
-                  sendRideChat(msg, "driver");
+                  const reply = chatReplyTo
+                    ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
+                    : undefined;
+                  const pendingId = rideChatMessageId(`pending-${Date.now()}`, "driver", msg);
+                  setChatMsgs((prev) =>
+                    mergeRideChatMessages(prev, {
+                      id: pendingId,
+                      from: "driver",
+                      text: msg,
+                      pending: true,
+                      ...(reply ? { replyTo: reply } : {}),
+                    }),
+                  );
+                  sendRideChat({ text: msg, sender: "driver", replyTo: reply });
                   setChatInput("");
+                  setChatReplyTo(null);
                 }}
               >
                 <Text style={styles.cancelReasonBtnDangerText}>Senden</Text>
               </Pressable>
             </View>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -1009,11 +1037,37 @@ const styles = StyleSheet.create({
   /* Bottom bar */
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: "#1C1C1E",
+    backgroundColor: "#16181D",
     flexDirection: "column",
     paddingTop: 14, paddingHorizontal: 16, gap: 10,
-    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 16,
   },
+  actionBlock: {
+    backgroundColor: "#23262E",
+    borderRadius: 16,
+    padding: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  actionBlockCancel: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#2A1010",
+    borderWidth: 1,
+    borderColor: "#DC2626",
+  },
+  actionBlockCancelText: { color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 },
   etaRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   etaBlock: { minWidth: 90 },
   etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#4ADE80", lineHeight: 34 },
@@ -1165,6 +1219,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   driverChatBubbleMeta: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
+  driverChatReplyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+    borderLeftWidth: 3,
+    borderLeftColor: "#DC2626",
+  },
+  driverChatReplyBannerLabel: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: "#4B5563" },
+  driverChatReplyQuote: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
+    marginBottom: 4,
+    paddingLeft: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: "#D1D5DB",
+  },
   driverChatBubbleText: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#111827", lineHeight: 20 },
   driverChatTemplatesLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 0.4 },
   driverChatTemplatesWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

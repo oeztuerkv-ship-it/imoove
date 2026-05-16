@@ -8,8 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   BackHandler,
   Easing,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -34,6 +36,13 @@ import {
 } from "@/utils/customerRideStatusLabel";
 import { formatEuro } from "@/utils/fareCalculator";
 import { rs, rf } from "@/utils/scale";
+import {
+  mergeRideChatMessages,
+  parseRideChatUpdate,
+  rideChatMessageId,
+  type RideChatMessage,
+  type RideChatSender,
+} from "@/utils/rideChat";
 import { connectToRide, disconnectSocket, sendCustomerLocation, sendRideChat } from "@/utils/socket";
 import { readCustomerSessionJwtForWsJoin } from "@/utils/wsJoinAuth";
 
@@ -151,6 +160,7 @@ export default function StatusScreen() {
     cancelRequest,
     refreshRequests,
     myActiveRequests,
+    isConnected,
   } = useRideRequests();
 
   const scheduledPassengerRide = useMemo(
@@ -199,9 +209,11 @@ export default function StatusScreen() {
   const [driverMarker, setDriverMarker] = useState<{ lat: number; lon: number } | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [chatMsgs, setChatMsgs] = useState<Array<{ id: string; from: "driver" | "customer"; text: string }>>([]);
+  const [chatMsgs, setChatMsgs] = useState<RideChatMessage[]>([]);
+  const [chatReplyTo, setChatReplyTo] = useState<RideChatMessage | null>(null);
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
+  const stickyAcceptedRef = useRef<RideRequest | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -238,10 +250,40 @@ export default function StatusScreen() {
   useEffect(() => {
     setChatMsgs([]);
     setChatUnread(false);
+    setChatReplyTo(null);
   }, [acceptedRequest?.id]);
 
-  const pickupDiffMs = acceptedRequest?.scheduledAt
-    ? new Date(acceptedRequest.scheduledAt).getTime() - now
+  useEffect(() => {
+    if (acceptedRequest) stickyAcceptedRef.current = acceptedRequest;
+  }, [acceptedRequest]);
+
+  const effectiveAcceptedRequest = useMemo(() => {
+    if (acceptedRequest) return acceptedRequest;
+    const sticky = stickyAcceptedRef.current;
+    if (!sticky || !currentRideId || sticky.id !== currentRideId) return null;
+    const live = requests.find((r) => r.id === currentRideId);
+    if (!live) return sticky;
+    const activeStatuses = new Set([
+      "ready_for_dispatch",
+      "accepted",
+      "driver_arriving",
+      "driver_waiting",
+      "passenger_onboard",
+      "arrived",
+      "in_progress",
+    ]);
+    return activeStatuses.has(live.status) ? live : sticky;
+  }, [acceptedRequest, currentRideId, requests]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refreshRequests();
+    });
+    return () => sub.remove();
+  }, [refreshRequests]);
+
+  const pickupDiffMs = effectiveAcceptedRequest?.scheduledAt
+    ? new Date(effectiveAcceptedRequest.scheduledAt).getTime() - now
     : null;
 
   const withinPickupHour =
@@ -259,11 +301,11 @@ export default function StatusScreen() {
     | "driving"
     | "completed" =
     completedForCurrentRide ? "completed"
-    : acceptedRequest?.status === "in_progress" || acceptedRequest?.status === "passenger_onboard" ? "driving"
-    : acceptedRequest?.status === "arrived" || acceptedRequest?.status === "driver_waiting" ? "arrived"
-    : acceptedRequest && acceptedRequest.scheduledAt && withinPickupHour ? "preparing"
-    : acceptedRequest?.status === "accepted" || acceptedRequest?.status === "driver_arriving" ? "accepted"
-    : acceptedRequest ? "accepted"
+    : effectiveAcceptedRequest?.status === "in_progress" || effectiveAcceptedRequest?.status === "passenger_onboard" ? "driving"
+    : effectiveAcceptedRequest?.status === "arrived" || effectiveAcceptedRequest?.status === "driver_waiting" ? "arrived"
+    : effectiveAcceptedRequest && effectiveAcceptedRequest.scheduledAt && withinPickupHour ? "preparing"
+    : effectiveAcceptedRequest?.status === "accepted" || effectiveAcceptedRequest?.status === "driver_arriving" ? "accepted"
+    : effectiveAcceptedRequest ? "accepted"
     : (() => {
         const cur = rideMatchingCurrentId;
         const st = cur?.scheduledAt;
@@ -281,21 +323,21 @@ export default function StatusScreen() {
   const customerPhase = isCompleted ? "completed" : rawPhase;
 
   const customerPhaseRef = useRef(customerPhase);
-  const acceptedRequestRef = useRef<RideRequest | null>(acceptedRequest);
+  const acceptedRequestRef = useRef<RideRequest | null>(effectiveAcceptedRequest);
   customerPhaseRef.current = customerPhase;
-  acceptedRequestRef.current = acceptedRequest;
+  acceptedRequestRef.current = effectiveAcceptedRequest;
 
   // WebSocket for real-time driver GPS + HTTP fallback
   useEffect(() => {
     if (
-      !acceptedRequest ||
+      !effectiveAcceptedRequest ||
       rawPhase === "searching" ||
       rawPhase === "reserved" ||
       rawPhase === "reservation_unfulfilled" ||
       rawPhase === "completed"
     )
       return;
-    const rid = acceptedRequest.id;
+    const rid = effectiveAcceptedRequest.id;
 
     connectToRide(
       rid,
@@ -304,17 +346,10 @@ export default function StatusScreen() {
           setDriverMarker({ lat: msg.lat as number, lon: msg.lon as number });
         }
         if (msg.type === "chat:ride:update") {
-          const sender = msg.sender === "driver" ? "driver" : msg.sender === "customer" ? "customer" : null;
-          if (!sender) return;
-          const text = typeof msg.text === "string" ? msg.text.trim() : "";
-          if (!text) return;
-          const ts = typeof msg.ts === "string" ? msg.ts : "";
-          const id = `${ts}|${sender}|${text}`;
-          const row = { id, from: sender as "driver" | "customer", text };
-          setChatMsgs((prev) =>
-            prev.some((p) => p.id === id) ? prev : [...prev, row].slice(-100),
-          );
-          if (sender === "driver" && !chatOpenRef.current) setChatUnread(true);
+          const row = parseRideChatUpdate(msg);
+          if (!row) return;
+          setChatMsgs((prev) => mergeRideChatMessages(prev, row));
+          if (row.from === "driver" && !chatOpenRef.current) setChatUnread(true);
         }
       },
       readCustomerSessionJwtForWsJoin,
@@ -335,19 +370,19 @@ export default function StatusScreen() {
     poll();
     const interval = setInterval(poll, 5000);
     return () => { clearInterval(interval); disconnectSocket(); };
-  }, [acceptedRequest?.id, rawPhase]);
+  }, [effectiveAcceptedRequest?.id, rawPhase]);
 
   // Send customer GPS to driver every ~4s when ride is active
   useEffect(() => {
     if (
-      !acceptedRequest ||
+      !effectiveAcceptedRequest ||
       rawPhase === "searching" ||
       rawPhase === "reserved" ||
       rawPhase === "reservation_unfulfilled" ||
       rawPhase === "completed"
     )
       return;
-    const rid = acceptedRequest.id;
+    const rid = effectiveAcceptedRequest.id;
     let sub: Location.LocationSubscription | null = null;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -373,7 +408,7 @@ export default function StatusScreen() {
       );
     })();
     return () => { sub?.remove(); };
-  }, [acceptedRequest?.id, rawPhase]);
+  }, [effectiveAcceptedRequest?.id, rawPhase]);
 
   useEffect(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -556,6 +591,7 @@ export default function StatusScreen() {
     const t = setTimeout(() => {
       if (customerPhaseRef.current !== "searching") return;
       if (acceptedRequestRef.current != null) return;
+      if (!isConnected) return;
       if (cancelFlowStartedRef.current) return;
       const id = currentRideIdRef.current;
       const list = requestsRef.current;
@@ -1064,7 +1100,7 @@ export default function StatusScreen() {
   const isDriving = customerPhase === "driving";
   const isPreparing = customerPhase === "preparing";
   const isArrived = customerPhase === "arrived";
-  const readyForDispatch = acceptedRequest?.status === "ready_for_dispatch";
+  const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
   const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
 
   return (
@@ -1124,10 +1160,10 @@ export default function StatusScreen() {
                     ? `${driverFirstName} bereitet sich vor`
                     : `Fahrer gefunden · ${driverPlate}`}
           </Text>
-          {acceptedRequest ? (
+          {effectiveAcceptedRequest ? (
             <Text style={styles.uberBarPayer} numberOfLines={2}>
-              {customerPayerBlockFromRideRequest(acceptedRequest).title}:{" "}
-              {customerPayerBlockFromRideRequest(acceptedRequest).subtitle}
+              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
+              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
             </Text>
           ) : null}
         </View>
@@ -1178,10 +1214,24 @@ export default function StatusScreen() {
       </Modal>
 
       <Modal visible={chatOpen} transparent animationType="fade" onRequestClose={() => setChatOpen(false)}>
-        <Pressable style={styles.chatOverlay} onPress={() => setChatOpen(false)}>
+        <KeyboardAvoidingView
+          style={styles.chatOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setChatOpen(false)} />
           <Pressable style={styles.chatCard} onPress={() => {}}>
             <Text style={styles.chatTitle}>Chat</Text>
             <Text style={styles.chatSubtitle}>{driverFirstName}</Text>
+            {chatReplyTo ? (
+              <View style={styles.chatReplyBanner}>
+                <Text style={styles.chatReplyBannerLabel} numberOfLines={1}>
+                  Antwort auf {chatReplyTo.from === "driver" ? "Fahrer" : "Sie"}: {chatReplyTo.text}
+                </Text>
+                <Pressable onPress={() => setChatReplyTo(null)} hitSlop={8}>
+                  <Feather name="x" size={16} color="#6B7280" />
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.chatThreadBox}>
               <ScrollView
                 style={{ maxHeight: 220 }}
@@ -1194,13 +1244,25 @@ export default function StatusScreen() {
                   </Text>
                 ) : (
                   chatMsgs.map((m) => (
-                    <View
+                    <Pressable
                       key={m.id}
                       style={m.from === "driver" ? styles.chatBubbleIncoming : styles.chatBubbleOutgoing}
+                      onLongPress={() => {
+                        setChatReplyTo(m);
+                        Haptics.selectionAsync();
+                      }}
                     >
-                      <Text style={styles.chatBubbleMeta}>{m.from === "driver" ? "Fahrer" : "Sie"}</Text>
+                      {m.replyTo ? (
+                        <Text style={styles.chatReplyQuote} numberOfLines={2}>
+                          {m.replyTo.from === "driver" ? "Fahrer" : "Sie"}: {m.replyTo.text}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.chatBubbleMeta}>
+                        {m.from === "driver" ? "Fahrer" : "Sie"}
+                        {m.pending ? " · senden…" : ""}
+                      </Text>
                       <Text style={styles.chatBubbleText}>{m.text}</Text>
-                    </View>
+                    </Pressable>
                   ))
                 )}
               </ScrollView>
@@ -1233,14 +1295,28 @@ export default function StatusScreen() {
               onPress={() => {
                 const msg = chatInput.trim();
                 if (!msg) return;
-                sendRideChat(msg, "customer");
+                const reply = chatReplyTo
+                  ? { from: chatReplyTo.from as RideChatSender, text: chatReplyTo.text }
+                  : undefined;
+                const pendingId = rideChatMessageId(`pending-${Date.now()}`, "customer", msg);
+                setChatMsgs((prev) =>
+                  mergeRideChatMessages(prev, {
+                    id: pendingId,
+                    from: "customer",
+                    text: msg,
+                    pending: true,
+                    ...(reply ? { replyTo: reply } : {}),
+                  }),
+                );
+                sendRideChat({ text: msg, sender: "customer", replyTo: reply });
                 setChatInput("");
+                setChatReplyTo(null);
               }}
             >
               <Text style={styles.chatSendBtnText}>Senden</Text>
             </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -1529,6 +1605,27 @@ const styles = StyleSheet.create({
   },
   chatBubbleMeta: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   chatBubbleText: { fontSize: rf(14), fontFamily: "Inter_400Regular", color: "#111827", lineHeight: rf(20) },
+  chatReplyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    marginBottom: rs(8),
+    padding: rs(10),
+    borderRadius: rs(10),
+    backgroundColor: "#F3F4F6",
+    borderLeftWidth: 3,
+    borderLeftColor: "#DC2626",
+  },
+  chatReplyBannerLabel: { flex: 1, fontSize: rf(12), fontFamily: "Inter_500Medium", color: "#4B5563" },
+  chatReplyQuote: {
+    fontSize: rf(11),
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
+    marginBottom: rs(4),
+    paddingLeft: rs(6),
+    borderLeftWidth: 2,
+    borderLeftColor: "#D1D5DB",
+  },
   chatTemplatesLabel: { fontSize: rf(11), fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 0.4 },
   chatTemplatesWrap: { flexDirection: "row", flexWrap: "wrap", gap: rs(8) },
   chatTemplateChip: {
