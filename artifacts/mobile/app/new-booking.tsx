@@ -1,10 +1,15 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -16,11 +21,19 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  accountSheetButtonLabel,
+  accountSheetCaptionLabel,
+  accountSheetCardTitle,
+  accountSheetChipLabel,
+  accountSheetHeaderTitle,
+  accountSheetInputText,
+  accountSheetPrimaryLabel,
+  accountSheetSecondaryLabel,
+  accountSheetToolbarAction,
+} from "@/constants/accountSheetTypography";
+import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
 import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
-import { getRoute, fetchWithTimeout, type GeoLocation } from "@/utils/routing";
-
-const NB_CAR_ICON = "#171717";
-const NB_WHEELCHAIR_ICON = "#0369A1";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -31,6 +44,15 @@ import {
   validateServiceAreaForBooking,
 } from "@/lib/appOperationalConfig";
 import { useColors } from "@/hooks/useColors";
+import { getRoute, fetchWithTimeout, type GeoLocation } from "@/utils/routing";
+import { rf, rs } from "@/utils/scale";
+
+const NB_CAR_ICON = "#171717";
+const NB_WHEELCHAIR_ICON = "#0369A1";
+const DRIVER_NOTE_ACCESSORY_ID = "new-booking-driver-note-keyboard";
+const ADDRESS_PICKUP_ACCESSORY_ID = "new-booking-pickup-keyboard";
+const ADDRESS_DEST_ACCESSORY_ID = "new-booking-dest-keyboard";
+const HELP_FIELD_FOCUS = "#111111";
 
 type NominatimAddress = {
   road?: string;
@@ -60,12 +82,6 @@ type GeoResult = {
 
 // Soft viewbox bias around Esslingen / Stuttgart (but not exclusive)
 const VIEWBOX = "8.8,48.6,9.6,48.9";
-
-const QUICK_SUGGESTIONS: { label: string; sub: string; lat: number; lon: number; icon: string }[] = [
-  { label: "Stuttgart Flughafen", sub: "Abflug & Ankunft, Terminal 1+3", lat: 48.6899, lon: 9.2219, icon: "wind" },
-  { label: "Stuttgart Hauptbahnhof", sub: "Bahnhofsplatz 3, Stuttgart", lat: 48.7836, lon: 9.1817, icon: "navigation" },
-  { label: "Messe Stuttgart", sub: "Messepiazza 1, Leinfelden-Echterdingen", lat: 48.6952, lon: 9.2003, icon: "grid" },
-];
 
 async function nominatimSearch(query: string, signal?: AbortSignal): Promise<GeoResult[]> {
   try {
@@ -108,6 +124,7 @@ type GeoItem = GeoResult;
 
 type SelectedAddress = {
   name: string;
+  subline: string;
   fullName: string;
   lat: number;
   lon: number;
@@ -117,6 +134,7 @@ type SelectedAddress = {
 
 const EMPTY_SELECTED_ADDRESS: SelectedAddress = {
   name: "",
+  subline: "",
   fullName: "",
   lat: 0,
   lon: 0,
@@ -124,8 +142,31 @@ const EMPTY_SELECTED_ADDRESS: SelectedAddress = {
   isPoiAddress: false,
 };
 
+function parseDisplayNameFallback(display: string): { line1: string; subline: string } {
+  const parts = String(display ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const plzIdx = parts.findIndex((p) => /^\d{5}$/.test(p));
+  const plz = plzIdx >= 0 ? parts[plzIdx] : "";
+  const cityPart =
+    plzIdx >= 0 && parts[plzIdx + 1] && !/deutschland|baden-württemberg|landkreis|region/i.test(parts[plzIdx + 1])
+      ? parts[plzIdx + 1]
+      : parts.find(
+          (p, i) =>
+            i > 0 &&
+            !/^\d{5}$/.test(p) &&
+            !/\d/.test(p) &&
+            !/deutschland|baden-württemberg|landkreis|region/i.test(p),
+        ) ?? "";
+  const subline = [plz, cityPart].filter(Boolean).join(" ");
+  const line1 = (plzIdx > 0 ? parts.slice(0, plzIdx) : parts.slice(0, 1)).join(", ").trim() || parts[0] || "";
+  return { line1, subline };
+}
+
 function buildStructuredAddressFromGeo(item: GeoItem): {
   name: string;
+  subline: string;
   fullName: string;
   isStreetAddress: boolean;
   isPoiAddress: boolean;
@@ -166,30 +207,81 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
   const poiClass = /^(aeroway|railway|amenity|tourism|leisure|public_transport)$/i.test(String(item.class ?? ""));
   const isPoiAddress = (!line1Street && (poiKeyword || poiClass)) || /^(station|stop|platform|terminal)$/i.test(String(item.type ?? ""));
 
-  const line1 = line1Street || poiText;
-  const line2 = postcode && city ? `${postcode} ${city}` : city || postcode;
+  let line1 = line1Street || poiText;
+  let subline = [postcode, city].filter(Boolean).join(" ");
+
+  if (!subline || (!line1Street && !poiText)) {
+    const fallback = parseDisplayNameFallback(item.display_name);
+    if (!line1) line1 = fallback.line1;
+    if (!subline) subline = fallback.subline;
+  }
+
+  const fullName = subline ? `${line1}, ${subline}` : line1;
   return {
     name: line1,
-    fullName: line2 ? `${line1}, ${line2}` : line1,
+    subline,
+    fullName,
     isStreetAddress: Boolean(line1Street),
     isPoiAddress,
   };
 }
 
+async function reverseGeocodeLatLon(lat: number, lon: number): Promise<SelectedAddress | null> {
+  try {
+    const params = new URLSearchParams({
+      lat: String(lat),
+      lon: String(lon),
+      format: "json",
+      addressdetails: "1",
+    });
+    const res = await fetchWithTimeout(
+      `https://nominatim.openstreetmap.org/reverse?${params.toString()}`,
+      {
+        headers: { "Accept-Language": "de", "User-Agent": "OnrodaApp/1.0" },
+        timeoutMs: 12_000,
+      },
+    );
+    if (!res.ok) return null;
+    const item = (await res.json()) as GeoItem;
+    const structured = buildStructuredAddressFromGeo(item);
+    return {
+      ...structured,
+      lat,
+      lon,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function AddressInput({
   label,
-  icon,
   value,
+  subline,
   placeholder,
   onSelect,
   colors,
+  compact = false,
+  routeRow = false,
+  fieldLabel,
+  showGps = false,
+  onGpsPress,
+  gpsLoading = false,
+  inputAccessoryViewID,
 }: {
   label: string;
-  icon: "map-pin" | "flag";
   value: string;
+  subline: string;
   placeholder: string;
   onSelect: (selection: SelectedAddress) => void;
   colors: ReturnType<typeof useColors>;
+  compact?: boolean;
+  routeRow?: boolean;
+  fieldLabel?: string;
+  showGps?: boolean;
+  onGpsPress?: () => void;
+  gpsLoading?: boolean;
+  inputAccessoryViewID?: string;
 }) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<GeoItem[]>([]);
@@ -197,10 +289,11 @@ function AddressInput({
   const [focused, setFocused] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    setQuery(value);
-  }, [value]);
+    if (!focused && !value.trim()) setQuery("");
+  }, [focused, value]);
 
   useEffect(
     () => () => {
@@ -209,12 +302,34 @@ function AddressInput({
     [],
   );
 
-  const showQuick = focused && query.length === 0;
-  const showResults = results.length > 0 && query.length >= 2;
+  const showResults = focused && results.length > 0 && query.length >= 2;
+
+  const dismissEdit = () => {
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    setFocused(false);
+    setResults([]);
+  };
+
+  const enterEditMode = () => {
+    const editQuery = subline ? `${value}, ${subline}` : value;
+    setQuery(editQuery);
+    setFocused(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleCancelEdit = () => {
+    setResults([]);
+    setQuery("");
+    dismissEdit();
+  };
 
   const handleChange = (text: string) => {
     setQuery(text);
     setResults([]);
+    if (text.length === 0) {
+      onSelect(EMPTY_SELECTED_ADDRESS);
+    }
     if (debounce.current) clearTimeout(debounce.current);
     if (text.length < 2) return;
     debounce.current = setTimeout(async () => {
@@ -235,9 +350,13 @@ function AddressInput({
     setQuery(selection.name);
     setResults([]);
     setFocused(false);
+    inputRef.current?.blur();
     onSelect(selection);
     Haptics.selectionAsync();
   };
+
+  const hasSelection = value.trim().length > 0;
+  const showSelectedPreview = (compact || routeRow) && hasSelection && !focused;
 
   const handleClear = () => {
     searchAbortRef.current?.abort();
@@ -246,75 +365,128 @@ function AddressInput({
     onSelect(EMPTY_SELECTED_ADDRESS);
   };
 
-  return (
-    <View>
-      <Text style={[styles.inputLabel, { color: colors.foreground }]}>{label}</Text>
-      <View style={[styles.inputBox, { backgroundColor: colors.card, borderColor: focused ? "#DC2626" : colors.border }]}>
-        <Feather name={icon} size={16} color={focused ? "#DC2626" : colors.mutedForeground} />
-        <TextInput
-          style={[styles.inputText, { color: colors.foreground }]}
-          value={query}
-          onChangeText={handleChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 200)}
-          placeholder={placeholder}
-          placeholderTextColor={colors.mutedForeground}
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="words"
-        />
-        {loading && <ActivityIndicator size="small" color="#DC2626" />}
-        {!loading && query.length > 0 && (
-          <Pressable hitSlop={8} onPress={handleClear}>
-            <Feather name="x" size={15} color={colors.mutedForeground} />
-          </Pressable>
-        )}
-      </View>
+  const fieldBorder = focused ? HELP_FIELD_FOCUS : HOME_SHEET_RIM;
+  const fieldBorderWidth = focused ? 1.5 : StyleSheet.hairlineWidth;
 
-      {/* Quick suggestions (shown when focused + empty) */}
-      {showQuick && (
-        <View style={[styles.suggestionBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.suggestionHeader, { color: colors.mutedForeground }]}>Schnellauswahl</Text>
-          {QUICK_SUGGESTIONS.map((s, i) => (
-            <Pressable
-              key={i}
-              style={[styles.suggestionItem, i < QUICK_SUGGESTIONS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
-              onPress={() =>
-                handlePick({
-                  name: s.label,
-                  fullName: `${s.label}, ${s.sub}`,
-                  lat: s.lat,
-                  lon: s.lon,
-                  isStreetAddress: false,
-                  isPoiAddress: true,
-                })
-              }
-            >
-              <View style={[styles.suggestionIconBox, { backgroundColor: "#DC262612" }]}>
-                <Feather name={s.icon as any} size={13} color="#DC2626" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.suggestionText, { color: colors.foreground }]}>{s.label}</Text>
-                <Text style={[styles.suggestionSub, { color: colors.mutedForeground }]} numberOfLines={1}>{s.sub}</Text>
-              </View>
+  const showGpsBtn = routeRow && showGps && !focused && !hasSelection && !loading;
+
+  return (
+    <>
+      {Platform.OS === "ios" && inputAccessoryViewID ? (
+        <InputAccessoryView nativeID={inputAccessoryViewID}>
+          <View style={[styles.accessoryBar, { borderTopColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={dismissEdit} hitSlop={10}>
+              <Text style={styles.accessoryDone}>Fertig</Text>
             </Pressable>
-          ))}
+          </View>
+        </InputAccessoryView>
+      ) : null}
+    <View style={routeRow ? styles.routeRowWrap : undefined}>
+      {!compact && !routeRow ? (
+        <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      ) : null}
+      {routeRow && focused ? (
+        <View style={[styles.composeToolbar, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}>
+          <Pressable hitSlop={8} onPress={handleCancelEdit} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <Text style={[styles.composeToolbarAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
+          </Pressable>
+          <Pressable hitSlop={8} onPress={dismissEdit} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <Text style={[styles.composeToolbarAction, { color: colors.foreground }]}>Fertig</Text>
+          </Pressable>
         </View>
-      )}
+      ) : null}
+      <Pressable
+        style={[
+          routeRow ? styles.routeRowPress : styles.inputBox,
+          !routeRow && compact && styles.inputBoxRoute,
+          routeRow && focused && styles.routeRowEditing,
+          !routeRow && {
+            backgroundColor: HOME_SHEET_INNER,
+            borderColor: fieldBorder,
+            borderWidth: fieldBorderWidth,
+          },
+          routeRow && {
+            backgroundColor: focused ? HOME_SHEET_INNER : "transparent",
+            borderColor: focused ? fieldBorder : "transparent",
+            borderWidth: focused ? fieldBorderWidth : 0,
+          },
+        ]}
+        onPress={() => {
+          if (showSelectedPreview) enterEditMode();
+        }}
+      >
+        <View style={[routeRow ? styles.routeRowBody : styles.inputBody, { flex: 1 }]}>
+          {routeRow && fieldLabel ? (
+            <Text style={[styles.routeRowCaption, { color: colors.mutedForeground }]}>{fieldLabel}</Text>
+          ) : null}
+          {showSelectedPreview ? (
+            <View style={styles.addressPreview}>
+              <Text style={[styles.addressLine1, { color: colors.foreground }]} numberOfLines={2}>
+                {value}
+              </Text>
+              {subline ? (
+                <Text style={[styles.addressLine2, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {subline}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.inputText,
+                routeRow && styles.routeRowInput,
+                compact && !routeRow && styles.inputTextRoute,
+                { color: colors.foreground },
+              ]}
+              value={query}
+              onChangeText={handleChange}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setTimeout(() => setFocused(false), 200)}
+              placeholder={placeholder}
+              placeholderTextColor={colors.mutedForeground}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="words"
+              inputAccessoryViewID={Platform.OS === "ios" ? inputAccessoryViewID : undefined}
+            />
+          )}
+        </View>
+        {loading && <ActivityIndicator size="small" color={colors.foreground} />}
+        {showGpsBtn && onGpsPress ? (
+          <Pressable hitSlop={8} onPress={onGpsPress} style={styles.routeGpsBtn}>
+            {gpsLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="navigation" size={17} color={colors.primary} />
+            )}
+          </Pressable>
+        ) : null}
+        {!loading && !showGpsBtn && focused && query.length > 0 ? (
+          <Pressable hitSlop={8} onPress={handleClear}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
+          </Pressable>
+        ) : null}
+      </Pressable>
 
       {/* Nominatim results */}
       {showResults && (
-        <View style={[styles.suggestionBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.suggestionBox, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
           {results.map((s, i) => (
             <Pressable
               key={i}
-              style={[styles.suggestionItem, i < results.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+              style={[styles.suggestionItem, i < results.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: HOME_SHEET_RIM }]}
               onPress={() => {
                 const structured = buildStructuredAddressFromGeo(s);
                 handlePick({
-                  ...structured,
+                  name: structured.name,
+                  subline: structured.subline,
+                  fullName: structured.fullName,
                   lat: parseFloat(s.lat),
                   lon: parseFloat(s.lon),
+                  isStreetAddress: structured.isStreetAddress,
+                  isPoiAddress: structured.isPoiAddress,
                 });
               }}
             >
@@ -322,160 +494,136 @@ function AddressInput({
                 <Feather name="map-pin" size={13} color={colors.mutedForeground} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.suggestionText, { color: colors.foreground }]} numberOfLines={1}>
-                  {shortName(s.display_name)}
-                </Text>
-                <Text style={[styles.suggestionSub, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {subName(s.display_name)}
-                </Text>
+                {(() => {
+                  const structured = buildStructuredAddressFromGeo(s);
+                  return (
+                    <>
+                      <Text style={[styles.suggestionText, { color: colors.foreground }]} numberOfLines={1}>
+                        {structured.name}
+                      </Text>
+                      <Text style={[styles.suggestionSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        {structured.subline || subName(s.display_name)}
+                      </Text>
+                    </>
+                  );
+                })()}
               </View>
             </Pressable>
           ))}
         </View>
       )}
     </View>
+    </>
   );
 }
 
-const DAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-
 function pad(n: number) { return n.toString().padStart(2, "0"); }
 
-const DAY_NAMES = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-
-function DateTimePicker({
+function BookingDateTimePicker({
   visible,
+  value,
   onClose,
   onConfirm,
   colors,
 }: {
   visible: boolean;
+  value: Date | null;
   onClose: () => void;
   onConfirm: (date: Date) => void;
   colors: ReturnType<typeof useColors>;
 }) {
-  const now = new Date();
+  const minDate = new Date();
+  const [draft, setDraft] = useState(value ?? minDate);
 
-  // Build next 5 days
-  const days = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
+  useEffect(() => {
+    if (visible) setDraft(value ?? minDate);
+  }, [visible, value]);
 
-  const [selIdx, setSelIdx] = useState(0);
-
-  const initH = now.getHours();
-  const initM = Math.ceil(now.getMinutes() / 5) * 5 % 60;
-  const [hour, setHour] = useState(initH);
-  const [minute, setMinute] = useState(initM);
-
-  const stepHour = (dir: 1 | -1) => { setHour(h => (h + dir + 24) % 24); Haptics.selectionAsync(); };
-  const stepMinute = (dir: 1 | -1) => { setMinute(m => (m + dir * 5 + 60) % 60); Haptics.selectionAsync(); };
-
-  const handleConfirm = () => {
-    const base = days[selIdx];
-    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), hour, minute, 0, 0);
-    onConfirm(d);
+  const onChange = (_event: DateTimePickerEvent, next?: Date) => {
+    if (next) setDraft(next);
   };
+
+  const confirm = () => {
+    onConfirm(draft);
+    Haptics.selectionAsync();
+  };
+
+  if (Platform.OS === "android" && visible) {
+    return (
+      <RNDateTimePicker
+        value={draft}
+        mode="datetime"
+        display="default"
+        is24Hour
+        minimumDate={minDate}
+        onChange={(event, next) => {
+          if (event.type === "dismissed") {
+            onClose();
+            return;
+          }
+          if (next) {
+            onConfirm(next);
+            onClose();
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={[styles.dtModal, { backgroundColor: colors.surface }]} onPress={(e) => e.stopPropagation()}>
-
-          {/* Header */}
-          <View style={styles.dtHeader}>
-            <Text style={[styles.dtTitle, { color: colors.foreground }]}>Abholzeit wählen</Text>
+        <Pressable style={[styles.dtModal, { backgroundColor: HOME_SHEET_PANEL }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[styles.dtSheetHeader, { borderBottomColor: HOME_SHEET_RIM }]}>
             <Pressable onPress={onClose} hitSlop={10}>
-              <Feather name="x" size={20} color={colors.mutedForeground} />
+              <Text style={[styles.dtSheetAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
+            </Pressable>
+            <Text style={[styles.dtSheetTitle, { color: colors.foreground }]}>Abholzeit</Text>
+            <Pressable onPress={confirm} hitSlop={10}>
+              <Text style={[styles.dtSheetAction, { color: HOME_SHEET_TEXT }]}>Fertig</Text>
             </Pressable>
           </View>
-
-          {/* 5-day selector */}
-          <View style={styles.dayChipsRow}>
-            {days.map((d, i) => {
-              const sel = selIdx === i;
-              return (
-                <Pressable
-                  key={i}
-                  style={[
-                    styles.dayChip,
-                    { borderColor: sel ? "#DC2626" : colors.border, backgroundColor: sel ? "#DC2626" : colors.muted },
-                  ]}
-                  onPress={() => { setSelIdx(i); Haptics.selectionAsync(); }}
-                >
-                  <Text style={[styles.dayChipTop, { color: sel ? "#fff" : colors.foreground }]}>
-                    {i === 0 ? "Heute" : i === 1 ? "Morgen" : DAY_NAMES[d.getDay()]}
-                  </Text>
-                  <Text style={[styles.dayChipNum, { color: sel ? "#fff" : colors.foreground }]}>
-                    {pad(d.getDate())}
-                  </Text>
-                  <Text style={[styles.dayChipMonth, { color: sel ? "#ffcccc" : colors.foreground }]}>
-                    {MONTHS[d.getMonth()]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Time picker */}
-          <View style={[styles.timePillRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-            <View style={styles.timePillUnit}>
-              <Pressable onPress={() => stepHour(1)} hitSlop={8} style={styles.timeArrowBtn}>
-                <Feather name="chevron-up" size={22} color="#DC2626" />
-              </Pressable>
-              <Text style={[styles.timePillNum, { color: colors.foreground }]}>{pad(hour)}</Text>
-              <Pressable onPress={() => stepHour(-1)} hitSlop={8} style={styles.timeArrowBtn}>
-                <Feather name="chevron-down" size={22} color="#DC2626" />
-              </Pressable>
-              <Text style={[styles.timePillLabel, { color: colors.mutedForeground }]}>Stunde</Text>
-            </View>
-
-            <Text style={[styles.timeColonBig, { color: colors.foreground }]}>:</Text>
-
-            <View style={styles.timePillUnit}>
-              <Pressable onPress={() => stepMinute(1)} hitSlop={8} style={styles.timeArrowBtn}>
-                <Feather name="chevron-up" size={22} color="#DC2626" />
-              </Pressable>
-              <Text style={[styles.timePillNum, { color: colors.foreground }]}>{pad(minute)}</Text>
-              <Pressable onPress={() => stepMinute(-1)} hitSlop={8} style={styles.timeArrowBtn}>
-                <Feather name="chevron-down" size={22} color="#DC2626" />
-              </Pressable>
-              <Text style={[styles.timePillLabel, { color: colors.mutedForeground }]}>Minute</Text>
-            </View>
-          </View>
-
-          {/* Buttons */}
-          <View style={styles.dtBtnRow}>
-            <Pressable style={[styles.dtBtnCancel, { borderColor: colors.border }]} onPress={onClose}>
-              <Text style={[styles.dtBtnCancelText, { color: colors.foreground }]}>Abbrechen</Text>
-            </Pressable>
-            <Pressable style={styles.dtBtnConfirm} onPress={handleConfirm}>
-              <Feather name="check" size={16} color="#fff" />
-              <Text style={styles.dtBtnConfirmText}>Bestätigen</Text>
-            </Pressable>
-          </View>
-
+          <RNDateTimePicker
+            value={draft}
+            mode="datetime"
+            display="spinner"
+            is24Hour
+            locale="de-DE"
+            minimumDate={minDate}
+            onChange={onChange}
+            style={styles.dtSpinner}
+            textColor={colors.foreground}
+          />
         </Pressable>
       </Pressable>
     </Modal>
   );
 }
 
+function DriverNoteAccessory({ onDone }: { onDone: () => void }) {
+  if (Platform.OS !== "ios") return null;
+  return (
+    <InputAccessoryView nativeID={DRIVER_NOTE_ACCESSORY_ID}>
+      <View style={[styles.accessoryBar, { borderTopColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={onDone} hitSlop={10}>
+          <Text style={styles.accessoryDone}>Fertig</Text>
+        </Pressable>
+      </View>
+    </InputAccessoryView>
+  );
+}
+
 function formatDateTime(d: Date) {
-  const day = d.getDate();
-  const month = MONTHS[d.getMonth()];
-  const year = d.getFullYear();
-  return `${pad(day)}. ${month} ${year}, ${pad(d.getHours())}:${pad(d.getMinutes())} Uhr`;
+  const datePart = d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+  return `${datePart}, ${pad(d.getHours())}:${pad(d.getMinutes())} Uhr`;
 }
 
 export default function NewBookingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const topPad = isWeb ? 67 : insets.top;
+  const topPad = isWeb ? 44 : insets.top;
 
   const { mode } = useLocalSearchParams<{ mode?: string }>();
 
@@ -495,6 +643,32 @@ export default function NewBookingScreen() {
   const [fareLoading, setFareLoading] = useState(false);
   const [wheelchairFoldable, setWheelchairFoldable] = useState(false);
   const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
+  const [driverNoteFocused, setDriverNoteFocused] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const driverNoteRef = useRef<TextInput>(null);
+
+  const handleGpsPickup = async () => {
+    setGpsLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Standort", "Bitte Standortzugriff erlauben, um den Abholort zu übernehmen.");
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const picked = await reverseGeocodeLatLon(pos.coords.latitude, pos.coords.longitude);
+      if (picked) {
+        setFrom(picked);
+        Haptics.selectionAsync();
+      } else {
+        Alert.alert("Standort", "Adresse konnte nicht ermittelt werden.");
+      }
+    } catch {
+      Alert.alert("Standort", "Standort konnte nicht abgerufen werden.");
+    } finally {
+      setGpsLoading(false);
+    }
+  };
 
   useEffect(() => {
     setFrom(EMPTY_SELECTED_ADDRESS);
@@ -719,113 +893,182 @@ export default function NewBookingScreen() {
     }
   };
 
+  const dismissDriverNote = () => {
+    driverNoteRef.current?.blur();
+    Keyboard.dismiss();
+  };
+
   return (
-    <View style={[styles.container, styles.rootScreen]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.replace("/");
+            router.back();
           }}
           style={styles.backBtn}
           hitSlop={10}
         >
-          <Feather name="x" size={24} color={colors.foreground} />
+          <Feather name="x" size={22} color={colors.foreground} />
         </Pressable>
-        <Text style={styles.headerTitle}>Buchung</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            {isInstant ? "Sofortfahrt" : "Reservieren"}
+          </Text>
+          {!isInstant ? (
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Fahrt im Voraus planen</Text>
+          ) : null}
+        </View>
+        <View style={{ width: rs(36) }} />
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={topPad + 8}
       >
-        {/* Addresses */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <AddressInput
-            label="Von"
-            icon="map-pin"
-            value={from.name}
-            placeholder="Abholort eingeben…"
-            onSelect={setFrom}
-            colors={colors}
-          />
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.swapRow}>
+        <ScrollView
+          style={{ flex: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+        >
+        <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fahrziel</Text>
+          <View style={styles.fahrzielBody}>
+            <View style={styles.fahrzielRow}>
+              <View style={styles.fahrzielDotCol}>
+                <View style={styles.fahrzielDotOrigin} />
+              </View>
+              <AddressInput
+                label="Von"
+                routeRow
+                fieldLabel="Abholort"
+                inputAccessoryViewID={ADDRESS_PICKUP_ACCESSORY_ID}
+                showGps
+                onGpsPress={() => void handleGpsPickup()}
+                gpsLoading={gpsLoading}
+                value={from.name}
+                subline={from.subline}
+                placeholder="Wo sollen wir dich abholen?"
+                onSelect={setFrom}
+                colors={colors}
+              />
+            </View>
+            <View style={[styles.fahrzielDivider, { backgroundColor: HOME_SHEET_RIM }]} />
+            <View style={styles.fahrzielRow}>
+              <View style={styles.fahrzielDotCol}>
+                <View style={[styles.fahrzielDotDest, { backgroundColor: colors.primary }]} />
+              </View>
+              <AddressInput
+                label="Ziel"
+                routeRow
+                fieldLabel="Zielort"
+                inputAccessoryViewID={ADDRESS_DEST_ACCESSORY_ID}
+                value={to.name}
+                subline={to.subline}
+                placeholder="Wohin möchtest du fahren?"
+                onSelect={setTo}
+                colors={colors}
+              />
+            </View>
             <Pressable
-              style={[styles.swapBtn, { borderColor: colors.border, backgroundColor: colors.muted }]}
+              style={[styles.fahrzielSwap, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}
               onPress={swapFromTo}
+              accessibilityLabel="Start und Ziel tauschen"
             >
-              <Feather name="repeat" size={14} color={colors.foreground} />
-              <Text style={[styles.swapBtnText, { color: colors.foreground }]}>Tauschen</Text>
+              <MaterialCommunityIcons name="swap-vertical" size={17} color={HOME_SHEET_TEXT} />
             </Pressable>
           </View>
-          <AddressInput
-            label="Ziel"
-            icon="flag"
-            value={to.name}
-            placeholder="Zielort eingeben…"
-            onSelect={setTo}
-            colors={colors}
-          />
         </View>
 
-        {/* Date / Time */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
           {!isInstant && (
             <>
-              <Text style={[styles.cardLabel, { color: colors.foreground }]}>Abholzeit</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Termin</Text>
               <Pressable
-                style={[styles.dtField, { borderColor: colors.border, backgroundColor: colors.muted }]}
+                style={[styles.dtField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}
                 onPress={() => setShowDtPicker(true)}
               >
-                <Feather name="clock" size={16} color={colors.mutedForeground} />
+                <Feather name="calendar" size={18} color="#DC2626" />
                 <Text style={[styles.dtFieldText, { color: scheduledAt ? colors.foreground : colors.mutedForeground }]}>
-                  {scheduledAt ? formatDateTime(scheduledAt) : "Termin wählen (Pflichtfeld)"}
+                  {scheduledAt ? formatDateTime(scheduledAt) : "Datum und Uhrzeit wählen"}
                 </Text>
-                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
               </Pressable>
             </>
           )}
           {isInstant && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 }}>
-              <Feather name="clock" size={16} color="#22C55E" />
-              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#22C55E" }}>Sofort – Fahrer wird gesucht</Text>
+            <View style={[styles.instantBadge, { backgroundColor: "#DCFCE7", borderColor: "#BBF7D0" }]}>
+              <Feather name="zap" size={15} color="#16A34A" />
+              <Text style={styles.instantBadgeText}>Sofort – Fahrer wird gesucht</Text>
             </View>
           )}
-          <Text style={[styles.dtNote, { color: colors.foreground }]}>
-            Alle Zeitangaben basieren auf dem Abholort.
-          </Text>
-          <Text style={[styles.dtNote, { color: colors.foreground }]}>
-            Kostenlose Stornierung bis 1 Stunde vor der Abholung möglich.
-          </Text>
+          <View style={[styles.infoBox, { backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM }]}>
+            <Feather name="info" size={15} color={colors.mutedForeground} />
+            <Text style={[styles.dtNote, { color: colors.mutedForeground, flex: 1 }]}>
+              Alle Zeitangaben basieren auf dem Abholort. Kostenlose Stornierung bis 1 Stunde vor Abholung.
+            </Text>
+          </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardLabel, { color: colors.foreground }]}>Notiz an Fahrer</Text>
-          <View style={[styles.inputBox, { borderColor: colors.border, backgroundColor: colors.muted, minHeight: 92, alignItems: "flex-start" }]}>
+        <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+          <View style={styles.driverNoteSectionTitleRow}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+            {driverNote.trim().length > 0 ? (
+              <Feather name="check-circle" size={20} color="#16A34A" accessibilityLabel="Notiz wird mitgeschickt" />
+            ) : null}
+          </View>
+          {driverNoteFocused ? (
+            <View style={[styles.composeToolbar, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  setDriverNote("");
+                  dismissDriverNote();
+                }}
+              >
+                <Text style={[styles.composeToolbarAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
+              </Pressable>
+              <Pressable hitSlop={8} onPress={dismissDriverNote}>
+                <Text style={[styles.composeToolbarAction, { color: colors.foreground }]}>Fertig</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <View style={styles.driverNoteFieldWrap}>
             <TextInput
-              style={[styles.inputText, { color: colors.foreground, minHeight: 76, textAlignVertical: "top" }]}
+              ref={driverNoteRef}
               value={driverNote}
               onChangeText={setDriverNote}
               placeholder="z. B. Bitte am Haupteingang warten"
               placeholderTextColor={colors.mutedForeground}
               multiline
-              maxLength={500}
+              textAlignVertical="top"
+              maxLength={140}
+              onFocus={() => setDriverNoteFocused(true)}
+              onBlur={() => setDriverNoteFocused(false)}
+              inputAccessoryViewID={Platform.OS === "ios" ? DRIVER_NOTE_ACCESSORY_ID : undefined}
+              style={[
+                styles.driverNoteInput,
+                driverNoteFocused && styles.driverNoteInputFocused,
+                {
+                  color: colors.foreground,
+                  backgroundColor: HOME_SHEET_INNER,
+                  borderColor: driverNoteFocused ? HELP_FIELD_FOCUS : HOME_SHEET_RIM,
+                },
+              ]}
             />
+            <Text style={[styles.driverNoteCount, { color: colors.mutedForeground }]}>{driverNote.length}/140</Text>
           </View>
-          <Text style={[styles.dtNote, { color: colors.foreground }]}>
-            Diese Notiz sieht nur der Fahrer für diese Reservierung.
+          <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
+            Optional — nur für den Fahrer dieser Reservierung sichtbar.
           </Text>
         </View>
 
         {/* Vehicle — only after all fields filled */}
         {formComplete && (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.cardLabel, { color: colors.foreground }]}>Fahrzeugwahl</Text>
+          <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fahrzeug</Text>
             <View style={styles.vehicleRow}>
               {VEHICLES.map((v: VehicleOption) => {
                 const active = selectedVehicle === v.id;
@@ -897,11 +1140,11 @@ export default function NewBookingScreen() {
                 </View>
               </View>
             )}
-            <Text style={[styles.cardLabel, { color: colors.foreground, marginTop: 4 }]}>Freigabe-Code (optional)</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: rs(4) }]}>Freigabe-Code (optional)</Text>
             <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
-              Digitale Kostenübernahme durch Firma, Hotel oder anderen Auftraggeber — wird im System geprüft. Ohne Code: normale Direktbuchung.
+              Kostenübernahme durch Firma oder Hotel — wird im System geprüft.
             </Text>
-            <View style={[styles.inputBox, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+            <View style={[styles.inputBox, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER, borderWidth: StyleSheet.hairlineWidth }]}>
               <Feather name="hash" size={16} color={colors.mutedForeground} />
               <TextInput
                 style={[styles.inputText, { color: colors.foreground }]}
@@ -927,129 +1170,248 @@ export default function NewBookingScreen() {
               ? <ActivityIndicator color="#fff" size="small" />
               : <Feather name="check-circle" size={20} color="#fff" />
             }
-            <Text style={styles.submitBtnText}>{submitting ? "Wird gesendet…" : "Buchung absenden"}</Text>
+            <Text style={styles.submitBtnText}>{submitting ? "Wird gesendet…" : "Reservierung absenden"}</Text>
           </Pressable>
         )}
 
         {!formComplete && (
-          <View style={[styles.hintBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.hintBox, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
             <Feather name="info" size={15} color={colors.mutedForeground} />
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
               Bitte alle Felder ausfüllen, um die Fahrzeugauswahl zu sehen.
             </Text>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      <DateTimePicker
+      <BookingDateTimePicker
         visible={showDtPicker}
+        value={scheduledAt}
         onClose={() => setShowDtPicker(false)}
         onConfirm={(d) => { setScheduledAt(d); setShowDtPicker(false); }}
         colors={colors}
       />
+      <DriverNoteAccessory onDone={dismissDriverNote} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  /** Volle Fläche opak weiß — kein durchscheinender Stack darunter (iOS). */
-  rootScreen: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  backBtn: { width: 40, height: 40, justifyContent: "center" },
-  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#DC2626" },
-  content: { padding: 16, gap: 14, paddingBottom: 40 },
-
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
-  cardLabel: { fontSize: 14, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
-  swapRow: { alignItems: "flex-start", marginBottom: 8 },
-  swapBtn: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "space-between",
+    paddingHorizontal: rs(8),
+    paddingBottom: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: rs(52),
   },
-  swapBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  backBtn: { width: rs(36), height: rs(36), justifyContent: "center", alignItems: "center" },
+  headerCenter: { flex: 1, alignItems: "center", gap: rs(2) },
+  headerTitle: { ...accountSheetHeaderTitle },
+  headerSub: accountSheetSecondaryLabel,
+  content: { paddingHorizontal: rs(8), paddingTop: rs(24), gap: rs(16), paddingBottom: rs(40) },
 
-  inputLabel: { fontSize: 14, fontFamily: "Inter_700Bold", marginBottom: 6 },
-  inputBox: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12,
+  card: { borderRadius: rs(16), padding: rs(16), gap: rs(12) },
+  sectionTitle: accountSheetCardTitle,
+  driverNoteSectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    flexWrap: "wrap",
   },
-  inputText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  suggestionBox: { borderRadius: 12, borderWidth: 1, overflow: "hidden", marginTop: 4 },
-  suggestionHeader: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4 },
-  suggestionItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
-  suggestionIconBox: { width: 30, height: 30, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-  suggestionText: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  suggestionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+
+  fahrzielBody: {
+    position: "relative",
+    overflow: "hidden",
+  },
+  fahrzielRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingLeft: rs(12),
+    paddingRight: rs(40),
+    paddingVertical: rs(12),
+    gap: rs(10),
+  },
+  fahrzielDotCol: { width: rs(12), alignItems: "center", paddingTop: rs(18) },
+  fahrzielDotOrigin: {
+    width: rs(8),
+    height: rs(8),
+    borderRadius: rs(4),
+    backgroundColor: "#9CA3AF",
+    borderWidth: 1.5,
+    borderColor: "#6B7280",
+  },
+  fahrzielDotDest: { width: rs(8), height: rs(8), borderRadius: rs(4) },
+  fahrzielDivider: { height: StyleSheet.hairlineWidth, marginLeft: rs(34) },
+  fahrzielSwap: {
+    position: "absolute",
+    right: rs(10),
+    top: "50%",
+    marginTop: rs(-16),
+    width: rs(32),
+    height: rs(32),
+    borderRadius: rs(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routeRowWrap: { flex: 1, minWidth: 0 },
+  routeRowPress: { flexDirection: "row", alignItems: "flex-start", gap: rs(8), flex: 1 },
+  routeRowEditing: { borderRadius: rs(12) },
+  routeRowBody: { flex: 1, gap: rs(4), minWidth: 0 },
+  routeRowCaption: accountSheetCaptionLabel,
+  routeRowInput: {
+    ...accountSheetPrimaryLabel,
+    padding: 0,
+    margin: 0,
+    minHeight: rs(22),
+  },
+  routeGpsBtn: { width: rs(30), height: rs(30), alignItems: "center", justifyContent: "center", marginTop: rs(14) },
+  inputBody: { flex: 1 },
+
+  inputLabel: { ...accountSheetCaptionLabel, marginBottom: rs(4) },
+  inputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    borderRadius: rs(12),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(10),
+  },
+  inputBoxRoute: { minHeight: rs(56), paddingVertical: rs(12), paddingHorizontal: rs(12), alignItems: "center" },
+  addressPreview: { flex: 1, gap: rs(2), justifyContent: "center" },
+  addressLine1: accountSheetPrimaryLabel,
+  addressLine2: accountSheetSecondaryLabel,
+  inputText: { flex: 1, ...accountSheetInputText },
+  inputTextRoute: { fontSize: rf(15), lineHeight: rf(21) },
+
+  suggestionBox: { borderRadius: rs(12), borderWidth: StyleSheet.hairlineWidth, overflow: "hidden", marginTop: rs(4) },
+  suggestionHeader: {
+    ...accountSheetCaptionLabel,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    paddingHorizontal: rs(14),
+    paddingTop: rs(10),
+    paddingBottom: rs(4),
+  },
+  suggestionItem: { flexDirection: "row", alignItems: "center", gap: rs(10), paddingHorizontal: rs(14), paddingVertical: rs(10) },
+  suggestionIconBox: { width: rs(28), height: rs(28), borderRadius: rs(8), justifyContent: "center", alignItems: "center" },
+  suggestionText: accountSheetPrimaryLabel,
+  suggestionSub: { ...accountSheetSecondaryLabel, marginTop: 1 },
 
   dtField: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(14),
   },
-  dtFieldText: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  dtNote: { fontSize: 12, fontFamily: "Inter_500Medium", lineHeight: 18 },
+  dtFieldText: { flex: 1, ...accountSheetPrimaryLabel },
+  dtNote: accountSheetSecondaryLabel,
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(8),
+    padding: rs(12),
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  instantBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  instantBadgeText: { ...accountSheetPrimaryLabel, color: "#16A34A" },
 
-  vehicleRow: { flexDirection: "row", gap: 10 },
-  vehicleCard: {
-    flex: 1, alignItems: "center", paddingVertical: 14, paddingHorizontal: 8,
-    borderRadius: 14, borderWidth: 1.5, gap: 8, position: "relative",
+  composeToolbar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(8),
+    borderRadius: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: rs(8),
   },
-  vehicleIcon: { width: 50, height: 50, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  vehicleName: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  composeToolbarAction: accountSheetToolbarAction,
+  driverNoteFieldWrap: { position: "relative" },
+  driverNoteInput: {
+    minHeight: rs(120),
+    maxHeight: rs(200),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
+    paddingBottom: rs(28),
+    ...accountSheetInputText,
+  },
+  driverNoteInputFocused: { borderWidth: 1.5 },
+  driverNoteCount: { position: "absolute", right: rs(12), bottom: rs(10), ...accountSheetCaptionLabel },
+
+  accessoryBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(8),
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accessoryDone: { ...accountSheetToolbarAction, color: "#007AFF" },
+
+  vehicleRow: { flexDirection: "row", gap: rs(10) },
+  vehicleCard: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: rs(14),
+    paddingHorizontal: rs(8),
+    borderRadius: rs(14),
+    borderWidth: 1,
+    gap: rs(8),
+    position: "relative",
+  },
+  vehicleIcon: { width: rs(48), height: rs(48), borderRadius: rs(12), justifyContent: "center", alignItems: "center" },
+  vehicleName: { ...accountSheetChipLabel, textAlign: "center" },
   vehicleCheck: { position: "absolute", top: 6, right: 6 },
 
   submitBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 10, backgroundColor: "#DC2626", borderRadius: 14, paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(10),
+    backgroundColor: "#111111",
+    borderRadius: rs(14),
+    paddingVertical: rs(15),
   },
-  submitBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+  submitBtnText: { ...accountSheetButtonLabel, color: "#fff" },
 
   hintBox: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    borderRadius: 12, borderWidth: 1, padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    borderRadius: rs(16),
+    padding: rs(14),
   },
-  hintText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
+  hintText: { flex: 1, ...accountSheetSecondaryLabel },
 
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "#00000055" },
-  dtModal: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 },
-  dtHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  dtTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  dtLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 },
-
-  dayChipsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  dayChip: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, gap: 2 },
-  dayChipTop: { fontSize: 11, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
-  dayChipNum: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  dayChipMonth: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-
-  timePillRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    borderRadius: 16, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 24, marginBottom: 4, gap: 16,
+  dtModal: { borderTopLeftRadius: rs(20), borderTopRightRadius: rs(20), paddingBottom: rs(24) },
+  dtSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  timePillUnit: { alignItems: "center", gap: 2 },
-  timeArrowBtn: { padding: 4 },
-  timePillNum: { fontSize: 36, fontFamily: "Inter_700Bold", minWidth: 56, textAlign: "center" },
-  timePillLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  timeColonBig: { fontSize: 36, fontFamily: "Inter_700Bold", marginBottom: 16 },
-
-  dtBtnRow: { flexDirection: "row", gap: 10, marginTop: 4 },
-  dtBtnCancel: {
-    flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5,
-    alignItems: "center", justifyContent: "center",
-  },
-  dtBtnCancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  dtBtnConfirm: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, backgroundColor: "#DC2626", paddingVertical: 14, borderRadius: 12,
-  },
-  dtBtnConfirmText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
+  dtSheetTitle: accountSheetCardTitle,
+  dtSheetAction: accountSheetToolbarAction,
+  dtSpinner: { height: rs(216), alignSelf: "center" },
 });

@@ -8,7 +8,7 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { onrodaTheme } from "../src/theme";
 import { rs, rf } from "@/utils/scale";
 
-export type BottomTab = "start" | "fahrten" | "buchen" | "hilfe" | "account";
+export type BottomTab = "start" | "fahrten" | "buchen" | "orte" | "account";
 
 /** Zentraler Buchen-CTA (Referenz-Layout: grüner Kreis, weißes Plus). */
 const BUCHEN_GREEN = "#16A34A";
@@ -62,7 +62,7 @@ export function BottomTabBar({ active, offsetY = 0 }: { active: BottomTab; offse
     { id: "start",      icon: "home",        label: "Start",     onPress: () => router.replace("/") },
     { id: "fahrten",    icon: "calendar",    label: "Fahrten",   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
     { id: "buchen",     icon: "plus",        label: "Buchen",    onPress: () => router.replace("/booking-center") },
-    { id: "hilfe",      icon: "help-circle", label: "Hilfe",     onPress: () => router.replace("/help") },
+    { id: "orte",       icon: "map-pin",     label: "Orte",      onPress: () => router.replace("/orte") },
     { id: "account",    icon: "user",        label: "Konto",     onPress: () => router.replace("/profile") },
   ];
 

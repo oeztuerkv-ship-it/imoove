@@ -459,7 +459,7 @@ export default function HelpScreen() {
         <SupportContactCard />
       </KeyboardAwareScrollViewCompat>
 
-      <BottomTabBar active="hilfe" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
+      <BottomTabBar active="orte" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
     </View>
   );
 }
