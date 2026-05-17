@@ -2209,6 +2209,8 @@ export default function DriverDashboard() {
   const prevPendingIds = useRef<Set<string>>(new Set());
   const firstRender = useRef(true);
   const prevDriverOnline = useRef(false);
+  /** Blockiert Notification/Banner während OFFLINE→ONLINE (mehrere Fetches + setAvailable). */
+  const isOnlineFlowRunning = useRef(false);
   const audioPrimedRef = useRef(false);
   const [marketPanelKey, setMarketPanelKey] = useState(0);
   const [marketRefreshing, setMarketRefreshing] = useState(false);
@@ -2239,6 +2241,13 @@ export default function DriverDashboard() {
   useEffect(() => {
     const currentIds = new Set(allPending.map((r) => r.id));
     const driverOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
+
+    if (isOnlineFlowRunning.current) {
+      prevPendingIds.current = currentIds;
+      prevDriverOnline.current = driverOnline;
+      firstRender.current = false;
+      return;
+    }
 
     /* Erster Mount: oft online + leere Liste, solange der erste Markt-Fetch läuft (isConnected noch false).
      * Wenn wir firstRender hier beenden, gelten alle IDs nach dem Fetch als „neu“ → falscher Auftragston. */
@@ -2778,15 +2787,20 @@ export default function DriverDashboard() {
               setMarketRefreshing(true);
               try {
                 if (goingOnline) {
+                  isOnlineFlowRunning.current = true;
                   prevPendingIds.current = new Set();
                   firstRender.current = true;
                   prevDriverOnline.current = false;
                   setBannerRide(null);
                   bannerAnim.setValue(-140);
-                  await refreshDriverMarketHard();
-                  await setAvailable(true);
-                  await refreshDriverMarketHard();
-                  setMarketPanelKey((k) => k + 1);
+                  try {
+                    await refreshDriverMarketHard();
+                    await setAvailable(true);
+                    await refreshDriverMarketHard();
+                    setMarketPanelKey((k) => k + 1);
+                  } finally {
+                    isOnlineFlowRunning.current = false;
+                  }
                 } else {
                   await setAvailable(false);
                   await refreshDriverMarketHard();
