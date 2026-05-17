@@ -2779,8 +2779,8 @@ export default function DriverDashboard() {
               try {
                 if (goingOnline) {
                   prevPendingIds.current = new Set();
-                  firstRender.current = false;
-                  prevDriverOnline.current = true;
+                  firstRender.current = true;
+                  prevDriverOnline.current = false;
                   setBannerRide(null);
                   bannerAnim.setValue(-140);
                   await refreshDriverMarketHard();
