@@ -2096,6 +2096,10 @@ export default function DriverDashboard() {
     activateForDispatch,
     isConnected,
   } = useRideRequests();
+  const allPendingRef = useRef(allPending);
+  useEffect(() => {
+    allPendingRef.current = allPending;
+  }, [allPending]);
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
@@ -2803,8 +2807,11 @@ export default function DriverDashboard() {
                     if (onlineFlowEndTimerRef.current) clearTimeout(onlineFlowEndTimerRef.current);
                     onlineFlowEndTimerRef.current = setTimeout(() => {
                       onlineFlowEndTimerRef.current = null;
+                      prevPendingIds.current = new Set(allPendingRef.current.map((r) => r.id));
+                      firstRender.current = false;
+                      prevDriverOnline.current = true;
                       isOnlineFlowRunning.current = false;
-                    }, 100);
+                    }, 200);
                   }
                 } else {
                   await setAvailable(false);
