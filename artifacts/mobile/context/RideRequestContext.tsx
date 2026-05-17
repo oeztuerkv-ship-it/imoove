@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { AppState } from "react-native";
 
+import { useDriver } from "@/context/DriverContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 
 export type RequestStatus =
@@ -423,6 +424,11 @@ function normalizeRequest(r: any): RideRequest {
 const POLL_INTERVAL_MS = 2500;
 
 export function RideRequestProvider({ children }: { children: React.ReactNode }) {
+  const { driver: fleetDriver } = useDriver();
+  const fleetAuthToken =
+    typeof fleetDriver?.authToken === "string" && fleetDriver.authToken.trim().length > 0
+      ? fleetDriver.authToken.trim()
+      : null;
   const segments = useSegments();
   const isDriverSurface = segments[0] === "driver";
   const [requests, setRequests] = useState<RideRequest[]>([]);
@@ -619,6 +625,24 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [fetchAll]);
+
+  /**
+   * Fahrer-Route (/driver/*): Kunden-`requests` aus dem globalen Provider sofort leeren und
+   * Markt hart neu laden, sobald ein Fleet-Token da ist (Login, Session-Restore, Tab-Wechsel).
+   * Ohne das zeigt das Dashboard bis zum nächsten Poll (2,5s) Kunden-Fahrten als Ghost-Aufträge.
+   */
+  useEffect(() => {
+    if (!isDriverSurface) return;
+    if (!fleetAuthToken) {
+      setRequests([]);
+      setScheduledPoolRequests([]);
+      setIsConnected(false);
+      lastCountRef.current = 0;
+      setLastAddedRequestId(null);
+      return;
+    }
+    void fetchDriverMarket({ hardReset: true });
+  }, [isDriverSurface, fleetAuthToken, fetchDriverMarket]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useDriver } from "@/context/DriverContext";
+import { useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function DriverLoginScreen() {
@@ -42,6 +43,7 @@ export default function DriverLoginScreen() {
     setLoading(false);
     if (result.ok) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await refreshDriverMarketHard();
       router.replace(result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard");
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

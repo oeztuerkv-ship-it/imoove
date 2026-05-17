@@ -2100,6 +2100,8 @@ export default function DriverDashboard() {
   useEffect(() => {
     allPendingRef.current = allPending;
   }, [allPending]);
+  /** Notification-Baseline einmal pro Fahrer-Session (Login / App-Restore). */
+  const notificationBootstrapTokenRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
@@ -2241,6 +2243,31 @@ export default function DriverDashboard() {
       void requestNotificationPermissions();
     }
   }, [driver?.einsatzbereit, driver?.isAvailable]);
+
+  useEffect(() => {
+    const tok = driver?.authToken?.trim() ?? "";
+    if (!tok) {
+      notificationBootstrapTokenRef.current = null;
+      return;
+    }
+    if (notificationBootstrapTokenRef.current === tok) return;
+    if (!isConnected) return;
+
+    notificationBootstrapTokenRef.current = tok;
+    isOnlineFlowRunning.current = true;
+    firstRender.current = true;
+    prevPendingIds.current = new Set();
+    prevDriverOnline.current = false;
+
+    if (onlineFlowEndTimerRef.current) clearTimeout(onlineFlowEndTimerRef.current);
+    onlineFlowEndTimerRef.current = setTimeout(() => {
+      onlineFlowEndTimerRef.current = null;
+      prevPendingIds.current = new Set(allPendingRef.current.map((r) => r.id));
+      firstRender.current = false;
+      prevDriverOnline.current = Boolean(driver?.einsatzbereit && driver?.isAvailable);
+      isOnlineFlowRunning.current = false;
+    }, 200);
+  }, [driver?.authToken, driver?.einsatzbereit, driver?.isAvailable, isConnected]);
 
   // Fire notification + vibration only for truly new instant ride requests while driver is already online
   useEffect(() => {
