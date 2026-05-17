@@ -2211,6 +2211,7 @@ export default function DriverDashboard() {
   const prevDriverOnline = useRef(false);
   /** Blockiert Notification/Banner während OFFLINE→ONLINE (mehrere Fetches + setAvailable). */
   const isOnlineFlowRunning = useRef(false);
+  const onlineFlowEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioPrimedRef = useRef(false);
   const [marketPanelKey, setMarketPanelKey] = useState(0);
   const [marketRefreshing, setMarketRefreshing] = useState(false);
@@ -2799,7 +2800,11 @@ export default function DriverDashboard() {
                     await refreshDriverMarketHard();
                     setMarketPanelKey((k) => k + 1);
                   } finally {
-                    isOnlineFlowRunning.current = false;
+                    if (onlineFlowEndTimerRef.current) clearTimeout(onlineFlowEndTimerRef.current);
+                    onlineFlowEndTimerRef.current = setTimeout(() => {
+                      onlineFlowEndTimerRef.current = null;
+                      isOnlineFlowRunning.current = false;
+                    }, 100);
                   }
                 } else {
                   await setAvailable(false);
