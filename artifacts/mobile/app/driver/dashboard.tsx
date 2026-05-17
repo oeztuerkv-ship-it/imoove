@@ -679,10 +679,13 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
     prevCountRef.current = instantReqs.length;
   }, [instantReqs.length, firstReq]);
 
-  // Kein automatisches Popup bei erstem Mount/Reconnect
   useEffect(() => {
-    slideAnim.setValue(instantReqs.length > 0 ? 0 : 300);
-  }, []);
+    if (!isAvailable || !firstReq) {
+      slideAnim.setValue(300);
+      return;
+    }
+    slideAnim.setValue(0);
+  }, [isAvailable, firstReq?.id, instantReqs.length]);
 
   const mapLat = driverPos?.lat ?? 48.7394;
   const mapLon = driverPos?.lon ?? 9.3114;
@@ -2203,6 +2206,7 @@ export default function DriverDashboard() {
   const firstRender = useRef(true);
   const prevDriverOnline = useRef(false);
   const audioPrimedRef = useRef(false);
+  const [marketPanelKey, setMarketPanelKey] = useState(0);
 
   // In-app notification banner
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
@@ -2375,7 +2379,10 @@ export default function DriverDashboard() {
             from: r.from ?? r.fromFull ?? "Start",
             to: r.to ?? r.toFull ?? "Ziel",
             km: r.distanceKm ?? 0,
-            duration: r.durationMinutes ?? 0,
+            duration:
+              typeof r.actualDurationMinutes === "number" && r.actualDurationMinutes > 0
+                ? r.actualDurationMinutes
+                : r.durationMinutes ?? 0,
             amount: r.finalFare ?? r.estimatedFare ?? 0,
             payment:
               r.paymentMethod === "cash" ? "Bar" :
@@ -2468,9 +2475,12 @@ export default function DriverDashboard() {
     stopRideSound().catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     await rejectByDriver(id, driverId);
+    prevPendingIds.current.add(id);
+    await refreshRequests();
   };
   const handleComplete = async (id: string, finalFare: number) => {
     await completeRequest(id, finalFare);
+    await refreshRequests();
     setActiveTab("fahrten");
   };
   const handleCancel = async (id: string) => {
@@ -2486,6 +2496,7 @@ export default function DriverDashboard() {
         }
       }
       setActiveTab("uebersicht");
+      await refreshRequests();
     } catch (e) {
       const code = e instanceof Error ? e.message.trim() : "";
       if (code === "reservation_storno_locked") {
@@ -2758,7 +2769,17 @@ export default function DriverDashboard() {
               return;
             }
 
-            setAvailable(!driver.isAvailable);
+            const goingOnline = !driver.isAvailable;
+            setAvailable(goingOnline);
+            if (goingOnline) {
+              prevPendingIds.current = new Set();
+              firstRender.current = false;
+              prevDriverOnline.current = true;
+              setBannerRide(null);
+              bannerAnim.setValue(-140);
+              setMarketPanelKey((k) => k + 1);
+              void refreshRequests();
+            }
           }}
           style={[
             styles.segmentSwitch,
@@ -2819,6 +2840,7 @@ export default function DriverDashboard() {
           <>
             {activeTab === "uebersicht" && (
               <TabUebersicht
+                key={marketPanelKey}
                 pendingRequests={pendingRequests}
                 onAccept={handleAccept}
                 onReject={handleReject}

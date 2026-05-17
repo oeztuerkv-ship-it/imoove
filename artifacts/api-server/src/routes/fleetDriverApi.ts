@@ -16,6 +16,7 @@ import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/
 import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
+import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
@@ -436,7 +437,12 @@ router.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (re
   try {
     const a = req.fleetDriverAuth!;
     const rides = await listRidesForDriver(a.fleetDriverId);
-    res.json({ rides });
+    const durationByRideId = await listActualDurationMinutesByRideIds(rides.map((r) => r.id));
+    const withDuration = rides.map((r) => ({
+      ...r,
+      actualDurationMinutes: durationByRideId.get(r.id) ?? null,
+    }));
+    res.json({ rides: withDuration });
   } catch (err) {
     next(err);
   }

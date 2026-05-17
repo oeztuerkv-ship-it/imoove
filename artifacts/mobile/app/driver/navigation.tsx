@@ -873,8 +873,20 @@ export default function DriverNavigationScreen() {
         >
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setChatOpen(false)} />
           <Pressable style={styles.cancelReasonCard} onPress={() => {}}>
-            <Text style={styles.cancelReasonTitle}>Chat</Text>
-            <Text style={styles.driverChatSubtitle}>Kunde</Text>
+            <View style={styles.driverChatHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cancelReasonTitle}>Chat</Text>
+                <Text style={styles.driverChatSubtitle}>Kunde</Text>
+              </View>
+              <Pressable
+                onPress={() => setChatOpen(false)}
+                hitSlop={12}
+                style={styles.driverChatCloseBtn}
+                accessibilityLabel="Chat schließen"
+              >
+                <Feather name="x" size={22} color="#374151" />
+              </Pressable>
+            </View>
             {chatReplyTo ? (
               <View style={styles.driverChatReplyBanner}>
                 <Text style={styles.driverChatReplyBannerLabel} numberOfLines={1}>
@@ -1200,23 +1212,41 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     lineHeight: 19,
   },
+  driverChatHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginBottom: 4,
+  },
+  driverChatCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   driverChatBubbleIncoming: {
-    alignSelf: "stretch",
+    alignSelf: "flex-start",
+    maxWidth: "88%",
     backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
     padding: 10,
     gap: 4,
+    marginBottom: 8,
   },
   driverChatBubbleOutgoing: {
-    alignSelf: "stretch",
+    alignSelf: "flex-end",
+    maxWidth: "88%",
     backgroundColor: "#DCFCE7",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#86EFAC",
     padding: 10,
     gap: 4,
+    marginBottom: 8,
   },
   driverChatBubbleMeta: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#6B7280" },
   driverChatReplyBanner: {
