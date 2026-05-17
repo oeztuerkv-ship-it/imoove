@@ -322,6 +322,7 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   vehicle_class TEXT NOT NULL DEFAULT 'standard',
   last_login_at TIMESTAMPTZ,
   last_heartbeat_at TIMESTAMPTZ,
+  is_market_online BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended')),

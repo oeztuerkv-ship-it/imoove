@@ -3,6 +3,8 @@ import { isPostgresConfigured } from "../db/client";
 import {
   findFleetDriverInCompany,
   fleetDriverTableRowToList,
+  getFleetDriverMarketOnline,
+  setFleetDriverMarketOnline,
   touchFleetDriverHeartbeat,
   updateFleetDriverPassword,
 } from "../db/fleetDriversData";
@@ -14,10 +16,6 @@ import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/
 import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
-import {
-  isFleetDriverMarketOnline,
-  setFleetDriverMarketOnline,
-} from "../lib/fleetDriverMarketAvailability";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
@@ -62,9 +60,11 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
       : einsatzbereit
         ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
         : buildFleetDriverMeClientHints(readinessR, listRow);
+  const isMarketOnline = Boolean(row.is_market_online);
   res.json({
     ok: true,
     einsatzbereit,
+    isMarketOnline,
     notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
     blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
     driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
@@ -223,6 +223,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       });
       return;
     }
+    const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
     const all = await listRides();
     const marketRows = all.filter((ride) => {
       if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
@@ -251,7 +252,7 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
         ride.status === "searching_driver" ||
         ride.status === "offered";
       if (!inMarket) return false;
-      if (!isFleetDriverMarketOnline(a.fleetDriverId)) return false;
+      if (!marketOnline) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
@@ -374,7 +375,8 @@ router.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) =>
     return;
   }
   await touchFleetDriverHeartbeat(a.fleetDriverId);
-  res.json({ ok: true, marketOnline: isFleetDriverMarketOnline(a.fleetDriverId) });
+  const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+  res.json({ ok: true, marketOnline });
 });
 
 /** ONLINE/OFFLINE am Auftragsmarkt — ohne diesen Schalter liefert market-rides keine neuen Sofortaufträge. */
@@ -389,7 +391,11 @@ router.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, asy
     res.status(400).json({ error: "available_boolean_required" });
     return;
   }
-  setFleetDriverMarketOnline(a.fleetDriverId, body.available);
+  const updated = await setFleetDriverMarketOnline(a.fleetDriverId, a.companyId, body.available);
+  if (!updated) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
   await touchFleetDriverHeartbeat(a.fleetDriverId);
   res.json({ ok: true, marketOnline: body.available });
 });

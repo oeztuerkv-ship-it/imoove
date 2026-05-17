@@ -53,6 +53,8 @@ export interface FleetDriverListRow {
   readinessOverrideSystem: boolean;
   /** Temporäre 24h-Sperre (Reservierung nicht aktiviert). */
   reservationSuspendedUntil: string | null;
+  /** Auftragsmarkt ONLINE (Fleet-App). */
+  isMarketOnline: boolean;
 }
 
 export function normalizeFleetDriverApproval(raw: string | null | undefined): FleetDriverApprovalStatus {
@@ -113,6 +115,7 @@ export function fleetDriverTableRowToList(r: typeof fleetDriversTable.$inferSele
     adminInternalNote: (r as { admin_internal_note?: string | null }).admin_internal_note ?? "",
     readinessOverrideSystem: Boolean((r as { readiness_override_system?: boolean | null }).readiness_override_system),
     reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
+    isMarketOnline: Boolean(r.is_market_online),
   };
 }
 
@@ -635,6 +638,44 @@ export async function touchFleetDriverHeartbeat(id: string): Promise<void> {
     .update(fleetDriversTable)
     .set({ last_heartbeat_at: new Date(), updated_at: new Date() })
     .where(eq(fleetDriversTable.id, id));
+}
+
+/** Auftragsmarkt ONLINE/OFFLINE (Fleet-App), mandantengebunden. */
+export async function getFleetDriverMarketOnline(
+  fleetDriverId: string,
+  companyId: string,
+): Promise<boolean> {
+  if (!isPostgresConfigured()) return false;
+  const db = getDb();
+  if (!db) return false;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return false;
+  const rows = await db
+    .select({ is_market_online: fleetDriversTable.is_market_online })
+    .from(fleetDriversTable)
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
+    .limit(1);
+  return rows[0]?.is_market_online === true;
+}
+
+export async function setFleetDriverMarketOnline(
+  fleetDriverId: string,
+  companyId: string,
+  online: boolean,
+): Promise<boolean> {
+  if (!isPostgresConfigured()) return false;
+  const db = getDb();
+  if (!db) return false;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return false;
+  const rows = await db
+    .update(fleetDriversTable)
+    .set({ is_market_online: online, updated_at: new Date() })
+    .where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co)))
+    .returning({ id: fleetDriversTable.id });
+  return rows.length > 0;
 }
 
 /** P-Schein-Datum liegt heute oder innerhalb der nächsten `withinDays` (UTC-Datum). */

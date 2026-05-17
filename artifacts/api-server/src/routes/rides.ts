@@ -48,8 +48,7 @@ import {
   isRideCompatibleWithCapability,
 } from "../db/fleetMatchingData";
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
-import { findFleetDriverAuthRow } from "../db/fleetDriversData";
-import { isFleetDriverMarketOnline } from "../lib/fleetDriverMarketAvailability";
+import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
 import {
   assertCustomerFromFullInActiveServiceRegion,
@@ -1742,7 +1741,8 @@ router.patch("/rides/:id/status", async (req, res, next) => {
         });
         return;
       }
-      if (!isFleetDriverMarketOnline(driverId)) {
+      const marketOnline = await getFleetDriverMarketOnline(driverId, capabilityCompanyId);
+      if (!marketOnline) {
         res.status(409).json({
           error: "driver_market_offline",
           message: "Fahrer ist offline — Annahme am Auftragsmarkt nicht möglich.",

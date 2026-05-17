@@ -107,6 +107,8 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   vehicle_class: text("vehicle_class").notNull().default("standard"),
   last_login_at: timestamp("last_login_at", { withTimezone: true }),
   last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
+  /** Fleet-App: neue Markt-Sofortaufträge annehmen (false = offline am Markt). */
+  is_market_online: boolean("is_market_online").notNull().default(false),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),

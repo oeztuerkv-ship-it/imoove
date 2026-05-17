@@ -40,6 +40,7 @@
 --   053 → rides.accessibility_options_json
 --   054 → email_verification_codes (Kunden-E-Mail-Codes)
 --   056 → fleet_drivers.home_address, drivers_license_* (Partner, optional)
+--   066 → fleet_drivers.is_market_online (Fleet-App Markt ONLINE/OFFLINE)
 --   057 → app_news_items (Mobile Neuigkeiten, Admin-CMS)
 --   059 → ride_support_tickets erweitert (company_id, priority, source, Actor-Felder)
 --   060 → medical_document_extractions (OCR-Struktur ohne API-Pflicht)
@@ -289,6 +290,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'drivers_license_expiry'
   ) THEN
     errs := array_append(errs, 'fleet_drivers.drivers_license_expiry (Migration 056)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'is_market_online'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.is_market_online (Migration 066)');
   END IF;
 
   IF NOT EXISTS (

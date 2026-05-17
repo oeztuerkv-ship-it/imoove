@@ -74,6 +74,7 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
           ? av.license_plate.trim()
           : "";
   const einsatzbereit = me.einsatzbereit === true;
+  const isMarketOnline = me.isMarketOnline === true;
   const notFreigegebenMessage =
     typeof me.notFreigegebenMessage === "string" && me.notFreigegebenMessage.trim()
       ? me.notFreigegebenMessage.trim()
@@ -103,7 +104,7 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     mustChangePassword: Boolean(d.mustChangePassword ?? prev.mustChangePassword),
     blockedUntil: accessStatus === "active" ? null : prev.blockedUntil,
     einsatzbereit,
-    isAvailable: einsatzbereit ? prev.isAvailable : false,
+    isAvailable: einsatzbereit ? isMarketOnline : false,
     notFreigegebenMessage,
     blockBannerTitle: einsatzbereit ? "" : blockBannerTitle,
     driverBlockKind: einsatzbereit ? "" : driverBlockKind,
