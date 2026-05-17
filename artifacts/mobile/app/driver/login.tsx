@@ -25,6 +25,7 @@ export default function DriverLoginScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const { login } = useDriver();
+  const { refreshDriverMarketHard } = useRideRequests();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
