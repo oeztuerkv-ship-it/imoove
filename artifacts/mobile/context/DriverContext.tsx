@@ -167,7 +167,7 @@ interface DriverContextValue {
   login: (email: string, password: string) => Promise<{ ok: true; mustChangePassword: boolean } | { ok: false; error: string }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
-  setAvailable: (v: boolean) => void;
+  setAvailable: (v: boolean) => Promise<void>;
   blockDriver48h: () => Promise<void>;
   lastError: string;
 }
@@ -182,7 +182,7 @@ const DriverContext = createContext<DriverContextValue>({
   login: async () => ({ ok: false, error: "Anmeldung fehlgeschlagen." }),
   changePassword: async () => ({ ok: false, error: "Passwortänderung fehlgeschlagen." }),
   logout: async () => {},
-  setAvailable: () => {},
+  setAvailable: async () => {},
   blockDriver48h: async () => {},
   lastError: "",
 });
@@ -404,18 +404,17 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
     }
   }, [driver?.authToken]);
 
-  const setAvailable = useCallback((v: boolean) => {
+  const setAvailable = useCallback(async (v: boolean): Promise<void> => {
+    if (!driver?.authToken) return;
+    if (v && !driver.einsatzbereit) return;
+    await syncFleetMarketAvailability(driver.authToken, v);
     setDriver((prev) => {
       if (!prev) return prev;
-      if (v && !prev.einsatzbereit) {
-        return prev;
-      }
       const updated = { ...prev, isAvailable: v };
       patchStoredDriver(updated);
-      void syncFleetMarketAvailability(updated.authToken, v);
       return updated;
     });
-  }, []);
+  }, [driver?.authToken, driver?.einsatzbereit]);
 
   const blockDriver48h = useCallback(async () => {
     const until = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();

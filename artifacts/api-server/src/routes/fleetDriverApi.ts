@@ -225,8 +225,21 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
       return;
     }
     const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
     const all = await listRides();
+    const terminalMarketStatuses = new Set([
+      "completed",
+      "cancelled",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "no_driver",
+      "expired",
+      "rejected",
+    ]);
     const marketRows = all.filter((ride) => {
+      if (terminalMarketStatuses.has(ride.status)) return false;
       if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
       const isAssignedToDriver = ride.driverId === a.fleetDriverId;
       const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;

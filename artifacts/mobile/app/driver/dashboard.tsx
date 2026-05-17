@@ -652,12 +652,13 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
 }
 
 /* ─── Tab: Übersicht — Live-Karte mit Fahrerstandort + Auftrag-Popup ─── */
-function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvailable }: {
+function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvailable, marketLoading }: {
   pendingRequests: RideRequest[];
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   driverPos?: { lat: number; lon: number } | null;
   isAvailable: boolean;
+  marketLoading?: boolean;
 }) {
   const slideAnim = useRef(new Animated.Value(300)).current;
   const prevCountRef = useRef(0);
@@ -697,7 +698,7 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
         <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#111" }}>
           {isAvailable ? "Warte auf Aufträge..." : "Offline"}
         </Text>
-        {firstReq && isAvailable && (
+        {firstReq && isAvailable && !marketLoading && (
           <InstantCard req={firstReq} driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)} />
@@ -724,15 +725,17 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
         <View style={[styles.mapStatusDot, { backgroundColor: isAvailable ? "#22C55E" : "#6B7280" }]} />
         <Text style={styles.mapStatusText}>
           {isAvailable
-            ? firstReq
-              ? `${instantReqs.length} ${instantReqs.length > 1 ? "Aufträge" : "Auftrag"} wartend`
-              : "Bereit für Aufträge"
+            ? marketLoading
+              ? "Markt wird geladen…"
+              : firstReq
+                ? `${instantReqs.length} ${instantReqs.length > 1 ? "Aufträge" : "Auftrag"} wartend`
+                : "Bereit für Aufträge"
             : "Offline — Keine Aufträge"}
         </Text>
       </View>
 
       {/* Ride request popup — slides up from bottom (nur wenn ONLINE) */}
-      {firstReq && isAvailable && (
+      {firstReq && isAvailable && !marketLoading && (
         <Animated.View style={[styles.mapReqOverlay, { transform: [{ translateY: slideAnim }] }]}>
           <InstantCard
             req={firstReq}
@@ -2088,6 +2091,7 @@ export default function DriverDashboard() {
     cancelRequest,
     completeRequest,
     refreshRequests,
+    refreshDriverMarketHard,
     markDriverArriving,
     activateForDispatch,
     isConnected,
@@ -2207,6 +2211,7 @@ export default function DriverDashboard() {
   const prevDriverOnline = useRef(false);
   const audioPrimedRef = useRef(false);
   const [marketPanelKey, setMarketPanelKey] = useState(0);
+  const [marketRefreshing, setMarketRefreshing] = useState(false);
 
   // In-app notification banner
   const [bannerRide, setBannerRide] = useState<RideRequest | null>(null);
@@ -2476,7 +2481,6 @@ export default function DriverDashboard() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     await rejectByDriver(id, driverId);
     prevPendingIds.current.add(id);
-    await refreshRequests();
   };
   const handleComplete = async (id: string, finalFare: number) => {
     await completeRequest(id, finalFare);
@@ -2756,30 +2760,41 @@ export default function DriverDashboard() {
 
         <Pressable
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            void (async () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-            if (!driver.einsatzbereit) {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              void refreshEinsatzbereit();
-              Alert.alert(
-                driver.blockBannerTitle || "Einschränkung aktiv",
-                driver.notFreigegebenMessage ||
-                  "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
-              );
-              return;
-            }
+              if (!driver.einsatzbereit) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                void refreshEinsatzbereit();
+                Alert.alert(
+                  driver.blockBannerTitle || "Einschränkung aktiv",
+                  driver.notFreigegebenMessage ||
+                    "Auftragsmarkt gesperrt, bis alle Voraussetzungen erfüllt sind. Bitte Ihr Unternehmen kontaktieren.",
+                );
+                return;
+              }
 
-            const goingOnline = !driver.isAvailable;
-            setAvailable(goingOnline);
-            if (goingOnline) {
-              prevPendingIds.current = new Set();
-              firstRender.current = false;
-              prevDriverOnline.current = true;
-              setBannerRide(null);
-              bannerAnim.setValue(-140);
-              setMarketPanelKey((k) => k + 1);
-              void refreshRequests();
-            }
+              const goingOnline = !driver.isAvailable;
+              setMarketRefreshing(true);
+              try {
+                if (goingOnline) {
+                  prevPendingIds.current = new Set();
+                  firstRender.current = false;
+                  prevDriverOnline.current = true;
+                  setBannerRide(null);
+                  bannerAnim.setValue(-140);
+                  await refreshDriverMarketHard();
+                  await setAvailable(true);
+                  await refreshDriverMarketHard();
+                  setMarketPanelKey((k) => k + 1);
+                } else {
+                  await setAvailable(false);
+                  await refreshDriverMarketHard();
+                }
+              } finally {
+                setMarketRefreshing(false);
+              }
+            })();
           }}
           style={[
             styles.segmentSwitch,
@@ -2846,6 +2861,7 @@ export default function DriverDashboard() {
                 onReject={handleReject}
                 driverPos={driverPos}
                 isAvailable={driver.einsatzbereit && driver.isAvailable}
+                marketLoading={marketRefreshing}
               />
             )}
             {activeTab === "auftraege" && (

@@ -144,6 +144,8 @@ interface RideRequestContextValue {
   completeRequest: (id: string, finalFare?: number) => Promise<void>;
   /** Manuelles Neuladen der Aufträge (z. B. „Erneut suchen“). */
   refreshRequests: () => Promise<void>;
+  /** Fahrer-Markt: State leeren, dann frisch vom Server (nach ONLINE / Storno). */
+  refreshDriverMarketHard: () => Promise<boolean>;
 }
 
 const RideRequestContext = createContext<RideRequestContextValue>({
@@ -173,6 +175,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   startDriving: async () => {},
   completeRequest: async () => {},
   refreshRequests: async () => {},
+  refreshDriverMarketHard: async () => false,
 });
 
 const API_BASE = getApiBaseUrl();
@@ -481,42 +484,54 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     return created;
   }, [passengerId]);
 
-  const fetchAll = useCallback(async () => {
-    if (!API_BASE) return;
-    const ridesFromPayload = (payload: unknown): RideRequest[] => {
-      const data: any[] = Array.isArray(payload)
-        ? payload
-        : Array.isArray((payload as { items?: unknown })?.items)
-          ? ((payload as { items: any[] }).items ?? [])
-          : (payload as { item?: unknown })?.item && typeof (payload as { item?: unknown }).item === "object"
-            ? [((payload as { item: any }).item)]
-        : Array.isArray((payload as { rides?: unknown })?.rides)
-          ? ((payload as { rides: any[] }).rides ?? [])
-          : [];
-      return data.map(normalizeRequest);
-    };
+  const ridesFromPayload = useCallback((payload: unknown): RideRequest[] => {
+    const data: any[] = Array.isArray(payload)
+      ? payload
+      : Array.isArray((payload as { items?: unknown })?.items)
+        ? ((payload as { items: any[] }).items ?? [])
+        : (payload as { item?: unknown })?.item && typeof (payload as { item?: unknown }).item === "object"
+          ? [((payload as { item: any }).item)]
+      : Array.isArray((payload as { rides?: unknown })?.rides)
+        ? ((payload as { rides: any[] }).rides ?? [])
+        : [];
+    return data.map(normalizeRequest);
+  }, []);
+
+  const readFleetAuthToken = useCallback(async (): Promise<string | null> => {
     try {
       const rawDriverSession = await AsyncStorage.getItem(DRIVER_SESSION_KEY).catch(() => null);
-      let token: string | null = null;
-      if (rawDriverSession) {
-        try {
-          const parsed = JSON.parse(rawDriverSession) as { authToken?: string };
-          if (typeof parsed.authToken === "string" && parsed.authToken.trim().length > 0) {
-            token = parsed.authToken.trim();
-          }
-        } catch {
-          /* ignore broken session payload */
-        }
+      if (!rawDriverSession) return null;
+      const parsed = JSON.parse(rawDriverSession) as { authToken?: string };
+      const tok = typeof parsed.authToken === "string" ? parsed.authToken.trim() : "";
+      return tok.length > 0 ? tok : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const fetchDriverMarket = useCallback(
+    async (opts?: { hardReset?: boolean }): Promise<boolean> => {
+      if (!API_BASE) return false;
+      const token = await readFleetAuthToken();
+      if (!token || !isDriverSurfaceRef.current) return false;
+
+      if (opts?.hardReset) {
+        setRequests([]);
+        setScheduledPoolRequests([]);
+        lastCountRef.current = 0;
+        setLastAddedRequestId(null);
       }
 
-      const customerIdentity = await readStoredCustomerIdentity();
-      const customerSessionToken = customerIdentity.sessionToken;
-
-      if (token && isDriverSurfaceRef.current) {
-        const headers = { Authorization: `Bearer ${token}` };
+      const bust = Date.now();
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      };
+      try {
         const [marketRes, schedRes] = await Promise.all([
-          fetch(`${API_BASE}/fleet-driver/v1/market-rides`, { cache: "no-store", headers }),
-          fetch(`${API_BASE}/fleet-driver/v1/scheduled-rides`, { cache: "no-store", headers }),
+          fetch(`${API_BASE}/fleet-driver/v1/market-rides?_=${bust}`, { cache: "no-store", headers }),
+          fetch(`${API_BASE}/fleet-driver/v1/scheduled-rides?_=${bust}`, { cache: "no-store", headers }),
         ]);
         if (!marketRes.ok) throw new Error("fetch failed");
         const normalized = ridesFromPayload(await marketRes.json());
@@ -524,21 +539,36 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         setRequests(normalized);
         setScheduledPoolRequests(scheduledNorm);
         setIsConnected(true);
-        if (normalized.length > lastCountRef.current) {
-          const newReqs = normalized.slice(0, normalized.length - lastCountRef.current);
-          const newest = newReqs[0];
-          if (
-            newest &&
-            (newest.status === "requested" ||
-              newest.status === "searching_driver" ||
-              newest.status === "offered" ||
-              newest.status === "pending") &&
-            lastCountRef.current > 0
-          ) {
-            setLastAddedRequestId(newest.id);
-          }
-        }
         lastCountRef.current = normalized.length;
+        return true;
+      } catch {
+        setIsConnected(false);
+        if (opts?.hardReset) {
+          setRequests([]);
+          setScheduledPoolRequests([]);
+          lastCountRef.current = 0;
+        }
+        return false;
+      }
+    },
+    [readFleetAuthToken, ridesFromPayload],
+  );
+
+  const refreshDriverMarketHard = useCallback(
+    () => fetchDriverMarket({ hardReset: true }),
+    [fetchDriverMarket],
+  );
+
+  const fetchAll = useCallback(async () => {
+    if (!API_BASE) return;
+    try {
+      const token = await readFleetAuthToken();
+
+      const customerIdentity = await readStoredCustomerIdentity();
+      const customerSessionToken = customerIdentity.sessionToken;
+
+      if (token && isDriverSurfaceRef.current) {
+        await fetchDriverMarket({ hardReset: false });
         return;
       }
 
@@ -580,7 +610,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     } catch {
       setIsConnected(false);
     }
-  }, []);
+  }, [fetchDriverMarket, readFleetAuthToken, ridesFromPayload]);
 
   useEffect(() => {
     fetchAll();
@@ -818,14 +848,25 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const rejectByDriver = useCallback(
     async (id: string, driverId: string) => {
       if (!API_BASE) return;
-      await fetch(`${API_BASE}/rides/${id}/reject`, {
-        method: "POST",
-        headers: await headersForFleetRidePost(),
-        body: JSON.stringify({ driverId }),
-      });
-      await fetchAll();
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+      try {
+        const res = await fetch(`${API_BASE}/rides/${id}/reject`, {
+          method: "POST",
+          headers: await headersForFleetRidePost(),
+          body: JSON.stringify({ driverId }),
+        });
+        if (!res.ok) throw new Error("reject_failed");
+        if (isDriverSurfaceRef.current) {
+          await fetchDriverMarket({ hardReset: true });
+        } else {
+          await fetchAll();
+        }
+      } catch {
+        await fetchDriverMarket({ hardReset: true });
+        throw new Error("reject_failed");
+      }
     },
-    [fetchAll],
+    [fetchAll, fetchDriverMarket],
   );
 
   const cancelRequest = useCallback(
@@ -860,6 +901,11 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const driverCancelRequest = useCallback(
     async (id: string, driverId: string) => {
       if (!API_BASE) return;
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, status: "cancelled_by_driver" as RequestStatus } : r,
+        ),
+      );
       const res = await fetch(`${API_BASE}/rides/${id}/driver-cancel`, {
         method: "POST",
         headers: await headersForFleetRidePost(),
@@ -873,11 +919,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         } catch {
           /* ignore */
         }
+        await fetchDriverMarket({ hardReset: true });
         throw new Error(code);
       }
-      await fetchAll();
+      if (isDriverSurfaceRef.current) {
+        await fetchDriverMarket({ hardReset: true });
+      } else {
+        await fetchAll();
+      }
     },
-    [fetchAll],
+    [fetchAll, fetchDriverMarket],
   );
 
   const arriveAtCustomer = useCallback((id: string) => patchStatus(id, "driver_waiting"), [patchStatus]);
@@ -1025,6 +1076,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         updateRequestPaymentMethod,
         updateRequestDriverNote,
         refreshRequests: fetchAll,
+        refreshDriverMarketHard,
       }}
     >
       {children}
