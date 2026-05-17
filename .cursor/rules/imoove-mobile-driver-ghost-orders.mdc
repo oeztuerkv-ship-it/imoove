@@ -1,0 +1,104 @@
+---
+description: Fahrer-App Ghost-Aufträge — Ursachen, Timing, Login, ONLINE-Flow, Notification-Baseline (Pflichtwissen)
+globs: artifacts/mobile/**/*
+alwaysApply: false
+---
+
+# Mobile Fahrer: Ghost-Aufträge & Markt-State (Postmortem)
+
+**Symptom:** Nach Login, OFFLINE→ONLINE, Ablehnen/Storno erscheint ein **alter** Sofortauftrag (Karte, Banner, Ton) „aus dem Nichts“.
+
+**Nicht verwechseln mit:** echtem offenen Auftrag in der DB (dann API/`rejectedBy` prüfen).
+
+## Architektur (Quelle vieler Bugs)
+
+| Komponente | Verhalten |
+|------------|-----------|
+| `RideRequestProvider` | **Global** in `app/_layout.tsx` — `requests` bleibt über Routen/Login hinweg im Speicher |
+| `isDriverSurface` | `useSegments()[0] === "driver"` — gilt auch für **`/driver/login`** |
+| `fetchAll` (Poll 2,5s) | Mit Fleet-Token + Driver-Surface → `GET /fleet-driver/v1/market-rides`; sonst oft **Kunden**-`GET /customer/v1/rides` |
+| `DriverContext` | `isAvailable` aus DB `is_market_online` via `GET /fleet-driver/v1/me` (`mergeFleetDriverMeIntoProfile`) |
+| Dashboard | `pendingRequests` = gefiltertes `allPending` aus Context; **InstantCard** = `pendingRequests[0]` |
+
+**Kernproblem:** UI zeigt `requests` **sofort**, während Fetch/PATCH/Effects **asynchron** nachziehen. Fixes gegen React-Timing sind nur robust, wenn **State-Quelle** und **Notification-Baseline** explizit getrennt werden.
+
+## Ursachen-Katalog
+
+### 1. Kunden-State auf Fahrer-Oberfläche (Login)
+
+1. Nutzer war als Kunde aktiv → Poll füllt `requests` mit **Kunden-Fahrten**
+2. `/driver/login` ist schon `isDriverSurface` — **ohne** Fleet-Token lief Poll weiter (Kunden-Daten)
+3. Nach Login: Dashboard rendert **alte** `requests` bis zum nächsten Poll (bis **2,5 s**) → Ghost
+
+**Fix (Repo):** `RideRequestContext` — `useEffect` auf `isDriverSurface` + `fleetAuthToken` (`useDriver()`): mit Token → `fetchDriverMarket({ hardReset: true })`; ohne Token auf `/driver/*` → `requests` **leeren**. `driver/login.tsx`: nach Login `await refreshDriverMarketHard()` (**muss** aus `useRideRequests()` destructured sein).
+
+### 2. OFFLINE→ONLINE (Notification-Timing)
+
+Reihenfolge der Bugs (historisch):
+
+| Fehler | Wirkung |
+|--------|---------|
+| `refreshRequests()` ohne State-Leerung | Alte `requests` bleiben bis Fetch fertig |
+| `setAvailable(true)` vor `await` PATCH | Markt-Fetch mit `is_market_online=false` |
+| `firstRender.current = false` beim ONLINE-Toggle | Alle IDs wirken „neu“ → Banner/Ton |
+| `isOnlineFlowRunning = false` **synchron** im `finally` nach `setRequests()` | Effect läuft mit Flag schon `false` → Ghost |
+| `prevPendingIds` nie = echter Stand nach Flow | Notification vergleicht mit leerem/veraltetem Set |
+
+**Robuste Linie (Dashboard):**
+
+- `isOnlineFlowRunning` — blockiert Banner/Ton während des Flows; währenddessen `prevPendingIds` **still** aus `currentIds` mitführen
+- `allPendingRef` — immer aktueller `allPending`-Stand
+- `setTimeout(200ms)` **nach** letztem Fetch: `prevPendingIds = new Set(allPendingRef.current.map(r => r.id))`, dann `isOnlineFlowRunning = false` (nicht synchron im `finally`)
+- ONLINE: `firstRender = true`, `prevDriverOnline = false` (nicht `false`/`true` vertauscht)
+
+### 3. Notification-`useEffect` (dashboard.tsx)
+
+Entscheidet über Banner + `sendNewRideNotification`. Neue Aufträge = `!prevPendingIds.has(r.id)`.
+
+Schutz-Zweige (Baseline still):
+
+- `isOnlineFlowRunning`
+- `firstRender` + leer + `!isConnected` / `isConnected`
+- `firstRender \|\| !driverOnline \|\| (!prevDriverOnline && driverOnline)`
+
+**Nach Login:** einmal pro `driver.authToken` Baseline setzen wenn `isConnected` (Markt-Fetch fertig), mit `isOnlineFlowRunning` + `setTimeout(200ms)` + `allPendingRef`.
+
+### 4. API / DB (echter Auftrag vs Ghost)
+
+- `GET /fleet-driver/v1/market-rides`: offener Markt nur wenn `is_market_online=true`; `rejectedBy` filtert abgelehnte; terminale Status ausgeschlossen; `Cache-Control: no-store`
+- `POST /rides/:id/reject` → `rejectedBy` in DB
+- Migration **`066_fleet_drivers_market_online.sql`** — Online-Status persistent
+
+Wenn Ghost **nach** allen Mobile-Fixes bleibt: Ride-ID + Status + `rejected_by` in DB prüfen.
+
+## Wichtige Funktionen & Dateien
+
+| Datei | Inhalt |
+|-------|--------|
+| `context/RideRequestContext.tsx` | `fetchDriverMarket`, `refreshDriverMarketHard`, Poll, Driver-Surface-Effect |
+| `context/DriverContext.tsx` | `setAvailable` async + `await` PATCH; `/me` → `isAvailable` |
+| `app/driver/dashboard.tsx` | ONLINE-Toggle, `isOnlineFlowRunning`, `allPendingRef`, Notification-Effect |
+| `app/driver/login.tsx` | `refreshDriverMarketHard` nach erfolgreichem Login |
+| `api-server/.../fleetDriverApi.ts` | `market-rides` Filter + Cache-Header |
+
+## Regeln für neue Änderungen
+
+1. **Niemals** nur `refreshRequests()`/`fetchAll()` erwarten, dass Ghost verschwindet — bei Login/ONLINE **`refreshDriverMarketHard()`** oder explizit `requests` leeren.
+2. **Notification-Baseline** (`prevPendingIds`) immer aus **aktuellem** Markt-Stand setzen — Ref (`allPendingRef`) + verzögertes Freigeben von `isOnlineFlowRunning`, nicht blind auf Effect-Reihenfolge vertrauen.
+3. **`setAvailable`:** PATCH **vor** oder **ohne** optimistisches UI-Online; Effect in `DriverContext` synct zusätzlich — Doppel-PATCH ist ok.
+4. Auf **`/driver/*`** ohne Fleet-Token: **keine** Kunden-`requests` im Provider lassen.
+5. Hook-Aufrufe: `const { refreshDriverMarketHard } = useRideRequests()` — ReferenceError wenn vergessen (Passiert bei `login.tsx`).
+
+## Abnahme-Checkliste
+
+- [ ] Als Kunde Fahrt offen → Fahrer-Login → **kein** fremder Auftrag auf Übersicht, kein Banner
+- [ ] Ablehnen oder Storno → OFFLINE → ONLINE → **kein** alter Sofortauftrag, kein Ton
+- [ ] Danach **neuer** echter Marktauftrag → Banner/Ton **einmal**
+- [ ] App-Kill → Fahrer-Session restore → Dashboard ohne Ghost
+- [ ] Optional: gleiches Gerät Kunde+Fahrer — Wechsel ohne vermischte Listen
+
+## Commits (Referenz main)
+
+`4cf21f3a` Hard-Reset Markt · `27b47dd7` firstRender ONLINE · `cd1f98f0` isOnlineFlowRunning · `0d66da91` setTimeout Flush · `de2095a0` allPendingRef · `f1c76a38` Login Kunden-State · `3675e44f` login destructuring fix
+
+**Deploy:** API-Teil nur nach Server-Deploy; Mobile = Expo-Reload. Kein Mischen mit unrelated `my-rides.tsx` / `dist` in Commits.
