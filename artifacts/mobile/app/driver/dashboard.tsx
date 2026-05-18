@@ -266,55 +266,114 @@ function hasTaxiEstimateBadge(req: RideRequest): boolean {
   return vehicle.includes("onroda");
 }
 
-/* ─── Sofortfahrt-Karte (hell, Google-ähnlich) — ohne Preis / Taxameter ─── */
+const INSTANT_OFFER_COUNTDOWN_SEC = 10;
+
+function driverPrivacyCustomerName(fullName: string): string {
+  const trimmed = fullName.trim();
+  if (!trimmed) return "Kunde";
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0];
+  const first = parts[0];
+  const initial = parts[parts.length - 1]?.[0]?.toUpperCase();
+  return initial ? `${first} ${initial}.` : first;
+}
+
+function driverOfferPaymentLabel(paymentMethod: string): string {
+  if (isKrankenkasseRide(paymentMethod)) return "Krankenkasse";
+  const pm = paymentMethod.toLowerCase();
+  if (pm === "cash" || pm.includes("bar")) return "Bar";
+  if (pm === "card" || pm.includes("karte") || pm.includes("credit")) return "Karte";
+  if (pm === "paypal") return "PayPal";
+  if (pm === "invoice" || pm.includes("rechnung")) return "Rechnung";
+  if (pm === "voucher" || pm.includes("gutschein") || pm.includes("code")) return "Gutschein";
+  return paymentMethod.trim() || "Bar";
+}
+
+function driverOfferPaymentIcon(paymentMethod: string): keyof typeof MaterialCommunityIcons.glyphMap {
+  if (isKrankenkasseRide(paymentMethod)) return "hospital-box-outline";
+  const pm = paymentMethod.toLowerCase();
+  if (pm === "card" || pm.includes("karte")) return "credit-card-outline";
+  if (pm === "paypal") return "paypal";
+  return "cash";
+}
+
+/* ─── Sofortfahrt-Angebot (Fahrer vor Annahme): kein Preis, keine Strecke ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const distToPickupM =
     driverPos && req.fromLat != null && req.fromLon != null
       ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon)
       : null;
-  const distPickupLabel =
+  const distPickupValue =
     distToPickupM != null
       ? distToPickupM < 1000
-        ? `${Math.round(distToPickupM)} m entfernt`
-        : `${(distToPickupM / 1000).toFixed(1)} km entfernt`
-      : null;
+        ? `${Math.round(distToPickupM)} m`
+        : `${(distToPickupM / 1000).toFixed(1)} km`
+      : "—";
   const { date, time } = fmt(req.createdAt);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
-  const payLabel = isKrankenkasseRide(req.paymentMethod) ? "Krankenkasse" : req.paymentMethod || "Bar";
-  const modeBadge = rideTypeBadge(req);
-  const hasTaxiEstimate = hasTaxiEstimateBadge(req);
+  const payLabel = driverOfferPaymentLabel(req.paymentMethod);
+  const payIcon = driverOfferPaymentIcon(req.paymentMethod);
+  const privacyName = driverPrivacyCustomerName(req.customerName);
+  const rideKindLabel =
+    req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)
+      ? "Krankenfahrt"
+      : "Taxifahrt";
+  const pickupLine = (req.fromFull || req.from || "Abholadresse").trim();
 
-  const pillGray = {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "#F1F5F9",
-  } as const;
-  const pillRed = {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: "#FEE2E2",
-  } as const;
+  const [secondsLeft, setSecondsLeft] = useState(INSTANT_OFFER_COUNTDOWN_SEC);
+  const offerHandledRef = useRef(false);
+
+  useEffect(() => {
+    offerHandledRef.current = false;
+    setSecondsLeft(INSTANT_OFFER_COUNTDOWN_SEC);
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          if (!offerHandledRef.current) {
+            offerHandledRef.current = true;
+            onReject();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [req.id, onReject]);
+
+  const handleReject = () => {
+    if (offerHandledRef.current) return;
+    offerHandledRef.current = true;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    onReject();
+  };
+
+  const handleAccept = () => {
+    if (offerHandledRef.current) return;
+    offerHandledRef.current = true;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onAccept();
+  };
 
   return (
     <View
       style={{
         marginHorizontal: 14,
         marginBottom: 14,
-        borderRadius: 16,
+        borderRadius: 20,
         borderWidth: 2,
         borderColor: "#22C55E",
         backgroundColor: "#fff",
         overflow: "hidden",
         shadowColor: "#000",
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 10,
+        shadowOpacity: 0.14,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 12,
       }}
     >
       <View
@@ -329,59 +388,69 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
-          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: "#0F172A" }}>Sofortfahrt</Text>
+          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#0F172A" }}>Sofortfahrt</Text>
         </View>
         <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
           {date} · {time} Uhr
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
-        {distPickupLabel ? (
-          <View style={pillRed}>
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{distPickupLabel}</Text>
-          </View>
-        ) : null}
-        <View style={pillGray}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#475569" }}>
-            {req.distanceKm.toFixed(1)} km
+      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
+        <View
+          style={{
+            alignSelf: "flex-start",
+            minWidth: 120,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#FECACA",
+            backgroundColor: "#FEF2F2",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color: "#B91C1C", lineHeight: 30 }}>
+            {distPickupValue}
+          </Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 1, marginTop: 2 }}>
+            ENTFERNUNG
           </Text>
         </View>
-        <View style={pillGray}>
-          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#475569" }}>{req.vehicle}</Text>
-        </View>
-        <View style={[pillGray, { backgroundColor: modeBadge.bg }]}>
-          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: modeBadge.color }}>
-            {modeBadge.label}
-          </Text>
-        </View>
-        {hasTaxiEstimate ? (
-          <View style={[pillGray, { backgroundColor: "#FEE2E2", flexDirection: "row", alignItems: "center", gap: 6 }]}>
-            <MaterialCommunityIcons name="shield-check-outline" size={13} color="#B91C1C" />
-            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>
-              Taxi-Schätzpreis
-            </Text>
-          </View>
-        ) : null}
       </View>
 
-      <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 10 }}>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12, gap: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#22C55E", marginTop: 4 }} />
+          <MaterialCommunityIcons name="map-marker" size={20} color="#22C55E" style={{ marginTop: 2 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B", letterSpacing: 0.5 }}>VON</Text>
-            <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0F172A" }} numberOfLines={2}>
-              {req.fromFull}
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.6 }}>ABHOLUNG</Text>
+            <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#0F172A", marginTop: 4 }} numberOfLines={3}>
+              {pickupLine}
             </Text>
           </View>
         </View>
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#DC2626", marginTop: 4 }} />
+          <MaterialCommunityIcons name="flag-checkered" size={18} color="#94A3B8" style={{ marginTop: 4 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B", letterSpacing: 0.5 }}>BIS</Text>
-            <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#0F172A" }} numberOfLines={2}>
-              {req.toFull}
-            </Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.6 }}>ZIEL</Text>
+            <View
+              style={{
+                marginTop: 6,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                backgroundColor: "#F8FAFC",
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+              }}
+            >
+              <Feather name="lock" size={16} color="#94A3B8" />
+              <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>
+                Ziel nach Annahme sichtbar
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -440,51 +509,125 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         </View>
       ) : null}
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 14 }}>
-        <Feather name="user" size={15} color="#334155" />
-        <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#334155", flexShrink: 1 }}>
-          {req.customerName}
-        </Text>
-        <Text style={{ color: "#CBD5E1" }}>·</Text>
-        <MaterialCommunityIcons name="cash" size={18} color="#64748B" />
-        <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#475569" }}>{payLabel}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          paddingBottom: 14,
+          gap: 10,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "#F1F5F9",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#475569" }}>
+              {privacyName[0]?.toUpperCase() ?? "K"}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={1}>
+              {privacyName}
+            </Text>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748B" }}>{rideKindLabel}</Text>
+          </View>
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            borderRadius: 999,
+            backgroundColor: "#F0FDF4",
+            borderWidth: 1,
+            borderColor: "#BBF7D0",
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <MaterialCommunityIcons name={payIcon} size={18} color="#15803D" />
+          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#15803D" }}>{payLabel}</Text>
+        </View>
       </View>
 
-      <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 14, paddingBottom: 16 }}>
-        <Pressable
-          onPress={onReject}
-          style={({ pressed }) => ({
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            borderRadius: 14,
-            paddingVertical: 10,
-            borderWidth: 2,
-            borderColor: "#DC2626",
-            backgroundColor: pressed ? "#FEF2F2" : "#fff",
-          })}
-        >
-          <Feather name="x" size={18} color="#DC2626" />
-          <Text style={{ color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 }}>Ablehnen</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          paddingHorizontal: 20,
+          paddingBottom: 20,
+          paddingTop: 4,
+        }}
+      >
+        <Pressable onPress={handleReject} style={{ alignItems: "center", width: 72 }}>
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              borderWidth: 2,
+              borderColor: "#FECACA",
+              backgroundColor: "#fff",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="x" size={26} color="#DC2626" />
+          </View>
+          <Text style={{ marginTop: 6, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748B" }}>Ablehnen</Text>
         </Pressable>
-        <Pressable
-          onPress={onAccept}
-          style={({ pressed }) => ({
-            flex: 2,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            borderRadius: 14,
-            paddingVertical: 10,
-            backgroundColor: pressed ? "#15803D" : "#16A34A",
-          })}
-        >
-          <Feather name="check" size={20} color="#fff" />
-          <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 16 }}>Annehmen</Text>
+
+        <Pressable onPress={handleAccept} style={{ alignItems: "center", flex: 1, maxWidth: 160 }}>
+          <View
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: 44,
+              backgroundColor: "#16A34A",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#16A34A",
+              shadowOpacity: 0.35,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 8,
+            }}
+          >
+            <Feather name="check" size={40} color="#0F172A" />
+          </View>
+          <Text style={{ marginTop: 8, fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }}>Annehmen</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>Tippen zum Annehmen</Text>
         </Pressable>
+
+        <View style={{ alignItems: "center", width: 56 }}>
+          <View
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              borderWidth: 2,
+              borderColor: "#E2E8F0",
+              backgroundColor: "#F8FAFC",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A" }}>{secondsLeft}</Text>
+          </View>
+          <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.5 }}>
+            SEK.
+          </Text>
+        </View>
       </View>
     </View>
   );
