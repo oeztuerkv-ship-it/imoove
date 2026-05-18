@@ -37,6 +37,11 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
+import {
+  driverPaymentMethodBadgeDe,
+  driverPaymentMethodIconName,
+  driverPaymentMethodLabelDe,
+} from "@/utils/driverPaymentMethodLabel";
 
 /** Krankenkassen-/Eigenanteil-Fahrten (vom Kunden gebucht). */
 function isKrankenkasseRide(paymentMethod: string) {
@@ -278,25 +283,6 @@ function driverPrivacyCustomerName(fullName: string): string {
   return initial ? `${first} ${initial}.` : first;
 }
 
-function driverOfferPaymentLabel(paymentMethod: string): string {
-  if (isKrankenkasseRide(paymentMethod)) return "Krankenkasse";
-  const pm = paymentMethod.toLowerCase();
-  if (pm === "cash" || pm.includes("bar")) return "Bar";
-  if (pm === "card" || pm.includes("karte") || pm.includes("credit")) return "Karte";
-  if (pm === "paypal") return "PayPal";
-  if (pm === "invoice" || pm.includes("rechnung")) return "Rechnung";
-  if (pm === "voucher" || pm.includes("gutschein") || pm.includes("code")) return "Gutschein";
-  return paymentMethod.trim() || "Bar";
-}
-
-function driverOfferPaymentIcon(paymentMethod: string): keyof typeof MaterialCommunityIcons.glyphMap {
-  if (isKrankenkasseRide(paymentMethod)) return "hospital-box-outline";
-  const pm = paymentMethod.toLowerCase();
-  if (pm === "card" || pm.includes("karte")) return "credit-card-outline";
-  if (pm === "paypal") return "paypal";
-  return "cash";
-}
-
 /* ─── Sofortfahrt-Angebot (Fahrer vor Annahme): kein Preis, keine Strecke ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const distToPickupM =
@@ -314,8 +300,8 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
-  const payLabel = driverOfferPaymentLabel(req.paymentMethod);
-  const payIcon = driverOfferPaymentIcon(req.paymentMethod);
+  const payLabel = driverPaymentMethodBadgeDe(req.paymentMethod);
+  const payIcon = driverPaymentMethodIconName(req.paymentMethod);
   const privacyName = driverPrivacyCustomerName(req.customerName);
   const rideKindLabel =
     req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)
@@ -412,8 +398,8 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           <Text style={{ fontSize: 26, fontFamily: "Inter_700Bold", color: "#B91C1C", lineHeight: 30 }}>
             {distPickupValue}
           </Text>
-          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 1, marginTop: 2 }}>
-            ENTFERNUNG
+          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3, marginTop: 2 }}>
+            Entfernung zum Kunden
           </Text>
         </View>
       </View>
@@ -422,7 +408,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
           <MaterialCommunityIcons name="map-marker" size={20} color="#22C55E" style={{ marginTop: 2 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.6 }}>ABHOLUNG</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>Abholung</Text>
             <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#0F172A", marginTop: 4 }} numberOfLines={3}>
               {pickupLine}
             </Text>
@@ -431,7 +417,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
           <MaterialCommunityIcons name="flag-checkered" size={18} color="#94A3B8" style={{ marginTop: 4 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.6 }}>ZIEL</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>Ziel</Text>
             <View
               style={{
                 marginTop: 6,
@@ -624,8 +610,8 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           >
             <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A" }}>{secondsLeft}</Text>
           </View>
-          <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.5 }}>
-            SEK.
+          <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3 }}>
+            Sek.
           </Text>
         </View>
       </View>
@@ -1810,7 +1796,7 @@ function ActiveRideScreen({
               {wheelchairLine ? `${wheelchairLine}\n` : ""}
               {customerNoteLine ? `Hinweis Kunde: ${customerNoteLine}\n` : ""}
               {medicalChecklist ? "Krankenfahrt-Check aktiv\n" : ""}
-              {req.vehicle} · {isKK ? "Krankenkasse" : req.paymentMethod}
+              {req.vehicle} · {driverPaymentMethodLabelDe(req.paymentMethod)}
             </Text>
           </View>
         {medicalChecklist ? (
@@ -1912,7 +1898,9 @@ function ActiveRideScreen({
           ) : (
             <View style={activeStyles.statItem}>
               <Feather name="credit-card" size={14} color={colors.mutedForeground} />
-              <Text style={[activeStyles.statValue, { color: colors.foreground }]}>{req.paymentMethod}</Text>
+              <Text style={[activeStyles.statValue, { color: colors.foreground }]}>
+                {driverPaymentMethodLabelDe(req.paymentMethod)}
+              </Text>
               <Text style={[activeStyles.statLabel, { color: colors.mutedForeground }]}>Zahlungsart</Text>
             </View>
           )}
