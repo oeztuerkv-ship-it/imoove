@@ -1209,6 +1209,21 @@ function TabProfil({
         </View>
       </Pressable>
 
+      <Pressable
+        style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push("/driver/inbox")}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View style={[styles.profilIconBg, { backgroundColor: "#FEF2F2" }]}>
+            <MaterialCommunityIcons name="email-outline" size={20} color="#EF1D26" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>Posteingang</Text>
+            <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Nachrichten vom ONRODA-Team</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+        </View>
+      </Pressable>
       {/* Logout */}
       <Pressable
         style={({ pressed }) => [styles.profilLogoutBtn, { opacity: pressed ? 0.75 : 1 }]}
