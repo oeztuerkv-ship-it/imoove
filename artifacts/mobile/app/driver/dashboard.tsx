@@ -2413,6 +2413,17 @@ export default function DriverDashboard() {
     void loadAdminMessage();
   }, [loadAdminMessage]);
 
+  // Foreground-Push: bei eingehender Notification sofort neu laden
+  useEffect(() => {
+    let sub: { remove: () => void } | null = null;
+    import("expo-notifications").then((Notifications) => {
+      sub = Notifications.addNotificationReceivedListener(() => {
+        void loadAdminMessage();
+      });
+    });
+    return () => { sub?.remove(); };
+  }, [loadAdminMessage]);
+
   const dismissAdminMessage = useCallback(async () => {
     if (!adminMessage) return;
     const id = adminMessage.id;
