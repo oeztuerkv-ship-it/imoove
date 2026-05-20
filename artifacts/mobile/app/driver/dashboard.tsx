@@ -2,7 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { useKeepAwake } from "expo-keep-awake";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { connectToRide, disconnectSocket, sendDriverLocation as socketSendDriver } from "@/utils/socket";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -36,13 +36,18 @@ import { useColors } from "@/hooks/useColors";
 import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, validateServiceAreaForBooking } from "@/lib/appOperationalConfig";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
-import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
+import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
+import {
+  defaultFinalFareForDriverCompletion,
+  driverMayBillPositiveFare,
+  formatDriverFareInputDe,
+  validateDriverFinalFareInput,
+} from "@/utils/driverRideCompletion";
+import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
 import { syncDriverExpoPushToken } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import {
-  driverPaymentMethodBadgeDe,
-  driverPaymentMethodIconName,
   driverPaymentMethodLabelDe,
 } from "@/utils/driverPaymentMethodLabel";
 import {
@@ -51,7 +56,8 @@ import {
 } from "@/utils/instantOfferCountdown";
 import {
   dismissDriverAdminMessageId,
-  loadDismissedDriverAdminMessageIds,
+  fetchLatestUndismissedBannerMessage,
+  fetchDriverInboxMessages,
   type DriverAdminMessage,
 } from "@/utils/driverAdminMessages";
 
@@ -203,13 +209,6 @@ function parseEuroDriverInput(text: string): number | null {
 type RideEntry = { id: string; date: string; time: string; from: string; to: string; km: number; duration: number; amount: number; payment: string; };
 
 const API_BASE = getApiBaseUrl();
-const DRIVER_MARKET_STATUSES = new Set<RideRequest["status"]>([
-  "pending",
-  "requested",
-  "searching_driver",
-  "offered",
-]);
-
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -285,16 +284,6 @@ function hasTaxiEstimateBadge(req: RideRequest): boolean {
 
 const INSTANT_OFFER_COUNTDOWN_SEC = 10;
 
-function driverPrivacyCustomerName(fullName: string): string {
-  const trimmed = fullName.trim();
-  if (!trimmed) return "Kunde";
-  const parts = trimmed.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0];
-  const first = parts[0];
-  const initial = parts[parts.length - 1]?.[0]?.toUpperCase();
-  return initial ? `${first} ${initial}.` : first;
-}
-
 /* ─── Sofortfahrt-Angebot (Fahrer vor Annahme): kein Preis, keine Strecke ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
   const { t } = useTranslation();
@@ -313,9 +302,6 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const wheelchairLine = wheelchairInfoLine(req);
   const customerNoteLine = customerDriverNoteLine(req);
   const medicalChecklist = medicalSteps(req);
-  const payLabel = driverPaymentMethodBadgeDe(req.paymentMethod);
-  const payIcon = driverPaymentMethodIconName(req.paymentMethod);
-  const privacyName = driverPrivacyCustomerName(req.customerName);
   const rideKindLabel =
     req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)
       ? t("driver.offer.medicalRide")
@@ -394,9 +380,12 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
           <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#0F172A" }}>{t("driver.offer.instantRide")}</Text>
         </View>
-        <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
-          {date} · {time}{t("driver.offer.timeSuffix") ? ` ${t("driver.offer.timeSuffix")}` : ""}
-        </Text>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
+            {date} · {time}{t("driver.offer.timeSuffix") ? ` ${t("driver.offer.timeSuffix")}` : ""}
+          </Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#64748B", marginTop: 2 }}>{rideKindLabel}</Text>
+        </View>
       </View>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
@@ -516,61 +505,11 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       <View
         style={{
           flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-          paddingBottom: 14,
-          gap: 10,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "#F1F5F9",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#475569" }}>
-              {privacyName[0]?.toUpperCase() ?? "K"}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={1}>
-              {privacyName}
-            </Text>
-            <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: "#64748B" }}>{rideKindLabel}</Text>
-          </View>
-        </View>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            borderRadius: 999,
-            backgroundColor: "#F0FDF4",
-            borderWidth: 1,
-            borderColor: "#BBF7D0",
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-          }}
-        >
-          <MaterialCommunityIcons name={payIcon} size={18} color="#15803D" />
-          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#15803D" }}>{payLabel}</Text>
-        </View>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
           alignItems: "flex-end",
           justifyContent: "space-between",
           paddingHorizontal: 20,
+          paddingTop: 8,
           paddingBottom: 20,
-          paddingTop: 4,
         }}
       >
         <Pressable onPress={handleReject} style={{ alignItems: "center", width: 72 }}>
@@ -739,18 +678,6 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
         <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
           <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
             {req.distanceKm.toFixed(1)} km
-          </Text>
-        </View>
-
-        <View style={{ backgroundColor: "#F3F4F6", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}>
-          <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#374151" }}>
-            {req.rideKind === "medical"
-              ? "Krankenfahrt"
-              : req.voucherCode || req.accessCodeSummary
-                ? "Gutschein/Code"
-                : req.paymentMethod === "cash"
-                  ? "Barzahlung"
-                  : "App-Zahlung"}
           </Text>
         </View>
 
@@ -1135,12 +1062,14 @@ function TabProfil({
   offersTeaserTitle,
   offersTeaserBody,
   onOpenVehiclePicker,
+  inboxUnreadCount,
 }: {
   driver: DriverProfile;
   onLogout: () => void;
   offersTeaserTitle: string;
   offersTeaserBody: string;
   onOpenVehiclePicker: () => void;
+  inboxUnreadCount: number;
 }) {
   const colors = useColors();
   return (
@@ -1223,6 +1152,13 @@ function TabProfil({
             <Text style={[styles.profilRowLabel, { color: colors.foreground }]}>Posteingang</Text>
             <Text style={[styles.profilRowSub, { color: colors.mutedForeground }]}>Nachrichten vom ONRODA-Team</Text>
           </View>
+          {inboxUnreadCount > 0 ? (
+            <View style={styles.inboxCountBadge}>
+              <Text style={styles.inboxCountBadgeText}>
+                {inboxUnreadCount > 99 ? "99+" : String(inboxUnreadCount)}
+              </Text>
+            </View>
+          ) : null}
           <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
         </View>
       </Pressable>
@@ -1525,18 +1461,31 @@ function ActiveRideScreen({
   fleetAuthToken,
 }: {
   req: RideRequest;
-  onComplete: (finalFare: number) => void;
+  onComplete: (finalFare: number) => void | Promise<void>;
   onCancel: () => void;
   driverId: string;
   fleetAuthToken: string;
 }) {
   const colors = useColors();
   const { startDriving, arriveAtCustomer, markDriverArriving, refreshRequests } = useRideRequests();
-  const [phase, setPhase] = useState<ActivePhase>(
-    req.status === "in_progress" || req.status === "passenger_onboard" ? "driving" : "pickup",
-  );
+  const [phase, setPhase] = useState<ActivePhase>(req.status === "in_progress" ? "driving" : "pickup");
   const [showPriceModal, setShowPriceModal] = useState(false);
-  const [finalPriceInput, setFinalPriceInput] = useState(req.estimatedFare.toFixed(2).replace(".", ","));
+  const mayBillPositive = driverMayBillPositiveFare(req.status);
+  const [finalPriceInput, setFinalPriceInput] = useState(
+    formatDriverFareInputDe(defaultFinalFareForDriverCompletion(req.status, req.estimatedFare)),
+  );
+  const [completingRide, setCompletingRide] = useState(false);
+
+  useEffect(() => {
+    setPhase(req.status === "in_progress" ? "driving" : "pickup");
+  }, [req.status, req.id]);
+
+  useEffect(() => {
+    if (!showPriceModal) return;
+    setFinalPriceInput(
+      formatDriverFareInputDe(defaultFinalFareForDriverCompletion(req.status, req.estimatedFare)),
+    );
+  }, [showPriceModal, req.status, req.estimatedFare]);
   const isKK = isKrankenkasseRide(req.paymentMethod);
   const codeLine = accessCodeRideLine(req);
   const wheelchairLine = wheelchairInfoLine(req);
@@ -1759,22 +1708,53 @@ function ActiveRideScreen({
     : { lat: req.toLat ?? 48.69, lon: req.toLon ?? 9.2216, displayName: req.toFull };
 
   const handleFinishTap = () => {
-    if (isKK) {
+    if (isKK && req.status === "in_progress") {
       const parsed = parseEuroDriverInput(driverEigenanteil);
       const euro = parsed ?? req.estimatedFare;
       setFinalPriceInput(euro.toFixed(2).replace(".", ","));
     } else {
-      setFinalPriceInput(req.estimatedFare.toFixed(2).replace(".", ","));
+      const def =
+        req.status === "in_progress" ? req.estimatedFare : 0;
+      setFinalPriceInput(def.toFixed(2).replace(".", ","));
     }
     setShowPriceModal(true);
   };
 
-  const handleConfirmFare = () => {
+  const handleConfirmFare = async () => {
+    if (completingRide) return;
     const parsed = parseFloat(finalPriceInput.replace(",", "."));
-    const fare = isNaN(parsed) ? req.estimatedFare : parsed;
-    setShowPriceModal(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onComplete(fare);
+    const fare = isNaN(parsed) ? (req.status === "in_progress" ? req.estimatedFare : 0) : parsed;
+    const validation = validateDriverFinalFareInput(req.status, fare);
+    if (!validation.ok) {
+      Alert.alert(validation.title, validation.message);
+      return;
+    }
+    if (fare <= 0.009 && !mayBillPositive) {
+      Alert.alert(
+        "Fahrt ohne Beförderung abschließen?",
+        "Es wurde keine Fahrt zum Ziel durchgeführt. Der Endpreis ist 0,00 €. Der Kunde wird nicht belastet.",
+        [
+          { text: "Abbrechen", style: "cancel" },
+          {
+            text: "Mit 0,00 € abschließen",
+            onPress: () => void submitConfirmedFare(0),
+          },
+        ],
+      );
+      return;
+    }
+    await submitConfirmedFare(fare);
+  };
+
+  const submitConfirmedFare = async (fare: number) => {
+    setCompletingRide(true);
+    try {
+      setShowPriceModal(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await onComplete(fare);
+    } finally {
+      setCompletingRide(false);
+    }
   };
 
   return (
@@ -1798,7 +1778,7 @@ function ActiveRideScreen({
         </View>
       </View>
 
-      <View style={[activeStyles.sheet, { backgroundColor: colors.card }]}>
+      <View style={[activeStyles.sheet, { backgroundColor: "#FFFFFF" }]}>
         {/* Scheduled pickup banner — only for pre-booked rides */}
         {req.scheduledAt && (() => {
           const s = fmt(new Date(req.scheduledAt!));
@@ -2090,20 +2070,19 @@ function ActiveRideScreen({
               <Pressable
                 style={activeStyles.startDrivingBtn}
                 onPress={() => {
-                  startDriving(req.id);
-                  setPhase("driving");
                   if (req.toLat != null && req.toLon != null) {
                     router.push({
                       pathname: "/driver/navigation" as "/driver/navigation",
                       params: {
                         rideId: req.id,
-                        phase: "driving",
-                        fromLat: String(req.fromLat),
-                        fromLon: String(req.fromLon),
-                        fromName: req.fromFull,
-                        toLat: String(req.toLat),
-                        toLon: String(req.toLon),
-                        toName: req.toFull,
+                        phase: "pickup",
+                        arrived: "1",
+                        fromLat: String(driverCoords?.lat ?? req.fromLat),
+                        fromLon: String(driverCoords?.lon ?? req.fromLon),
+                        fromName: driverCoords ? "Ihr Standort" : req.fromFull,
+                        toLat: String(req.fromLat),
+                        toLon: String(req.fromLon),
+                        toName: req.fromFull,
                         customerName: req.customerName,
                         pickupLat: String(req.fromLat),
                         pickupLon: String(req.fromLon),
@@ -2164,7 +2143,9 @@ function ActiveRideScreen({
             <View style={activeStyles.priceModalHandle} />
             <Text style={activeStyles.priceModalTitle}>Fahrtpreis eingeben</Text>
             <Text style={activeStyles.priceModalSub}>
-              Der Endpreis wird dem Kunden übermittelt
+              {mayBillPositive
+                ? "Der Endpreis wird dem Kunden übermittelt."
+                : "Keine Fahrt zum Ziel — bitte 0,00 € eingeben (Kunde wird nicht belastet)."}
             </Text>
 
             {/* Route summary */}
@@ -2180,10 +2161,13 @@ function ActiveRideScreen({
               </View>
             </View>
 
-            {/* Estimated vs final */}
             <View style={activeStyles.priceRow}>
-              <Text style={activeStyles.priceEstLabel}>Schätzpreis:</Text>
-              <Text style={activeStyles.priceEstValue}>{formatEuro(req.estimatedFare)}</Text>
+              <Text style={activeStyles.priceEstLabel}>
+                {mayBillPositive ? "Schätzpreis:" : "Endpreis:"}
+              </Text>
+              <Text style={[activeStyles.priceEstValue, !mayBillPositive && { color: "#15803D", fontFamily: "Inter_700Bold" }]}>
+                {mayBillPositive ? formatEuro(req.estimatedFare) : "0,00 €"}
+              </Text>
             </View>
 
             {/* Input */}
@@ -2198,16 +2182,24 @@ function ActiveRideScreen({
                 autoFocus
               />
             </View>
-            <Text style={activeStyles.priceInputHint}>Betrag in Euro (z.B. 63,80)</Text>
+            <Text style={activeStyles.priceInputHint}>
+              {mayBillPositive ? "Betrag in Euro (z. B. Taxameter)" : "Bei Abbruch ohne Fahrt: 0,00"}
+            </Text>
 
             {/* Buttons */}
             <View style={activeStyles.priceModalBtns}>
               <Pressable style={activeStyles.priceCancelBtn} onPress={() => setShowPriceModal(false)}>
                 <Text style={activeStyles.priceCancelText}>Abbrechen</Text>
               </Pressable>
-              <Pressable style={activeStyles.priceConfirmBtn} onPress={handleConfirmFare}>
+              <Pressable
+                style={[activeStyles.priceConfirmBtn, completingRide && { opacity: 0.65 }]}
+                onPress={() => void handleConfirmFare()}
+                disabled={completingRide}
+              >
                 <Feather name="send" size={16} color="#fff" />
-                <Text style={activeStyles.priceConfirmText}>Fahrt abschließen</Text>
+                <Text style={activeStyles.priceConfirmText}>
+                  {completingRide ? "Wird gesendet…" : "Fahrt abschließen"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -2306,9 +2298,9 @@ export default function DriverDashboard() {
       : "Rabatte, Partneraktionen und exklusive Vorteile für deinen Alltag.";
   const { history } = useRide();
   const {
-    requests,
-    scheduledPoolRequests,
-    pendingRequests: allPending,
+    driverMarketRequests,
+    driverMarketScheduledPool,
+    driverMarketPending: allPending,
     acceptedRequest,
     addRequest,
     acceptRequest,
@@ -2321,8 +2313,9 @@ export default function DriverDashboard() {
     clearDriverMarketRequests,
     markDriverArriving,
     activateForDispatch,
-    isConnected,
+    isDriverMarketConnected,
   } = useRideRequests();
+  const isConnected = isDriverMarketConnected;
   const allPendingRef = useRef(allPending);
   // Foreground-Push-Handler + Token-Sync beim Mount
   useEffect(() => {
@@ -2334,7 +2327,7 @@ export default function DriverDashboard() {
         companyId: driver.companyId,
       }).catch(() => {});
     }
-  }, [driver?.authToken]);
+  }, [driver?.authToken, driver?.id, driver?.companyId]);
 
   useEffect(() => {
     allPendingRef.current = allPending;
@@ -2343,6 +2336,7 @@ export default function DriverDashboard() {
   const notificationBootstrapTokenRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
   const [adminMessage, setAdminMessage] = useState<DriverAdminMessage | null>(null);
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
@@ -2367,70 +2361,61 @@ export default function DriverDashboard() {
   const [codeRideVerified, setCodeRideVerified] = useState(false);
   const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
-  const loadAdminMessage = useCallback(async () => {
+  const refreshInboxState = useCallback(async () => {
     const token = driver?.authToken?.trim();
     if (!token) {
       setAdminMessage(null);
+      setInboxUnreadCount(0);
       return;
     }
     try {
-      const [dismissed, res] = await Promise.all([
-        loadDismissedDriverAdminMessageIds(),
-        fetch(`${API_BASE}/fleet-driver/v1/admin-messages`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [items, banner] = await Promise.all([
+        fetchDriverInboxMessages(token),
+        fetchLatestUndismissedBannerMessage(token),
       ]);
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        items?: Array<{ id?: string; title?: string; body?: string; sentAt?: string }>;
-      };
-      if (!res.ok || !data?.ok || !Array.isArray(data.items)) {
-        setAdminMessage(null);
-        return;
-      }
-      const next = data.items.find((it) => {
-        const id = typeof it.id === "string" ? it.id.trim() : "";
-        const title = typeof it.title === "string" ? it.title.trim() : "";
-        const body = typeof it.body === "string" ? it.body.trim() : "";
-        return id && title && body && !dismissed.has(id);
-      });
-      if (!next?.id || !next.title || !next.body) {
-        setAdminMessage(null);
-        return;
-      }
-      setAdminMessage({
-        id: next.id,
-        title: next.title.trim(),
-        body: next.body.trim(),
-        sentAt: typeof next.sentAt === "string" ? next.sentAt : "",
-      });
+      setInboxUnreadCount(items.length);
+      setAdminMessage(banner);
     } catch {
       setAdminMessage(null);
+      setInboxUnreadCount(0);
     }
   }, [driver?.authToken]);
 
   useEffect(() => {
-    void loadAdminMessage();
-  }, [loadAdminMessage]);
+    void refreshInboxState();
+  }, [refreshInboxState]);
 
-  // Foreground-Push: bei eingehender Notification sofort neu laden
+  useFocusEffect(
+    useCallback(() => {
+      void refreshInboxState();
+    }, [refreshInboxState]),
+  );
+
+  // Foreground-Push: Posteingang + Sofortfahrt-Markt
   useEffect(() => {
     let sub: { remove: () => void } | null = null;
     import("expo-notifications").then((Notifications) => {
-      sub = Notifications.addNotificationReceivedListener(() => {
-        void loadAdminMessage();
+      sub = Notifications.addNotificationReceivedListener((notification) => {
+        const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
+        if (kind === "instant_ride_offer") {
+          void refreshDriverMarketHard();
+        } else {
+          void refreshInboxState();
+        }
       });
     });
-    return () => { sub?.remove(); };
-  }, [loadAdminMessage]);
+    return () => {
+      sub?.remove();
+    };
+  }, [refreshInboxState, refreshDriverMarketHard]);
 
   const dismissAdminMessage = useCallback(async () => {
     if (!adminMessage) return;
     const id = adminMessage.id;
     setAdminMessage(null);
     await dismissDriverAdminMessageId(id);
-    void loadAdminMessage();
-  }, [adminMessage, loadAdminMessage]);
+    void refreshInboxState();
+  }, [adminMessage, refreshInboxState]);
 
   const loadVehicleOptions = useCallback(async () => {
     if (!driver?.authToken) return;
@@ -2597,28 +2582,21 @@ export default function DriverDashboard() {
   const driverId = driver?.id ?? "";
   const driverMarketOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
 
-  const pendingRequests = allPending.filter((r) => {
-    if (suppressedMarketOfferIdsRef.current.has(r.id)) return false;
-    if (!driverMarketOnline) return false;
-    if (!DRIVER_MARKET_STATUSES.has(r.status)) return false;
-    if (r.driverId) return false;
-    if ((r.rejectedBy ?? []).includes(driverId)) return false;
-    const createdMs = new Date(r.createdAt as any).getTime();
-    if (!Number.isFinite(createdMs)) return true;
-    const ageHours = (Date.now() - createdMs) / (1000 * 60 * 60);
-    // Alte, nie angenommene Pools nicht erneut beim Fahrer anzeigen.
-    return ageHours <= 8;
+  const pendingRequests = filterDriverInstantMarketOffers(allPending, {
+    driverId,
+    driverMarketOnline,
+    suppressedIds: suppressedMarketOfferIdsRef.current,
   });
 
   useEffect(() => {
     const suppressed = suppressedMarketOfferIdsRef.current;
-    for (const r of requests) {
+    for (const r of driverMarketRequests) {
       if (driverId && (r.rejectedBy ?? []).includes(driverId)) suppressed.delete(r.id);
     }
     for (const id of [...suppressed]) {
-      if (!requests.some((r) => r.id === id)) suppressed.delete(id);
+      if (!driverMarketRequests.some((r) => r.id === id)) suppressed.delete(id);
     }
-  }, [requests, driverId]);
+  }, [driverMarketRequests, driverId]);
 
   // Fire notification + vibration only for truly new instant ride requests while driver is already online
   useEffect(() => {
@@ -2670,17 +2648,11 @@ export default function DriverDashboard() {
         ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
         : null;
       showBanner(req);
-      void sendNewRideNotification({
-        customerName: req.customerName || "Kunde",
-        fromAddress: req.fromFull || req.from || "—",
-        distanceKm: distKm,
-        estimatedFare: Number.isFinite(req.estimatedFare) ? req.estimatedFare : 0,
-      });
     }
     prevPendingIds.current = currentIds;
   }, [pendingRequests, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner, isConnected]);
 
-  const scheduledPool = scheduledPoolRequests.filter((r) => {
+  const scheduledPool = driverMarketScheduledPool.filter((r) => {
     if (!driverMarketOnline) return false;
     if (r.status !== "scheduled" && r.status !== "scheduled_assigned") return false;
     const assignedDriverId = typeof r.driverId === "string" ? r.driverId.trim() : "";
@@ -2690,7 +2662,7 @@ export default function DriverDashboard() {
     return true;
   });
   const activeDriverRequest =
-    requests.find(
+    driverMarketRequests.find(
       (r) =>
         (r.status === "accepted" ||
           r.status === "ready_for_dispatch" ||
@@ -2706,7 +2678,7 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     if (!driverId) return;
-    const myCancelled = requests.find(
+    const myCancelled = driverMarketRequests.find(
       (r) => r.driverId === driverId && r.status === "cancelled_by_customer",
     );
     if (!myCancelled) return;
@@ -2719,7 +2691,7 @@ export default function DriverDashboard() {
         : "Die Fahrt wurde vom Kunden storniert.",
     );
     setActiveTab("uebersicht");
-  }, [requests, driverId]);
+  }, [driverMarketRequests, driverId]);
 
   const appRides = history.filter((r) => r.status === "completed");
   const [serverRides, setServerRides] = useState<RideEntry[]>([]);
@@ -2851,9 +2823,13 @@ export default function DriverDashboard() {
     }
   };
   const handleComplete = async (id: string, finalFare: number) => {
-    await completeRequest(id, finalFare);
-    await refreshRequests();
-    setActiveTab("fahrten");
+    try {
+      await completeRequest(id, finalFare);
+    } finally {
+      disconnectSocket();
+      await refreshRequests();
+      setActiveTab("fahrten");
+    }
   };
   const handleCancel = async (id: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -3421,6 +3397,7 @@ export default function DriverDashboard() {
                 offersTeaserTitle={offersTeaserTitle}
                 offersTeaserBody={offersTeaserBody}
                 onOpenVehiclePicker={openVehiclePicker}
+                inboxUnreadCount={0}
               />
             )}
           </>
@@ -3437,11 +3414,11 @@ export default function DriverDashboard() {
             right: 12,
             transform: [{ translateY: bannerAnim }],
             zIndex: 9999,
-            backgroundColor: "#1C1C1E",
+            backgroundColor: "#FFFFFF",
             borderRadius: 16,
             padding: 16,
             shadowColor: "#000",
-            shadowOpacity: 0.4,
+            shadowOpacity: 0.14,
             shadowRadius: 16,
             shadowOffset: { width: 0, height: 6 },
             elevation: 12,
@@ -3449,14 +3426,14 @@ export default function DriverDashboard() {
             alignItems: "center",
             gap: 14,
             borderWidth: 1.5,
-            borderColor: "#DC2626",
+            borderColor: "#22C55E",
           }}
         >
-          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#DC2626", justifyContent: "center", alignItems: "center" }}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#22C55E", justifyContent: "center", alignItems: "center" }}>
             <MaterialCommunityIcons name="taxi" size={24} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>
+            <Text style={{ color: "#0F172A", fontFamily: "Inter_700Bold", fontSize: 15 }}>
               {t("driver.offer.newRideBanner")}
             </Text>
           </View>
@@ -4044,6 +4021,8 @@ const styles = StyleSheet.create({
   profilRowSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   profilDivider: { height: 1, marginVertical: 8, width: "100%" },
   profilLogoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 16, paddingVertical: 15, borderWidth: 1.5, borderColor: "#DC2626", backgroundColor: "#FEF2F2", marginTop: 4 },
+  inboxCountBadge: { backgroundColor: "#EF1D26", borderRadius: 10, minWidth: 20, height: 20, alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 5, marginRight: 6 },
+  inboxCountBadgeText: { color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" },
   profilLogoutText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#DC2626" },
 });
 
