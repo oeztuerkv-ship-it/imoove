@@ -1053,5 +1053,31 @@ CREATE INDEX IF NOT EXISTS fleet_driver_expo_push_tokens_driver_company_idx
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_customer_reservation_assigned_at TIMESTAMPTZ NULL;
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_driver_activation_reminder_at TIMESTAMPTZ NULL;
 
+CREATE TABLE IF NOT EXISTS app_faq (
+  id TEXT PRIMARY KEY,
+  question TEXT NOT NULL DEFAULT '',
+  answer TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'general',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS app_faq_public_list_idx
+  ON app_faq (active, category, sort_order, created_at);
+
+CREATE TABLE IF NOT EXISTS driver_messages (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  target_driver_id TEXT NULL REFERENCES fleet_drivers (id) ON DELETE SET NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_by TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS driver_messages_sent_at_idx ON driver_messages (sent_at DESC);
+CREATE INDEX IF NOT EXISTS driver_messages_target_driver_idx ON driver_messages (target_driver_id, sent_at DESC);
+
 -- Ersten Benutzer: company_id = bestehende admin_companies.id; password_hash = Ausgabe von
 -- hashPassword() (artifacts/api-server/src/lib/password.ts), Präfix v1.*.

@@ -32,6 +32,27 @@ export async function upsertFleetDriverExpoPushToken(
     });
 }
 
+export async function listAllFleetDriverExpoPushTokens(): Promise<
+  Array<{ token: string; fleetDriverId: string; companyId: string }>
+> {
+  const db = getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      token: fleetDriverExpoPushTokensTable.expo_push_token,
+      fleetDriverId: fleetDriverExpoPushTokensTable.fleet_driver_id,
+      companyId: fleetDriverExpoPushTokensTable.company_id,
+    })
+    .from(fleetDriverExpoPushTokensTable);
+  return rows
+    .map((r) => ({
+      token: r.token,
+      fleetDriverId: r.fleetDriverId,
+      companyId: r.companyId,
+    }))
+    .filter((r) => r.token && isLikelyExponentPushToken(r.token));
+}
+
 export async function listFleetDriverExpoPushTokens(fleetDriverId: string, companyId: string): Promise<string[]> {
   const db = getDb();
   if (!db) return [];

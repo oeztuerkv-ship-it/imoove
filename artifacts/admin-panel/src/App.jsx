@@ -42,7 +42,9 @@ import AppOperationalDriverRulesPage from "./pages/AppOperationalDriverRulesPage
 import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPage.jsx";
 import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
 import AppNewsPage from "./pages/AppNewsPage.jsx";
+import AppFaqPage from "./pages/AppFaqPage.jsx";
 import AppSponsorsPage from "./pages/AppSponsorsPage.jsx";
+import DriverMessagesPage from "./pages/DriverMessagesPage.jsx";
 import TaxiFleetDriversPage from "./pages/TaxiFleetDriversPage.jsx";
 import TaxiFleetVehiclesPage from "./pages/TaxiFleetVehiclesPage.jsx";
 
@@ -296,9 +298,17 @@ const PAGE_META = {
     title: "App-Neuigkeiten",
     subtitle: "Dynamische Meldungen in der Kunden-App (Startseite), ohne App-Update",
   },
+  "app-faq": {
+    title: "App-FAQ",
+    subtitle: "Häufige Fragen im Hilfe-Screen der Kunden-App — ohne App-Update",
+  },
   "app-sponsors": {
     title: "Exklusive Angebote",
     subtitle: "Eigenständiger Werbe-/Partnerbereich für Mobile ohne App-Update",
+  },
+  "app-driver-messages": {
+    title: "Fahrer-Nachrichten",
+    subtitle: "Push und In-App-Nachrichten an alle oder einzelne Fahrer",
   },
   settings: {
     title: "Einstellungen",
@@ -736,8 +746,12 @@ export default function App() {
         return <HomepageContentPage />;
       case "app-news":
         return <AppNewsPage />;
+      case "app-faq":
+        return <AppFaqPage />;
       case "app-sponsors":
         return <AppSponsorsPage />;
+      case "app-driver-messages":
+        return <DriverMessagesPage />;
       case "app-op-tariffs":
         return <AppOperationalTariffsPage />;
       case "app-op-regions":

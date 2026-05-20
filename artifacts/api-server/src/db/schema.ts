@@ -1028,6 +1028,28 @@ export const appNewsItemsTable = pgTable("app_news_items", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Mobile App: FAQ (Hilfe-Screen, getrennt von homepage_faq_items). */
+export const appFaqTable = pgTable("app_faq", {
+  id: text("id").primaryKey(),
+  question: text("question").notNull().default(""),
+  answer: text("answer").notNull().default(""),
+  category: text("category").notNull().default("general"),
+  sort_order: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Operator-Nachrichten an Fahrer (Broadcast oder Einzel). */
+export const driverMessagesTable = pgTable("driver_messages", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  body: text("body").notNull().default(""),
+  target_driver_id: text("target_driver_id").references(() => fleetDriversTable.id, { onDelete: "set null" }),
+  sent_at: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  sent_by: text("sent_by").notNull().default(""),
+});
+
 export const appSponsorsTable = pgTable("app_sponsors", {
   id: text("id").primaryKey(),
   title: text("title").notNull().default(""),

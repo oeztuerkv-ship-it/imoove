@@ -71,6 +71,9 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Kunden-Expo-Push-Tokens (Gerät ↔ Passagier)                         → 063_passenger_expo_push_tokens.sql
   Fahrer-Expo-Push + Push-Marker (Reservierung)                       → 064_fleet_driver_push_and_ride_push_markers.sql
   App-Hilfe-Tickets (Kunden-App Tab Hilfe, ohne Fahrt)                 → 065_app_help_tickets.sql
+  Fahrer Markt ONLINE/OFFLINE (fleet_drivers.is_market_online)          → 066_fleet_drivers_market_online.sql
+  Mobile App-FAQ (Admin-CMS, GET /api/app/faq)                          → 067_app_faq.sql
+  Operator-Nachrichten an Fahrer (Push + In-App)                        → 068_driver_messages.sql
 
 Nach Migrationen Schema prüfen:
 

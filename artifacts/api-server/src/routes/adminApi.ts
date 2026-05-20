@@ -211,6 +211,8 @@ import { logger } from "../lib/logger";
 import adminInsuranceRouter from "./adminInsuranceApi";
 import adminAppNewsRouter from "./adminAppNewsRouter";
 import adminAppSponsorsRouter from "./adminAppSponsorsRouter";
+import adminAppFaqRouter from "./adminAppFaqRouter";
+import adminDriverMessagesRouter from "./adminDriverMessagesRouter";
 import { requireAdminApiBearer } from "../middleware/requireAdminApiBearer";
 import { authenticateAdminCredentials, signAdminSessionJwt } from "../middleware/requireAdminApiBearer";
 import {
@@ -824,6 +826,8 @@ adminJson.use("/insurance", adminInsuranceRouter);
 /** Mobile App-Neuigkeiten (CMS, Admin + Service). */
 adminJson.use("/app-news", adminAppNewsRouter);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter);
+adminJson.use("/faq", adminAppFaqRouter);
+adminJson.use("/driver-messages", adminDriverMessagesRouter);
 
 const adminFleetUploadRoot =
   (process.env.FLEET_UPLOAD_DIR ?? "").trim() ||

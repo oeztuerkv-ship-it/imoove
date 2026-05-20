@@ -47,7 +47,7 @@ const HELP_CATEGORIES: { id: HelpCategory; label: string }[] = [
   { id: "other", label: "Sonstiges" },
 ];
 
-const FAQ = [
+const FAQ_FALLBACK = [
   {
     q: "Wie buche ich eine Fahrt?",
     a: "Geben Sie Ihren Startpunkt und Ihr Ziel ein, wählen Sie ein Fahrzeug und tippen Sie auf 'Fahrt anfragen'.",
@@ -415,6 +415,28 @@ export default function HelpScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
   const keyboardBottomOffset = BOTTOM_TAB_BAR_INNER_HEIGHT + insets.bottom + rs(12);
+  const [faqItems, setFaqItems] = useState<{ q: string; a: string }[]>(FAQ_FALLBACK);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/app/faq`, { method: "GET", credentials: "omit" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok || !Array.isArray(data.items) || data.items.length === 0) return;
+        const mapped = data.items.map((it: { question?: string; answer?: string }) => ({
+          q: String(it.question ?? "").trim(),
+          a: String(it.answer ?? "").trim(),
+        })).filter((it: { q: string; a: string }) => it.q && it.a);
+        if (!cancelled && mapped.length > 0) setFaqItems(mapped);
+      } catch {
+        // Fallback bleibt aktiv
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -451,8 +473,8 @@ export default function HelpScreen() {
             { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 },
           ]}
         >
-          {FAQ.map((item, i) => (
-            <FaqItem key={i} q={item.q} a={item.a} isLast={i === FAQ.length - 1} />
+          {faqItems.map((item, i) => (
+            <FaqItem key={i} q={item.q} a={item.a} isLast={i === faqItems.length - 1} />
           ))}
         </View>
 

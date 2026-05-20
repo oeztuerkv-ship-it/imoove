@@ -13,6 +13,7 @@ import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
+import { listDriverMessagesForFleetDriver } from "../db/driverMessagesData";
 import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
@@ -353,6 +354,24 @@ router.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (re
       rides: withCodes,
       message: withCodes.length === 0 ? "Keine Vorbestellungen im Planer" : null,
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const items = await listDriverMessagesForFleetDriver(a.fleetDriverId);
+    res.json({ ok: true, items });
   } catch (e) {
     next(e);
   }

@@ -4444,3 +4444,68 @@ ul.admin-mandate-doclist {
   color: #64748b;
   border: 1px solid #e2e8f0;
 }
+
+.driver-messages-phone {
+  margin-bottom: 20px;
+}
+
+.driver-messages-phone__shell {
+  max-width: 280px;
+  margin: 0 auto;
+  border-radius: 28px;
+  border: 3px solid #0f172a;
+  background: #0f172a;
+  padding: 10px 8px 14px;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18);
+}
+
+.driver-messages-phone__notch {
+  width: 88px;
+  height: 6px;
+  border-radius: 999px;
+  background: #334155;
+  margin: 0 auto 10px;
+}
+
+.driver-messages-phone__screen {
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 200px;
+  padding: 14px 12px;
+}
+
+.driver-messages-phone__appbar {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+
+.driver-messages-phone__card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.driver-messages-phone__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.driver-messages-phone__body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #334155;
+  margin: 0 0 10px;
+}
+
+.driver-messages-phone__time {
+  font-size: 11px;
+  color: #94a3b8;
+}

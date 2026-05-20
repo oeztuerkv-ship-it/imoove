@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getAppConfigForPublic, getAppPricingForPublic } from "../db/appOperationalData";
+import { listAppFaqPublic } from "../db/appFaqData";
 import { listAppNewsPublic, parseAppNewsAudience } from "../db/appNewsData";
 import { listAppSponsorsPublic, parseAppSponsorAudience } from "../db/appSponsorsData";
 
@@ -42,6 +43,17 @@ router.get("/app/news", async (req, res, next) => {
         ? Math.min(20, Math.max(1, parseInt(rawLimit.trim(), 10)))
         : 5;
     const items = await listAppNewsPublic(audience, limit);
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Öffentliche FAQ für Kunden-App (Hilfe-Screen). */
+router.get("/app/faq", async (_req, res, next) => {
+  try {
+    const items = await listAppFaqPublic();
     res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
     res.json({ ok: true, items });
   } catch (e) {
