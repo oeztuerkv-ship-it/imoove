@@ -37,6 +37,8 @@ import { MESSAGE_ADDRESS_PICK_SUGGESTION_DE, userFacingBookingErrorMessage, vali
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { requestNotificationPermissions, sendNewRideNotification, stopRideSound } from "@/utils/notifications";
+import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
+import { syncDriverExpoPushToken } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import {
   driverPaymentMethodBadgeDe,
@@ -2322,6 +2324,18 @@ export default function DriverDashboard() {
     isConnected,
   } = useRideRequests();
   const allPendingRef = useRef(allPending);
+  // Foreground-Push-Handler + Token-Sync beim Mount
+  useEffect(() => {
+    ensureExpoNotificationsHandler();
+    if (driver?.authToken && driver?.id && driver?.companyId) {
+      syncDriverExpoPushToken({
+        authToken: driver.authToken,
+        fleetDriverId: driver.id,
+        companyId: driver.companyId,
+      }).catch(() => {});
+    }
+  }, [driver?.authToken]);
+
   useEffect(() => {
     allPendingRef.current = allPending;
   }, [allPending]);
