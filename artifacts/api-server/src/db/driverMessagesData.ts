@@ -1,7 +1,7 @@
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, notExists, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getDb } from "./client";
-import { driverMessagesTable, fleetDriversTable } from "./schema";
+import { driverMessageDismissalsTable, driverMessagesTable, fleetDriversTable } from "./schema";
 
 type Row = typeof driverMessagesTable.$inferSelect;
 
@@ -9,6 +9,7 @@ export type DriverMessageDto = {
   id: string;
   title: string;
   body: string;
+  messageType: "inbox" | "push_only";
   targetDriverId: string | null;
   targetDriverLabel: string | null;
   sentAt: string;
@@ -20,6 +21,7 @@ function rowToDto(r: Row, targetDriverLabel: string | null = null): DriverMessag
     id: r.id,
     title: r.title,
     body: r.body,
+    messageType: r.message_type === "push_only" ? "push_only" : "inbox",
     targetDriverId: r.target_driver_id,
     targetDriverLabel,
     sentAt: r.sent_at.toISOString(),
@@ -60,15 +62,42 @@ export async function listDriverMessagesForFleetDriver(fleetDriverId: string, li
   const rows = await db
     .select()
     .from(driverMessagesTable)
-    .where(or(isNull(driverMessagesTable.target_driver_id), eq(driverMessagesTable.target_driver_id, did)))
+    .where(
+      and(
+        eq(driverMessagesTable.message_type, "inbox"),
+        or(isNull(driverMessagesTable.target_driver_id), eq(driverMessagesTable.target_driver_id, did)),
+        notExists(
+          db
+            .select()
+            .from(driverMessageDismissalsTable)
+            .where(
+              and(
+                eq(driverMessageDismissalsTable.fleet_driver_id, did),
+                eq(driverMessageDismissalsTable.message_id, driverMessagesTable.id),
+              ),
+            ),
+        ),
+      ),
+    )
     .orderBy(desc(driverMessagesTable.sent_at))
     .limit(cap);
   return rows.map((r) => rowToDto(r));
 }
 
+export async function dismissDriverMessage(fleetDriverId: string, messageId: string): Promise<boolean> {
+  const db = getDb();
+  if (!db) return false;
+  await db
+    .insert(driverMessageDismissalsTable)
+    .values({ fleet_driver_id: fleetDriverId, message_id: messageId })
+    .onConflictDoNothing();
+  return true;
+}
+
 export async function insertDriverMessage(input: {
   title: string;
   body: string;
+  messageType?: "inbox" | "push_only";
   targetDriverId: string | null;
   sentBy: string;
 }): Promise<DriverMessageDto | null> {
@@ -80,6 +109,7 @@ export async function insertDriverMessage(input: {
     id,
     title: input.title,
     body: input.body,
+    message_type: input.messageType ?? "inbox",
     target_driver_id: input.targetDriverId,
     sent_at: now,
     sent_by: input.sentBy,

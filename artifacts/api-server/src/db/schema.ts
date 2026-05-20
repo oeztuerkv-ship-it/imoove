@@ -1048,6 +1048,12 @@ export const driverMessagesTable = pgTable("driver_messages", {
   target_driver_id: text("target_driver_id").references(() => fleetDriversTable.id, { onDelete: "set null" }),
   sent_at: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   sent_by: text("sent_by").notNull().default(""),
+  message_type: text("message_type").notNull().default("inbox"),
+});
+export const driverMessageDismissalsTable = pgTable("driver_message_dismissals", {
+  fleet_driver_id: text("fleet_driver_id").notNull(),
+  message_id: text("message_id").notNull(),
+  dismissed_at: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const appSponsorsTable = pgTable("app_sponsors", {

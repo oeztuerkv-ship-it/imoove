@@ -13,7 +13,7 @@ import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
-import { listDriverMessagesForFleetDriver } from "../db/driverMessagesData";
+import { dismissDriverMessage, listDriverMessagesForFleetDriver } from "../db/driverMessagesData";
 import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
@@ -372,6 +372,29 @@ router.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req
     }
     const items = await listDriverMessagesForFleetDriver(a.fleetDriverId);
     res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const messageId = req.params.messageId?.trim();
+    if (!messageId) {
+      res.status(400).json({ error: "message_id_required" });
+      return;
+    }
+    await dismissDriverMessage(a.fleetDriverId, messageId);
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

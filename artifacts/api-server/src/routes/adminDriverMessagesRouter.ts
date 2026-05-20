@@ -66,27 +66,26 @@ router.post("/broadcast", async (req, res, next) => {
       res.status(400).json({ error: "title_body_required" });
       return;
     }
-    const item = await insertDriverMessage({
-      title,
-      body,
-      targetDriverId: null,
-      sentBy: sentByLabel(req),
-    });
-    if (!item) {
-      res.status(500).json({ error: "create_failed" });
+    const messageType = b.messageType === "push_only" ? "push_only" : "inbox";
+    const tokenRows = await listAllFleetDriverExpoPushTokens();
+    if (messageType === "push_only") {
+      const messages = tokenRows.map((r) => ({
+        to: r.token, title, body,
+        data: { type: "driver_admin_message_push", broadcast: true },
+      }));
+      await sendExpoPushMessages(messages);
+      res.status(200).json({ ok: true, push: { attempted: messages.length }, item: null });
       return;
     }
-    const tokenRows = await listAllFleetDriverExpoPushTokens();
+    const item = await insertDriverMessage({ title, body, messageType, targetDriverId: null, sentBy: sentByLabel(req) });
+    if (!item) { res.status(500).json({ error: "create_failed" }); return; }
     const messages = tokenRows.map((r) => ({
-      to: r.token,
-      title,
-      body,
+      to: r.token, title, body,
       data: { type: "driver_admin_message", messageId: item.id, broadcast: true },
     }));
     await sendExpoPushMessages(messages);
     res.status(201).json({
-      ok: true,
-      item,
+      ok: true, item,
       push: { attempted: messages.length, uniqueDrivers: new Set(tokenRows.map((r) => r.fleetDriverId)).size },
     });
   } catch (e) {
@@ -143,9 +142,11 @@ router.post("/single", async (req, res, next) => {
         return;
       }
     }
+    const messageType = b.messageType === "push_only" ? "push_only" : "inbox";
     const item = await insertDriverMessage({
       title,
       body,
+      messageType,
       targetDriverId: driverId,
       sentBy: sentByLabel(req),
     });

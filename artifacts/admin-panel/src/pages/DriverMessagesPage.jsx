@@ -36,6 +36,7 @@ function driverLabel(d) {
 
 export default function DriverMessagesPage() {
   const [mode, setMode] = useState("broadcast");
+  const [messageType, setMessageType] = useState("inbox");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [history, setHistory] = useState([]);
@@ -103,7 +104,7 @@ export default function DriverMessagesPage() {
     setError("");
     setOkMsg("");
     try {
-      const payload = { title: title.trim(), body: body.trim() };
+      const payload = { title: title.trim(), body: body.trim(), messageType };
       if (!payload.title || !payload.body) throw new Error("title_body_required");
       let url = `${BASE}/broadcast`;
       let bodyJson = payload;
@@ -122,8 +123,8 @@ export default function DriverMessagesPage() {
       const pushN = data.push?.attempted ?? 0;
       setOkMsg(
         mode === "broadcast"
-          ? `Sammelnachricht gesendet (Push an ${pushN} Gerät(e)).`
-          : `Nachricht gesendet (Push an ${pushN} Gerät(e)).`,
+          ? (messageType === "push_only" ? `Push-Nachricht gesendet (${pushN} Gerät(e)).` : `Posteingang-Nachricht gesendet + Push an ${pushN} Gerät(e)).`)
+          : (messageType === "push_only" ? `Push gesendet (${pushN} Gerät(e)).` : `Posteingang-Nachricht gesendet + Push an ${pushN} Gerät(e)).`),
       );
       setTitle("");
       setBody("");
