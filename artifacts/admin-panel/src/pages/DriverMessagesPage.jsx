@@ -188,6 +188,23 @@ export default function DriverMessagesPage() {
               </button>
             </div>
 
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className={messageType === "inbox" ? "btn btn-red" : "btn btn-outline"}
+                onClick={() => setMessageType("inbox")}
+              >
+                📥 Posteingang
+              </button>
+              <button
+                type="button"
+                className={messageType === "push_only" ? "btn btn-red" : "btn btn-outline"}
+                onClick={() => setMessageType("push_only")}
+              >
+                🔔 Nur Push
+              </button>
+            </div>
+
             {mode === "single" ? (
               <div className="app-news-section__grid app-news-section__grid--2" style={{ marginBottom: 12 }}>
                 <label className="admin-form-pair">
@@ -222,7 +239,9 @@ export default function DriverMessagesPage() {
 
             <div className="app-news-section__grid">
               <label className="admin-form-pair app-news-field--full">
-                <span className="admin-field-label">Titel (Push + In-App)</span>
+                <span className="admin-field-label">
+                  {messageType === "push_only" ? "Titel (nur Push)" : "Titel (Posteingang + Push)"}
+                </span>
                 <input className="admin-input" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} />
               </label>
               <label className="admin-form-pair app-news-field--full">
