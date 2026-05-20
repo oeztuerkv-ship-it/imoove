@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RealMapView } from "@/components/RealMapView";
 import MapView from "react-native-maps";
+import { useTranslation } from "@/context/LanguageContext";
 import { type DriverProfile, useDriver } from "@/context/DriverContext";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useRide } from "@/context/RideContext";
@@ -42,6 +43,15 @@ import {
   driverPaymentMethodIconName,
   driverPaymentMethodLabelDe,
 } from "@/utils/driverPaymentMethodLabel";
+import {
+  clearInstantOfferDeadline,
+  getInstantOfferDeadlineMs,
+} from "@/utils/instantOfferCountdown";
+import {
+  dismissDriverAdminMessageId,
+  loadDismissedDriverAdminMessageIds,
+  type DriverAdminMessage,
+} from "@/utils/driverAdminMessages";
 
 /** Krankenkassen-/Eigenanteil-Fahrten (vom Kunden gebucht). */
 function isKrankenkasseRide(paymentMethod: string) {
@@ -285,6 +295,7 @@ function driverPrivacyCustomerName(fullName: string): string {
 
 /* ─── Sofortfahrt-Angebot (Fahrer vor Annahme): kein Preis, keine Strecke ─── */
 function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; driverPos?: { lat: number; lon: number } | null }) {
+  const { t } = useTranslation();
   const distToPickupM =
     driverPos && req.fromLat != null && req.fromLon != null
       ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon)
@@ -305,35 +316,39 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const privacyName = driverPrivacyCustomerName(req.customerName);
   const rideKindLabel =
     req.rideKind === "medical" || isKrankenkasseRide(req.paymentMethod)
-      ? "Krankenfahrt"
-      : "Taxifahrt";
+      ? t("driver.offer.medicalRide")
+      : t("driver.offer.taxiRide");
   const pickupLine = (req.fromFull || req.from || "Abholadresse").trim();
 
   const [secondsLeft, setSecondsLeft] = useState(INSTANT_OFFER_COUNTDOWN_SEC);
   const offerHandledRef = useRef(false);
+  /** Stabil: Parent übergibt oft neue Inline-Callbacks (GPS-Re-Renders) — nicht in Effect-Deps. */
+  const onRejectRef = useRef(onReject);
+  onRejectRef.current = onReject;
 
   useEffect(() => {
     offerHandledRef.current = false;
-    setSecondsLeft(INSTANT_OFFER_COUNTDOWN_SEC);
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          if (!offerHandledRef.current) {
-            offerHandledRef.current = true;
-            onReject();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const deadlineMs = getInstantOfferDeadlineMs(req.id, INSTANT_OFFER_COUNTDOWN_SEC);
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining <= 0 && !offerHandledRef.current) {
+        offerHandledRef.current = true;
+        clearInstantOfferDeadline(req.id);
+        onRejectRef.current();
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, 250);
     return () => clearInterval(timer);
-  }, [req.id, onReject]);
+  }, [req.id]);
 
   const handleReject = () => {
     if (offerHandledRef.current) return;
     offerHandledRef.current = true;
+    clearInstantOfferDeadline(req.id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     onReject();
   };
@@ -341,6 +356,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
   const handleAccept = () => {
     if (offerHandledRef.current) return;
     offerHandledRef.current = true;
+    clearInstantOfferDeadline(req.id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onAccept();
   };
@@ -374,10 +390,10 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
-          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#0F172A" }}>Sofortfahrt</Text>
+          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: "#0F172A" }}>{t("driver.offer.instantRide")}</Text>
         </View>
         <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: "#64748B" }}>
-          {date} · {time} Uhr
+          {date} · {time}{t("driver.offer.timeSuffix") ? ` ${t("driver.offer.timeSuffix")}` : ""}
         </Text>
       </View>
 
@@ -399,7 +415,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             {distPickupValue}
           </Text>
           <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3, marginTop: 2 }}>
-            Entfernung zum Kunden
+            {t("driver.offer.distanceLabel")}
           </Text>
         </View>
       </View>
@@ -408,7 +424,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
           <MaterialCommunityIcons name="map-marker" size={20} color="#22C55E" style={{ marginTop: 2 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>Abholung</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>{t("driver.offer.pickup")}</Text>
             <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#0F172A", marginTop: 4 }} numberOfLines={3}>
               {pickupLine}
             </Text>
@@ -417,7 +433,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
           <MaterialCommunityIcons name="flag-checkered" size={18} color="#94A3B8" style={{ marginTop: 4 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>Ziel</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#64748B", letterSpacing: 0.3 }}>{t("driver.offer.destination")}</Text>
             <View
               style={{
                 marginTop: 6,
@@ -434,7 +450,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             >
               <Feather name="lock" size={16} color="#94A3B8" />
               <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>
-                Ziel nach Annahme sichtbar
+                {t("driver.offer.destinationLocked")}
               </Text>
             </View>
           </View>
@@ -570,7 +586,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           >
             <Feather name="x" size={26} color="#DC2626" />
           </View>
-          <Text style={{ marginTop: 6, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748B" }}>Ablehnen</Text>
+          <Text style={{ marginTop: 6, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#64748B" }}>{t("driver.offer.reject")}</Text>
         </Pressable>
 
         <Pressable onPress={handleAccept} style={{ alignItems: "center", flex: 1, maxWidth: 160 }}>
@@ -591,8 +607,8 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
           >
             <Feather name="check" size={40} color="#0F172A" />
           </View>
-          <Text style={{ marginTop: 8, fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }}>Annehmen</Text>
-          <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>Tippen zum Annehmen</Text>
+          <Text style={{ marginTop: 8, fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }}>{t("driver.offer.accept")}</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: "#94A3B8" }}>{t("driver.offer.acceptHint")}</Text>
         </Pressable>
 
         <View style={{ alignItems: "center", width: 56 }}>
@@ -611,7 +627,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
             <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A" }}>{secondsLeft}</Text>
           </View>
           <Text style={{ marginTop: 6, fontSize: 10, fontFamily: "Inter_700Bold", color: "#94A3B8", letterSpacing: 0.3 }}>
-            Sek.
+            {t("driver.offer.seconds")}
           </Text>
         </View>
       </View>
@@ -621,6 +637,7 @@ function InstantCard({ req, onAccept, onReject, driverPos }: { req: RideRequest;
 
 /* ─── Scheduled Request Card ─── */
 function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, driverPos }: { req: RideRequest; onAccept: () => void; onReject: () => void; onActivate: () => void; onCancelAssigned: () => void; driverPos?: { lat: number; lon: number } | null }) {
+  const { t } = useTranslation();
   const isAssignedUpcoming = req.status === "scheduled_assigned";
   const { date, time } = fmt(new Date(req.scheduledAt!));
   const [activationTick, setActivationTick] = useState(0);
@@ -745,10 +762,10 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
       {!isAssignedUpcoming ? (
         <View style={{ flexDirection: "row", gap: 8, marginTop: 24 }}>
           <Pressable style={[styles.rejectBtn, { flex: 1, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", paddingVertical: 10, borderRadius: 14 }]} onPress={onReject}>
-            <Text style={[styles.rejectText, { color: "#B91C1C" }]}>Ablehnen</Text>
+            <Text style={[styles.rejectText, { color: "#B91C1C" }]}>{t("driver.scheduled.reject")}</Text>
           </Pressable>
           <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#DC2626", paddingVertical: 15, borderRadius: 14 }]} onPress={onAccept}>
-            <Text style={styles.acceptText}>Annehmen</Text>
+            <Text style={styles.acceptText}>{t("driver.scheduled.accept")}</Text>
           </Pressable>
         </View>
       ) : (
@@ -757,11 +774,11 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
             style={[styles.rejectBtn, { flex: 1, borderColor: "#FEE2E2", backgroundColor: "#FFF1F1", paddingVertical: 15, borderRadius: 14 }]}
             onPress={onCancelAssigned}
           >
-            <Text style={[styles.rejectText, { color: "#E11D2E", fontSize: 17 }]}>Stornieren</Text>
+            <Text style={[styles.rejectText, { color: "#E11D2E", fontSize: 17 }]}>{t("driver.scheduled.cancel")}</Text>
           </Pressable>
           {activatable ? (
             <Pressable style={[styles.acceptBtn, { flex: 2, backgroundColor: "#16A34A", paddingVertical: 15, borderRadius: 14 }]} onPress={onActivate}>
-              <Text style={styles.acceptText}>Aktivieren</Text>
+              <Text style={styles.acceptText}>{t("driver.scheduled.activate")}</Text>
             </Pressable>
           ) : (
             <View style={{ flex: 2, justifyContent: "center", paddingHorizontal: 8 }}>
@@ -827,7 +844,7 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
         <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: "#111" }}>
           {isAvailable ? "Warte auf Aufträge..." : "Offline"}
         </Text>
-        {firstReq && isAvailable && !marketLoading && (
+        {firstReq && isAvailable && (
           <InstantCard req={firstReq} driverPos={driverPos}
             onAccept={() => onAccept(firstReq.id)}
             onReject={() => onReject(firstReq.id)} />
@@ -2183,6 +2200,66 @@ function ActiveRideScreen({
   );
 }
 
+function DriverAdminMessageBanner({
+  message,
+  onDismiss,
+}: {
+  message: DriverAdminMessage;
+  onDismiss: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const longBody = message.body.length > 120;
+
+  return (
+    <View
+      style={{
+        marginHorizontal: 12,
+        marginBottom: 10,
+        backgroundColor: "#0F172A",
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "#38BDF855",
+        padding: 14,
+        gap: 8,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: "#0EA5E9",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Feather name="bell" size={20} color="#fff" />
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: "#F8FAFC", fontFamily: "Inter_700Bold", fontSize: 15 }}>{message.title}</Text>
+          <Text
+            style={{ color: "#CBD5E1", fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19 }}
+            numberOfLines={expanded ? undefined : 3}
+          >
+            {message.body}
+          </Text>
+          {longBody ? (
+            <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={8}>
+              <Text style={{ color: "#38BDF8", fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+                {expanded ? "Weniger anzeigen" : "Mehr anzeigen"}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <Pressable onPress={onDismiss} hitSlop={12} accessibilityLabel="Nachricht schließen">
+          <Feather name="x" size={20} color="#94A3B8" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 /* ─── Main Dashboard ─── */
 export default function DriverDashboard() {
   // Keep screen awake while driver app is open — never goes dark during shift
@@ -2194,6 +2271,7 @@ export default function DriverDashboard() {
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
 
+  const { t } = useTranslation();
   const { driver, logout, setAvailable, isBlocked, blockedUntilDate, blockDriver48h, refreshEinsatzbereit } = useDriver();
   const { config: appPlatformConfig } = useOnrodaAppConfig();
   const allowDriverApp = (appPlatformConfig.system as { allowDriverApp?: boolean } | undefined)?.allowDriverApp !== false;
@@ -2223,6 +2301,7 @@ export default function DriverDashboard() {
     completeRequest,
     refreshRequests,
     refreshDriverMarketHard,
+    clearDriverMarketRequests,
     markDriverArriving,
     activateForDispatch,
     isConnected,
@@ -2234,6 +2313,7 @@ export default function DriverDashboard() {
   /** Notification-Baseline einmal pro Fahrer-Session (Login / App-Restore). */
   const notificationBootstrapTokenRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("uebersicht");
+  const [adminMessage, setAdminMessage] = useState<DriverAdminMessage | null>(null);
   const [ordersView, setOrdersView] = useState<"anfragen" | "angenommen" | "code">("anfragen");
   const [showCodeRideModal, setShowCodeRideModal] = useState(false);
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
@@ -2258,6 +2338,60 @@ export default function DriverDashboard() {
   const [codeRideVerified, setCodeRideVerified] = useState(false);
   const [codeRideSubmitting, setCodeRideSubmitting] = useState(false);
   const [driverPos, setDriverPos] = useState<{ lat: number; lon: number } | null>(null);
+  const loadAdminMessage = useCallback(async () => {
+    const token = driver?.authToken?.trim();
+    if (!token) {
+      setAdminMessage(null);
+      return;
+    }
+    try {
+      const [dismissed, res] = await Promise.all([
+        loadDismissedDriverAdminMessageIds(),
+        fetch(`${API_BASE}/fleet-driver/v1/admin-messages`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        items?: Array<{ id?: string; title?: string; body?: string; sentAt?: string }>;
+      };
+      if (!res.ok || !data?.ok || !Array.isArray(data.items)) {
+        setAdminMessage(null);
+        return;
+      }
+      const next = data.items.find((it) => {
+        const id = typeof it.id === "string" ? it.id.trim() : "";
+        const title = typeof it.title === "string" ? it.title.trim() : "";
+        const body = typeof it.body === "string" ? it.body.trim() : "";
+        return id && title && body && !dismissed.has(id);
+      });
+      if (!next?.id || !next.title || !next.body) {
+        setAdminMessage(null);
+        return;
+      }
+      setAdminMessage({
+        id: next.id,
+        title: next.title.trim(),
+        body: next.body.trim(),
+        sentAt: typeof next.sentAt === "string" ? next.sentAt : "",
+      });
+    } catch {
+      setAdminMessage(null);
+    }
+  }, [driver?.authToken]);
+
+  useEffect(() => {
+    void loadAdminMessage();
+  }, [loadAdminMessage]);
+
+  const dismissAdminMessage = useCallback(async () => {
+    if (!adminMessage) return;
+    const id = adminMessage.id;
+    setAdminMessage(null);
+    await dismissDriverAdminMessageId(id);
+    void loadAdminMessage();
+  }, [adminMessage, loadAdminMessage]);
+
   const loadVehicleOptions = useCallback(async () => {
     if (!driver?.authToken) return;
     setVehiclePickerLoading(true);
@@ -2344,6 +2478,8 @@ export default function DriverDashboard() {
   );
 
   const prevPendingIds = useRef<Set<string>>(new Set());
+  /** Abgelehnte / verworfene Sofortangebote — Poll darf sie nicht erneut als „neu“ einblenden. */
+  const suppressedMarketOfferIdsRef = useRef<Set<string>>(new Set());
   const firstRender = useRef(true);
   const prevDriverOnline = useRef(false);
   /** Blockiert Notification/Banner während OFFLINE→ONLINE (mehrere Fetches + setAvailable). */
@@ -2400,72 +2536,6 @@ export default function DriverDashboard() {
     }, 200);
   }, [driver?.authToken, driver?.einsatzbereit, driver?.isAvailable, isConnected]);
 
-  // Fire notification + vibration only for truly new instant ride requests while driver is already online
-  useEffect(() => {
-    const currentIds = new Set(allPending.map((r) => r.id));
-    const driverOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
-
-    if (isOnlineFlowRunning.current) {
-      prevPendingIds.current = currentIds;
-      prevDriverOnline.current = driverOnline;
-      firstRender.current = false;
-      return;
-    }
-
-    /* Erster Mount: oft online + leere Liste, solange der erste Markt-Fetch läuft (isConnected noch false).
-     * Wenn wir firstRender hier beenden, gelten alle IDs nach dem Fetch als „neu“ → falscher Auftragston. */
-    if (firstRender.current && driverOnline && currentIds.size === 0 && !isConnected) {
-      prevPendingIds.current = currentIds;
-      prevDriverOnline.current = driverOnline;
-      return;
-    }
-
-    /* Nach erstem Fetch: Markt wirklich leer → Baseline setzen, ohne Ton. */
-    if (firstRender.current && driverOnline && currentIds.size === 0 && isConnected) {
-      prevPendingIds.current = currentIds;
-      firstRender.current = false;
-      prevDriverOnline.current = driverOnline;
-      return;
-    }
-
-    if (
-      firstRender.current ||
-      !driverOnline ||
-      (!prevDriverOnline.current && driverOnline)
-    ) {
-      // First render/offline->online sync: silently record existing rides
-      prevPendingIds.current = currentIds;
-      firstRender.current = false;
-      prevDriverOnline.current = driverOnline;
-      return;
-    }
-
-    prevDriverOnline.current = driverOnline;
-
-    const newReqs = allPending.filter(
-      (r) =>
-        DRIVER_MARKET_STATUSES.has(r.status) &&
-        !r.driverId &&
-        r.status !== "scheduled" &&
-        !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 60 * 60 * 1000) &&
-        !prevPendingIds.current.has(r.id),
-    );
-    if (newReqs.length > 0) {
-      const req = newReqs[0];
-      const distKm = (driverPos && req.fromLat != null && req.fromLon != null)
-        ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
-        : null;
-      showBanner(req);
-      void sendNewRideNotification({
-        customerName: req.customerName || "Kunde",
-        fromAddress: req.fromFull || req.from || "—",
-        distanceKm: distKm,
-        estimatedFare: Number.isFinite(req.estimatedFare) ? req.estimatedFare : 0,
-      });
-    }
-    prevPendingIds.current = currentIds;
-  }, [allPending, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner, isConnected]);
-
   // GPS für Distanzanzeige auf Auftragskarten (vor Annahme)
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -2485,8 +2555,11 @@ export default function DriverDashboard() {
 
   /** Nur echte Fleet-Driver-ID — E-Mail als driver_id bricht API-/Statuslogik. */
   const driverId = driver?.id ?? "";
+  const driverMarketOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
 
   const pendingRequests = allPending.filter((r) => {
+    if (suppressedMarketOfferIdsRef.current.has(r.id)) return false;
+    if (!driverMarketOnline) return false;
     if (!DRIVER_MARKET_STATUSES.has(r.status)) return false;
     if (r.driverId) return false;
     if ((r.rejectedBy ?? []).includes(driverId)) return false;
@@ -2496,7 +2569,79 @@ export default function DriverDashboard() {
     // Alte, nie angenommene Pools nicht erneut beim Fahrer anzeigen.
     return ageHours <= 8;
   });
+
+  useEffect(() => {
+    const suppressed = suppressedMarketOfferIdsRef.current;
+    for (const r of requests) {
+      if (driverId && (r.rejectedBy ?? []).includes(driverId)) suppressed.delete(r.id);
+    }
+    for (const id of [...suppressed]) {
+      if (!requests.some((r) => r.id === id)) suppressed.delete(id);
+    }
+  }, [requests, driverId]);
+
+  // Fire notification + vibration only for truly new instant ride requests while driver is already online
+  useEffect(() => {
+    const currentIds = new Set(pendingRequests.map((r) => r.id));
+    const driverOnline = Boolean(driver?.einsatzbereit && driver?.isAvailable);
+
+    if (isOnlineFlowRunning.current) {
+      prevPendingIds.current = currentIds;
+      prevDriverOnline.current = driverOnline;
+      firstRender.current = false;
+      return;
+    }
+
+    if (firstRender.current && driverOnline && currentIds.size === 0 && !isConnected) {
+      prevPendingIds.current = currentIds;
+      prevDriverOnline.current = driverOnline;
+      return;
+    }
+
+    if (firstRender.current && driverOnline && currentIds.size === 0 && isConnected) {
+      prevPendingIds.current = currentIds;
+      firstRender.current = false;
+      prevDriverOnline.current = driverOnline;
+      return;
+    }
+
+    if (
+      firstRender.current ||
+      !driverOnline ||
+      (!prevDriverOnline.current && driverOnline)
+    ) {
+      prevPendingIds.current = currentIds;
+      firstRender.current = false;
+      prevDriverOnline.current = driverOnline;
+      return;
+    }
+
+    prevDriverOnline.current = driverOnline;
+
+    const newReqs = pendingRequests.filter(
+      (r) =>
+        !prevPendingIds.current.has(r.id) &&
+        r.status !== "scheduled" &&
+        !(r.scheduledAt && new Date(r.scheduledAt).getTime() > Date.now() + 60 * 60 * 1000),
+    );
+    if (newReqs.length > 0) {
+      const req = newReqs[0];
+      const distKm = (driverPos && req.fromLat != null && req.fromLon != null)
+        ? haversineDistance(driverPos.lat, driverPos.lon, req.fromLat, req.fromLon) / 1000
+        : null;
+      showBanner(req);
+      void sendNewRideNotification({
+        customerName: req.customerName || "Kunde",
+        fromAddress: req.fromFull || req.from || "—",
+        distanceKm: distKm,
+        estimatedFare: Number.isFinite(req.estimatedFare) ? req.estimatedFare : 0,
+      });
+    }
+    prevPendingIds.current = currentIds;
+  }, [pendingRequests, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner, isConnected]);
+
   const scheduledPool = scheduledPoolRequests.filter((r) => {
+    if (!driverMarketOnline) return false;
     if (r.status !== "scheduled" && r.status !== "scheduled_assigned") return false;
     const assignedDriverId = typeof r.driverId === "string" ? r.driverId.trim() : "";
     if (r.status === "scheduled_assigned" && assignedDriverId !== driverId) return false;
@@ -2593,6 +2738,7 @@ export default function DriverDashboard() {
   });
 
   const handleAccept = async (id: string) => {
+    clearInstantOfferDeadline(id);
     if (!driver) return;
     if (!driverId.trim()) {
       Alert.alert("Annahme nicht möglich", "Bitte erneut als Fahrer anmelden (keine Fahrer-ID in der Sitzung).");
@@ -2649,10 +2795,20 @@ export default function DriverDashboard() {
     }
   };
   const handleReject = async (id: string) => {
-    stopRideSound().catch(() => {});
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    await rejectByDriver(id, driverId);
+    // Sofort: sonst sieht Poll/Countdown-Ablauf die ID als „neu“ (Ghost-Banner oben).
+    clearInstantOfferDeadline(id);
+    suppressedMarketOfferIdsRef.current.add(id);
     prevPendingIds.current.add(id);
+    stopRideSound().catch(() => {});
+    if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    setBannerRide((cur) => (cur?.id === id ? null : cur));
+    bannerAnim.setValue(-140);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    try {
+      await rejectByDriver(id, driverId);
+    } catch {
+      Alert.alert("Ablehnen fehlgeschlagen", "Bitte erneut versuchen oder Liste aktualisieren.");
+    }
   };
   const handleComplete = async (id: string, finalFare: number) => {
     await completeRequest(id, finalFare);
@@ -2951,9 +3107,9 @@ export default function DriverDashboard() {
               try {
                 if (goingOnline) {
                   isOnlineFlowRunning.current = true;
-                  prevPendingIds.current = new Set();
                   firstRender.current = true;
                   prevDriverOnline.current = false;
+                  prevPendingIds.current = new Set(allPendingRef.current.map((r) => r.id));
                   setBannerRide(null);
                   bannerAnim.setValue(-140);
                   try {
@@ -2972,8 +3128,19 @@ export default function DriverDashboard() {
                     }, 200);
                   }
                 } else {
+                  isOnlineFlowRunning.current = true;
+                  for (const r of allPendingRef.current) prevPendingIds.current.add(r.id);
+                  setBannerRide(null);
+                  bannerAnim.setValue(-140);
+                  stopRideSound().catch(() => {});
+                  clearDriverMarketRequests();
                   await setAvailable(false);
-                  await refreshDriverMarketHard();
+                  clearDriverMarketRequests();
+                  if (onlineFlowEndTimerRef.current) clearTimeout(onlineFlowEndTimerRef.current);
+                  onlineFlowEndTimerRef.current = setTimeout(() => {
+                    onlineFlowEndTimerRef.current = null;
+                    isOnlineFlowRunning.current = false;
+                  }, 200);
                 }
               } finally {
                 setMarketRefreshing(false);
@@ -3027,6 +3194,9 @@ export default function DriverDashboard() {
 
       {/* Content */}
       <View style={{ flex: 1, paddingTop: topPad + 75 }}>
+        {adminMessage && !activeDriverRequest ? (
+          <DriverAdminMessageBanner message={adminMessage} onDismiss={() => void dismissAdminMessage()} />
+        ) : null}
         {activeDriverRequest ? (
           <ActiveRideScreen
             req={activeDriverRequest}
@@ -3218,7 +3388,7 @@ export default function DriverDashboard() {
       </View>
 
       {/* ── In-App Notification Banner ── */}
-      {bannerRide && (
+      {bannerRide && driverMarketOnline && (
         <Animated.View
           style={{
             position: "absolute",
@@ -3247,7 +3417,7 @@ export default function DriverDashboard() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>
-              Neuer Auftrag
+              {t("driver.offer.newRideBanner")}
             </Text>
           </View>
           <Pressable
