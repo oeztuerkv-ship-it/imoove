@@ -929,7 +929,8 @@ export default function DriverNavigationScreen() {
                   setShowCancelReasonModal(false);
                   setCancelReason("");
                   setCustomCancelReason("");
-                  router.back();
+                  disconnectSocket();
+                  router.replace("/driver/dashboard" as "/driver/dashboard");
                 }}
               >
                 <Text style={styles.cancelReasonBtnDangerText}>Fahrt stornieren</Text>

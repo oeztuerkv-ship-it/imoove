@@ -34,6 +34,7 @@ import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
   customerReservationFlowHeadline,
 } from "@/utils/customerRideStatusLabel";
+import { isCustomerCancelledStatus } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
 import { customerShowsTripEstimate } from "@/utils/onrodaRideOpsFlow";
 import { rs, rf } from "@/utils/scale";
@@ -225,6 +226,8 @@ export default function StatusScreen() {
   const refreshRequestsRef = useRef(refreshRequests);
   /** Verhindert doppelte Meldung bei wiederholtem Poll nach `expired`/`rejected`. */
   const handledReservationUnfulfilledRef = useRef<string | null>(null);
+  /** Verhindert doppelte Meldung nach Fahrer-/System-Storno auf dem Live-Screen. */
+  const handledRideCancelledRef = useRef<string | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -264,6 +267,7 @@ export default function StatusScreen() {
     if (!sticky || !currentRideId || sticky.id !== currentRideId) return null;
     const live = requests.find((r) => r.id === currentRideId);
     if (!live) return sticky;
+    if (isCustomerCancelledStatus(live.status)) return null;
     const activeStatuses = new Set([
       "ready_for_dispatch",
       "accepted",
@@ -296,12 +300,15 @@ export default function StatusScreen() {
     | "searching"
     | "reserved"
     | "reservation_unfulfilled"
+    | "ride_cancelled"
     | "accepted"
     | "preparing"
     | "arrived"
     | "driving"
     | "completed" =
     completedForCurrentRide ? "completed"
+    : rideMatchingCurrentId && isCustomerCancelledStatus(rideMatchingCurrentId.status)
+      ? "ride_cancelled"
     : effectiveAcceptedRequest?.status === "in_progress" ? "driving"
     : effectiveAcceptedRequest?.status === "passenger_onboard" ||
         effectiveAcceptedRequest?.status === "arrived" ||
@@ -326,21 +333,14 @@ export default function StatusScreen() {
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
 
-  /** Status-Polling auf Live-Screen (nicht nur Dashboard) — DB-Status für Kunden-UI. */
+  /** Status-Polling auf Live-Screen — erkennt u. a. Fahrer-Storno (`cancelled_by_driver`). */
   useEffect(() => {
-    if (
-      !effectiveAcceptedRequest?.id ||
-      customerPhase === "searching" ||
-      customerPhase === "reserved" ||
-      customerPhase === "reservation_unfulfilled" ||
-      customerPhase === "completed"
-    ) {
-      return;
-    }
+    if (!currentRideId) return;
+    if (customerPhase === "completed" || customerPhase === "ride_cancelled") return;
     void refreshRequests();
     const timer = setInterval(() => void refreshRequests(), 3500);
     return () => clearInterval(timer);
-  }, [effectiveAcceptedRequest?.id, customerPhase, refreshRequests]);
+  }, [currentRideId, customerPhase, refreshRequests]);
 
   const customerPhaseRef = useRef(customerPhase);
   const acceptedRequestRef = useRef<RideRequest | null>(effectiveAcceptedRequest);
@@ -354,6 +354,7 @@ export default function StatusScreen() {
       rawPhase === "searching" ||
       rawPhase === "reserved" ||
       rawPhase === "reservation_unfulfilled" ||
+      rawPhase === "ride_cancelled" ||
       rawPhase === "completed"
     )
       return;
@@ -399,6 +400,7 @@ export default function StatusScreen() {
       rawPhase === "searching" ||
       rawPhase === "reserved" ||
       rawPhase === "reservation_unfulfilled" ||
+      rawPhase === "ride_cancelled" ||
       rawPhase === "completed"
     )
       return;
@@ -684,10 +686,58 @@ export default function StatusScreen() {
   }, [customerPhase, currentRideId, requests]);
 
   useEffect(() => {
+    if (handledRideCancelledRef.current && handledRideCancelledRef.current !== currentRideId) {
+      handledRideCancelledRef.current = null;
+    }
+  }, [currentRideId]);
+
+  /**
+   * Fahrer (oder System) hat storniert — Kunde informieren, Live-Navi/Map beenden, zur Startseite.
+   */
+  useEffect(() => {
+    if (customerPhase !== "ride_cancelled") return;
+    const id = currentRideId;
+    if (!id) return;
+    if (handledRideCancelledRef.current === id) return;
+    if (cancelFlowStartedRef.current) return;
+    const ride = requests.find((r) => r.id === id) ?? rideMatchingCurrentId;
+    if (!ride || !isCustomerCancelledStatus(ride.status)) return;
+    handledRideCancelledRef.current = id;
+    stickyAcceptedRef.current = null;
+    disconnectSocket();
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    const reason =
+      typeof ride.cancelReason === "string" && ride.cancelReason.trim().length > 0
+        ? ride.cancelReason.trim()
+        : null;
+    let title = "Fahrt beendet";
+    let message = "Die Fahrt wurde storniert.";
+    if (ride.status === "cancelled_by_driver") {
+      title = "Fahrer hat storniert";
+      message = reason
+        ? `Der Fahrer hat die Fahrt abgebrochen.\n\nGrund: ${reason}`
+        : "Der Fahrer hat die Fahrt abgebrochen.";
+    } else if (ride.status === "cancelled_by_customer") {
+      title = "Fahrt storniert";
+      message = reason
+        ? `Die Fahrt wurde storniert.\n\nGrund: ${reason}`
+        : "Die Fahrt wurde storniert.";
+    } else if (ride.status === "cancelled_by_system") {
+      title = "Fahrt beendet";
+      message = reason
+        ? `Die Fahrt wurde vom System beendet.\n\nGrund: ${reason}`
+        : "Die Fahrt wurde vom System beendet.";
+    }
+    finishCancelLocally();
+    Alert.alert(title, message, [{ text: "OK" }], { cancelable: false });
+  }, [customerPhase, currentRideId, requests, rideMatchingCurrentId]);
+
+  useEffect(() => {
     if (
       customerPhase === "searching" ||
       customerPhase === "reserved" ||
       customerPhase === "reservation_unfulfilled" ||
+      customerPhase === "ride_cancelled" ||
       customerPhase === "completed"
     )
       return;
@@ -1137,6 +1187,15 @@ export default function StatusScreen() {
     );
   }
 
+  if (customerPhase === "ride_cancelled") {
+    return (
+      <View style={[styles.container, styles.cancelExitWrap]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.cancelExitText}>Fahrt wird beendet…</Text>
+      </View>
+    );
+  }
+
   const isDriving = customerPhase === "driving";
   const isPreparing = customerPhase === "preparing";
   const isArrived = customerPhase === "arrived";
@@ -1373,6 +1432,17 @@ export default function StatusScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  cancelExitWrap: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    gap: rs(16),
+  },
+  cancelExitText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
+  },
   map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
 
   /* Uber-Stil: Ziel-Karte oben rechts */
