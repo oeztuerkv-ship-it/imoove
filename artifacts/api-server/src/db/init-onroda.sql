@@ -1050,6 +1050,17 @@ CREATE TABLE IF NOT EXISTS fleet_driver_expo_push_tokens (
 CREATE INDEX IF NOT EXISTS fleet_driver_expo_push_tokens_driver_company_idx
   ON fleet_driver_expo_push_tokens (fleet_driver_id, company_id);
 
+CREATE TABLE IF NOT EXISTS ride_driver_locations (
+  ride_id TEXT PRIMARY KEY REFERENCES rides(id) ON DELETE CASCADE,
+  fleet_driver_id TEXT NOT NULL,
+  lat DOUBLE PRECISION NOT NULL,
+  lon DOUBLE PRECISION NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ride_driver_locations_updated_at_idx
+  ON ride_driver_locations (updated_at DESC);
+
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_customer_reservation_assigned_at TIMESTAMPTZ NULL;
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_driver_activation_reminder_at TIMESTAMPTZ NULL;
 

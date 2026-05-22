@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -39,6 +39,8 @@ export default function SponsorsScreen() {
   const [selected, setSelected] = useState<SponsorItem | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<OfferTab>("coupon");
+  /** Nur beim ersten Laden: leeren Tab vermeiden — nicht bei manuellem Tab-Wechsel zurückspringen. */
+  const didPickDefaultTabRef = useRef(false);
 
   const qrUrlFor = useCallback((it: SponsorItem | null): string | null => {
     if (!it) return null;
@@ -76,7 +78,12 @@ export default function SponsorsScreen() {
   );
 
   useEffect(() => {
-    if (tabCounts[activeTab] > 0) return;
+    if (loading || items.length === 0) {
+      if (items.length === 0) didPickDefaultTabRef.current = false;
+      return;
+    }
+    if (didPickDefaultTabRef.current) return;
+    didPickDefaultTabRef.current = true;
     if (tabCounts.coupon > 0) {
       setActiveTab("coupon");
       return;
@@ -88,7 +95,20 @@ export default function SponsorsScreen() {
     if (tabCounts.partnervorteile > 0) {
       setActiveTab("partnervorteile");
     }
-  }, [tabCounts, activeTab]);
+  }, [loading, items.length, tabCounts]);
+
+  const handleBack = useCallback(() => {
+    if (selected) {
+      setSelected(null);
+      setQrOpen(false);
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(isDriverLoggedIn ? "/driver/dashboard" : "/");
+  }, [selected, isDriverLoggedIn]);
 
   useFocusEffect(
     useCallback(() => {
@@ -124,7 +144,7 @@ export default function SponsorsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => (selected ? router.replace("/") : router.back())} hitSlop={10} style={styles.backBtn}>
+        <Pressable onPress={handleBack} hitSlop={10} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>
@@ -140,9 +160,13 @@ export default function SponsorsScreen() {
         selected ? (
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
-              {selected.imageUrl ? <Image source={{ uri: selected.imageUrl }} style={styles.heroLarge} resizeMode="cover" /> : null}
+              {selected.imageUrl ? (
+                <Image pointerEvents="none" source={{ uri: selected.imageUrl }} style={styles.heroLarge} resizeMode="cover" />
+              ) : null}
               <View style={styles.body}>
-                {selected.logoUrl ? <Image source={{ uri: selected.logoUrl }} style={styles.logo} resizeMode="contain" /> : null}
+                {selected.logoUrl ? (
+                  <Image pointerEvents="none" source={{ uri: selected.logoUrl }} style={styles.logo} resizeMode="contain" />
+                ) : null}
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>{selected.title}</Text>
                 <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{selected.description}</Text>
                 <View style={styles.actionsRow}>
@@ -222,9 +246,13 @@ export default function SponsorsScreen() {
             </Text>
             {filteredItems.map((it) => (
               <Pressable key={it.id} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => setSelected(it)}>
-                {it.imageUrl ? <Image source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" /> : null}
+                {it.imageUrl ? (
+                  <Image pointerEvents="none" source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" />
+                ) : null}
                 <View style={styles.body}>
-                  {it.logoUrl ? <Image source={{ uri: it.logoUrl }} style={styles.logo} resizeMode="contain" /> : null}
+                  {it.logoUrl ? (
+                    <Image pointerEvents="none" source={{ uri: it.logoUrl }} style={styles.logo} resizeMode="contain" />
+                  ) : null}
                   <Text style={[styles.cardTitle, { color: colors.foreground }]}>{it.title}</Text>
                   <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>{it.description}</Text>
                 </View>

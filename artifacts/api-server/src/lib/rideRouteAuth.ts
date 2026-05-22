@@ -28,18 +28,10 @@ export type RideMutateActor =
   | { kind: "admin" }
   | null;
 
-/** Erste passende Identität: Taxi-Fahrer-JWT → Kunden-Session-JWT → Admin (Bearer oder Admin-Panel-Session). */
+/** Erste passende Identität: Kunden-Session-JWT → Taxi-Fahrer-JWT → Admin (Bearer oder Admin-Panel-Session). */
 export async function resolveRideMutateActor(req: Request): Promise<RideMutateActor> {
   const raw = extractBearerAuthorization(req);
   if (!raw) return null;
-
-  try {
-    const claims = await verifyFleetDriverJwt(raw);
-    const n = await normalizeFleetClaims(claims);
-    if (n) return { kind: "fleet_session", fleetDriverId: n.fleetDriverId, companyId: n.companyId };
-  } catch {
-    /* weiter */
-  }
 
   if (isSessionJwtConfigured()) {
     try {
@@ -49,6 +41,14 @@ export async function resolveRideMutateActor(req: Request): Promise<RideMutateAc
     } catch {
       /* weiter */
     }
+  }
+
+  try {
+    const claims = await verifyFleetDriverJwt(raw);
+    const n = await normalizeFleetClaims(claims);
+    if (n) return { kind: "fleet_session", fleetDriverId: n.fleetDriverId, companyId: n.companyId };
+  } catch {
+    /* weiter */
   }
 
   const admin = await tryResolveAdminApiAuthPrincipal(raw);

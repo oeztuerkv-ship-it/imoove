@@ -129,6 +129,13 @@ httpServer.listen(port, () => {
         logger.info({ count: expiredScheduled.length }, "[Cron] scheduled → expired");
       }
 
+      // Job 6: accepted ohne GPS-Fortschritt → zurück in Pool (Ghost-Ride Recovery)
+      const { recoverGhostAcceptedRides } = await import("./jobs/ghostRideRecovery.js");
+      const ghostRecovered = await recoverGhostAcceptedRides(nowMs);
+      if (ghostRecovered.length > 0) {
+        logger.info({ count: ghostRecovered.length, rideIds: ghostRecovered }, "[Cron] Ghost-Rides recovered");
+      }
+
     } catch (err) {
       logger.error({ err }, "[Cron] reservationLifecycle failed");
     }

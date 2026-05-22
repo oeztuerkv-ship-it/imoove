@@ -4,6 +4,10 @@ import { Platform, Vibration } from "react-native";
 
 let _sound: Audio.Sound | null = null;
 let _vibrating = false;
+let _ringStopTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Max. Dauer des Alarmtons — verhindert endloses Klingeln ohne sichtbaren Auftrag. */
+const RING_MAX_MS = 45_000;
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === "web") return false;
@@ -18,6 +22,10 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 }
 
 export async function stopRideSound(): Promise<void> {
+  if (_ringStopTimer) {
+    clearTimeout(_ringStopTimer);
+    _ringStopTimer = null;
+  }
   _vibrating = false;
   Vibration.cancel();
   if (_sound) {
@@ -52,9 +60,14 @@ export async function sendNewRideNotification(_opts: {
     await stopRideSound();
     _vibrating = true; // restore after stopRideSound resets it
     const { sound } = await Audio.Sound.createAsync(
-      require("../assets/ride_alert.mp3"),
+      require("../assets/ride_alert.wav"),
       { shouldPlay: true, volume: 1.0, isLooping: true }
     );
     _sound = sound;
+    if (_ringStopTimer) clearTimeout(_ringStopTimer);
+    _ringStopTimer = setTimeout(() => {
+      _ringStopTimer = null;
+      void stopRideSound();
+    }, RING_MAX_MS);
   } catch (_) {}
 }

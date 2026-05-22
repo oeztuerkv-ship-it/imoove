@@ -14,7 +14,10 @@ import { attachAccessCodeSummariesToRides } from "../db/accessCodesData";
 import { buildFleetDriverMeClientHints, deriveDriverWorkflowLabel, getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { getFleetDriverCapability, isRideCompatibleWithCapability } from "../db/fleetMatchingData";
 import { dismissDriverMessage, listDriverMessagesForFleetDriver } from "../db/driverMessagesData";
-import { upsertFleetDriverExpoPushToken } from "../db/fleetDriverExpoPushData";
+import {
+  listFleetDriverExpoPushTokens,
+  upsertFleetDriverExpoPushToken,
+} from "../db/fleetDriverExpoPushData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
@@ -418,7 +421,7 @@ router.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (r
       return;
     }
     await upsertFleetDriverExpoPushToken(a.fleetDriverId, a.companyId, expoPushToken);
-    res.json({ ok: true });
+    res.json({ ok: true, fleetDriverId: a.fleetDriverId, companyId: a.companyId });
   } catch (e) {
     next(e);
   }
@@ -453,7 +456,15 @@ router.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, asy
     return;
   }
   await touchFleetDriverHeartbeat(a.fleetDriverId);
-  res.json({ ok: true, marketOnline: body.available });
+  const pushTokens =
+    body.available && isPostgresConfigured()
+      ? await listFleetDriverExpoPushTokens(a.fleetDriverId, a.companyId)
+      : [];
+  res.json({
+    ok: true,
+    marketOnline: body.available,
+    hasPushToken: pushTokens.length > 0,
+  });
 });
 
 router.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {

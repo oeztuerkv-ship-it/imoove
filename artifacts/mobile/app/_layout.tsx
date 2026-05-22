@@ -26,6 +26,7 @@ import { AppConfigProvider } from "@/context/AppConfigContext";
 import { DriverProvider } from "@/context/DriverContext";
 import { RideProvider } from "@/context/RideContext";
 import { RideRequestProvider } from "@/context/RideRequestContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { UserProvider } from "@/context/UserContext";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -122,6 +123,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: HOME_SHEET_BG }}>
             <KeyboardProvider>
+              <LanguageProvider>
               <UserProvider>
                 <AppConfigProvider>
                   <DriverProvider>
@@ -133,6 +135,7 @@ export default function RootLayout() {
                   </DriverProvider>
                 </AppConfigProvider>
               </UserProvider>
+              </LanguageProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

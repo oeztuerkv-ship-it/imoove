@@ -1,4 +1,5 @@
 import WebSocket, { WebSocketServer } from "ws";
+import { upsertRideDriverLocation } from "./db/rideDriverLocationData";
 import { findRide } from "./db/ridesData";
 import { logger } from "./lib/logger";
 import { resolveWsJoinPrincipal, wsJoinPrincipalMatchesRide } from "./lib/wsRideJoinAuth";
@@ -6,7 +7,7 @@ import { driverLocations, customerLocations } from "./routes/rides";
 
 type SocketRole = "driver" | "customer";
 
-type RideSocketMeta = { rideId: string; role: SocketRole };
+type RideSocketMeta = { rideId: string; role: SocketRole; fleetDriverId?: string };
 
 const socketMeta = new WeakMap<WebSocket, RideSocketMeta>();
 
@@ -84,7 +85,11 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
           }
 
           const role: SocketRole = principal.kind === "fleet" ? "driver" : "customer";
-          socketMeta.set(socket, { rideId: rideIdRaw, role });
+          socketMeta.set(socket, {
+            rideId: rideIdRaw,
+            role,
+            fleetDriverId: principal.kind === "fleet" ? principal.fleetDriverId : undefined,
+          });
 
           if (!rooms.has(rideIdRaw)) rooms.set(rideIdRaw, new Set());
           rooms.get(rideIdRaw)!.add(socket);
@@ -114,7 +119,11 @@ export function registerRideWebSockets(wss: WebSocketServer): void {
         if (msgType === "location:driver") {
           if (meta.role !== "driver") return;
           if (msg.lat == null || msg.lon == null) return;
-          driverLocations.set(boundRideId, { lat: msg.lat, lon: msg.lon, updatedAt: new Date().toISOString() });
+          const updatedAt = new Date().toISOString();
+          driverLocations.set(boundRideId, { lat: msg.lat, lon: msg.lon, updatedAt });
+          if (meta.fleetDriverId) {
+            void upsertRideDriverLocation(boundRideId, meta.fleetDriverId, msg.lat, msg.lon);
+          }
           rooms.get(boundRideId)?.forEach((client) => {
             if (client !== socket && client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({ type: "location:driver:update", lat: msg.lat, lon: msg.lon }));

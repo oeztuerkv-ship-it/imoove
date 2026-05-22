@@ -33,12 +33,12 @@ export async function syncCustomerExpoPushToken(opts: { sessionToken: string; go
 
     const Constants = (await import("expo-constants")).default;
     const projectId =
-      (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ??
-      (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+      (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId?.trim() ??
+      (Constants as { easConfig?: { projectId?: string } }).easConfig?.projectId?.trim() ??
+      "";
+    if (!projectId) return;
 
-    const tokenRes = projectId
-      ? await Notifications.getExpoPushTokenAsync({ projectId })
-      : await Notifications.getExpoPushTokenAsync();
+    const tokenRes = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenRes.data?.trim() ?? "";
     if (!token.startsWith("ExponentPushToken[")) return;
 

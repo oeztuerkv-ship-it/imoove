@@ -153,7 +153,8 @@ const DEFAULT_PAYLOAD: Record<string, unknown> = {
     blockNewBookings: false,
     allowDriverApp: true,
     allowCustomerApp: true,
-    globalNoticeDe: "",
+    globalNoticeDe:
+      "Onroda vermittelt Fahrten zwischen Fahrgästen und unabhängigen Taxi- bzw. Mietwagenunternehmen. Der Beförderungsvertrag kommt ausschließlich zwischen dem Fahrgast und dem jeweiligen Beförderer zustande. Onroda ist nicht Vertragspartner der Beförderung und übernimmt keine Haftung für deren Durchführung.",
     minAppVersionHint: null as string | null,
     emergencyShutdown: false,
   },

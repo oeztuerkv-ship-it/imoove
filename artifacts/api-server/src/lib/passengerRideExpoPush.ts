@@ -29,6 +29,34 @@ export async function notifyPassengerReservationActivated(passengerId: string, r
   );
 }
 
+/** Sofortfahrt: Fahrer am Abholort (`driver_waiting`) → Push „Fahrer da“. */
+export async function notifyPassengerDriverWaiting(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer da",
+      body: "Ihr Fahrer ist am Abholort. Bitte zum Fahrzeug kommen.",
+      data: { kind: "driver_waiting", rideId },
+    })),
+  );
+}
+
+/** Fahrer hat angenommen → Kunde informieren. */
+export async function notifyPassengerDriverAccepted(passengerId: string, rideId: string): Promise<void> {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer gefunden",
+      body: "Ein Fahrer hat Ihre Fahrt angenommen. Sie sehen den Standort in der App.",
+      data: { kind: "ride_accepted", rideId },
+    })),
+  );
+}
+
 /** Cron/System: keine Fahrerannahme rechtzeitig → Buchung beendet. */
 export async function notifyPassengerRideCancelledBySystem(passengerId: string, rideId: string): Promise<void> {
   const tokens = await listPassengerExpoPushTokens(passengerId);

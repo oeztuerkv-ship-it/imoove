@@ -173,8 +173,8 @@ export default function HomeScreen() {
     if (selectedVehicle !== "wheelchair") setWheelchairSelectCompleted(false);
   }, [selectedVehicle, setWheelchairSelectCompleted]);
 
-  const { myActiveRequests } = useRideRequests();
-  const ridesBadge = myActiveRequests.length;
+  const { customerFahrtenBadgeCount } = useRideRequests();
+  const ridesBadge = customerFahrtenBadgeCount > 0 ? customerFahrtenBadgeCount : undefined;
 
   const { config: platformConfig } = useOnrodaAppConfig();
   const preBookingOn = (platformConfig.features as { preBooking?: boolean } | undefined)?.preBooking !== false;
@@ -182,10 +182,8 @@ export default function HomeScreen() {
     emergencyShutdown?: boolean;
     maintenanceMode?: boolean;
     allowCustomerApp?: boolean;
-    globalNoticeDe?: string;
   } | undefined;
   const customerAppBlocked = !!sys?.emergencyShutdown || !!(sys?.maintenanceMode && sys?.allowCustomerApp === false);
-  const globalNoticeDe = typeof sys?.globalNoticeDe === "string" ? sys.globalNoticeDe.trim() : "";
 
   const blockedCustomerAlert = useCallback(() => {
     const m = platformConfig.messages?.customerAppClosedDe;
@@ -1420,21 +1418,6 @@ export default function HomeScreen() {
           style={[styles.sheetScroll, { backgroundColor: colors.surface }]}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: rs(16) }}
         >
-          {globalNoticeDe.length > 0 ? (
-            <View
-              style={{
-                marginHorizontal: 20,
-                marginBottom: 10,
-                padding: 12,
-                borderRadius: 10,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <Text style={{ color: colors.foreground, fontSize: 13, lineHeight: 18 }}>{globalNoticeDe}</Text>
-            </View>
-          ) : null}
           {!showOnboarding && homeTopOrder !== "news_then_sponsors" && sponsorTeasers.length > 0 ? (
             <Pressable
               style={[styles.sponsorTeaserCard, { marginHorizontal: 20, marginBottom: 10, borderColor: SPONSOR_NEWS_CARD_BORDER, backgroundColor: SPONSOR_NEWS_CARD_WHITE }]}

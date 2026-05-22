@@ -1,7 +1,7 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Location from "expo-location";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -21,21 +21,35 @@ import { rf, rs } from "@/utils/scale";
 
 const GOOGLE_PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_KEY ?? "";
 
+type OrtCategoryIconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+
 type Kategorie = {
   id: string;
   label: string;
-  icon: React.ComponentProps<typeof Feather>["name"];
+  icon: OrtCategoryIconName;
   color: string;
   bgColor: string;
   googleType: string;
   subfilter?: { id: string; label: string; keyword: string }[];
 };
 
+function OrtCategoryIcon({
+  name,
+  size,
+  color,
+}: {
+  name: OrtCategoryIconName;
+  size: number;
+  color: string;
+}) {
+  return <MaterialCommunityIcons name={name} size={size} color={color} />;
+}
+
 const KATEGORIEN: Kategorie[] = [
   {
     id: "apotheke",
     label: "Apotheke",
-    icon: "plus-circle",
+    icon: "medical-bag",
     color: "#0F6E56",
     bgColor: "#E1F5EE",
     googleType: "pharmacy",
@@ -48,7 +62,7 @@ const KATEGORIEN: Kategorie[] = [
   {
     id: "arzt",
     label: "Arzt",
-    icon: "activity",
+    icon: "stethoscope",
     color: "#A32D2D",
     bgColor: "#FCEBEB",
     googleType: "doctor",
@@ -67,7 +81,7 @@ const KATEGORIEN: Kategorie[] = [
   {
     id: "bahnhof",
     label: "Bahnhof",
-    icon: "map",
+    icon: "train",
     color: "#185FA5",
     bgColor: "#E6F1FB",
     googleType: "train_station",
@@ -75,7 +89,7 @@ const KATEGORIEN: Kategorie[] = [
   {
     id: "flughafen",
     label: "Flughafen",
-    icon: "navigation",
+    icon: "airplane",
     color: "#534AB7",
     bgColor: "#EEEDFE",
     googleType: "airport",
@@ -83,7 +97,7 @@ const KATEGORIEN: Kategorie[] = [
   {
     id: "hotel",
     label: "Hotel",
-    icon: "home",
+    icon: "bed-double-outline",
     color: "#854F0B",
     bgColor: "#FAEEDA",
     googleType: "lodging",
@@ -91,7 +105,7 @@ const KATEGORIEN: Kategorie[] = [
   {
     id: "krankenhaus",
     label: "Krankenhaus",
-    icon: "heart",
+    icon: "hospital-building",
     color: "#A32D2D",
     bgColor: "#FCEBEB",
     googleType: "hospital",
@@ -109,6 +123,9 @@ type PlaceResult = {
 };
 
 const FALLBACK_CENTER = { lat: 48.7758, lng: 9.1829 };
+/** Ab 2 Zeichen Freitext → Text Search (z. B. „Flughafen München“), sonst Nearby nach Standort. */
+const ORTE_TEXT_SEARCH_MIN_LEN = 2;
+const ORTE_SEARCH_DEBOUNCE_MS = 400;
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -131,6 +148,33 @@ function withDistanceFrom(
     .sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
 }
 
+function normalizePlaceResult(raw: Record<string, unknown>): PlaceResult {
+  const geometry = raw.geometry as PlaceResult["geometry"] | undefined;
+  const opening = raw.opening_hours as PlaceResult["opening_hours"] | undefined;
+  return {
+    place_id: String(raw.place_id ?? ""),
+    name: String(raw.name ?? ""),
+    vicinity: String(raw.vicinity ?? raw.formatted_address ?? ""),
+    opening_hours: opening,
+    types: Array.isArray(raw.types) ? (raw.types as string[]) : [],
+    geometry,
+  };
+}
+
+function subKeywordFor(kat: Kategorie, selectedSub: string): string {
+  return kat.subfilter?.find((s) => s.id === selectedSub)?.keyword ?? kat.label;
+}
+
+/** Freitext mit Kategorie kombinieren, wenn nur Stadt/Ort getippt wurde (z. B. „München“ → „Flughafen München“). */
+function buildTextSearchQuery(kat: Kategorie, subKeyword: string, qTrim: string): string {
+  const qLower = qTrim.toLowerCase();
+  const hasCategory =
+    qLower.includes(kat.label.toLowerCase()) ||
+    (subKeyword !== kat.label && qLower.includes(subKeyword.toLowerCase()));
+  if (hasCategory) return qTrim;
+  return `${subKeyword} ${qTrim}`.trim();
+}
+
 export default function OrteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -144,6 +188,7 @@ export default function OrteScreen() {
   const [notfallOnly, setNotfallOnly] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationReady, setLocationReady] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -165,16 +210,29 @@ export default function OrteScreen() {
     }
     setLoading(true);
     try {
-      const keyword = q.trim() || subKeyword;
+      const qTrim = q.trim();
       const origin = userLocation ?? FALLBACK_CENTER;
       const { lat, lng } = origin;
-      const rankByDistance = userLocation != null;
-      const url = rankByDistance
-        ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&rankby=distance&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`
-        : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
+      let url: string;
+
+      if (qTrim.length >= ORTE_TEXT_SEARCH_MIN_LEN) {
+        const textQuery = buildTextSearchQuery(kat, subKeyword, qTrim);
+        url =
+          `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(textQuery)}` +
+          `&type=${kat.googleType}&language=de&location=${lat},${lng}&radius=500000` +
+          `&key=${GOOGLE_PLACES_API_KEY}`;
+      } else {
+        const keyword = qTrim || subKeyword;
+        const rankByDistance = userLocation != null;
+        url = rankByDistance
+          ? `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&rankby=distance&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`
+          : `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=${kat.googleType}&keyword=${encodeURIComponent(keyword)}&language=de&key=${GOOGLE_PLACES_API_KEY}`;
+      }
+
       const res = await fetch(url);
-      const data = await res.json();
-      const places = (data.results ?? []) as PlaceResult[];
+      const data = (await res.json()) as { results?: Record<string, unknown>[]; status?: string };
+      const raw = data.results ?? [];
+      const places = raw.map(normalizePlaceResult).filter((p) => p.place_id.length > 0);
       setResults(withDistanceFrom(places, origin));
     } catch {
       setResults([]);
@@ -185,11 +243,15 @@ export default function OrteScreen() {
 
   React.useEffect(() => {
     if (!locationReady || !selectedKat) return;
-    const sub = selectedKat.subfilter?.find((s) => s.id === selectedSub);
-    const keyword = sub?.keyword ?? selectedKat.label;
-    searchPlaces(selectedKat, keyword, search);
+    searchPlaces(selectedKat, subKeywordFor(selectedKat, selectedSub), search);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur neu laden wenn Standort bereit/wechselt
   }, [locationReady, userLocation]);
+
+  React.useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
 
   const selectKat = (kat: Kategorie) => {
     setSelectedKat(kat);
@@ -206,9 +268,27 @@ export default function OrteScreen() {
     if (selectedKat) searchPlaces(selectedKat, sub.keyword, search);
   };
 
+  const runSearchForKat = useCallback(
+    (kat: Kategorie, subId: string, q: string, debounceMs = 0) => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      const subKw = subKeywordFor(kat, subId);
+      if (debounceMs <= 0) {
+        void searchPlaces(kat, subKw, q);
+        return;
+      }
+      searchDebounceRef.current = setTimeout(() => {
+        searchDebounceRef.current = null;
+        void searchPlaces(kat, subKw, q);
+      }, debounceMs);
+    },
+    [searchPlaces],
+  );
+
   const handleSearch = (text: string) => {
     setSearch(text);
-    if (selectedKat) searchPlaces(selectedKat, selectedKat.label, text);
+    if (!selectedKat) return;
+    const debounce = text.trim().length >= ORTE_TEXT_SEARCH_MIN_LEN ? ORTE_SEARCH_DEBOUNCE_MS : 0;
+    runSearchForKat(selectedKat, selectedSub, text, debounce);
   };
 
   const handleSelect = (place: PlaceResult) => {
@@ -220,7 +300,7 @@ export default function OrteScreen() {
         placeAddr: place.vicinity,
         katColor: selectedKat?.color ?? "#333",
         katBg: selectedKat?.bgColor ?? "#F2F2F7",
-        katIcon: selectedKat?.icon ?? "map-pin",
+        katIcon: selectedKat?.icon ?? "map-marker-outline",
       },
     } as any);
   };
@@ -260,7 +340,7 @@ export default function OrteScreen() {
                 onPress={() => selectKat(kat)}
               >
                 <View style={[styles.katIcon, { backgroundColor: kat.bgColor }]}>
-                  <Feather name={kat.icon} size={20} color={kat.color} />
+                  <OrtCategoryIcon name={kat.icon} size={rs(22)} color={kat.color} />
                 </View>
                 <Text style={[styles.katLabel, { color: isActive ? kat.color : colors.foreground }]}>{kat.label}</Text>
               </Pressable>
@@ -292,13 +372,18 @@ export default function OrteScreen() {
             <Feather name="search" size={16} color={colors.mutedForeground} />
             <TextInput
               style={[styles.searchInput, { color: colors.foreground }]}
-              placeholder="Name oder Adresse suchen..."
+              placeholder="Stadt oder Name, z. B. München …"
               placeholderTextColor={colors.mutedForeground}
               value={search}
               onChangeText={handleSearch}
             />
             {search.length > 0 && (
-              <Pressable onPress={() => { setSearch(""); if (selectedKat) searchPlaces(selectedKat, selectedKat.label, ""); }}>
+              <Pressable
+                onPress={() => {
+                  setSearch("");
+                  if (selectedKat) runSearchForKat(selectedKat, selectedSub, "");
+                }}
+              >
                 <Feather name="x" size={16} color={colors.mutedForeground} />
               </Pressable>
             )}
@@ -316,7 +401,11 @@ export default function OrteScreen() {
               onPress={() => handleSelect(place)}
             >
               <View style={[styles.resultIcon, { backgroundColor: selectedKat?.bgColor ?? "#F2F2F7" }]}>
-                <Feather name={selectedKat?.icon ?? "map-pin"} size={18} color={selectedKat?.color ?? "#333"} />
+                <OrtCategoryIcon
+                  name={selectedKat?.icon ?? "map-marker-outline"}
+                  size={rs(18)}
+                  color={selectedKat?.color ?? "#333"}
+                />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.resultName, { color: colors.foreground }]} numberOfLines={1}>{place.name}</Text>

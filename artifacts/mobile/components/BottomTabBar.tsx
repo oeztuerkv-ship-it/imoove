@@ -4,6 +4,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTranslation } from "@/context/LanguageContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { onrodaTheme } from "../src/theme";
 import { rs, rf } from "@/utils/scale";
@@ -53,17 +54,18 @@ export function tabMainScreenScrollPaddingBottom(safeBottom: number): number {
 
 export function BottomTabBar({ active, offsetY = 0 }: { active: BottomTab; offsetY?: number }) {
   const insets = useSafeAreaInsets();
-  const { myActiveRequests } = useRideRequests();
-  const ridesBadge = myActiveRequests?.length ?? 0;
+  const { t } = useTranslation();
+  const { customerFahrtenBadgeCount } = useRideRequests();
+  const ridesBadge = customerFahrtenBadgeCount > 0 ? customerFahrtenBadgeCount : undefined;
 
   const NAV_TAB_ICON = rs(17);
 
   const tabs: { id: BottomTab; icon: React.ComponentProps<typeof Feather>["name"]; label: string; badge?: number; onPress: () => void }[] = [
-    { id: "start",      icon: "home",        label: "Start",     onPress: () => router.replace("/") },
-    { id: "fahrten",    icon: "calendar",    label: "Fahrten",   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
-    { id: "buchen",     icon: "plus",        label: "Buchen",    onPress: () => router.replace("/booking-center") },
-    { id: "orte",       icon: "map-pin",     label: "Orte",      onPress: () => router.replace("/orte") },
-    { id: "account",    icon: "user",        label: "Konto",     onPress: () => router.replace("/profile") },
+    { id: "start",      icon: "home",        label: t("tabs.start"),     onPress: () => router.replace("/") },
+    { id: "fahrten",    icon: "calendar",    label: t("tabs.rides"),   badge: ridesBadge, onPress: () => router.replace("/my-rides") },
+    { id: "buchen",     icon: "plus",        label: t("tabs.book"),    onPress: () => router.replace("/booking-center") },
+    { id: "orte",       icon: "map-pin",     label: t("tabs.places"),      onPress: () => router.replace("/orte") },
+    { id: "account",    icon: "user",        label: t("tabs.account"),     onPress: () => router.replace("/profile") },
   ];
 
   return (

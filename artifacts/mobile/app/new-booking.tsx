@@ -9,11 +9,9 @@ import {
   Alert,
   InputAccessoryView,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -43,6 +41,7 @@ import {
   validateAddressCompletenessForBooking,
   validateServiceAreaForBooking,
 } from "@/lib/appOperationalConfig";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
 import { getRoute, fetchWithTimeout, type GeoLocation } from "@/utils/routing";
 import { rf, rs } from "@/utils/scale";
@@ -263,11 +262,14 @@ function AddressInput({
   colors,
   compact = false,
   routeRow = false,
+  taxiRoute = false,
   fieldLabel,
   showGps = false,
   onGpsPress,
   gpsLoading = false,
   inputAccessoryViewID,
+  onRouteFocus,
+  onRouteClear,
 }: {
   label: string;
   value: string;
@@ -277,11 +279,14 @@ function AddressInput({
   colors: ReturnType<typeof useColors>;
   compact?: boolean;
   routeRow?: boolean;
+  taxiRoute?: boolean;
   fieldLabel?: string;
   showGps?: boolean;
   onGpsPress?: () => void;
   gpsLoading?: boolean;
   inputAccessoryViewID?: string;
+  onRouteFocus?: () => void;
+  onRouteClear?: () => void;
 }) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<GeoItem[]>([]);
@@ -292,8 +297,13 @@ function AddressInput({
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (!focused && !value.trim()) setQuery("");
-  }, [focused, value]);
+    if (focused) return;
+    if (!value.trim()) {
+      setQuery("");
+      return;
+    }
+    setQuery(subline ? `${value}, ${subline}` : value);
+  }, [focused, value, subline]);
 
   useEffect(
     () => () => {
@@ -316,12 +326,6 @@ function AddressInput({
     setQuery(editQuery);
     setFocused(true);
     setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  const handleCancelEdit = () => {
-    setResults([]);
-    setQuery("");
-    dismissEdit();
   };
 
   const handleChange = (text: string) => {
@@ -363,16 +367,23 @@ function AddressInput({
     setQuery("");
     setResults([]);
     onSelect(EMPTY_SELECTED_ADDRESS);
+    onRouteClear?.();
+  };
+
+  const handleClearAndDismiss = () => {
+    handleClear();
+    dismissEdit();
   };
 
   const fieldBorder = focused ? HELP_FIELD_FOCUS : HOME_SHEET_RIM;
   const fieldBorderWidth = focused ? 1.5 : StyleSheet.hairlineWidth;
 
   const showGpsBtn = routeRow && showGps && !focused && !hasSelection && !loading;
+  const showRouteEditActions = routeRow && focused;
 
   return (
     <>
-      {Platform.OS === "ios" && inputAccessoryViewID ? (
+      {Platform.OS === "ios" && inputAccessoryViewID && !taxiRoute ? (
         <InputAccessoryView nativeID={inputAccessoryViewID}>
           <View style={[styles.accessoryBar, { borderTopColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
             <View style={{ flex: 1 }} />
@@ -382,19 +393,9 @@ function AddressInput({
           </View>
         </InputAccessoryView>
       ) : null}
-    <View style={routeRow ? styles.routeRowWrap : undefined}>
+    <View style={[routeRow ? styles.routeRowWrap : undefined, routeRow && focused ? styles.routeRowWrapFocused : null]}>
       {!compact && !routeRow ? (
         <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      ) : null}
-      {routeRow && focused ? (
-        <View style={[styles.composeToolbar, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}>
-          <Pressable hitSlop={8} onPress={handleCancelEdit} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Text style={[styles.composeToolbarAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
-          </Pressable>
-          <Pressable hitSlop={8} onPress={dismissEdit} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Text style={[styles.composeToolbarAction, { color: colors.foreground }]}>Fertig</Text>
-          </Pressable>
-        </View>
       ) : null}
       <Pressable
         style={[
@@ -406,17 +407,22 @@ function AddressInput({
             borderColor: fieldBorder,
             borderWidth: fieldBorderWidth,
           },
-          routeRow && {
-            backgroundColor: focused ? HOME_SHEET_INNER : "transparent",
+          routeRow && taxiRoute && {
+            backgroundColor: "transparent",
             borderColor: focused ? fieldBorder : "transparent",
             borderWidth: focused ? fieldBorderWidth : 0,
+          },
+          routeRow && !taxiRoute && {
+            backgroundColor: focused || showSelectedPreview ? "#FFFFFF" : "transparent",
+            borderColor: focused ? fieldBorder : showSelectedPreview ? HOME_SHEET_RIM : "transparent",
+            borderWidth: focused ? fieldBorderWidth : showSelectedPreview ? StyleSheet.hairlineWidth : 0,
           },
         ]}
         onPress={() => {
           if (showSelectedPreview) enterEditMode();
         }}
       >
-        <View style={[routeRow ? styles.routeRowBody : styles.inputBody, { flex: 1 }]}>
+        <View style={[routeRow ? styles.routeRowBody : styles.inputBody, routeRow ? styles.routeRowBodyGrow : null]}>
           {routeRow && fieldLabel ? (
             <Text style={[styles.routeRowCaption, { color: colors.mutedForeground }]}>{fieldLabel}</Text>
           ) : null}
@@ -442,18 +448,25 @@ function AddressInput({
               ]}
               value={query}
               onChangeText={handleChange}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setTimeout(() => setFocused(false), 200)}
+              onFocus={() => {
+                setFocused(true);
+                onRouteFocus?.();
+              }}
+              onBlur={() => {
+                setTimeout(() => setFocused(false), 200);
+              }}
               placeholder={placeholder}
               placeholderTextColor={colors.mutedForeground}
               returnKeyType="search"
               autoCorrect={false}
               autoCapitalize="words"
-              inputAccessoryViewID={Platform.OS === "ios" ? inputAccessoryViewID : undefined}
+              inputAccessoryViewID={
+                Platform.OS === "ios" && inputAccessoryViewID && !taxiRoute ? inputAccessoryViewID : undefined
+              }
             />
           )}
         </View>
-        {loading && <ActivityIndicator size="small" color={colors.foreground} />}
+        {loading ? <ActivityIndicator size="small" color={colors.foreground} style={styles.routePreviewTrailing} /> : null}
         {showGpsBtn && onGpsPress ? (
           <Pressable hitSlop={8} onPress={onGpsPress} style={styles.routeGpsBtn}>
             {gpsLoading ? (
@@ -463,16 +476,52 @@ function AddressInput({
             )}
           </Pressable>
         ) : null}
-        {!loading && !showGpsBtn && focused && query.length > 0 ? (
-          <Pressable hitSlop={8} onPress={handleClear}>
-            <Feather name="x" size={16} color={colors.mutedForeground} />
-          </Pressable>
+        {showRouteEditActions && taxiRoute ? (
+          <View style={styles.routeEditActionsInline}>
+            <Pressable
+              hitSlop={8}
+              onPress={handleClearAndDismiss}
+              style={({ pressed }) => [styles.routeIconBtn, { borderColor: HOME_SHEET_RIM, opacity: pressed ? 0.65 : 1 }]}
+              accessibilityLabel="Adresse leeren"
+            >
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </Pressable>
+            <Pressable
+              hitSlop={8}
+              onPress={dismissEdit}
+              style={({ pressed }) => [styles.routeIconBtn, styles.routeIconBtnDone, { opacity: pressed ? 0.85 : 1 }]}
+              accessibilityLabel="Fertig"
+            >
+              <Feather name="check" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        ) : null}
+        {routeRow && showSelectedPreview && !showRouteEditActions ? (
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={styles.routePreviewTrailing} />
         ) : null}
       </Pressable>
+      {showRouteEditActions && !taxiRoute ? (
+        <View style={styles.routeEditBarBelow}>
+          <View style={styles.routeEditActions}>
+            <Pressable hitSlop={8} onPress={handleClearAndDismiss} style={({ pressed }) => [styles.routeIconBtn, { borderColor: HOME_SHEET_RIM, opacity: pressed ? 0.65 : 1 }]}>
+              <Feather name="x" size={16} color={colors.mutedForeground} />
+            </Pressable>
+            <Pressable hitSlop={8} onPress={dismissEdit} style={({ pressed }) => [styles.routeIconBtn, styles.routeIconBtnDone, { opacity: pressed ? 0.85 : 1 }]}>
+              <Feather name="check" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {/* Nominatim results */}
       {showResults && (
-        <View style={[styles.suggestionBox, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
+        <View
+          style={[
+            styles.suggestionBox,
+            taxiRoute && styles.suggestionBoxTaxi,
+            { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM },
+          ]}
+        >
           {results.map((s, i) => (
             <Pressable
               key={i}
@@ -645,7 +694,10 @@ export default function NewBookingScreen() {
   const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
   const [driverNoteFocused, setDriverNoteFocused] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [zielEngaged, setZielEngaged] = useState(false);
   const driverNoteRef = useRef<TextInput>(null);
+
+  const showFahrzielSwap = to.name.trim().length > 0 || zielEngaged;
 
   const handleGpsPickup = async () => {
     setGpsLoading(true);
@@ -922,63 +974,70 @@ export default function NewBookingScreen() {
         <View style={{ width: rs(36) }} />
       </View>
 
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollViewCompat
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={topPad + 8}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        bottomOffset={insets.bottom + rs(8)}
       >
-        <ScrollView
-          style={{ flex: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-        >
         <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fahrziel</Text>
-          <View style={styles.fahrzielBody}>
-            <View style={styles.fahrzielRow}>
-              <View style={styles.fahrzielDotCol}>
+          <View style={[styles.fahrzielBody, { backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM }]}>
+            <View style={styles.fahrzielRoute}>
+              <View style={styles.fahrzielTimeline}>
                 <View style={styles.fahrzielDotOrigin} />
-              </View>
-              <AddressInput
-                label="Von"
-                routeRow
-                fieldLabel="Abholort"
-                inputAccessoryViewID={ADDRESS_PICKUP_ACCESSORY_ID}
-                showGps
-                onGpsPress={() => void handleGpsPickup()}
-                gpsLoading={gpsLoading}
-                value={from.name}
-                subline={from.subline}
-                placeholder="Wo sollen wir dich abholen?"
-                onSelect={setFrom}
-                colors={colors}
-              />
-            </View>
-            <View style={[styles.fahrzielDivider, { backgroundColor: HOME_SHEET_RIM }]} />
-            <View style={styles.fahrzielRow}>
-              <View style={styles.fahrzielDotCol}>
+                <View style={[styles.fahrzielConnector, { backgroundColor: HOME_SHEET_RIM }]} />
                 <View style={[styles.fahrzielDotDest, { backgroundColor: colors.primary }]} />
               </View>
-              <AddressInput
-                label="Ziel"
-                routeRow
-                fieldLabel="Zielort"
-                inputAccessoryViewID={ADDRESS_DEST_ACCESSORY_ID}
-                value={to.name}
-                subline={to.subline}
-                placeholder="Wohin möchtest du fahren?"
-                onSelect={setTo}
-                colors={colors}
-              />
+              <View style={styles.fahrzielFieldsCol}>
+                <View style={[styles.fahrzielFieldSlot, { borderColor: HOME_SHEET_RIM }]}>
+                  <AddressInput
+                    label="Von"
+                    routeRow
+                    taxiRoute
+                    fieldLabel="Abholort"
+                    inputAccessoryViewID={ADDRESS_PICKUP_ACCESSORY_ID}
+                    showGps
+                    onGpsPress={() => void handleGpsPickup()}
+                    gpsLoading={gpsLoading}
+                    value={from.name}
+                    subline={from.subline}
+                    placeholder="Wo sollen wir dich abholen?"
+                    onSelect={setFrom}
+                    colors={colors}
+                  />
+                </View>
+                {showFahrzielSwap ? (
+                  <View style={styles.fahrzielSwapRow}>
+                    <Pressable
+                      style={[styles.fahrzielSwap, { borderColor: HOME_SHEET_RIM, backgroundColor: "#FFFFFF" }]}
+                      onPress={swapFromTo}
+                      accessibilityLabel="Start und Ziel tauschen"
+                    >
+                      <MaterialCommunityIcons name="swap-vertical" size={17} color={HOME_SHEET_TEXT} />
+                    </Pressable>
+                  </View>
+                ) : null}
+                <View style={[styles.fahrzielFieldSlot, { borderColor: HOME_SHEET_RIM }]}>
+                  <AddressInput
+                    label="Ziel"
+                    routeRow
+                    taxiRoute
+                    fieldLabel="Zielort"
+                    inputAccessoryViewID={ADDRESS_DEST_ACCESSORY_ID}
+                    value={to.name}
+                    subline={to.subline}
+                    placeholder="Wohin möchtest du fahren?"
+                    onSelect={setTo}
+                    onRouteFocus={() => setZielEngaged(true)}
+                    onRouteClear={() => setZielEngaged(false)}
+                    colors={colors}
+                  />
+                </View>
+              </View>
             </View>
-            <Pressable
-              style={[styles.fahrzielSwap, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}
-              onPress={swapFromTo}
-              accessibilityLabel="Start und Ziel tauschen"
-            >
-              <MaterialCommunityIcons name="swap-vertical" size={17} color={HOME_SHEET_TEXT} />
-            </Pressable>
           </View>
         </View>
 
@@ -1182,8 +1241,7 @@ export default function NewBookingScreen() {
             </Text>
           </View>
         )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollViewCompat>
 
       <BookingDateTimePicker
         visible={showDtPicker}
@@ -1224,52 +1282,137 @@ const styles = StyleSheet.create({
   },
 
   fahrzielBody: {
-    position: "relative",
+    width: "100%",
     overflow: "hidden",
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(8),
+    minHeight: rs(172),
   },
-  fahrzielRow: {
+  fahrzielRoute: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    paddingLeft: rs(12),
-    paddingRight: rs(40),
-    paddingVertical: rs(12),
+    alignItems: "stretch",
     gap: rs(10),
   },
-  fahrzielDotCol: { width: rs(12), alignItems: "center", paddingTop: rs(18) },
+  fahrzielTimeline: {
+    width: rs(18),
+    alignItems: "center",
+    paddingTop: rs(22),
+    paddingBottom: rs(22),
+    flexShrink: 0,
+  },
   fahrzielDotOrigin: {
-    width: rs(8),
-    height: rs(8),
-    borderRadius: rs(4),
+    width: rs(9),
+    height: rs(9),
+    borderRadius: rs(5),
     backgroundColor: "#9CA3AF",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "#6B7280",
   },
-  fahrzielDotDest: { width: rs(8), height: rs(8), borderRadius: rs(4) },
-  fahrzielDivider: { height: StyleSheet.hairlineWidth, marginLeft: rs(34) },
+  fahrzielConnector: {
+    width: rs(2),
+    height: rs(12),
+    borderRadius: rs(1),
+    marginVertical: rs(3),
+  },
+  fahrzielDotDest: {
+    width: rs(9),
+    height: rs(9),
+    borderRadius: rs(5),
+  },
+  fahrzielFieldsCol: {
+    flex: 1,
+    minWidth: 0,
+    gap: rs(6),
+  },
+  fahrzielFieldSlot: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: rs(54),
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  fahrzielSwapRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingRight: rs(2),
+    marginTop: rs(-2),
+    marginBottom: rs(-2),
+  },
   fahrzielSwap: {
-    position: "absolute",
-    right: rs(10),
-    top: "50%",
-    marginTop: rs(-16),
+    width: rs(34),
+    height: rs(34),
+    borderRadius: rs(17),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  routeRowWrap: { flex: 1, minWidth: 0, overflow: "visible" },
+  routeRowWrapFocused: { zIndex: 30 },
+  routeRowPress: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(6),
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(10),
+    minHeight: rs(52),
+  },
+  routeRowEditing: { borderRadius: rs(12) },
+  routeRowBody: { gap: rs(6), minWidth: 0 },
+  routeRowBodyGrow: { flex: 1, minWidth: 0, alignSelf: "stretch" },
+  routeRowCaption: accountSheetCaptionLabel,
+  routeRowInput: {
+    ...accountSheetPrimaryLabel,
+    flex: 1,
+    alignSelf: "stretch",
+    width: "100%",
+    padding: 0,
+    margin: 0,
+    minHeight: rs(28),
+    fontSize: rf(16),
+    lineHeight: rf(22),
+  },
+  routeGpsBtn: {
+    width: rs(30),
+    height: rs(30),
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: rs(12),
+    flexShrink: 0,
+  },
+  routePreviewTrailing: { marginTop: rs(12), flexShrink: 0 },
+  routeEditActionsInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(6),
+    marginTop: rs(10),
+    flexShrink: 0,
+  },
+  routeEditBarBelow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingHorizontal: rs(10),
+    paddingTop: rs(4),
+    paddingBottom: rs(2),
+  },
+  routeEditActions: { flexDirection: "row", alignItems: "center", gap: rs(8), flexShrink: 0 },
+  routeIconBtn: {
     width: rs(32),
     height: rs(32),
     borderRadius: rs(16),
     borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
-  routeRowWrap: { flex: 1, minWidth: 0 },
-  routeRowPress: { flexDirection: "row", alignItems: "flex-start", gap: rs(8), flex: 1 },
-  routeRowEditing: { borderRadius: rs(12) },
-  routeRowBody: { flex: 1, gap: rs(4), minWidth: 0 },
-  routeRowCaption: accountSheetCaptionLabel,
-  routeRowInput: {
-    ...accountSheetPrimaryLabel,
-    padding: 0,
-    margin: 0,
-    minHeight: rs(22),
-  },
-  routeGpsBtn: { width: rs(30), height: rs(30), alignItems: "center", justifyContent: "center", marginTop: rs(14) },
+  routeIconBtnDone: { backgroundColor: HELP_FIELD_FOCUS, borderColor: HELP_FIELD_FOCUS },
   inputBody: { flex: 1 },
 
   inputLabel: { ...accountSheetCaptionLabel, marginBottom: rs(4) },
@@ -1289,6 +1432,15 @@ const styles = StyleSheet.create({
   inputTextRoute: { fontSize: rf(15), lineHeight: rf(21) },
 
   suggestionBox: { borderRadius: rs(12), borderWidth: StyleSheet.hairlineWidth, overflow: "hidden", marginTop: rs(4) },
+  suggestionBoxTaxi: {
+    maxHeight: rs(200),
+    zIndex: 50,
+    elevation: 12,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: rs(4) },
+    shadowOpacity: 0.12,
+    shadowRadius: rs(10),
+  },
   suggestionHeader: {
     ...accountSheetCaptionLabel,
     textTransform: "uppercase",
@@ -1364,6 +1516,13 @@ const styles = StyleSheet.create({
     paddingVertical: rs(8),
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  accessoryDoneBtn: {
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(6),
+    borderRadius: rs(8),
+    backgroundColor: HELP_FIELD_FOCUS,
+  },
+  accessoryDoneText: { ...accountSheetButtonLabel, color: "#FFFFFF", fontSize: rf(14) },
   accessoryDone: { ...accountSheetToolbarAction, color: "#007AFF" },
 
   vehicleRow: { flexDirection: "row", gap: rs(10) },

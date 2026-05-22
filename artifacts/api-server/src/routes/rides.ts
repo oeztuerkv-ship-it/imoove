@@ -32,6 +32,16 @@ import {
 } from "../db/rideSupportTicketsData";
 import { upsertRideFinancialSnapshot } from "../db/rideFinancialsData";
 import {
+  canTransitionRideStatus,
+  supplementalEventForTransition,
+} from "../lib/rideStatusMachine";
+import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
+import {
+  getRideDriverLocation,
+  hydrateRideDriverLocationCache,
+  upsertRideDriverLocation,
+} from "../db/rideDriverLocationData";
+import {
   DEFAULT_AUTHORIZATION_SOURCE,
   normalizeAccessCodeInput,
   parseAuthorizationSource,
@@ -50,6 +60,7 @@ import {
 import { getFleetDriverReadinessById } from "../db/fleetDriverReadiness";
 import { findFleetDriverAuthRow, getFleetDriverMarketOnline } from "../db/fleetDriversData";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
+import { notifyMarketOnlineDriversInstantRideOffer } from "../lib/driverRideExpoPush";
 import {
   assertCustomerFromFullInActiveServiceRegion,
   assertCustomerRideOperational,
@@ -78,6 +89,8 @@ import {
   msUntilScheduledPickup,
 } from "../lib/rideReservationStornoDeadline";
 import {
+  notifyPassengerDriverAccepted,
+  notifyPassengerDriverWaiting,
   notifyPassengerReservationActivated,
   notifyPassengerReservationConfirmed,
   notifyPassengerRideCancelledBySystem,
@@ -239,59 +252,6 @@ function normalizeStatusInput(raw: unknown): RideRequest["status"] | null {
     "cancelled",
   ];
   return (allowed as string[]).includes(s) ? (s as RideRequest["status"]) : null;
-}
-
-function canTransitionStatus(
-  from: RideRequest["status"],
-  to: RideRequest["status"],
-): boolean {
-  if (from === to) return true;
-  const map: Partial<Record<RideRequest["status"], RideRequest["status"][]>> = {
-    draft: ["requested", "cancelled_by_customer", "cancelled"],
-    scheduled: [
-      "accepted",
-      "scheduled_assigned",
-      "ready_for_dispatch",
-      "searching_driver",
-      "cancelled_by_customer",
-      "cancelled",
-      "expired",
-    ],
-    scheduled_assigned: [
-      "ready_for_dispatch",
-      "driver_arriving",
-      "driver_waiting",
-      "passenger_onboard",
-      "in_progress",
-      "cancelled_by_customer",
-      "cancelled_by_driver",
-      "cancelled_by_system",
-      "cancelled",
-      "expired",
-    ],
-    ready_for_dispatch: [
-      "driver_arriving",
-      "driver_waiting",
-      "passenger_onboard",
-      "in_progress",
-      "cancelled_by_customer",
-      "cancelled_by_driver",
-      "cancelled_by_system",
-      "cancelled",
-      "expired",
-    ],
-    requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-    searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-    offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
-    pending: ["accepted", "driver_arriving", "driver_waiting", "in_progress", "completed", "cancelled", "rejected", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    accepted: ["driver_arriving", "driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "cancelled"],
-    driver_arriving: ["driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    driver_waiting: ["passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    passenger_onboard: ["in_progress", "completed", "cancelled_by_system"],
-    arrived: ["passenger_onboard", "in_progress", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
-    in_progress: ["completed", "cancelled_by_system", "cancelled"],
-  };
-  return (map[from] ?? []).includes(to);
 }
 
 function ceilToTenth(amount: number): number {
@@ -1571,6 +1531,7 @@ router.post("/rides", async (req, res, next) => {
       reason: "ride_created",
     });
     const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
+    void notifyMarketOnlineDriversInstantRideOffer(created);
     res.status(201).json(withSummary);
   } catch (e) {
     next(e);
@@ -1640,7 +1601,11 @@ router.patch("/rides/:id/driver-note", async (req, res, next) => {
   }
 });
 
-router.patch("/rides/:id/status", async (req, res, next) => {
+export async function patchRideStatusRoute(
+  req: Request,
+  res: import("express").Response,
+  next: import("express").NextFunction,
+): Promise<void> {
   try {
     const { id } = req.params;
     const { status, driverId, cancelReason } = req.body as {
@@ -1678,7 +1643,7 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       return;
     }
 
-    if (!canTransitionStatus(cur.status, nextStatus)) {
+    if (!canTransitionRideStatus(cur.status, nextStatus)) {
       res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
       return;
     }
@@ -1693,7 +1658,46 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       bodyDriverId: bodyDriverIdTrim.length > 0 ? bodyDriverIdTrim : null,
     });
     if (!gate.ok) {
+      if (gate.status === 401 && nextStatus === "cancelled_by_customer") {
+        const bearer = extractBearerAuthorization(req);
+        if (!bearer) {
+          res.status(401).json({
+            error: "unauthorized",
+            hint: "Kunden-Storno erfordert Authorization: Bearer <session_jwt> (Google-Anmeldung).",
+          });
+          return;
+        }
+        if (!isSessionJwtConfigured()) {
+          res.status(503).json({ error: "session_jwt_unconfigured" });
+          return;
+        }
+        try {
+          await verifySessionJwt(bearer);
+        } catch {
+          res.status(401).json({
+            error: "invalid_token",
+            hint: "Session abgelaufen — bitte erneut mit Google anmelden.",
+          });
+          return;
+        }
+      }
       res.status(gate.status).json({ error: gate.code });
+      return;
+    }
+
+    await hydrateRideDriverLocationCache(id, driverLocations);
+    const opsGuard = validateRideStatusTransition(cur, nextStatus, {
+      rideId: id,
+      body: req.body,
+      driverLocations,
+      parsedFinalFare,
+    });
+    if (!opsGuard.ok) {
+      res.status(opsGuard.status).json({
+        error: opsGuard.error,
+        message: opsGuard.message,
+        ...(opsGuard.details ?? {}),
+      });
       return;
     }
 
@@ -1795,17 +1799,40 @@ router.patch("/rides/:id/status", async (req, res, next) => {
           return;
         }
       }
-      const mergedFinal =
-        parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
-          ? parsedFinalFare
-          : cur.finalFare != null && Number.isFinite(Number(cur.finalFare))
-            ? Number(cur.finalFare)
-            : undefined;
-      // Fahrer hat explizit Preis eingegeben → direkt nehmen, kein Snapshot-Override
-      finalFareForPatch =
-        parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
-          ? parsedFinalFare
-          : effectiveTaxiGrossEur({ ...cur, finalFare: mergedFinal } as RideRequest);
+      const preTripComplete = cur.status === "accepted" || cur.status === "driver_arriving" || cur.status === "driver_waiting";
+      if (preTripComplete) {
+        if (parsedFinalFare !== undefined && parsedFinalFare > 0.009) {
+          res.status(400).json({
+            error: "complete_without_trip_start",
+            message:
+              "Ohne Fahrtbeginn zum Ziel ist kein Fahrpreis zulässig. Bitte 0,00 € oder die Fahrt stornieren.",
+          });
+          return;
+        }
+        finalFareForPatch = 0;
+      } else if (cur.status === "passenger_onboard") {
+        if (parsedFinalFare !== undefined && parsedFinalFare > 0.009) {
+          res.status(400).json({
+            error: "complete_trip_not_started",
+            message: "Bitte die Fahrt zum Ziel starten, bevor ein Fahrpreis abgerechnet wird.",
+          });
+          return;
+        }
+        finalFareForPatch =
+          parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare) ? parsedFinalFare : 0;
+      } else {
+        const mergedFinal =
+          parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
+            ? parsedFinalFare
+            : cur.finalFare != null && Number.isFinite(Number(cur.finalFare))
+              ? Number(cur.finalFare)
+              : undefined;
+        // Fahrer hat explizit Preis eingegeben → direkt nehmen, kein Snapshot-Override
+        finalFareForPatch =
+          parsedFinalFare !== undefined && Number.isFinite(parsedFinalFare)
+            ? parsedFinalFare
+            : effectiveTaxiGrossEur({ ...cur, finalFare: mergedFinal } as RideRequest);
+      }
     }
 
     const atomicAccept =
@@ -1946,15 +1973,165 @@ router.patch("/rides/:id/status", async (req, res, next) => {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerReservationActivated(pid, updated.id);
     }
+    if (nextStatus === "accepted" && cur.status !== "accepted") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerDriverAccepted(pid, updated.id);
+    }
+    if (nextStatus === "driver_waiting" && cur.status !== "driver_waiting") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerDriverWaiting(pid, updated.id);
+    }
     if (nextStatus === "cancelled_by_system") {
       const pid = (updated.passengerId ?? "").trim();
       if (pid) void notifyPassengerRideCancelledBySystem(pid, updated.id);
     }
+
+    const opsEv = supplementalEventForTransition(cur.status, nextStatus);
+    if (opsEv && cur.status !== nextStatus) {
+      void insertSupplementalRideEvent(id, {
+        eventType: opsEv.eventType,
+        fromStatus: cur.status,
+        toStatus: nextStatus,
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId,
+        payload: {
+          ...(opsEv.payload ?? {}),
+          estimatedFare: cur.estimatedFare ?? null,
+          finalFare: updated.finalFare ?? null,
+        },
+      });
+    }
+
     res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
   } catch (e) {
     next(e);
   }
-});
+}
+
+export type CustomerRideCancelResult =
+  | { ok: true; ride: RideRequest; cancelReason: string }
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      message?: string;
+      from?: string;
+      to?: string;
+    };
+
+/** Storno durch verifizierte Kunden-Session (z. B. PATCH /customer/v1/rides/:id/cancel). */
+export async function cancelRideForVerifiedCustomerSession(
+  passengerGoogleId: string,
+  rideId: string,
+  cancelReason: string,
+  parsedFinalFare?: number,
+): Promise<CustomerRideCancelResult> {
+  const id = rideId.trim();
+  const pax = passengerGoogleId.trim();
+  const cancelReasonClean = cancelReason.trim();
+  if (!id || !pax) return { ok: false, status: 400, error: "ride_id_required" };
+  if (!cancelReasonClean) return { ok: false, status: 400, error: "cancel_reason_required" };
+
+  const cur = await findRideForPassenger(id, pax);
+  if (!cur) return { ok: false, status: 404, error: "not_found" };
+
+  const nextStatus = "cancelled_by_customer" as const;
+  if (cur.status === nextStatus) {
+    return {
+      ok: true,
+      ride: cur,
+      cancelReason: customerCancelReasons.get(id) ?? cancelReasonClean,
+    };
+  }
+
+  if (!canTransitionRideStatus(cur.status, nextStatus)) {
+    return {
+      ok: false,
+      status: 409,
+      error: "status_transition_invalid",
+      from: cur.status,
+      to: nextStatus,
+    };
+  }
+
+  if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+    return {
+      ok: false,
+      status: 403,
+      error: "reservation_storno_locked",
+      message:
+        "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit möglich.",
+    };
+  }
+
+  const mutActor: RideMutationPersistenceActor = { actorType: "passenger", actorId: pax };
+  let finalFareForPatch: number | undefined = parsedFinalFare;
+  const opPayloadCancel = await getOperationalConfigPayload();
+  const ev = await evaluateCustomerCancellationFeeEur(
+    {
+      status: cur.status,
+      scheduledAt: cur.scheduledAt ?? null,
+      createdAt: cur.createdAt,
+      fromFull: cur.fromFull,
+    },
+    opPayloadCancel,
+  );
+  if (ev.feeEur > 0) {
+    const chosen = parsedFinalFare !== undefined ? parsedFinalFare : ev.feeEur;
+    if (chosen < ev.feeEur - 1e-9) {
+      return {
+        ok: false,
+        status: 400,
+        error: "cancel_fee_too_low",
+        message: `Für dieses Storno ist mindestens ${ev.feeEur.toFixed(2)} EUR als Endpreis vorgesehen.`,
+      };
+    }
+    const cap = Math.max(cur.estimatedFare ?? 0, ev.feeEur);
+    finalFareForPatch = Math.min(Math.max(chosen, ev.feeEur), cap);
+  }
+
+  const updated = await updateRide(
+    id,
+    {
+      status: nextStatus,
+      ...(finalFareForPatch !== undefined ? { finalFare: finalFareForPatch } : {}),
+    },
+    { mutationActor: mutActor },
+  );
+  if (!updated) return { ok: false, status: 500, error: "update_failed" };
+
+  await insertSupplementalRideEvent(id, {
+    eventType: "cancel_reason",
+    fromStatus: cur.status,
+    toStatus: nextStatus,
+    actorType: "passenger",
+    actorId: pax,
+    payload: {
+      reason: cancelReasonClean,
+      nextStatus,
+      cancellationFeeEur: ev.feeEur,
+      cancellationFeeRule: ev.reason,
+      appliedFinalFareEur: finalFareForPatch ?? null,
+    },
+  });
+  customerCancelReasons.set(id, cancelReasonClean);
+
+  const opPayloadCf = await getOperationalConfigPayload();
+  const regionsCf = await listServiceRegionsForApi();
+  const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+  const financeCf = await upsertRideFinancialSnapshot({
+    ride: updated,
+    pricingContext: pcCf,
+    reason: `ride_status_${nextStatus}`,
+    actorType: mutActor.actorType,
+    actorId: mutActor.actorId,
+  });
+  if (!financeCf.ok) return { ok: false, status: 500, error: financeCf.error };
+
+  return { ok: true, ride: updated, cancelReason: cancelReasonClean };
+}
+
+router.patch("/rides/:id/status", patchRideStatusRoute);
 
 router.post("/rides/:id/driver-location", async (req, res, next) => {
   try {
@@ -1974,7 +2151,12 @@ router.post("/rides/:id/driver-location", async (req, res, next) => {
       res.status(400).json({ error: "lat and lon required" });
       return;
     }
-    const loc: DriverLocation = { lat, lon, updatedAt: new Date().toISOString() };
+    const persisted = await upsertRideDriverLocation(id, fleet.fleetDriverId, lat, lon);
+    const loc: DriverLocation = persisted ?? {
+      lat,
+      lon,
+      updatedAt: new Date().toISOString(),
+    };
     driverLocations.set(id, loc);
     res.json(loc);
   } catch (e) {
@@ -1990,7 +2172,14 @@ router.get("/rides/:id/driver-location", async (req, res, next) => {
       res.status(404).json({ error: "not found" });
       return;
     }
-    const loc = driverLocations.get(id);
+    let loc = driverLocations.get(id) ?? null;
+    if (!loc) {
+      const dbLoc = await getRideDriverLocation(id);
+      if (dbLoc) {
+        loc = { lat: dbLoc.lat, lon: dbLoc.lon, updatedAt: dbLoc.updatedAt };
+        driverLocations.set(id, loc);
+      }
+    }
     if (!loc) {
       res.status(404).json({ error: "no location yet" });
       return;

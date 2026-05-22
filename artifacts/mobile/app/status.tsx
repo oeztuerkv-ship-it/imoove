@@ -35,6 +35,7 @@ import {
   customerReservationFlowHeadline,
 } from "@/utils/customerRideStatusLabel";
 import { formatEuro } from "@/utils/fareCalculator";
+import { customerShowsTripEstimate } from "@/utils/onrodaRideOpsFlow";
 import { rs, rf } from "@/utils/scale";
 import {
   mergeRideChatMessages,
@@ -301,8 +302,11 @@ export default function StatusScreen() {
     | "driving"
     | "completed" =
     completedForCurrentRide ? "completed"
-    : effectiveAcceptedRequest?.status === "in_progress" || effectiveAcceptedRequest?.status === "passenger_onboard" ? "driving"
-    : effectiveAcceptedRequest?.status === "arrived" || effectiveAcceptedRequest?.status === "driver_waiting" ? "arrived"
+    : effectiveAcceptedRequest?.status === "in_progress" ? "driving"
+    : effectiveAcceptedRequest?.status === "passenger_onboard" ||
+        effectiveAcceptedRequest?.status === "arrived" ||
+        effectiveAcceptedRequest?.status === "driver_waiting"
+      ? "arrived"
     : effectiveAcceptedRequest && effectiveAcceptedRequest.scheduledAt && withinPickupHour ? "preparing"
     : effectiveAcceptedRequest?.status === "accepted" || effectiveAcceptedRequest?.status === "driver_arriving" ? "accepted"
     : effectiveAcceptedRequest ? "accepted"
@@ -321,6 +325,22 @@ export default function StatusScreen() {
     : "searching";
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
+
+  /** Status-Polling auf Live-Screen (nicht nur Dashboard) — DB-Status für Kunden-UI. */
+  useEffect(() => {
+    if (
+      !effectiveAcceptedRequest?.id ||
+      customerPhase === "searching" ||
+      customerPhase === "reserved" ||
+      customerPhase === "reservation_unfulfilled" ||
+      customerPhase === "completed"
+    ) {
+      return;
+    }
+    void refreshRequests();
+    const timer = setInterval(() => void refreshRequests(), 3500);
+    return () => clearInterval(timer);
+  }, [effectiveAcceptedRequest?.id, customerPhase, refreshRequests]);
 
   const customerPhaseRef = useRef(customerPhase);
   const acceptedRequestRef = useRef<RideRequest | null>(effectiveAcceptedRequest);
@@ -565,11 +585,18 @@ export default function StatusScreen() {
       finishCancelLocally();
     } catch (e) {
       const code = e instanceof Error ? e.message.trim() : "";
+      const custom =
+        e instanceof Error && typeof (e as Error & { userMessage?: string }).userMessage === "string"
+          ? (e as Error & { userMessage?: string }).userMessage!.trim()
+          : "";
       if (code === "reservation_storno_locked") {
         Alert.alert(
           "Storno nicht möglich",
           "Bei Vorbestellungen ist ein Storno nur bis 60 Minuten vor der geplanten Abholzeit möglich. Bitte wenden Sie sich bei Bedarf an die Zentrale.",
         );
+      } else if (custom) {
+        console.log("Cancel Error (API):", e);
+        Alert.alert("Storno nicht möglich", custom);
       } else {
         console.log("Cancel Error (API):", e);
         Alert.alert(
@@ -734,10 +761,15 @@ export default function StatusScreen() {
                       <Text style={styles.receiptLabel}>Vom Fahrer bestätigt:</Text>
                       <Text style={[styles.receiptValue, { color: "#22C55E" }]}>{formatEuro(driverFinalFare)}</Text>
                     </View>
-                    <View style={styles.receiptRow}>
-                      <Text style={[styles.receiptLabel, { color: "#9CA3AF", fontSize: 11 }]}>Schätzpreis war:</Text>
-                      <Text style={[styles.receiptValue, { color: "#9CA3AF", fontSize: 11 }]}>{formatEuro(estimatedFare)}</Text>
-                    </View>
+                    {driverFinalFare >= 0.005 &&
+                    Math.abs(estimatedFare - driverFinalFare) > 0.005 ? (
+                      <View style={styles.receiptRow}>
+                        <Text style={[styles.receiptLabel, { color: "#9CA3AF", fontSize: 11 }]}>Schätzpreis war:</Text>
+                        <Text style={[styles.receiptValue, { color: "#9CA3AF", fontSize: 11 }]}>
+                          {formatEuro(estimatedFare)}
+                        </Text>
+                      </View>
+                    ) : null}
                   </>
                 ) : (
                   <View style={styles.receiptRow}>
@@ -746,13 +778,21 @@ export default function StatusScreen() {
                   </View>
                 )}
                 <View style={styles.receiptRow}>
-                  <Text style={styles.receiptLabel}>Distanz:</Text>
-                  <Text style={styles.receiptValue}>{route?.distanceKm ?? 0} km</Text>
+                  <Text style={styles.receiptLabel}>
+                    {driverFinalFare != null ? "Geplante Strecke:" : "Distanz:"}
+                  </Text>
+                  <Text style={styles.receiptValue}>
+                    {(completedForCurrentRide?.distanceKm ?? route?.distanceKm ?? 0).toFixed(1)} km
+                  </Text>
                 </View>
-                <View style={styles.receiptRow}>
-                  <Text style={styles.receiptLabel}>Fahrtdauer:</Text>
-                  <Text style={styles.receiptValue}>~{route?.durationMinutes ?? 0} Min.</Text>
-                </View>
+                {driverFinalFare != null && driverFinalFare >= 0.005 ? (
+                  <View style={styles.receiptRow}>
+                    <Text style={styles.receiptLabel}>Geschätzte Dauer:</Text>
+                    <Text style={styles.receiptValue}>
+                      ~{completedForCurrentRide?.durationMinutes ?? route?.durationMinutes ?? 0} Min.
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <View style={styles.receiptDivider} />
               <View style={styles.paymentSection}>
@@ -1100,6 +1140,10 @@ export default function StatusScreen() {
   const isDriving = customerPhase === "driving";
   const isPreparing = customerPhase === "preparing";
   const isArrived = customerPhase === "arrived";
+  const showTripEstimate =
+    effectiveAcceptedRequest != null &&
+    customerShowsTripEstimate(effectiveAcceptedRequest.status, effectiveAcceptedRequest);
+  const tripEstimateEur = effectiveAcceptedRequest?.estimatedFare ?? fareBreakdown?.total ?? 0;
   const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
   const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
 
@@ -1164,6 +1208,11 @@ export default function StatusScreen() {
             <Text style={styles.uberBarPayer} numberOfLines={2}>
               {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
               {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
+            </Text>
+          ) : null}
+          {showTripEstimate && tripEstimateEur > 0 ? (
+            <Text style={styles.uberBarEstimate} numberOfLines={1}>
+              Schätzpreis ca. {formatEuro(tripEstimateEur)}
             </Text>
           ) : null}
         </View>
@@ -1360,6 +1409,7 @@ const styles = StyleSheet.create({
   uberBarAddr: { fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#fff", marginBottom: rs(3) },
   uberBarStatus: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
   uberBarPayer: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: rs(5), lineHeight: rf(16) },
+  uberBarEstimate: { fontSize: rf(13), fontFamily: "Inter_600SemiBold", color: "#FDE68A", marginTop: rs(4) },
   uberActions: { gap: rs(8) },
   uberMsgBtn: {
     minWidth: rs(56),

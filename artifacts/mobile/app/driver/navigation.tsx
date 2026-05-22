@@ -23,6 +23,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import {
   mergeRideChatMessages,
   parseRideChatUpdate,
@@ -38,6 +39,12 @@ import {
 } from "@/utils/socket";
 import { readFleetJwtForWsJoin } from "@/utils/wsJoinAuth";
 import { getRouteWithSteps, type RouteStep } from "@/utils/routing";
+import {
+  defaultFinalFareForDriverCompletion,
+  driverMayBillPositiveFare,
+  formatDriverFareInputDe,
+  validateDriverFinalFareInput,
+} from "@/utils/driverRideCompletion";
 
 const API_BASE = getApiBaseUrl();
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
@@ -139,6 +146,7 @@ export default function DriverNavigationScreen() {
     estimatedFare: string;
     paymentMethod: string;
     driverId: string;
+    arrived?: string;
   }>();
 
   const phase = params.phase ?? "pickup";
@@ -159,6 +167,7 @@ export default function DriverNavigationScreen() {
 
   const mapRef  = useRef<MapView>(null);
   const mapReady = useRef(false);
+  const driverArrivingSentRef = useRef(false);
 
   const [polyline, setPolyline] = useState<{ latitude: number; longitude: number }[]>([]);
   const [steps, setSteps]       = useState<RouteStep[]>([]);
@@ -174,16 +183,18 @@ export default function DriverNavigationScreen() {
   const [driverLon, setDriverLon] = useState(fromLon || 9.3114);
 
   // pickup-phase sequential state: false = show "Angekommen", true = show "Fahrt beginnen"
-  const [hasArrived, setHasArrived] = useState(false);
+  const [hasArrived, setHasArrived] = useState(params.arrived === "1");
 
   // Ton Ein/Aus
   const [soundEnabled, setSoundEnabled] = useState(true);
   const soundRef = useRef(true);
 
   // fare modal
+  const [rideFleetStatus, setRideFleetStatus] = useState("accepted");
+  const [completingRide, setCompletingRide] = useState(false);
   const [showFareModal, setShowFareModal] = useState(false);
   const [fareInput, setFareInput] = useState(
-    estimatedFare > 0 ? estimatedFare.toFixed(2).replace(".", ",") : "0,00"
+    formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
   );
   const [showCancelReasonModal, setShowCancelReasonModal] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
@@ -271,24 +282,37 @@ export default function DriverNavigationScreen() {
   const isNearPickup = distToPickup < 300;
 
   // API helpers
-  const patchStatus = useCallback(async (newStatus: string, finalFare?: number) => {
-    if (!params.rideId) return;
-    const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
-      method: "PATCH",
-      headers: await fleetAuthHeadersJson(),
-      body: JSON.stringify({ status: newStatus, ...(finalFare != null ? { finalFare } : {}) }),
-    });
-    if (!res.ok) {
-      let code = "status_update_failed";
-      try {
-        const body = (await res.json()) as { error?: string };
-        if (typeof body?.error === "string" && body.error) code = body.error;
-      } catch {
-        // ignore
+  const patchStatus = useCallback(
+    async (newStatus: string, finalFare?: number) => {
+      if (!params.rideId) return;
+      const res = await fetch(`${API_BASE}/rides/${params.rideId}/status`, {
+        method: "PATCH",
+        headers: await fleetAuthHeadersJson(),
+        body: JSON.stringify({
+          status: newStatus,
+          ...(finalFare != null ? { finalFare } : {}),
+          driverLat: driverLat,
+          driverLon: driverLon,
+        }),
+      });
+      if (!res.ok) {
+        let code = "status_update_failed";
+        let errorBody: unknown = null;
+        try {
+          errorBody = await res.json();
+          const body = errorBody as { error?: string };
+          if (typeof body?.error === "string" && body.error) code = body.error;
+        } catch {
+          // ignore
+        }
+        const err = new Error(code) as Error & { userMessage?: string };
+        const hint = driverRideStatusUserMessage(code, errorBody);
+        if (hint) err.userMessage = hint;
+        throw err;
       }
-      throw new Error(code);
-    }
-  }, [params.rideId]);
+    },
+    [params.rideId, driverLat, driverLon],
+  );
 
   const handleAngekommen = useCallback(async () => {
     await patchStatus("driver_waiting");
@@ -298,7 +322,7 @@ export default function DriverNavigationScreen() {
 
   const handleFahrtBeginnen = useCallback(async () => {
     try {
-      await patchStatus("passenger_onboard");
+      await patchStatus("in_progress");
       trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
       router.replace({
         pathname: "/driver/navigation" as "/driver/navigation",
@@ -323,8 +347,11 @@ export default function DriverNavigationScreen() {
         },
       });
     } catch (e) {
-      const code = e instanceof Error ? e.message : "status_update_failed";
-      Alert.alert("Fahrtbeginn fehlgeschlagen", `Status konnte nicht gesetzt werden (${code}).`);
+      const err = e as Error & { userMessage?: string };
+      Alert.alert(
+        "Fahrtbeginn fehlgeschlagen",
+        err.userMessage ?? err.message ?? "Status konnte nicht gesetzt werden.",
+      );
     }
   }, [
     patchStatus,
@@ -410,6 +437,9 @@ export default function DriverNavigationScreen() {
         });
         if (!res.ok) return;
         const payload = (await res.json()) as { status?: string; cancelReason?: string | null };
+        if (typeof payload.status === "string" && payload.status) {
+          setRideFleetStatus(payload.status);
+        }
         if (payload.status !== "cancelled_by_customer") return;
         cancelHandledRef.current = true;
         Alert.alert(
@@ -424,23 +454,48 @@ export default function DriverNavigationScreen() {
     return () => clearInterval(timer);
   }, [params.rideId]);
 
+  /** Betriebslogik: Navigation startet → `driver_arriving` (Kunde: Fahrer unterwegs). */
+  useEffect(() => {
+    if (!params.rideId || driverArrivingSentRef.current) return;
+    if (rideFleetStatus !== "accepted" && rideFleetStatus !== "ready_for_dispatch") return;
+    driverArrivingSentRef.current = true;
+    void patchStatus("driver_arriving")
+      .then(() => setRideFleetStatus("driver_arriving"))
+      .catch(() => {
+        driverArrivingSentRef.current = false;
+      });
+  }, [params.rideId, rideFleetStatus, patchStatus]);
+
   const handleFahrtBeenden = () => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
-    setFareInput("0,00");
+    setFareInput(
+      formatDriverFareInputDe(defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare)),
+    );
     setShowFareModal(true);
   };
 
   const handleConfirmFare = async () => {
+    if (completingRide) return;
     const parsed = parseFloat(fareInput.replace(",", "."));
-    const fare   = isNaN(parsed) ? estimatedFare : parsed;
+    const fallback = defaultFinalFareForDriverCompletion(rideFleetStatus, estimatedFare);
+    const fare = isNaN(parsed) ? fallback : parsed;
+    const validation = validateDriverFinalFareInput(rideFleetStatus, fare);
+    if (!validation.ok) {
+      Alert.alert(validation.title, validation.message);
+      return;
+    }
+    setCompletingRide(true);
     try {
       await patchStatus("completed", fare);
       setShowFareModal(false);
+      disconnectSocket();
       trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
-      router.back();
+      router.replace("/driver/dashboard" as "/driver/dashboard");
     } catch (e) {
       const code = e instanceof Error ? e.message : "status_update_failed";
       Alert.alert("Abschluss fehlgeschlagen", `Endpreis konnte nicht gespeichert werden (${code}).`);
+    } finally {
+      setCompletingRide(false);
     }
   };
 
@@ -711,7 +766,7 @@ export default function DriverNavigationScreen() {
                 size={15}
                 color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
               />
-              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#CBD5E1" }} numberOfLines={1}>
+              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={1}>
                 {(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "Krankenkasse" : (params.paymentMethod || "Bar")}
               </Text>
             </View>
@@ -723,7 +778,7 @@ export default function DriverNavigationScreen() {
             onPress={() => setShowCancelReasonModal(true)}
             style={({ pressed }) => [
               styles.actionBlockCancel,
-              pressed && { backgroundColor: "#3F1515" },
+              pressed && { backgroundColor: "#FEF2F2" },
             ]}
           >
             <Feather name="x-circle" size={18} color="#DC2626" />
@@ -741,25 +796,43 @@ export default function DriverNavigationScreen() {
               <Text style={styles.modalTitle}>Fahrt beenden</Text>
             </View>
             <Text style={styles.modalSubtitle}>
-              Fahrtpreis für <Text style={{ fontFamily: "Inter_700Bold" }}>{params.customerName ?? "Kunden"}</Text> bestätigen:
+              {driverMayBillPositiveFare(rideFleetStatus)
+                ? (
+                  <>
+                    Fahrtpreis für{" "}
+                    <Text style={{ fontFamily: "Inter_700Bold" }}>{params.customerName ?? "Kunden"}</Text> bestätigen:
+                  </>
+                )
+                : "Keine Fahrt zum Ziel — bitte 0,00 € bestätigen (Kunde wird nicht belastet)."}
             </Text>
-            <View style={styles.fareBox}>
-              <Text style={styles.fareBoxLabel}>Fahrtpreis (€)</Text>
-              <TextInput
-                style={styles.fareInput}
-                value={fareInput}
-                onChangeText={setFareInput}
-                keyboardType="numeric"
-                selectTextOnFocus
-              />
-            </View>
+            {driverMayBillPositiveFare(rideFleetStatus) ? (
+              <View style={styles.fareBox}>
+                <Text style={styles.fareBoxLabel}>Fahrtpreis (€)</Text>
+                <TextInput
+                  style={styles.fareInput}
+                  value={fareInput}
+                  onChangeText={setFareInput}
+                  keyboardType="numeric"
+                  selectTextOnFocus
+                />
+              </View>
+            ) : (
+              <View style={[styles.fareBox, { backgroundColor: "#F0FDF4", borderColor: "#86EFAC" }]}>
+                <Text style={[styles.fareBoxLabel, { color: "#15803D" }]}>Endpreis</Text>
+                <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: "#15803D" }}>0,00 €</Text>
+              </View>
+            )}
             <View style={styles.modalBtns}>
               <Pressable style={styles.cancelBtn} onPress={() => setShowFareModal(false)}>
                 <Text style={styles.cancelBtnText}>Abbrechen</Text>
               </Pressable>
-              <Pressable style={styles.submitBtn} onPress={handleConfirmFare}>
+              <Pressable
+                style={[styles.submitBtn, completingRide && { opacity: 0.65 }]}
+                onPress={handleConfirmFare}
+                disabled={completingRide}
+              >
                 <Feather name="send" size={16} color="#fff" />
-                <Text style={styles.submitBtnText}>Abschicken</Text>
+                <Text style={styles.submitBtnText}>{completingRide ? "Wird gesendet…" : "Abschicken"}</Text>
               </Pressable>
             </View>
           </View>
@@ -1046,27 +1119,28 @@ const styles = StyleSheet.create({
   },
   dannText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#374151", flex: 1 },
 
-  /* Bottom bar */
+  /* Bottom bar — helles Panel (Angekommen / Fahrt beenden / Storno) */
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: "#16181D",
+    backgroundColor: "#FFFFFF",
     flexDirection: "column",
     paddingTop: 14, paddingHorizontal: 16, gap: 10,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.1)",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
     shadowColor: "#000",
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 16,
   },
   actionBlock: {
-    backgroundColor: "#23262E",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 10,
     gap: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E7EB",
   },
   actionBlockCancel: {
     flexDirection: "row",
@@ -1075,19 +1149,19 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: "#2A1010",
-    borderWidth: 1,
-    borderColor: "#DC2626",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#FECACA",
   },
   actionBlockCancelText: { color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 },
   etaRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   etaBlock: { minWidth: 90 },
-  etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#4ADE80", lineHeight: 34 },
-  etaDetail: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.6)", marginTop: 2 },
+  etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#15803D", lineHeight: 34 },
+  etaDetail: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#64748B", marginTop: 2 },
   etaCustomerBlock: { flex: 1, justifyContent: "center" },
-  etaCustomer: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#fff" },
-  etaDest: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)", marginTop: 3 },
-  etaPickupDist: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#4ADE80", marginTop: 4 },
+  etaCustomer: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#0F172A" },
+  etaDest: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748B", marginTop: 3 },
+  etaPickupDist: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#15803D", marginTop: 4 },
   actionBtnWrapper: { width: "100%" },
 
   /* Action buttons */

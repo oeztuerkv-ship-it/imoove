@@ -45,7 +45,7 @@ import {
 } from "@/utils/driverRideCompletion";
 import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
-import { syncDriverExpoPushToken } from "@/utils/syncDriverExpoPushToken";
+import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import {
   driverPaymentMethodLabelDe,
@@ -1836,11 +1836,19 @@ function ActiveRideScreen({
             ))}
           </View>
         ) : null}
-          <View style={activeStyles.fareBox}>
-            <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
-            <Text style={activeStyles.fareValue}>{formatEuro(req.estimatedFare)}</Text>
-            <Text style={activeStyles.fareBruttoHint}>inkl. MwSt.</Text>
-          </View>
+          {!isKK ? (
+            <View style={activeStyles.fareBox}>
+              <Text style={activeStyles.fareLabel}>ca. Preis (brutto)</Text>
+              <Text style={activeStyles.fareValue}>{formatEuro(req.estimatedFare)}</Text>
+              <Text style={activeStyles.fareBruttoHint}>inkl. MwSt.</Text>
+            </View>
+          ) : (
+            <View style={[activeStyles.fareBox, { alignItems: "flex-start" }]}>
+              <Text style={activeStyles.fareLabel}>Krankenkasse</Text>
+              <Text style={[activeStyles.fareValue, { color: "#2563EB", fontSize: 14 }]}>Eigenanteil</Text>
+              <Text style={activeStyles.fareBruttoHint}>kein Schätzpreis</Text>
+            </View>
+          )}
         </View>
 
         {fleetAuthToken && (req.rideKind === "medical" || !!medicalChecklist) ? (
@@ -2050,7 +2058,11 @@ function ActiveRideScreen({
             {/* Angekommen — gesperrt bis < 300 m (Geofencing) */}
             <Pressable
               style={[activeStyles.binDaBtn, !isNearCustomer && { backgroundColor: "#D1D5DB" }]}
-              onPress={isNearCustomer ? () => arriveAtCustomer(req.id) : undefined}
+              onPress={
+                isNearCustomer && driverCoords
+                  ? () => arriveAtCustomer(req.id, driverCoords)
+                  : undefined
+              }
               disabled={!isNearCustomer}
             >
               <Feather name="map-pin" size={20} color={isNearCustomer ? "#fff" : "#9CA3AF"} />
@@ -2321,7 +2333,7 @@ export default function DriverDashboard() {
   useEffect(() => {
     ensureExpoNotificationsHandler();
     if (driver?.authToken && driver?.id && driver?.companyId) {
-      syncDriverExpoPushToken({
+      syncDriverExpoPushTokenWithRetry({
         authToken: driver.authToken,
         fleetDriverId: driver.id,
         companyId: driver.companyId,

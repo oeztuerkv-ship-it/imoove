@@ -325,7 +325,12 @@ export default function RideDetailScreen() {
           {enrichedHistRide?.status === "completed" ? (
             <View>
               <View style={styles.row}>
-                <Text style={[styles.k, { color: colors.mutedForeground }]}>Betrag</Text>
+                <Text style={[styles.k, { color: colors.mutedForeground }]}>
+                  {enrichedHistRide.estimatedFare != null &&
+                  Math.abs(enrichedHistRide.estimatedFare - enrichedHistRide.totalFare) > 0.005
+                    ? "Endpreis"
+                    : "Betrag"}
+                </Text>
                 <Text style={[styles.v, { color: colors.foreground }]}>{formatEuro(enrichedHistRide.totalFare)}</Text>
               </View>
               {enrichedHistRide.estimatedFare != null &&

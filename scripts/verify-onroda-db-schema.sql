@@ -838,6 +838,20 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'ride_driver_locations'
+  ) THEN
+    errs := array_append(errs, 'table ride_driver_locations (Migration 071)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'public' AND indexname = 'ride_driver_locations_updated_at_idx'
+  ) THEN
+    errs := array_append(errs, 'index ride_driver_locations_updated_at_idx (Migration 071)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'app_help_tickets'
   ) THEN
     errs := array_append(errs, 'table app_help_tickets (Migration 065)');

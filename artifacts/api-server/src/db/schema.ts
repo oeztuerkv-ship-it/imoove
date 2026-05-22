@@ -467,6 +467,17 @@ export const ridesTable = pgTable("rides", {
   push_driver_activation_reminder_at: timestamp("push_driver_activation_reminder_at", { withTimezone: true }),
 });
 
+/** Letzte Fahrer-GPS pro Fahrt (Geofence, Live-Tracking, Recovery). */
+export const rideDriverLocationsTable = pgTable("ride_driver_locations", {
+  ride_id: text("ride_id")
+    .primaryKey()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  fleet_driver_id: text("fleet_driver_id").notNull(),
+  lat: doublePrecision("lat").notNull(),
+  lon: doublePrecision("lon").notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Expo Push: Fahrer-App, Token pro Gerät (Mandant + Fahrer). */
 export const fleetDriverExpoPushTokensTable = pgTable("fleet_driver_expo_push_tokens", {
   expo_push_token: text("expo_push_token").primaryKey(),

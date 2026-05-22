@@ -25,7 +25,9 @@ import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
+import { useTranslation } from "@/context/LanguageContext";
 import { type UserProfile, useUser } from "@/context/UserContext";
+import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { EMAIL_VERIFICATION_PURPOSE, mapEmailVerificationApiError } from "@/utils/emailVerificationErrors";
@@ -833,8 +835,25 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
+  const { t, setLocale, languageLabel } = useTranslation();
 
   const { profile, loginWithGoogle, updateProfile, logout, registerLocalCustomer } = useUser();
+
+  const pickLanguage = useCallback(() => {
+    Alert.alert(
+      t("language.title"),
+      t("language.choose"),
+      [
+        ...SUPPORTED_LOCALES.map((code: AppLocale) => ({
+          text: t(`language.names.${code}`),
+          onPress: () => {
+            void setLocale(code);
+          },
+        })),
+        { text: t("common.cancel"), style: "cancel" as const },
+      ],
+    );
+  }, [setLocale, t]);
 
   const [profileStep, setProfileStep] = useState<"social" | "register">("social");
   const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile">("email");
@@ -1082,7 +1101,7 @@ export default function ProfileScreen() {
           ]}
         >
           <View style={{ width: 36 }} />
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Mein Konto</Text>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t("profile.myAccount")}</Text>
           <View style={{ width: 36 }} />
         </View>
       )}
@@ -1112,13 +1131,13 @@ export default function ProfileScreen() {
                   <SectionCard compact>
                     <AccountRow
                       icon={<MaterialCommunityIcons name="account" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                      label="Profil"
+                      label={t("profile.profile")}
                       isFirst
                       onPress={() => setPersonalDataOpen(true)}
                     />
                     <AccountRow
                       icon={<MaterialCommunityIcons name="hospital-box" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                      label="Patienten-Profil"
+                      label={t("profile.patientProfile")}
                       onPress={() => setPatientProfileOpen(true)}
                       isLast
                     />
@@ -1130,18 +1149,18 @@ export default function ProfileScreen() {
                 <SectionCard compact>
                   <AccountRow
                     icon={<MaterialCommunityIcons name="wallet" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label="Zahlungsmethoden"
+                    label={t("profile.paymentMethods")}
                     isFirst
                     onPress={() => router.push("/wallet")}
                   />
                   <AccountRow
                     icon={<MaterialCommunityIcons name="history" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label="Transaktionsverlauf"
+                    label={t("profile.transactionHistory")}
                     onPress={() => router.push("/wallet")}
                   />
                   <AccountRow
                     icon={<MaterialCommunityIcons name="file-document-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label="Rechnungsadresse"
+                    label={t("profile.billingAddress")}
                     onPress={() => setBillingOpen(true)}
                     isLast
                   />
@@ -1152,18 +1171,16 @@ export default function ProfileScreen() {
                 <SectionCard compact>
                   <AccountRow
                     icon={<MaterialCommunityIcons name="web" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label="Sprache"
-                    valueText="Deutsch"
+                    label={t("profile.language")}
+                    valueText={languageLabel}
                     valueTint="accent"
                     trailingReorder
                     isFirst
-                    onPress={() =>
-                      Alert.alert("Sprache", "Aktuell ist die App auf Deutsch eingestellt. Weitere Sprachen folgen.")
-                    }
+                    onPress={pickLanguage}
                   />
                   <AccountRow
                     icon={<MaterialCommunityIcons name="help-circle-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label="Hilfe & Support"
+                    label={t("profile.helpSupport")}
                     onPress={() => {
                       Haptics.selectionAsync();
                       router.replace("/help");
@@ -1171,14 +1188,14 @@ export default function ProfileScreen() {
                   />
                   <AccountRow
                     icon={<Feather name="log-out" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
-                    label="Abmelden"
+                    label={t("profile.logout")}
                     danger
                     isLast
                     hideChevron
                     onPress={() => {
-                      Alert.alert("Abmelden", "Möchtest du dich wirklich abmelden?", [
-                        { text: "Abbrechen", style: "cancel" },
-                        { text: "Abmelden", style: "destructive", onPress: logout },
+                      Alert.alert(t("profile.logoutConfirmTitle"), t("profile.logoutConfirmMessage"), [
+                        { text: t("common.cancel"), style: "cancel" },
+                        { text: t("profile.logout"), style: "destructive", onPress: logout },
                       ]);
                     }}
                   />
@@ -1197,7 +1214,7 @@ export default function ProfileScreen() {
               onClose={(data) => {
                 if (data) {
                   updateProfile(data);
-                  Alert.alert("Gespeichert", "Deine Daten wurden aktualisiert.");
+                  Alert.alert(t("alerts.saved"), t("alerts.savedProfile"));
                 }
                 setPersonalDataOpen(false);
               }}
@@ -1208,7 +1225,7 @@ export default function ProfileScreen() {
               visible={billingOpen}
               profile={profile}
               onClose={(data) => {
-                if (data) { updateProfile(data); Alert.alert("Gespeichert", "Rechnungsadresse wurde gespeichert."); }
+                if (data) { updateProfile(data); Alert.alert(t("alerts.saved"), t("alerts.savedBilling")); }
                 setBillingOpen(false);
               }}
             />
@@ -1218,7 +1235,7 @@ export default function ProfileScreen() {
               onClose={(data) => {
                 if (data) {
                   updateProfile(data);
-                  Alert.alert("Gespeichert", "Patienten-Profil wurde aktualisiert.");
+                  Alert.alert(t("alerts.saved"), t("alerts.savedPatient"));
                 }
                 setPatientProfileOpen(false);
               }}
@@ -1288,7 +1305,7 @@ export default function ProfileScreen() {
                           elevation: 1,
                         },
                       ]}
-                      onPress={() => Alert.alert("Apple Login", "Apple-Anmeldung ist in Kürze verfügbar.")}
+                      onPress={() => Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"))}
                     >
                       <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
                       <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>

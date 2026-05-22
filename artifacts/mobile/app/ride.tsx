@@ -36,7 +36,9 @@ import {
   validateAddressCompletenessForBooking,
   validateServiceAreaForBooking,
 } from "@/lib/appOperationalConfig";
+import { CUSTOMER_BROKER_NOTICE_DE } from "@/constants/customerBrokerNoticeDe";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { customerPayerBlockFromBooking } from "@/utils/customerBillingCopy";
 import { formatEuro } from "@/utils/fareCalculator";
@@ -135,7 +137,11 @@ function companionLabel(v: CompanionCount): string {
 
 export default function RideScreen() {
   const colors = useColors();
+  const { config: appCfg } = useOnrodaAppConfig();
   const insets = useSafeAreaInsets();
+  const brokerNoticeDe =
+    (typeof appCfg.system?.globalNoticeDe === "string" ? appCfg.system.globalNoticeDe.trim() : "") ||
+    CUSTOMER_BROKER_NOTICE_DE;
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
@@ -687,6 +693,28 @@ export default function RideScreen() {
       </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 16 }]}>
+        <View
+          style={[
+            styles.brokerNoticeBox,
+            {
+              backgroundColor: "#F0FDFA",
+              borderColor: "#99F6E4",
+            },
+            Platform.select({
+              ios: {
+                shadowColor: "#0F766E",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+              },
+              android: { elevation: 3 },
+              default: {},
+            }),
+          ]}
+        >
+          <MaterialCommunityIcons name="information-outline" size={20} color="#0D9488" style={{ marginTop: 1 }} />
+          <Text style={[styles.brokerNoticeText, { color: colors.foreground }]}>{brokerNoticeDe}</Text>
+        </View>
         <View style={styles.bottomContent}>
           {paymentMethod === "voucher" ? (
             <View style={[styles.priceBox, { borderColor: "#93C5FD", backgroundColor: "#EFF6FF" }]}>
@@ -912,7 +940,17 @@ const styles = StyleSheet.create({
   bottomBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     borderTopWidth: StyleSheet.hairlineWidth, paddingTop: rs(16), paddingHorizontal: rs(20),
+    gap: rs(12),
   },
+  brokerNoticeBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(10),
+    padding: rs(12),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  brokerNoticeText: { flex: 1, fontSize: rf(11), fontFamily: "Inter_400Regular", lineHeight: rf(16) },
   bottomContent: { flexDirection: "row", alignItems: "center", gap: rs(16) },
   priceBox: { borderWidth: 1.5, borderRadius: rs(12), paddingHorizontal: rs(12), paddingVertical: rs(8), gap: rs(2) },
   bottomLabel: { fontSize: rf(11), fontFamily: "Inter_400Regular" },

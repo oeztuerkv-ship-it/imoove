@@ -82,3 +82,4 @@ Nach Migrationen Schema prüfen:
 PostgreSQL: Code setzt voraus ≥ 12 (JSONB, IF NOT EXISTS üblich); empfohlen 14+ wie bei den meisten Hetzner/Ubuntu-Stacks.
 069_driver_message_type.sql
 070_driver_message_dismissals.sql
+071_ride_driver_locations.sql

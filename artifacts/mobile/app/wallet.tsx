@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "@/context/LanguageContext";
 import { useUser } from "@/context/UserContext";
 import { rs, rf } from "@/utils/scale";
 
@@ -104,6 +105,7 @@ function BillingModal({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [name, setName] = useState(initialName);
   const [strasse, setStrasse] = useState("");
   const [hausnr, setHausnr] = useState("");
@@ -112,7 +114,7 @@ function BillingModal({
 
   const handleSave = () => {
     if (!name.trim() || !strasse.trim() || !plz.trim() || !ort.trim()) {
-      Alert.alert("Fehlende Angaben", "Bitte fülle Name, Straße, PLZ und Ort aus.");
+      Alert.alert(t("wallet.billingMissing"), t("wallet.billingMissingMessage"));
       return;
     }
     onClose({ name, strasse, hausnr, plz, ort });
@@ -227,6 +229,7 @@ export default function WalletScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = isWeb ? 44 : insets.top;
+  const { t } = useTranslation();
 
   const { profile, updateProfile } = useUser();
 
@@ -241,7 +244,7 @@ export default function WalletScreen() {
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
         <View style={{ width: 36 }} />
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Geldbörse</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>{t("wallet.title")}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -251,51 +254,48 @@ export default function WalletScreen() {
       >
         {/* ── Zahlungsmethoden ── */}
         <View style={styles.section}>
-          <SectionHeadingPill label="Zahlungsmethoden" />
+          <SectionHeadingPill label={t("wallet.paymentMethods")} />
           <Card>
             <ListRow
               icon={<MaterialCommunityIcons name="cash" size={WALLET_TILE_ICON} color="#FFFFFF" />}
               iconBg={WALLET_TILE.green}
-              label="Bar"
-              sublabel="Bezahlung direkt beim Fahrer"
+              label={t("wallet.cash")}
+              sublabel={t("wallet.cashSublabel")}
               isActive
-              onPress={() => Alert.alert("Bar", "Barzahlung ist immer verfügbar.")}
+              onPress={() => Alert.alert(t("wallet.cashAlertTitle"), t("wallet.cashAlertMessage"))}
             />
             <ListRow
               icon={<Text style={{ fontSize: rf(14), fontFamily: "Inter_700Bold", color: "#FFFFFF" }}>P</Text>}
               iconBg={WALLET_TILE.blue}
-              label="PayPal"
-              sublabel="Verknüpftes Konto: —"
-              badge="Bald"
-              onPress={() => Alert.alert("PayPal", "PayPal-Integration folgt in Kürze.")}
+              label={t("wallet.paypal")}
+              sublabel={t("wallet.paypalSublabel")}
+              badge={t("wallet.paypalSoon")}
+              onPress={() => Alert.alert(t("wallet.paypal"), t("wallet.paypalAlertMessage"))}
             />
             <ListRow
               icon={<MaterialCommunityIcons name="credit-card" size={WALLET_TILE_ICON} color="#FFFFFF" />}
               iconBg={WALLET_TILE.indigo}
-              label="Kreditkarte"
-              sublabel="Visa, Mastercard, Amex"
-              badge="Bald"
-              onPress={() => Alert.alert("Kreditkarte", "Kartenzahlung via Stripe folgt in Kürze.")}
+              label={t("wallet.card")}
+              sublabel={t("wallet.cardSublabel")}
+              badge={t("wallet.cardSoon")}
+              onPress={() => Alert.alert(t("wallet.card"), t("wallet.cardAlertMessage"))}
             />
             <ListRow
               icon={<MaterialCommunityIcons name="ticket-percent" size={WALLET_TILE_ICON} color="#FFFFFF" />}
               iconBg={WALLET_TILE.purple}
-              label="Gutschein / Freigabe-Code"
-              sublabel="Hotel, Firma, Krankenhaus — bei der Buchung eingeben"
+              label={t("wallet.voucher")}
+              sublabel={t("wallet.voucherSublabel")}
               onPress={() =>
-                Alert.alert(
-                  "Gutschein / Freigabe-Code",
-                  "Wählen Sie bei der Auftragsbestätigung die Zahlungsart „Gutschein / Code“ und tragen Sie den Code ein. Die Abrechnung erfolgt über den Auftraggeber.",
-                )
+                Alert.alert(t("wallet.voucherAlertTitle"), t("wallet.voucherAlertMessage"))
               }
             />
             <ListRow
               icon={<MaterialCommunityIcons name="file-document-outline" size={WALLET_TILE_ICON} color="#FFFFFF" />}
               iconBg={WALLET_TILE.blue}
-              label="Transportschein"
-              sublabel="Krankenkasse / Sozialamt"
+              label={t("wallet.transport")}
+              sublabel={t("wallet.transportSublabel")}
               isLast
-              onPress={() => Alert.alert("Transportschein", "Bitte Transportschein beim Fahrer vorzeigen.")}
+              onPress={() => Alert.alert(t("wallet.transport"), t("wallet.transportAlertMessage"))}
             />
           </Card>
         </View>
@@ -304,16 +304,16 @@ export default function WalletScreen() {
 
         {/* ── Sicherheit ── */}
         <View style={styles.section}>
-          <SectionHeadingPill label="Sicherheit & Zahlung" />
+          <SectionHeadingPill label={t("wallet.security")} />
           <Card>
             <View style={styles.infoBox}>
               <View style={[styles.infoIcon, { backgroundColor: WALLET_TILE.green }]}>
                 <Feather name="shield" size={16} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={[styles.infoTitle, { color: colors.foreground }]}>Sichere Zahlungen</Text>
+                <Text style={[styles.infoTitle, { color: colors.foreground }]}>{t("wallet.secureTitle")}</Text>
                 <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
-                  Online-Zahlungen werden über Stripe abgewickelt — verschlüsselt und PCI-DSS-zertifiziert. Kartendaten werden nie auf unseren Servern gespeichert.
+                  {t("wallet.secureBody")}
                 </Text>
               </View>
             </View>
@@ -328,7 +328,7 @@ export default function WalletScreen() {
         onClose={(data) => {
           if (data) {
             updateProfile({ billingType: "private", companyName: data.name ?? "", companyAddress: data.strasse ?? "", companyCity: (data.plz ?? "") + " " + (data.ort ?? ""), billingEmail: "" });
-            Alert.alert("Gespeichert", "Rechnungsadresse wurde gespeichert.");
+            Alert.alert(t("alerts.saved"), t("alerts.savedBilling"));
           }
           setBillingOpen(false);
         }}

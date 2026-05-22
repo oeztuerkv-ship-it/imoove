@@ -7,6 +7,9 @@ export type ExpoPushMessage = {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  sound?: "default" | null;
+  priority?: "default" | "normal" | "high";
+  channelId?: string;
 };
 
 /**

@@ -2,7 +2,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { syncDriverExpoPushToken } from "@/utils/syncDriverExpoPushToken";
+import {
+  syncDriverExpoPushTokenIfStale,
+  syncDriverExpoPushTokenWithRetry,
+} from "@/utils/syncDriverExpoPushToken";
 
 const STORAGE_KEY = "@Onroda_driver_session";
 const DRIVER_HEARTBEAT_MS = 45_000;
@@ -233,11 +236,24 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!driver?.authToken || !driver.id || !driver.companyId) return;
-    void syncDriverExpoPushToken({
+    void syncDriverExpoPushTokenWithRetry({
       authToken: driver.authToken,
       fleetDriverId: driver.id,
       companyId: driver.companyId,
     });
+  }, [driver?.authToken, driver?.id, driver?.companyId]);
+
+  useEffect(() => {
+    if (!driver?.authToken || !driver.id || !driver.companyId) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      void syncDriverExpoPushTokenWithRetry({
+        authToken: driver.authToken,
+        fleetDriverId: driver.id,
+        companyId: driver.companyId,
+      });
+    });
+    return () => sub.remove();
   }, [driver?.authToken, driver?.id, driver?.companyId]);
 
   const login = useCallback(
@@ -303,10 +319,22 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
             const enriched = mergeFleetDriverMeIntoProfile(profile, meData);
             setDriver(enriched);
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
+            await syncDriverExpoPushTokenWithRetry({
+              authToken: token,
+              fleetDriverId: enriched.id,
+              companyId: enriched.companyId,
+            });
           }
         }
       } catch {
         /* Offline /v1/me — Profil bleibt ohne Einsatzbereit-Details */
+      }
+      if (profile.id && profile.companyId) {
+        await syncDriverExpoPushTokenWithRetry({
+          authToken: token,
+          fleetDriverId: profile.id,
+          companyId: profile.companyId,
+        });
       }
       const mustChangePassword = Boolean(data.passwordChangeRequired ?? d.mustChangePassword);
       return { ok: true, mustChangePassword };
@@ -407,13 +435,30 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const setAvailable = useCallback(async (v: boolean): Promise<void> => {
     if (!driver?.authToken) return;
     if (v && !driver.einsatzbereit) return;
-    await syncFleetMarketAvailability(driver.authToken, v);
     setDriver((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, isAvailable: v };
       patchStoredDriver(updated);
       return updated;
     });
+    try {
+      await syncFleetMarketAvailability(driver.authToken, v);
+      if (v && driver.id && driver.companyId) {
+        await syncDriverExpoPushTokenWithRetry({
+          authToken: driver.authToken,
+          fleetDriverId: driver.id,
+          companyId: driver.companyId,
+        });
+      }
+    } catch (e) {
+      setDriver((prev) => {
+        if (!prev) return prev;
+        const reverted = { ...prev, isAvailable: !v };
+        patchStoredDriver(reverted);
+        return reverted;
+      });
+      throw e;
+    }
   }, [driver?.authToken, driver?.einsatzbereit]);
 
   const blockDriver48h = useCallback(async () => {
@@ -464,6 +509,13 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: { Authorization: `Bearer ${driver.authToken}` },
       }).catch(() => {});
+      if (driver.id && driver.companyId) {
+        void syncDriverExpoPushTokenIfStale({
+          authToken: driver.authToken,
+          fleetDriverId: driver.id,
+          companyId: driver.companyId,
+        });
+      }
     }, DRIVER_HEARTBEAT_MS);
     return () => clearInterval(t);
   }, [driver?.authToken]);

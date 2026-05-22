@@ -1,11 +1,12 @@
 import { Router } from "express";
+import { cancelRideForVerifiedCustomerSession } from "./rides";
 import { listAssignmentsForCompany } from "../db/fleetAssignmentsData";
 import { listFleetVehiclesForCompany } from "../db/fleetVehiclesData";
 import { findRideForPassenger, listRidesForPassenger, updateRide } from "../db/ridesData";
 import { upsertPassengerExpoPushToken } from "../db/passengerExpoPushData";
 import { createAppHelpTicket, parseAppHelpCategory } from "../db/appHelpTicketsData";
 import { isPostgresConfigured } from "../db/client";
-import { toCustomerRideView } from "../domain/ridePublic";
+import { stripPartnerOnlyRideFields, toCustomerRideView } from "../domain/ridePublic";
 import {
   customerPassengerId,
   requireCustomerSession,
@@ -154,6 +155,43 @@ router.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, as
       return;
     }
     res.json({ ok: true, item: toCustomerRideView(updated) });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** Kunden-Storno — Session bereits in requireCustomerSession geprüft (wie GET /customer/v1/rides). */
+router.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = (req as CustomerSessionRequest).customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const cancelReason = String((req.body as { cancelReason?: unknown })?.cancelReason ?? "").trim();
+    const result = await cancelRideForVerifiedCustomerSession(
+      customerPassengerId(sess),
+      rideId,
+      cancelReason,
+    );
+    if (!result.ok) {
+      res.status(result.status).json({
+        error: result.error,
+        ...(result.message ? { message: result.message } : {}),
+        ...(result.from ? { from: result.from } : {}),
+        ...(result.to ? { to: result.to } : {}),
+      });
+      return;
+    }
+    res.json({
+      ...stripPartnerOnlyRideFields(result.ride),
+      cancelReason: result.cancelReason,
+    });
   } catch (e) {
     next(e);
   }

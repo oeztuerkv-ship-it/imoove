@@ -8,6 +8,7 @@ import {
   Alert,
   Animated,
   Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -707,7 +708,6 @@ export default function MyRidesScreen() {
   const topPad = isWeb ? 44 : insets.top;
   const { history } = useRide();
   const {
-    myActiveRequests,
     myCancelledRequests,
     cancelRequest,
     requests,
@@ -721,12 +721,13 @@ export default function MyRidesScreen() {
   const [completedPickerOpen, setCompletedPickerOpen] = useState<CompletedPickerKind | null>(null);
   const completedFilterInitRef = useRef(false);
   const reservationRequests = useMemo(
-    () => myActiveRequests.filter((r) => r.status === "scheduled" || r.status === "scheduled_assigned"),
-    [myActiveRequests],
-  );
-  const nonReservationActiveRequests = useMemo(
-    () => myActiveRequests.filter((r) => r.status !== "scheduled" && r.status !== "scheduled_assigned"),
-    [myActiveRequests],
+    () =>
+      requests.filter(
+        (r) =>
+          r.passengerId === passengerId &&
+          (r.status === "scheduled" || r.status === "scheduled_assigned"),
+      ),
+    [requests, passengerId],
   );
 
   const serverCompleted = useMemo(() => {
@@ -924,19 +925,18 @@ export default function MyRidesScreen() {
   }, [completedMonthKey, completedMonthOptions]);
 
   const TABS: { id: FilterTab; label: string; count?: number }[] = [
+    { id: "reservierungen", label: "Reservierungen", count: reservationRequests.length || undefined },
     { id: "abgeschlossen", label: "Abgeschlossen" },
-    { id: "reservierungen", label: "Buchungen", count: reservationRequests.length || undefined },
-    { id: "storniert", label: "Storniert" },
+    { id: "storniert", label: "Storniert", count: cancelled.length > 0 ? cancelled.length : undefined },
   ];
 
-  const showActive    = activeTab === "reservierungen";
+  const showReservations = activeTab === "reservierungen";
   const showCompleted = activeTab === "abgeschlossen";
   const showCancelled = activeTab === "storniert";
-  const activeRequestsToRender = reservationRequests;
-  const isEmpty       =
-    (showActive    && activeRequestsToRender.length === 0) &&
-    (showCompleted && completed.length === 0) &&
-    (!showCancelled || cancelled.length === 0);
+  const isEmpty =
+    (showReservations && reservationRequests.length === 0) ||
+    (showCompleted && completed.length === 0) ||
+    (showCancelled && cancelled.length === 0);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -982,7 +982,12 @@ export default function MyRidesScreen() {
                 ]}
                 onPress={() => setActiveTab(tab.id)}
               >
-                <Text style={[styles.tabText, { color: isActive && reservierungenBadge ? "#16A34A" : "#000000" }]}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: isActive && reservierungenBadge ? "#16A34A" : "#000000" },
+                  ]}
+                >
                   {tab.label}
                 </Text>
                 {tab.count !== undefined && (
@@ -997,35 +1002,28 @@ export default function MyRidesScreen() {
 
 
 
-        {/* ── Aktive Aufträge ── */}
-        {showActive && activeRequestsToRender.length > 0 && (
+        {/* ── Aktive Reservierungen ── */}
+        {showReservations && reservationRequests.length > 0 && (
           <>
-
-            {activeRequestsToRender.map((req) => {
+            {reservationRequests.map((req) => {
               const fromAddr = formatRideAddress(req.fromFull, req.from);
               const toAddr = formatRideAddress(req.toFull, req.to);
-              const hasPickup = req.scheduledAt != null;
-              const isReservation = req.status === "scheduled" || req.status === "scheduled_assigned";
-              const when = hasPickup ? new Date(req.scheduledAt as Date) : new Date(req.createdAt);
+              const when = new Date(req.scheduledAt as Date);
               const dateStr = when.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
               const timeStr = when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-              const whenLabel = hasPickup ? `${dateStr} · ${timeStr} Uhr` : `${timeStr} Uhr · gebucht`;
+              const whenLabel = `${dateStr} · ${timeStr} Uhr`;
               return (
                 <View key={req.id} style={[styles.activeCard, { backgroundColor: "#FFFFFF", borderColor: LIST_FRAME_BORDER }]}>
                   <View style={styles.rideHeader}>
                     <StatusBadge status={req.status} scheduledAt={req.scheduledAt} />
                     <View style={{ alignItems: "flex-end" }}>
-                      {hasPickup && (
-                        <Text style={[styles.rideAddressSub, { color: colors.mutedForeground, marginBottom: 2 }]}>Abholung</Text>
-                      )}
+                      <Text style={[styles.rideAddressSub, { color: colors.mutedForeground, marginBottom: 2 }]}>Abholung</Text>
                       <Text style={[styles.rideDate, { color: colors.mutedForeground }]} numberOfLines={2}>
                         {whenLabel}
                       </Text>
                     </View>
                   </View>
-
                   <RideRouteStops from={fromAddr} to={toAddr} />
-
                   <RideMetaStrip
                     items={[
                       { value: `${req.distanceKm.toFixed(1)} km` },
@@ -1043,138 +1041,58 @@ export default function MyRidesScreen() {
                       },
                     ]}
                   />
-
-                  {!isReservation && (
-                    <View style={[styles.payerLine, { backgroundColor: HOME_SHEET_INNER, borderColor: LIST_FRAME_BORDER }]}>
-                      <MaterialCommunityIcons name="wallet-outline" size={16} color={LIST_TEXT_STRONG} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.payerLineTitle, { color: colors.mutedForeground }]}>Zahlung & Abrechnung</Text>
-                        <Text style={[styles.payerLineSub, { color: colors.foreground }]}>
-                          {customerPayerBlockFromRideRequest(req).subtitle}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {(req.status === "ready_for_dispatch" || req.status === "accepted" || req.status === "driver_arriving") && (
-                    <View style={[styles.driverHint, { backgroundColor: "#16A34A11", borderColor: "#16A34A33" }]}>
-                      <Feather name="check-circle" size={14} color="#16A34A" />
-                      <Text style={[styles.driverHintText, { color: "#16A34A" }]}>Fahrer auf dem Weg zu dir</Text>
-                    </View>
-                  )}
-                  {(req.status === "pending" || req.status === "requested" || req.status === "searching_driver" || req.status === "offered") && (
-                    <View style={[styles.driverHint, { backgroundColor: "#F59E0B11", borderColor: "#F59E0B33" }]}>
-                      <Feather name="clock" size={14} color="#D97706" />
-                      <Text style={[styles.driverHintText, { color: "#D97706" }]}>Auftrag aufgegeben — Fahrer wird gesucht …</Text>
-                    </View>
-                  )}
-
-                  {(req.status === "pending" ||
-                    req.status === "requested" ||
-                    req.status === "searching_driver" ||
-                    req.status === "offered" ||
-                    req.status === "ready_for_dispatch" ||
-                    req.status === "accepted" ||
-                    req.status === "driver_arriving" ||
-                    req.status === "driver_waiting" ||
-                    req.status === "passenger_onboard" ||
-                    req.status === "arrived" ||
-                    req.status === "in_progress") && (
+                  <View style={styles.actionRow}>
                     <Pressable
-                      style={[styles.liveMapRow, { borderColor: LIST_FRAME_BORDER }]}
-                      onPress={() => router.push("/status")}
+                      style={[
+                        styles.rideSupportRowCompact,
+                        { borderColor: LIST_FRAME_BORDER, flex: 1, justifyContent: "flex-start" },
+                      ]}
+                      onPress={() => {
+                        setDriverNoteRideId(req.id);
+                        setDriverNoteDraft(rideDriverNoteDraftText(req));
+                        setDriverNoteModal(true);
+                      }}
                     >
-                      <Feather name="map" size={16} color="#DC2626" />
-                      <Text style={[styles.liveMapText, { color: colors.foreground }]}>Live-Karte & Status</Text>
-                      <Feather name="chevron-right" size={16} color={LIST_TEXT_STRONG} />
+                      <Feather name="message-square" size={15} color={colors.foreground} />
+                      <Text style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
+                        Notiz an Fahrer
+                      </Text>
+                      {rideHasPersistedDriverNote(req) ? (
+                        <Feather name="check-circle" size={16} color="#16A34A" accessibilityLabel="Notiz gespeichert" />
+                      ) : null}
                     </Pressable>
-                  )}
-
-                  {!isReservation && (
                     <Pressable
-                      style={[styles.rideSupportRow, { borderColor: LIST_FRAME_BORDER }]}
-                      onPress={() => openRideDetail(req.id, { focusSupport: true })}
-                    >
-                      <Feather name="help-circle" size={16} color={colors.primary} />
-                      <Text style={[styles.rideSupportText, { color: colors.foreground }]}>Hilfe</Text>
-                      <Feather name="chevron-right" size={16} color={LIST_TEXT_STRONG} />
-                    </Pressable>
-                  )}
-
-                  {isReservation && (
-                    <View style={styles.actionRow}>
-                      <Pressable
-                        style={[
-                          styles.rideSupportRowCompact,
-                          { borderColor: LIST_FRAME_BORDER, flex: 1, justifyContent: "flex-start" },
-                        ]}
-                        onPress={() => {
-                          setDriverNoteRideId(req.id);
-                          setDriverNoteDraft(rideDriverNoteDraftText(req));
-                          setDriverNoteModal(true);
-                        }}
-                      >
-                        <Feather name="message-square" size={15} color={colors.foreground} />
-                        <Text
-                          style={[styles.actionBtnText, { color: colors.foreground, flex: 1 }]}
-                          numberOfLines={1}
-                        >
-                          Notiz an Fahrer
-                        </Text>
-                        {rideHasPersistedDriverNote(req) ? (
-                          <Feather name="check-circle" size={16} color="#16A34A" accessibilityLabel="Notiz gespeichert" />
-                        ) : null}
-                      </Pressable>
-                      <Pressable
-                        style={[styles.pdfBtn, { flex: 1 }]}
-                        onPress={() =>
-                          Alert.alert("Fahrt stornieren?", "Möchtest du diese Reservierung wirklich stornieren?", [
-                            { text: "Nein", style: "cancel" },
-                            {
-                              text: "Ja, stornieren",
-                              style: "destructive",
-                              onPress: () => {
-                                void cancelRequest(req.id, undefined, "Storno durch Kundenansicht (Meine Fahrten)");
-                              },
-                            },
-                          ])
-                        }
-                      >
-                        <Feather name="trash-2" size={15} color="#FFFFFF" />
-                        <Text style={styles.pdfBtnText}>Stornieren</Text>
-                      </Pressable>
-                    </View>
-                  )}
-
-                  {!isReservation && (req.status === "pending" ||
-                    req.status === "scheduled" ||
-                    req.status === "scheduled_assigned" ||
-                    req.status === "requested" ||
-                    req.status === "searching_driver" ||
-                    req.status === "offered" ||
-                    req.status === "ready_for_dispatch" ||
-                    req.status === "accepted" ||
-                    req.status === "driver_arriving" ||
-                    req.status === "driver_waiting") && (
-                    <Pressable
-                      style={[styles.actionBtn, { borderColor: "#EF444466", backgroundColor: "#EF444408" }]}
+                      style={[styles.pdfBtn, { flex: 1 }]}
                       onPress={() =>
-                        Alert.alert("Fahrt stornieren?", "Möchtest du diesen Auftrag wirklich stornieren?", [
+                        Alert.alert("Fahrt stornieren?", "Möchtest du diese Reservierung wirklich stornieren?", [
                           { text: "Nein", style: "cancel" },
                           {
                             text: "Ja, stornieren",
                             style: "destructive",
                             onPress: () => {
-                              void cancelRequest(req.id, undefined, "Storno durch Kundenansicht (Meine Fahrten)");
+                              void cancelRequest(req.id, undefined, "Storno durch Kundenansicht (Meine Fahrten)").catch(
+                                (e: unknown) => {
+                                  const custom =
+                                    e instanceof Error &&
+                                    typeof (e as Error & { userMessage?: string }).userMessage === "string"
+                                      ? (e as Error & { userMessage?: string }).userMessage!.trim()
+                                      : "";
+                                  Alert.alert(
+                                    "Storno nicht möglich",
+                                    custom ||
+                                      "Die Stornierung konnte nicht durchgeführt werden. Bitte erneut versuchen.",
+                                  );
+                                },
+                              );
                             },
                           },
                         ])
                       }
                     >
-                      <Feather name="x-circle" size={15} color="#EF4444" />
-                      <Text style={[styles.actionBtnText, { color: "#EF4444" }]}>Fahrt stornieren</Text>
+                      <Feather name="trash-2" size={15} color="#FFFFFF" />
+                      <Text style={styles.pdfBtnText}>Stornieren</Text>
                     </Pressable>
-                  )}
+                  </View>
                 </View>
               );
             })}
@@ -1220,11 +1138,28 @@ export default function MyRidesScreen() {
 
                   <RideMetaStrip
                     items={[
-                      { value: `${ride.distanceKm} km` },
-                      { value: `ca. ${Math.round(ride.distanceKm * 3)} Min.` },
+                      {
+                        value:
+                          ride.estimatedFare != null && Math.abs(ride.totalFare) < 0.005
+                            ? "Geplant: " + `${ride.distanceKm.toFixed(1)} km`
+                            : `${ride.distanceKm.toFixed(1)} km`,
+                      },
+                      {
+                        value:
+                          ride.estimatedFare != null && Math.abs(ride.totalFare) < 0.005
+                            ? "Keine Fahrt"
+                            : `ca. ${Math.round(ride.distanceKm * 3)} Min.`,
+                      },
                       { value: vehicleLabelFromType(ride.vehicleType) },
                       { value: PAYMENT_LABELS[ride.paymentMethod] },
-                      { value: formatEuro(ride.totalFare) },
+                      {
+                        value:
+                          ride.estimatedFare != null && Math.abs(ride.estimatedFare - ride.totalFare) > 0.005
+                            ? `Endpreis ${formatEuro(ride.totalFare)}`
+                            : Math.abs(ride.totalFare) < 0.005
+                              ? "0,00 €"
+                              : formatEuro(ride.totalFare),
+                      },
                     ]}
                   />
 
@@ -1303,18 +1238,20 @@ export default function MyRidesScreen() {
               <Feather name="navigation" size={36} color="#DC2626" />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {(activeTab as string) === "aktiv"         ? "Keine aktiven Fahrten"     :
-               (activeTab as string) === "reservierungen" ? "Keine Buchungen" :
-               (activeTab as string) === "abgeschlossen" ? "Noch keine Fahrten"        :
-               (activeTab as string) === "storniert"     ? "Keine stornierten Fahrten" :
-               "Noch keine Fahrten"}
+              {activeTab === "reservierungen"
+                ? "Keine Reservierungen"
+                : activeTab === "abgeschlossen"
+                  ? "Noch keine Fahrten"
+                  : activeTab === "storniert"
+                    ? "Keine stornierten Fahrten"
+                    : "Noch keine Fahrten"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              {(activeTab as string) === "aktiv"
-                ? "Du hast gerade keine laufenden Aufträge."
+              {activeTab === "reservierungen"
+                ? "Vorbestellungen mit Datum und Uhrzeit findest du hier. Sofort-Taxi läuft über die Startseite."
                 : "Plane deine nächste Fahrt direkt hier."}
             </Text>
-            {(activeTab === "alle" || activeTab === "abgeschlossen") && (
+            {(activeTab === "reservierungen" || activeTab === "abgeschlossen") && (
               <Pressable style={styles.newBookingBtn} onPress={() => router.replace("/booking-center")}>
                 <Feather name="plus" size={18} color="#fff" />
                 <Text style={styles.newBookingBtnText}>Neue Buchung</Text>
@@ -1347,64 +1284,84 @@ export default function MyRidesScreen() {
       </Modal>
 
       <Modal visible={driverNoteModal} transparent animationType="fade" onRequestClose={() => setDriverNoteModal(false)}>
-        <View style={styles.noteModalBackdrop}>
-          <View style={[styles.noteModalCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}>
-            <View style={styles.noteModalTitleRow}>
-              <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
-              {driverNoteDraft.trim().length > 0 ? (
-                <Feather name="check-circle" size={20} color="#16A34A" accessibilityLabel="Notiz vorhanden" />
-              ) : null}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.noteModalBackdrop}
+          keyboardVerticalOffset={topPad + 8}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setDriverNoteModal(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Dialog schließen"
+          />
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={styles.noteModalScrollContent}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.noteModalCard, { backgroundColor: colors.card, borderColor: LIST_FRAME_BORDER }]}>
+              <View style={styles.noteModalTitleRow}>
+                <Text style={[styles.noteModalTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+                {driverNoteDraft.trim().length > 0 ? (
+                  <Feather name="check-circle" size={20} color="#16A34A" accessibilityLabel="Notiz vorhanden" />
+                ) : null}
+              </View>
+              <Text style={[styles.noteModalSub, { color: LIST_TEXT_STRONG }]}>
+                Diese Notiz sieht der Fahrer bei der Reservierung.
+              </Text>
+              <TextInput
+                value={driverNoteDraft}
+                onChangeText={setDriverNoteDraft}
+                placeholder="z. B. Bitte am Haupteingang warten"
+                placeholderTextColor="#9CA3AF"
+                multiline
+                maxLength={500}
+                style={[styles.noteModalInput, { color: colors.foreground, borderColor: LIST_FRAME_BORDER }]}
+              />
+              <View style={styles.noteModalActions}>
+                <Pressable
+                  style={[styles.noteModalBtn, { borderColor: LIST_FRAME_BORDER }]}
+                  onPress={() => setDriverNoteModal(false)}
+                >
+                  <Text style={[styles.noteModalBtnText, { color: colors.foreground }]}>Abbrechen</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.noteModalBtn, styles.noteModalBtnPrimary]}
+                  onPress={() => {
+                    if (!driverNoteRideId) return;
+                    void updateRequestDriverNote(driverNoteRideId, driverNoteDraft)
+                      .then(() => {
+                        if (Platform.OS !== "web") {
+                          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                        setDriverNoteSavedVisible(true);
+                        if (driverNoteSaveBannerTimerRef.current) clearTimeout(driverNoteSaveBannerTimerRef.current);
+                        driverNoteSaveBannerTimerRef.current = setTimeout(() => {
+                          setDriverNoteSavedVisible(false);
+                          driverNoteSaveBannerTimerRef.current = null;
+                        }, 3200);
+                        setDriverNoteModal(false);
+                        setDriverNoteRideId(null);
+                      })
+                      .catch(() => {
+                        Alert.alert("Notiz nicht gespeichert", "Bitte versuche es erneut.");
+                      });
+                  }}
+                >
+                  <Text style={[styles.noteModalBtnText, { color: "#FFFFFF" }]}>Speichern</Text>
+                </Pressable>
+              </View>
             </View>
-            <Text style={[styles.noteModalSub, { color: LIST_TEXT_STRONG }]}>
-              Diese Notiz sieht der Fahrer bei der Reservierung.
-            </Text>
-            <TextInput
-              value={driverNoteDraft}
-              onChangeText={setDriverNoteDraft}
-              placeholder="z. B. Bitte am Haupteingang warten"
-              placeholderTextColor="#9CA3AF"
-              multiline
-              maxLength={500}
-              style={[styles.noteModalInput, { color: colors.foreground, borderColor: LIST_FRAME_BORDER }]}
-            />
-            <View style={styles.noteModalActions}>
-              <Pressable
-                style={[styles.noteModalBtn, { borderColor: LIST_FRAME_BORDER }]}
-                onPress={() => setDriverNoteModal(false)}
-              >
-                <Text style={[styles.noteModalBtnText, { color: colors.foreground }]}>Abbrechen</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.noteModalBtn, styles.noteModalBtnPrimary]}
-                onPress={() => {
-                  if (!driverNoteRideId) return;
-                  void updateRequestDriverNote(driverNoteRideId, driverNoteDraft)
-                    .then(() => {
-                      if (Platform.OS !== "web") {
-                        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      }
-                      setDriverNoteSavedVisible(true);
-                      if (driverNoteSaveBannerTimerRef.current) clearTimeout(driverNoteSaveBannerTimerRef.current);
-                      driverNoteSaveBannerTimerRef.current = setTimeout(() => {
-                        setDriverNoteSavedVisible(false);
-                        driverNoteSaveBannerTimerRef.current = null;
-                      }, 3200);
-                      setDriverNoteModal(false);
-                      setDriverNoteRideId(null);
-                    })
-                    .catch(() => {
-                      Alert.alert("Notiz nicht gespeichert", "Bitte versuche es erneut.");
-                    });
-                }}
-              >
-                <Text style={[styles.noteModalBtnText, { color: "#FFFFFF" }]}>Speichern</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
 
-      <BottomTabBar active="fahrten" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
+      {!driverNoteModal ? (
+        <BottomTabBar active="fahrten" offsetY={BOTTOM_TAB_BAR_HOME_OFFSET_Y} />
+      ) : null}
     </View>
   );
 }
@@ -1764,9 +1721,13 @@ const styles = StyleSheet.create({
   noteModalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
     justifyContent: "center",
     padding: rs(20),
+  },
+  noteModalScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    width: "100%",
   },
   noteModalCard: {
     width: "100%",

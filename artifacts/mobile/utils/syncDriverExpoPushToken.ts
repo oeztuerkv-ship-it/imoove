@@ -1,6 +1,15 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { getApiBaseUrl } from "./apiBase";
 import { ensureExpoNotificationsHandler } from "./ensureExpoNotificationsHandler";
+
+const STORAGE_LAST_SYNC_AT = "onroda_driver_expo_push_sync_at_v1";
+const STORAGE_LAST_TOKEN = "onroda_driver_expo_push_token_v1";
+const RESYNC_INTERVAL_MS = 10 * 60 * 1000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export type DriverPushTokenSyncResult =
   | { ok: true; tokenPrefix: string; httpStatus: number }
@@ -150,6 +159,11 @@ export async function syncDriverExpoPushToken(opts: {
       return r;
     }
 
+    await AsyncStorage.multiSet([
+      [STORAGE_LAST_SYNC_AT, String(Date.now())],
+      [STORAGE_LAST_TOKEN, token],
+    ]);
+
     const ok = {
       ok: true as const,
       tokenPrefix: token.slice(0, 40),
@@ -166,4 +180,51 @@ export async function syncDriverExpoPushToken(opts: {
     devLog(r);
     return r;
   }
+}
+
+/** Bis zu 3 Versuche (Login / ONLINE) — Token soll zuverlässig in der DB landen. */
+export async function syncDriverExpoPushTokenWithRetry(
+  opts: { authToken: string; fleetDriverId: string; companyId: string },
+  maxAttempts = 3,
+): Promise<DriverPushTokenSyncResult> {
+  let last: DriverPushTokenSyncResult = { ok: false, reason: "exception", detail: "no_attempt" };
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    last = await syncDriverExpoPushToken(opts);
+    if (last.ok) return last;
+    if (attempt < maxAttempts - 1) await sleep(500 * (attempt + 1));
+  }
+  return last;
+}
+
+/**
+ * Heartbeat-Helfer: erneut syncen wenn letzter Erfolg > 10 min oder Token gewechselt hat.
+ */
+export async function syncDriverExpoPushTokenIfStale(opts: {
+  authToken: string;
+  fleetDriverId: string;
+  companyId: string;
+}): Promise<DriverPushTokenSyncResult | null> {
+  if (Platform.OS === "web") return null;
+  try {
+    const [[, lastAtRaw], [, lastTokenRaw]] = await AsyncStorage.multiGet([
+      STORAGE_LAST_SYNC_AT,
+      STORAGE_LAST_TOKEN,
+    ]);
+    const lastAt = Number(lastAtRaw ?? 0);
+    const stale = !Number.isFinite(lastAt) || Date.now() - lastAt > RESYNC_INTERVAL_MS;
+    if (!stale && lastTokenRaw) {
+      await ensureExpoNotificationsHandler();
+      const Notifications = await import("expo-notifications");
+      const Constants = (await import("expo-constants")).default;
+      const projectId = resolveEasProjectId(Constants);
+      if (projectId) {
+        const tokenRes = await Notifications.getExpoPushTokenAsync({ projectId });
+        const current = tokenRes.data?.trim() ?? "";
+        if (current && current === lastTokenRaw) return null;
+      }
+    }
+  } catch {
+    /* weiter mit Sync */
+  }
+  return syncDriverExpoPushTokenWithRetry(opts, 2);
 }

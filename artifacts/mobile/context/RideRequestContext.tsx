@@ -5,13 +5,28 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { AppState } from "react-native";
 
 import { useDriver } from "@/context/DriverContext";
+import { useUser } from "@/context/UserContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
+import {
+  countCustomerReservationBadge,
+  isCustomerActiveRide,
+  isCustomerCancelledStatus,
+  isCustomerRideRequest,
+} from "@/utils/customerRideListFilters";
+import {
+  filterDriverInstantMarketOffers,
+  instantMarketOfferIdsKey,
+} from "@/utils/driverInstantMarketOffers";
+import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
+import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 
 export type RequestStatus =
   | "draft"
@@ -101,6 +116,11 @@ interface RideRequestContextValue {
   /** Vorbestellungen im Planer (nur Fahrer-Session); nicht im Sofort-Markt-Feed. */
   scheduledPoolRequests: RideRequest[];
   pendingRequests: RideRequest[];
+  /** Fahrer-Markt (Polling solange Fleet-JWT existiert — unabhängig von /driver/*). */
+  driverMarketRequests: RideRequest[];
+  driverMarketScheduledPool: RideRequest[];
+  driverMarketPending: RideRequest[];
+  isDriverMarketConnected: boolean;
   acceptedRequest: RideRequest | null;
   completedRequest: RideRequest | null;
   passengerAcceptedRequest: RideRequest | null;
@@ -109,7 +129,11 @@ interface RideRequestContextValue {
   isConnected: boolean;
   passengerId: string;
   myActiveRequests: RideRequest[];
+  /** Offene Sofort-Fahrtanfragen (requested / searching_driver / offered / pending). */
+  myRideRequests: RideRequest[];
   myCancelledRequests: RideRequest[];
+  /** Tab „Fahrten“: nur aktive Reservierungen (scheduled / scheduled_assigned). */
+  customerFahrtenBadgeCount: number;
   updateRequestPaymentMethod: (id: string, paymentMethod: string) => Promise<void>;
   updateRequestDriverNote: (id: string, driverNote: string) => Promise<void>;
   addRequest: (
@@ -140,19 +164,25 @@ interface RideRequestContextValue {
   rejectByDriver: (id: string, driverId: string) => Promise<void>;
   cancelRequest: (id: string, finalFare?: number, cancelReason?: string) => Promise<void>;
   driverCancelRequest: (id: string, driverId: string) => Promise<void>;
-  arriveAtCustomer: (id: string) => Promise<void>;
-  startDriving: (id: string) => Promise<void>;
+  arriveAtCustomer: (id: string, driverCoords?: { lat: number; lon: number }) => Promise<void>;
+  startDriving: (id: string, driverCoords?: { lat: number; lon: number }) => Promise<void>;
   completeRequest: (id: string, finalFare?: number) => Promise<void>;
   /** Manuelles Neuladen der Aufträge (z. B. „Erneut suchen“). */
   refreshRequests: () => Promise<void>;
   /** Fahrer-Markt: State leeren, dann frisch vom Server (nach ONLINE / Storno). */
   refreshDriverMarketHard: () => Promise<boolean>;
+  /** Sofort-Markt in der UI leeren (z. B. vor OFFLINE — kein Aufblitzen). */
+  clearDriverMarketRequests: () => void;
 }
 
 const RideRequestContext = createContext<RideRequestContextValue>({
   requests: [],
   scheduledPoolRequests: [],
   pendingRequests: [],
+  driverMarketRequests: [],
+  driverMarketScheduledPool: [],
+  driverMarketPending: [],
+  isDriverMarketConnected: false,
   acceptedRequest: null,
   completedRequest: null,
   passengerAcceptedRequest: null,
@@ -161,7 +191,9 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   isConnected: false,
   passengerId: "",
   myActiveRequests: [],
+  myRideRequests: [],
   myCancelledRequests: [],
+  customerFahrtenBadgeCount: 0,
   updateRequestPaymentMethod: async () => {},
   updateRequestDriverNote: async () => {},
   addRequest: async () => "",
@@ -177,6 +209,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   completeRequest: async () => {},
   refreshRequests: async () => {},
   refreshDriverMarketHard: async () => false,
+  clearDriverMarketRequests: () => {},
 });
 
 const API_BASE = getApiBaseUrl();
@@ -228,11 +261,20 @@ async function readStoredCustomerIdentity(): Promise<{ sessionToken: string | nu
   }
 }
 
+async function resolveCustomerBearerToken(liveToken?: string | null): Promise<string | null> {
+  const fromLive = typeof liveToken === "string" ? liveToken.trim() : "";
+  if (fromLive.length > 0) return fromLive;
+  return readStoredCustomerSessionToken();
+}
+
 /** API verlangt Bearer: Kunden-Storno nur mit Session-JWT; Fahrer-Übergänge mit Fleet-JWT. */
-async function headersForRideStatusPatch(nextStatus: RequestStatus): Promise<Record<string, string>> {
+async function headersForRideStatusPatch(
+  nextStatus: RequestStatus,
+  liveCustomerToken?: string | null,
+): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const driverTok = await readStoredDriverAuthToken();
-  const customerTok = await readStoredCustomerSessionToken();
+  const customerTok = await resolveCustomerBearerToken(liveCustomerToken);
   if (nextStatus === "cancelled_by_customer") {
     if (customerTok) headers.Authorization = `Bearer ${customerTok}`;
     return headers;
@@ -423,8 +465,92 @@ function normalizeRequest(r: any): RideRequest {
 
 const POLL_INTERVAL_MS = 2500;
 
+function normalizeApiErrorCode(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "status_update_failed";
+  return t.replace(/\s+/g, "_");
+}
+
+async function parseApiErrorResponse(res: Response): Promise<{ errorCode: string; errorBody: unknown }> {
+  let errorCode = "status_update_failed";
+  let errorBody: unknown = null;
+  const text = (await res.clone().text()).trim();
+  if (text.length > 0) {
+    try {
+      const body = JSON.parse(text) as { error?: unknown };
+      errorBody = body;
+      if (typeof body.error === "string" && body.error.trim()) {
+        errorCode = normalizeApiErrorCode(body.error);
+      }
+    } catch {
+      errorBody = { raw: text.slice(0, 240) };
+    }
+  }
+  if (errorCode === "status_update_failed") {
+    if (res.status === 404) errorCode = "not_found";
+    else if (res.status === 401) errorCode = "unauthorized";
+    else if (res.status === 403) errorCode = "forbidden";
+    else if (res.status === 409) errorCode = "status_transition_invalid";
+  }
+  return { errorCode, errorBody };
+}
+
+function isCustomerSessionTokenExpired(token: string): boolean {
+  const payload = parseJwtPayloadUnsafe(token);
+  const exp = payload?.exp;
+  if (typeof exp !== "number" || !Number.isFinite(exp)) return false;
+  return exp * 1000 <= Date.now() + 30_000;
+}
+
+async function probeCustomerSessionForRide(
+  token: string,
+  rideId: string,
+): Promise<"ok" | "unauthorized" | "not_found" | "other"> {
+  if (!API_BASE) return "other";
+  const res = await fetch(`${API_BASE}/customer/v1/rides/${encodeURIComponent(rideId)}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 200) return "ok";
+  if (res.status === 401 || res.status === 403) return "unauthorized";
+  if (res.status === 404) return "not_found";
+  return "other";
+}
+
+function stornoErrorUserMessage(code: string): string | undefined {
+  if (
+    code === "unauthorized" ||
+    code === "invalid_token" ||
+    code === "session_required" ||
+    code === "session_expired"
+  ) {
+    return "Bitte erneut mit Google anmelden (Profil → Anmelden), dann Storno wiederholen.";
+  }
+  if (code === "not_found") {
+    return "Diese Fahrt wurde auf dem Server nicht gefunden. App neu laden oder erneut buchen.";
+  }
+  if (code === "customer_not_passenger_for_ride") {
+    return "Diese Fahrt gehört nicht zu deinem angemeldeten Konto.";
+  }
+  if (code === "patch_status_requires_customer_session") {
+    return "Storno ist nur mit Kunden-Anmeldung möglich, nicht im Fahrer-Modus.";
+  }
+  if (code === "reservation_storno_locked") {
+    return "Bei Vorbestellungen ist Storno nur bis 60 Minuten vor Abholung möglich.";
+  }
+  if (code === "status_transition_invalid") {
+    return "Diese Fahrt kann im aktuellen Status nicht mehr storniert werden.";
+  }
+  return undefined;
+}
+
 export function RideRequestProvider({ children }: { children: React.ReactNode }) {
+  const { profile } = useUser();
   const { driver: fleetDriver } = useDriver();
+  const customerSessionTokenLive =
+    profile.isLoggedIn && typeof profile.sessionToken === "string" && profile.sessionToken.trim().length > 0
+      ? profile.sessionToken.trim()
+      : null;
   const fleetAuthToken =
     typeof fleetDriver?.authToken === "string" && fleetDriver.authToken.trim().length > 0
       ? fleetDriver.authToken.trim()
@@ -433,13 +559,29 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const isDriverSurface = segments[0] === "driver";
   const [requests, setRequests] = useState<RideRequest[]>([]);
   const [scheduledPoolRequests, setScheduledPoolRequests] = useState<RideRequest[]>([]);
+  const [driverMarketRequests, setDriverMarketRequests] = useState<RideRequest[]>([]);
+  const [driverMarketScheduledPool, setDriverMarketScheduledPool] = useState<RideRequest[]>([]);
+  const [isDriverMarketConnected, setIsDriverMarketConnected] = useState(false);
   const [lastAddedRequestId, setLastAddedRequestId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [passengerId, setPassengerId] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCountRef = useRef(0);
+  /** Während POST /reject: Poll darf die Fahrt nicht zurück in den Markt legen (Ghost-Banner). */
+  const rejectingRideIdsRef = useRef<Set<string>>(new Set());
+  const fleetDriverMarketOnlineRef = useRef(Boolean(fleetDriver?.isAvailable));
+  fleetDriverMarketOnlineRef.current = Boolean(fleetDriver?.isAvailable);
   const isDriverSurfaceRef = useRef(isDriverSurface);
   isDriverSurfaceRef.current = isDriverSurface;
+  const driverMarketPrevPendingIdsRef = useRef<Set<string>>(new Set());
+  const driverMarketNotifyBootstrappedRef = useRef(false);
+  const driverMarketOnlinePrevRef = useRef(Boolean(fleetDriver?.einsatzbereit && fleetDriver?.isAvailable));
+
+  useEffect(() => {
+    if (profile.isLoggedIn && profile.googleId?.trim()) {
+      setPassengerId(profile.googleId.trim());
+    }
+  }, [profile.isLoggedIn, profile.googleId]);
 
   useEffect(() => {
     (async () => {
@@ -515,17 +657,34 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const applyDriverMarketPayload = useCallback(
+    (marketRows: RideRequest[], scheduledRows: RideRequest[]) => {
+      setDriverMarketRequests(marketRows);
+      setDriverMarketScheduledPool(scheduledRows);
+      if (isDriverSurfaceRef.current) {
+        setRequests(marketRows);
+        setScheduledPoolRequests(scheduledRows);
+        lastCountRef.current = marketRows.length;
+      }
+    },
+    [],
+  );
+
   const fetchDriverMarket = useCallback(
     async (opts?: { hardReset?: boolean }): Promise<boolean> => {
       if (!API_BASE) return false;
       const token = await readFleetAuthToken();
-      if (!token || !isDriverSurfaceRef.current) return false;
+      if (!token) return false;
 
       if (opts?.hardReset) {
-        setRequests([]);
-        setScheduledPoolRequests([]);
-        lastCountRef.current = 0;
-        setLastAddedRequestId(null);
+        setDriverMarketRequests([]);
+        setDriverMarketScheduledPool([]);
+        if (isDriverSurfaceRef.current) {
+          setRequests([]);
+          setScheduledPoolRequests([]);
+          lastCountRef.current = 0;
+          setLastAddedRequestId(null);
+        }
       }
 
       const bust = Date.now();
@@ -540,30 +699,50 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           fetch(`${API_BASE}/fleet-driver/v1/scheduled-rides?_=${bust}`, { cache: "no-store", headers }),
         ]);
         if (!marketRes.ok) throw new Error("fetch failed");
-        const normalized = ridesFromPayload(await marketRes.json());
+        const rejecting = rejectingRideIdsRef.current;
+        const normalized = ridesFromPayload(await marketRes.json()).filter((r) => !rejecting.has(r.id));
         const scheduledNorm = schedRes.ok ? ridesFromPayload(await schedRes.json()) : [];
-        setRequests(normalized);
-        setScheduledPoolRequests(scheduledNorm);
-        setIsConnected(true);
-        lastCountRef.current = normalized.length;
+        if (!fleetDriverMarketOnlineRef.current) {
+          applyDriverMarketPayload([], []);
+        } else {
+          applyDriverMarketPayload(normalized, scheduledNorm);
+        }
+        setIsDriverMarketConnected(true);
+        if (isDriverSurfaceRef.current) setIsConnected(true);
         return true;
       } catch {
-        setIsConnected(false);
+        setIsDriverMarketConnected(false);
+        if (isDriverSurfaceRef.current) setIsConnected(false);
         if (opts?.hardReset) {
-          setRequests([]);
-          setScheduledPoolRequests([]);
-          lastCountRef.current = 0;
+          setDriverMarketRequests([]);
+          setDriverMarketScheduledPool([]);
+          if (isDriverSurfaceRef.current) {
+            setRequests([]);
+            setScheduledPoolRequests([]);
+            lastCountRef.current = 0;
+          }
         }
         return false;
       }
     },
-    [readFleetAuthToken, ridesFromPayload],
+    [applyDriverMarketPayload, readFleetAuthToken, ridesFromPayload],
   );
 
   const refreshDriverMarketHard = useCallback(
     () => fetchDriverMarket({ hardReset: true }),
     [fetchDriverMarket],
   );
+
+  const clearDriverMarketRequests = useCallback(() => {
+    setDriverMarketRequests([]);
+    setDriverMarketScheduledPool([]);
+    if (isDriverSurfaceRef.current) {
+      setRequests([]);
+      setScheduledPoolRequests([]);
+      lastCountRef.current = 0;
+      setLastAddedRequestId(null);
+    }
+  }, []);
 
   const fetchAll = useCallback(async () => {
     if (!API_BASE) return;
@@ -573,15 +752,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const customerIdentity = await readStoredCustomerIdentity();
       const customerSessionToken = customerIdentity.sessionToken;
 
-      if (token && isDriverSurfaceRef.current) {
+      if (token) {
         await fetchDriverMarket({ hardReset: false });
-        return;
+        if (isDriverSurfaceRef.current) return;
       }
 
       if (customerIdentity.passengerId) {
         setPassengerId(customerIdentity.passengerId);
       }
-      if (!customerSessionToken) {
+      const sessionTok = (await resolveCustomerBearerToken(customerSessionTokenLive)) ?? customerSessionToken;
+      if (!sessionTok) {
         // Kein Kunden-Token: keine customer-gebundenen Fahrten laden.
         setRequests([]);
         setScheduledPoolRequests([]);
@@ -591,8 +771,15 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       }
       const res = await fetch(`${API_BASE}/customer/v1/rides`, {
         cache: "no-store",
-        headers: { Authorization: `Bearer ${customerSessionToken}` },
+        headers: { Authorization: `Bearer ${sessionTok}` },
       });
+      if (res.status === 401 || res.status === 403) {
+        setRequests([]);
+        setScheduledPoolRequests([]);
+        setIsConnected(false);
+        lastCountRef.current = 0;
+        return;
+      }
       if (!res.ok) throw new Error("fetch failed");
       const normalized = ridesFromPayload(await res.json());
       setRequests(normalized);
@@ -616,7 +803,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     } catch {
       setIsConnected(false);
     }
-  }, [fetchDriverMarket, readFleetAuthToken, ridesFromPayload]);
+  }, [customerSessionTokenLive, fetchDriverMarket, readFleetAuthToken, ridesFromPayload]);
 
   useEffect(() => {
     fetchAll();
@@ -632,17 +819,39 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
    * Ohne das zeigt das Dashboard bis zum nächsten Poll (2,5s) Kunden-Fahrten als Ghost-Aufträge.
    */
   useEffect(() => {
-    if (!isDriverSurface) return;
     if (!fleetAuthToken) {
-      setRequests([]);
-      setScheduledPoolRequests([]);
-      setIsConnected(false);
-      lastCountRef.current = 0;
-      setLastAddedRequestId(null);
+      setDriverMarketRequests([]);
+      setDriverMarketScheduledPool([]);
+      setIsDriverMarketConnected(false);
+      driverMarketPrevPendingIdsRef.current = new Set();
+      driverMarketNotifyBootstrappedRef.current = false;
+      if (isDriverSurface) {
+        setRequests([]);
+        setScheduledPoolRequests([]);
+        setIsConnected(false);
+        lastCountRef.current = 0;
+        setLastAddedRequestId(null);
+      }
       return;
     }
-    void fetchDriverMarket({ hardReset: true });
+    void fetchDriverMarket({ hardReset: isDriverSurface });
   }, [isDriverSurface, fleetAuthToken, fetchDriverMarket]);
+
+  useEffect(() => {
+    if (!fleetAuthToken) return;
+    let sub: { remove: () => void } | null = null;
+    void import("expo-notifications").then((Notifications) => {
+      sub = Notifications.addNotificationReceivedListener((notification) => {
+        const kind = (notification.request.content.data as { kind?: unknown } | undefined)?.kind;
+        if (kind === "instant_ride_offer") {
+          void fetchDriverMarket({ hardReset: false });
+        }
+      });
+    });
+    return () => {
+      sub?.remove();
+    };
+  }, [fleetAuthToken, fetchDriverMarket]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -663,39 +872,102 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
               ? cancelReason.trim()
               : "Storno durch Kunden-App")
           : undefined;
-      const res = await fetch(`${API_BASE}/rides/${id}/status`, {
-        method: "PATCH",
-        headers: await headersForRideStatusPatch(status),
-        body: JSON.stringify({
-          status,
-          ...(finalFare != null ? { finalFare } : {}),
-          ...(driverId != null ? { driverId } : {}),
-          ...(normalizedCancelReason ? { cancelReason: normalizedCancelReason } : {}),
-        }),
+      if (status === "cancelled_by_customer") {
+        const bearer = await resolveCustomerBearerToken(customerSessionTokenLive);
+        if (!bearer) {
+          if (ENABLE_STORNO_TRACE) {
+            console.error("[Storno-Trace] Kein sessionToken — Google-Anmeldung erforderlich");
+          }
+          const err = new Error("session_required") as Error & { userMessage?: string };
+          err.userMessage = stornoErrorUserMessage("session_required");
+          throw err;
+        }
+        if (isCustomerSessionTokenExpired(bearer)) {
+          const err = new Error("session_expired") as Error & { userMessage?: string };
+          err.userMessage = stornoErrorUserMessage("session_expired");
+          throw err;
+        }
+        const probe = await probeCustomerSessionForRide(bearer, id);
+        if (ENABLE_STORNO_TRACE) {
+          const payload = parseJwtPayloadUnsafe(bearer);
+          console.log(
+            `[Storno-Trace] Session sub=${String(payload?.sub ?? "?")} probe=${probe}`,
+          );
+        }
+        if (probe === "unauthorized") {
+          const err = new Error("invalid_token") as Error & { userMessage?: string };
+          err.userMessage = stornoErrorUserMessage("invalid_token");
+          throw err;
+        }
+        if (probe === "not_found") {
+          const err = new Error("not_found") as Error & { userMessage?: string };
+          err.userMessage =
+            "Diese Fahrt gehört nicht zu deinem angemeldeten Konto (oder wurde nur lokal angelegt). Bitte mit dem gleichen Google-Konto anmelden, mit dem du gebucht hast.";
+          throw err;
+        }
+      }
+      const patchHeaders = await headersForRideStatusPatch(status, customerSessionTokenLive);
+      const legacyStatusUrl = `${API_BASE}/rides/${encodeURIComponent(id)}/status`;
+      const customerCancelUrl = `${API_BASE}/customer/v1/rides/${encodeURIComponent(id)}/cancel`;
+      const stornoBody = JSON.stringify({
+        status: "cancelled_by_customer",
+        cancelReason: normalizedCancelReason,
       });
-      if (ENABLE_STORNO_TRACE && status === "cancelled_by_customer") {
-        console.log(`[Storno-Trace] API Status: ${res.status}`);
+      const customerCancelBody = JSON.stringify({ cancelReason: normalizedCancelReason });
+
+      let res: Response;
+      if (status === "cancelled_by_customer") {
+        // Zuerst Legacy-Route (auf Prod immer vorhanden); neue Cancel-Route oft noch nicht deployt.
+        res = await fetch(legacyStatusUrl, {
+          method: "PATCH",
+          headers: patchHeaders,
+          body: stornoBody,
+        });
+        if (ENABLE_STORNO_TRACE) {
+          console.log(
+            `[Storno-Trace] Auth gesendet: ${patchHeaders.Authorization ? "ja" : "nein"}, URL: ${legacyStatusUrl}, Status: ${res.status}`,
+          );
+        }
+        if (res.status === 404) {
+          if (ENABLE_STORNO_TRACE) {
+            console.log(`[Storno-Trace] Legacy 404 — versuche ${customerCancelUrl}`);
+          }
+          const alt = await fetch(customerCancelUrl, {
+            method: "PATCH",
+            headers: patchHeaders,
+            body: customerCancelBody,
+          });
+          if (alt.ok || alt.status !== 404) res = alt;
+        }
+      } else {
+        res = await fetch(legacyStatusUrl, {
+          method: "PATCH",
+          headers: patchHeaders,
+          body: JSON.stringify({
+            status,
+            ...(finalFare != null ? { finalFare } : {}),
+            ...(driverId != null ? { driverId } : {}),
+            ...(normalizedCancelReason ? { cancelReason: normalizedCancelReason } : {}),
+            ...(driverCoords
+              ? { driverLat: driverCoords.lat, driverLon: driverCoords.lon }
+              : {}),
+          }),
+        });
       }
       if (!res.ok) {
-        let errorCode = "status_update_failed";
-        let errorBody: unknown = null;
-        try {
-          const body = (await res.clone().json()) as { error?: unknown };
-          errorBody = body;
-          if (typeof body.error === "string" && body.error.trim()) {
-            errorCode = body.error.trim();
-          }
-        } catch {
-          // keep default errorCode
-        }
+        const { errorCode, errorBody } = await parseApiErrorResponse(res);
         if (ENABLE_STORNO_TRACE && status === "cancelled_by_customer") {
           console.error("[Storno-Trace] Error Body:", errorBody);
         }
-        throw new Error(errorCode);
+        const err = new Error(errorCode) as Error & { userMessage?: string };
+        const hint =
+          driverRideStatusUserMessage(errorCode, errorBody) ?? stornoErrorUserMessage(errorCode);
+        if (hint) err.userMessage = hint;
+        throw err;
       }
       await fetchAll();
     },
-    [fetchAll],
+    [customerSessionTokenLive, fetchAll],
   );
 
   const addRequest = useCallback(
@@ -872,7 +1144,11 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const rejectByDriver = useCallback(
     async (id: string, driverId: string) => {
       if (!API_BASE) return;
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      rejectingRideIdsRef.current.add(id);
+      setDriverMarketRequests((prev) => prev.filter((r) => r.id !== id));
+      if (isDriverSurfaceRef.current) {
+        setRequests((prev) => prev.filter((r) => r.id !== id));
+      }
       try {
         const res = await fetch(`${API_BASE}/rides/${id}/reject`, {
           method: "POST",
@@ -880,14 +1156,20 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           body: JSON.stringify({ driverId }),
         });
         if (!res.ok) throw new Error("reject_failed");
-        if (isDriverSurfaceRef.current) {
-          await fetchDriverMarket({ hardReset: true });
-        } else {
-          await fetchAll();
-        }
+        await fetchDriverMarket({ hardReset: false });
+        const dropRejected = (prev: RideRequest[]) =>
+          prev.filter(
+            (r) => r.id !== id && (!driverId.trim() || !(r.rejectedBy ?? []).includes(driverId)),
+          );
+        setDriverMarketRequests(dropRejected);
+        if (isDriverSurfaceRef.current) setRequests(dropRejected);
       } catch {
-        await fetchDriverMarket({ hardReset: true });
+        await fetchDriverMarket({ hardReset: false });
+        setDriverMarketRequests((prev) => prev.filter((r) => r.id !== id));
+        if (isDriverSurfaceRef.current) setRequests((prev) => prev.filter((r) => r.id !== id));
         throw new Error("reject_failed");
+      } finally {
+        rejectingRideIdsRef.current.delete(id);
       }
     },
     [fetchAll, fetchDriverMarket],
@@ -955,8 +1237,16 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     [fetchAll, fetchDriverMarket],
   );
 
-  const arriveAtCustomer = useCallback((id: string) => patchStatus(id, "driver_waiting"), [patchStatus]);
-  const startDriving = useCallback((id: string) => patchStatus(id, "passenger_onboard"), [patchStatus]);
+  const arriveAtCustomer = useCallback(
+    (id: string, driverCoords?: { lat: number; lon: number }) =>
+      patchStatus(id, "driver_waiting", undefined, undefined, undefined, driverCoords),
+    [patchStatus],
+  );
+  const startDriving = useCallback(
+    (id: string, driverCoords?: { lat: number; lon: number }) =>
+      patchStatus(id, "in_progress", undefined, undefined, undefined, driverCoords),
+    [patchStatus],
+  );
   const completeRequest = useCallback(
     (id: string, finalFare?: number) => patchStatus(id, "completed", finalFare),
     [patchStatus],
@@ -1003,6 +1293,87 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const pendingRequests = requests.filter(
     (r) => r.status === "pending" || r.status === "requested" || r.status === "searching_driver" || r.status === "offered",
   );
+
+  const driverMarketPending = driverMarketRequests.filter(
+    (r) =>
+      r.status === "pending" ||
+      r.status === "requested" ||
+      r.status === "searching_driver" ||
+      r.status === "offered",
+  );
+
+  const driverMarketOnline = Boolean(fleetDriver?.einsatzbereit && fleetDriver?.isAvailable);
+  const driverIdForMarket = fleetDriver?.id ?? "";
+
+  const eligibleInstantOffers = useMemo(
+    () =>
+      filterDriverInstantMarketOffers(driverMarketPending, {
+        driverId: driverIdForMarket,
+        driverMarketOnline,
+      }),
+    [driverMarketPending, driverIdForMarket, driverMarketOnline],
+  );
+
+  const eligibleInstantOffersKey = useMemo(
+    () => instantMarketOfferIdsKey(eligibleInstantOffers),
+    [eligibleInstantOffers],
+  );
+
+  useEffect(() => {
+    const driverOnline = driverMarketOnline;
+    const pool = eligibleInstantOffers;
+    const currentIds = new Set(pool.map((r) => r.id));
+
+    if (!fleetAuthToken || !driverOnline) {
+      void stopRideSound();
+      driverMarketPrevPendingIdsRef.current = new Set();
+      driverMarketOnlinePrevRef.current = driverOnline;
+      driverMarketNotifyBootstrappedRef.current = false;
+      return;
+    }
+
+    if (pool.length === 0) {
+      void stopRideSound();
+      driverMarketOnlinePrevRef.current = driverOnline;
+      return;
+    }
+
+    if (!driverMarketNotifyBootstrappedRef.current) {
+      driverMarketPrevPendingIdsRef.current = currentIds;
+      driverMarketNotifyBootstrappedRef.current = true;
+      driverMarketOnlinePrevRef.current = driverOnline;
+      return;
+    }
+
+    if (!driverMarketOnlinePrevRef.current && driverOnline) {
+      driverMarketPrevPendingIdsRef.current = currentIds;
+      driverMarketOnlinePrevRef.current = driverOnline;
+      return;
+    }
+
+    driverMarketOnlinePrevRef.current = driverOnline;
+
+    const newReqs = pool.filter((r) => !driverMarketPrevPendingIdsRef.current.has(r.id));
+    if (newReqs.length > 0) {
+      const req = newReqs[0];
+      const schedMs = req.scheduledAt ? new Date(req.scheduledAt as Date).getTime() : 0;
+      const isFarScheduled = Number.isFinite(schedMs) && schedMs > Date.now() + 60 * 60 * 1000;
+      if (!isFarScheduled) {
+        void sendNewRideNotification({
+          customerName: req.customerName || "Kunde",
+          fromAddress: req.fromFull || req.from || "—",
+          distanceKm: null,
+          estimatedFare: Number.isFinite(req.estimatedFare) ? req.estimatedFare : 0,
+        });
+      }
+    }
+    driverMarketPrevPendingIdsRef.current = currentIds;
+  }, [
+    eligibleInstantOffersKey,
+    eligibleInstantOffers,
+    fleetAuthToken,
+    driverMarketOnline,
+  ]);
   const acceptedRequest =
     requests.find((r) =>
       r.status === "ready_for_dispatch" ||
@@ -1039,36 +1410,19 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     : null;
 
   const myActiveRequests = passengerId
-    ? requests.filter(
-        (r) =>
-          r.passengerId === passengerId &&
-          (r.status === "pending" ||
-            r.status === "scheduled" ||
-            r.status === "scheduled_assigned" ||
-            r.status === "ready_for_dispatch" ||
-            r.status === "requested" ||
-            r.status === "searching_driver" ||
-            r.status === "offered" ||
-            r.status === "accepted" ||
-            r.status === "driver_arriving" ||
-            r.status === "driver_waiting" ||
-            r.status === "passenger_onboard" ||
-            r.status === "arrived" ||
-            r.status === "in_progress"),
-      )
+    ? requests.filter((r) => r.passengerId === passengerId && isCustomerActiveRide(r))
     : [];
 
+  const myRideRequests = passengerId
+    ? requests.filter((r) => r.passengerId === passengerId && isCustomerRideRequest(r))
+    : [];
+
+  const customerFahrtenBadgeCount = passengerId
+    ? countCustomerReservationBadge(requests.filter((r) => r.passengerId === passengerId))
+    : 0;
+
   const myCancelledRequests = passengerId
-    ? requests.filter(
-        (r) =>
-          r.passengerId === passengerId &&
-          (r.status === "cancelled" ||
-            r.status === "cancelled_by_customer" ||
-            r.status === "cancelled_by_driver" ||
-            r.status === "cancelled_by_system" ||
-            r.status === "expired" ||
-            r.status === "rejected"),
-      )
+    ? requests.filter((r) => r.passengerId === passengerId && isCustomerCancelledStatus(r.status))
     : [];
 
   return (
@@ -1077,6 +1431,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         requests,
         scheduledPoolRequests,
         pendingRequests,
+        driverMarketRequests,
+        driverMarketScheduledPool,
+        driverMarketPending,
+        isDriverMarketConnected,
         acceptedRequest,
         completedRequest,
         passengerAcceptedRequest,
@@ -1085,7 +1443,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         isConnected,
         passengerId,
         myActiveRequests,
+        myRideRequests,
         myCancelledRequests,
+        customerFahrtenBadgeCount,
         addRequest,
         acceptRequest,
         activateForDispatch,
@@ -1101,6 +1461,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         updateRequestDriverNote,
         refreshRequests: fetchAll,
         refreshDriverMarketHard,
+        clearDriverMarketRequests,
       }}
     >
       {children}

@@ -3619,7 +3619,7 @@ var require_websocket_server = __commonJS({
     var RUNNING = 0;
     var CLOSING = 1;
     var CLOSED = 2;
-    var WebSocketServer2 = class extends EventEmitter {
+    var WebSocketServer3 = class extends EventEmitter {
       /**
        * Create a `WebSocketServer` instance.
        *
@@ -3953,7 +3953,7 @@ var require_websocket_server = __commonJS({
         cb(ws, req);
       }
     };
-    module.exports = WebSocketServer2;
+    module.exports = WebSocketServer3;
     function addListeners(server, map) {
       for (const event of Object.keys(map)) server.on(event, map[event]);
       return function removeListeners() {
@@ -24567,27 +24567,27 @@ var require_router = __commonJS({
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module.exports = Router20;
+    module.exports = Router22;
     module.exports.Route = Route;
-    function Router20(options) {
-      if (!(this instanceof Router20)) {
-        return new Router20(options);
+    function Router22(options) {
+      if (!(this instanceof Router22)) {
+        return new Router22(options);
       }
       const opts = options || {};
-      function router20(req, res, next) {
-        router20.handle(req, res, next);
+      function router22(req, res, next) {
+        router22.handle(req, res, next);
       }
-      Object.setPrototypeOf(router20, this);
-      router20.caseSensitive = opts.caseSensitive;
-      router20.mergeParams = opts.mergeParams;
-      router20.params = {};
-      router20.strict = opts.strict;
-      router20.stack = [];
-      return router20;
+      Object.setPrototypeOf(router22, this);
+      router22.caseSensitive = opts.caseSensitive;
+      router22.mergeParams = opts.mergeParams;
+      router22.params = {};
+      router22.strict = opts.strict;
+      router22.stack = [];
+      return router22;
     }
-    Router20.prototype = function() {
+    Router22.prototype = function() {
     };
-    Router20.prototype.param = function param2(name2, fn) {
+    Router22.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -24607,7 +24607,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router20.prototype.handle = function handle(req, res, callback) {
+    Router22.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -24734,7 +24734,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router20.prototype.use = function use(handler) {
+    Router22.prototype.use = function use(handler) {
       let offset = 0;
       let path11 = "/";
       if (typeof handler !== "function") {
@@ -24767,7 +24767,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router20.prototype.route = function route(path11) {
+    Router22.prototype.route = function route(path11) {
       const route2 = new Route(path11);
       const layer = new Layer(path11, {
         sensitive: this.caseSensitive,
@@ -24782,7 +24782,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router20.prototype[method] = function(path11) {
+      Router22.prototype[method] = function(path11) {
         const route = this.route(path11);
         route[method].apply(route, slice.call(arguments, 1));
         return this;
@@ -24965,13 +24965,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils3().compileTrust;
     var resolve = __require("node:path").resolve;
     var once = require_once();
-    var Router20 = require_router();
+    var Router22 = require_router();
     var slice = Array.prototype.slice;
     var flatten = Array.prototype.flat;
     var app2 = exports = module.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init() {
-      var router20 = null;
+      var router22 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -24980,13 +24980,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router20 === null) {
-            router20 = new Router20({
+          if (router22 === null) {
+            router22 = new Router22({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router20;
+          return router22;
         }
       });
     };
@@ -25057,15 +25057,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router20 = this.router;
+      var router22 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router20.use(path11, fn2);
+          return router22.use(path11, fn2);
         }
         debug(".use app under %s", path11);
         fn2.mountpath = path11;
         fn2.parent = this;
-        router20.use(path11, function mounted_app(req, res, next) {
+        router22.use(path11, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -27592,7 +27592,7 @@ var require_express = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var mixin = require_merge_descriptors();
     var proto = require_application();
-    var Router20 = require_router();
+    var Router22 = require_router();
     var req = require_request();
     var res = require_response();
     exports = module.exports = createApplication;
@@ -27614,8 +27614,8 @@ var require_express = __commonJS({
     exports.application = proto;
     exports.request = req;
     exports.response = res;
-    exports.Route = Router20.Route;
-    exports.Router = Router20;
+    exports.Route = Router22.Route;
+    exports.Router = Router22;
     exports.json = bodyParser.json;
     exports.raw = bodyParser.raw;
     exports.static = require_serve_static();
@@ -33219,10 +33219,10 @@ var init_subquery = __esm({
     init_entity();
     Subquery = class {
       static [entityKind] = "Subquery";
-      constructor(sql2, fields, alias, isWith = false, usedTables = []) {
+      constructor(sql3, fields, alias, isWith = false, usedTables = []) {
         this._ = {
           brand: "Subquery",
-          sql: sql2,
+          sql: sql3,
           selectedFields: fields,
           alias,
           isWith,
@@ -33394,7 +33394,7 @@ function isDriverValueEncoder(value) {
 function param(value, encoder2) {
   return new Param(value, encoder2);
 }
-function sql(strings, ...params) {
+function sql2(strings, ...params) {
   const queryChunks = [];
   if (params.length > 0 || strings.length > 0 && strings[0] !== "") {
     queryChunks.push(new StringChunk(strings[0]));
@@ -33689,19 +33689,19 @@ var init_sql = __esm({
         return new SQL([this]);
       }
     };
-    ((sql2) => {
+    ((sql22) => {
       function empty() {
         return new SQL([]);
       }
-      sql2.empty = empty;
+      sql22.empty = empty;
       function fromList(list) {
         return new SQL(list);
       }
-      sql2.fromList = fromList;
+      sql22.fromList = fromList;
       function raw(str2) {
         return new SQL([new StringChunk(str2)]);
       }
-      sql2.raw = raw;
+      sql22.raw = raw;
       function join(chunks, separator) {
         const result = [];
         for (const [i, chunk] of chunks.entries()) {
@@ -33712,24 +33712,24 @@ var init_sql = __esm({
         }
         return new SQL(result);
       }
-      sql2.join = join;
+      sql22.join = join;
       function identifier(value) {
         return new Name(value);
       }
-      sql2.identifier = identifier;
+      sql22.identifier = identifier;
       function placeholder2(name2) {
         return new Placeholder(name2);
       }
-      sql2.placeholder = placeholder2;
+      sql22.placeholder = placeholder2;
       function param2(value, encoder2) {
         return new Param(value, encoder2);
       }
-      sql2.param = param2;
-    })(sql || (sql = {}));
+      sql22.param = param2;
+    })(sql2 || (sql2 = {}));
     ((SQL2) => {
       class Aliased {
-        constructor(sql2, fieldAlias) {
-          this.sql = sql2;
+        constructor(sql22, fieldAlias) {
+          this.sql = sql22;
           this.fieldAlias = fieldAlias;
         }
         static [entityKind] = "SQL.Aliased";
@@ -33805,7 +33805,7 @@ function mapColumnsInAliasedSQLToAlias(query, alias) {
   return new SQL.Aliased(mapColumnsInSQLToAlias(query.sql, alias), query.fieldAlias);
 }
 function mapColumnsInSQLToAlias(query, alias) {
-  return sql.join(query.queryChunks.map((c) => {
+  return sql2.join(query.queryChunks.map((c) => {
     if (is(c, Column)) {
       return aliasedTableColumn(c, alias);
     }
@@ -34500,7 +34500,7 @@ var init_date_common = __esm({
     PgDateColumnBaseBuilder = class extends PgColumnBuilder {
       static [entityKind] = "PgDateColumnBaseBuilder";
       defaultNow() {
-        return this.default(sql`now()`);
+        return this.default(sql2`now()`);
       }
     };
   }
@@ -35550,7 +35550,7 @@ var init_uuid = __esm({
        * Adds `default gen_random_uuid()` to the column definition.
        */
       defaultRandom() {
-        return this.default(sql`gen_random_uuid()`);
+        return this.default(sql2`gen_random_uuid()`);
       }
       /** @internal */
       build(table) {
@@ -35955,7 +35955,7 @@ function and(...unfilteredConditions) {
   }
   return new SQL([
     new StringChunk("("),
-    sql.join(conditions, new StringChunk(" and ")),
+    sql2.join(conditions, new StringChunk(" and ")),
     new StringChunk(")")
   ]);
 }
@@ -35971,96 +35971,96 @@ function or(...unfilteredConditions) {
   }
   return new SQL([
     new StringChunk("("),
-    sql.join(conditions, new StringChunk(" or ")),
+    sql2.join(conditions, new StringChunk(" or ")),
     new StringChunk(")")
   ]);
 }
 function not(condition) {
-  return sql`not ${condition}`;
+  return sql2`not ${condition}`;
 }
 function inArray(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
-      return sql`false`;
+      return sql2`false`;
     }
-    return sql`${column} in ${values.map((v) => bindIfParam(v, column))}`;
+    return sql2`${column} in ${values.map((v) => bindIfParam(v, column))}`;
   }
-  return sql`${column} in ${bindIfParam(values, column)}`;
+  return sql2`${column} in ${bindIfParam(values, column)}`;
 }
 function notInArray(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
-      return sql`true`;
+      return sql2`true`;
     }
-    return sql`${column} not in ${values.map((v) => bindIfParam(v, column))}`;
+    return sql2`${column} not in ${values.map((v) => bindIfParam(v, column))}`;
   }
-  return sql`${column} not in ${bindIfParam(values, column)}`;
+  return sql2`${column} not in ${bindIfParam(values, column)}`;
 }
 function isNull(value) {
-  return sql`${value} is null`;
+  return sql2`${value} is null`;
 }
 function isNotNull(value) {
-  return sql`${value} is not null`;
+  return sql2`${value} is not null`;
 }
 function exists(subquery) {
-  return sql`exists ${subquery}`;
+  return sql2`exists ${subquery}`;
 }
 function notExists(subquery) {
-  return sql`not exists ${subquery}`;
+  return sql2`not exists ${subquery}`;
 }
 function between(column, min2, max2) {
-  return sql`${column} between ${bindIfParam(min2, column)} and ${bindIfParam(
+  return sql2`${column} between ${bindIfParam(min2, column)} and ${bindIfParam(
     max2,
     column
   )}`;
 }
 function notBetween(column, min2, max2) {
-  return sql`${column} not between ${bindIfParam(
+  return sql2`${column} not between ${bindIfParam(
     min2,
     column
   )} and ${bindIfParam(max2, column)}`;
 }
 function like(column, value) {
-  return sql`${column} like ${value}`;
+  return sql2`${column} like ${value}`;
 }
 function notLike(column, value) {
-  return sql`${column} not like ${value}`;
+  return sql2`${column} not like ${value}`;
 }
 function ilike(column, value) {
-  return sql`${column} ilike ${value}`;
+  return sql2`${column} ilike ${value}`;
 }
 function notIlike(column, value) {
-  return sql`${column} not ilike ${value}`;
+  return sql2`${column} not ilike ${value}`;
 }
 function arrayContains(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
       throw new Error("arrayContains requires at least one value");
     }
-    const array = sql`${bindIfParam(values, column)}`;
-    return sql`${column} @> ${array}`;
+    const array = sql2`${bindIfParam(values, column)}`;
+    return sql2`${column} @> ${array}`;
   }
-  return sql`${column} @> ${bindIfParam(values, column)}`;
+  return sql2`${column} @> ${bindIfParam(values, column)}`;
 }
 function arrayContained(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
       throw new Error("arrayContained requires at least one value");
     }
-    const array = sql`${bindIfParam(values, column)}`;
-    return sql`${column} <@ ${array}`;
+    const array = sql2`${bindIfParam(values, column)}`;
+    return sql2`${column} <@ ${array}`;
   }
-  return sql`${column} <@ ${bindIfParam(values, column)}`;
+  return sql2`${column} <@ ${bindIfParam(values, column)}`;
 }
 function arrayOverlaps(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
       throw new Error("arrayOverlaps requires at least one value");
     }
-    const array = sql`${bindIfParam(values, column)}`;
-    return sql`${column} && ${array}`;
+    const array = sql2`${bindIfParam(values, column)}`;
+    return sql2`${column} && ${array}`;
   }
-  return sql`${column} && ${bindIfParam(values, column)}`;
+  return sql2`${column} && ${bindIfParam(values, column)}`;
 }
 var eq, ne, gt, gte, lt, lte;
 var init_conditions = __esm({
@@ -36070,32 +36070,32 @@ var init_conditions = __esm({
     init_table();
     init_sql();
     eq = (left, right) => {
-      return sql`${left} = ${bindIfParam(right, left)}`;
+      return sql2`${left} = ${bindIfParam(right, left)}`;
     };
     ne = (left, right) => {
-      return sql`${left} <> ${bindIfParam(right, left)}`;
+      return sql2`${left} <> ${bindIfParam(right, left)}`;
     };
     gt = (left, right) => {
-      return sql`${left} > ${bindIfParam(right, left)}`;
+      return sql2`${left} > ${bindIfParam(right, left)}`;
     };
     gte = (left, right) => {
-      return sql`${left} >= ${bindIfParam(right, left)}`;
+      return sql2`${left} >= ${bindIfParam(right, left)}`;
     };
     lt = (left, right) => {
-      return sql`${left} < ${bindIfParam(right, left)}`;
+      return sql2`${left} < ${bindIfParam(right, left)}`;
     };
     lte = (left, right) => {
-      return sql`${left} <= ${bindIfParam(right, left)}`;
+      return sql2`${left} <= ${bindIfParam(right, left)}`;
     };
   }
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/sql/expressions/select.js
 function asc(column) {
-  return sql`${column} asc`;
+  return sql2`${column} asc`;
 }
 function desc(column) {
-  return sql`${column} desc`;
+  return sql2`${column} desc`;
 }
 var init_select = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/sql/expressions/select.js"() {
@@ -36135,12 +36135,12 @@ function getOperators() {
     notIlike,
     notInArray,
     or,
-    sql
+    sql: sql2
   };
 }
 function getOrderByOperators() {
   return {
-    sql,
+    sql: sql2,
     asc,
     desc
   };
@@ -36396,28 +36396,28 @@ var init_relations = __esm({
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/sql/functions/aggregate.js
 function count(expression) {
-  return sql`count(${expression || sql.raw("*")})`.mapWith(Number);
+  return sql2`count(${expression || sql2.raw("*")})`.mapWith(Number);
 }
 function countDistinct(expression) {
-  return sql`count(distinct ${expression})`.mapWith(Number);
+  return sql2`count(distinct ${expression})`.mapWith(Number);
 }
 function avg(expression) {
-  return sql`avg(${expression})`.mapWith(String);
+  return sql2`avg(${expression})`.mapWith(String);
 }
 function avgDistinct(expression) {
-  return sql`avg(distinct ${expression})`.mapWith(String);
+  return sql2`avg(distinct ${expression})`.mapWith(String);
 }
 function sum(expression) {
-  return sql`sum(${expression})`.mapWith(String);
+  return sql2`sum(${expression})`.mapWith(String);
 }
 function sumDistinct(expression) {
-  return sql`sum(distinct ${expression})`.mapWith(String);
+  return sql2`sum(distinct ${expression})`.mapWith(String);
 }
 function max(expression) {
-  return sql`max(${expression})`.mapWith(is(expression, Column) ? expression : String);
+  return sql2`max(${expression})`.mapWith(is(expression, Column) ? expression : String);
 }
 function min(expression) {
-  return sql`min(${expression})`.mapWith(is(expression, Column) ? expression : String);
+  return sql2`min(${expression})`.mapWith(is(expression, Column) ? expression : String);
 }
 var init_aggregate = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/sql/functions/aggregate.js"() {
@@ -36433,39 +36433,39 @@ function toSql(value) {
 }
 function l2Distance(column, value) {
   if (Array.isArray(value)) {
-    return sql`${column} <-> ${toSql(value)}`;
+    return sql2`${column} <-> ${toSql(value)}`;
   }
-  return sql`${column} <-> ${value}`;
+  return sql2`${column} <-> ${value}`;
 }
 function l1Distance(column, value) {
   if (Array.isArray(value)) {
-    return sql`${column} <+> ${toSql(value)}`;
+    return sql2`${column} <+> ${toSql(value)}`;
   }
-  return sql`${column} <+> ${value}`;
+  return sql2`${column} <+> ${value}`;
 }
 function innerProduct(column, value) {
   if (Array.isArray(value)) {
-    return sql`${column} <#> ${toSql(value)}`;
+    return sql2`${column} <#> ${toSql(value)}`;
   }
-  return sql`${column} <#> ${value}`;
+  return sql2`${column} <#> ${value}`;
 }
 function cosineDistance(column, value) {
   if (Array.isArray(value)) {
-    return sql`${column} <=> ${toSql(value)}`;
+    return sql2`${column} <=> ${toSql(value)}`;
   }
-  return sql`${column} <=> ${value}`;
+  return sql2`${column} <=> ${value}`;
 }
 function hammingDistance(column, value) {
   if (Array.isArray(value)) {
-    return sql`${column} <~> ${toSql(value)}`;
+    return sql2`${column} <~> ${toSql(value)}`;
   }
-  return sql`${column} <~> ${value}`;
+  return sql2`${column} <~> ${value}`;
 }
 function jaccardDistance(column, value) {
   if (Array.isArray(value)) {
-    return sql`${column} <%> ${toSql(value)}`;
+    return sql2`${column} <%> ${toSql(value)}`;
   }
-  return sql`${column} <%> ${value}`;
+  return sql2`${column} <%> ${value}`;
 }
 var init_vector2 = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/sql/functions/vector.js"() {
@@ -36607,7 +36607,7 @@ __export(drizzle_orm_exports, {
   param: () => param,
   placeholder: () => placeholder,
   relations: () => relations,
-  sql: () => sql,
+  sql: () => sql2,
   sum: () => sum,
   sumDistinct: () => sumDistinct,
   textDecoder: () => textDecoder
@@ -37074,27 +37074,27 @@ var init_dialect = __esm({
       async migrate(migrations, session, config2) {
         const migrationsTable = typeof config2 === "string" ? "__drizzle_migrations" : config2.migrationsTable ?? "__drizzle_migrations";
         const migrationsSchema = typeof config2 === "string" ? "drizzle" : config2.migrationsSchema ?? "drizzle";
-        const migrationTableCreate = sql`
-			CREATE TABLE IF NOT EXISTS ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} (
+        const migrationTableCreate = sql2`
+			CREATE TABLE IF NOT EXISTS ${sql2.identifier(migrationsSchema)}.${sql2.identifier(migrationsTable)} (
 				id SERIAL PRIMARY KEY,
 				hash text NOT NULL,
 				created_at bigint
 			)
 		`;
-        await session.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sql.identifier(migrationsSchema)}`);
+        await session.execute(sql2`CREATE SCHEMA IF NOT EXISTS ${sql2.identifier(migrationsSchema)}`);
         await session.execute(migrationTableCreate);
         const dbMigrations = await session.all(
-          sql`select id, hash, created_at from ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} order by created_at desc limit 1`
+          sql2`select id, hash, created_at from ${sql2.identifier(migrationsSchema)}.${sql2.identifier(migrationsTable)} order by created_at desc limit 1`
         );
         const lastDbMigration = dbMigrations[0];
         await session.transaction(async (tx) => {
           for await (const migration of migrations) {
             if (!lastDbMigration || Number(lastDbMigration.created_at) < migration.folderMillis) {
               for (const stmt of migration.sql) {
-                await tx.execute(sql.raw(stmt));
+                await tx.execute(sql2.raw(stmt));
               }
               await tx.execute(
-                sql`insert into ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} ("hash", "created_at") values(${migration.hash}, ${migration.folderMillis})`
+                sql2`insert into ${sql2.identifier(migrationsSchema)}.${sql2.identifier(migrationsTable)} ("hash", "created_at") values(${migration.hash}, ${migration.folderMillis})`
               );
             }
           }
@@ -37111,21 +37111,21 @@ var init_dialect = __esm({
       }
       buildWithCTE(queries) {
         if (!queries?.length) return void 0;
-        const withSqlChunks = [sql`with `];
+        const withSqlChunks = [sql2`with `];
         for (const [i, w] of queries.entries()) {
-          withSqlChunks.push(sql`${sql.identifier(w._.alias)} as (${w._.sql})`);
+          withSqlChunks.push(sql2`${sql2.identifier(w._.alias)} as (${w._.sql})`);
           if (i < queries.length - 1) {
-            withSqlChunks.push(sql`, `);
+            withSqlChunks.push(sql2`, `);
           }
         }
-        withSqlChunks.push(sql` `);
-        return sql.join(withSqlChunks);
+        withSqlChunks.push(sql2` `);
+        return sql2.join(withSqlChunks);
       }
       buildDeleteQuery({ table, where, returning, withList }) {
         const withSql = this.buildWithCTE(withList);
-        const returningSql = returning ? sql` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
-        const whereSql = where ? sql` where ${where}` : void 0;
-        return sql`${withSql}delete from ${table}${whereSql}${returningSql}`;
+        const returningSql = returning ? sql2` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
+        const whereSql = where ? sql2` where ${where}` : void 0;
+        return sql2`${withSql}delete from ${table}${whereSql}${returningSql}`;
       }
       buildUpdateSet(table, set) {
         const tableColumns = table[Table.Symbol.Columns];
@@ -37133,13 +37133,13 @@ var init_dialect = __esm({
           (colName) => set[colName] !== void 0 || tableColumns[colName]?.onUpdateFn !== void 0
         );
         const setSize = columnNames.length;
-        return sql.join(columnNames.flatMap((colName, i) => {
+        return sql2.join(columnNames.flatMap((colName, i) => {
           const col = tableColumns[colName];
           const onUpdateFnResult = col.onUpdateFn?.();
-          const value = set[colName] ?? (is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql.param(onUpdateFnResult, col));
-          const res = sql`${sql.identifier(this.casing.getColumnCasing(col))} = ${value}`;
+          const value = set[colName] ?? (is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql2.param(onUpdateFnResult, col));
+          const res = sql2`${sql2.identifier(this.casing.getColumnCasing(col))} = ${value}`;
           if (i < setSize - 1) {
-            return [res, sql.raw(", ")];
+            return [res, sql2.raw(", ")];
           }
           return [res];
         }));
@@ -37150,13 +37150,13 @@ var init_dialect = __esm({
         const tableSchema = table[PgTable.Symbol.Schema];
         const origTableName = table[PgTable.Symbol.OriginalName];
         const alias = tableName === origTableName ? void 0 : tableName;
-        const tableSql = sql`${tableSchema ? sql`${sql.identifier(tableSchema)}.` : void 0}${sql.identifier(origTableName)}${alias && sql` ${sql.identifier(alias)}`}`;
+        const tableSql = sql2`${tableSchema ? sql2`${sql2.identifier(tableSchema)}.` : void 0}${sql2.identifier(origTableName)}${alias && sql2` ${sql2.identifier(alias)}`}`;
         const setSql = this.buildUpdateSet(table, set);
-        const fromSql = from && sql.join([sql.raw(" from "), this.buildFromTable(from)]);
+        const fromSql = from && sql2.join([sql2.raw(" from "), this.buildFromTable(from)]);
         const joinsSql = this.buildJoins(joins);
-        const returningSql = returning ? sql` returning ${this.buildSelection(returning, { isSingleTable: !from })}` : void 0;
-        const whereSql = where ? sql` where ${where}` : void 0;
-        return sql`${withSql}update ${tableSql} set ${setSql}${fromSql}${joinsSql}${whereSql}${returningSql}`;
+        const returningSql = returning ? sql2` returning ${this.buildSelection(returning, { isSingleTable: !from })}` : void 0;
+        const whereSql = where ? sql2` where ${where}` : void 0;
+        return sql2`${withSql}update ${tableSql} set ${setSql}${fromSql}${joinsSql}${whereSql}${returningSql}`;
       }
       /**
        * Builds selection SQL with provided fields/expressions
@@ -37174,7 +37174,7 @@ var init_dialect = __esm({
         const chunks = fields.flatMap(({ field }, i) => {
           const chunk = [];
           if (is(field, SQL.Aliased) && field.isSelectionField) {
-            chunk.push(sql.identifier(field.fieldAlias));
+            chunk.push(sql2.identifier(field.fieldAlias));
           } else if (is(field, SQL.Aliased) || is(field, SQL)) {
             const query = is(field, SQL.Aliased) ? field.sql : field;
             if (isSingleTable) {
@@ -37182,7 +37182,7 @@ var init_dialect = __esm({
                 new SQL(
                   query.queryChunks.map((c) => {
                     if (is(c, PgColumn)) {
-                      return sql.identifier(this.casing.getColumnCasing(c));
+                      return sql2.identifier(this.casing.getColumnCasing(c));
                     }
                     return c;
                   })
@@ -37192,11 +37192,11 @@ var init_dialect = __esm({
               chunk.push(query);
             }
             if (is(field, SQL.Aliased)) {
-              chunk.push(sql` as ${sql.identifier(field.fieldAlias)}`);
+              chunk.push(sql2` as ${sql2.identifier(field.fieldAlias)}`);
             }
           } else if (is(field, Column)) {
             if (isSingleTable) {
-              chunk.push(sql.identifier(this.casing.getColumnCasing(field)));
+              chunk.push(sql2.identifier(this.casing.getColumnCasing(field)));
             } else {
               chunk.push(field);
             }
@@ -37212,11 +37212,11 @@ var init_dialect = __esm({
             chunk.push(field);
           }
           if (i < columnsLen - 1) {
-            chunk.push(sql`, `);
+            chunk.push(sql2`, `);
           }
           return chunk;
         });
-        return sql.join(chunks);
+        return sql2.join(chunks);
       }
       buildJoins(joins) {
         if (!joins || joins.length === 0) {
@@ -37225,18 +37225,18 @@ var init_dialect = __esm({
         const joinsArray = [];
         for (const [index, joinMeta] of joins.entries()) {
           if (index === 0) {
-            joinsArray.push(sql` `);
+            joinsArray.push(sql2` `);
           }
           const table = joinMeta.table;
-          const lateralSql = joinMeta.lateral ? sql` lateral` : void 0;
-          const onSql = joinMeta.on ? sql` on ${joinMeta.on}` : void 0;
+          const lateralSql = joinMeta.lateral ? sql2` lateral` : void 0;
+          const onSql = joinMeta.on ? sql2` on ${joinMeta.on}` : void 0;
           if (is(table, PgTable)) {
             const tableName = table[PgTable.Symbol.Name];
             const tableSchema = table[PgTable.Symbol.Schema];
             const origTableName = table[PgTable.Symbol.OriginalName];
             const alias = tableName === origTableName ? void 0 : joinMeta.alias;
             joinsArray.push(
-              sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${tableSchema ? sql`${sql.identifier(tableSchema)}.` : void 0}${sql.identifier(origTableName)}${alias && sql` ${sql.identifier(alias)}`}${onSql}`
+              sql2`${sql2.raw(joinMeta.joinType)} join${lateralSql} ${tableSchema ? sql2`${sql2.identifier(tableSchema)}.` : void 0}${sql2.identifier(origTableName)}${alias && sql2` ${sql2.identifier(alias)}`}${onSql}`
             );
           } else if (is(table, View)) {
             const viewName = table[ViewBaseConfig].name;
@@ -37244,26 +37244,26 @@ var init_dialect = __esm({
             const origViewName = table[ViewBaseConfig].originalName;
             const alias = viewName === origViewName ? void 0 : joinMeta.alias;
             joinsArray.push(
-              sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${viewSchema ? sql`${sql.identifier(viewSchema)}.` : void 0}${sql.identifier(origViewName)}${alias && sql` ${sql.identifier(alias)}`}${onSql}`
+              sql2`${sql2.raw(joinMeta.joinType)} join${lateralSql} ${viewSchema ? sql2`${sql2.identifier(viewSchema)}.` : void 0}${sql2.identifier(origViewName)}${alias && sql2` ${sql2.identifier(alias)}`}${onSql}`
             );
           } else {
             joinsArray.push(
-              sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`
+              sql2`${sql2.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`
             );
           }
           if (index < joins.length - 1) {
-            joinsArray.push(sql` `);
+            joinsArray.push(sql2` `);
           }
         }
-        return sql.join(joinsArray);
+        return sql2.join(joinsArray);
       }
       buildFromTable(table) {
         if (is(table, Table) && table[Table.Symbol.IsAlias]) {
-          let fullName = sql`${sql.identifier(table[Table.Symbol.OriginalName])}`;
+          let fullName = sql2`${sql2.identifier(table[Table.Symbol.OriginalName])}`;
           if (table[Table.Symbol.Schema]) {
-            fullName = sql`${sql.identifier(table[Table.Symbol.Schema])}.${fullName}`;
+            fullName = sql2`${sql2.identifier(table[Table.Symbol.Schema])}.${fullName}`;
           }
-          return sql`${fullName} ${sql.identifier(table[Table.Symbol.Name])}`;
+          return sql2`${fullName} ${sql2.identifier(table[Table.Symbol.Name])}`;
         }
         return table;
       }
@@ -37298,42 +37298,42 @@ var init_dialect = __esm({
         const withSql = this.buildWithCTE(withList);
         let distinctSql;
         if (distinct) {
-          distinctSql = distinct === true ? sql` distinct` : sql` distinct on (${sql.join(distinct.on, sql`, `)})`;
+          distinctSql = distinct === true ? sql2` distinct` : sql2` distinct on (${sql2.join(distinct.on, sql2`, `)})`;
         }
         const selection = this.buildSelection(fieldsList, { isSingleTable });
         const tableSql = this.buildFromTable(table);
         const joinsSql = this.buildJoins(joins);
-        const whereSql = where ? sql` where ${where}` : void 0;
-        const havingSql = having ? sql` having ${having}` : void 0;
+        const whereSql = where ? sql2` where ${where}` : void 0;
+        const havingSql = having ? sql2` having ${having}` : void 0;
         let orderBySql;
         if (orderBy && orderBy.length > 0) {
-          orderBySql = sql` order by ${sql.join(orderBy, sql`, `)}`;
+          orderBySql = sql2` order by ${sql2.join(orderBy, sql2`, `)}`;
         }
         let groupBySql;
         if (groupBy && groupBy.length > 0) {
-          groupBySql = sql` group by ${sql.join(groupBy, sql`, `)}`;
+          groupBySql = sql2` group by ${sql2.join(groupBy, sql2`, `)}`;
         }
-        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql` limit ${limit}` : void 0;
-        const offsetSql = offset ? sql` offset ${offset}` : void 0;
-        const lockingClauseSql = sql.empty();
+        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql2` limit ${limit}` : void 0;
+        const offsetSql = offset ? sql2` offset ${offset}` : void 0;
+        const lockingClauseSql = sql2.empty();
         if (lockingClause) {
-          const clauseSql = sql` for ${sql.raw(lockingClause.strength)}`;
+          const clauseSql = sql2` for ${sql2.raw(lockingClause.strength)}`;
           if (lockingClause.config.of) {
             clauseSql.append(
-              sql` of ${sql.join(
+              sql2` of ${sql2.join(
                 Array.isArray(lockingClause.config.of) ? lockingClause.config.of : [lockingClause.config.of],
-                sql`, `
+                sql2`, `
               )}`
             );
           }
           if (lockingClause.config.noWait) {
-            clauseSql.append(sql` nowait`);
+            clauseSql.append(sql2` nowait`);
           } else if (lockingClause.config.skipLocked) {
-            clauseSql.append(sql` skip locked`);
+            clauseSql.append(sql2` skip locked`);
           }
           lockingClauseSql.append(clauseSql);
         }
-        const finalQuery = sql`${withSql}select${distinctSql} ${selection} from ${tableSql}${joinsSql}${whereSql}${groupBySql}${havingSql}${orderBySql}${limitSql}${offsetSql}${lockingClauseSql}`;
+        const finalQuery = sql2`${withSql}select${distinctSql} ${selection} from ${tableSql}${joinsSql}${whereSql}${groupBySql}${havingSql}${orderBySql}${limitSql}${offsetSql}${lockingClauseSql}`;
         if (setOperators.length > 0) {
           return this.buildSetOperations(finalQuery, setOperators);
         }
@@ -37356,39 +37356,39 @@ var init_dialect = __esm({
         leftSelect,
         setOperator: { type, isAll, rightSelect, limit, orderBy, offset }
       }) {
-        const leftChunk = sql`(${leftSelect.getSQL()}) `;
-        const rightChunk = sql`(${rightSelect.getSQL()})`;
+        const leftChunk = sql2`(${leftSelect.getSQL()}) `;
+        const rightChunk = sql2`(${rightSelect.getSQL()})`;
         let orderBySql;
         if (orderBy && orderBy.length > 0) {
           const orderByValues = [];
           for (const singleOrderBy of orderBy) {
             if (is(singleOrderBy, PgColumn)) {
-              orderByValues.push(sql.identifier(singleOrderBy.name));
+              orderByValues.push(sql2.identifier(singleOrderBy.name));
             } else if (is(singleOrderBy, SQL)) {
               for (let i = 0; i < singleOrderBy.queryChunks.length; i++) {
                 const chunk = singleOrderBy.queryChunks[i];
                 if (is(chunk, PgColumn)) {
-                  singleOrderBy.queryChunks[i] = sql.identifier(chunk.name);
+                  singleOrderBy.queryChunks[i] = sql2.identifier(chunk.name);
                 }
               }
-              orderByValues.push(sql`${singleOrderBy}`);
+              orderByValues.push(sql2`${singleOrderBy}`);
             } else {
-              orderByValues.push(sql`${singleOrderBy}`);
+              orderByValues.push(sql2`${singleOrderBy}`);
             }
           }
-          orderBySql = sql` order by ${sql.join(orderByValues, sql`, `)} `;
+          orderBySql = sql2` order by ${sql2.join(orderByValues, sql2`, `)} `;
         }
-        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql` limit ${limit}` : void 0;
-        const operatorChunk = sql.raw(`${type} ${isAll ? "all " : ""}`);
-        const offsetSql = offset ? sql` offset ${offset}` : void 0;
-        return sql`${leftChunk}${operatorChunk}${rightChunk}${orderBySql}${limitSql}${offsetSql}`;
+        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql2` limit ${limit}` : void 0;
+        const operatorChunk = sql2.raw(`${type} ${isAll ? "all " : ""}`);
+        const offsetSql = offset ? sql2` offset ${offset}` : void 0;
+        return sql2`${leftChunk}${operatorChunk}${rightChunk}${orderBySql}${limitSql}${offsetSql}`;
       }
       buildInsertQuery({ table, values: valuesOrSelect, onConflict, returning, withList, select, overridingSystemValue_ }) {
         const valuesSqlList = [];
         const columns = table[Table.Symbol.Columns];
         const colEntries = Object.entries(columns).filter(([_, col]) => !col.shouldDisableInsert());
         const insertOrder = colEntries.map(
-          ([, column]) => sql.identifier(this.casing.getColumnCasing(column))
+          ([, column]) => sql2.identifier(this.casing.getColumnCasing(column))
         );
         if (select) {
           const select2 = valuesOrSelect;
@@ -37399,7 +37399,7 @@ var init_dialect = __esm({
           }
         } else {
           const values = valuesOrSelect;
-          valuesSqlList.push(sql.raw("values "));
+          valuesSqlList.push(sql2.raw("values "));
           for (const [valueIndex, value] of values.entries()) {
             const valueList = [];
             for (const [fieldName, col] of colEntries) {
@@ -37407,14 +37407,14 @@ var init_dialect = __esm({
               if (colValue === void 0 || is(colValue, Param) && colValue.value === void 0) {
                 if (col.defaultFn !== void 0) {
                   const defaultFnResult = col.defaultFn();
-                  const defaultValue = is(defaultFnResult, SQL) ? defaultFnResult : sql.param(defaultFnResult, col);
+                  const defaultValue = is(defaultFnResult, SQL) ? defaultFnResult : sql2.param(defaultFnResult, col);
                   valueList.push(defaultValue);
                 } else if (!col.default && col.onUpdateFn !== void 0) {
                   const onUpdateFnResult = col.onUpdateFn();
-                  const newValue = is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql.param(onUpdateFnResult, col);
+                  const newValue = is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql2.param(onUpdateFnResult, col);
                   valueList.push(newValue);
                 } else {
-                  valueList.push(sql`default`);
+                  valueList.push(sql2`default`);
                 }
               } else {
                 valueList.push(colValue);
@@ -37422,21 +37422,21 @@ var init_dialect = __esm({
             }
             valuesSqlList.push(valueList);
             if (valueIndex < values.length - 1) {
-              valuesSqlList.push(sql`, `);
+              valuesSqlList.push(sql2`, `);
             }
           }
         }
         const withSql = this.buildWithCTE(withList);
-        const valuesSql = sql.join(valuesSqlList);
-        const returningSql = returning ? sql` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
-        const onConflictSql = onConflict ? sql` on conflict ${onConflict}` : void 0;
-        const overridingSql = overridingSystemValue_ === true ? sql`overriding system value ` : void 0;
-        return sql`${withSql}insert into ${table} ${insertOrder} ${overridingSql}${valuesSql}${onConflictSql}${returningSql}`;
+        const valuesSql = sql2.join(valuesSqlList);
+        const returningSql = returning ? sql2` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
+        const onConflictSql = onConflict ? sql2` on conflict ${onConflict}` : void 0;
+        const overridingSql = overridingSystemValue_ === true ? sql2`overriding system value ` : void 0;
+        return sql2`${withSql}insert into ${table} ${insertOrder} ${overridingSql}${valuesSql}${onConflictSql}${returningSql}`;
       }
       buildRefreshMaterializedViewQuery({ view, concurrently, withNoData }) {
-        const concurrentlySql = concurrently ? sql` concurrently` : void 0;
-        const withNoDataSql = withNoData ? sql` with no data` : void 0;
-        return sql`refresh materialized view${concurrentlySql} ${view}${withNoDataSql}`;
+        const concurrentlySql = concurrently ? sql2` concurrently` : void 0;
+        const withNoDataSql = withNoData ? sql2` with no data` : void 0;
+        return sql2`refresh materialized view${concurrentlySql} ${view}${withNoDataSql}`;
       }
       prepareTyping(encoder2) {
         if (is(encoder2, PgJsonb) || is(encoder2, PgJson)) {
@@ -37455,8 +37455,8 @@ var init_dialect = __esm({
           return "none";
         }
       }
-      sqlToQuery(sql2, invokeSource) {
-        return sql2.toQuery({
+      sqlToQuery(sql22, invokeSource) {
+        return sql22.toQuery({
           casing: this.casing,
           escapeName: this.escapeName,
           escapeParam: this.escapeParam,
@@ -38009,7 +38009,7 @@ var init_dialect = __esm({
           }
           let extras;
           if (config2.extras) {
-            extras = typeof config2.extras === "function" ? config2.extras(aliasedColumns, { sql }) : config2.extras;
+            extras = typeof config2.extras === "function" ? config2.extras(aliasedColumns, { sql: sql2 }) : config2.extras;
             for (const [tsKey, value] of Object.entries(extras)) {
               fieldsSelection.push({
                 tsKey,
@@ -38067,9 +38067,9 @@ var init_dialect = __esm({
               joinOn: joinOn2,
               nestedQueryRelation: relation
             });
-            const field = sql`${sql.identifier(relationTableAlias)}.${sql.identifier("data")}`.as(selectedRelationTsKey);
+            const field = sql2`${sql2.identifier(relationTableAlias)}.${sql2.identifier("data")}`.as(selectedRelationTsKey);
             joins.push({
-              on: sql`true`,
+              on: sql2`true`,
               table: new Subquery(builtRelation.sql, {}, relationTableAlias),
               alias: relationTableAlias,
               joinType: "left",
@@ -38091,14 +38091,14 @@ var init_dialect = __esm({
         let result;
         where = and(joinOn, where);
         if (nestedQueryRelation) {
-          let field = sql`json_build_array(${sql.join(
+          let field = sql2`json_build_array(${sql2.join(
             selection.map(
-              ({ field: field2, tsKey, isJson }) => isJson ? sql`${sql.identifier(`${tableAlias}_${tsKey}`)}.${sql.identifier("data")}` : is(field2, SQL.Aliased) ? field2.sql : field2
+              ({ field: field2, tsKey, isJson }) => isJson ? sql2`${sql2.identifier(`${tableAlias}_${tsKey}`)}.${sql2.identifier("data")}` : is(field2, SQL.Aliased) ? field2.sql : field2
             ),
-            sql`, `
+            sql2`, `
           )})`;
           if (is(nestedQueryRelation, Many)) {
-            field = sql`coalesce(json_agg(${field}${orderBy.length > 0 ? sql` order by ${sql.join(orderBy, sql`, `)}` : void 0}), '[]'::json)`;
+            field = sql2`coalesce(json_agg(${field}${orderBy.length > 0 ? sql2` order by ${sql2.join(orderBy, sql2`, `)}` : void 0}), '[]'::json)`;
           }
           const nestedSelection = [{
             dbKey: "data",
@@ -38115,7 +38115,7 @@ var init_dialect = __esm({
               fields: {},
               fieldsFlat: [{
                 path: [],
-                field: sql.raw("*")
+                field: sql2.raw("*")
               }],
               where,
               limit,
@@ -39601,12 +39601,12 @@ var init_insert = __esm({
        */
       onConflictDoNothing(config2 = {}) {
         if (config2.target === void 0) {
-          this.config.onConflict = sql`do nothing`;
+          this.config.onConflict = sql2`do nothing`;
         } else {
           let targetColumn = "";
           targetColumn = Array.isArray(config2.target) ? config2.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config2.target));
-          const whereSql = config2.where ? sql` where ${config2.where}` : void 0;
-          this.config.onConflict = sql`(${sql.raw(targetColumn)})${whereSql} do nothing`;
+          const whereSql = config2.where ? sql2` where ${config2.where}` : void 0;
+          this.config.onConflict = sql2`(${sql2.raw(targetColumn)})${whereSql} do nothing`;
         }
         return this;
       }
@@ -39645,13 +39645,13 @@ var init_insert = __esm({
             'You cannot use both "where" and "targetWhere"/"setWhere" at the same time - "where" is deprecated, use "targetWhere" or "setWhere" instead.'
           );
         }
-        const whereSql = config2.where ? sql` where ${config2.where}` : void 0;
-        const targetWhereSql = config2.targetWhere ? sql` where ${config2.targetWhere}` : void 0;
-        const setWhereSql = config2.setWhere ? sql` where ${config2.setWhere}` : void 0;
+        const whereSql = config2.where ? sql2` where ${config2.where}` : void 0;
+        const targetWhereSql = config2.targetWhere ? sql2` where ${config2.targetWhere}` : void 0;
+        const setWhereSql = config2.setWhere ? sql2` where ${config2.setWhere}` : void 0;
         const setSql = this.dialect.buildUpdateSet(this.config.table, mapUpdateSet(this.config.table, config2.set));
         let targetColumn = "";
         targetColumn = Array.isArray(config2.target) ? config2.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config2.target));
-        this.config.onConflict = sql`(${sql.raw(targetColumn)})${targetWhereSql} do update set ${setSql}${whereSql}${setWhereSql}`;
+        this.config.onConflict = sql2`(${sql2.raw(targetColumn)})${targetWhereSql} do update set ${setSql}${whereSql}${setWhereSql}`;
         return this;
       }
       /** @internal */
@@ -40034,10 +40034,10 @@ var init_count = __esm({
       [Symbol.toStringTag] = "PgCountBuilder";
       session;
       static buildEmbeddedCount(source, filters) {
-        return sql`(select count(*) from ${source}${sql.raw(" where ").if(filters)}${filters})`;
+        return sql2`(select count(*) from ${source}${sql2.raw(" where ").if(filters)}${filters})`;
       }
       static buildCount(source, filters) {
-        return sql`select count(*) as count from ${source}${sql.raw(" where ").if(filters)}${filters};`;
+        return sql2`select count(*) as count from ${source}${sql2.raw(" where ").if(filters)}${filters};`;
       }
       /** @intrnal */
       setToken(token) {
@@ -40198,10 +40198,10 @@ var init_raw = __esm({
     init_entity();
     init_query_promise();
     PgRaw = class extends QueryPromise {
-      constructor(execute, sql2, query, mapBatchResult) {
+      constructor(execute, sql3, query, mapBatchResult) {
         super();
         this.execute = execute;
-        this.sql = sql2;
+        this.sql = sql3;
         this.query = query;
         this.mapBatchResult = mapBatchResult;
       }
@@ -40498,7 +40498,7 @@ var init_db = __esm({
       }
       authToken;
       execute(query) {
-        const sequel = typeof query === "string" ? sql.raw(query) : query.getSQL();
+        const sequel = typeof query === "string" ? sql2.raw(query) : query.getSQL();
         const builtQuery = this.dialect.sqlToQuery(sequel);
         const prepared = this.session.prepareQuery(
           builtQuery,
@@ -40521,8 +40521,8 @@ var init_db = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@opentelemetry+api@1.9.1_@types+pg@8.20.0_pg@8.20.0/node_modules/drizzle-orm/cache/core/cache.js
-async function hashQuery(sql2, params) {
-  const dataToHash = `${sql2}-${JSON.stringify(params)}`;
+async function hashQuery(sql3, params) {
+  const dataToHash = `${sql3}-${JSON.stringify(params)}`;
   const encoder2 = new TextEncoder();
   const data = encoder2.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -40651,7 +40651,7 @@ var init_schema = __esm({
         return pgSequenceWithSchema(name2, options, this.schemaName);
       };
       getSQL() {
-        return new SQL([sql.identifier(this.schemaName)]);
+        return new SQL([sql2.identifier(this.schemaName)]);
       }
       shouldOmitSQLParens() {
         return true;
@@ -40793,8 +40793,8 @@ var init_session = __esm({
         ).all();
       }
       /** @internal */
-      async count(sql2, token) {
-        const res = await this.execute(sql2, token);
+      async count(sql22, token) {
+        const res = await this.execute(sql22, token);
         return Number(
           res[0]["count"]
         );
@@ -40822,10 +40822,10 @@ var init_session = __esm({
         if (typeof config2.deferrable === "boolean") {
           chunks.push(config2.deferrable ? "deferrable" : "not deferrable");
         }
-        return sql.raw(chunks.join(" "));
+        return sql2.raw(chunks.join(" "));
       }
       setTransaction(config2) {
-        return this.session.execute(sql`set transaction ${this.getTransactionConfigSQL(config2)}`);
+        return this.session.execute(sql2`set transaction ${this.getTransactionConfigSQL(config2)}`);
       }
     };
   }
@@ -41058,20 +41058,20 @@ var init_session2 = __esm({
         const isPool = this.client instanceof Pool || Object.getPrototypeOf(this.client).constructor.name.includes("Pool");
         const session = isPool ? new _NodePgSession(await this.client.connect(), this.dialect, this.schema, this.options) : this;
         const tx = new NodePgTransaction(this.dialect, session, this.schema);
-        await tx.execute(sql`begin${config2 ? sql` ${tx.getTransactionConfigSQL(config2)}` : void 0}`);
+        await tx.execute(sql2`begin${config2 ? sql2` ${tx.getTransactionConfigSQL(config2)}` : void 0}`);
         try {
           const result = await transaction(tx);
-          await tx.execute(sql`commit`);
+          await tx.execute(sql2`commit`);
           return result;
         } catch (error) {
-          await tx.execute(sql`rollback`);
+          await tx.execute(sql2`rollback`);
           throw error;
         } finally {
           if (isPool) session.client.release();
         }
       }
-      async count(sql2) {
-        const res = await this.execute(sql2);
+      async count(sql22) {
+        const res = await this.execute(sql22);
         return Number(
           res["rows"][0]["count"]
         );
@@ -41087,13 +41087,13 @@ var init_session2 = __esm({
           this.schema,
           this.nestedIndex + 1
         );
-        await tx.execute(sql.raw(`savepoint ${savepointName}`));
+        await tx.execute(sql2.raw(`savepoint ${savepointName}`));
         try {
           const result = await transaction(tx);
-          await tx.execute(sql.raw(`release savepoint ${savepointName}`));
+          await tx.execute(sql2.raw(`release savepoint ${savepointName}`));
           return result;
         } catch (err) {
-          await tx.execute(sql.raw(`rollback to savepoint ${savepointName}`));
+          await tx.execute(sql2.raw(`rollback to savepoint ${savepointName}`));
           throw err;
         }
       }
@@ -41202,6 +41202,8 @@ __export(schema_exports, {
   adminAuthPasswordResetsTable: () => adminAuthPasswordResetsTable,
   adminAuthUsersTable: () => adminAuthUsersTable,
   adminCompaniesTable: () => adminCompaniesTable,
+  appFaqTable: () => appFaqTable,
+  appHelpTicketsTable: () => appHelpTicketsTable,
   appNewsItemsTable: () => appNewsItemsTable,
   appOperationalConfigTable: () => appOperationalConfigTable,
   appServiceRegionsTable: () => appServiceRegionsTable,
@@ -41210,10 +41212,13 @@ __export(schema_exports, {
   billingExportBatchesTable: () => billingExportBatchesTable,
   companyChangeRequestsTable: () => companyChangeRequestsTable,
   companyComplianceDocumentsTable: () => companyComplianceDocumentsTable,
+  driverMessageDismissalsTable: () => driverMessageDismissalsTable,
+  driverMessagesTable: () => driverMessagesTable,
   driverVehicleAssignmentsTable: () => driverVehicleAssignmentsTable,
   emailVerificationCodesTable: () => emailVerificationCodesTable,
   fareAreasTable: () => fareAreasTable,
   financialAuditLogTable: () => financialAuditLogTable,
+  fleetDriverExpoPushTokensTable: () => fleetDriverExpoPushTokensTable,
   fleetDriversTable: () => fleetDriversTable,
   fleetVehiclesTable: () => fleetVehiclesTable,
   homepageContentTable: () => homepageContentTable,
@@ -41232,8 +41237,10 @@ __export(schema_exports, {
   partnerRegistrationRequestsTable: () => partnerRegistrationRequestsTable,
   partnerRegistrationTimelineTable: () => partnerRegistrationTimelineTable,
   partnerRideSeriesTable: () => partnerRideSeriesTable,
+  passengerExpoPushTokensTable: () => passengerExpoPushTokensTable,
   paymentsTable: () => paymentsTable,
   rideBillingCorrectionsTable: () => rideBillingCorrectionsTable,
+  rideDriverLocationsTable: () => rideDriverLocationsTable,
   rideEventsTable: () => rideEventsTable,
   rideFinancialsTable: () => rideFinancialsTable,
   rideSupportTicketsTable: () => rideSupportTicketsTable,
@@ -41243,7 +41250,7 @@ __export(schema_exports, {
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideEventsTable, rideSupportTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41339,8 +41346,11 @@ var init_schema2 = __esm({
       vehicle_class: text("vehicle_class").notNull().default("standard"),
       last_login_at: timestamp("last_login_at", { withTimezone: true }),
       last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
+      /** Fleet-App: neue Markt-Sofortaufträge annehmen (false = offline am Markt). */
+      is_market_online: boolean("is_market_online").notNull().default(false),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+      reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true })
     });
     fleetVehiclesTable = pgTable("fleet_vehicles", {
       id: text("id").primaryKey(),
@@ -41619,7 +41629,29 @@ var init_schema2 = __esm({
       /** Tarif-Engine-Snapshot bei Buchung (Merge + Breakdown; freeze). */
       tariff_snapshot_json: jsonb("tariff_snapshot_json").$type().notNull().default({}),
       /** Rollstuhl-/Barrierefrei-Infos (fahrtrelevant, keine Diagnose). */
-      accessibility_options_json: jsonb("accessibility_options_json").$type().notNull().default({})
+      accessibility_options_json: jsonb("accessibility_options_json").$type().notNull().default({}),
+      /** Kunde: einmaliger Push bei Zuweisung (scheduled → scheduled_assigned). */
+      push_customer_reservation_assigned_at: timestamp("push_customer_reservation_assigned_at", { withTimezone: true }),
+      /** Fahrer: einmaliger Push ca. 45 Min. vor Abholung (Aktivierung erinnern). */
+      push_driver_activation_reminder_at: timestamp("push_driver_activation_reminder_at", { withTimezone: true })
+    });
+    rideDriverLocationsTable = pgTable("ride_driver_locations", {
+      ride_id: text("ride_id").primaryKey().references(() => ridesTable.id, { onDelete: "cascade" }),
+      fleet_driver_id: text("fleet_driver_id").notNull(),
+      lat: doublePrecision("lat").notNull(),
+      lon: doublePrecision("lon").notNull(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    fleetDriverExpoPushTokensTable = pgTable("fleet_driver_expo_push_tokens", {
+      expo_push_token: text("expo_push_token").primaryKey(),
+      fleet_driver_id: text("fleet_driver_id").notNull(),
+      company_id: text("company_id").notNull(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    passengerExpoPushTokensTable = pgTable("passenger_expo_push_tokens", {
+      expo_push_token: text("expo_push_token").primaryKey(),
+      passenger_id: text("passenger_id").notNull(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
     rideEventsTable = pgTable("ride_events", {
       id: text("id").primaryKey(),
@@ -41650,6 +41682,21 @@ var init_schema2 = __esm({
       ride_context_snapshot: jsonb("ride_context_snapshot").$type().notNull().default({}),
       snapshot_schema_version: integer("snapshot_schema_version").notNull().default(1),
       snapshot_captured_at: timestamp("snapshot_captured_at", { withTimezone: true }).notNull(),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    appHelpTicketsTable = pgTable("app_help_tickets", {
+      id: text("id").primaryKey(),
+      passenger_id: text("passenger_id").notNull(),
+      passenger_name: text("passenger_name"),
+      passenger_email: text("passenger_email").notNull(),
+      passenger_phone: text("passenger_phone"),
+      category: text("category").notNull().default("other"),
+      subject: text("subject"),
+      message: text("message").notNull(),
+      status: text("status").notNull().default("open"),
+      internal_note: text("internal_note"),
+      source: text("source").notNull().default("mobile_help"),
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
@@ -42027,6 +42074,30 @@ var init_schema2 = __esm({
       created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
     });
+    appFaqTable = pgTable("app_faq", {
+      id: text("id").primaryKey(),
+      question: text("question").notNull().default(""),
+      answer: text("answer").notNull().default(""),
+      category: text("category").notNull().default("general"),
+      sort_order: integer("sort_order").notNull().default(0),
+      active: boolean("active").notNull().default(true),
+      created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    driverMessagesTable = pgTable("driver_messages", {
+      id: text("id").primaryKey(),
+      title: text("title").notNull().default(""),
+      body: text("body").notNull().default(""),
+      target_driver_id: text("target_driver_id").references(() => fleetDriversTable.id, { onDelete: "set null" }),
+      sent_at: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+      sent_by: text("sent_by").notNull().default(""),
+      message_type: text("message_type").notNull().default("inbox")
+    });
+    driverMessageDismissalsTable = pgTable("driver_message_dismissals", {
+      fleet_driver_id: text("fleet_driver_id").notNull(),
+      message_id: text("message_id").notNull(),
+      dismissed_at: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow()
+    });
     appSponsorsTable = pgTable("app_sponsors", {
       id: text("id").primaryKey(),
       title: text("title").notNull().default(""),
@@ -42236,7 +42307,7 @@ async function redeemAccessCodeInTransaction(tx, normalized, bookingCompanyId) {
       or(isNull(accessCodesTable.company_id), eq(accessCodesTable.company_id, bookingCompanyId))
     );
   }
-  const [row] = await tx.update(accessCodesTable).set({ uses_count: sql`${accessCodesTable.uses_count} + 1` }).where(and(...whereParts)).returning({
+  const [row] = await tx.update(accessCodesTable).set({ uses_count: sql2`${accessCodesTable.uses_count} + 1` }).where(and(...whereParts)).returning({
     id: accessCodesTable.id,
     code_type: accessCodesTable.code_type,
     label: accessCodesTable.label,
@@ -42495,6 +42566,49 @@ var init_accessCodesData = __esm({
   }
 });
 
+// src/db/ridePushNotificationMarkers.ts
+var ridePushNotificationMarkers_exports = {};
+__export(ridePushNotificationMarkers_exports, {
+  claimRidesForDriverActivationReminderPush: () => claimRidesForDriverActivationReminderPush,
+  tryMarkCustomerReservationAssignedPushSent: () => tryMarkCustomerReservationAssignedPushSent
+});
+async function tryMarkCustomerReservationAssignedPushSent(rideId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = rideId.trim();
+  if (!id) return false;
+  const rows = await db2.update(ridesTable).set({ push_customer_reservation_assigned_at: /* @__PURE__ */ new Date() }).where(and(eq(ridesTable.id, id), isNull(ridesTable.push_customer_reservation_assigned_at))).returning({ id: ridesTable.id });
+  return rows.length > 0;
+}
+async function claimRidesForDriverActivationReminderPush(now = /* @__PURE__ */ new Date()) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const lower = new Date(now.getTime() + 43 * 60 * 1e3);
+  const upper = new Date(now.getTime() + 47 * 60 * 1e3);
+  const rows = await db2.update(ridesTable).set({ push_driver_activation_reminder_at: /* @__PURE__ */ new Date() }).where(
+    and(
+      eq(ridesTable.status, "scheduled_assigned"),
+      isNotNull(ridesTable.scheduled_at),
+      isNotNull(ridesTable.driver_id),
+      isNull(ridesTable.push_driver_activation_reminder_at),
+      gte(ridesTable.scheduled_at, lower),
+      lte(ridesTable.scheduled_at, upper)
+    )
+  ).returning({ id: ridesTable.id, driver_id: ridesTable.driver_id, company_id: ridesTable.company_id });
+  return rows.map((r) => ({
+    id: r.id,
+    driver_id: r.driver_id,
+    company_id: r.company_id
+  }));
+}
+var init_ridePushNotificationMarkers = __esm({
+  "src/db/ridePushNotificationMarkers.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
 // src/domain/partnerBookingMeta.ts
 function isRecord(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -42591,7 +42705,7 @@ function isFarFutureReservation(scheduledAtIso, nowMs = Date.now()) {
   if (!s) return false;
   const t = new Date(s).getTime();
   if (!Number.isFinite(t)) return false;
-  return t > nowMs + RESERVATION_LEAD_MS;
+  return t >= nowMs + RESERVATION_LEAD_MS;
 }
 function initialPanelRideStatus(scheduledAtIso) {
   return isFarFutureReservation(scheduledAtIso) ? "scheduled" : "pending";
@@ -42599,7 +42713,7 @@ function initialPanelRideStatus(scheduledAtIso) {
 var RESERVATION_LEAD_MS;
 var init_dispatchStatus = __esm({
   "src/lib/dispatchStatus.ts"() {
-    RESERVATION_LEAD_MS = 30 * 60 * 1e3;
+    RESERVATION_LEAD_MS = 60 * 60 * 1e3;
   }
 });
 
@@ -42678,30 +42792,6 @@ __export(ridesData_exports, {
   updateRide: () => updateRide,
   updateRidePartnerBookingMetaTx: () => updateRidePartnerBookingMetaTx
 });
-function readyForDispatchThreshold(nowMs = Date.now()) {
-  return new Date(nowMs + DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1e3);
-}
-function isReservationActivatable(ride, nowMs = Date.now()) {
-  if (ride.status !== "scheduled_assigned") return false;
-  if (!ride.scheduledAt) return false;
-  const scheduledMs = new Date(ride.scheduledAt).getTime();
-  if (!Number.isFinite(scheduledMs)) return false;
-  return nowMs >= scheduledMs - DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES * 60 * 1e3;
-}
-async function promoteDueReservationsByIds(db2, rideIds) {
-  const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
-  if (ids.length === 0) return /* @__PURE__ */ new Set();
-  const threshold = readyForDispatchThreshold();
-  const rows = await db2.update(ridesTable).set({ status: "ready_for_dispatch" }).where(
-    and(
-      inArray(ridesTable.id, ids),
-      eq(ridesTable.status, "scheduled_assigned"),
-      isNotNull(ridesTable.scheduled_at),
-      lte(ridesTable.scheduled_at, threshold)
-    )
-  ).returning({ id: ridesTable.id });
-  return new Set(rows.map((r) => r.id));
-}
 async function expirePastOpenReservationsByIds(db2, rideIds) {
   const ids = Array.from(new Set(rideIds.map((v) => v.trim()).filter((v) => v.length > 0)));
   if (ids.length === 0) return /* @__PURE__ */ new Set();
@@ -42715,16 +42805,15 @@ async function expirePastOpenReservationsByIds(db2, rideIds) {
   ).returning({ id: ridesTable.id });
   return new Set(rows.map((r) => r.id));
 }
-function withLifecycleStatuses(rows, promotedIds, expiredIds) {
-  if (promotedIds.size === 0 && expiredIds.size === 0) return rows;
+function withLifecycleExpiredRows(rows, expiredIds) {
+  if (expiredIds.size === 0) return rows;
   return rows.map((r) => {
     if (expiredIds.has(r.id)) return { ...r, status: "expired" };
-    if (promotedIds.has(r.id)) return { ...r, status: "ready_for_dispatch" };
     return r;
   });
 }
 function companyIdMatchCondition(companyId) {
-  return sql`${ridesTable.company_id}::text = ${companyId}`;
+  return sql2`${ridesTable.company_id}::text = ${companyId}`;
 }
 function makeEventId(prefix = "REV") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -42935,10 +43024,6 @@ function applyMemoryRideFilters(list, filters) {
 async function listRidesForCompanyFiltered(companyId, filters) {
   const db2 = getDb();
   if (!db2) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map(
-      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
-    );
     const list = memoryRides.filter((r) => r.companyId === companyId);
     const filtered = applyMemoryRideFilters(list, filters);
     return filtered.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
@@ -42969,56 +43054,40 @@ async function listRidesForCompanyFiltered(companyId, filters) {
   if (filters.hasAccessCode === true) cond.push(isNotNull(ridesTable.access_code_id));
   if (filters.hasAccessCode === false) cond.push(isNull(ridesTable.access_code_id));
   if (filters.partnerFlow) {
-    cond.push(sql`${ridesTable.partner_booking_meta}->>'flow' = ${filters.partnerFlow}`);
+    cond.push(sql2`${ridesTable.partner_booking_meta}->>'flow' = ${filters.partnerFlow}`);
   }
   const rows = await db2.select().from(ridesTable).where(and(...cond)).orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 async function listRides() {
   const db2 = getDb();
   if (!db2) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map(
-      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
-    );
     return [...memoryRides];
   }
   const rows = await db2.select().from(ridesTable).orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 async function listRidesForCompany(companyId) {
   const db2 = getDb();
   if (!db2) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map(
-      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
-    );
     return memoryRides.filter((r) => r.companyId === companyId).slice().sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
   }
   const rows = await db2.select().from(ridesTable).where(companyIdMatchCondition(companyId)).orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 async function listRidesForPassenger(passengerId) {
   const pid = passengerId.trim();
   if (!pid) return [];
   const db2 = getDb();
   if (!db2) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map(
-      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
-    );
     return memoryRides.filter((r) => (r.passengerId ?? "").trim() === pid).slice().sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
   }
   const rows = await db2.select().from(ridesTable).where(eq(ridesTable.passenger_id, pid)).orderBy(desc(ridesTable.created_at));
   const expired = await expirePastOpenReservationsByIds(db2, rows.map((r) => r.id));
-  const promoted = await promoteDueReservationsByIds(db2, rows.map((r) => r.id));
-  return withLifecycleStatuses(rows, promoted, expired).map(rowToRide);
+  return withLifecycleExpiredRows(rows, expired).map(rowToRide);
 }
 async function getLastRideForDriverInCompany(companyId, driverId) {
   const db2 = getDb();
@@ -43160,17 +43229,12 @@ async function insertRidesWithSharedAccessCode(rides, accessCodePlain) {
 async function findRide(id) {
   const db2 = getDb();
   if (!db2) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map(
-      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
-    );
     return memoryRides.find((x) => x.id === id) ?? null;
   }
   const rows = await db2.select().from(ridesTable).where(eq(ridesTable.id, id)).limit(1);
   if (!rows[0]) return null;
   const expired = await expirePastOpenReservationsByIds(db2, [rows[0].id]);
-  const promoted = await promoteDueReservationsByIds(db2, [rows[0].id]);
-  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
+  const row = withLifecycleExpiredRows([rows[0]], expired)[0];
   return rowToRide(row);
 }
 async function findRideForPassenger(id, passengerId) {
@@ -43179,10 +43243,6 @@ async function findRideForPassenger(id, passengerId) {
   if (!rideId || !pid) return null;
   const db2 = getDb();
   if (!db2) {
-    const nowMs = Date.now();
-    memoryRides = memoryRides.map(
-      (r) => isReservationActivatable(r, nowMs) ? { ...r, status: "ready_for_dispatch" } : r
-    );
     const row2 = memoryRides.find((x) => x.id === rideId);
     if (!row2) return null;
     return (row2.passengerId ?? "").trim() === pid ? row2 : null;
@@ -43190,8 +43250,7 @@ async function findRideForPassenger(id, passengerId) {
   const rows = await db2.select().from(ridesTable).where(and(eq(ridesTable.id, rideId), eq(ridesTable.passenger_id, pid))).limit(1);
   if (!rows[0]) return null;
   const expired = await expirePastOpenReservationsByIds(db2, [rows[0].id]);
-  const promoted = await promoteDueReservationsByIds(db2, [rows[0].id]);
-  const row = withLifecycleStatuses([rows[0]], promoted, expired)[0];
+  const row = withLifecycleExpiredRows([rows[0]], expired)[0];
   return rowToRide(row);
 }
 function escapeIlikePattern(s) {
@@ -43269,7 +43328,7 @@ async function countRidesAdmin(query) {
   if (!db2) {
     return memoryRides.filter((r) => matchesAdminMemoryQuery(r, query)).length;
   }
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(whereSql);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(whereSql);
   return Number(row?.n ?? 0);
 }
 async function listRidesAdminPage(query, limit, offset) {
@@ -43334,7 +43393,7 @@ async function listAdminRidesAgendaForDay(bounds) {
       return t >= start && t <= end;
     }).sort((a, b) => rideAgendaTime(a).getTime() - rideAgendaTime(b).getTime()).slice(0, 200).map((ride) => ({ ...ride, companyName: null }));
   }
-  const coalesceTime = sql`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+  const coalesceTime = sql2`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
   const rows = await db2.select({
     ride: ridesTable,
     companyName: adminCompaniesTable.name
@@ -43382,22 +43441,22 @@ async function listAdminPartnerDayStats(bounds, prevBounds) {
     }
     return rows.sort((a, b) => b.ridesCount - a.ridesCount).slice(0, 12);
   }
-  const rideDay = sql`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+  const rideDay = sql2`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
   const cur = await db2.select({
     companyId: ridesTable.company_id,
     companyName: adminCompaniesTable.name,
-    ridesCount: sql`count(*)::int`,
-    completedRevenue: sql`coalesce(sum(case when ${ridesTable.status} = 'completed' then coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare}) else 0 end), 0)`
+    ridesCount: sql2`count(*)::int`,
+    completedRevenue: sql2`coalesce(sum(case when ${ridesTable.status} = 'completed' then coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare}) else 0 end), 0)`
   }).from(ridesTable).innerJoin(adminCompaniesTable, eq(ridesTable.company_id, adminCompaniesTable.id)).where(
     and(
       isNotNull(ridesTable.company_id),
       gte(rideDay, bounds.start),
       lte(rideDay, bounds.end)
     )
-  ).groupBy(ridesTable.company_id, adminCompaniesTable.name).orderBy(desc(sql`count(*)`)).limit(12);
+  ).groupBy(ridesTable.company_id, adminCompaniesTable.name).orderBy(desc(sql2`count(*)`)).limit(12);
   const prev = await db2.select({
     companyId: ridesTable.company_id,
-    ridesCount: sql`count(*)::int`
+    ridesCount: sql2`count(*)::int`
   }).from(ridesTable).where(
     and(
       isNotNull(ridesTable.company_id),
@@ -43427,8 +43486,8 @@ function panelOverviewPresentation(kind) {
   return kind === "taxi" ? "taxi_betrieb" : "leistungspartner";
 }
 function monthWindowBerlin(companyId) {
-  const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
-  const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthStart = sql2`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql2`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
   return and(
     companyIdMatchCondition(companyId),
     gte(ridesTable.created_at, berlinMonthStart),
@@ -43512,44 +43571,44 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
       }
     };
   }
-  const berlinTodayStart = sql`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
-  const berlinTodayEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinTodayStart = sql2`((now() AT TIME ZONE 'Europe/Berlin')::date) AT TIME ZONE 'Europe/Berlin'`;
+  const berlinTodayEnd = sql2`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '1 day') AT TIME ZONE 'Europe/Berlin')`;
   const berlinTomorrowStart = berlinTodayEnd;
-  const berlinTomorrowEnd = sql`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '2 day') AT TIME ZONE 'Europe/Berlin')`;
-  const berlinMonthStart = sql`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
-  const berlinMonthEnd = sql`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
-  const weekRollingStart = sql`(now() - interval '7 days')`;
-  const thirtyRollingStart = sql`(now() - interval '30 days')`;
+  const berlinTomorrowEnd = sql2`(((now() AT TIME ZONE 'Europe/Berlin')::date + interval '2 day') AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthStart = sql2`(date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) AT TIME ZONE 'Europe/Berlin')`;
+  const berlinMonthEnd = sql2`((date_trunc('month', (now() AT TIME ZONE 'Europe/Berlin')) + interval '1 month') AT TIME ZONE 'Europe/Berlin')`;
+  const weekRollingStart = sql2`(now() - interval '7 days')`;
+  const thirtyRollingStart = sql2`(now() - interval '30 days')`;
   const baseCompleted = and(companyIdMatchCondition(companyId), eq(ridesTable.status, "completed"));
   const [todayRow] = await db2.select({
-    completedRides: sql`count(*)::int`,
-    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+    completedRides: sql2`count(*)::int`,
+    revenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
   }).from(ridesTable).where(
     and(baseCompleted, gte(ridesTable.created_at, berlinTodayStart), lt(ridesTable.created_at, berlinTodayEnd))
   );
   const [weekRow] = await db2.select({
-    completedRides: sql`count(*)::int`,
-    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+    completedRides: sql2`count(*)::int`,
+    revenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
   }).from(ridesTable).where(and(baseCompleted, gte(ridesTable.created_at, weekRollingStart)));
   const [thirtyRow] = await db2.select({
-    completedRides: sql`count(*)::int`,
-    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+    completedRides: sql2`count(*)::int`,
+    revenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
   }).from(ridesTable).where(and(baseCompleted, gte(ridesTable.created_at, thirtyRollingStart)));
   const [monthRow] = await db2.select({
-    completedRides: sql`count(*)::int`,
-    revenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+    completedRides: sql2`count(*)::int`,
+    revenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
   }).from(ridesTable).where(
     and(baseCompleted, gte(ridesTable.created_at, berlinMonthStart), lt(ridesTable.created_at, berlinMonthEnd))
   );
-  const [openRow] = await db2.select({ openRides: sql`count(*)::int` }).from(ridesTable).where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)));
+  const [openRow] = await db2.select({ openRides: sql2`count(*)::int` }).from(ridesTable).where(and(companyIdMatchCondition(companyId), notInArray(ridesTable.status, PANEL_OVERVIEW_TERMINAL_STATUSES)));
   const mw = monthWindowBerlin(companyId);
-  const [compDec] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(mw, eq(ridesTable.status, "completed")));
-  const [cancDec] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(mw, inArray(ridesTable.status, PANEL_OVERVIEW_CANCELLED_STATUSES)));
+  const [compDec] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(and(mw, eq(ridesTable.status, "completed")));
+  const [cancDec] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(and(mw, inArray(ridesTable.status, PANEL_OVERVIEW_CANCELLED_STATUSES)));
   const compN = Number(compDec?.n ?? 0);
   const cancN = Number(cancDec?.n ?? 0);
   const decDenom = compN + cancN;
   const cancelRate = decDenom > 0 ? cancN / decDenom : null;
-  const [stToday] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(
+  const [stToday] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(
     and(
       companyIdMatchCondition(companyId),
       isNotNull(ridesTable.scheduled_at),
@@ -43557,7 +43616,7 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
       lt(ridesTable.scheduled_at, berlinTodayEnd)
     )
   );
-  const [stTomorrow] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(
+  const [stTomorrow] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(
     and(
       companyIdMatchCondition(companyId),
       isNotNull(ridesTable.scheduled_at),
@@ -43566,9 +43625,9 @@ async function getPanelCompanyOverviewMetrics(companyId, companyKind) {
     )
   );
   const [qualRow] = await db2.select({
-    avgFare: sql`coalesce(avg(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    avgKm: sql`coalesce(avg(${ridesTable.distance_km}), 0)`,
-    withCode: sql`count(*) FILTER (WHERE ${ridesTable.access_code_id} IS NOT NULL)::int`
+    avgFare: sql2`coalesce(avg(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    avgKm: sql2`coalesce(avg(${ridesTable.distance_km}), 0)`,
+    withCode: sql2`count(*) FILTER (WHERE ${ridesTable.access_code_id} IS NOT NULL)::int`
   }).from(ridesTable).where(and(mw, eq(ridesTable.status, "completed")));
   const completedMonthN = Number(monthRow?.completedRides ?? 0);
   const avgFare = completedMonthN > 0 ? Number(qualRow?.avgFare ?? 0) : null;
@@ -43690,10 +43749,10 @@ async function tryFleetAcceptRideAtomic(input) {
     memoryRides[idx] = next;
     return { ok: true, previous: cur, ride: next };
   }
-  const mergeCompanyExpr = companyIdIn !== "" ? sql`COALESCE(${ridesTable.company_id}, ${companyIdIn})` : void 0;
+  const mergeCompanyExpr = companyIdIn !== "" ? sql2`COALESCE(${ridesTable.company_id}, ${companyIdIn})` : void 0;
   const prevSnapshot = await findRide(rideId);
   if (!prevSnapshot) return { ok: false, reason: "not_found" };
-  const nextStatusExpr = sql`case when ${ridesTable.status} = 'scheduled' then 'scheduled_assigned' else 'accepted' end`;
+  const nextStatusExpr = sql2`case when ${ridesTable.status} = 'scheduled' then 'scheduled_assigned' else 'accepted' end`;
   const rows = await db2.update(ridesTable).set({
     status: nextStatusExpr,
     driver_id: driverId,
@@ -43702,7 +43761,7 @@ async function tryFleetAcceptRideAtomic(input) {
     and(
       eq(ridesTable.id, rideId),
       inArray(ridesTable.status, ACCEPT_DISPATCH_STATUSES),
-      sql`(COALESCE(trim(${ridesTable.driver_id}), '') = '' OR ${ridesTable.driver_id} = ${driverId})`
+      sql2`(COALESCE(trim(${ridesTable.driver_id}), '') = '' OR ${ridesTable.driver_id} = ${driverId})`
     )
   ).returning();
   const row = rows[0];
@@ -43836,7 +43895,7 @@ async function listRidesForDriver(driverId) {
   const rows = await db2.select().from(ridesTable).where(and(eq(ridesTable.driver_id, did), eq(ridesTable.status, "completed"))).orderBy(desc(ridesTable.created_at)).limit(200);
   return rows.map(rowToRide);
 }
-var memoryRides, DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES, PANEL_OVERVIEW_TERMINAL_STATUSES, PANEL_OVERVIEW_CANCELLED_STATUSES, ACCEPT_DISPATCH_STATUSES;
+var memoryRides, PANEL_OVERVIEW_TERMINAL_STATUSES, PANEL_OVERVIEW_CANCELLED_STATUSES, ACCEPT_DISPATCH_STATUSES;
 var init_ridesData = __esm({
   "src/db/ridesData.ts"() {
     init_drizzle_orm();
@@ -43850,7 +43909,6 @@ var init_ridesData = __esm({
     init_schema2();
     init_rideBillingCorrectionsData();
     memoryRides = [];
-    DEFAULT_RESERVATION_ACTIVATION_WINDOW_MINUTES = 30;
     PANEL_OVERVIEW_TERMINAL_STATUSES = [
       "completed",
       "cancelled",
@@ -44116,7 +44174,7 @@ async function upsertRideFinancialSnapshot(input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   return await db2.transaction(async (tx) => {
     const { ride } = input;
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ride.id}))`);
+    await tx.execute(sql2`select pg_advisory_xact_lock(hashtext(${ride.id}))`);
     const existingRows = await tx.select().from(rideFinancialsTable).where(eq(rideFinancialsTable.ride_id, ride.id)).limit(1);
     let existing = existingRows[0];
     const autoLockReason = await getAutoLockReasonDb(ride.id, tx);
@@ -44476,13 +44534,94 @@ var init_rideFinancialsData = __esm({
   }
 });
 
+// src/db/rideDriverLocationData.ts
+async function upsertRideDriverLocation(rideId, fleetDriverId, lat, lon) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rid = rideId.trim();
+  const did = fleetDriverId.trim();
+  if (!rid || !did || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(rideDriverLocationsTable).values({
+    ride_id: rid,
+    fleet_driver_id: did,
+    lat,
+    lon,
+    updated_at: now
+  }).onConflictDoUpdate({
+    target: rideDriverLocationsTable.ride_id,
+    set: { fleet_driver_id: did, lat, lon, updated_at: now }
+  });
+  return { lat, lon, updatedAt: now.toISOString(), fleetDriverId: did };
+}
+async function getRideDriverLocation(rideId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rid = rideId.trim();
+  if (!rid) return null;
+  const rows = await db2.select({
+    lat: rideDriverLocationsTable.lat,
+    lon: rideDriverLocationsTable.lon,
+    updated_at: rideDriverLocationsTable.updated_at,
+    fleet_driver_id: rideDriverLocationsTable.fleet_driver_id
+  }).from(rideDriverLocationsTable).where(eq(rideDriverLocationsTable.ride_id, rid)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  const lat = Number(row.lat);
+  const lon = Number(row.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return {
+    lat,
+    lon,
+    updatedAt: row.updated_at.toISOString(),
+    fleetDriverId: row.fleet_driver_id
+  };
+}
+async function hydrateRideDriverLocationCache(rideId, cache2) {
+  if (cache2.has(rideId)) return;
+  const dbLoc = await getRideDriverLocation(rideId);
+  if (dbLoc) cache2.set(rideId, dbLoc);
+}
+var init_rideDriverLocationData = __esm({
+  "src/db/rideDriverLocationData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
+// src/lib/logger.ts
+var import_pino, isProduction, logger;
+var init_logger2 = __esm({
+  "src/lib/logger.ts"() {
+    import_pino = __toESM(require_pino(), 1);
+    isProduction = process.env.NODE_ENV === "production";
+    logger = (0, import_pino.default)({
+      level: process.env.LOG_LEVEL ?? "info",
+      redact: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "res.headers['set-cookie']"
+      ],
+      ...isProduction ? {} : {
+        transport: {
+          target: "pino-pretty",
+          options: { colorize: true }
+        }
+      }
+    });
+  }
+});
+
 // src/lib/serviceRegionMatch.ts
 function haversineDistanceKm(aLat, aLng, bLat, bLng) {
-  const toRad = (d) => d * Math.PI / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const lat1 = toRad(aLat);
-  const lat2 = toRad(bLat);
+  const toRad2 = (d) => d * Math.PI / 180;
+  const dLat = toRad2(bLat - aLat);
+  const dLng = toRad2(bLng - aLng);
+  const lat1 = toRad2(aLat);
+  const lat2 = toRad2(bLat);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
@@ -44561,6 +44700,7 @@ __export(operationalTariffEngine_exports, {
   isPlainTariffObject: () => isPlainTariffObject,
   mergeTariffsForServiceRegion: () => mergeTariffsForServiceRegion,
   mergedTariffToPublicProfile: () => mergedTariffToPublicProfile,
+  pickTariffSliceForVehicleClass: () => pickTariffSliceForVehicleClass,
   resolveMergedTariff: () => resolveMergedTariff,
   resolveTripEurPerRouteMinute: () => resolveTripEurPerRouteMinute
 });
@@ -44599,6 +44739,16 @@ function mergeTariffsForServiceRegion(globalTariff, regionOverride) {
     }
   }
   return out;
+}
+function pickTariffSliceForVehicleClass(mergedRoot, vClassRaw) {
+  const vClass = String(vClassRaw || "standard").trim().toLowerCase();
+  const root = { ...mergedRoot };
+  const vtoRaw = root.vehicleTariffOverrides;
+  delete root.vehicleTariffOverrides;
+  const vto = isPlainTariffObject(vtoRaw) ? vtoRaw : {};
+  const ov = vClass && isPlainTariffObject(vto[vClass]) ? vto[vClass] : null;
+  if (!ov) return root;
+  return mergeTariffsForServiceRegion(root, ov);
 }
 function resolveMergedTariff(opPayload, serviceRegions, fromFull, pickup) {
   const defT = {};
@@ -44654,18 +44804,30 @@ function applyRounding(raw, mode) {
   return ceilTenthEur(raw);
 }
 function estimateTaxiFromMergedTariff(merged, in_) {
-  const m = merged;
-  const multRaw = isPlainTariffObject(m.vehicleClassMultipliers) ? m.vehicleClassMultipliers : {
+  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
+  const m = pickTariffSliceForVehicleClass(merged, vClass);
+  const multRaw = isPlainTariffObject(merged.vehicleClassMultipliers) ? merged.vehicleClassMultipliers : {
     standard: 1,
     xl: 1.2,
     wheelchair: 1.15,
     onroda: 1
   };
-  const vClass = in_.vehicle && String(in_.vehicle).trim() ? String(in_.vehicle).trim().toLowerCase() : "standard";
-  const vehicleClassMultiplier = n(
+  let vehicleClassMultiplier = n(
     multRaw[vClass] ?? (typeof multRaw["standard"] === "number" ? multRaw["standard"] : 1),
     1
   );
+  let xlFixedEur = 0;
+  if (vClass === "xl") {
+    const mode = String(merged.xlPricingMode || "multiplier").trim().toLowerCase();
+    const fix = Math.max(0, n(merged.xlFixedSurchargeEur, 0));
+    if (mode === "fixed") {
+      vehicleClassMultiplier = 1;
+      xlFixedEur = fix;
+    } else if (mode === "both") {
+      xlFixedEur = fix;
+    }
+  }
+  const wheelchairFixedEur = vClass === "wheelchair" ? Math.max(0, n(merged.wheelchairFixedSurchargeEur, 0)) : 0;
   if (m.active === false) {
     return {
       subtotal: 0,
@@ -44754,12 +44916,12 @@ function estimateTaxiFromMergedTariff(merged, in_) {
     withExtra += largeAmount;
     sur.push({ type: "large_vehicle", amount: largeAmount });
   }
-  const withVehicle = withExtra * vehicleClassMultiplier;
+  const withVehicle = withExtra * vehicleClassMultiplier + xlFixedEur + wheelchairFixedEur;
   const rounding = typeof m.rounding === "string" ? m.rounding : "ceil_tenth";
   return {
     subtotal,
     afterMinFare,
-    afterSurcharges: withExtra * vehicleClassMultiplier,
+    afterSurcharges: withExtra * vehicleClassMultiplier + xlFixedEur + wheelchairFixedEur,
     finalRounded: applyRounding(withVehicle, rounding),
     breakdown: {
       baseFare,
@@ -45491,7 +45653,7 @@ var init_appOperationalData = __esm({
         blockNewBookings: false,
         allowDriverApp: true,
         allowCustomerApp: true,
-        globalNoticeDe: "",
+        globalNoticeDe: "Onroda vermittelt Fahrten zwischen Fahrg\xE4sten und unabh\xE4ngigen Taxi- bzw. Mietwagenunternehmen. Der Bef\xF6rderungsvertrag kommt ausschlie\xDFlich zwischen dem Fahrgast und dem jeweiligen Bef\xF6rderer zustande. Onroda ist nicht Vertragspartner der Bef\xF6rderung und \xFCbernimmt keine Haftung f\xFCr deren Durchf\xFChrung.",
         minAppVersionHint: null,
         emergencyShutdown: false
       }
@@ -45526,6 +45688,1958 @@ var init_appOperationalData = __esm({
   }
 });
 
+// src/db/fleetMatchingData.ts
+function normalizeVehicleText(value) {
+  return (value ?? "").trim().toLowerCase();
+}
+function parsePricingMode(raw) {
+  if (raw === "taxi_tariff" || raw === "fixed_price" || raw === "hybrid") return "taxi_tariff";
+  return null;
+}
+function requiredClassForRide(vehicleText) {
+  if (vehicleText.includes("rollstuhl")) return "wheelchair";
+  if (vehicleText === "xl" || vehicleText.includes(" xl")) return "xl";
+  return null;
+}
+function inferPricingModeFromVehicle(_vehicleText) {
+  return "taxi_tariff";
+}
+function requiredLegalTypeForRide(ride) {
+  const vehicleText = normalizeVehicleText(ride.vehicle);
+  const _pricingMode = parsePricingMode(ride.pricingMode) ?? inferPricingModeFromVehicle(vehicleText);
+  return "taxi";
+}
+function isRideCompatibleWithCapability(ride, capability) {
+  const requiredLegalType = requiredLegalTypeForRide(ride);
+  const normalizedLegalType = capability.vehicleLegalType === "rental_car" ? "taxi" : capability.vehicleLegalType;
+  if (!normalizedLegalType || normalizedLegalType !== requiredLegalType) {
+    return false;
+  }
+  const vehicleText = normalizeVehicleText(ride.vehicle);
+  const requiredClass = requiredClassForRide(vehicleText);
+  if (!requiredClass) return true;
+  return capability.vehicleClass === requiredClass;
+}
+async function getFleetDriverCapability(driverId, companyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const assigned = await db2.select({
+    vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
+    vehicleClass: fleetVehiclesTable.vehicle_class,
+    approvalStatus: fleetVehiclesTable.approval_status,
+    isActive: fleetVehiclesTable.is_active
+  }).from(driverVehicleAssignmentsTable).innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id)).where(
+    and(
+      eq(driverVehicleAssignmentsTable.driver_id, driverId),
+      eq(driverVehicleAssignmentsTable.company_id, companyId)
+    )
+  ).orderBy(desc(driverVehicleAssignmentsTable.assigned_at)).limit(1);
+  if (assigned[0]) {
+    if (String(assigned[0].approvalStatus) !== "approved") {
+      return null;
+    }
+    if (!assigned[0].isActive) return null;
+    return {
+      vehicleLegalType: assigned[0].vehicleLegalType,
+      vehicleClass: assigned[0].vehicleClass
+    };
+  }
+  return null;
+}
+var init_fleetMatchingData = __esm({
+  "src/db/fleetMatchingData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
+// src/db/companyComplianceDocumentsData.ts
+import { randomUUID as randomUUID7 } from "node:crypto";
+function asReview(s) {
+  const v = String(s ?? "").trim();
+  if (v === "approved" || v === "rejected" || v === "pending") return v;
+  return "pending";
+}
+function deriveGlobalComplianceStatus(args) {
+  if (!args.hasGewerbe || !args.hasInsurance) return "pending";
+  const g = args.gewerbeReview ?? "pending";
+  const i = args.insuranceReview ?? "pending";
+  if (g === "rejected" || i === "rejected") return "non_compliant";
+  if (g === "pending" || i === "pending") return "in_review";
+  if (g === "approved" && i === "approved") return "compliant";
+  return "in_review";
+}
+function complianceBucketFromDerived(args) {
+  if (!args.hasGewerbe || !args.hasInsurance) return "missing";
+  if (args.derivedStatus === "non_compliant") return "rejected";
+  if (args.derivedStatus === "compliant") return "compliant";
+  if (args.derivedStatus === "in_review") return "in_review";
+  return "missing";
+}
+function reviewForSide(has, companyKey, row) {
+  if (!has) return null;
+  const k = (companyKey ?? "").trim();
+  if (!k) return "pending";
+  if (!row || (row.storage_key ?? "").trim() !== k) return "pending";
+  return asReview(row.review_status);
+}
+function buildSide(has, companyKey, row) {
+  if (!has) {
+    return { uploadedAt: "", reviewStatus: "", reviewNote: "" };
+  }
+  if (row) {
+    const k = (companyKey ?? "").trim();
+    const rowKey = (row.storage_key ?? "").trim();
+    const keysMatch = k === rowKey;
+    const uploaded = row.uploaded_at;
+    const uploadedAt = uploaded instanceof Date ? uploaded.toISOString() : String(uploaded ?? "").trim();
+    return {
+      uploadedAt: uploadedAt || "",
+      reviewStatus: keysMatch ? asReview(row.review_status) : "pending",
+      reviewNote: keysMatch ? String(row.review_note ?? "").trim() : ""
+    };
+  }
+  return { uploadedAt: "", reviewStatus: "pending", reviewNote: "" };
+}
+async function listCurrentDocRows(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    return [];
+  }
+  return db2.select().from(companyComplianceDocumentsTable).where(
+    and(
+      eq(companyComplianceDocumentsTable.company_id, companyId),
+      eq(companyComplianceDocumentsTable.is_current, true)
+    )
+  );
+}
+async function getDerivedComplianceAndDocumentsForRow(r) {
+  const hasG = Boolean((r.compliance_gewerbe_storage_key ?? "").trim());
+  const hasI = Boolean((r.compliance_insurance_storage_key ?? "").trim());
+  if (!isPostgresConfigured() || !getDb()) {
+    const gR = hasG ? "pending" : null;
+    const iR = hasI ? "pending" : null;
+    return {
+      status: deriveGlobalComplianceStatus({
+        hasGewerbe: hasG,
+        hasInsurance: hasI,
+        gewerbeReview: gR,
+        insuranceReview: iR
+      }),
+      complianceDocuments: {
+        gewerbe: { uploadedAt: "", reviewStatus: hasG ? "pending" : "", reviewNote: "" },
+        insurance: { uploadedAt: "", reviewStatus: hasI ? "pending" : "", reviewNote: "" }
+      }
+    };
+  }
+  const rows = await listCurrentDocRows(r.id);
+  const gRow = rows.find((x) => x.document_type === "gewerbe");
+  const iRow = rows.find((x) => x.document_type === "insurance");
+  const gRev = reviewForSide(hasG, r.compliance_gewerbe_storage_key, gRow);
+  const iRev = reviewForSide(hasI, r.compliance_insurance_storage_key, iRow);
+  const status = deriveGlobalComplianceStatus({
+    hasGewerbe: hasG,
+    hasInsurance: hasI,
+    gewerbeReview: gRev,
+    insuranceReview: iRev
+  });
+  return {
+    status,
+    complianceDocuments: {
+      gewerbe: buildSide(hasG, r.compliance_gewerbe_storage_key, gRow),
+      insurance: buildSide(hasI, r.compliance_insurance_storage_key, iRow)
+    }
+  };
+}
+async function getDerivedGlobalComplianceStatusForCompanyRow(r) {
+  const { status } = await getDerivedComplianceAndDocumentsForRow(r);
+  return status;
+}
+async function recomputeAndPersistGlobalCompliance(companyId) {
+  if (!isPostgresConfigured() || !getDb()) return;
+  const db2 = getDb();
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r = rows[0];
+  if (!r) return;
+  const { status } = await getDerivedComplianceAndDocumentsForRow(r);
+  await db2.update(adminCompaniesTable).set({ compliance_status: status }).where(eq(adminCompaniesTable.id, companyId));
+}
+async function insertComplianceDocumentUpload(companyId, kind, storageKey, panelUserId) {
+  const db2 = getDb();
+  if (!db2) {
+    throw new Error("database_not_configured");
+  }
+  const docId = randomUUID7();
+  const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
+  await db2.transaction(async (tx) => {
+    await tx.update(companyComplianceDocumentsTable).set({ is_current: false }).where(
+      and(
+        eq(companyComplianceDocumentsTable.company_id, companyId),
+        eq(companyComplianceDocumentsTable.document_type, kind),
+        eq(companyComplianceDocumentsTable.is_current, true)
+      )
+    );
+    await tx.insert(companyComplianceDocumentsTable).values({
+      id: docId,
+      company_id: companyId,
+      document_type: kind,
+      storage_key: storageKey,
+      uploaded_by_panel_user_id: panelUserId,
+      review_status: "pending",
+      review_note: "",
+      is_current: true
+    });
+    await tx.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, companyId));
+  });
+  await recomputeAndPersistGlobalCompliance(companyId);
+}
+async function setCurrentComplianceDocumentReview(companyId, kind, input) {
+  const db2 = getDb();
+  if (!db2) {
+    return { ok: false, error: "database_not_configured" };
+  }
+  const note = input.reviewNote.trim().slice(0, 4e3);
+  const rows = await db2.select().from(companyComplianceDocumentsTable).where(
+    and(
+      eq(companyComplianceDocumentsTable.company_id, companyId),
+      eq(companyComplianceDocumentsTable.document_type, kind),
+      eq(companyComplianceDocumentsTable.is_current, true)
+    )
+  ).limit(1);
+  if (!rows[0]) {
+    return { ok: false, error: "no_current_document" };
+  }
+  await db2.update(companyComplianceDocumentsTable).set({
+    review_status: input.reviewStatus,
+    review_note: input.reviewStatus === "rejected" ? note : ""
+  }).where(eq(companyComplianceDocumentsTable.id, rows[0].id));
+  await recomputeAndPersistGlobalCompliance(companyId);
+  return { ok: true };
+}
+var init_companyComplianceDocumentsData = __esm({
+  "src/db/companyComplianceDocumentsData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
+// src/db/companyGovernanceData.ts
+function companyMeetsTaxiFleetProvisioningReadiness(gate) {
+  if (!gate) return false;
+  if (gate.companyKind !== "taxi") return false;
+  if (gate.isBlocked) return false;
+  if (gate.verificationStatus !== "verified") return false;
+  if (gate.complianceStatus !== "compliant") return false;
+  if (gate.contractStatus !== "active") return false;
+  if (!gate.requiredProfileComplete) return false;
+  return true;
+}
+async function getFleetLoginCompanyDenyReason(companyId) {
+  if (!isPostgresConfigured()) return "company_not_found";
+  const db2 = getDb();
+  if (!db2) return "company_not_found";
+  const rows = await db2.select({
+    is_active: adminCompaniesTable.is_active,
+    is_blocked: adminCompaniesTable.is_blocked,
+    contract_status: adminCompaniesTable.contract_status
+  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r = rows[0];
+  if (!r) return "company_not_found";
+  if (!r.is_active) return "company_inactive";
+  if (Boolean(r.is_blocked)) return "company_blocked";
+  const cs = String(r.contract_status ?? "").trim() || "inactive";
+  if (cs !== "active") return "contract_not_active";
+  return null;
+}
+async function getCompanyGovernanceGate(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  const requiredProfileComplete = Boolean(
+    String(r.company_kind ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.name ?? "").trim() && String(r.email ?? "").trim() && String(r.phone ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.vat_id ?? "").trim()
+  );
+  const complianceStatus = await getDerivedGlobalComplianceStatusForCompanyRow(
+    r
+  );
+  return {
+    companyId: r.id,
+    companyKind: r.company_kind ?? "general",
+    verificationStatus: r.verification_status ?? "pending",
+    complianceStatus,
+    contractStatus: r.contract_status ?? "inactive",
+    isBlocked: Boolean(r.is_blocked),
+    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
+    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
+    maxDrivers: r.max_drivers ?? 100,
+    maxVehicles: r.max_vehicles ?? 100,
+    requiredProfileComplete,
+    farePermissions: r.fare_permissions ?? {},
+    insurerPermissions: r.insurer_permissions ?? {},
+    areaAssignments: Array.isArray(r.area_assignments) ? r.area_assignments.filter((x) => typeof x === "string") : []
+  };
+}
+async function countFleetDriversForCompany(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: count() }).from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
+  return Number(rows[0]?.n ?? 0);
+}
+async function countFleetVehiclesForCompany(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: count() }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
+  return Number(rows[0]?.n ?? 0);
+}
+var init_companyGovernanceData = __esm({
+  "src/db/companyGovernanceData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_companyComplianceDocumentsData();
+    init_schema2();
+  }
+});
+
+// src/db/fleetDriversData.ts
+var fleetDriversData_exports = {};
+__export(fleetDriversData_exports, {
+  activateFleetDriver: () => activateFleetDriver,
+  adminActivateFleetDriver: () => adminActivateFleetDriver,
+  adminPatchFleetDriverAdminFields: () => adminPatchFleetDriverAdminFields,
+  adminSuspendFleetDriver: () => adminSuspendFleetDriver,
+  approveFleetDriverForCompany: () => approveFleetDriverForCompany,
+  computeFleetDriverComplianceGaps: () => computeFleetDriverComplianceGaps,
+  countFleetDriversOnline: () => countFleetDriversOnline,
+  countFleetDriversPScheinExpiringSoon: () => countFleetDriversPScheinExpiringSoon,
+  countPendingFleetDriversForAdmin: () => countPendingFleetDriversForAdmin,
+  findFleetDriverAuthRow: () => findFleetDriverAuthRow,
+  findFleetDriverByEmailNormalized: () => findFleetDriverByEmailNormalized,
+  findFleetDriverGlobal: () => findFleetDriverGlobal,
+  findFleetDriverInCompany: () => findFleetDriverInCompany,
+  fleetDriverTableRowToList: () => fleetDriverTableRowToList,
+  getCompanyKind: () => getCompanyKind,
+  getFleetDriverMarketOnline: () => getFleetDriverMarketOnline,
+  insertFleetDriver: () => insertFleetDriver,
+  isDriverReservationSuspendedSync: () => isDriverReservationSuspendedSync,
+  listFleetDriversForCompany: () => listFleetDriversForCompany,
+  listPendingFleetDriversForAdmin: () => listPendingFleetDriversForAdmin,
+  markFleetDriverMissingDocumentsForCompany: () => markFleetDriverMissingDocumentsForCompany,
+  normalizeFleetDriverApproval: () => normalizeFleetDriverApproval,
+  patchFleetDriverProfile: () => patchFleetDriverProfile,
+  rejectFleetDriverForCompany: () => rejectFleetDriverForCompany,
+  setFleetDriverApprovalByAdmin: () => setFleetDriverApprovalByAdmin,
+  setFleetDriverApprovalForCompany: () => setFleetDriverApprovalForCompany,
+  setFleetDriverApprovalStatusOnlyForCompany: () => setFleetDriverApprovalStatusOnlyForCompany,
+  setFleetDriverMarketOnline: () => setFleetDriverMarketOnline,
+  setFleetDriverReadinessOverrideSystem: () => setFleetDriverReadinessOverrideSystem,
+  setReservationSuspension: () => setReservationSuspension,
+  suspendFleetDriver: () => suspendFleetDriver,
+  touchFleetDriverHeartbeat: () => touchFleetDriverHeartbeat,
+  touchFleetDriverLogin: () => touchFleetDriverLogin,
+  updateFleetDriverPassword: () => updateFleetDriverPassword
+});
+import { randomUUID as randomUUID8 } from "node:crypto";
+function normalizeFleetDriverApproval(raw) {
+  const t = String(raw ?? "").toLowerCase().trim();
+  if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
+    return t;
+  return "pending";
+}
+function computeFleetDriverComplianceGaps(d) {
+  const gaps = [];
+  if (!(d.pScheinNumber ?? "").trim()) gaps.push("P-Schein-Nummer fehlt");
+  const exp = d.pScheinExpiry != null ? String(d.pScheinExpiry).trim() : "";
+  if (!exp) gaps.push("P-Schein-Ablaufdatum fehlt");
+  const doc = (d.pScheinDocStorageKey ?? "").trim();
+  if (!doc) gaps.push("P-Schein-PDF-Nachweis fehlt");
+  return gaps;
+}
+function fleetDriverTableRowToList(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    email: r.email,
+    firstName: r.first_name,
+    lastName: r.last_name,
+    phone: r.phone,
+    accessStatus: r.access_status,
+    isActive: r.is_active,
+    mustChangePassword: r.must_change_password,
+    pScheinNumber: r.p_schein_number,
+    pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
+    pScheinDocStorageKey: r.p_schein_doc_storage_key,
+    homeAddress: r.home_address ?? "",
+    driversLicenseNumber: r.drivers_license_number ?? "",
+    driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
+    vehicleLegalType: r.vehicle_legal_type,
+    vehicleClass: r.vehicle_class,
+    lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
+    lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString(),
+    approvalStatus: normalizeFleetDriverApproval(
+      r.approval_status ?? "approved"
+    ),
+    suspensionReason: r.suspension_reason ?? "",
+    adminInternalNote: r.admin_internal_note ?? "",
+    readinessOverrideSystem: Boolean(r.readiness_override_system),
+    reservationSuspendedUntil: r.reservation_suspended_until ? r.reservation_suspended_until.toISOString() : null,
+    isMarketOnline: Boolean(r.is_market_online)
+  };
+}
+function rowToList(r) {
+  return fleetDriverTableRowToList(r);
+}
+async function getCompanyKind(companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({ k: adminCompaniesTable.company_kind }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const k = rows[0]?.k;
+  return typeof k === "string" ? k : null;
+}
+async function findFleetDriverAuthRow(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    id: fleetDriversTable.id,
+    company_id: fleetDriversTable.company_id,
+    session_version: fleetDriversTable.session_version,
+    is_active: fleetDriversTable.is_active,
+    access_status: fleetDriversTable.access_status
+  }).from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: r.id,
+    company_id: r.company_id,
+    session_version: r.session_version,
+    is_active: r.is_active,
+    access_status: r.access_status
+  };
+}
+async function findFleetDriverByEmailNormalized(email) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const em = email.trim().toLowerCase();
+  if (!em) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(sql2`lower(trim(${fleetDriversTable.email})) = ${em}`).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetDriverGlobal(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetDriverInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function listFleetDriversForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
+  return rows.map(rowToList);
+}
+async function insertFleetDriver(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: "email_invalid" };
+  }
+  const existing = await findFleetDriverByEmailNormalized(email);
+  if (existing) {
+    return { ok: false, error: "email_taken" };
+  }
+  const id = `fd-${randomUUID8()}`;
+  const pExp = input.pScheinExpiry?.trim();
+  const dlExp = input.driversLicenseExpiry?.trim();
+  await db2.insert(fleetDriversTable).values({
+    id,
+    company_id: input.companyId,
+    email,
+    first_name: input.firstName.trim(),
+    last_name: input.lastName.trim(),
+    phone: input.phone.trim(),
+    password_hash: input.passwordHash,
+    must_change_password: input.mustChangePassword,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
+    p_schein_number: (input.pScheinNumber ?? "").trim(),
+    p_schein_expiry: pExp ? pExp : null,
+    home_address: (input.homeAddress ?? "").trim(),
+    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
+    drivers_license_expiry: dlExp ? dlExp : null,
+    is_active: true,
+    access_status: "active",
+    approval_status: input.approvalStatus ?? "approved",
+    session_version: 1
+  });
+  return { ok: true, id };
+}
+async function patchFleetDriverProfile(id, companyId, patch) {
+  const cur = await findFleetDriverInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  let bumpSession = false;
+  if (patch.email !== void 0) {
+    const em = patch.email.trim().toLowerCase();
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      return { ok: false, error: "email_invalid" };
+    }
+    const other = await findFleetDriverByEmailNormalized(em);
+    if (other && other.id !== id) {
+      return { ok: false, error: "email_taken" };
+    }
+    set.email = em;
+    bumpSession = true;
+  }
+  if (patch.isActive !== void 0) {
+    set.is_active = patch.isActive;
+    bumpSession = true;
+  }
+  if (patch.firstName !== void 0) set.first_name = patch.firstName.trim();
+  if (patch.lastName !== void 0) set.last_name = patch.lastName.trim();
+  if (patch.phone !== void 0) set.phone = patch.phone.trim();
+  if (patch.pScheinNumber !== void 0) set.p_schein_number = patch.pScheinNumber.trim();
+  if (patch.pScheinExpiry !== void 0) {
+    const raw = patch.pScheinExpiry?.trim();
+    set.p_schein_expiry = raw ? raw : null;
+  }
+  if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
+  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
+  if (patch.homeAddress !== void 0) set.home_address = patch.homeAddress.trim();
+  if (patch.driversLicenseNumber !== void 0) set.drivers_license_number = patch.driversLicenseNumber.trim();
+  if (patch.driversLicenseExpiry !== void 0) {
+    const raw = patch.driversLicenseExpiry?.trim();
+    set.drivers_license_expiry = raw ? raw : null;
+  }
+  if (bumpSession) {
+    set.session_version = sql2`${fleetDriversTable.session_version} + 1`;
+  }
+  await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
+  return { ok: true };
+}
+async function updateFleetDriverPassword(id, companyId, passwordHash, mustChangePassword) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    password_hash: passwordHash,
+    must_change_password: mustChangePassword,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function suspendFleetDriver(id, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "suspended",
+    is_active: true,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setReservationSuspension(id, companyId, suspendedUntil) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    reservation_suspended_until: suspendedUntil,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+function isDriverReservationSuspendedSync(suspendedUntil) {
+  if (!suspendedUntil) return false;
+  return new Date(suspendedUntil) > /* @__PURE__ */ new Date();
+}
+async function activateFleetDriver(id, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "active",
+    is_active: true,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setFleetDriverApprovalByAdmin(driverId, nextStatus, opts) {
+  const row = await findFleetDriverGlobal(driverId);
+  if (!row) return { ok: false, error: "not_found" };
+  const companyId = row.company_id;
+  if (nextStatus === "approved") {
+    return approveFleetDriverForCompany(companyId, driverId, {
+      acknowledgeIncompleteDocuments: opts?.acknowledgeIncompleteDocuments === true
+    });
+  }
+  if (nextStatus === "rejected") {
+    const reason = String(opts?.rejectionReason ?? "").trim();
+    return rejectFleetDriverForCompany(companyId, driverId, reason);
+  }
+  if (nextStatus === "missing_documents") {
+    return markFleetDriverMissingDocumentsForCompany(companyId, driverId);
+  }
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
+}
+async function approveFleetDriverForCompany(companyId, driverId, opts) {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const listRow = fleetDriverTableRowToList(cur);
+  const gaps = computeFleetDriverComplianceGaps(listRow);
+  if (gaps.length > 0 && !opts.acknowledgeIncompleteDocuments) {
+    return { ok: false, error: "incomplete_documents_ack_required", gaps };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "approved", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function rejectFleetDriverForCompany(companyId, driverId, rejectionReason) {
+  const reason = String(rejectionReason ?? "").trim();
+  if (!reason) return { ok: false, error: "rejection_reason_required" };
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "rejected", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function markFleetDriverMissingDocumentsForCompany(companyId, driverId) {
+  const cur = await findFleetDriverInCompany(driverId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = normalizeFleetDriverApproval(cur.approval_status);
+  if (!["pending", "in_review", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: "missing_documents", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus) {
+  const allowed = ["pending", "in_review", "missing_documents"];
+  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "not_found" };
+  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
+}
+async function setFleetDriverReadinessOverrideSystem(companyId, driverId, enabled) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({ readiness_override_system: enabled, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function setFleetDriverApprovalForCompany(companyId, driverId, nextStatus) {
+  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
+}
+async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const reason = String(suspensionReason ?? "").trim().slice(0, MAX_SUS_REASON);
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "suspended",
+    is_active: true,
+    suspension_reason: reason,
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function adminActivateFleetDriver(companyId, driverId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.update(fleetDriversTable).set({
+    access_status: "active",
+    is_active: true,
+    suspension_reason: "",
+    updated_at: /* @__PURE__ */ new Date(),
+    session_version: sql2`${fleetDriversTable.session_version} + 1`
+  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function adminPatchFleetDriverAdminFields(companyId, driverId, patch) {
+  if (patch.adminInternalNote === void 0 && patch.suspensionReason === void 0) return true;
+  const db2 = getDb();
+  if (!db2) return false;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(patch.adminInternalNote).trim().slice(0, MAX_ADMIN_NOTE);
+  }
+  if (patch.suspensionReason !== void 0) {
+    set.suspension_reason = String(patch.suspensionReason).trim().slice(0, MAX_SUS_REASON);
+  }
+  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
+  return r.length > 0;
+}
+async function touchFleetDriverLogin(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(fleetDriversTable).set({ last_login_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
+}
+async function touchFleetDriverHeartbeat(id) {
+  const db2 = getDb();
+  if (!db2) return;
+  await db2.update(fleetDriversTable).set({ last_heartbeat_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
+}
+async function getFleetDriverMarketOnline(fleetDriverId, companyId) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return false;
+  const rows = await db2.select({ is_market_online: fleetDriversTable.is_market_online }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co))).limit(1);
+  return rows[0]?.is_market_online === true;
+}
+async function setFleetDriverMarketOnline(fleetDriverId, companyId, online) {
+  if (!isPostgresConfigured()) return false;
+  const db2 = getDb();
+  if (!db2) return false;
+  const id = fleetDriverId.trim();
+  const co = companyId.trim();
+  if (!id || !co) return false;
+  const rows = await db2.update(fleetDriversTable).set({ is_market_online: online, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, co))).returning({ id: fleetDriversTable.id });
+  return rows.length > 0;
+}
+async function countFleetDriversPScheinExpiringSoon(companyId, withinDays) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const today = /* @__PURE__ */ new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const until = new Date(today);
+  until.setUTCDate(until.getUTCDate() + withinDays);
+  const todayStr = today.toISOString().slice(0, 10);
+  const untilStr = until.toISOString().slice(0, 10);
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).where(
+    and(
+      eq(fleetDriversTable.company_id, companyId),
+      isNotNull(fleetDriversTable.p_schein_expiry),
+      gte(fleetDriversTable.p_schein_expiry, todayStr),
+      lte(fleetDriversTable.p_schein_expiry, untilStr)
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function countFleetDriversOnline(companyId, withinSeconds) {
+  const db2 = getDb();
+  if (!db2) return 0;
+  const since = new Date(Date.now() - withinSeconds * 1e3);
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).where(
+    and(
+      eq(fleetDriversTable.company_id, companyId),
+      eq(fleetDriversTable.access_status, "active"),
+      eq(fleetDriversTable.is_active, true),
+      isNotNull(fleetDriversTable.last_heartbeat_at),
+      gte(fleetDriversTable.last_heartbeat_at, since)
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function countPendingFleetDriversForAdmin() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(adminCompaniesTable.company_kind, "taxi"),
+      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
+    )
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function listPendingFleetDriversForAdmin(limit) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const lim = typeof limit === "number" && limit > 0 ? Math.min(500, limit) : 5;
+  const rows = await db2.select({
+    driverId: fleetDriversTable.id,
+    companyId: fleetDriversTable.company_id,
+    companyName: adminCompaniesTable.name,
+    firstName: fleetDriversTable.first_name,
+    lastName: fleetDriversTable.last_name,
+    email: fleetDriversTable.email,
+    approvalStatus: fleetDriversTable.approval_status,
+    updatedAt: fleetDriversTable.updated_at
+  }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
+    and(
+      eq(adminCompaniesTable.company_kind, "taxi"),
+      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
+    )
+  ).orderBy(desc(fleetDriversTable.updated_at)).limit(lim);
+  return rows.map((r) => ({
+    driverId: r.driverId,
+    companyId: r.companyId,
+    companyName: r.companyName,
+    firstName: r.firstName,
+    lastName: r.lastName,
+    email: r.email,
+    approvalStatus: r.approvalStatus,
+    updatedAt: r.updatedAt.toISOString()
+  }));
+}
+var MAX_SUS_REASON, MAX_ADMIN_NOTE;
+var init_fleetDriversData = __esm({
+  "src/db/fleetDriversData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+    MAX_SUS_REASON = 2e3;
+    MAX_ADMIN_NOTE = 4e3;
+  }
+});
+
+// src/db/fleetAssignmentsData.ts
+import { randomUUID as randomUUID9 } from "node:crypto";
+function toRow(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    driverId: r.driver_id,
+    vehicleId: r.vehicle_id,
+    assignedAt: r.assigned_at.toISOString()
+  };
+}
+async function listAssignmentsForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.company_id, companyId));
+  return rows.map(toRow);
+}
+async function setDriverVehicleAssignment(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const dRows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, input.driverId), eq(fleetDriversTable.company_id, input.companyId))).limit(1);
+  if (!dRows[0]) return { ok: false, error: "driver_not_found" };
+  const vRows = await db2.select({
+    id: fleetVehiclesTable.id,
+    approvalStatus: fleetVehiclesTable.approval_status,
+    isActive: fleetVehiclesTable.is_active
+  }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
+  if (!vRows[0]) return { ok: false, error: "vehicle_not_found" };
+  if (String(vRows[0].approvalStatus) !== "approved") {
+    return { ok: false, error: "vehicle_not_approved" };
+  }
+  if (!vRows[0].isActive) return { ok: false, error: "vehicle_inactive" };
+  await db2.transaction(async (tx) => {
+    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
+    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
+    await tx.insert(driverVehicleAssignmentsTable).values({
+      id: `fva-${randomUUID9()}`,
+      company_id: input.companyId,
+      driver_id: input.driverId,
+      vehicle_id: input.vehicleId
+    });
+  });
+  return { ok: true };
+}
+async function clearDriverAssignment(driverId, companyId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const r = await db2.delete(driverVehicleAssignmentsTable).where(
+    and(
+      eq(driverVehicleAssignmentsTable.driver_id, driverId),
+      eq(driverVehicleAssignmentsTable.company_id, companyId)
+    )
+  ).returning({ id: driverVehicleAssignmentsTable.id });
+  return r.length > 0;
+}
+var init_fleetAssignmentsData = __esm({
+  "src/db/fleetAssignmentsData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
+// src/db/fleetVehiclesData.ts
+import { randomUUID as randomUUID10 } from "node:crypto";
+function parseFleetVehicleDocumentKind(raw) {
+  if (typeof raw !== "string") return void 0;
+  const k = raw.trim().toLowerCase();
+  return FLEET_VEHICLE_DOCUMENT_KINDS.includes(k) ? k : void 0;
+}
+function parseDocuments(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const x of raw) {
+    if (x && typeof x === "object" && "storageKey" in x && typeof x.storageKey === "string") {
+      const sk = x.storageKey;
+      const uploadedAt = "uploadedAt" in x && typeof x.uploadedAt === "string" ? x.uploadedAt : void 0;
+      const kind = parseFleetVehicleDocumentKind(x.kind);
+      const uploadedByPanelUserId = "uploadedByPanelUserId" in x && (x.uploadedByPanelUserId === null || typeof x.uploadedByPanelUserId === "string") ? x.uploadedByPanelUserId ?? null : void 0;
+      if (sk) out.push({ storageKey: sk, uploadedAt, kind, uploadedByPanelUserId });
+    }
+  }
+  return out;
+}
+function fleetVehicleSubmitDocumentsSatisfied(docs) {
+  if (!docs.length) return false;
+  const hasConc = docs.some((d) => d.kind === "concession");
+  const hasReg = docs.some((d) => d.kind === "registration");
+  if (hasConc && hasReg) return true;
+  const allUntyped = docs.every((d) => d.kind == null || d.kind === void 0);
+  return allUntyped;
+}
+function rowToVehicle(r) {
+  return {
+    id: r.id,
+    companyId: r.company_id,
+    licensePlate: r.license_plate,
+    vin: r.vin,
+    color: r.color,
+    model: r.model,
+    vehicleType: r.vehicle_type,
+    vehicleLegalType: r.vehicle_legal_type,
+    vehicleClass: r.vehicle_class,
+    taxiOrderNumber: r.taxi_order_number,
+    konzessionNumber: r.konzession_number ?? "",
+    vehicleDocuments: parseDocuments(r.vehicle_documents),
+    approvalStatus: r.approval_status ?? "draft",
+    rejectionReason: r.rejection_reason ?? "",
+    adminInternalNote: r.admin_internal_note ?? "",
+    blockReason: r.block_reason ?? "",
+    modelYear: r.model_year ?? null,
+    passengerSeats: r.passenger_seats ?? null,
+    approvalDecidedAt: r.approval_decided_at ? r.approval_decided_at.toISOString() : null,
+    nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
+    isActive: r.is_active,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function countActiveFleetVehicles(companyId) {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetVehiclesTable).where(
+    and(eq(fleetVehiclesTable.company_id, companyId), eq(fleetVehiclesTable.approval_status, "approved"))
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function listFleetVehiclesForCompany(companyId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
+  return rows.map(rowToVehicle);
+}
+async function findFleetVehicleInCompany(id, companyId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId))).limit(1);
+  return rows[0] ?? null;
+}
+async function findFleetVehicleGlobal(id) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+async function countPendingFleetVehiclesForAdmin() {
+  if (!isPostgresConfigured()) return 0;
+  const db2 = getDb();
+  if (!db2) return 0;
+  const rows = await db2.select({ n: sql2`count(*)::int` }).from(fleetVehiclesTable).where(
+    sql2`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+async function listPendingFleetVehiclesForAdmin(limit) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const q = db2.select({
+    v: fleetVehiclesTable,
+    companyName: adminCompaniesTable.name
+  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(sql2`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`).orderBy(desc(fleetVehiclesTable.updated_at));
+  const rows = typeof limit === "number" && limit > 0 ? await q.limit(Math.min(500, limit)) : await q;
+  return rows.map((r) => ({
+    vehicle: rowToVehicle(r.v),
+    companyName: r.companyName
+  }));
+}
+function syncIsActiveForStatus(s) {
+  return s === "approved";
+}
+function computeFleetVehicleComplianceGaps(v) {
+  const gaps = [];
+  const docs = Array.isArray(v.vehicleDocuments) ? v.vehicleDocuments : [];
+  const hasConc = docs.some((d) => d.kind === "concession");
+  const hasReg = docs.some((d) => d.kind === "registration");
+  const allUntyped = docs.length > 0 && docs.every((d) => d.kind == null || d.kind === void 0);
+  if (docs.length < 1) {
+    gaps.push("Kein Fahrzeug-PDF-Nachweis hochgeladen");
+  } else if (!allUntyped) {
+    if (!hasConc) gaps.push("Konzessionsnachweis (PDF) fehlt oder nicht als Typ \u201EKonzession\u201C hochgeladen");
+    if (!hasReg) gaps.push("Fahrzeugschein / Zulassungsbescheinigung (PDF) fehlt oder nicht als Typ \u201EFahrzeugschein\u201C hochgeladen");
+  }
+  const hu = v.nextInspectionDate != null ? String(v.nextInspectionDate).trim() : "";
+  if (!hu) gaps.push("HU-Datum (Hauptuntersuchung) fehlt");
+  return gaps;
+}
+async function insertFleetVehicle(input) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const plate = input.licensePlate.trim();
+  if (!plate) return { ok: false, error: "license_plate_required" };
+  const kz = (input.konzessionNumber ?? "").trim();
+  if (!kz) return { ok: false, error: "konzession_number_required" };
+  const id = `fv-${randomUUID10()}`;
+  const status = input.approvalStatus;
+  const isActive = syncIsActiveForStatus(status);
+  const docs = input.vehicleDocuments ?? [];
+  const taxiNum = (input.taxiOrderNumber ?? "").trim();
+  await db2.insert(fleetVehiclesTable).values({
+    id,
+    company_id: input.companyId,
+    license_plate: plate,
+    vin: (input.vin ?? "").trim(),
+    color: (input.color ?? "").trim(),
+    model: (input.model ?? "").trim(),
+    vehicle_type: input.vehicleType,
+    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
+    vehicle_class: input.vehicleClass ?? "standard",
+    taxi_order_number: taxiNum || kz,
+    konzession_number: kz,
+    vehicle_documents: docs,
+    next_inspection_date: input.nextInspectionDate?.trim() || null,
+    approval_status: status,
+    is_active: isActive
+  });
+  return { ok: true, id };
+}
+async function addFleetVehicleDocumentVersion(id, companyId, storageKey, meta) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (!["draft", "rejected", "pending_approval", "missing_documents"].includes(String(cur.approval_status))) {
+    return { ok: false, error: "documents_locked" };
+  }
+  const existing = parseDocuments(cur.vehicle_documents);
+  const entry = {
+    storageKey,
+    uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    kind: meta.kind,
+    uploadedByPanelUserId: meta.uploadedByPanelUserId
+  };
+  const next = [...existing, entry];
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  await db2.update(fleetVehiclesTable).set({
+    vehicle_documents: next,
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function submitFleetVehicleForApproval(id, companyId) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  const kz = (cur.konzession_number ?? "").trim();
+  const plate = (cur.license_plate ?? "").trim();
+  const docs = parseDocuments(cur.vehicle_documents);
+  if (st === "pending_approval") {
+    if (!kz) return { ok: false, error: "konzession_number_required" };
+    if (!plate) return { ok: false, error: "license_plate_required" };
+    if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
+    return { ok: true };
+  }
+  if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
+  if (!kz) return { ok: false, error: "konzession_number_required" };
+  if (!plate) return { ok: false, error: "license_plate_required" };
+  if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: "pending_approval",
+    is_active: false,
+    rejection_reason: "",
+    updated_at: /* @__PURE__ */ new Date()
+  }).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function patchFleetVehicle(id, companyId, patch) {
+  const cur = await findFleetVehicleInCompany(id, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (st === "pending_approval" || st === "missing_documents" || st === "approved" || st === "blocked") {
+    const allowed = ["nextInspectionDate", "color", "model"];
+    const keys = Object.keys(patch);
+    for (const k of keys) {
+      if (patch[k] === void 0) continue;
+      if (allowed.includes(k)) continue;
+      if (k === "isActive" && st === "approved") continue;
+      if (k === "isActive" && st === "blocked") continue;
+      return { ok: false, error: "field_locked" };
+    }
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.licensePlate !== void 0) set.license_plate = patch.licensePlate.trim();
+  if (patch.vin !== void 0) set.vin = patch.vin.trim();
+  if (patch.color !== void 0) set.color = patch.color.trim();
+  if (patch.model !== void 0) set.model = patch.model.trim();
+  if (patch.vehicleType !== void 0) set.vehicle_type = patch.vehicleType;
+  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
+  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
+  if (patch.taxiOrderNumber !== void 0) set.taxi_order_number = patch.taxiOrderNumber.trim();
+  if (patch.konzessionNumber !== void 0) {
+    set.konzession_number = patch.konzessionNumber.trim();
+    set.taxi_order_number = patch.konzessionNumber.trim();
+  }
+  if (patch.nextInspectionDate !== void 0) {
+    set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
+  }
+  if (patch.isActive !== void 0) {
+    set.is_active = patch.isActive;
+  }
+  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function setFleetVehicleApprovalByAdmin(id, input) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (!["pending_approval", "missing_documents"].includes(st)) {
+    return { ok: false, error: "not_pending" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  const next = input.nextStatus;
+  const reason = input.nextStatus === "rejected" ? (input.rejectionReason ?? "").trim() : "";
+  if (input.nextStatus === "rejected" && !reason) {
+    return { ok: false, error: "rejection_reason_required" };
+  }
+  if (input.nextStatus === "approved") {
+    const row = rowToVehicle(cur);
+    const gaps = computeFleetVehicleComplianceGaps(row);
+    if (gaps.length > 0 && !input.acknowledgeIncompleteDocuments) {
+      return { ok: false, error: "incomplete_documents_ack_required", gaps };
+    }
+  }
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: next,
+    is_active: syncIsActiveForStatus(next),
+    rejection_reason: input.nextStatus === "rejected" ? reason : "",
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId,
+    updated_at: now
+  }).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function setFleetVehicleMissingDocumentsByAdmin(id, input) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  const st = String(cur.approval_status);
+  if (!["draft", "pending_approval", "approved"].includes(st)) {
+    return { ok: false, error: "invalid_state" };
+  }
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: "missing_documents",
+    is_active: false,
+    updated_at: now,
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId
+  }).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function forceBlockFleetVehicleByAdmin(id, input) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (String(cur.approval_status) === "blocked") return { ok: false, error: "already_blocked" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  const br = String(input.blockReason ?? "").trim().slice(0, 2e3);
+  const set = {
+    approval_status: "blocked",
+    is_active: false,
+    block_reason: br,
+    approval_decided_at: now,
+    approval_decided_by_admin_id: input.adminUserId,
+    updated_at: now
+  };
+  if (input.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(input.adminInternalNote).slice(0, 4e3);
+  }
+  await db2.update(fleetVehiclesTable).set(set).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function unblockFleetVehicleByAdmin(id, adminUserId) {
+  const cur = await findFleetVehicleGlobal(id);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (String(cur.approval_status) !== "blocked") return { ok: false, error: "not_blocked" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(fleetVehiclesTable).set({
+    approval_status: "draft",
+    is_active: false,
+    block_reason: "",
+    approval_decided_at: now,
+    approval_decided_by_admin_id: adminUserId,
+    updated_at: now
+  }).where(eq(fleetVehiclesTable.id, id));
+  return { ok: true };
+}
+async function adminPatchFleetVehicleFields(companyId, vehicleId, patch) {
+  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!cur) return { ok: false, error: "not_found" };
+  if (Object.keys(patch).length === 0) return { ok: false, error: "no_fields" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (patch.adminInternalNote !== void 0) {
+    set.admin_internal_note = String(patch.adminInternalNote).slice(0, 4e3);
+  }
+  if (patch.blockReason !== void 0) {
+    set.block_reason = String(patch.blockReason).slice(0, 2e3);
+  }
+  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, vehicleId), eq(fleetVehiclesTable.company_id, companyId)));
+  return { ok: true };
+}
+async function listFleetVehicleDocumentStorageKeysInCompany(companyId, vehicleId) {
+  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
+  if (!cur) return null;
+  return parseDocuments(cur.vehicle_documents).map((d) => d.storageKey);
+}
+async function listFleetVehicleDocumentStorageKeysAdmin(vehicleId) {
+  const cur = await findFleetVehicleGlobal(vehicleId);
+  if (!cur) return null;
+  return parseDocuments(cur.vehicle_documents).map((d) => d.storageKey);
+}
+async function getFleetVehicleAdminDetail(vehicleId) {
+  if (!isPostgresConfigured()) return null;
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select({
+    v: fleetVehiclesTable,
+    companyName: adminCompaniesTable.name
+  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(eq(fleetVehiclesTable.id, vehicleId)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return { vehicle: rowToVehicle(r.v), companyName: r.companyName };
+}
+var FLEET_VEHICLE_DOCUMENT_KINDS;
+var init_fleetVehiclesData = __esm({
+  "src/db/fleetVehiclesData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+    FLEET_VEHICLE_DOCUMENT_KINDS = [
+      "concession",
+      "registration",
+      "insurance",
+      "taximeter",
+      "accessibility"
+    ];
+  }
+});
+
+// src/db/fleetDriverReadiness.ts
+function buildFleetDriverMeClientHints(readiness, listRow) {
+  if (readiness.ready) {
+    return { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" };
+  }
+  const codes = new Set(readiness.blockReasons.map((b) => b.code));
+  if (codes.has("driver_account_inactive")) {
+    return {
+      blockBannerTitle: "Konto deaktiviert",
+      notFreigegebenMessage: MSG.driver_account_inactive,
+      driverBlockKind: "compliance"
+    };
+  }
+  if (codes.has("driver_suspended")) {
+    return {
+      blockBannerTitle: "Zugang gesperrt",
+      notFreigegebenMessage: [
+        "Ihr Zugang ist gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
+        listRow.suspensionReason?.trim() ? `Grund: ${String(listRow.suspensionReason).trim()}` : null
+      ].filter(Boolean).join("\n\n"),
+      driverBlockKind: "access_suspended"
+    };
+  }
+  const vehicleish = /* @__PURE__ */ new Set([
+    "no_vehicle_assigned",
+    "vehicle_not_approved",
+    "vehicle_blocked",
+    "vehicle_rejected",
+    "vehicle_pending_approval",
+    "vehicle_draft"
+  ]);
+  if ([...codes].some((c) => vehicleish.has(c))) {
+    return {
+      blockBannerTitle: "Fahrzeug",
+      notFreigegebenMessage: [
+        "Ihr Fahrzeug ist nicht freigegeben oder gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
+        ...readiness.blockReasons.filter((b) => vehicleish.has(b.code)).map((b) => b.message)
+      ].join("\n\n"),
+      driverBlockKind: "vehicle"
+    };
+  }
+  if (codes.has("company_not_ready")) {
+    return {
+      blockBannerTitle: "Unternehmen",
+      notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
+      driverBlockKind: "compliance"
+    };
+  }
+  return {
+    blockBannerTitle: "Voraussetzungen",
+    notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
+    driverBlockKind: "other"
+  };
+}
+function deriveDriverWorkflowLabel(d) {
+  if (!d.isActive) {
+    return { key: "inactive", label: "Deaktiviert" };
+  }
+  if (d.accessStatus === "suspended") {
+    return { key: "suspended", label: "Gesperrt" };
+  }
+  switch (d.approvalStatus) {
+    case "rejected":
+      return { key: "rejected", label: "Abgelehnt" };
+    case "missing_documents":
+      return { key: "missing_documents", label: "Unterlagen fehlen" };
+    case "in_review":
+      return { key: "in_review", label: "In Pr\xFCfung" };
+    case "pending":
+      return { key: "pending", label: "Angelegt" };
+    case "approved":
+      return { key: "approved", label: "Freigegeben" };
+    default:
+      return { key: "unknown", label: "\u2014" };
+  }
+}
+function pScheinDateMissing(expiry) {
+  if (expiry == null) return true;
+  const s = String(expiry).trim();
+  if (!s) return true;
+  return false;
+}
+function pScheinDocMissing(key) {
+  return !key || !String(key).trim();
+}
+function pScheinExpiredOnlyWhenDatePresent(isoOrDate) {
+  if (pScheinDateMissing(isoOrDate)) return false;
+  const s = String(isoOrDate).trim().slice(0, 10);
+  const d = /* @__PURE__ */ new Date(`${s}T12:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = /* @__PURE__ */ new Date();
+  const endOfTodayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const exp = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return exp < endOfTodayUtc;
+}
+function computeDriverReadiness(gate, d, hasVehicleAssignment, assignedVehicle) {
+  const blockReasons = [];
+  if (!companyMeetsTaxiFleetProvisioningReadiness(gate)) {
+    blockReasons.push({ code: "company_not_ready", message: MSG.company_not_ready });
+  }
+  if (!d.isActive) {
+    blockReasons.push({ code: "driver_account_inactive", message: MSG.driver_account_inactive });
+  } else if (d.accessStatus !== "active") {
+    const sr = (d.suspensionReason ?? "").trim();
+    const msg = sr ? `${MSG.driver_suspended} Grund: ${sr}` : MSG.driver_suspended;
+    blockReasons.push({ code: "driver_suspended", message: msg });
+  }
+  if (d.reservationSuspendedUntil && new Date(d.reservationSuspendedUntil) > /* @__PURE__ */ new Date()) {
+    const until = new Date(d.reservationSuspendedUntil).toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
+    blockReasons.push({ code: "driver_suspended", message: `Tempor\xE4re Sperre bis ${until}: Reservierung nicht rechtzeitig aktiviert.` });
+  }
+  if (d.approvalStatus === "rejected") {
+    blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
+  } else if (d.approvalStatus === "pending" || d.approvalStatus === "in_review" || d.approvalStatus === "missing_documents") {
+    blockReasons.push({ code: "driver_not_approved", message: MSG.driver_not_approved });
+  }
+  if (pScheinDateMissing(d.pScheinExpiry)) {
+    blockReasons.push({ code: "p_schein_date_missing", message: MSG.p_schein_date_missing });
+  } else if (pScheinExpiredOnlyWhenDatePresent(d.pScheinExpiry)) {
+    blockReasons.push({ code: "p_schein_expired", message: MSG.p_schein_expired });
+  }
+  if (pScheinDocMissing(d.pScheinDocStorageKey)) {
+    blockReasons.push({ code: "p_schein_doc_missing", message: MSG.p_schein_doc_missing });
+  }
+  if (!hasVehicleAssignment) {
+    blockReasons.push({ code: "no_vehicle_assigned", message: MSG.no_vehicle_assigned });
+  } else if (assignedVehicle) {
+    const st = String(assignedVehicle.approvalStatus);
+    if (st === "approved") {
+    } else if (st === "blocked") {
+      const br = (assignedVehicle.blockReason ?? "").trim();
+      blockReasons.push({
+        code: "vehicle_blocked",
+        message: br ? `${MSG.vehicle_blocked} ${br}` : MSG.vehicle_blocked
+      });
+    } else if (st === "rejected") {
+      const rj = (assignedVehicle.rejectionReason ?? "").trim();
+      blockReasons.push({
+        code: "vehicle_rejected",
+        message: rj ? `${MSG.vehicle_rejected} ${rj}` : MSG.vehicle_rejected
+      });
+    } else if (st === "pending_approval" || st === "missing_documents") {
+      blockReasons.push({ code: "vehicle_pending_approval", message: MSG.vehicle_pending_approval });
+    } else if (st === "draft") {
+      blockReasons.push({ code: "vehicle_draft", message: MSG.vehicle_draft });
+    } else {
+      blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
+    }
+  }
+  if (d.readinessOverrideSystem) {
+    const filtered = blockReasons.filter((b) => READINESS_OVERRIDE_HARD_STOPS.has(b.code));
+    return { ready: filtered.length === 0, blockReasons: filtered };
+  }
+  return { ready: blockReasons.length === 0, blockReasons };
+}
+function assignedVehicleForDriver(driverId, assignRows, vehicles) {
+  const a = assignRows.find((x) => x.driverId === driverId);
+  if (!a) return null;
+  return vehicles.find((v0) => v0.id === a.vehicleId) ?? null;
+}
+async function getPanelFleetDriverViews(companyId) {
+  const [gate, rows, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listFleetDriversForCompany(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  return rows.map((row) => {
+    const av = assignedVehicleForDriver(row.id, ass, veh);
+    return {
+      ...row,
+      workflow: deriveDriverWorkflowLabel(row),
+      readiness: computeDriverReadiness(gate, row, av != null, av)
+    };
+  });
+}
+async function getFleetDriverReadinessById(driverId, companyId) {
+  const r = await findFleetDriverInCompany(driverId, companyId);
+  if (!r) return { error: "not_found" };
+  const listRow = fleetDriverTableRowToList(r);
+  const [gate, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  const av = assignedVehicleForDriver(listRow.id, ass, veh);
+  return computeDriverReadiness(gate, listRow, av != null, av);
+}
+function assignedVehicleMeta(driverId, assignRows, vehicles) {
+  const a = assignRows.find((x) => x.driverId === driverId);
+  if (!a) return null;
+  const v = vehicles.find((v0) => v0.id === a.vehicleId);
+  if (!v) return null;
+  return {
+    id: v.id,
+    licensePlate: v.licensePlate,
+    model: v.model,
+    approvalStatus: v.approvalStatus
+  };
+}
+async function listAdminTaxiFleetDriverRows(companyId) {
+  const [views, ass, veh] = await Promise.all([
+    getPanelFleetDriverViews(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  return views.map((v) => ({
+    ...v,
+    assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
+    pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
+    suspensionReason: v.suspensionReason,
+    adminInternalNote: v.adminInternalNote
+  }));
+}
+async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
+  const r = await findFleetDriverInCompany(driverId, companyId);
+  if (!r) return null;
+  const listRow = fleetDriverTableRowToList(r);
+  const [gate, ass, veh] = await Promise.all([
+    getCompanyGovernanceGate(companyId),
+    listAssignmentsForCompany(companyId),
+    listFleetVehiclesForCompany(companyId)
+  ]);
+  const av = assignedVehicleForDriver(listRow.id, ass, veh);
+  const view = {
+    ...listRow,
+    workflow: deriveDriverWorkflowLabel(listRow),
+    readiness: computeDriverReadiness(gate, listRow, av != null, av)
+  };
+  return {
+    ...view,
+    assignedVehicle: assignedVehicleMeta(listRow.id, ass, veh),
+    pScheinDocPresent: !pScheinDocMissing(listRow.pScheinDocStorageKey),
+    suspensionReason: listRow.suspensionReason,
+    adminInternalNote: listRow.adminInternalNote
+  };
+}
+var MSG, READINESS_OVERRIDE_HARD_STOPS;
+var init_fleetDriverReadiness = __esm({
+  "src/db/fleetDriverReadiness.ts"() {
+    init_companyGovernanceData();
+    init_fleetDriversData();
+    init_fleetAssignmentsData();
+    init_fleetVehiclesData();
+    init_fleetDriversData();
+    MSG = {
+      company_not_ready: "Unternehmen ist noch nicht vollst\xE4ndig freigegeben (Verifizierung, Nachweise, Vertrag oder Stammdaten).",
+      driver_suspended: "Fahrerzugang ist gesperrt.",
+      driver_account_inactive: "Fahrerkonto ist deaktiviert.",
+      driver_rejected: "Fahrer wurde abgelehnt.",
+      driver_not_approved: "Fahrer ist noch nicht freigegeben (Onroda-Pr\xFCfung).",
+      p_schein_date_missing: "P-Schein: kein Ablaufdatum hinterlegt.",
+      p_schein_expired: "P-Schein: abgelaufen.",
+      p_schein_doc_missing: "P-Schein: kein PDF-Nachweis hochgeladen.",
+      no_vehicle_assigned: "Kein Fahrzeug zugeordnet.",
+      vehicle_not_approved: "Zugeordnetes Fahrzeug ist noch nicht freigegeben.",
+      vehicle_blocked: "Zugeordnetes Fahrzeug ist von der Plattform gesperrt.",
+      vehicle_rejected: "Zugeordnetes Fahrzeug wurde abgelehnt.",
+      vehicle_pending_approval: "Zugeordnetes Fahrzeug wartet auf Freigabe durch Onroda.",
+      vehicle_draft: "Zugeordnetes Fahrzeug ist noch nicht zur Pr\xFCfung eingereicht."
+    };
+    READINESS_OVERRIDE_HARD_STOPS = /* @__PURE__ */ new Set([
+      "driver_suspended",
+      "driver_account_inactive",
+      "driver_rejected",
+      "driver_not_approved"
+    ]);
+  }
+});
+
+// src/db/fleetInstantRideMarketData.ts
+async function listMarketOnlineDriversEligibleForInstantRide(ride) {
+  if (!INSTANT_MARKET_STATUSES.has(ride.status)) return [];
+  if (ride.driverId) return [];
+  const db2 = getDb();
+  if (!db2 || !isPostgresConfigured()) return [];
+  const rideCompanyId = (ride.companyId ?? "").trim();
+  const rejected = new Set((ride.rejectedBy ?? []).map((id) => String(id).trim()).filter(Boolean));
+  const conditions = [
+    eq(fleetDriversTable.is_market_online, true),
+    eq(fleetDriversTable.is_active, true),
+    eq(fleetDriversTable.access_status, "active"),
+    eq(fleetDriversTable.approval_status, "approved")
+  ];
+  if (rideCompanyId) {
+    conditions.push(eq(fleetDriversTable.company_id, rideCompanyId));
+  }
+  const rows = await db2.select({
+    id: fleetDriversTable.id,
+    companyId: fleetDriversTable.company_id
+  }).from(fleetDriversTable).where(and(...conditions));
+  const out = [];
+  for (const row of rows) {
+    const fleetDriverId = String(row.id ?? "").trim();
+    const companyId = String(row.companyId ?? "").trim();
+    if (!fleetDriverId || !companyId) continue;
+    if (rejected.has(fleetDriverId)) continue;
+    const readiness = await getFleetDriverReadinessById(fleetDriverId, companyId);
+    if ("error" in readiness || !readiness.ready) continue;
+    const capability = await getFleetDriverCapability(fleetDriverId, companyId);
+    if (!capability?.vehicleLegalType) continue;
+    if (!isRideCompatibleWithCapability(ride, capability)) continue;
+    out.push({ fleetDriverId, companyId });
+  }
+  return out;
+}
+var INSTANT_MARKET_STATUSES;
+var init_fleetInstantRideMarketData = __esm({
+  "src/db/fleetInstantRideMarketData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_fleetDriverReadiness();
+    init_fleetMatchingData();
+    init_schema2();
+    INSTANT_MARKET_STATUSES = /* @__PURE__ */ new Set([
+      "pending",
+      "requested",
+      "searching_driver",
+      "offered"
+    ]);
+  }
+});
+
+// src/db/fleetDriverExpoPushData.ts
+function isLikelyExponentPushToken(raw) {
+  const t = raw.trim();
+  return t.startsWith("ExponentPushToken[") && t.endsWith("]");
+}
+async function upsertFleetDriverExpoPushToken(fleetDriverId, companyId, expoPushToken) {
+  const db2 = getDb();
+  if (!db2) return;
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  const tok = expoPushToken.trim();
+  if (!did || !cid || !tok || !isLikelyExponentPushToken(tok)) return;
+  await db2.insert(fleetDriverExpoPushTokensTable).values({
+    expo_push_token: tok,
+    fleet_driver_id: did,
+    company_id: cid,
+    updated_at: /* @__PURE__ */ new Date()
+  }).onConflictDoUpdate({
+    target: fleetDriverExpoPushTokensTable.expo_push_token,
+    set: { fleet_driver_id: did, company_id: cid, updated_at: /* @__PURE__ */ new Date() }
+  });
+}
+async function listAllFleetDriverExpoPushTokens() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select({
+    token: fleetDriverExpoPushTokensTable.expo_push_token,
+    fleetDriverId: fleetDriverExpoPushTokensTable.fleet_driver_id,
+    companyId: fleetDriverExpoPushTokensTable.company_id
+  }).from(fleetDriverExpoPushTokensTable);
+  return rows.map((r) => ({
+    token: r.token,
+    fleetDriverId: r.fleetDriverId,
+    companyId: r.companyId
+  })).filter((r) => r.token && isLikelyExponentPushToken(r.token));
+}
+async function listFleetDriverExpoPushTokens(fleetDriverId, companyId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  if (!did || !cid) return [];
+  const rows = await db2.select({ t: fleetDriverExpoPushTokensTable.expo_push_token }).from(fleetDriverExpoPushTokensTable).where(and(eq(fleetDriverExpoPushTokensTable.fleet_driver_id, did), eq(fleetDriverExpoPushTokensTable.company_id, cid)));
+  return rows.map((r) => r.t).filter((t) => typeof t === "string" && t.length > 0);
+}
+var init_fleetDriverExpoPushData = __esm({
+  "src/db/fleetDriverExpoPushData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
+// src/lib/expoPushGateway.ts
+async function sendExpoPushMessages(messages) {
+  if (messages.length === 0) return;
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json"
+  };
+  const accessToken = (process.env.EXPO_ACCESS_TOKEN ?? "").trim();
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  try {
+    const body = messages.length === 1 ? messages[0] : messages;
+    const res = await fetch(EXPO_PUSH_URL, { method: "POST", headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const text2 = await res.text().catch(() => "");
+      logger.warn({ status: res.status, snippet: text2.slice(0, 400) }, "[expo-push] send non-ok");
+    }
+  } catch (err) {
+    logger.warn({ err }, "[expo-push] send failed");
+  }
+}
+var EXPO_PUSH_URL;
+var init_expoPushGateway = __esm({
+  "src/lib/expoPushGateway.ts"() {
+    init_logger2();
+    EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+  }
+});
+
+// src/lib/driverRideExpoPush.ts
+var driverRideExpoPush_exports = {};
+__export(driverRideExpoPush_exports, {
+  notifyDriverMissedActivationReservation: () => notifyDriverMissedActivationReservation,
+  notifyDriverReservationActivationReminder: () => notifyDriverReservationActivationReminder,
+  notifyMarketOnlineDriversInstantRideOffer: () => notifyMarketOnlineDriversInstantRideOffer
+});
+async function notifyDriverReservationActivationReminder(fleetDriverId, companyId, rideId) {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Reservierung",
+      body: "Bitte Reservierung aktivieren.",
+      data: { kind: "reservation_activate_reminder", rideId }
+    }))
+  );
+}
+async function notifyMarketOnlineDriversInstantRideOffer(ride) {
+  if (!INSTANT_OFFER_STATUSES.has(ride.status)) return;
+  if (isFarFutureReservation(ride.scheduledAt ?? null)) return;
+  const drivers = await listMarketOnlineDriversEligibleForInstantRide(ride);
+  if (drivers.length === 0) return;
+  const fromLabel = (ride.fromFull || ride.from || "Abholung").trim().slice(0, 80);
+  const toLabel = (ride.toFull || ride.to || "Ziel").trim().slice(0, 80);
+  const body = `${fromLabel} \u2192 ${toLabel}`;
+  const messages = [];
+  for (const { fleetDriverId, companyId } of drivers) {
+    const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+    for (const to of tokens) {
+      messages.push({
+        to,
+        title: "Neue Fahrt",
+        body,
+        sound: "default",
+        priority: "high",
+        channelId: "ride-offers",
+        data: { kind: "instant_ride_offer", rideId: ride.id }
+      });
+    }
+  }
+  await sendExpoPushMessages(messages);
+}
+async function notifyDriverMissedActivationReservation(fleetDriverId, companyId, rideId) {
+  const tokens = await listFleetDriverExpoPushTokens(fleetDriverId, companyId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Reservierung",
+      body: "Reservierung verpasst \u2013 Sperre aktiv.",
+      data: { kind: "reservation_missed_activation", rideId }
+    }))
+  );
+}
+var INSTANT_OFFER_STATUSES;
+var init_driverRideExpoPush = __esm({
+  "src/lib/driverRideExpoPush.ts"() {
+    init_fleetInstantRideMarketData();
+    init_fleetDriverExpoPushData();
+    init_dispatchStatus();
+    init_expoPushGateway();
+    INSTANT_OFFER_STATUSES = /* @__PURE__ */ new Set([
+      "pending",
+      "requested",
+      "searching_driver",
+      "offered"
+    ]);
+  }
+});
+
+// src/db/passengerExpoPushData.ts
+function isLikelyExponentPushToken2(raw) {
+  const t = raw.trim();
+  return t.startsWith("ExponentPushToken[") && t.endsWith("]");
+}
+async function upsertPassengerExpoPushToken(passengerId, expoPushToken) {
+  const db2 = getDb();
+  if (!db2) return;
+  const pid = passengerId.trim();
+  const tok = expoPushToken.trim();
+  if (!pid || !tok || !isLikelyExponentPushToken2(tok)) return;
+  await db2.insert(passengerExpoPushTokensTable).values({
+    expo_push_token: tok,
+    passenger_id: pid,
+    updated_at: /* @__PURE__ */ new Date()
+  }).onConflictDoUpdate({
+    target: passengerExpoPushTokensTable.expo_push_token,
+    set: { passenger_id: pid, updated_at: /* @__PURE__ */ new Date() }
+  });
+}
+async function listPassengerExpoPushTokens(passengerId) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const pid = passengerId.trim();
+  if (!pid) return [];
+  const rows = await db2.select({ t: passengerExpoPushTokensTable.expo_push_token }).from(passengerExpoPushTokensTable).where(eq(passengerExpoPushTokensTable.passenger_id, pid));
+  return rows.map((r) => r.t).filter((t) => typeof t === "string" && t.length > 0);
+}
+var init_passengerExpoPushData = __esm({
+  "src/db/passengerExpoPushData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+  }
+});
+
+// src/lib/passengerRideExpoPush.ts
+var passengerRideExpoPush_exports = {};
+__export(passengerRideExpoPush_exports, {
+  notifyPassengerDriverAccepted: () => notifyPassengerDriverAccepted,
+  notifyPassengerDriverWaiting: () => notifyPassengerDriverWaiting,
+  notifyPassengerReservationActivated: () => notifyPassengerReservationActivated,
+  notifyPassengerReservationConfirmed: () => notifyPassengerReservationConfirmed,
+  notifyPassengerRideCancelledBySystem: () => notifyPassengerRideCancelledBySystem
+});
+async function notifyPassengerReservationConfirmed(passengerId, rideId) {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Reservierung",
+      body: "Deine Reservierung wurde best\xE4tigt.",
+      data: { kind: "reservation_confirmed", rideId }
+    }))
+  );
+}
+async function notifyPassengerReservationActivated(passengerId, rideId) {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Ihre Fahrt startet",
+      body: "Der Fahrer ist unterwegs zu Ihnen. Sie sehen den Live-Standort in der App.",
+      data: { kind: "reservation_activated", rideId }
+    }))
+  );
+}
+async function notifyPassengerDriverWaiting(passengerId, rideId) {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer da",
+      body: "Ihr Fahrer ist am Abholort. Bitte zum Fahrzeug kommen.",
+      data: { kind: "driver_waiting", rideId }
+    }))
+  );
+}
+async function notifyPassengerDriverAccepted(passengerId, rideId) {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Fahrer gefunden",
+      body: "Ein Fahrer hat Ihre Fahrt angenommen. Sie sehen den Standort in der App.",
+      data: { kind: "ride_accepted", rideId }
+    }))
+  );
+}
+async function notifyPassengerRideCancelledBySystem(passengerId, rideId) {
+  const tokens = await listPassengerExpoPushTokens(passengerId);
+  if (tokens.length === 0) return;
+  await sendExpoPushMessages(
+    tokens.map((to) => ({
+      to,
+      title: "Vorbestellung nicht m\xF6glich",
+      body: "Leider wurde keine Fahrzeugannahme rechtzeitig gefunden. Die Buchung wurde automatisch beendet.",
+      data: { kind: "ride_cancelled_by_system", rideId }
+    }))
+  );
+}
+var init_passengerRideExpoPush = __esm({
+  "src/lib/passengerRideExpoPush.ts"() {
+    init_passengerExpoPushData();
+    init_expoPushGateway();
+  }
+});
+
+// src/jobs/ghostRideRecovery.ts
+var ghostRideRecovery_exports = {};
+__export(ghostRideRecovery_exports, {
+  recoverGhostAcceptedRides: () => recoverGhostAcceptedRides
+});
+function ghostIdleMs() {
+  const raw = Number(process.env.ONRODA_GHOST_RIDE_IDLE_MINUTES ?? DEFAULT_IDLE_MINUTES);
+  const minutes = Number.isFinite(raw) && raw >= 5 && raw <= 120 ? raw : DEFAULT_IDLE_MINUTES;
+  return minutes * 60 * 1e3;
+}
+async function recoverGhostAcceptedRides(nowMs = Date.now()) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const idleSince = new Date(nowMs - ghostIdleMs());
+  const rows = await db2.select({
+    id: ridesTable.id,
+    driverId: ridesTable.driver_id,
+    companyId: ridesTable.company_id,
+    scheduledAt: ridesTable.scheduled_at
+  }).from(ridesTable).where(and(eq(ridesTable.status, "accepted"), isNotNull(ridesTable.driver_id)));
+  const recovered = [];
+  for (const row of rows) {
+    const id = row.id?.trim();
+    const driverId = typeof row.driverId === "string" ? row.driverId.trim() : "";
+    if (!id || !driverId) continue;
+    const acceptRows = await db2.select({ created_at: rideEventsTable.created_at }).from(rideEventsTable).where(and(eq(rideEventsTable.ride_id, id), eq(rideEventsTable.to_status, "accepted"))).orderBy(desc(rideEventsTable.created_at)).limit(1);
+    const acceptedAt = acceptRows[0]?.created_at instanceof Date ? acceptRows[0].created_at : null;
+    const dbLoc = await getRideDriverLocation(id);
+    const locAt = dbLoc?.updatedAt ? new Date(dbLoc.updatedAt) : null;
+    const referenceIdle = locAt && acceptedAt ? locAt > acceptedAt ? locAt : acceptedAt : locAt ?? acceptedAt;
+    if (!referenceIdle || referenceIdle > idleSince) continue;
+    const scheduledAtIso = row.scheduledAt instanceof Date ? row.scheduledAt.toISOString() : null;
+    const revertStatus = scheduledAtIso && isFarFutureReservation(scheduledAtIso) ? "scheduled" : "searching_driver";
+    const updated = await updateRide(
+      id,
+      { status: revertStatus, driverId: null },
+      { mutationActor: { actorType: "system", actorId: null } }
+    );
+    if (!updated) continue;
+    await insertSupplementalRideEvent(id, {
+      eventType: "ghost_ride_recovered",
+      fromStatus: "accepted",
+      toStatus: revertStatus,
+      actorType: "system",
+      actorId: null,
+      payload: {
+        previousDriverId: driverId,
+        idleSinceMs: ghostIdleMs(),
+        lastLocationAt: locAt?.toISOString() ?? null,
+        acceptedAt: acceptedAt?.toISOString() ?? null
+      }
+    });
+    recovered.push(id);
+    logger.warn(
+      { rideId: id, driverId, revertStatus, referenceIdle: referenceIdle.toISOString() },
+      "[Cron] Ghost-Ride \u2192 Pool"
+    );
+  }
+  return recovered;
+}
+var DEFAULT_IDLE_MINUTES;
+var init_ghostRideRecovery = __esm({
+  "src/jobs/ghostRideRecovery.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_rideDriverLocationData();
+    init_ridesData();
+    init_schema2();
+    init_dispatchStatus();
+    init_logger2();
+    DEFAULT_IDLE_MINUTES = 15;
+  }
+});
+
 // src/loadEnv.ts
 var import_dotenv = __toESM(require_main(), 1);
 import { existsSync } from "node:fs";
@@ -45554,16 +47668,17 @@ var import_sender = __toESM(require_sender(), 1);
 var import_subprotocol = __toESM(require_subprotocol(), 1);
 var import_websocket = __toESM(require_websocket(), 1);
 var import_websocket_server = __toESM(require_websocket_server(), 1);
+var wrapper_default = import_websocket.default;
 
 // src/app.ts
-var import_express20 = __toESM(require_express2(), 1);
+var import_express22 = __toESM(require_express2(), 1);
 var import_cors = __toESM(require_lib3(), 1);
 var import_pino_http = __toESM(require_logger(), 1);
 import path10 from "path";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
 
 // src/routes/index.ts
-var import_express18 = __toESM(require_express2(), 1);
+var import_express20 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express = __toESM(require_express2(), 1);
@@ -47635,10 +49750,10 @@ var ZodDate = class _ZodDate extends ZodType {
       checks: [...this._def.checks, check]
     });
   }
-  min(minDate, message2) {
+  min(minDate2, message2) {
     return this._addCheck({
       kind: "min",
-      value: minDate.getTime(),
+      value: minDate2.getTime(),
       message: errorUtil.toString(message2)
     });
   }
@@ -49629,6 +51744,7 @@ var import_express2 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_accessCodesData();
 init_client();
+init_ridePushNotificationMarkers();
 init_ridesData();
 import { randomUUID as randomUUID12, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -49718,6 +51834,228 @@ async function listRideSupportTicketsForPassengerRide(rideId, passengerId) {
 
 // src/routes/rides.ts
 init_rideFinancialsData();
+
+// src/lib/rideStatusMachine.ts
+var TRANSITIONS = {
+  draft: ["requested", "cancelled_by_customer", "cancelled"],
+  scheduled: [
+    "accepted",
+    "scheduled_assigned",
+    "ready_for_dispatch",
+    "searching_driver",
+    "cancelled_by_customer",
+    "cancelled",
+    "expired"
+  ],
+  scheduled_assigned: [
+    "ready_for_dispatch",
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system",
+    "cancelled",
+    "expired"
+  ],
+  ready_for_dispatch: [
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "in_progress",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system",
+    "cancelled",
+    "expired"
+  ],
+  requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+  searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
+  offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
+  pending: [
+    "accepted",
+    "driver_arriving",
+    "driver_waiting",
+    "in_progress",
+    "completed",
+    "cancelled",
+    "rejected",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system"
+  ],
+  accepted: [
+    "driver_arriving",
+    "driver_waiting",
+    "passenger_onboard",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system",
+    "cancelled"
+  ],
+  driver_arriving: [
+    "driver_waiting",
+    "passenger_onboard",
+    "in_progress",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system"
+  ],
+  driver_waiting: [
+    "passenger_onboard",
+    "in_progress",
+    "cancelled_by_customer",
+    "cancelled_by_driver",
+    "cancelled_by_system"
+  ],
+  passenger_onboard: ["completed", "cancelled_by_system"],
+  arrived: ["passenger_onboard", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
+  in_progress: ["completed", "cancelled_by_system", "cancelled"]
+};
+function canTransitionRideStatus(from, to) {
+  if (from === to) return true;
+  return (TRANSITIONS[from] ?? []).includes(to);
+}
+function supplementalEventForTransition(from, to) {
+  if (to === "accepted" && from !== "accepted") {
+    return { eventType: "offer_accepted" };
+  }
+  if (to === "driver_arriving" && from !== "driver_arriving") {
+    return { eventType: "navigation_started" };
+  }
+  if (to === "driver_waiting" && from !== "driver_waiting") {
+    return { eventType: "geofenced_arrival" };
+  }
+  if (to === "in_progress" && from !== "in_progress") {
+    return { eventType: "trip_started" };
+  }
+  if (to === "completed" && from !== "completed") {
+    return { eventType: "ride_completed" };
+  }
+  return null;
+}
+
+// src/lib/rideOpsTransitionGuards.ts
+var PICKUP_GEOFENCE_MAX_M = 300;
+var DRIVER_LOCATION_MAX_AGE_MS = 12e4;
+var TRIP_START_FROM = /* @__PURE__ */ new Set(["driver_waiting"]);
+function toRad(deg) {
+  return deg * Math.PI / 180;
+}
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const earthRadiusM = 6371e3;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusM * c;
+}
+function pickupCoordinates(ride) {
+  const lat = ride.fromLat;
+  const lon = ride.fromLon;
+  if (lat == null || lon == null || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+}
+function parseDriverCoordsFromBody(body) {
+  if (!body || typeof body !== "object") return null;
+  const b = body;
+  const latRaw = b.driverLat ?? b.lat;
+  const lonRaw = b.driverLon ?? b.lon;
+  const lat = typeof latRaw === "number" ? latRaw : Number(latRaw);
+  const lon = typeof lonRaw === "number" ? lonRaw : Number(lonRaw);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+}
+function resolveDriverPosition(rideId, body, driverLocations2) {
+  const fromBody = parseDriverCoordsFromBody(body);
+  if (fromBody) return { ...fromBody, source: "body" };
+  const cached = driverLocations2.get(rideId);
+  if (!cached) return null;
+  const age = Date.now() - new Date(cached.updatedAt).getTime();
+  if (!Number.isFinite(age) || age > DRIVER_LOCATION_MAX_AGE_MS) return null;
+  return { lat: cached.lat, lon: cached.lon, source: "cache" };
+}
+function geofenceFailure(error, message2, details) {
+  return { ok: false, status: 409, error, message: message2, details };
+}
+function validateRideStatusTransition(cur, nextStatus, ctx) {
+  if (nextStatus === "driver_waiting") {
+    const pickup = pickupCoordinates(cur);
+    if (!pickup) {
+      return {
+        ok: false,
+        status: 409,
+        error: "pickup_coordinates_missing",
+        message: "Abholkoordinaten fehlen \u2014 Ankunft kann nicht best\xE4tigt werden."
+      };
+    }
+    const pos = resolveDriverPosition(ctx.rideId, ctx.body, ctx.driverLocations);
+    if (!pos) {
+      return {
+        ok: false,
+        status: 409,
+        error: "driver_location_required",
+        message: "Fahrer-Standort fehlt oder ist veraltet. Bitte GPS senden (Navigation/App)."
+      };
+    }
+    const distM = haversineMeters(pos.lat, pos.lon, pickup.lat, pickup.lon);
+    if (distM > PICKUP_GEOFENCE_MAX_M) {
+      return geofenceFailure(
+        "pickup_geofence_failed",
+        `Abholort nicht erreicht (${Math.round(distM)} m entfernt, max. ${PICKUP_GEOFENCE_MAX_M} m).`,
+        { distanceM: Math.round(distM), maxM: PICKUP_GEOFENCE_MAX_M, driverLat: pos.lat, driverLon: pos.lon }
+      );
+    }
+  }
+  if (nextStatus === "in_progress") {
+    if (!TRIP_START_FROM.has(cur.status)) {
+      return {
+        ok: false,
+        status: 409,
+        error: "trip_start_requires_pickup_phase",
+        message: "Fahrt zum Ziel nur nach \u201EAngekommen\u201C / Warten am Abholort."
+      };
+    }
+    const pickup = pickupCoordinates(cur);
+    const pos = resolveDriverPosition(ctx.rideId, ctx.body, ctx.driverLocations);
+    if (pickup && pos) {
+      const distM = haversineMeters(pos.lat, pos.lon, pickup.lat, pickup.lon);
+      if (distM > PICKUP_GEOFENCE_MAX_M * 4) {
+        return geofenceFailure(
+          "trip_start_geofence_failed",
+          "Fahrtbeginn nur in der N\xE4he des Abholorts m\xF6glich.",
+          { distanceM: Math.round(distM) }
+        );
+      }
+    }
+  }
+  if (nextStatus === "completed") {
+    const preTrip = cur.status === "accepted" || cur.status === "driver_arriving" || cur.status === "driver_waiting";
+    if (preTrip) {
+      if (ctx.parsedFinalFare !== void 0 && ctx.parsedFinalFare > 9e-3) {
+        return {
+          ok: false,
+          status: 400,
+          error: "complete_without_trip_start",
+          message: "Ohne Fahrtbeginn zum Ziel ist kein Fahrpreis zul\xE4ssig. Bitte 0,00 \u20AC oder Stornierung."
+        };
+      }
+    } else if (cur.status === "passenger_onboard") {
+      if (ctx.parsedFinalFare !== void 0 && ctx.parsedFinalFare > 9e-3) {
+        return {
+          ok: false,
+          status: 400,
+          error: "complete_trip_not_started",
+          message: "Bitte Fahrt zum Ziel starten, bevor ein Preis abgerechnet wird."
+        };
+      }
+    }
+  }
+  return { ok: true };
+}
+
+// src/routes/rides.ts
+init_rideDriverLocationData();
 init_rideAuthorization();
 
 // src/domain/ridePublic.ts
@@ -50055,25 +52393,8 @@ function resolveEffectivePanelModules(stored, companyKind) {
   return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
 }
 
-// src/lib/logger.ts
-var import_pino = __toESM(require_pino(), 1);
-var isProduction = process.env.NODE_ENV === "production";
-var logger = (0, import_pino.default)({
-  level: process.env.LOG_LEVEL ?? "info",
-  redact: [
-    "req.headers.authorization",
-    "req.headers.cookie",
-    "res.headers['set-cookie']"
-  ],
-  ...isProduction ? {} : {
-    transport: {
-      target: "pino-pretty",
-      options: { colorize: true }
-    }
-  }
-});
-
 // src/db/adminData.ts
+init_logger2();
 function flattenPgError(err) {
   const parts = [];
   const seen = /* @__PURE__ */ new Set();
@@ -50406,7 +52727,7 @@ async function getAdminStats(opts) {
   const [companiesTotalRow] = await db2.select({ n: count() }).from(adminCompaniesTable);
   const [companiesActiveRow] = await db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_active, true));
   const [driversRow] = await db2.select({
-    n: sql`count(distinct ${ridesTable.driver_id})::int`
+    n: sql2`count(distinct ${ridesTable.driver_id})::int`
   }).from(ridesTable).where(and(isNotNull(ridesTable.driver_id), ne(ridesTable.driver_id, "")));
   const [panelUsersRow] = await db2.select({ n: count() }).from(panelUsersTable).where(eq(panelUsersTable.is_active, true));
   const revConds = [eq(ridesTable.status, "completed")];
@@ -50415,7 +52736,7 @@ async function getAdminStats(opts) {
     revConds.push(lte(ridesTable.created_at, revenueTo));
   }
   const [revRow] = await db2.select({
-    completedSum: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    completedSum: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
     completedRideCount: count()
   }).from(ridesTable).where(and(...revConds));
   return {
@@ -50466,7 +52787,7 @@ async function getCompanyKpis(companyId, now = /* @__PURE__ */ new Date()) {
   }
   const [revRow, openRow, voucherRow] = await Promise.all([
     db2.select({
-      monthlyRevenue: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+      monthlyRevenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
     }).from(ridesTable).where(
       and(
         eq(ridesTable.company_id, companyId),
@@ -50477,14 +52798,14 @@ async function getCompanyKpis(companyId, now = /* @__PURE__ */ new Date()) {
     ),
     db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, openStatuses))),
     db2.select({
-      remaining: sql`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`
+      remaining: sql2`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`
     }).from(accessCodesTable).where(
       and(
         eq(accessCodesTable.company_id, companyId),
         eq(accessCodesTable.code_type, "voucher"),
         eq(accessCodesTable.is_active, true),
-        or(sql`${accessCodesTable.valid_from} is null`, lte(accessCodesTable.valid_from, now)),
-        or(sql`${accessCodesTable.valid_until} is null`, gte(accessCodesTable.valid_until, now)),
+        or(sql2`${accessCodesTable.valid_from} is null`, lte(accessCodesTable.valid_from, now)),
+        or(sql2`${accessCodesTable.valid_until} is null`, gte(accessCodesTable.valid_until, now)),
         isNotNull(accessCodesTable.max_uses)
       )
     )
@@ -50961,7 +53282,7 @@ async function countRidesReferencingFareAreaId(fareAreaId) {
     void fareAreaId;
     return 0;
   }
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(sql`${ridesTable.partner_booking_meta}->>'fareAreaId' = ${fareAreaId}`);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(sql2`${ridesTable.partner_booking_meta}->>'fareAreaId' = ${fareAreaId}`);
   return Number(row?.n ?? 0);
 }
 async function deleteFareArea(id) {
@@ -51194,1454 +53515,11 @@ function computeRideBookingPricing(args) {
 init_financeCalculationService();
 init_serviceRegionMatch();
 init_accessCodesData();
-
-// src/db/fleetMatchingData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-function normalizeVehicleText(value) {
-  return (value ?? "").trim().toLowerCase();
-}
-function parsePricingMode(raw) {
-  if (raw === "taxi_tariff" || raw === "fixed_price" || raw === "hybrid") return "taxi_tariff";
-  return null;
-}
-function requiredClassForRide(vehicleText) {
-  if (vehicleText.includes("rollstuhl")) return "wheelchair";
-  if (vehicleText === "xl" || vehicleText.includes(" xl")) return "xl";
-  return null;
-}
-function inferPricingModeFromVehicle(_vehicleText) {
-  return "taxi_tariff";
-}
-function requiredLegalTypeForRide(ride) {
-  const vehicleText = normalizeVehicleText(ride.vehicle);
-  const _pricingMode = parsePricingMode(ride.pricingMode) ?? inferPricingModeFromVehicle(vehicleText);
-  return "taxi";
-}
-function isRideCompatibleWithCapability(ride, capability) {
-  const requiredLegalType = requiredLegalTypeForRide(ride);
-  const normalizedLegalType = capability.vehicleLegalType === "rental_car" ? "taxi" : capability.vehicleLegalType;
-  if (!normalizedLegalType || normalizedLegalType !== requiredLegalType) {
-    return false;
-  }
-  const vehicleText = normalizeVehicleText(ride.vehicle);
-  const requiredClass = requiredClassForRide(vehicleText);
-  if (!requiredClass) return true;
-  return capability.vehicleClass === requiredClass;
-}
-async function getFleetDriverCapability(driverId, companyId) {
-  const db2 = getDb();
-  if (!db2) return null;
-  const assigned = await db2.select({
-    vehicleLegalType: fleetVehiclesTable.vehicle_legal_type,
-    vehicleClass: fleetVehiclesTable.vehicle_class,
-    approvalStatus: fleetVehiclesTable.approval_status,
-    isActive: fleetVehiclesTable.is_active
-  }).from(driverVehicleAssignmentsTable).innerJoin(fleetVehiclesTable, eq(driverVehicleAssignmentsTable.vehicle_id, fleetVehiclesTable.id)).where(
-    and(
-      eq(driverVehicleAssignmentsTable.driver_id, driverId),
-      eq(driverVehicleAssignmentsTable.company_id, companyId)
-    )
-  ).orderBy(desc(driverVehicleAssignmentsTable.assigned_at)).limit(1);
-  if (assigned[0]) {
-    if (String(assigned[0].approvalStatus) !== "approved") {
-      return null;
-    }
-    if (!assigned[0].isActive) return null;
-    return {
-      vehicleLegalType: assigned[0].vehicleLegalType,
-      vehicleClass: assigned[0].vehicleClass
-    };
-  }
-  return null;
-}
-
-// src/db/companyGovernanceData.ts
-init_drizzle_orm();
-init_client();
-
-// src/db/companyComplianceDocumentsData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID7 } from "node:crypto";
-function asReview(s) {
-  const v = String(s ?? "").trim();
-  if (v === "approved" || v === "rejected" || v === "pending") return v;
-  return "pending";
-}
-function deriveGlobalComplianceStatus(args) {
-  if (!args.hasGewerbe || !args.hasInsurance) return "pending";
-  const g = args.gewerbeReview ?? "pending";
-  const i = args.insuranceReview ?? "pending";
-  if (g === "rejected" || i === "rejected") return "non_compliant";
-  if (g === "pending" || i === "pending") return "in_review";
-  if (g === "approved" && i === "approved") return "compliant";
-  return "in_review";
-}
-function complianceBucketFromDerived(args) {
-  if (!args.hasGewerbe || !args.hasInsurance) return "missing";
-  if (args.derivedStatus === "non_compliant") return "rejected";
-  if (args.derivedStatus === "compliant") return "compliant";
-  if (args.derivedStatus === "in_review") return "in_review";
-  return "missing";
-}
-function reviewForSide(has, companyKey, row) {
-  if (!has) return null;
-  const k = (companyKey ?? "").trim();
-  if (!k) return "pending";
-  if (!row || (row.storage_key ?? "").trim() !== k) return "pending";
-  return asReview(row.review_status);
-}
-function buildSide(has, companyKey, row) {
-  if (!has) {
-    return { uploadedAt: "", reviewStatus: "", reviewNote: "" };
-  }
-  if (row) {
-    const k = (companyKey ?? "").trim();
-    const rowKey = (row.storage_key ?? "").trim();
-    const keysMatch = k === rowKey;
-    const uploaded = row.uploaded_at;
-    const uploadedAt = uploaded instanceof Date ? uploaded.toISOString() : String(uploaded ?? "").trim();
-    return {
-      uploadedAt: uploadedAt || "",
-      reviewStatus: keysMatch ? asReview(row.review_status) : "pending",
-      reviewNote: keysMatch ? String(row.review_note ?? "").trim() : ""
-    };
-  }
-  return { uploadedAt: "", reviewStatus: "pending", reviewNote: "" };
-}
-async function listCurrentDocRows(companyId) {
-  const db2 = getDb();
-  if (!db2) {
-    return [];
-  }
-  return db2.select().from(companyComplianceDocumentsTable).where(
-    and(
-      eq(companyComplianceDocumentsTable.company_id, companyId),
-      eq(companyComplianceDocumentsTable.is_current, true)
-    )
-  );
-}
-async function getDerivedComplianceAndDocumentsForRow(r) {
-  const hasG = Boolean((r.compliance_gewerbe_storage_key ?? "").trim());
-  const hasI = Boolean((r.compliance_insurance_storage_key ?? "").trim());
-  if (!isPostgresConfigured() || !getDb()) {
-    const gR = hasG ? "pending" : null;
-    const iR = hasI ? "pending" : null;
-    return {
-      status: deriveGlobalComplianceStatus({
-        hasGewerbe: hasG,
-        hasInsurance: hasI,
-        gewerbeReview: gR,
-        insuranceReview: iR
-      }),
-      complianceDocuments: {
-        gewerbe: { uploadedAt: "", reviewStatus: hasG ? "pending" : "", reviewNote: "" },
-        insurance: { uploadedAt: "", reviewStatus: hasI ? "pending" : "", reviewNote: "" }
-      }
-    };
-  }
-  const rows = await listCurrentDocRows(r.id);
-  const gRow = rows.find((x) => x.document_type === "gewerbe");
-  const iRow = rows.find((x) => x.document_type === "insurance");
-  const gRev = reviewForSide(hasG, r.compliance_gewerbe_storage_key, gRow);
-  const iRev = reviewForSide(hasI, r.compliance_insurance_storage_key, iRow);
-  const status = deriveGlobalComplianceStatus({
-    hasGewerbe: hasG,
-    hasInsurance: hasI,
-    gewerbeReview: gRev,
-    insuranceReview: iRev
-  });
-  return {
-    status,
-    complianceDocuments: {
-      gewerbe: buildSide(hasG, r.compliance_gewerbe_storage_key, gRow),
-      insurance: buildSide(hasI, r.compliance_insurance_storage_key, iRow)
-    }
-  };
-}
-async function getDerivedGlobalComplianceStatusForCompanyRow(r) {
-  const { status } = await getDerivedComplianceAndDocumentsForRow(r);
-  return status;
-}
-async function recomputeAndPersistGlobalCompliance(companyId) {
-  if (!isPostgresConfigured() || !getDb()) return;
-  const db2 = getDb();
-  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const r = rows[0];
-  if (!r) return;
-  const { status } = await getDerivedComplianceAndDocumentsForRow(r);
-  await db2.update(adminCompaniesTable).set({ compliance_status: status }).where(eq(adminCompaniesTable.id, companyId));
-}
-async function insertComplianceDocumentUpload(companyId, kind, storageKey, panelUserId) {
-  const db2 = getDb();
-  if (!db2) {
-    throw new Error("database_not_configured");
-  }
-  const docId = randomUUID7();
-  const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
-  await db2.transaction(async (tx) => {
-    await tx.update(companyComplianceDocumentsTable).set({ is_current: false }).where(
-      and(
-        eq(companyComplianceDocumentsTable.company_id, companyId),
-        eq(companyComplianceDocumentsTable.document_type, kind),
-        eq(companyComplianceDocumentsTable.is_current, true)
-      )
-    );
-    await tx.insert(companyComplianceDocumentsTable).values({
-      id: docId,
-      company_id: companyId,
-      document_type: kind,
-      storage_key: storageKey,
-      uploaded_by_panel_user_id: panelUserId,
-      review_status: "pending",
-      review_note: "",
-      is_current: true
-    });
-    await tx.update(adminCompaniesTable).set(col).where(eq(adminCompaniesTable.id, companyId));
-  });
-  await recomputeAndPersistGlobalCompliance(companyId);
-}
-async function setCurrentComplianceDocumentReview(companyId, kind, input) {
-  const db2 = getDb();
-  if (!db2) {
-    return { ok: false, error: "database_not_configured" };
-  }
-  const note = input.reviewNote.trim().slice(0, 4e3);
-  const rows = await db2.select().from(companyComplianceDocumentsTable).where(
-    and(
-      eq(companyComplianceDocumentsTable.company_id, companyId),
-      eq(companyComplianceDocumentsTable.document_type, kind),
-      eq(companyComplianceDocumentsTable.is_current, true)
-    )
-  ).limit(1);
-  if (!rows[0]) {
-    return { ok: false, error: "no_current_document" };
-  }
-  await db2.update(companyComplianceDocumentsTable).set({
-    review_status: input.reviewStatus,
-    review_note: input.reviewStatus === "rejected" ? note : ""
-  }).where(eq(companyComplianceDocumentsTable.id, rows[0].id));
-  await recomputeAndPersistGlobalCompliance(companyId);
-  return { ok: true };
-}
-
-// src/db/companyGovernanceData.ts
-init_schema2();
-function companyMeetsTaxiFleetProvisioningReadiness(gate) {
-  if (!gate) return false;
-  if (gate.companyKind !== "taxi") return false;
-  if (gate.isBlocked) return false;
-  if (gate.verificationStatus !== "verified") return false;
-  if (gate.complianceStatus !== "compliant") return false;
-  if (gate.contractStatus !== "active") return false;
-  if (!gate.requiredProfileComplete) return false;
-  return true;
-}
-async function getFleetLoginCompanyDenyReason(companyId) {
-  if (!isPostgresConfigured()) return "company_not_found";
-  const db2 = getDb();
-  if (!db2) return "company_not_found";
-  const rows = await db2.select({
-    is_active: adminCompaniesTable.is_active,
-    is_blocked: adminCompaniesTable.is_blocked,
-    contract_status: adminCompaniesTable.contract_status
-  }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const r = rows[0];
-  if (!r) return "company_not_found";
-  if (!r.is_active) return "company_inactive";
-  if (Boolean(r.is_blocked)) return "company_blocked";
-  const cs = String(r.contract_status ?? "").trim() || "inactive";
-  if (cs !== "active") return "contract_not_active";
-  return null;
-}
-async function getCompanyGovernanceGate(companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(adminCompaniesTable).where(and(eq(adminCompaniesTable.id, companyId), eq(adminCompaniesTable.is_active, true))).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  const requiredProfileComplete = Boolean(
-    String(r.company_kind ?? "").trim() && String(r.tax_id ?? "").trim() && String(r.concession_number ?? "").trim() && String(r.name ?? "").trim() && String(r.email ?? "").trim() && String(r.phone ?? "").trim() && String(r.address_line1 ?? "").trim() && String(r.postal_code ?? "").trim() && String(r.city ?? "").trim() && String(r.country ?? "").trim() && String(r.vat_id ?? "").trim()
-  );
-  const complianceStatus = await getDerivedGlobalComplianceStatusForCompanyRow(
-    r
-  );
-  return {
-    companyId: r.id,
-    companyKind: r.company_kind ?? "general",
-    verificationStatus: r.verification_status ?? "pending",
-    complianceStatus,
-    contractStatus: r.contract_status ?? "inactive",
-    isBlocked: Boolean(r.is_blocked),
-    hasComplianceGewerbe: Boolean(r.compliance_gewerbe_storage_key),
-    hasComplianceInsurance: Boolean(r.compliance_insurance_storage_key),
-    maxDrivers: r.max_drivers ?? 100,
-    maxVehicles: r.max_vehicles ?? 100,
-    requiredProfileComplete,
-    farePermissions: r.fare_permissions ?? {},
-    insurerPermissions: r.insurer_permissions ?? {},
-    areaAssignments: Array.isArray(r.area_assignments) ? r.area_assignments.filter((x) => typeof x === "string") : []
-  };
-}
-async function countFleetDriversForCompany(companyId) {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: count() }).from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
-  return Number(rows[0]?.n ?? 0);
-}
-async function countFleetVehiclesForCompany(companyId) {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: count() }).from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
-  return Number(rows[0]?.n ?? 0);
-}
-
-// src/db/fleetDriversData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID8 } from "node:crypto";
-function normalizeFleetDriverApproval(raw) {
-  const t = String(raw ?? "").toLowerCase().trim();
-  if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
-    return t;
-  return "pending";
-}
-function computeFleetDriverComplianceGaps(d) {
-  const gaps = [];
-  if (!(d.pScheinNumber ?? "").trim()) gaps.push("P-Schein-Nummer fehlt");
-  const exp = d.pScheinExpiry != null ? String(d.pScheinExpiry).trim() : "";
-  if (!exp) gaps.push("P-Schein-Ablaufdatum fehlt");
-  const doc = (d.pScheinDocStorageKey ?? "").trim();
-  if (!doc) gaps.push("P-Schein-PDF-Nachweis fehlt");
-  return gaps;
-}
-function fleetDriverTableRowToList(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    email: r.email,
-    firstName: r.first_name,
-    lastName: r.last_name,
-    phone: r.phone,
-    accessStatus: r.access_status,
-    isActive: r.is_active,
-    mustChangePassword: r.must_change_password,
-    pScheinNumber: r.p_schein_number,
-    pScheinExpiry: r.p_schein_expiry ? String(r.p_schein_expiry) : null,
-    pScheinDocStorageKey: r.p_schein_doc_storage_key,
-    homeAddress: r.home_address ?? "",
-    driversLicenseNumber: r.drivers_license_number ?? "",
-    driversLicenseExpiry: r.drivers_license_expiry ? String(r.drivers_license_expiry) : null,
-    vehicleLegalType: r.vehicle_legal_type,
-    vehicleClass: r.vehicle_class,
-    lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
-    lastHeartbeatAt: r.last_heartbeat_at ? r.last_heartbeat_at.toISOString() : null,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString(),
-    approvalStatus: normalizeFleetDriverApproval(
-      r.approval_status ?? "approved"
-    ),
-    suspensionReason: r.suspension_reason ?? "",
-    adminInternalNote: r.admin_internal_note ?? "",
-    readinessOverrideSystem: Boolean(r.readiness_override_system)
-  };
-}
-function rowToList(r) {
-  return fleetDriverTableRowToList(r);
-}
-async function getCompanyKind(companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({ k: adminCompaniesTable.company_kind }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const k = rows[0]?.k;
-  return typeof k === "string" ? k : null;
-}
-async function findFleetDriverAuthRow(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    id: fleetDriversTable.id,
-    company_id: fleetDriversTable.company_id,
-    session_version: fleetDriversTable.session_version,
-    is_active: fleetDriversTable.is_active,
-    access_status: fleetDriversTable.access_status
-  }).from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    company_id: r.company_id,
-    session_version: r.session_version,
-    is_active: r.is_active,
-    access_status: r.access_status
-  };
-}
-async function findFleetDriverByEmailNormalized(email) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const em = email.trim().toLowerCase();
-  if (!em) return null;
-  const rows = await db2.select().from(fleetDriversTable).where(sql`lower(trim(${fleetDriversTable.email})) = ${em}`).limit(1);
-  return rows[0] ?? null;
-}
-async function findFleetDriverGlobal(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.id, id)).limit(1);
-  return rows[0] ?? null;
-}
-async function findFleetDriverInCompany(id, companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetDriversTable).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).limit(1);
-  return rows[0] ?? null;
-}
-async function listFleetDriversForCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(fleetDriversTable).where(eq(fleetDriversTable.company_id, companyId));
-  return rows.map(rowToList);
-}
-async function insertFleetDriver(input) {
-  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const email = input.email.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, error: "email_invalid" };
-  }
-  const existing = await findFleetDriverByEmailNormalized(email);
-  if (existing) {
-    return { ok: false, error: "email_taken" };
-  }
-  const id = `fd-${randomUUID8()}`;
-  const pExp = input.pScheinExpiry?.trim();
-  const dlExp = input.driversLicenseExpiry?.trim();
-  await db2.insert(fleetDriversTable).values({
-    id,
-    company_id: input.companyId,
-    email,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    phone: input.phone.trim(),
-    password_hash: input.passwordHash,
-    must_change_password: input.mustChangePassword,
-    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
-    vehicle_class: input.vehicleClass ?? "standard",
-    p_schein_number: (input.pScheinNumber ?? "").trim(),
-    p_schein_expiry: pExp ? pExp : null,
-    home_address: (input.homeAddress ?? "").trim(),
-    drivers_license_number: (input.driversLicenseNumber ?? "").trim(),
-    drivers_license_expiry: dlExp ? dlExp : null,
-    is_active: true,
-    access_status: "active",
-    approval_status: input.approvalStatus ?? "approved",
-    session_version: 1
-  });
-  return { ok: true, id };
-}
-async function patchFleetDriverProfile(id, companyId, patch) {
-  const cur = await findFleetDriverInCompany(id, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  let bumpSession = false;
-  if (patch.email !== void 0) {
-    const em = patch.email.trim().toLowerCase();
-    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-      return { ok: false, error: "email_invalid" };
-    }
-    const other = await findFleetDriverByEmailNormalized(em);
-    if (other && other.id !== id) {
-      return { ok: false, error: "email_taken" };
-    }
-    set.email = em;
-    bumpSession = true;
-  }
-  if (patch.isActive !== void 0) {
-    set.is_active = patch.isActive;
-    bumpSession = true;
-  }
-  if (patch.firstName !== void 0) set.first_name = patch.firstName.trim();
-  if (patch.lastName !== void 0) set.last_name = patch.lastName.trim();
-  if (patch.phone !== void 0) set.phone = patch.phone.trim();
-  if (patch.pScheinNumber !== void 0) set.p_schein_number = patch.pScheinNumber.trim();
-  if (patch.pScheinExpiry !== void 0) {
-    const raw = patch.pScheinExpiry?.trim();
-    set.p_schein_expiry = raw ? raw : null;
-  }
-  if (patch.pScheinDocStorageKey !== void 0) set.p_schein_doc_storage_key = patch.pScheinDocStorageKey;
-  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
-  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
-  if (patch.homeAddress !== void 0) set.home_address = patch.homeAddress.trim();
-  if (patch.driversLicenseNumber !== void 0) set.drivers_license_number = patch.driversLicenseNumber.trim();
-  if (patch.driversLicenseExpiry !== void 0) {
-    const raw = patch.driversLicenseExpiry?.trim();
-    set.drivers_license_expiry = raw ? raw : null;
-  }
-  if (bumpSession) {
-    set.session_version = sql`${fleetDriversTable.session_version} + 1`;
-  }
-  await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId)));
-  return { ok: true };
-}
-async function updateFleetDriverPassword(id, companyId, passwordHash, mustChangePassword) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    password_hash: passwordHash,
-    must_change_password: mustChangePassword,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function suspendFleetDriver(id, companyId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "suspended",
-    is_active: true,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function activateFleetDriver(id, companyId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "active",
-    is_active: true,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, id), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function setFleetDriverApprovalByAdmin(driverId, nextStatus, opts) {
-  const row = await findFleetDriverGlobal(driverId);
-  if (!row) return { ok: false, error: "not_found" };
-  const companyId = row.company_id;
-  if (nextStatus === "approved") {
-    return approveFleetDriverForCompany(companyId, driverId, {
-      acknowledgeIncompleteDocuments: opts?.acknowledgeIncompleteDocuments === true
-    });
-  }
-  if (nextStatus === "rejected") {
-    const reason = String(opts?.rejectionReason ?? "").trim();
-    return rejectFleetDriverForCompany(companyId, driverId, reason);
-  }
-  if (nextStatus === "missing_documents") {
-    return markFleetDriverMissingDocumentsForCompany(companyId, driverId);
-  }
-  return setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus);
-}
-async function approveFleetDriverForCompany(companyId, driverId, opts) {
-  const cur = await findFleetDriverInCompany(driverId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = normalizeFleetDriverApproval(cur.approval_status);
-  if (!["pending", "in_review", "missing_documents"].includes(st)) {
-    return { ok: false, error: "not_pending" };
-  }
-  const listRow = fleetDriverTableRowToList(cur);
-  const gaps = computeFleetDriverComplianceGaps(listRow);
-  if (gaps.length > 0 && !opts.acknowledgeIncompleteDocuments) {
-    return { ok: false, error: "incomplete_documents_ack_required", gaps };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: "approved", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function rejectFleetDriverForCompany(companyId, driverId, rejectionReason) {
-  const reason = String(rejectionReason ?? "").trim();
-  if (!reason) return { ok: false, error: "rejection_reason_required" };
-  const cur = await findFleetDriverInCompany(driverId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = normalizeFleetDriverApproval(cur.approval_status);
-  if (!["pending", "in_review", "missing_documents"].includes(st)) {
-    return { ok: false, error: "not_pending" };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: "rejected", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function markFleetDriverMissingDocumentsForCompany(companyId, driverId) {
-  const cur = await findFleetDriverInCompany(driverId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = normalizeFleetDriverApproval(cur.approval_status);
-  if (!["pending", "in_review", "approved"].includes(st)) {
-    return { ok: false, error: "invalid_state" };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: "missing_documents", updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function setFleetDriverApprovalStatusOnlyForCompany(companyId, driverId, nextStatus) {
-  const allowed = ["pending", "in_review", "missing_documents"];
-  if (!allowed.includes(nextStatus)) return { ok: false, error: "invalid_status" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "not_found" };
-  const u = await db2.update(fleetDriversTable).set({ approval_status: nextStatus, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return u[0] ? { ok: true } : { ok: false, error: "not_found" };
-}
-async function setFleetDriverReadinessOverrideSystem(companyId, driverId, enabled) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({ readiness_override_system: enabled, updated_at: /* @__PURE__ */ new Date() }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-var MAX_SUS_REASON = 2e3;
-var MAX_ADMIN_NOTE = 4e3;
-async function adminSuspendFleetDriver(companyId, driverId, suspensionReason) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const reason = String(suspensionReason ?? "").trim().slice(0, MAX_SUS_REASON);
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "suspended",
-    is_active: true,
-    suspension_reason: reason,
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function adminActivateFleetDriver(companyId, driverId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.update(fleetDriversTable).set({
-    access_status: "active",
-    is_active: true,
-    suspension_reason: "",
-    updated_at: /* @__PURE__ */ new Date(),
-    session_version: sql`${fleetDriversTable.session_version} + 1`
-  }).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function adminPatchFleetDriverAdminFields(companyId, driverId, patch) {
-  if (patch.adminInternalNote === void 0 && patch.suspensionReason === void 0) return true;
-  const db2 = getDb();
-  if (!db2) return false;
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  if (patch.adminInternalNote !== void 0) {
-    set.admin_internal_note = String(patch.adminInternalNote).trim().slice(0, MAX_ADMIN_NOTE);
-  }
-  if (patch.suspensionReason !== void 0) {
-    set.suspension_reason = String(patch.suspensionReason).trim().slice(0, MAX_SUS_REASON);
-  }
-  const r = await db2.update(fleetDriversTable).set(set).where(and(eq(fleetDriversTable.id, driverId), eq(fleetDriversTable.company_id, companyId))).returning({ id: fleetDriversTable.id });
-  return r.length > 0;
-}
-async function touchFleetDriverLogin(id) {
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.update(fleetDriversTable).set({ last_login_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
-}
-async function touchFleetDriverHeartbeat(id) {
-  const db2 = getDb();
-  if (!db2) return;
-  await db2.update(fleetDriversTable).set({ last_heartbeat_at: /* @__PURE__ */ new Date(), updated_at: /* @__PURE__ */ new Date() }).where(eq(fleetDriversTable.id, id));
-}
-async function countFleetDriversPScheinExpiringSoon(companyId, withinDays) {
-  const db2 = getDb();
-  if (!db2) return 0;
-  const today = /* @__PURE__ */ new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const until = new Date(today);
-  until.setUTCDate(until.getUTCDate() + withinDays);
-  const todayStr = today.toISOString().slice(0, 10);
-  const untilStr = until.toISOString().slice(0, 10);
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetDriversTable).where(
-    and(
-      eq(fleetDriversTable.company_id, companyId),
-      isNotNull(fleetDriversTable.p_schein_expiry),
-      gte(fleetDriversTable.p_schein_expiry, todayStr),
-      lte(fleetDriversTable.p_schein_expiry, untilStr)
-    )
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function countFleetDriversOnline(companyId, withinSeconds) {
-  const db2 = getDb();
-  if (!db2) return 0;
-  const since = new Date(Date.now() - withinSeconds * 1e3);
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetDriversTable).where(
-    and(
-      eq(fleetDriversTable.company_id, companyId),
-      eq(fleetDriversTable.access_status, "active"),
-      eq(fleetDriversTable.is_active, true),
-      isNotNull(fleetDriversTable.last_heartbeat_at),
-      gte(fleetDriversTable.last_heartbeat_at, since)
-    )
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function countPendingFleetDriversForAdmin() {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      eq(adminCompaniesTable.company_kind, "taxi"),
-      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
-    )
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function listPendingFleetDriversForAdmin(limit) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const lim = typeof limit === "number" && limit > 0 ? Math.min(500, limit) : 5;
-  const rows = await db2.select({
-    driverId: fleetDriversTable.id,
-    companyId: fleetDriversTable.company_id,
-    companyName: adminCompaniesTable.name,
-    firstName: fleetDriversTable.first_name,
-    lastName: fleetDriversTable.last_name,
-    email: fleetDriversTable.email,
-    approvalStatus: fleetDriversTable.approval_status,
-    updatedAt: fleetDriversTable.updated_at
-  }).from(fleetDriversTable).innerJoin(adminCompaniesTable, eq(fleetDriversTable.company_id, adminCompaniesTable.id)).where(
-    and(
-      eq(adminCompaniesTable.company_kind, "taxi"),
-      inArray(fleetDriversTable.approval_status, ["pending", "in_review", "missing_documents"])
-    )
-  ).orderBy(desc(fleetDriversTable.updated_at)).limit(lim);
-  return rows.map((r) => ({
-    driverId: r.driverId,
-    companyId: r.companyId,
-    companyName: r.companyName,
-    firstName: r.firstName,
-    lastName: r.lastName,
-    email: r.email,
-    approvalStatus: r.approvalStatus,
-    updatedAt: r.updatedAt.toISOString()
-  }));
-}
-
-// src/db/fleetAssignmentsData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID9 } from "node:crypto";
-function toRow(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    driverId: r.driver_id,
-    vehicleId: r.vehicle_id,
-    assignedAt: r.assigned_at.toISOString()
-  };
-}
-async function listAssignmentsForCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.company_id, companyId));
-  return rows.map(toRow);
-}
-async function setDriverVehicleAssignment(input) {
-  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const dRows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(and(eq(fleetDriversTable.id, input.driverId), eq(fleetDriversTable.company_id, input.companyId))).limit(1);
-  if (!dRows[0]) return { ok: false, error: "driver_not_found" };
-  const vRows = await db2.select({
-    id: fleetVehiclesTable.id,
-    approvalStatus: fleetVehiclesTable.approval_status,
-    isActive: fleetVehiclesTable.is_active
-  }).from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, input.vehicleId), eq(fleetVehiclesTable.company_id, input.companyId))).limit(1);
-  if (!vRows[0]) return { ok: false, error: "vehicle_not_found" };
-  if (String(vRows[0].approvalStatus) !== "approved") {
-    return { ok: false, error: "vehicle_not_approved" };
-  }
-  if (!vRows[0].isActive) return { ok: false, error: "vehicle_inactive" };
-  await db2.transaction(async (tx) => {
-    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
-    await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
-    await tx.insert(driverVehicleAssignmentsTable).values({
-      id: `fva-${randomUUID9()}`,
-      company_id: input.companyId,
-      driver_id: input.driverId,
-      vehicle_id: input.vehicleId
-    });
-  });
-  return { ok: true };
-}
-async function clearDriverAssignment(driverId, companyId) {
-  const db2 = getDb();
-  if (!db2) return false;
-  const r = await db2.delete(driverVehicleAssignmentsTable).where(
-    and(
-      eq(driverVehicleAssignmentsTable.driver_id, driverId),
-      eq(driverVehicleAssignmentsTable.company_id, companyId)
-    )
-  ).returning({ id: driverVehicleAssignmentsTable.id });
-  return r.length > 0;
-}
-
-// src/db/fleetVehiclesData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID10 } from "node:crypto";
-var FLEET_VEHICLE_DOCUMENT_KINDS = [
-  "concession",
-  "registration",
-  "insurance",
-  "taximeter",
-  "accessibility"
-];
-function parseFleetVehicleDocumentKind(raw) {
-  if (typeof raw !== "string") return void 0;
-  const k = raw.trim().toLowerCase();
-  return FLEET_VEHICLE_DOCUMENT_KINDS.includes(k) ? k : void 0;
-}
-function parseDocuments(raw) {
-  if (!Array.isArray(raw)) return [];
-  const out = [];
-  for (const x of raw) {
-    if (x && typeof x === "object" && "storageKey" in x && typeof x.storageKey === "string") {
-      const sk = x.storageKey;
-      const uploadedAt = "uploadedAt" in x && typeof x.uploadedAt === "string" ? x.uploadedAt : void 0;
-      const kind = parseFleetVehicleDocumentKind(x.kind);
-      const uploadedByPanelUserId = "uploadedByPanelUserId" in x && (x.uploadedByPanelUserId === null || typeof x.uploadedByPanelUserId === "string") ? x.uploadedByPanelUserId ?? null : void 0;
-      if (sk) out.push({ storageKey: sk, uploadedAt, kind, uploadedByPanelUserId });
-    }
-  }
-  return out;
-}
-function fleetVehicleSubmitDocumentsSatisfied(docs) {
-  if (!docs.length) return false;
-  const hasConc = docs.some((d) => d.kind === "concession");
-  const hasReg = docs.some((d) => d.kind === "registration");
-  if (hasConc && hasReg) return true;
-  const allUntyped = docs.every((d) => d.kind == null || d.kind === void 0);
-  return allUntyped;
-}
-function rowToVehicle(r) {
-  return {
-    id: r.id,
-    companyId: r.company_id,
-    licensePlate: r.license_plate,
-    vin: r.vin,
-    color: r.color,
-    model: r.model,
-    vehicleType: r.vehicle_type,
-    vehicleLegalType: r.vehicle_legal_type,
-    vehicleClass: r.vehicle_class,
-    taxiOrderNumber: r.taxi_order_number,
-    konzessionNumber: r.konzession_number ?? "",
-    vehicleDocuments: parseDocuments(r.vehicle_documents),
-    approvalStatus: r.approval_status ?? "draft",
-    rejectionReason: r.rejection_reason ?? "",
-    adminInternalNote: r.admin_internal_note ?? "",
-    blockReason: r.block_reason ?? "",
-    modelYear: r.model_year ?? null,
-    passengerSeats: r.passenger_seats ?? null,
-    approvalDecidedAt: r.approval_decided_at ? r.approval_decided_at.toISOString() : null,
-    nextInspectionDate: r.next_inspection_date ? String(r.next_inspection_date) : null,
-    isActive: r.is_active,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString()
-  };
-}
-async function countActiveFleetVehicles(companyId) {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(
-    and(eq(fleetVehiclesTable.company_id, companyId), eq(fleetVehiclesTable.approval_status, "approved"))
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function listFleetVehiclesForCompany(companyId) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.company_id, companyId));
-  return rows.map(rowToVehicle);
-}
-async function findFleetVehicleInCompany(id, companyId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetVehiclesTable).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId))).limit(1);
-  return rows[0] ?? null;
-}
-async function findFleetVehicleGlobal(id) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select().from(fleetVehiclesTable).where(eq(fleetVehiclesTable.id, id)).limit(1);
-  return rows[0] ?? null;
-}
-async function countPendingFleetVehiclesForAdmin() {
-  if (!isPostgresConfigured()) return 0;
-  const db2 = getDb();
-  if (!db2) return 0;
-  const rows = await db2.select({ n: sql`count(*)::int` }).from(fleetVehiclesTable).where(
-    sql`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`
-  );
-  return Number(rows[0]?.n ?? 0);
-}
-async function listPendingFleetVehiclesForAdmin(limit) {
-  if (!isPostgresConfigured()) return [];
-  const db2 = getDb();
-  if (!db2) return [];
-  const q = db2.select({
-    v: fleetVehiclesTable,
-    companyName: adminCompaniesTable.name
-  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(sql`${fleetVehiclesTable.approval_status} IN ('pending_approval','missing_documents')`).orderBy(desc(fleetVehiclesTable.updated_at));
-  const rows = typeof limit === "number" && limit > 0 ? await q.limit(Math.min(500, limit)) : await q;
-  return rows.map((r) => ({
-    vehicle: rowToVehicle(r.v),
-    companyName: r.companyName
-  }));
-}
-function syncIsActiveForStatus(s) {
-  return s === "approved";
-}
-function computeFleetVehicleComplianceGaps(v) {
-  const gaps = [];
-  const docs = Array.isArray(v.vehicleDocuments) ? v.vehicleDocuments : [];
-  const hasConc = docs.some((d) => d.kind === "concession");
-  const hasReg = docs.some((d) => d.kind === "registration");
-  const allUntyped = docs.length > 0 && docs.every((d) => d.kind == null || d.kind === void 0);
-  if (docs.length < 1) {
-    gaps.push("Kein Fahrzeug-PDF-Nachweis hochgeladen");
-  } else if (!allUntyped) {
-    if (!hasConc) gaps.push("Konzessionsnachweis (PDF) fehlt oder nicht als Typ \u201EKonzession\u201C hochgeladen");
-    if (!hasReg) gaps.push("Fahrzeugschein / Zulassungsbescheinigung (PDF) fehlt oder nicht als Typ \u201EFahrzeugschein\u201C hochgeladen");
-  }
-  const hu = v.nextInspectionDate != null ? String(v.nextInspectionDate).trim() : "";
-  if (!hu) gaps.push("HU-Datum (Hauptuntersuchung) fehlt");
-  return gaps;
-}
-async function insertFleetVehicle(input) {
-  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const plate = input.licensePlate.trim();
-  if (!plate) return { ok: false, error: "license_plate_required" };
-  const kz = (input.konzessionNumber ?? "").trim();
-  if (!kz) return { ok: false, error: "konzession_number_required" };
-  const id = `fv-${randomUUID10()}`;
-  const status = input.approvalStatus;
-  const isActive = syncIsActiveForStatus(status);
-  const docs = input.vehicleDocuments ?? [];
-  const taxiNum = (input.taxiOrderNumber ?? "").trim();
-  await db2.insert(fleetVehiclesTable).values({
-    id,
-    company_id: input.companyId,
-    license_plate: plate,
-    vin: (input.vin ?? "").trim(),
-    color: (input.color ?? "").trim(),
-    model: (input.model ?? "").trim(),
-    vehicle_type: input.vehicleType,
-    vehicle_legal_type: input.vehicleLegalType ?? "taxi",
-    vehicle_class: input.vehicleClass ?? "standard",
-    taxi_order_number: taxiNum || kz,
-    konzession_number: kz,
-    vehicle_documents: docs,
-    next_inspection_date: input.nextInspectionDate?.trim() || null,
-    approval_status: status,
-    is_active: isActive
-  });
-  return { ok: true, id };
-}
-async function addFleetVehicleDocumentVersion(id, companyId, storageKey, meta) {
-  const cur = await findFleetVehicleInCompany(id, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  if (!["draft", "rejected", "pending_approval", "missing_documents"].includes(String(cur.approval_status))) {
-    return { ok: false, error: "documents_locked" };
-  }
-  const existing = parseDocuments(cur.vehicle_documents);
-  const entry = {
-    storageKey,
-    uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    kind: meta.kind,
-    uploadedByPanelUserId: meta.uploadedByPanelUserId
-  };
-  const next = [...existing, entry];
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  await db2.update(fleetVehiclesTable).set({
-    vehicle_documents: next,
-    updated_at: /* @__PURE__ */ new Date()
-  }).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
-  return { ok: true };
-}
-async function submitFleetVehicleForApproval(id, companyId) {
-  const cur = await findFleetVehicleInCompany(id, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = String(cur.approval_status);
-  const kz = (cur.konzession_number ?? "").trim();
-  const plate = (cur.license_plate ?? "").trim();
-  const docs = parseDocuments(cur.vehicle_documents);
-  if (st === "pending_approval") {
-    if (!kz) return { ok: false, error: "konzession_number_required" };
-    if (!plate) return { ok: false, error: "license_plate_required" };
-    if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
-    return { ok: true };
-  }
-  if (st !== "draft" && st !== "rejected" && st !== "missing_documents") return { ok: false, error: "invalid_state" };
-  if (!kz) return { ok: false, error: "konzession_number_required" };
-  if (!plate) return { ok: false, error: "license_plate_required" };
-  if (!fleetVehicleSubmitDocumentsSatisfied(docs)) return { ok: false, error: "documents_required" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  await db2.update(fleetVehiclesTable).set({
-    approval_status: "pending_approval",
-    is_active: false,
-    rejection_reason: "",
-    updated_at: /* @__PURE__ */ new Date()
-  }).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
-  return { ok: true };
-}
-async function patchFleetVehicle(id, companyId, patch) {
-  const cur = await findFleetVehicleInCompany(id, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = String(cur.approval_status);
-  if (st === "pending_approval" || st === "missing_documents" || st === "approved" || st === "blocked") {
-    const allowed = ["nextInspectionDate", "color", "model"];
-    const keys = Object.keys(patch);
-    for (const k of keys) {
-      if (patch[k] === void 0) continue;
-      if (allowed.includes(k)) continue;
-      if (k === "isActive" && st === "approved") continue;
-      if (k === "isActive" && st === "blocked") continue;
-      return { ok: false, error: "field_locked" };
-    }
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  if (patch.licensePlate !== void 0) set.license_plate = patch.licensePlate.trim();
-  if (patch.vin !== void 0) set.vin = patch.vin.trim();
-  if (patch.color !== void 0) set.color = patch.color.trim();
-  if (patch.model !== void 0) set.model = patch.model.trim();
-  if (patch.vehicleType !== void 0) set.vehicle_type = patch.vehicleType;
-  if (patch.vehicleLegalType !== void 0) set.vehicle_legal_type = patch.vehicleLegalType;
-  if (patch.vehicleClass !== void 0) set.vehicle_class = patch.vehicleClass;
-  if (patch.taxiOrderNumber !== void 0) set.taxi_order_number = patch.taxiOrderNumber.trim();
-  if (patch.konzessionNumber !== void 0) {
-    set.konzession_number = patch.konzessionNumber.trim();
-    set.taxi_order_number = patch.konzessionNumber.trim();
-  }
-  if (patch.nextInspectionDate !== void 0) {
-    set.next_inspection_date = patch.nextInspectionDate?.trim() ? patch.nextInspectionDate.trim() : null;
-  }
-  if (patch.isActive !== void 0) {
-    set.is_active = patch.isActive;
-  }
-  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, id), eq(fleetVehiclesTable.company_id, companyId)));
-  return { ok: true };
-}
-async function setFleetVehicleApprovalByAdmin(id, input) {
-  const cur = await findFleetVehicleGlobal(id);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = String(cur.approval_status);
-  if (!["pending_approval", "missing_documents"].includes(st)) {
-    return { ok: false, error: "not_pending" };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const now = /* @__PURE__ */ new Date();
-  const next = input.nextStatus;
-  const reason = input.nextStatus === "rejected" ? (input.rejectionReason ?? "").trim() : "";
-  if (input.nextStatus === "rejected" && !reason) {
-    return { ok: false, error: "rejection_reason_required" };
-  }
-  if (input.nextStatus === "approved") {
-    const row = rowToVehicle(cur);
-    const gaps = computeFleetVehicleComplianceGaps(row);
-    if (gaps.length > 0 && !input.acknowledgeIncompleteDocuments) {
-      return { ok: false, error: "incomplete_documents_ack_required", gaps };
-    }
-  }
-  await db2.update(fleetVehiclesTable).set({
-    approval_status: next,
-    is_active: syncIsActiveForStatus(next),
-    rejection_reason: input.nextStatus === "rejected" ? reason : "",
-    approval_decided_at: now,
-    approval_decided_by_admin_id: input.adminUserId,
-    updated_at: now
-  }).where(eq(fleetVehiclesTable.id, id));
-  return { ok: true };
-}
-async function setFleetVehicleMissingDocumentsByAdmin(id, input) {
-  const cur = await findFleetVehicleGlobal(id);
-  if (!cur) return { ok: false, error: "not_found" };
-  const st = String(cur.approval_status);
-  if (!["draft", "pending_approval", "approved"].includes(st)) {
-    return { ok: false, error: "invalid_state" };
-  }
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const now = /* @__PURE__ */ new Date();
-  await db2.update(fleetVehiclesTable).set({
-    approval_status: "missing_documents",
-    is_active: false,
-    updated_at: now,
-    approval_decided_at: now,
-    approval_decided_by_admin_id: input.adminUserId
-  }).where(eq(fleetVehiclesTable.id, id));
-  return { ok: true };
-}
-async function forceBlockFleetVehicleByAdmin(id, input) {
-  const cur = await findFleetVehicleGlobal(id);
-  if (!cur) return { ok: false, error: "not_found" };
-  if (String(cur.approval_status) === "blocked") return { ok: false, error: "already_blocked" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const now = /* @__PURE__ */ new Date();
-  const br = String(input.blockReason ?? "").trim().slice(0, 2e3);
-  const set = {
-    approval_status: "blocked",
-    is_active: false,
-    block_reason: br,
-    approval_decided_at: now,
-    approval_decided_by_admin_id: input.adminUserId,
-    updated_at: now
-  };
-  if (input.adminInternalNote !== void 0) {
-    set.admin_internal_note = String(input.adminInternalNote).slice(0, 4e3);
-  }
-  await db2.update(fleetVehiclesTable).set(set).where(eq(fleetVehiclesTable.id, id));
-  return { ok: true };
-}
-async function unblockFleetVehicleByAdmin(id, adminUserId) {
-  const cur = await findFleetVehicleGlobal(id);
-  if (!cur) return { ok: false, error: "not_found" };
-  if (String(cur.approval_status) !== "blocked") return { ok: false, error: "not_blocked" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const now = /* @__PURE__ */ new Date();
-  await db2.update(fleetVehiclesTable).set({
-    approval_status: "draft",
-    is_active: false,
-    block_reason: "",
-    approval_decided_at: now,
-    approval_decided_by_admin_id: adminUserId,
-    updated_at: now
-  }).where(eq(fleetVehiclesTable.id, id));
-  return { ok: true };
-}
-async function adminPatchFleetVehicleFields(companyId, vehicleId, patch) {
-  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
-  if (!cur) return { ok: false, error: "not_found" };
-  if (Object.keys(patch).length === 0) return { ok: false, error: "no_fields" };
-  const db2 = getDb();
-  if (!db2) return { ok: false, error: "database_not_configured" };
-  const set = { updated_at: /* @__PURE__ */ new Date() };
-  if (patch.adminInternalNote !== void 0) {
-    set.admin_internal_note = String(patch.adminInternalNote).slice(0, 4e3);
-  }
-  if (patch.blockReason !== void 0) {
-    set.block_reason = String(patch.blockReason).slice(0, 2e3);
-  }
-  await db2.update(fleetVehiclesTable).set(set).where(and(eq(fleetVehiclesTable.id, vehicleId), eq(fleetVehiclesTable.company_id, companyId)));
-  return { ok: true };
-}
-async function listFleetVehicleDocumentStorageKeysInCompany(companyId, vehicleId) {
-  const cur = await findFleetVehicleInCompany(vehicleId, companyId);
-  if (!cur) return null;
-  return parseDocuments(cur.vehicle_documents).map((d) => d.storageKey);
-}
-async function listFleetVehicleDocumentStorageKeysAdmin(vehicleId) {
-  const cur = await findFleetVehicleGlobal(vehicleId);
-  if (!cur) return null;
-  return parseDocuments(cur.vehicle_documents).map((d) => d.storageKey);
-}
-async function getFleetVehicleAdminDetail(vehicleId) {
-  if (!isPostgresConfigured()) return null;
-  const db2 = getDb();
-  if (!db2) return null;
-  const rows = await db2.select({
-    v: fleetVehiclesTable,
-    companyName: adminCompaniesTable.name
-  }).from(fleetVehiclesTable).innerJoin(adminCompaniesTable, eq(fleetVehiclesTable.company_id, adminCompaniesTable.id)).where(eq(fleetVehiclesTable.id, vehicleId)).limit(1);
-  const r = rows[0];
-  if (!r) return null;
-  return { vehicle: rowToVehicle(r.v), companyName: r.companyName };
-}
-
-// src/db/fleetDriverReadiness.ts
-var MSG = {
-  company_not_ready: "Unternehmen ist noch nicht vollst\xE4ndig freigegeben (Verifizierung, Nachweise, Vertrag oder Stammdaten).",
-  driver_suspended: "Fahrerzugang ist gesperrt.",
-  driver_account_inactive: "Fahrerkonto ist deaktiviert.",
-  driver_rejected: "Fahrer wurde abgelehnt.",
-  driver_not_approved: "Fahrer ist noch nicht freigegeben (Onroda-Pr\xFCfung).",
-  p_schein_date_missing: "P-Schein: kein Ablaufdatum hinterlegt.",
-  p_schein_expired: "P-Schein: abgelaufen.",
-  p_schein_doc_missing: "P-Schein: kein PDF-Nachweis hochgeladen.",
-  no_vehicle_assigned: "Kein Fahrzeug zugeordnet.",
-  vehicle_not_approved: "Zugeordnetes Fahrzeug ist noch nicht freigegeben.",
-  vehicle_blocked: "Zugeordnetes Fahrzeug ist von der Plattform gesperrt.",
-  vehicle_rejected: "Zugeordnetes Fahrzeug wurde abgelehnt.",
-  vehicle_pending_approval: "Zugeordnetes Fahrzeug wartet auf Freigabe durch Onroda.",
-  vehicle_draft: "Zugeordnetes Fahrzeug ist noch nicht zur Pr\xFCfung eingereicht."
-};
-function buildFleetDriverMeClientHints(readiness, listRow) {
-  if (readiness.ready) {
-    return { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" };
-  }
-  const codes = new Set(readiness.blockReasons.map((b) => b.code));
-  if (codes.has("driver_account_inactive")) {
-    return {
-      blockBannerTitle: "Konto deaktiviert",
-      notFreigegebenMessage: MSG.driver_account_inactive,
-      driverBlockKind: "compliance"
-    };
-  }
-  if (codes.has("driver_suspended")) {
-    return {
-      blockBannerTitle: "Zugang gesperrt",
-      notFreigegebenMessage: [
-        "Ihr Zugang ist gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
-        listRow.suspensionReason?.trim() ? `Grund: ${String(listRow.suspensionReason).trim()}` : null
-      ].filter(Boolean).join("\n\n"),
-      driverBlockKind: "access_suspended"
-    };
-  }
-  const vehicleish = /* @__PURE__ */ new Set([
-    "no_vehicle_assigned",
-    "vehicle_not_approved",
-    "vehicle_blocked",
-    "vehicle_rejected",
-    "vehicle_pending_approval",
-    "vehicle_draft"
-  ]);
-  if ([...codes].some((c) => vehicleish.has(c))) {
-    return {
-      blockBannerTitle: "Fahrzeug",
-      notFreigegebenMessage: [
-        "Ihr Fahrzeug ist nicht freigegeben oder gesperrt. Bitte wenden Sie sich an Ihr Unternehmen.",
-        ...readiness.blockReasons.filter((b) => vehicleish.has(b.code)).map((b) => b.message)
-      ].join("\n\n"),
-      driverBlockKind: "vehicle"
-    };
-  }
-  if (codes.has("company_not_ready")) {
-    return {
-      blockBannerTitle: "Unternehmen",
-      notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
-      driverBlockKind: "compliance"
-    };
-  }
-  return {
-    blockBannerTitle: "Voraussetzungen",
-    notFreigegebenMessage: readiness.blockReasons.map((b) => b.message).join("\n\n"),
-    driverBlockKind: "other"
-  };
-}
-function deriveDriverWorkflowLabel(d) {
-  if (!d.isActive) {
-    return { key: "inactive", label: "Deaktiviert" };
-  }
-  if (d.accessStatus === "suspended") {
-    return { key: "suspended", label: "Gesperrt" };
-  }
-  switch (d.approvalStatus) {
-    case "rejected":
-      return { key: "rejected", label: "Abgelehnt" };
-    case "missing_documents":
-      return { key: "missing_documents", label: "Unterlagen fehlen" };
-    case "in_review":
-      return { key: "in_review", label: "In Pr\xFCfung" };
-    case "pending":
-      return { key: "pending", label: "Angelegt" };
-    case "approved":
-      return { key: "approved", label: "Freigegeben" };
-    default:
-      return { key: "unknown", label: "\u2014" };
-  }
-}
-function pScheinDateMissing(expiry) {
-  if (expiry == null) return true;
-  const s = String(expiry).trim();
-  if (!s) return true;
-  return false;
-}
-function pScheinDocMissing(key) {
-  return !key || !String(key).trim();
-}
-function pScheinExpiredOnlyWhenDatePresent(isoOrDate) {
-  if (pScheinDateMissing(isoOrDate)) return false;
-  const s = String(isoOrDate).trim().slice(0, 10);
-  const d = /* @__PURE__ */ new Date(`${s}T12:00:00.000Z`);
-  if (Number.isNaN(d.getTime())) return false;
-  const now = /* @__PURE__ */ new Date();
-  const endOfTodayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const exp = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  return exp < endOfTodayUtc;
-}
-var READINESS_OVERRIDE_HARD_STOPS = /* @__PURE__ */ new Set([
-  "driver_suspended",
-  "driver_account_inactive",
-  "driver_rejected",
-  "driver_not_approved"
-]);
-function computeDriverReadiness(gate, d, hasVehicleAssignment, assignedVehicle) {
-  const blockReasons = [];
-  if (!companyMeetsTaxiFleetProvisioningReadiness(gate)) {
-    blockReasons.push({ code: "company_not_ready", message: MSG.company_not_ready });
-  }
-  if (!d.isActive) {
-    blockReasons.push({ code: "driver_account_inactive", message: MSG.driver_account_inactive });
-  } else if (d.accessStatus !== "active") {
-    const sr = (d.suspensionReason ?? "").trim();
-    const msg = sr ? `${MSG.driver_suspended} Grund: ${sr}` : MSG.driver_suspended;
-    blockReasons.push({ code: "driver_suspended", message: msg });
-  }
-  if (d.approvalStatus === "rejected") {
-    blockReasons.push({ code: "driver_rejected", message: MSG.driver_rejected });
-  } else if (d.approvalStatus === "pending" || d.approvalStatus === "in_review" || d.approvalStatus === "missing_documents") {
-    blockReasons.push({ code: "driver_not_approved", message: MSG.driver_not_approved });
-  }
-  if (pScheinDateMissing(d.pScheinExpiry)) {
-    blockReasons.push({ code: "p_schein_date_missing", message: MSG.p_schein_date_missing });
-  } else if (pScheinExpiredOnlyWhenDatePresent(d.pScheinExpiry)) {
-    blockReasons.push({ code: "p_schein_expired", message: MSG.p_schein_expired });
-  }
-  if (pScheinDocMissing(d.pScheinDocStorageKey)) {
-    blockReasons.push({ code: "p_schein_doc_missing", message: MSG.p_schein_doc_missing });
-  }
-  if (!hasVehicleAssignment) {
-    blockReasons.push({ code: "no_vehicle_assigned", message: MSG.no_vehicle_assigned });
-  } else if (assignedVehicle) {
-    const st = String(assignedVehicle.approvalStatus);
-    if (st === "approved") {
-    } else if (st === "blocked") {
-      const br = (assignedVehicle.blockReason ?? "").trim();
-      blockReasons.push({
-        code: "vehicle_blocked",
-        message: br ? `${MSG.vehicle_blocked} ${br}` : MSG.vehicle_blocked
-      });
-    } else if (st === "rejected") {
-      const rj = (assignedVehicle.rejectionReason ?? "").trim();
-      blockReasons.push({
-        code: "vehicle_rejected",
-        message: rj ? `${MSG.vehicle_rejected} ${rj}` : MSG.vehicle_rejected
-      });
-    } else if (st === "pending_approval" || st === "missing_documents") {
-      blockReasons.push({ code: "vehicle_pending_approval", message: MSG.vehicle_pending_approval });
-    } else if (st === "draft") {
-      blockReasons.push({ code: "vehicle_draft", message: MSG.vehicle_draft });
-    } else {
-      blockReasons.push({ code: "vehicle_not_approved", message: MSG.vehicle_not_approved });
-    }
-  }
-  if (d.readinessOverrideSystem) {
-    const filtered = blockReasons.filter((b) => READINESS_OVERRIDE_HARD_STOPS.has(b.code));
-    return { ready: filtered.length === 0, blockReasons: filtered };
-  }
-  return { ready: blockReasons.length === 0, blockReasons };
-}
-function assignedVehicleForDriver(driverId, assignRows, vehicles) {
-  const a = assignRows.find((x) => x.driverId === driverId);
-  if (!a) return null;
-  return vehicles.find((v0) => v0.id === a.vehicleId) ?? null;
-}
-async function getPanelFleetDriverViews(companyId) {
-  const [gate, rows, ass, veh] = await Promise.all([
-    getCompanyGovernanceGate(companyId),
-    listFleetDriversForCompany(companyId),
-    listAssignmentsForCompany(companyId),
-    listFleetVehiclesForCompany(companyId)
-  ]);
-  return rows.map((row) => {
-    const av = assignedVehicleForDriver(row.id, ass, veh);
-    return {
-      ...row,
-      workflow: deriveDriverWorkflowLabel(row),
-      readiness: computeDriverReadiness(gate, row, av != null, av)
-    };
-  });
-}
-async function getFleetDriverReadinessById(driverId, companyId) {
-  const r = await findFleetDriverInCompany(driverId, companyId);
-  if (!r) return { error: "not_found" };
-  const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh] = await Promise.all([
-    getCompanyGovernanceGate(companyId),
-    listAssignmentsForCompany(companyId),
-    listFleetVehiclesForCompany(companyId)
-  ]);
-  const av = assignedVehicleForDriver(listRow.id, ass, veh);
-  return computeDriverReadiness(gate, listRow, av != null, av);
-}
-function assignedVehicleMeta(driverId, assignRows, vehicles) {
-  const a = assignRows.find((x) => x.driverId === driverId);
-  if (!a) return null;
-  const v = vehicles.find((v0) => v0.id === a.vehicleId);
-  if (!v) return null;
-  return {
-    id: v.id,
-    licensePlate: v.licensePlate,
-    model: v.model,
-    approvalStatus: v.approvalStatus
-  };
-}
-async function listAdminTaxiFleetDriverRows(companyId) {
-  const [views, ass, veh] = await Promise.all([
-    getPanelFleetDriverViews(companyId),
-    listAssignmentsForCompany(companyId),
-    listFleetVehiclesForCompany(companyId)
-  ]);
-  return views.map((v) => ({
-    ...v,
-    assignedVehicle: assignedVehicleMeta(v.id, ass, veh),
-    pScheinDocPresent: !pScheinDocMissing(v.pScheinDocStorageKey),
-    suspensionReason: v.suspensionReason,
-    adminInternalNote: v.adminInternalNote
-  }));
-}
-async function getAdminTaxiFleetDriverDetail(companyId, driverId) {
-  const r = await findFleetDriverInCompany(driverId, companyId);
-  if (!r) return null;
-  const listRow = fleetDriverTableRowToList(r);
-  const [gate, ass, veh] = await Promise.all([
-    getCompanyGovernanceGate(companyId),
-    listAssignmentsForCompany(companyId),
-    listFleetVehiclesForCompany(companyId)
-  ]);
-  const av = assignedVehicleForDriver(listRow.id, ass, veh);
-  const view = {
-    ...listRow,
-    workflow: deriveDriverWorkflowLabel(listRow),
-    readiness: computeDriverReadiness(gate, listRow, av != null, av)
-  };
-  return {
-    ...view,
-    assignedVehicle: assignedVehicleMeta(listRow.id, ass, veh),
-    pScheinDocPresent: !pScheinDocMissing(listRow.pScheinDocStorageKey),
-    suspensionReason: listRow.suspensionReason,
-    adminInternalNote: listRow.adminInternalNote
-  };
-}
-
-// src/routes/rides.ts
+init_fleetMatchingData();
+init_fleetDriverReadiness();
+init_fleetDriversData();
 init_dispatchStatus();
+init_driverRideExpoPush();
 init_appOperationalData();
 
 // src/lib/medicalTransportImage.ts
@@ -54083,6 +54961,9 @@ function payloadToClaims(payload) {
   return { rideId: rid, passengerGoogleId: sub };
 }
 
+// src/lib/rideRouteAuth.ts
+init_fleetDriversData();
+
 // src/lib/fleetDriverJwt.ts
 function getSecretKey() {
   const fleet = (process.env.FLEET_DRIVER_JWT_SECRET ?? "").trim();
@@ -54269,7 +55150,7 @@ async function findActiveAdminAuthUserByUsername(username) {
     isActive: adminAuthUsersTable.is_active
   }).from(adminAuthUsersTable).where(
     and(
-      sql`lower(${adminAuthUsersTable.username}) = ${normalized}`,
+      sql2`lower(${adminAuthUsersTable.username}) = ${normalized}`,
       eq(adminAuthUsersTable.is_active, true)
     )
   ).limit(1);
@@ -54306,7 +55187,7 @@ async function findActiveAdminAuthUserByIdentity(identity) {
   }).from(adminAuthUsersTable).where(
     and(
       eq(adminAuthUsersTable.is_active, true),
-      sql`(lower(${adminAuthUsersTable.username}) = ${normalized} OR lower(${adminAuthUsersTable.email}) = ${normalized})`
+      sql2`(lower(${adminAuthUsersTable.username}) = ${normalized} OR lower(${adminAuthUsersTable.email}) = ${normalized})`
     )
   ).limit(1);
   const row = rows[0];
@@ -54330,14 +55211,14 @@ async function upsertAdminAuthUser(input) {
   if (!db2) return;
   const username = input.username.trim();
   if (!username) return;
-  const existingRows = await db2.select({ id: adminAuthUsersTable.id }).from(adminAuthUsersTable).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).limit(1);
+  const existingRows = await db2.select({ id: adminAuthUsersTable.id }).from(adminAuthUsersTable).where(sql2`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).limit(1);
   const existing = existingRows[0];
   if (existing) {
     await db2.update(adminAuthUsersTable).set({
       password_hash: input.passwordHash,
       email: (input.email ?? "").trim(),
       role: input.role,
-      session_version: sql`${adminAuthUsersTable.session_version}`,
+      session_version: sql2`${adminAuthUsersTable.session_version}`,
       is_active: true,
       updated_at: /* @__PURE__ */ new Date()
     }).where(eq(adminAuthUsersTable.id, existing.id));
@@ -54364,9 +55245,9 @@ async function updateAdminAuthPasswordByUsername(input) {
   if (!username) return false;
   const rows = await db2.update(adminAuthUsersTable).set({
     password_hash: input.passwordHash,
-    session_version: sql`${adminAuthUsersTable.session_version} + 1`,
+    session_version: sql2`${adminAuthUsersTable.session_version} + 1`,
     updated_at: /* @__PURE__ */ new Date()
-  }).where(sql`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).returning({ id: adminAuthUsersTable.id });
+  }).where(sql2`lower(${adminAuthUsersTable.username}) = ${username.toLowerCase()}`).returning({ id: adminAuthUsersTable.id });
   return rows.length > 0;
 }
 async function listAdminAuthUsers() {
@@ -54383,7 +55264,7 @@ async function listAdminAuthUsers() {
     isActive: adminAuthUsersTable.is_active,
     createdAt: adminAuthUsersTable.created_at,
     updatedAt: adminAuthUsersTable.updated_at
-  }).from(adminAuthUsersTable).orderBy(sql`lower(${adminAuthUsersTable.username}) asc`);
+  }).from(adminAuthUsersTable).orderBy(sql2`lower(${adminAuthUsersTable.username}) asc`);
   return rows.map((row) => {
     const role = parseAdminRole(row.role);
     if (!role) return null;
@@ -54466,7 +55347,7 @@ async function countActiveAdminRoleUsers() {
   const db2 = getDb();
   if (!db2) return 0;
   const rows = await db2.select({
-    n: sql`count(*)::int`
+    n: sql2`count(*)::int`
   }).from(adminAuthUsersTable).where(and(eq(adminAuthUsersTable.role, "admin"), eq(adminAuthUsersTable.is_active, true)));
   const raw = rows[0]?.n;
   return typeof raw === "number" ? raw : Number(raw) || 0;
@@ -54491,7 +55372,7 @@ async function patchAdminAuthUserById(input) {
   }
   if (typeof input.passwordHash === "string" && input.passwordHash) {
     patch.password_hash = input.passwordHash;
-    patch.session_version = sql`${adminAuthUsersTable.session_version} + 1`;
+    patch.session_version = sql2`${adminAuthUsersTable.session_version} + 1`;
   }
   const rows = await db2.update(adminAuthUsersTable).set(patch).where(eq(adminAuthUsersTable.id, input.id)).returning({
     id: adminAuthUsersTable.id,
@@ -54776,12 +55657,6 @@ async function normalizeFleetClaims(claims) {
 async function resolveRideMutateActor(req) {
   const raw = extractBearerAuthorization(req);
   if (!raw) return null;
-  try {
-    const claims = await verifyFleetDriverJwt(raw);
-    const n4 = await normalizeFleetClaims(claims);
-    if (n4) return { kind: "fleet_session", fleetDriverId: n4.fleetDriverId, companyId: n4.companyId };
-  } catch {
-  }
   if (isSessionJwtConfigured()) {
     try {
       const c = await verifySessionJwt(raw);
@@ -54789,6 +55664,12 @@ async function resolveRideMutateActor(req) {
       if (passengerGoogleId) return { kind: "customer_session", passengerGoogleId };
     } catch {
     }
+  }
+  try {
+    const claims = await verifyFleetDriverJwt(raw);
+    const n4 = await normalizeFleetClaims(claims);
+    if (n4) return { kind: "fleet_session", fleetDriverId: n4.fleetDriverId, companyId: n4.companyId };
+  } catch {
   }
   const admin2 = await tryResolveAdminApiAuthPrincipal(raw);
   if (admin2) return { kind: "admin" };
@@ -54866,6 +55747,26 @@ function authorizePatchRideStatusForActor(nextStatus, cur, actor, opts) {
   return { ok: true };
 }
 
+// src/lib/rideReservationStornoDeadline.ts
+var RESERVATION_CUSTOMER_DRIVER_STORNO_LOCK_MINUTES = 60;
+var MS_PER_MINUTE = 60 * 1e3;
+function msUntilScheduledPickup(scheduledAt) {
+  if (scheduledAt == null) return null;
+  const s = typeof scheduledAt === "string" ? scheduledAt.trim() : "";
+  if (!s) return null;
+  const t = new Date(s).getTime();
+  if (!Number.isFinite(t)) return null;
+  return t - Date.now();
+}
+function isReservationCustomerDriverStornoLocked(scheduledAt) {
+  const ms = msUntilScheduledPickup(scheduledAt);
+  if (ms === null) return false;
+  return ms <= RESERVATION_CUSTOMER_DRIVER_STORNO_LOCK_MINUTES * MS_PER_MINUTE;
+}
+
+// src/routes/rides.ts
+init_passengerRideExpoPush();
+
 // src/middleware/requireCustomerSession.ts
 function bearerToken(req) {
   const raw = req.get("authorization")?.trim();
@@ -54897,6 +55798,7 @@ function customerPassengerId(claims) {
 }
 
 // src/middleware/requireFleetDriverAuth.ts
+init_fleetDriversData();
 function bearerToken2(req) {
   const raw = req.get("authorization")?.trim();
   if (!raw) return null;
@@ -55056,55 +55958,6 @@ function normalizeStatusInput(raw) {
   ];
   return allowed.includes(s) ? s : null;
 }
-function canTransitionStatus(from, to) {
-  if (from === to) return true;
-  const map = {
-    draft: ["requested", "cancelled_by_customer", "cancelled"],
-    scheduled: [
-      "accepted",
-      "scheduled_assigned",
-      "ready_for_dispatch",
-      "searching_driver",
-      "cancelled_by_customer",
-      "cancelled",
-      "expired"
-    ],
-    scheduled_assigned: [
-      "ready_for_dispatch",
-      "driver_arriving",
-      "driver_waiting",
-      "passenger_onboard",
-      "in_progress",
-      "cancelled_by_customer",
-      "cancelled_by_driver",
-      "cancelled_by_system",
-      "cancelled",
-      "expired"
-    ],
-    ready_for_dispatch: [
-      "driver_arriving",
-      "driver_waiting",
-      "passenger_onboard",
-      "in_progress",
-      "cancelled_by_customer",
-      "cancelled_by_driver",
-      "cancelled_by_system",
-      "cancelled",
-      "expired"
-    ],
-    requested: ["searching_driver", "offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-    searching_driver: ["offered", "accepted", "expired", "cancelled_by_customer", "cancelled"],
-    offered: ["accepted", "searching_driver", "expired", "cancelled_by_customer", "cancelled"],
-    pending: ["accepted", "driver_arriving", "driver_waiting", "in_progress", "completed", "cancelled", "rejected", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    accepted: ["driver_arriving", "driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system", "cancelled"],
-    driver_arriving: ["driver_waiting", "passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    driver_waiting: ["passenger_onboard", "in_progress", "cancelled_by_customer", "cancelled_by_driver", "cancelled_by_system"],
-    passenger_onboard: ["in_progress", "completed", "cancelled_by_system"],
-    arrived: ["passenger_onboard", "in_progress", "completed", "cancelled", "cancelled_by_customer", "cancelled_by_driver"],
-    in_progress: ["completed", "cancelled_by_system", "cancelled"]
-  };
-  return (map[from] ?? []).includes(to);
-}
 function pickScheduledAtFromBody(raw) {
   const c = raw.scheduledAt;
   if (typeof c === "string" && c.trim()) return c.trim();
@@ -55124,11 +55977,11 @@ function optCoord(v) {
   return Number.isFinite(n4) ? n4 : null;
 }
 function haversineDistanceKm2(fromLat, fromLon, toLat, toLon) {
-  const toRad = (deg) => deg * Math.PI / 180;
+  const toRad2 = (deg) => deg * Math.PI / 180;
   const earthRadiusKm = 6371;
-  const dLat = toRad(toLat - fromLat);
-  const dLon = toRad(toLon - fromLon);
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const dLat = toRad2(toLat - fromLat);
+  const dLon = toRad2(toLon - fromLon);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(toRad2(fromLat)) * Math.cos(toRad2(toLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return earthRadiusKm * c;
 }
@@ -55965,6 +56818,7 @@ router2.post("/rides", async (req, res, next) => {
       res.status(400).json({ error: "tariffs_inactive", message: "Tarife sind derzeit deaktiviert." });
       return;
     }
+    const vehicleB = String(raw.vehicle ?? "standard").trim().toLowerCase() || "standard";
     const distanceKmRaw = raw.distanceKm ?? raw.distance_km;
     const distanceKmParsed = Number(distanceKmRaw);
     const computedDistanceKm = fromLatB != null && fromLonB != null && toLatB != null && toLonB != null ? haversineDistanceKm2(fromLatB, fromLonB, toLatB, toLonB) : null;
@@ -55996,7 +56850,6 @@ router2.post("/rides", async (req, res, next) => {
     const waitingMinutesB = Number.isFinite(waitMRaw) ? Math.max(0, waitMRaw) : 0;
     const paxRaw = Number(raw.passengerCount ?? raw.passenger_count);
     const passengerCountB = Number.isFinite(paxRaw) ? Math.max(1, Math.round(paxRaw)) : void 0;
-    const vehicleB = String(raw.vehicle ?? "standard").trim().toLowerCase() || "standard";
     const accessibilityRaw = raw.accessibilityOptions ?? raw.accessibility_options;
     let accessibilityOptions = null;
     if (accessibilityRaw != null) {
@@ -56041,13 +56894,23 @@ router2.post("/rides", async (req, res, next) => {
         ...snapB.breakdown,
         finalPriceEur: finalPriceB
       };
+      const tolMismatch = bookingPriceToleranceEur(finalPriceB);
       console.warn("RIDES_ESTIMATE_MISMATCH", {
         providedEstimate: clientFareRaw ?? null,
         expectedEstimate: finalPriceB,
+        toleranceEur: tolMismatch,
+        distanceKm: distanceKmB,
+        computedDistanceKm,
+        tripMinutes: tripMinutesB,
+        waitingMinutes: waitingMinutesB,
         providedFareBreakdown,
         expectedFareBreakdown,
         origin: fromFull,
         destination: toFull,
+        fromLat: fromLatB,
+        fromLon: fromLonB,
+        toLat: toLatB,
+        toLon: toLonB,
         scheduledAt: pickScheduledAtFromBody(raw),
         pricingMode: rawPricingModeStr || null,
         vehicle: vehicleB
@@ -56074,6 +56937,15 @@ router2.post("/rides", async (req, res, next) => {
     const payerKind = parsePayerKind(raw.payerKind) ?? DEFAULT_PAYER_KIND;
     const authorizationSource = parseAuthorizationSource(raw.authorizationSource) ?? DEFAULT_AUTHORIZATION_SOURCE;
     const scheduledAtNormalized = pickScheduledAtFromBody(raw);
+    if (scheduledAtNormalized !== null) {
+      if (!isFarFutureReservation(scheduledAtNormalized)) {
+        res.status(400).json({
+          error: "reservation_lead_time_too_short",
+          message: "Zeit zu knapp. Reservierungen sind erst ab 60 Minuten Vorlauf m\xF6glich. Bitte buche eine Sofortfahrt."
+        });
+        return;
+      }
+    }
     const customerPhoneClean = String(
       raw.customerPhone ?? raw.passengerPhone ?? raw.phone ?? ""
     ).trim();
@@ -56202,6 +57074,7 @@ router2.post("/rides", async (req, res, next) => {
       reason: "ride_created"
     });
     const [withSummary] = await attachAccessCodeSummariesToRides([stripPartnerOnlyRideFields(created)]);
+    void notifyMarketOnlineDriversInstantRideOffer(created);
     res.status(201).json(withSummary);
   } catch (e) {
     next(e);
@@ -56256,7 +57129,7 @@ router2.patch("/rides/:id/driver-note", async (req, res, next) => {
     next(e);
   }
 });
-router2.patch("/rides/:id/status", async (req, res, next) => {
+async function patchRideStatusRoute(req, res, next) {
   try {
     const { id } = req.params;
     const { status, driverId, cancelReason } = req.body;
@@ -56287,7 +57160,7 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
       });
       return;
     }
-    if (!canTransitionStatus(cur.status, nextStatus)) {
+    if (!canTransitionRideStatus(cur.status, nextStatus)) {
       res.status(409).json({ error: "status_transition_invalid", from: cur.status, to: nextStatus });
       return;
     }
@@ -56302,7 +57175,54 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
       bodyDriverId: bodyDriverIdTrim.length > 0 ? bodyDriverIdTrim : null
     });
     if (!gate.ok) {
+      if (gate.status === 401 && nextStatus === "cancelled_by_customer") {
+        const bearer = extractBearerAuthorization(req);
+        if (!bearer) {
+          res.status(401).json({
+            error: "unauthorized",
+            hint: "Kunden-Storno erfordert Authorization: Bearer <session_jwt> (Google-Anmeldung)."
+          });
+          return;
+        }
+        if (!isSessionJwtConfigured()) {
+          res.status(503).json({ error: "session_jwt_unconfigured" });
+          return;
+        }
+        try {
+          await verifySessionJwt(bearer);
+        } catch {
+          res.status(401).json({
+            error: "invalid_token",
+            hint: "Session abgelaufen \u2014 bitte erneut mit Google anmelden."
+          });
+          return;
+        }
+      }
       res.status(gate.status).json({ error: gate.code });
+      return;
+    }
+    await hydrateRideDriverLocationCache(id, driverLocations);
+    const opsGuard = validateRideStatusTransition(cur, nextStatus, {
+      rideId: id,
+      body: req.body,
+      driverLocations,
+      parsedFinalFare
+    });
+    if (!opsGuard.ok) {
+      res.status(opsGuard.status).json({
+        error: opsGuard.error,
+        message: opsGuard.message,
+        ...opsGuard.details ?? {}
+      });
+      return;
+    }
+    if ((nextStatus === "cancelled_by_customer" || nextStatus === "cancelled_by_driver") && actor && actor.kind !== "admin" && isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+      const ms = msUntilScheduledPickup(cur.scheduledAt);
+      res.status(403).json({
+        error: "reservation_storno_locked",
+        message: "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit m\xF6glich.",
+        minutesUntilPickupApprox: ms == null ? null : Math.round(ms / 6e4)
+      });
       return;
     }
     const mutActor = mutationActorFromRideMutator(actor);
@@ -56330,6 +57250,14 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
           error: "driver_not_einsatzbereit",
           blockReasons: readinessR.blockReasons,
           message: "Fahrer ist derzeit nicht einsatzbereit (Freigabe, P-Schein, Fahrzeug oder Unternehmen)."
+        });
+        return;
+      }
+      const marketOnline = await getFleetDriverMarketOnline(driverId, capabilityCompanyId);
+      if (!marketOnline) {
+        res.status(409).json({
+          error: "driver_market_offline",
+          message: "Fahrer ist offline \u2014 Annahme am Auftragsmarkt nicht m\xF6glich."
         });
         return;
       }
@@ -56378,11 +57306,29 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
           return;
         }
       }
-      const mergedFinal = parsedFinalFare !== void 0 && Number.isFinite(parsedFinalFare) ? parsedFinalFare : cur.finalFare != null && Number.isFinite(Number(cur.finalFare)) ? Number(cur.finalFare) : void 0;
-      finalFareForPatch = effectiveTaxiGrossEur({
-        ...cur,
-        finalFare: mergedFinal
-      });
+      const preTripComplete = cur.status === "accepted" || cur.status === "driver_arriving" || cur.status === "driver_waiting";
+      if (preTripComplete) {
+        if (parsedFinalFare !== void 0 && parsedFinalFare > 9e-3) {
+          res.status(400).json({
+            error: "complete_without_trip_start",
+            message: "Ohne Fahrtbeginn zum Ziel ist kein Fahrpreis zul\xE4ssig. Bitte 0,00 \u20AC oder die Fahrt stornieren."
+          });
+          return;
+        }
+        finalFareForPatch = 0;
+      } else if (cur.status === "passenger_onboard") {
+        if (parsedFinalFare !== void 0 && parsedFinalFare > 9e-3) {
+          res.status(400).json({
+            error: "complete_trip_not_started",
+            message: "Bitte die Fahrt zum Ziel starten, bevor ein Fahrpreis abgerechnet wird."
+          });
+          return;
+        }
+        finalFareForPatch = parsedFinalFare !== void 0 && Number.isFinite(parsedFinalFare) ? parsedFinalFare : 0;
+      } else {
+        const mergedFinal = parsedFinalFare !== void 0 && Number.isFinite(parsedFinalFare) ? parsedFinalFare : cur.finalFare != null && Number.isFinite(Number(cur.finalFare)) ? Number(cur.finalFare) : void 0;
+        finalFareForPatch = parsedFinalFare !== void 0 && Number.isFinite(parsedFinalFare) ? parsedFinalFare : effectiveTaxiGrossEur({ ...cur, finalFare: mergedFinal });
+      }
     }
     const atomicAccept = nextStatus === "accepted" && bodyDriverIdTrim.length > 0 && actor && actor.kind !== "customer_session";
     let updated = null;
@@ -56491,11 +57437,145 @@ router2.patch("/rides/:id/status", async (req, res, next) => {
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);
     }
+    if (updated.status === "scheduled_assigned" && cur.status === "scheduled") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) {
+        const marked = await tryMarkCustomerReservationAssignedPushSent(id);
+        if (marked) void notifyPassengerReservationConfirmed(pid, id);
+      }
+    }
+    if (nextStatus === "ready_for_dispatch" && cur.status === "scheduled_assigned") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerReservationActivated(pid, updated.id);
+    }
+    if (nextStatus === "accepted" && cur.status !== "accepted") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerDriverAccepted(pid, updated.id);
+    }
+    if (nextStatus === "driver_waiting" && cur.status !== "driver_waiting") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerDriverWaiting(pid, updated.id);
+    }
+    if (nextStatus === "cancelled_by_system") {
+      const pid = (updated.passengerId ?? "").trim();
+      if (pid) void notifyPassengerRideCancelledBySystem(pid, updated.id);
+    }
+    const opsEv = supplementalEventForTransition(cur.status, nextStatus);
+    if (opsEv && cur.status !== nextStatus) {
+      void insertSupplementalRideEvent(id, {
+        eventType: opsEv.eventType,
+        fromStatus: cur.status,
+        toStatus: nextStatus,
+        actorType: mutActor.actorType,
+        actorId: mutActor.actorId,
+        payload: {
+          ...opsEv.payload ?? {},
+          estimatedFare: cur.estimatedFare ?? null,
+          finalFare: updated.finalFare ?? null
+        }
+      });
+    }
     res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
   } catch (e) {
     next(e);
   }
-});
+}
+async function cancelRideForVerifiedCustomerSession(passengerGoogleId, rideId, cancelReason, parsedFinalFare) {
+  const id = rideId.trim();
+  const pax = passengerGoogleId.trim();
+  const cancelReasonClean = cancelReason.trim();
+  if (!id || !pax) return { ok: false, status: 400, error: "ride_id_required" };
+  if (!cancelReasonClean) return { ok: false, status: 400, error: "cancel_reason_required" };
+  const cur = await findRideForPassenger(id, pax);
+  if (!cur) return { ok: false, status: 404, error: "not_found" };
+  const nextStatus = "cancelled_by_customer";
+  if (cur.status === nextStatus) {
+    return {
+      ok: true,
+      ride: cur,
+      cancelReason: customerCancelReasons.get(id) ?? cancelReasonClean
+    };
+  }
+  if (!canTransitionRideStatus(cur.status, nextStatus)) {
+    return {
+      ok: false,
+      status: 409,
+      error: "status_transition_invalid",
+      from: cur.status,
+      to: nextStatus
+    };
+  }
+  if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+    return {
+      ok: false,
+      status: 403,
+      error: "reservation_storno_locked",
+      message: "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit m\xF6glich."
+    };
+  }
+  const mutActor = { actorType: "passenger", actorId: pax };
+  let finalFareForPatch = parsedFinalFare;
+  const opPayloadCancel = await getOperationalConfigPayload();
+  const ev = await evaluateCustomerCancellationFeeEur(
+    {
+      status: cur.status,
+      scheduledAt: cur.scheduledAt ?? null,
+      createdAt: cur.createdAt,
+      fromFull: cur.fromFull
+    },
+    opPayloadCancel
+  );
+  if (ev.feeEur > 0) {
+    const chosen = parsedFinalFare !== void 0 ? parsedFinalFare : ev.feeEur;
+    if (chosen < ev.feeEur - 1e-9) {
+      return {
+        ok: false,
+        status: 400,
+        error: "cancel_fee_too_low",
+        message: `F\xFCr dieses Storno ist mindestens ${ev.feeEur.toFixed(2)} EUR als Endpreis vorgesehen.`
+      };
+    }
+    const cap = Math.max(cur.estimatedFare ?? 0, ev.feeEur);
+    finalFareForPatch = Math.min(Math.max(chosen, ev.feeEur), cap);
+  }
+  const updated = await updateRide(
+    id,
+    {
+      status: nextStatus,
+      ...finalFareForPatch !== void 0 ? { finalFare: finalFareForPatch } : {}
+    },
+    { mutationActor: mutActor }
+  );
+  if (!updated) return { ok: false, status: 500, error: "update_failed" };
+  await insertSupplementalRideEvent(id, {
+    eventType: "cancel_reason",
+    fromStatus: cur.status,
+    toStatus: nextStatus,
+    actorType: "passenger",
+    actorId: pax,
+    payload: {
+      reason: cancelReasonClean,
+      nextStatus,
+      cancellationFeeEur: ev.feeEur,
+      cancellationFeeRule: ev.reason,
+      appliedFinalFareEur: finalFareForPatch ?? null
+    }
+  });
+  customerCancelReasons.set(id, cancelReasonClean);
+  const opPayloadCf = await getOperationalConfigPayload();
+  const regionsCf = await listServiceRegionsForApi();
+  const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+  const financeCf = await upsertRideFinancialSnapshot({
+    ride: updated,
+    pricingContext: pcCf,
+    reason: `ride_status_${nextStatus}`,
+    actorType: mutActor.actorType,
+    actorId: mutActor.actorId
+  });
+  if (!financeCf.ok) return { ok: false, status: 500, error: financeCf.error };
+  return { ok: true, ride: updated, cancelReason: cancelReasonClean };
+}
+router2.patch("/rides/:id/status", patchRideStatusRoute);
 router2.post("/rides/:id/driver-location", async (req, res, next) => {
   try {
     const fleet = await resolveFleetActorOrNull(req);
@@ -56514,7 +57594,12 @@ router2.post("/rides/:id/driver-location", async (req, res, next) => {
       res.status(400).json({ error: "lat and lon required" });
       return;
     }
-    const loc = { lat, lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const persisted = await upsertRideDriverLocation(id, fleet.fleetDriverId, lat, lon);
+    const loc = persisted ?? {
+      lat,
+      lon,
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
     driverLocations.set(id, loc);
     res.json(loc);
   } catch (e) {
@@ -56529,7 +57614,14 @@ router2.get("/rides/:id/driver-location", async (req, res, next) => {
       res.status(404).json({ error: "not found" });
       return;
     }
-    const loc = driverLocations.get(id);
+    let loc = driverLocations.get(id) ?? null;
+    if (!loc) {
+      const dbLoc = await getRideDriverLocation(id);
+      if (dbLoc) {
+        loc = { lat: dbLoc.lat, lon: dbLoc.lon, updatedAt: dbLoc.updatedAt };
+        driverLocations.set(id, loc);
+      }
+    }
     if (!loc) {
       res.status(404).json({ error: "no location yet" });
       return;
@@ -56658,6 +57750,13 @@ router2.post("/rides/:id/driver-cancel", requireFleetDriverAuth, async (req, res
       res.json(stripPartnerOnlyRideFields(cur));
       return;
     }
+    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+      res.status(403).json({
+        error: "reservation_storno_locked",
+        message: "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit m\xF6glich."
+      });
+      return;
+    }
     const existing = cur.rejectedBy ?? [];
     const rejectedBy = driverId ? existing.includes(driverId) ? existing : [...existing, driverId] : existing;
     const revertStatus = cur.scheduledAt && isFarFutureReservation(cur.scheduledAt) ? "scheduled" : "searching_driver";
@@ -56697,6 +57796,13 @@ router2.post("/rides/:id/driver-hard-cancel", requireFleetDriverAuth, async (req
     const cur = await findRide(id);
     if (!cur) {
       res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (isReservationCustomerDriverStornoLocked(cur.scheduledAt)) {
+      res.status(403).json({
+        error: "reservation_storno_locked",
+        message: "Bei Vorbestellungen ist ein Storno durch Kunde oder Fahrer nur bis 60 Minuten vor der geplanten Abholzeit m\xF6glich."
+      });
       return;
     }
     const updated = await updateRide(
@@ -57188,7 +58294,7 @@ async function countSendsInRollingHour(normalizedEmail) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
   const hourAgo = new Date(Date.now() - 60 * 60 * 1e3);
-  const r = await db2.select({ c: sql`count(*)::int` }).from(emailVerificationCodesTable).where(
+  const r = await db2.select({ c: sql2`count(*)::int` }).from(emailVerificationCodesTable).where(
     and(eq(emailVerificationCodesTable.email, normalizedEmail), gte(emailVerificationCodesTable.created_at, hourAgo))
   );
   const n4 = r[0]?.c;
@@ -57197,7 +58303,7 @@ async function countSendsInRollingHour(normalizedEmail) {
 async function incrementAttempts(id) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
-  const updated = await db2.update(emailVerificationCodesTable).set({ attempts: sql`${emailVerificationCodesTable.attempts} + 1` }).where(eq(emailVerificationCodesTable.id, id)).returning({ attempts: emailVerificationCodesTable.attempts });
+  const updated = await db2.update(emailVerificationCodesTable).set({ attempts: sql2`${emailVerificationCodesTable.attempts} + 1` }).where(eq(emailVerificationCodesTable.id, id)).returning({ attempts: emailVerificationCodesTable.attempts });
   return updated[0]?.attempts ?? null;
 }
 async function getLatestUnconsumedRowAnyExpiry(normalizedEmail, purpose) {
@@ -57276,6 +58382,7 @@ function generateSixDigitCode() {
 }
 
 // src/lib/emailVerificationMail.ts
+init_logger2();
 import nodemailer from "nodemailer";
 async function sendOnrodaVerificationEmailPlain(to, sixDigitCode) {
   const smtpUrl = (process.env.SMTP_URL ?? "").trim();
@@ -57542,8 +58649,8 @@ router4.post("/auth/email/verify", async (req, res) => {
 var emailAuth_default = router4;
 
 // src/routes/adminApi.ts
-var import_express8 = __toESM(require_express2(), 1);
-import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID23 } from "node:crypto";
+var import_express10 = __toESM(require_express2(), 1);
+import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID26 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path6 from "node:path";
@@ -57787,7 +58894,7 @@ async function findPartnerRegistrationRequestById(id) {
 async function findLatestPartnerRegistrationRequestByEmail(email) {
   const db2 = getDb();
   if (!db2) return null;
-  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(sql`lower(${partnerRegistrationRequestsTable.email}) = ${email.trim().toLowerCase()}`).orderBy(desc(partnerRegistrationRequestsTable.created_at)).limit(1);
+  const rows = await db2.select().from(partnerRegistrationRequestsTable).where(sql2`lower(${partnerRegistrationRequestsTable.email}) = ${email.trim().toLowerCase()}`).orderBy(desc(partnerRegistrationRequestsTable.created_at)).limit(1);
   return rows[0] ? mapRow(rows[0]) : null;
 }
 function collectMasterDataPatchKeys(patch) {
@@ -57819,7 +58926,7 @@ async function patchPartnerRegistrationRequest(id, patch) {
   const db2 = getDb();
   if (!db2) return null;
   const set = {
-    updated_at: sql`NOW()`
+    updated_at: sql2`NOW()`
   };
   if (patch.status) set.registration_status = patch.status;
   if (patch.verificationStatus) set.verification_status = patch.verificationStatus;
@@ -57828,7 +58935,7 @@ async function patchPartnerRegistrationRequest(id, patch) {
   if (patch.missingDocumentsNote !== void 0) set.missing_documents_note = patch.missingDocumentsNote;
   if (patch.adminNote !== void 0) set.admin_note = patch.adminNote;
   if (patch.reviewedByAdminUserId !== void 0) set.reviewed_by_admin_user_id = patch.reviewedByAdminUserId;
-  if (patch.status || patch.reviewedByAdminUserId !== void 0) set.reviewed_at = sql`NOW()`;
+  if (patch.status || patch.reviewedByAdminUserId !== void 0) set.reviewed_at = sql2`NOW()`;
   if (patch.partnerType !== void 0) set.partner_type = patch.partnerType;
   if (patch.companyName !== void 0) set.company_name = clipAdminReg(patch.companyName, ADMIN_REG_STRING_MAX.name);
   if (patch.legalForm !== void 0) set.legal_form = clipAdminReg(patch.legalForm, ADMIN_REG_STRING_MAX.short);
@@ -57905,8 +59012,8 @@ async function attachCompanyToPartnerRegistrationRequest(id, companyId, opts = {
     verification_status: "verified",
     compliance_status: "complete",
     reviewed_by_admin_user_id: adminUserId,
-    reviewed_at: sql`NOW()`,
-    updated_at: sql`NOW()`
+    reviewed_at: sql2`NOW()`,
+    updated_at: sql2`NOW()`
   }).where(
     and(eq(partnerRegistrationRequestsTable.id, id), isNull(partnerRegistrationRequestsTable.linked_company_id))
   ).returning({ id: partnerRegistrationRequestsTable.id });
@@ -58292,7 +59399,7 @@ function buildRideFinancialWhere(filters) {
   }
   if (typeof filters.hasInvoice === "boolean") {
     cond.push(
-      filters.hasInvoice ? sql`exists (select 1 from invoice_items ii where ii.ride_id = ${rideFinancialsTable.ride_id})` : sql`not exists (select 1 from invoice_items ii where ii.ride_id = ${rideFinancialsTable.ride_id})`
+      filters.hasInvoice ? sql2`exists (select 1 from invoice_items ii where ii.ride_id = ${rideFinancialsTable.ride_id})` : sql2`not exists (select 1 from invoice_items ii where ii.ride_id = ${rideFinancialsTable.ride_id})`
     );
   }
   if (filters.search?.trim()) {
@@ -58339,17 +59446,17 @@ async function getAdminFinanceSummary(args) {
   if (args.dateTo) settlementConds.push(lte(settlementsTable.created_at, args.dateTo));
   const [rf, inv, set] = await Promise.all([
     db2.select({
-      totalRevenue: sql`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
-      openReceivables: sql`coalesce(sum(case when ${rideFinancialsTable.billing_status} in ('unbilled','queued','invoiced','partially_paid') then ${rideFinancialsTable.gross_amount} else 0 end), 0)`,
-      openPlatformCommission: sql`coalesce(sum(case when ${rideFinancialsTable.settlement_status} <> 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`
+      totalRevenue: sql2`coalesce(sum(${rideFinancialsTable.gross_amount}), 0)`,
+      openReceivables: sql2`coalesce(sum(case when ${rideFinancialsTable.billing_status} in ('unbilled','queued','invoiced','partially_paid') then ${rideFinancialsTable.gross_amount} else 0 end), 0)`,
+      openPlatformCommission: sql2`coalesce(sum(case when ${rideFinancialsTable.settlement_status} <> 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`
     }).from(rideFinancialsTable).where(financialConds.length ? and(...financialConds) : void 0),
     db2.select({
-      paidCount: sql`count(*) filter (where ${invoicesTable.status} = 'paid')::int`,
-      openCount: sql`count(*) filter (where ${invoicesTable.status} in ('draft','issued','partially_paid'))::int`,
-      overdueCount: sql`count(*) filter (where ${invoicesTable.status} = 'overdue')::int`
+      paidCount: sql2`count(*) filter (where ${invoicesTable.status} = 'paid')::int`,
+      openCount: sql2`count(*) filter (where ${invoicesTable.status} in ('draft','issued','partially_paid'))::int`,
+      overdueCount: sql2`count(*) filter (where ${invoicesTable.status} = 'overdue')::int`
     }).from(invoicesTable).where(invoiceConds.length ? and(...invoiceConds) : void 0),
     db2.select({
-      openSettlementsCount: sql`count(*) filter (where ${settlementsTable.status} in ('draft','issued','approved'))::int`
+      openSettlementsCount: sql2`count(*) filter (where ${settlementsTable.status} in ('draft','issued','approved'))::int`
     }).from(settlementsTable).where(settlementConds.length ? and(...settlementConds) : void 0)
   ]);
   return {
@@ -58367,7 +59474,7 @@ async function countRideFinancialsAdmin(filters) {
   const db2 = getDb();
   if (!db2) return 0;
   const cond = buildRideFinancialWhere(filters);
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(rideFinancialsTable).where(cond.length ? and(...cond) : void 0);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(rideFinancialsTable).where(cond.length ? and(...cond) : void 0);
   return n2(row?.n);
 }
 async function listRideFinancialsAdmin(args) {
@@ -58406,7 +59513,7 @@ async function getRideFinancialDetailAdmin(rideId) {
     periodStart: settlementsTable.period_start,
     periodEnd: settlementsTable.period_end,
     companyId: settlementsTable.company_id
-  }).from(settlementsTable).where(sql`${settlementsTable.metadata_json}->>'ride_id' = ${rideId}`).limit(20);
+  }).from(settlementsTable).where(sql2`${settlementsTable.metadata_json}->>'ride_id' = ${rideId}`).limit(20);
   return {
     ...row,
     partner_company_name: row.partner_company_id ? map.get(row.partner_company_id) ?? null : null,
@@ -58426,7 +59533,7 @@ async function countInvoicesAdmin(filters) {
   if (filters.companyId?.trim()) cond.push(eq(invoicesTable.company_id, filters.companyId.trim()));
   if (filters.status?.trim()) cond.push(eq(invoicesTable.status, filters.status.trim()));
   if (filters.type?.trim()) cond.push(eq(invoicesTable.invoice_type, filters.type.trim()));
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(invoicesTable).where(cond.length ? and(...cond) : void 0);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(invoicesTable).where(cond.length ? and(...cond) : void 0);
   return n2(row?.n);
 }
 async function listInvoicesAdmin(args) {
@@ -58460,7 +59567,7 @@ async function countSettlementsAdmin(filters) {
   const cond = [];
   if (filters.companyId?.trim()) cond.push(eq(settlementsTable.company_id, filters.companyId.trim()));
   if (filters.status?.trim()) cond.push(eq(settlementsTable.status, filters.status.trim()));
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(settlementsTable).where(cond.length ? and(...cond) : void 0);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(settlementsTable).where(cond.length ? and(...cond) : void 0);
   return n2(row?.n);
 }
 async function listSettlementsAdmin(args) {
@@ -58493,7 +59600,7 @@ async function countPaymentsAdmin(filters) {
   if (filters.targetType?.trim()) cond.push(eq(paymentsTable.target_type, filters.targetType.trim()));
   if (filters.status?.trim()) cond.push(eq(paymentsTable.status, filters.status.trim()));
   if (filters.companyId?.trim()) cond.push(eq(paymentsTable.company_id, filters.companyId.trim()));
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(paymentsTable).where(cond.length ? and(...cond) : void 0);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(paymentsTable).where(cond.length ? and(...cond) : void 0);
   return n2(row?.n);
 }
 async function listPaymentsAdmin(args) {
@@ -58514,7 +59621,7 @@ async function countFinancialAuditAdmin(filters) {
   if (filters.entityType?.trim()) cond.push(eq(financialAuditLogTable.entity_type, filters.entityType.trim()));
   if (filters.action?.trim()) cond.push(eq(financialAuditLogTable.action, filters.action.trim()));
   if (filters.entityId?.trim()) cond.push(eq(financialAuditLogTable.entity_id, filters.entityId.trim()));
-  const [row] = await db2.select({ n: sql`count(*)::int` }).from(financialAuditLogTable).where(cond.length ? and(...cond) : void 0);
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(financialAuditLogTable).where(cond.length ? and(...cond) : void 0);
   return n2(row?.n);
 }
 async function listFinancialAuditAdmin(args) {
@@ -58988,7 +60095,7 @@ async function panelUsernameTaken(normalized, excludeUserId) {
   const n4 = normalized.trim().toLowerCase();
   if (!n4) return false;
   const rows = await db2.select({ id: panelUsersTable.id }).from(panelUsersTable).where(
-    excludeUserId ? and(sql`lower(${panelUsersTable.username}) = ${n4}`, ne(panelUsersTable.id, excludeUserId)) : sql`lower(${panelUsersTable.username}) = ${n4}`
+    excludeUserId ? and(sql2`lower(${panelUsersTable.username}) = ${n4}`, ne(panelUsersTable.id, excludeUserId)) : sql2`lower(${panelUsersTable.username}) = ${n4}`
   ).limit(1);
   return rows.length > 0;
 }
@@ -59322,6 +60429,250 @@ function parseSupportThreadStatus(raw) {
   return isSupportThreadStatus(s) ? s : null;
 }
 
+// src/db/appHelpTicketsData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID17 } from "node:crypto";
+var APP_HELP_TICKET_STATUSES = ["open", "in_progress", "resolved"];
+var APP_HELP_CATEGORIES = ["booking", "account", "payment", "app_issue", "other"];
+function isStatus(v) {
+  return APP_HELP_TICKET_STATUSES.includes(v);
+}
+function parseAppHelpCategory(raw) {
+  const v = raw.trim().toLowerCase();
+  return APP_HELP_CATEGORIES.includes(v) ? v : "other";
+}
+function mapRow3(r) {
+  return {
+    id: r.id,
+    passengerId: r.passenger_id,
+    passengerName: r.passenger_name,
+    passengerEmail: r.passenger_email,
+    passengerPhone: r.passenger_phone,
+    category: parseAppHelpCategory(r.category),
+    subject: r.subject,
+    message: r.message,
+    status: isStatus(r.status) ? r.status : "open",
+    internalNote: r.internal_note,
+    source: r.source,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+async function createAppHelpTicket(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = `aht-${randomUUID17()}`;
+  const now = /* @__PURE__ */ new Date();
+  const msg = input.message.trim().slice(0, 8e3);
+  if (msg.length < 5) return null;
+  await db2.insert(appHelpTicketsTable).values({
+    id,
+    passenger_id: input.passengerId.trim(),
+    passenger_name: input.passengerName?.trim() ? input.passengerName.trim().slice(0, 200) : null,
+    passenger_email: input.passengerEmail.trim().slice(0, 320),
+    passenger_phone: input.passengerPhone?.trim() ? input.passengerPhone.trim().slice(0, 64) : null,
+    category: input.category,
+    subject: input.subject?.trim() ? input.subject.trim().slice(0, 200) : null,
+    message: msg,
+    status: "open",
+    internal_note: null,
+    source: input.source?.trim() || "mobile_help",
+    created_at: now,
+    updated_at: now
+  });
+  const [row] = await db2.select().from(appHelpTicketsTable).where(eq(appHelpTicketsTable.id, id)).limit(1);
+  return row ? mapRow3(row) : null;
+}
+async function getAppHelpTicketAdmin(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const [row] = await db2.select().from(appHelpTicketsTable).where(eq(appHelpTicketsTable.id, id)).limit(1);
+  return row ? mapRow3(row) : null;
+}
+async function updateAppHelpTicketAdmin(id, input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const [cur] = await db2.select().from(appHelpTicketsTable).where(eq(appHelpTicketsTable.id, id)).limit(1);
+  if (!cur) return null;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (input.status && isStatus(input.status)) set.status = input.status;
+  if (Object.prototype.hasOwnProperty.call(input, "internalNote")) {
+    set.internal_note = input.internalNote == null ? null : String(input.internalNote).trim().length === 0 ? null : String(input.internalNote).trim().slice(0, 8e3);
+  }
+  await db2.update(appHelpTicketsTable).set(set).where(eq(appHelpTicketsTable.id, id));
+  return getAppHelpTicketAdmin(id);
+}
+async function listAppHelpTicketsAdminPage(input) {
+  const db2 = getDb();
+  if (!db2) return { total: 0, items: [] };
+  const whereParts = [];
+  if (input.status && isStatus(input.status)) {
+    whereParts.push(eq(appHelpTicketsTable.status, input.status));
+  }
+  const q = input.q?.trim();
+  if (q) {
+    const p = `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    whereParts.push(
+      or(
+        ilike(appHelpTicketsTable.id, p),
+        ilike(appHelpTicketsTable.passenger_id, p),
+        ilike(appHelpTicketsTable.passenger_email, p),
+        ilike(appHelpTicketsTable.message, p),
+        ilike(appHelpTicketsTable.subject, p)
+      )
+    );
+  }
+  const w = whereParts.length > 0 ? and(...whereParts) : void 0;
+  const [countRow] = await db2.select({ n: count() }).from(appHelpTicketsTable).where(w);
+  const total = Number(countRow?.n ?? 0);
+  if (total === 0) return { total: 0, items: [] };
+  const offset = (input.page - 1) * input.pageSize;
+  const rows = await db2.select().from(appHelpTicketsTable).where(w).orderBy(desc(appHelpTicketsTable.created_at)).limit(input.pageSize).offset(offset);
+  return { total, items: rows.map(mapRow3) };
+}
+
+// src/db/rideSupportData.ts
+init_drizzle_orm();
+
+// src/domain/rideSupportCategory.ts
+var RIDE_SUPPORT_CATEGORIES = [
+  "driver_not_arrived",
+  "wrong_price",
+  "wrong_address",
+  "cancel_or_issue",
+  "payment_receipt",
+  "special_request",
+  "other"
+];
+function isRideSupportCategory(v) {
+  return RIDE_SUPPORT_CATEGORIES.includes(v);
+}
+function parseRideSupportCategory(v) {
+  if (typeof v !== "string" || !v.trim()) return null;
+  const s = v.trim();
+  return isRideSupportCategory(s) ? s : null;
+}
+
+// src/lib/rideContextSnapshot.ts
+init_partnerBookingMeta();
+init_client();
+init_schema2();
+init_ridesData();
+
+// src/db/rideSupportData.ts
+init_client();
+init_ridesData();
+init_schema2();
+var RIDE_SUPPORT_TICKET_STATUSES = ["open", "in_progress", "resolved"];
+function isTicketStatus(v) {
+  return RIDE_SUPPORT_TICKET_STATUSES.includes(v);
+}
+function mapRow4(r, extra) {
+  const cat = parseRideSupportCategory(r.category) ?? "other";
+  return {
+    id: r.id,
+    rideId: r.ride_id,
+    passengerId: r.passenger_id,
+    category: cat,
+    message: r.message,
+    status: isTicketStatus(r.status) ? r.status : "open",
+    internalNote: r.internal_note,
+    rideContextSnapshot: r.ride_context_snapshot ?? {},
+    snapshotSchemaVersion: r.snapshot_schema_version,
+    snapshotCapturedAt: r.snapshot_captured_at.toISOString(),
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString(),
+    companyId: extra?.companyId ?? null,
+    rideStatus: extra?.rideStatus ?? null
+  };
+}
+function ticketRowVisible(role, scopeCompanyId, ride) {
+  if (!ride) return false;
+  return adminRideRowVisibleToPrincipal(role, scopeCompanyId, ride);
+}
+async function getRideSupportTicketAdmin(id, role, scopeCompanyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const [r] = await db2.select().from(rideSupportTicketsTable).where(eq(rideSupportTicketsTable.id, id)).limit(1);
+  if (!r) return null;
+  const ride = await findRideAdminById(r.ride_id);
+  if (!ticketRowVisible(role, scopeCompanyId, ride)) {
+    return null;
+  }
+  return mapRow4(r);
+}
+async function updateRideSupportTicketAdmin(id, input, role, scopeCompanyId) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const [cur] = await db2.select().from(rideSupportTicketsTable).where(eq(rideSupportTicketsTable.id, id)).limit(1);
+  if (!cur) return null;
+  const ride = await findRideAdminById(cur.ride_id);
+  if (!ticketRowVisible(role, scopeCompanyId, ride)) {
+    return null;
+  }
+  const set = {
+    updated_at: /* @__PURE__ */ new Date()
+  };
+  if (input.status && isTicketStatus(input.status)) {
+    set.status = input.status;
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "internalNote")) {
+    set.internal_note = input.internalNote == null ? null : String(input.internalNote).trim().length === 0 ? null : String(input.internalNote).trim().slice(0, 8e3);
+  }
+  await db2.update(rideSupportTicketsTable).set(set).where(eq(rideSupportTicketsTable.id, id));
+  return getRideSupportTicketAdmin(id, role, scopeCompanyId);
+}
+async function listRideSupportTicketsAdminPage(input) {
+  const db2 = getDb();
+  if (!db2) return { total: 0, items: [] };
+  const { role, scopeCompanyId, page, pageSize } = input;
+  if (role === "hotel" && !scopeCompanyId?.trim()) {
+    return { total: 0, items: [] };
+  }
+  const whereParts = [];
+  if (role === "insurance") {
+    whereParts.push(eq(ridesTable.payer_kind, "insurance"));
+  } else if (role === "hotel") {
+    whereParts.push(eq(ridesTable.company_id, scopeCompanyId.trim()));
+  }
+  if (input.status && isTicketStatus(input.status)) {
+    whereParts.push(eq(rideSupportTicketsTable.status, input.status));
+  }
+  const q = input.q?.trim();
+  if (q) {
+    const p = `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    whereParts.push(
+      or(
+        ilike(rideSupportTicketsTable.id, p),
+        ilike(rideSupportTicketsTable.ride_id, p),
+        ilike(rideSupportTicketsTable.passenger_id, p)
+      )
+    );
+  }
+  const w = whereParts.length > 0 ? and(...whereParts) : void 0;
+  const joinOn = eq(rideSupportTicketsTable.ride_id, ridesTable.id);
+  const [countRow] = await db2.select({ n: count() }).from(rideSupportTicketsTable).innerJoin(ridesTable, joinOn).where(w);
+  const total = Number(countRow?.n ?? 0);
+  if (total === 0) {
+    return { total: 0, items: [] };
+  }
+  const offset = (page - 1) * pageSize;
+  const rows = await db2.select({
+    t: rideSupportTicketsTable,
+    companyId: ridesTable.company_id,
+    rideStatus: ridesTable.status
+  }).from(rideSupportTicketsTable).innerJoin(ridesTable, joinOn).where(w).orderBy(desc(rideSupportTicketsTable.created_at)).limit(pageSize).offset(offset);
+  return {
+    total,
+    items: rows.map((x) => mapRow4(x.t, { companyId: x.companyId, rideStatus: x.rideStatus }))
+  };
+}
+
+// src/routes/adminApi.ts
+init_companyComplianceDocumentsData();
+
 // src/db/homepageContentData.ts
 init_drizzle_orm();
 init_client();
@@ -59586,7 +60937,7 @@ init_operationalTariffEngine();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID17 } from "node:crypto";
+import { randomUUID as randomUUID18 } from "node:crypto";
 var FAQ_DEFAULTS = [
   {
     id: "faq-default-1",
@@ -59655,7 +61006,7 @@ async function createHomepageFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID17();
+  const id = randomUUID18();
   await db2.insert(homepageFaqItemsTable).values({
     id,
     question: input.question,
@@ -59707,7 +61058,7 @@ async function createHomepageHowStep(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID17();
+  const id = randomUUID18();
   await db2.insert(homepageHowStepsTable).values({
     id,
     icon: input.icon,
@@ -59761,7 +61112,7 @@ async function createHomepageTrustMetric(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID17();
+  const id = randomUUID18();
   await db2.insert(homepageTrustMetricsTable).values({
     id,
     value: input.value,
@@ -59809,7 +61160,7 @@ async function deleteHomepageTrustMetric(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID18 } from "node:crypto";
+import { randomUUID as randomUUID19 } from "node:crypto";
 function normalizeHomepageHintType(raw) {
   const t = String(raw ?? "").trim().toLowerCase();
   if (t === "success") return "success";
@@ -59868,7 +61219,7 @@ async function createHomepagePlaceholder(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = `hpb-${randomUUID18()}`;
+  const id = `hpb-${randomUUID19()}`;
   const storedType = normalizeHomepageHintType(input.type);
   await db2.insert(homepagePlaceholdersTable).values({
     id,
@@ -59915,6 +61266,8 @@ async function patchHomepagePlaceholder(id, input) {
 // src/db/adminOperatorSnapshotData.ts
 init_drizzle_orm();
 init_client();
+init_fleetDriversData();
+init_fleetVehiclesData();
 init_schema2();
 var PENDING_REGISTRATION_STATUSES2 = ["open", "in_review", "documents_required"];
 function registrationStatusDe(s) {
@@ -60118,6 +61471,10 @@ async function getAdminOperatorSnapshot() {
 init_drizzle_orm();
 init_client();
 init_accessCodesData();
+init_logger2();
+init_fleetDriverReadiness();
+init_fleetDriversData();
+init_fleetVehiclesData();
 init_ridesData();
 init_schema2();
 var OPEN_RIDE_STATUSES = ["pending", "accepted", "arrived", "in_progress"];
@@ -60409,12 +61766,12 @@ async function getCompanyMandateRead(companyId) {
   ] = await Promise.all([
     db2.select({ status: ridesTable.status, n: count() }).from(ridesTable).where(eq(ridesTable.company_id, companyId)).groupBy(ridesTable.status),
     db2.select({
-      rev: sql`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+      rev: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
     }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.status, "completed"))),
     db2.select({
-      openComm: sql`coalesce(sum(case when ${rideFinancialsTable.settlement_status} <> 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`,
-      paidComm: sql`coalesce(sum(case when ${rideFinancialsTable.settlement_status} = 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`,
-      totalComm: sql`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`
+      openComm: sql2`coalesce(sum(case when ${rideFinancialsTable.settlement_status} <> 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`,
+      paidComm: sql2`coalesce(sum(case when ${rideFinancialsTable.settlement_status} = 'paid_out' then ${rideFinancialsTable.commission_amount} else 0 end), 0)`,
+      totalComm: sql2`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`
     }).from(rideFinancialsTable).where(eq(rideFinancialsTable.partner_company_id, companyId)),
     db2.select({ n: count() }).from(settlementsTable).where(
       and(
@@ -60428,12 +61785,12 @@ async function getCompanyMandateRead(companyId) {
       and(
         eq(ridesTable.company_id, companyId),
         eq(ridesTable.ride_kind, "medical"),
-        sql`trim(coalesce(${ridesTable.billing_reference}, '')) <> ''`
+        sql2`trim(coalesce(${ridesTable.billing_reference}, '')) <> ''`
       )
     ).limit(5),
     db2.select({
       n: count(),
-      monthCompletedRev: sql`coalesce(sum(case when ${ridesTable.status} = 'completed' then coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare}) else 0 end), 0)`
+      monthCompletedRev: sql2`coalesce(sum(case when ${ridesTable.status} = 'completed' then coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare}) else 0 end), 0)`
     }).from(ridesTable).where(
       and(
         eq(ridesTable.company_id, companyId),
@@ -60442,7 +61799,7 @@ async function getCompanyMandateRead(companyId) {
       )
     ),
     db2.select({
-      s: sql`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`
+      s: sql2`coalesce(sum(${rideFinancialsTable.commission_amount}), 0)`
     }).from(rideFinancialsTable).innerJoin(ridesTable, eq(rideFinancialsTable.ride_id, ridesTable.id)).where(
       and(
         eq(rideFinancialsTable.partner_company_id, companyId),
@@ -60598,6 +61955,9 @@ init_client();
 init_ridesData();
 
 // src/db/adminTaxiFleetVehiclesData.ts
+init_fleetAssignmentsData();
+init_fleetDriversData();
+init_fleetVehiclesData();
 init_ridesData();
 async function listAdminTaxiFleetVehicleRows(companyId) {
   const [vehicles, ass, drivers] = await Promise.all([
@@ -60649,10 +62009,15 @@ async function getAdminTaxiFleetVehicleDetail(companyId, vehicleId) {
   };
 }
 
+// src/routes/adminApi.ts
+init_fleetVehiclesData();
+init_fleetDriversData();
+init_fleetDriverReadiness();
+
 // src/lib/persistPanelUserManualAttachment.ts
 import { mkdir as mkdir3, writeFile as writeFile3 } from "node:fs/promises";
 import path4 from "node:path";
-import { randomUUID as randomUUID19 } from "node:crypto";
+import { randomUUID as randomUUID20 } from "node:crypto";
 var MAX_BYTES = 6 * 1024 * 1024;
 function uploadsRoot() {
   const fromEnv = (process.env.PANEL_USER_MANUAL_UPLOAD_DIR ?? "").trim();
@@ -60678,7 +62043,7 @@ async function persistPanelUserManualAttachment(input) {
   const base = uploadsRoot();
   const dir = path4.join(base, input.companyId, input.panelUserId);
   await mkdir3(dir, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID19()}${ext}`;
+  const fileName = `${Date.now()}-${randomUUID20()}${ext}`;
   const absPath = path4.join(dir, fileName);
   const baseR = path4.resolve(base);
   const resolved = path4.resolve(absPath);
@@ -60691,6 +62056,7 @@ async function persistPanelUserManualAttachment(input) {
 }
 
 // src/lib/panelUserWelcomeMail.ts
+init_logger2();
 import nodemailer2 from "nodemailer";
 function panelBaseUrl() {
   return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
@@ -60853,6 +62219,7 @@ function generateTemporaryPassword(length = 14) {
 }
 
 // src/lib/adminPasswordResetMail.ts
+init_logger2();
 import nodemailer3 from "nodemailer";
 function escapeHtml4(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -60942,6 +62309,7 @@ async function sendAdminPasswordResetMail(input) {
 }
 
 // src/lib/partnerApprovalMail.ts
+init_logger2();
 import nodemailer4 from "nodemailer";
 function panelBaseUrl2() {
   return (process.env.PARTNER_REGISTRATION_PANEL_URL ?? "https://panel.onroda.de").replace(/\/$/, "");
@@ -61162,6 +62530,9 @@ async function sendPartnerRegistrationRejectionEmail(input) {
   }
 }
 
+// src/routes/adminApi.ts
+init_logger2();
+
 // src/routes/adminInsuranceApi.ts
 var import_express5 = __toESM(require_express2(), 1);
 init_client();
@@ -61169,7 +62540,7 @@ import { createReadStream, existsSync as existsSync2 } from "node:fs";
 
 // src/db/insurerRideProjectionData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID20 } from "node:crypto";
+import { randomUUID as randomUUID21 } from "node:crypto";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
 import path5 from "node:path";
 
@@ -61266,43 +62637,43 @@ function escapeLike(raw) {
   return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 function exportExistsExpr() {
-  return sql`exists (
+  return sql2`exists (
     select 1
     from ${billingExportBatchesTable}
     where ${billingExportBatchesTable.included_ride_ids} @> jsonb_build_array(${ridesTable.id})
   )`;
 }
 function correctionExistsExpr() {
-  return sql`exists (
+  return sql2`exists (
     select 1
     from ${rideBillingCorrectionsTable} rbc
     where rbc.ride_id = ${ridesTable.id}
   )`;
 }
 function amountExpr() {
-  return sql`coalesce(${rideFinancialsTable.gross_amount}, ${ridesTable.final_fare}, ${ridesTable.estimated_fare}, 0)`;
+  return sql2`coalesce(${rideFinancialsTable.gross_amount}, ${ridesTable.final_fare}, ${ridesTable.estimated_fare}, 0)`;
 }
 function missingProofCondition(key) {
   if (key === "gps") {
     return or(
-      sql`${ridesTable.from_lat} is null`,
-      sql`${ridesTable.from_lon} is null`,
-      sql`${ridesTable.to_lat} is null`,
-      sql`${ridesTable.to_lon} is null`
+      sql2`${ridesTable.from_lat} is null`,
+      sql2`${ridesTable.from_lon} is null`,
+      sql2`${ridesTable.to_lat} is null`,
+      sql2`${ridesTable.to_lon} is null`
     );
   }
   if (key === "chronology") {
-    return sql`coalesce(${ridesTable.duration_minutes}, 0) <= 0`;
+    return sql2`coalesce(${ridesTable.duration_minutes}, 0) <= 0`;
   }
   if (key === "confirmation") {
-    return sql`coalesce(
+    return sql2`coalesce(
       ${ridesTable.partner_booking_meta}->>'signatureReceived',
       ${ridesTable.partner_booking_meta}->>'patientSignatureAt',
       ${ridesTable.partner_booking_meta}->>'confirmationAt',
       ''
     ) = '' and coalesce(${ridesTable.partner_booking_meta}->>'confirmed', 'false') <> 'true'`;
   }
-  return sql`coalesce(trim(${ridesTable.billing_reference}), '') = ''`;
+  return sql2`coalesce(trim(${ridesTable.billing_reference}), '') = ''`;
 }
 function executionSummaryFromRows(input) {
   const { ride, events } = input;
@@ -61334,16 +62705,16 @@ async function listInsurerRides(role, scopeCompanyId, filters, page, pageSize) {
     conds.push(ilike(ridesTable.driver_id, q));
   }
   if (typeof filters.amountMin === "number" && Number.isFinite(filters.amountMin)) {
-    conds.push(sql`${amountExpr()} >= ${filters.amountMin}`);
+    conds.push(sql2`${amountExpr()} >= ${filters.amountMin}`);
   }
   if (typeof filters.amountMax === "number" && Number.isFinite(filters.amountMax)) {
-    conds.push(sql`${amountExpr()} <= ${filters.amountMax}`);
+    conds.push(sql2`${amountExpr()} <= ${filters.amountMax}`);
   }
   if (filters.exportStatus === "exported") conds.push(exportExistsExpr());
-  if (filters.exportStatus === "not_exported") conds.push(sql`not (${exportExistsExpr()})`);
+  if (filters.exportStatus === "not_exported") conds.push(sql2`not (${exportExistsExpr()})`);
   if (typeof filters.hasCorrections === "boolean") {
     if (filters.hasCorrections) conds.push(correctionExistsExpr());
-    else conds.push(sql`not (${correctionExistsExpr()})`);
+    else conds.push(sql2`not (${correctionExistsExpr()})`);
   }
   for (const missing of filters.missingProofs ?? []) conds.push(missingProofCondition(missing));
   const totalRes = await db2.select({ c: count() }).from(ridesTable).leftJoin(rideFinancialsTable, eq(rideFinancialsTable.ride_id, ridesTable.id)).where(and(...conds));
@@ -61351,8 +62722,8 @@ async function listInsurerRides(role, scopeCompanyId, filters, page, pageSize) {
   const offset = (page - 1) * pageSize;
   const sortBy = filters.sort ?? "reference_time";
   const sortOrder = filters.order ?? "desc";
-  const referenceExpr = sql`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
-  const sortExpr = sortBy === "amount_gross" ? amountExpr() : sortBy === "ride_status" ? ridesTable.status : sortBy === "company_name" ? sql`coalesce(${adminCompaniesTable.name}, '')` : referenceExpr;
+  const referenceExpr = sql2`coalesce(${ridesTable.scheduled_at}, ${ridesTable.created_at})`;
+  const sortExpr = sortBy === "amount_gross" ? amountExpr() : sortBy === "ride_status" ? ridesTable.status : sortBy === "company_name" ? sql2`coalesce(${adminCompaniesTable.name}, '')` : referenceExpr;
   const orderExpr = sortOrder === "asc" ? asc(sortExpr) : desc(sortExpr);
   const tieBreakExpr = desc(ridesTable.created_at);
   const rows = await db2.select({
@@ -61427,7 +62798,7 @@ async function getInsurerRideDetail(role, scopeCompanyId, rideId) {
   const vRows = r.company_id ? await db2.select({ plate: fleetVehiclesTable.license_plate }).from(fleetVehiclesTable).where(
     and(
       eq(fleetVehiclesTable.company_id, r.company_id),
-      sql`lower(trim(${fleetVehiclesTable.license_plate})) = lower(trim(${r.vehicle}))`
+      sql2`lower(trim(${fleetVehiclesTable.license_plate})) = lower(trim(${r.vehicle}))`
     )
   ).limit(1) : [];
   const vehiclePlate = vRows[0]?.plate || r.vehicle;
@@ -61581,7 +62952,7 @@ async function createInsurerExportBatch(input) {
   const coIds = [...new Set(visible.map((r) => r.company_id).filter(Boolean))];
   const companies = coIds.length > 0 ? await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable).where(inArray(adminCompaniesTable.id, coIds)) : [];
   const coName = new Map(companies.map((c) => [c.id, c.name]));
-  const batchId = `insx-${randomUUID20()}`;
+  const batchId = `insx-${randomUUID21()}`;
   const lines = [];
   lines.push(
     "schema_version;ref_id;company_id;company_name;driver_id;vehicle;datetime_utc;from_plz;from_ort;to_plz;to_ort;amount_gross;ride_status;settlement_status;payer_kind;passenger_pseudonym_id;billing_ref"
@@ -61647,6 +63018,7 @@ async function getInsurerExportBatchById(id) {
 }
 
 // src/routes/adminInsuranceApi.ts
+init_logger2();
 var router5 = (0, import_express5.Router)();
 router5.use(requireAdminApiBearer);
 function insurerRole(req) {
@@ -61946,7 +63318,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID21 } from "node:crypto";
+import { randomUUID as randomUUID22 } from "node:crypto";
 var AUDIENCES = /* @__PURE__ */ new Set([
   "all",
   "customer",
@@ -62020,7 +63392,7 @@ async function findAppNewsAdmin(id) {
 async function createAppNewsItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID21();
+  const id = randomUUID22();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appNewsItemsTable).values({
     id,
@@ -62273,7 +63645,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID22 } from "node:crypto";
+import { randomUUID as randomUUID23 } from "node:crypto";
 var AUDIENCES2 = /* @__PURE__ */ new Set(["all", "customer", "driver"]);
 var CATEGORIES = /* @__PURE__ */ new Set(["sponsor", "partner", "angebot", "event"]);
 function parseAppSponsorAudience(raw) {
@@ -62348,7 +63720,7 @@ async function findAppSponsorAdmin(id) {
 async function createAppSponsorItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID22();
+  const id = randomUUID23();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appSponsorsTable).values({
     id,
@@ -62637,6 +64009,458 @@ router7.delete("/:id", async (req, res, next) => {
 });
 var adminAppSponsorsRouter_default = router7;
 
+// src/routes/adminAppFaqRouter.ts
+var import_express8 = __toESM(require_express2(), 1);
+init_client();
+
+// src/db/appFaqData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID24 } from "node:crypto";
+var CATEGORIES2 = /* @__PURE__ */ new Set(["general", "payment", "driver", "booking", "account"]);
+function parseAppFaqCategory(raw) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (CATEGORIES2.has(s)) return s;
+  return "general";
+}
+function rowToAdminDto4(r) {
+  return {
+    id: r.id,
+    question: r.question,
+    answer: r.answer,
+    category: parseAppFaqCategory(r.category),
+    sortOrder: r.sort_order,
+    active: r.active,
+    createdAt: r.created_at.toISOString(),
+    updatedAt: r.updated_at.toISOString()
+  };
+}
+function rowToPublicDto4(r) {
+  return {
+    id: r.id,
+    question: r.question,
+    answer: r.answer,
+    category: parseAppFaqCategory(r.category)
+  };
+}
+async function listAppFaqPublic() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(appFaqTable).where(eq(appFaqTable.active, true)).orderBy(asc(appFaqTable.sort_order), asc(appFaqTable.created_at));
+  return rows.map(rowToPublicDto4);
+}
+async function listAppFaqAdmin() {
+  const db2 = getDb();
+  if (!db2) return [];
+  const rows = await db2.select().from(appFaqTable).orderBy(asc(appFaqTable.sort_order), asc(appFaqTable.created_at));
+  return rows.map(rowToAdminDto4);
+}
+async function findAppFaqAdmin(id) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const rows = await db2.select().from(appFaqTable).where(eq(appFaqTable.id, id)).limit(1);
+  return rows[0] ? rowToAdminDto4(rows[0]) : null;
+}
+async function createAppFaqItem(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const now = /* @__PURE__ */ new Date();
+  const id = randomUUID24();
+  await db2.insert(appFaqTable).values({
+    id,
+    question: input.question,
+    answer: input.answer,
+    category: input.category,
+    sort_order: input.sortOrder,
+    active: input.active,
+    created_at: now,
+    updated_at: now
+  });
+  return findAppFaqAdmin(id);
+}
+async function patchAppFaqItem(id, patch) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const set = { updated_at: /* @__PURE__ */ new Date() };
+  if (typeof patch.question === "string") set.question = patch.question;
+  if (typeof patch.answer === "string") set.answer = patch.answer;
+  if (patch.category !== void 0) set.category = patch.category;
+  if (patch.sortOrder !== void 0) set.sort_order = patch.sortOrder;
+  if (typeof patch.active === "boolean") set.active = patch.active;
+  await db2.update(appFaqTable).set(set).where(eq(appFaqTable.id, id));
+  return findAppFaqAdmin(id);
+}
+async function deleteAppFaqItem(id) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const out = await db2.delete(appFaqTable).where(eq(appFaqTable.id, id)).returning({ id: appFaqTable.id });
+  return out.length > 0;
+}
+
+// src/routes/adminAppFaqRouter.ts
+var router8 = (0, import_express8.Router)();
+function adminRole3(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+function parseBody3(req) {
+  return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+}
+router8.get("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole3(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const items = await listAppFaqAdmin();
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router8.post("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole3(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = parseBody3(req);
+    const question = typeof b.question === "string" ? b.question.trim() : "";
+    const answer = typeof b.answer === "string" ? b.answer.trim() : "";
+    if (!question || !answer) {
+      res.status(400).json({ error: "question_answer_required" });
+      return;
+    }
+    const category = parseAppFaqCategory(typeof b.category === "string" ? b.category : void 0);
+    const sortOrder = Number.isFinite(Number(b.sortOrder ?? b.sort_order)) ? Number(b.sortOrder ?? b.sort_order) : 0;
+    const active = b.active === false ? false : true;
+    const item = await createAppFaqItem({ question, answer, category, sortOrder, active });
+    if (!item) {
+      res.status(500).json({ error: "create_failed" });
+      return;
+    }
+    res.status(201).json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+router8.patch("/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole3(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const existing = await findAppFaqAdmin(id);
+    if (!existing) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const b = parseBody3(req);
+    const patch = {};
+    if (typeof b.question === "string") patch.question = b.question.trim();
+    if (typeof b.answer === "string") patch.answer = b.answer.trim();
+    if (typeof b.category === "string") patch.category = parseAppFaqCategory(b.category);
+    if (b.sortOrder !== void 0 || b.sort_order !== void 0) {
+      patch.sortOrder = Number(b.sortOrder ?? b.sort_order) || 0;
+    }
+    if (typeof b.active === "boolean") patch.active = b.active;
+    const item = await patchAppFaqItem(id, patch);
+    if (!item) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, item });
+  } catch (e) {
+    next(e);
+  }
+});
+router8.delete("/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole3(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ error: "id_required" });
+      return;
+    }
+    const ok2 = await deleteAppFaqItem(id);
+    if (!ok2) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminAppFaqRouter_default = router8;
+
+// src/routes/adminDriverMessagesRouter.ts
+var import_express9 = __toESM(require_express2(), 1);
+init_client();
+
+// src/db/driverMessagesData.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+import { randomUUID as randomUUID25 } from "node:crypto";
+function rowToDto(r, targetDriverLabel = null) {
+  return {
+    id: r.id,
+    title: r.title,
+    body: r.body,
+    messageType: r.message_type === "push_only" ? "push_only" : "inbox",
+    targetDriverId: r.target_driver_id,
+    targetDriverLabel,
+    sentAt: r.sent_at.toISOString(),
+    sentBy: r.sent_by
+  };
+}
+async function listDriverMessagesAdmin(limit = 100) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const cap = Math.min(200, Math.max(1, limit));
+  const rows = await db2.select({
+    msg: driverMessagesTable,
+    firstName: fleetDriversTable.first_name,
+    lastName: fleetDriversTable.last_name,
+    email: fleetDriversTable.email
+  }).from(driverMessagesTable).leftJoin(fleetDriversTable, eq(driverMessagesTable.target_driver_id, fleetDriversTable.id)).orderBy(desc(driverMessagesTable.sent_at)).limit(cap);
+  return rows.map((r) => {
+    const label = r.msg.target_driver_id == null ? null : [r.firstName, r.lastName].filter(Boolean).join(" ").trim() || r.email || r.msg.target_driver_id;
+    return rowToDto(r.msg, label);
+  });
+}
+async function listDriverMessagesForFleetDriver(fleetDriverId, limit = 50) {
+  const db2 = getDb();
+  if (!db2) return [];
+  const did = fleetDriverId.trim();
+  if (!did) return [];
+  const cap = Math.min(100, Math.max(1, limit));
+  const rows = await db2.select().from(driverMessagesTable).where(
+    and(
+      eq(driverMessagesTable.message_type, "inbox"),
+      or(isNull(driverMessagesTable.target_driver_id), eq(driverMessagesTable.target_driver_id, did)),
+      notExists(
+        db2.select().from(driverMessageDismissalsTable).where(
+          and(
+            eq(driverMessageDismissalsTable.fleet_driver_id, did),
+            eq(driverMessageDismissalsTable.message_id, driverMessagesTable.id)
+          )
+        )
+      )
+    )
+  ).orderBy(desc(driverMessagesTable.sent_at)).limit(cap);
+  return rows.map((r) => rowToDto(r));
+}
+async function dismissDriverMessage(fleetDriverId, messageId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  await db2.insert(driverMessageDismissalsTable).values({ fleet_driver_id: fleetDriverId, message_id: messageId }).onConflictDoNothing();
+  return true;
+}
+async function insertDriverMessage(input) {
+  const db2 = getDb();
+  if (!db2) return null;
+  const id = randomUUID25();
+  const now = /* @__PURE__ */ new Date();
+  await db2.insert(driverMessagesTable).values({
+    id,
+    title: input.title,
+    body: input.body,
+    message_type: input.messageType ?? "inbox",
+    target_driver_id: input.targetDriverId,
+    sent_at: now,
+    sent_by: input.sentBy
+  });
+  const rows = await db2.select().from(driverMessagesTable).where(eq(driverMessagesTable.id, id)).limit(1);
+  return rows[0] ? rowToDto(rows[0]) : null;
+}
+async function fleetDriverExists(driverId) {
+  const db2 = getDb();
+  if (!db2) return false;
+  const did = driverId.trim();
+  if (!did) return false;
+  const rows = await db2.select({ id: fleetDriversTable.id }).from(fleetDriversTable).where(eq(fleetDriversTable.id, did)).limit(1);
+  return rows.length > 0;
+}
+
+// src/routes/adminDriverMessagesRouter.ts
+init_fleetDriverExpoPushData();
+init_fleetDriversData();
+init_expoPushGateway();
+var router9 = (0, import_express9.Router)();
+function adminRole4(req) {
+  return req.adminAuth?.role ?? "admin";
+}
+function sentByLabel(req) {
+  return (req.adminAuth?.username ?? "admin").trim() || "admin";
+}
+function parseBody4(req) {
+  return req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+}
+router9.get("/", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole4(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const rawLimit = req.query.limit;
+    const limit = typeof rawLimit === "string" && /^\d+$/.test(rawLimit.trim()) ? parseInt(rawLimit.trim(), 10) : 100;
+    const items = await listDriverMessagesAdmin(limit);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/broadcast", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole4(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = parseBody4(req);
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    if (!title || !body) {
+      res.status(400).json({ error: "title_body_required" });
+      return;
+    }
+    const messageType = b.messageType === "push_only" ? "push_only" : "inbox";
+    const tokenRows = await listAllFleetDriverExpoPushTokens();
+    if (messageType === "push_only") {
+      const messages2 = tokenRows.map((r) => ({
+        to: r.token,
+        title,
+        body,
+        data: { type: "driver_admin_message_push", broadcast: true }
+      }));
+      await sendExpoPushMessages(messages2);
+      res.status(200).json({ ok: true, push: { attempted: messages2.length }, item: null });
+      return;
+    }
+    const item = await insertDriverMessage({ title, body, messageType, targetDriverId: null, sentBy: sentByLabel(req) });
+    if (!item) {
+      res.status(500).json({ error: "create_failed" });
+      return;
+    }
+    const messages = tokenRows.map((r) => ({
+      to: r.token,
+      title,
+      body,
+      data: { type: "driver_admin_message", messageId: item.id, broadcast: true }
+    }));
+    await sendExpoPushMessages(messages);
+    res.status(201).json({
+      ok: true,
+      item,
+      push: { attempted: messages.length, uniqueDrivers: new Set(tokenRows.map((r) => r.fleetDriverId)).size }
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router9.post("/single", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminRole4(req))) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const b = parseBody4(req);
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const body = typeof b.body === "string" ? b.body.trim() : "";
+    const driverId = typeof b.driverId === "string" ? b.driverId.trim() : typeof b.targetDriverId === "string" ? b.targetDriverId.trim() : typeof b.target_driver_id === "string" ? b.target_driver_id.trim() : "";
+    const companyId = typeof b.companyId === "string" ? b.companyId.trim() : typeof b.company_id === "string" ? b.company_id.trim() : "";
+    if (!title || !body) {
+      res.status(400).json({ error: "title_body_required" });
+      return;
+    }
+    if (!driverId) {
+      res.status(400).json({ error: "driver_id_required" });
+      return;
+    }
+    let resolvedCompanyId = companyId;
+    if (resolvedCompanyId) {
+      const row = await findFleetDriverInCompany(driverId, resolvedCompanyId);
+      if (!row) {
+        res.status(404).json({ error: "driver_not_found" });
+        return;
+      }
+    } else {
+      const exists2 = await fleetDriverExists(driverId);
+      if (!exists2) {
+        res.status(404).json({ error: "driver_not_found" });
+        return;
+      }
+    }
+    const messageType = b.messageType === "push_only" ? "push_only" : "inbox";
+    const item = await insertDriverMessage({
+      title,
+      body,
+      messageType,
+      targetDriverId: driverId,
+      sentBy: sentByLabel(req)
+    });
+    if (!item) {
+      res.status(500).json({ error: "create_failed" });
+      return;
+    }
+    let tokens = [];
+    if (resolvedCompanyId) {
+      tokens = await listFleetDriverExpoPushTokens(driverId, resolvedCompanyId);
+    } else {
+      const all = await listAllFleetDriverExpoPushTokens();
+      tokens = all.filter((r) => r.fleetDriverId === driverId).map((r) => r.token);
+    }
+    const messages = tokens.map((to) => ({
+      to,
+      title,
+      body,
+      data: { type: "driver_admin_message", messageId: item.id, broadcast: false }
+    }));
+    await sendExpoPushMessages(messages);
+    res.status(201).json({ ok: true, item, push: { attempted: messages.length } });
+  } catch (e) {
+    next(e);
+  }
+});
+var adminDriverMessagesRouter_default = router9;
+
 // src/routes/adminApi.ts
 async function requireCompanyRowForMutation(req, res, companyId) {
   const company = await findCompanyById(companyId);
@@ -62769,8 +64593,8 @@ async function allocateUniquePanelUsername(preferred) {
 function hashResetToken(token) {
   return createHash3("sha256").update(token).digest("hex");
 }
-var router8 = (0, import_express8.Router)();
-router8.post("/admin/auth/login", async (req, res) => {
+var router10 = (0, import_express10.Router)();
+router10.post("/admin/auth/login", async (req, res) => {
   const username = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const ok2 = await authenticateAdminCredentials(username, password);
@@ -62820,13 +64644,13 @@ router8.post("/admin/auth/login", async (req, res) => {
     authSource: ok2.source
   });
 });
-router8.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
+router10.get("/admin/auth/me", requireAdminApiBearer, (req, res) => {
   const role = req.adminAuth?.role ?? "admin";
   const username = req.adminAuth?.username ?? "admin";
   const scopeCompanyId = typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim() ? req.adminAuth.scopeCompanyId.trim() : null;
   res.json({ ok: true, user: { username, role, scopeCompanyId } });
 });
-router8.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
+router10.post("/admin/auth/change-password", requireAdminApiBearer, async (req, res) => {
   const principal = req.adminAuth;
   if (!principal || principal.kind !== "session") {
     res.status(403).json({ error: "session_required" });
@@ -62862,7 +64686,7 @@ router8.post("/admin/auth/change-password", requireAdminApiBearer, async (req, r
   });
   res.json({ ok: true });
 });
-router8.post("/admin/auth/password-reset/request", async (req, res) => {
+router10.post("/admin/auth/password-reset/request", async (req, res) => {
   const identity = typeof req.body?.identity === "string" ? req.body.identity.trim() : "";
   const generic = {
     ok: true,
@@ -62925,7 +64749,7 @@ router8.post("/admin/auth/password-reset/request", async (req, res) => {
   });
   res.json(generic);
 });
-router8.post("/admin/auth/password-reset/confirm", async (req, res) => {
+router10.post("/admin/auth/password-reset/confirm", async (req, res) => {
   const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
   const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
   if (!token || newPassword.length < 10) {
@@ -62964,7 +64788,7 @@ router8.post("/admin/auth/password-reset/confirm", async (req, res) => {
   });
   res.json({ ok: true });
 });
-router8.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
+router10.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, async (req, res) => {
   if (!isAdminPrincipal(req)) {
     res.status(403).json({ error: "forbidden" });
     return;
@@ -63005,7 +64829,7 @@ router8.post("/admin/auth/password-reset/issue-link", requireAdminApiBearer, asy
     expiresAt: expiresAt.toISOString()
   });
 });
-router8.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router10.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -63021,7 +64845,7 @@ router8.get("/admin/auth/users", requireAdminApiBearer, async (req, res, next) =
     next(e);
   }
 });
-router8.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
+router10.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -63073,7 +64897,7 @@ router8.post("/admin/auth/users", requireAdminApiBearer, async (req, res, next) 
     next(e);
   }
 });
-router8.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router10.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -63130,7 +64954,7 @@ router8.patch("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, n
     next(e);
   }
 });
-router8.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
+router10.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, next) => {
   try {
     if (!isAdminPrincipal(req)) {
       res.status(403).json({ error: "forbidden" });
@@ -63177,11 +65001,13 @@ router8.delete("/admin/auth/users/:id", requireAdminApiBearer, async (req, res, 
     next(e);
   }
 });
-var adminJson = (0, import_express8.Router)();
+var adminJson = (0, import_express10.Router)();
 adminJson.use(requireAdminApiBearer);
 adminJson.use("/insurance", adminInsuranceApi_default);
 adminJson.use("/app-news", adminAppNewsRouter_default);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter_default);
+adminJson.use("/faq", adminAppFaqRouter_default);
+adminJson.use("/driver-messages", adminDriverMessagesRouter_default);
 var adminFleetUploadRoot = (process.env.FLEET_UPLOAD_DIR ?? "").trim() || path6.join(path6.dirname(fileURLToPath2(import.meta.url)), "..", "..", "data", "fleet-uploads");
 adminJson.get("/stats", async (req, res, next) => {
   try {
@@ -63651,7 +65477,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -63679,7 +65505,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -63699,7 +65525,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.missing_documents",
@@ -63721,7 +65547,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.approval",
@@ -63757,7 +65583,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.suspended",
@@ -63787,7 +65613,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.activated",
@@ -63824,7 +65650,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.readiness_override_system",
@@ -63864,7 +65690,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.notes_patched",
@@ -63970,7 +65796,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -64017,7 +65843,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -64052,7 +65878,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.missing_documents",
@@ -64095,7 +65921,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", asyn
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -64132,7 +65958,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.unblocked",
@@ -64170,7 +65996,7 @@ adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", asy
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.notes_patched",
@@ -65120,7 +66946,7 @@ adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => 
     }
     const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
     const result = await insertAdminSupportMessage({
-      messageId: randomUUID23(),
+      messageId: randomUUID26(),
       threadId,
       body,
       senderAdminUserId
@@ -65161,6 +66987,156 @@ adminJson.patch("/support/threads/:threadId", async (req, res, next) => {
       return;
     }
     res.json({ ok: true, thread: updated });
+  } catch (e) {
+    next(e);
+  }
+});
+function adminScopeCompanyId(req) {
+  return typeof req.adminAuth?.scopeCompanyId === "string" && req.adminAuth.scopeCompanyId.trim() ? req.adminAuth.scopeCompanyId.trim() : null;
+}
+adminJson.get("/ride-support-tickets", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const { page, pageSize } = parsePagination2(req);
+    const status = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+    const data = await listRideSupportTicketsAdminPage({
+      role: adminConsoleRole(req),
+      scopeCompanyId: adminScopeCompanyId(req),
+      page,
+      pageSize,
+      status: status || void 0,
+      q: q || void 0
+    });
+    res.json({ ok: true, total: data.total, items: data.items, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/ride-support-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await getRideSupportTicketAdmin(id, adminConsoleRole(req), adminScopeCompanyId(req));
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/ride-support-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    const b = req.body;
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    const status = RIDE_SUPPORT_TICKET_STATUSES.includes(statusRaw) ? statusRaw : void 0;
+    const internalNote = Object.prototype.hasOwnProperty.call(b, "internalNote") ? typeof b.internalNote === "string" ? b.internalNote : b.internalNote === null ? null : void 0 : void 0;
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await updateRideSupportTicketAdmin(
+      id,
+      { status, internalNote },
+      adminConsoleRole(req),
+      adminScopeCompanyId(req)
+    );
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/app-help-tickets", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const { page, pageSize } = parsePagination2(req);
+    const status = typeof req.query?.status === "string" ? req.query.status.trim() : "";
+    const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+    const data = await listAppHelpTicketsAdminPage({
+      page,
+      pageSize,
+      status: status || void 0,
+      q: q || void 0
+    });
+    res.json({ ok: true, total: data.total, items: data.items, page, pageSize });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.get("/app-help-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await getAppHelpTicketAdmin(id);
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
+  } catch (e) {
+    next(e);
+  }
+});
+adminJson.patch("/app-help-tickets/:id", async (req, res, next) => {
+  try {
+    if (!canMutateAdminCompanies(adminConsoleRole(req))) {
+      res.status(403).json({ ok: false, error: "forbidden" });
+      return;
+    }
+    const id = String(req.params.id ?? "").trim();
+    const b = req.body;
+    const statusRaw = typeof b.status === "string" ? b.status.trim() : "";
+    const status = APP_HELP_TICKET_STATUSES.includes(statusRaw) ? statusRaw : void 0;
+    const internalNote = Object.prototype.hasOwnProperty.call(b, "internalNote") ? typeof b.internalNote === "string" ? b.internalNote : b.internalNote === null ? null : void 0 : void 0;
+    if (!id) {
+      res.status(400).json({ ok: false, error: "id_required" });
+      return;
+    }
+    const ticket = await updateAppHelpTicketAdmin(id, { status, internalNote });
+    if (!ticket) {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    res.json({ ok: true, ticket });
   } catch (e) {
     next(e);
   }
@@ -65638,7 +67614,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID23(),
+            id: randomUUID26(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -65794,7 +67770,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
     }
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -65871,7 +67847,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -65907,7 +67883,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID23(),
+      id: randomUUID26(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -66431,7 +68407,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -66475,7 +68451,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -66505,7 +68481,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, 
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.missing_documents",
@@ -66542,7 +68518,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID23(),
+        id: randomUUID26(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -66629,11 +68605,11 @@ adminJson.get("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/documents/fil
     next(e);
   }
 });
-router8.use("/admin", adminJson);
-var adminApi_default = router8;
+router10.use("/admin", adminJson);
+var adminApi_default = router10;
 
 // src/routes/panelAuth.ts
-var import_express9 = __toESM(require_express2(), 1);
+var import_express11 = __toESM(require_express2(), 1);
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
@@ -66658,7 +68634,7 @@ async function findActivePanelUserByUsername(username) {
     updated_at: panelUsersTable.updated_at
   }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
     and(
-      sql`lower(${panelUsersTable.username}) = ${normalized}`,
+      sql2`lower(${panelUsersTable.username}) = ${normalized}`,
       eq(panelUsersTable.is_active, true),
       eq(adminCompaniesTable.is_active, true)
     )
@@ -66697,7 +68673,7 @@ async function findActivePanelUserByEmailNormalized(email) {
     updated_at: panelUsersTable.updated_at
   }).from(panelUsersTable).innerJoin(adminCompaniesTable, eq(panelUsersTable.company_id, adminCompaniesTable.id)).where(
     and(
-      sql`lower(trim(${panelUsersTable.email})) = ${normalized}`,
+      sql2`lower(trim(${panelUsersTable.email})) = ${normalized}`,
       eq(panelUsersTable.is_active, true),
       eq(adminCompaniesTable.is_active, true)
     )
@@ -66796,6 +68772,7 @@ async function findActivePanelUserById(id) {
 
 // src/routes/panelAuth.ts
 init_client();
+init_logger2();
 
 // src/lib/panelLoginRateLimit.ts
 var WINDOW_MS = 6e4;
@@ -67021,8 +68998,8 @@ var TAXI_DOC_ERROR_HINTS = {
   taxi_concession_pdf_required: "Bitte laden Sie die Konzession als PDF hoch (Pflicht).",
   taxi_pdf_invalid: "Mindestens eine PDF-Datei ist ung\xFCltig oder zu gro\xDF (max. 4 MB pro Datei, nur PDF)."
 };
-var router9 = (0, import_express9.Router)();
-router9.post("/panel-auth/login", async (req, res) => {
+var router11 = (0, import_express11.Router)();
+router11.post("/panel-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPanelLogin(ip);
   if (!rl.ok) {
@@ -67129,11 +69106,11 @@ router9.post("/panel-auth/login", async (req, res) => {
     }
   });
 });
-router9.post("/panel-auth/logout", (_req, res) => {
+router11.post("/panel-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
 var PENDING_PUBLIC_REGISTRATION = /* @__PURE__ */ new Set(["open", "in_review", "documents_required"]);
-router9.post("/panel-auth/registration-request", async (req, res) => {
+router11.post("/panel-auth/registration-request", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -67296,7 +69273,7 @@ router9.post("/panel-auth/registration-request", async (req, res) => {
   );
   res.status(201).json({ ok: true, request: created });
 });
-router9.get("/panel-auth/registration-request-status", async (req, res) => {
+router11.get("/panel-auth/registration-request-status", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -67321,7 +69298,7 @@ router9.get("/panel-auth/registration-request-status", async (req, res) => {
   }
   res.json({ ok: true, request: toPublicPartnerRegistrationSnapshot(row) });
 });
-router9.get("/panel-auth/registration-request/:id", async (req, res) => {
+router11.get("/panel-auth/registration-request/:id", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitPartnerRegistrationPublicLookup(ip);
   if (!rl.ok) {
@@ -67355,7 +69332,7 @@ router9.get("/panel-auth/registration-request/:id", async (req, res) => {
     timeline: toPublicPartnerRegistrationTimeline(detail.timeline)
   });
 });
-router9.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
+router11.post("/panel-auth/registration-request/:id/messages", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -67401,7 +69378,7 @@ router9.post("/panel-auth/registration-request/:id/messages", async (req, res) =
   await addPartnerRegistrationMessage(id, "partner", email, message2);
   res.status(201).json({ ok: true });
 });
-router9.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
+router11.post("/panel-auth/registration-request/:id/change-request", async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -67434,7 +69411,7 @@ router9.post("/panel-auth/registration-request/:id/change-request", async (req, 
   await patchPartnerRegistrationRequest(id, { status: "in_review" });
   res.status(201).json({ ok: true });
 });
-router9.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
+router11.post("/panel-auth/registration-request/:id/documents", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rlIp = rateLimitPartnerRegistrationIp(ip);
   if (!rlIp.ok) {
@@ -67491,19 +69468,20 @@ router9.post("/panel-auth/registration-request/:id/documents", async (req, res) 
   }
   res.status(201).json({ ok: true, document: toPublicPartnerRegistrationDocument(doc) });
 });
-var panelAuth_default = router9;
+var panelAuth_default = router11;
 
 // src/routes/panelApi.ts
-var import_express10 = __toESM(require_express2(), 1);
+var import_express12 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID25 } from "node:crypto";
+import { randomUUID as randomUUID28 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile2, writeFile as writeFile5 } from "node:fs/promises";
 import path7 from "node:path";
 
 // src/db/panelCompanyData.ts
 init_drizzle_orm();
 init_client();
+init_companyComplianceDocumentsData();
 init_schema2();
 var MAX = {
   short: 120,
@@ -67736,6 +69714,7 @@ async function patchPanelCompanyProfile(companyId, patch) {
 }
 
 // src/routes/panelApi.ts
+init_companyGovernanceData();
 init_accessCodesData();
 init_ridesData();
 init_rideFinancialsData();
@@ -67746,7 +69725,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID24 } from "node:crypto";
+import { randomUUID as randomUUID27 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -67764,7 +69743,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID24()}`;
+  const id = `SRS-${randomUUID27()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -67876,7 +69855,7 @@ var requirePanelAuth = async (req, res, next) => {
 };
 
 // src/routes/panelApi.ts
-var router10 = (0, import_express10.Router)();
+var router12 = (0, import_express12.Router)();
 var INVOICE_UPLOAD_ROOT = (process.env.PANEL_INVOICE_UPLOAD_DIR ?? "").trim() || path7.resolve(process.cwd(), "artifacts/api-server/uploads/panel-invoices");
 function invoiceLine(text2) {
   return text2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
@@ -67937,7 +69916,7 @@ function nextInvoiceNumber(existing, date2 = /* @__PURE__ */ new Date()) {
   }
   return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
 }
-router10.use((_req, res, next) => {
+router12.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -68072,7 +70051,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID25()}`;
+  return `REQ-${randomUUID28()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -68358,10 +70337,10 @@ function companyRidesFiltersFromQuery(query) {
   };
   return { ok: true, filters };
 }
-router10.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
+router12.get("/panel/v1/health", requirePanelAuth, (_req, res) => {
   res.json({ ok: true, service: "onroda-panel-api" });
 });
-router10.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
+router12.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res, {
     allowPasswordChangeRequired: true
   });
@@ -68386,7 +70365,7 @@ router10.get("/panel/v1/me", requirePanelAuth, async (req, res) => {
     }
   });
 });
-router10.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
+router12.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   const ctx = await assertActivePanelProfile(req, res);
   if (!ctx) return;
   if (!denyUnlessCompanyOrOverview(res, ctx.profile)) return;
@@ -68398,7 +70377,7 @@ router10.get("/panel/v1/company", requirePanelAuth, async (req, res) => {
   }
   res.json({ ok: true, company });
 });
-router10.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68412,7 +70391,7 @@ router10.get("/panel/v1/overview/metrics", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router10.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
+router12.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68483,7 +70462,7 @@ router10.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -68496,7 +70475,7 @@ router10.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
     next(e);
   }
 });
-router10.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68507,7 +70486,7 @@ router10.get("/panel/v1/company/change-requests", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router10.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/company/change-requests", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68521,7 +70500,7 @@ router10.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -68533,7 +70512,7 @@ router10.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -68546,7 +70525,7 @@ router10.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
     next(e);
   }
 });
-router10.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68558,7 +70537,7 @@ router10.get("/panel/v1/support/threads", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router10.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68576,8 +70555,8 @@ router10.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
       res.status(400).json({ error: "body_invalid", hint: "max 10000" });
       return;
     }
-    const threadId = randomUUID25();
-    const messageId = randomUUID25();
+    const threadId = randomUUID28();
+    const messageId = randomUUID28();
     const created = await insertSupportThreadWithFirstMessage({
       threadId,
       messageId,
@@ -68596,7 +70575,7 @@ router10.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
     next(e);
   }
 });
-router10.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68617,7 +70596,7 @@ router10.get("/panel/v1/support/threads/:threadId", requirePanelAuth, async (req
     next(e);
   }
 });
-router10.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68635,7 +70614,7 @@ router10.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
       return;
     }
     const result = await insertPartnerSupportMessage({
-      messageId: randomUUID25(),
+      messageId: randomUUID28(),
       threadId,
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
@@ -68654,7 +70633,7 @@ router10.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
     next(e);
   }
 });
-router10.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68673,7 +70652,7 @@ router10.get("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router10.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68703,7 +70682,7 @@ router10.get("/panel/v1/company-rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router10.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68791,7 +70770,7 @@ router10.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "billing.invoice_created",
@@ -68812,7 +70791,7 @@ router10.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
     next(e);
   }
 });
-router10.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68844,7 +70823,7 @@ router10.get("/panel/v1/rides/:id/invoice-pdf", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router10.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -68876,7 +70855,7 @@ router10.get("/panel/v1/taxi/revenue-export.csv", requirePanelAuth, async (req, 
     next(e);
   }
 });
-router10.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69051,7 +71030,7 @@ router10.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -69070,7 +71049,7 @@ router10.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router10.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69231,7 +71210,7 @@ router10.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -69244,7 +71223,7 @@ router10.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router10.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69502,7 +71481,7 @@ router10.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -69515,7 +71494,7 @@ router10.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
     next(e);
   }
 });
-router10.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69726,7 +71705,7 @@ router10.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req,
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -69746,7 +71725,7 @@ function normalizeQueryRecord(raw) {
   }
   return q;
 }
-router10.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69775,7 +71754,7 @@ router10.get("/panel/v1/billing/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router10.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69798,7 +71777,7 @@ router10.get("/panel/v1/billing/rides.csv", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router10.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69810,7 +71789,7 @@ router10.get("/panel/v1/partner-ride-series", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router10.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69822,7 +71801,7 @@ router10.get("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router10.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69855,7 +71834,7 @@ router10.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -69876,7 +71855,7 @@ router10.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router10.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
+router12.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69902,7 +71881,7 @@ router10.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -69915,7 +71894,7 @@ router10.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router10.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res, {
       allowPasswordChangeRequired: true
@@ -69947,7 +71926,7 @@ router10.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -69960,7 +71939,7 @@ router10.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router10.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router12.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -69972,7 +71951,7 @@ router10.get("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router10.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -70016,7 +71995,7 @@ router10.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -70037,7 +72016,7 @@ router10.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
     next(e);
   }
 });
-router10.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router12.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -70103,7 +72082,7 @@ router10.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -70121,7 +72100,7 @@ router10.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
     next(e);
   }
 });
-router10.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
+router12.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -70158,7 +72137,7 @@ router10.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -70171,7 +72150,7 @@ router10.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
     next(e);
   }
 });
-router10.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router12.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertActivePanelProfile(req, res);
     if (!ctx) return;
@@ -70208,7 +72187,7 @@ router10.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID25(),
+      id: randomUUID28(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -70221,11 +72200,13 @@ router10.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
     next(e);
   }
 });
-var panelApi_default = router10;
+var panelApi_default = router12;
 
 // src/routes/fleetAuth.ts
-var import_express11 = __toESM(require_express2(), 1);
+var import_express13 = __toESM(require_express2(), 1);
 init_client();
+init_fleetDriversData();
+init_companyGovernanceData();
 
 // src/lib/fleetLoginRateLimit.ts
 var WINDOW_MS2 = 6e4;
@@ -70248,8 +72229,8 @@ function rateLimitFleetLogin(ip) {
 }
 
 // src/routes/fleetAuth.ts
-var router11 = (0, import_express11.Router)();
-router11.post("/fleet-auth/login", async (req, res) => {
+var router13 = (0, import_express13.Router)();
+router13.post("/fleet-auth/login", async (req, res) => {
   const ip = (req.ip || req.socket?.remoteAddress || "").toString();
   const rl = rateLimitFleetLogin(ip);
   if (!rl.ok) {
@@ -70330,18 +72311,94 @@ router11.post("/fleet-auth/login", async (req, res) => {
     }
   });
 });
-router11.post("/fleet-auth/logout", (_req, res) => {
+router13.post("/fleet-auth/logout", (_req, res) => {
   res.json({ ok: true });
 });
-var fleetAuth_default = router11;
+var fleetAuth_default = router13;
 
 // src/routes/fleetDriverApi.ts
-var import_express12 = __toESM(require_express2(), 1);
+var import_express14 = __toESM(require_express2(), 1);
 init_client();
+init_fleetDriversData();
+init_fleetAssignmentsData();
+init_fleetVehiclesData();
 init_accessCodesData();
+init_fleetDriverReadiness();
+init_fleetMatchingData();
+init_fleetDriverExpoPushData();
 init_ridesData();
-var router12 = (0, import_express12.Router)();
-router12.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
+
+// src/lib/rideActualDuration.ts
+init_drizzle_orm();
+init_client();
+init_schema2();
+function firstAt(events, status) {
+  for (const e of events) {
+    if (e.toStatus === status) return e.at;
+  }
+  return null;
+}
+function minDate(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  return a.getTime() <= b.getTime() ? a : b;
+}
+function computeActualRideDurationMinutes(events) {
+  const completed = firstAt(events, "completed");
+  if (!completed) return null;
+  const rideStart = minDate(
+    firstAt(events, "passenger_onboard"),
+    minDate(
+      firstAt(events, "in_progress"),
+      minDate(
+        minDate(
+          minDate(firstAt(events, "driver_arriving"), firstAt(events, "driver_waiting")),
+          firstAt(events, "arrived")
+        ),
+        firstAt(events, "accepted")
+      )
+    )
+  );
+  if (!rideStart) return null;
+  const ms = completed.getTime() - rideStart.getTime();
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  return Math.max(1, Math.round(ms / 6e4));
+}
+async function listActualDurationMinutesByRideIds(rideIds) {
+  const ids = Array.from(new Set(rideIds.map((id) => id.trim()).filter((id) => id.length > 0)));
+  const out = /* @__PURE__ */ new Map();
+  if (ids.length === 0) return out;
+  if (!isPostgresConfigured()) return out;
+  const db2 = getDb();
+  if (!db2) return out;
+  const rows = await db2.select({
+    rideId: rideEventsTable.ride_id,
+    toStatus: rideEventsTable.to_status,
+    createdAt: rideEventsTable.created_at
+  }).from(rideEventsTable).where(
+    and(
+      inArray(rideEventsTable.ride_id, ids),
+      eq(rideEventsTable.event_type, "ride_status_changed")
+    )
+  ).orderBy(asc(rideEventsTable.created_at));
+  const byRide = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const status = typeof row.toStatus === "string" ? row.toStatus.trim() : "";
+    if (!status) continue;
+    const list = byRide.get(row.rideId) ?? [];
+    list.push({ toStatus: status, at: row.createdAt });
+    byRide.set(row.rideId, list);
+  }
+  for (const [rideId, events] of byRide) {
+    const minutes = computeActualRideDurationMinutes(events);
+    if (minutes != null) out.set(rideId, minutes);
+  }
+  return out;
+}
+
+// src/routes/fleetDriverApi.ts
+var router14 = (0, import_express14.Router)();
+router14.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
     res.status(503).json({ error: "database_not_configured" });
     return;
@@ -70372,9 +72429,11 @@ router12.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     blockBannerTitle: "Hinweis",
     driverBlockKind: "other"
   } : einsatzbereit ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" } : buildFleetDriverMeClientHints(readinessR, listRow);
+  const isMarketOnline = Boolean(row.is_market_online);
   res.json({
     ok: true,
     einsatzbereit,
+    isMarketOnline,
     notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
     blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
     driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
@@ -70403,7 +72462,7 @@ router12.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     } : null
   });
 });
-router12.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
+router14.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -70434,7 +72493,7 @@ router12.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, re
   }));
   res.json({ ok: true, vehicles: items, selectedVehicleId: currentAssignment?.vehicleId ?? null });
 });
-router12.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
+router14.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -70484,7 +72543,7 @@ router12.post("/fleet-driver/v1/select-vehicle", requireFleetDriverAuth, async (
     } : null
   });
 });
-router12.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
+router14.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -70521,8 +72580,22 @@ router12.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
       });
       return;
     }
+    const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
     const all = await listRides();
+    const terminalMarketStatuses = /* @__PURE__ */ new Set([
+      "completed",
+      "cancelled",
+      "cancelled_by_customer",
+      "cancelled_by_driver",
+      "cancelled_by_system",
+      "no_driver",
+      "expired",
+      "rejected"
+    ]);
     const marketRows = all.filter((ride) => {
+      if (terminalMarketStatuses.has(ride.status)) return false;
       if (ride.status === "scheduled" || ride.status === "scheduled_assigned") return false;
       const isAssignedToDriver = ride.driverId === a.fleetDriverId;
       const isAssignedToOtherDriver = !!ride.driverId && !isAssignedToDriver;
@@ -70534,6 +72607,7 @@ router12.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
       if ((ride.rejectedBy ?? []).includes(a.fleetDriverId)) return false;
       const inMarket = ride.status === "pending" || ride.status === "requested" || ride.status === "searching_driver" || ride.status === "offered";
       if (!inMarket) return false;
+      if (!marketOnline) return false;
       return isRideCompatibleWithCapability(ride, capability);
     });
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
@@ -70548,7 +72622,7 @@ router12.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
     next(e);
   }
 });
-router12.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
+router14.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     if (!a) {
@@ -70613,16 +72687,103 @@ router12.get("/fleet-driver/v1/scheduled-rides", requireFleetDriverAuth, async (
     next(e);
   }
 });
-router12.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
+router14.get("/fleet-driver/v1/admin-messages", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const items = await listDriverMessagesForFleetDriver(a.fleetDriverId);
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router14.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const messageId = req.params.messageId?.trim();
+    if (!messageId) {
+      res.status(400).json({ error: "message_id_required" });
+      return;
+    }
+    await dismissDriverMessage(a.fleetDriverId, messageId);
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+router14.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ error: "database_not_configured" });
+      return;
+    }
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const raw = req.body?.expoPushToken;
+    const expoPushToken = typeof raw === "string" ? raw.trim() : "";
+    if (!expoPushToken.startsWith("ExponentPushToken[")) {
+      res.status(400).json({ error: "invalid_expo_push_token" });
+      return;
+    }
+    await upsertFleetDriverExpoPushToken(a.fleetDriverId, a.companyId, expoPushToken);
+    res.json({ ok: true, fleetDriverId: a.fleetDriverId, companyId: a.companyId });
+  } catch (e) {
+    next(e);
+  }
+});
+router14.post("/fleet-driver/v1/ping", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }
   await touchFleetDriverHeartbeat(a.fleetDriverId);
-  res.json({ ok: true });
+  const marketOnline = await getFleetDriverMarketOnline(a.fleetDriverId, a.companyId);
+  res.json({ ok: true, marketOnline });
 });
-router12.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
+router14.patch("/fleet-driver/v1/market-availability", requireFleetDriverAuth, async (req, res) => {
+  const a = req.fleetDriverAuth;
+  if (!a) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const body = req.body;
+  if (typeof body.available !== "boolean") {
+    res.status(400).json({ error: "available_boolean_required" });
+    return;
+  }
+  const updated = await setFleetDriverMarketOnline(a.fleetDriverId, a.companyId, body.available);
+  if (!updated) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  await touchFleetDriverHeartbeat(a.fleetDriverId);
+  const pushTokens = body.available && isPostgresConfigured() ? await listFleetDriverExpoPushTokens(a.fleetDriverId, a.companyId) : [];
+  res.json({
+    ok: true,
+    marketOnline: body.available,
+    hasPushToken: pushTokens.length > 0
+  });
+});
+router14.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
   if (!a) {
     res.status(401).json({ error: "unauthorized" });
@@ -70653,27 +72814,38 @@ router12.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async 
   }
   res.json({ ok: true });
 });
-router12.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
+router14.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
   try {
     const a = req.fleetDriverAuth;
     const rides = await listRidesForDriver(a.fleetDriverId);
-    res.json({ rides });
+    const durationByRideId = await listActualDurationMinutesByRideIds(rides.map((r) => r.id));
+    const withDuration = rides.map((r) => ({
+      ...r,
+      actualDurationMinutes: durationByRideId.get(r.id) ?? null
+    }));
+    res.json({ rides: withDuration });
   } catch (err) {
     next(err);
   }
 });
-var fleetDriverApi_default = router12;
+var fleetDriverApi_default = router14;
 
 // src/routes/fleetPanelApi.ts
-var import_express13 = __toESM(require_express2(), 1);
-import { randomUUID as randomUUID26 } from "node:crypto";
+var import_express15 = __toESM(require_express2(), 1);
+init_companyComplianceDocumentsData();
+import { randomUUID as randomUUID29 } from "node:crypto";
 import fs from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
 import path8 from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 init_client();
-var router13 = (0, import_express13.Router)();
-router13.use((_req, res, next) => {
+init_fleetDriversData();
+init_fleetVehiclesData();
+init_fleetAssignmentsData();
+init_companyGovernanceData();
+init_fleetDriverReadiness();
+var router15 = (0, import_express15.Router)();
+router15.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -70723,7 +72895,7 @@ async function requireFleetOnboardingEntityCreateAllowed(companyId) {
   if (company.is_blocked) return { ok: false, error: "company_blocked" };
   return { ok: true, company };
 }
-router13.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70748,7 +72920,7 @@ router13.get("/panel/v1/fleet/dashboard", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router13.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70776,7 +72948,7 @@ router13.get("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router13.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70837,7 +73009,7 @@ router13.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -70850,7 +73022,7 @@ router13.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router13.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
+router15.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70908,7 +73080,7 @@ router13.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
       }
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_updated",
@@ -70921,7 +73093,7 @@ router13.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
     next(e);
   }
 });
-router13.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70932,7 +73104,7 @@ router13.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -70945,7 +73117,7 @@ router13.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
     next(e);
   }
 });
-router13.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70956,7 +73128,7 @@ router13.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -70969,7 +73141,7 @@ router13.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
     next(e);
   }
 });
-router13.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -70983,7 +73155,7 @@ router13.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -70996,10 +73168,10 @@ router13.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
     next(e);
   }
 });
-router13.post(
+router15.post(
   "/panel/v1/fleet/drivers/:id/p-schein-doc",
   requirePanelAuth,
-  import_express13.default.raw({ type: "application/pdf", limit: "6mb" }),
+  import_express15.default.raw({ type: "application/pdf", limit: "6mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -71016,7 +73188,7 @@ router13.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID26()}.pdf`);
+      const rel = path8.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID29()}.pdf`);
       const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -71032,7 +73204,7 @@ router13.post(
     }
   }
 );
-router13.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71050,7 +73222,7 @@ router13.get("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next
     next(e);
   }
 });
-router13.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71104,7 +73276,7 @@ router13.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -71117,7 +73289,7 @@ router13.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
     next(e);
   }
 });
-router13.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
+router15.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71166,7 +73338,7 @@ router13.patch("/panel/v1/fleet/vehicles/:id", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router13.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71177,7 +73349,7 @@ router13.get("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router13.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71199,7 +73371,7 @@ router13.post("/panel/v1/fleet/assignments", requirePanelAuth, async (req, res, 
     next(e);
   }
 });
-router13.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
+router15.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71210,10 +73382,10 @@ router13.delete("/panel/v1/fleet/assignments/:driverId", requirePanelAuth, async
     next(e);
   }
 });
-router13.post(
+router15.post(
   "/panel/v1/fleet/vehicles/:id/documents",
   requirePanelAuth,
-  import_express13.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express15.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -71231,7 +73403,7 @@ router13.post(
         res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID26()}.pdf`);
+      const rel = path8.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID29()}.pdf`);
       const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -71246,7 +73418,7 @@ router13.post(
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID29(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
@@ -71260,7 +73432,7 @@ router13.post(
     }
   }
 );
-router13.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
+router15.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71278,7 +73450,7 @@ router13.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -71291,7 +73463,7 @@ router13.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
     next(e);
   }
 });
-router13.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
+router15.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertFleetPanel(req, res);
     if (!ctx) return;
@@ -71324,10 +73496,10 @@ router13.get("/panel/v1/fleet/vehicles/:id/documents/file", requirePanelAuth, as
     next(e);
   }
 });
-router13.post(
+router15.post(
   "/panel/v1/fleet/compliance/:kind",
   requirePanelAuth,
-  import_express13.default.raw({ type: "application/pdf", limit: "8mb" }),
+  import_express15.default.raw({ type: "application/pdf", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertFleetPanel(req, res);
@@ -71343,7 +73515,7 @@ router13.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID26()}.pdf`);
+      const rel = path8.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID29()}.pdf`);
       const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -71368,7 +73540,7 @@ router13.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID29(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -71382,16 +73554,17 @@ router13.post(
     }
   }
 );
-var fleetPanelApi_default = router13;
+var fleetPanelApi_default = router15;
 
 // src/routes/insurerPanelApi.ts
-var import_express14 = __toESM(require_express2(), 1);
+var import_express16 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID28 } from "node:crypto";
+import { randomUUID as randomUUID31 } from "node:crypto";
 import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
 import path9 from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
+init_fleetDriversData();
 
 // src/db/insurerPanelData.ts
 init_drizzle_orm();
@@ -71399,7 +73572,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID27 } from "node:crypto";
+import { randomUUID as randomUUID30 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -71434,9 +73607,9 @@ async function getInsurerDashboardStats(companyId) {
       completedRides: rides.filter(comp).length
     };
   }
-  const cOpen = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, OPEN)));
-  const cAct = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, ACTIVE)));
-  const cDone = await db2.select({ n: sql`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.status, "completed")));
+  const cOpen = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, OPEN)));
+  const cAct = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, ACTIVE)));
+  const cDone = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), eq(ridesTable.status, "completed")));
   return {
     openRides: Number(cOpen[0]?.n ?? 0),
     activeRides: Number(cAct[0]?.n ?? 0),
@@ -71522,7 +73695,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID27();
+  const id = randomUUID30();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -71614,7 +73787,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID27();
+  const id = randomUUID30();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -71648,10 +73821,10 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 }
 
 // src/routes/insurerPanelApi.ts
-var router14 = (0, import_express14.Router)();
+var router16 = (0, import_express16.Router)();
 var pkgRoot2 = path9.join(path9.dirname(fileURLToPath4(import.meta.url)), "..", "..");
 var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path9.join(pkgRoot2, "uploads", "insurer-transport");
-router14.use((_req, res, next) => {
+router16.use((_req, res, next) => {
   res.setHeader("Cache-Control", "no-store, private, must-revalidate");
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Vary", "Authorization");
@@ -71698,7 +73871,7 @@ function denyUnlessInsurerPerm(res, role, perm) {
   if (!denyUnlessPanelPermission(res, role, perm)) return false;
   return true;
 }
-router14.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -71710,7 +73883,7 @@ router14.get("/panel/v1/insurer/dashboard", requirePanelAuth, async (req, res, n
     next(e);
   }
 });
-router14.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -71722,7 +73895,7 @@ router14.get("/panel/v1/insurer/rides", requirePanelAuth, async (req, res, next)
     next(e);
   }
 });
-router14.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router16.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -71734,7 +73907,7 @@ router14.get("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res
     next(e);
   }
 });
-router14.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
+router16.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -71753,7 +73926,7 @@ router14.post("/panel/v1/insurer/cost-centers", requirePanelAuth, async (req, re
     next(e);
   }
 });
-router14.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
+router16.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -71773,7 +73946,7 @@ router14.patch("/panel/v1/insurer/cost-centers/:id", requirePanelAuth, async (re
     next(e);
   }
 });
-router14.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
+router16.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth, async (req, res, next) => {
   try {
     const ctx = await assertInsurerPanel(req, res);
     if (!ctx) return;
@@ -71792,7 +73965,7 @@ router14.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID31(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -71805,7 +73978,7 @@ router14.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
     next(e);
   }
 });
-router14.get(
+router16.get(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
   async (req, res, next) => {
@@ -71821,10 +73994,10 @@ router14.get(
     }
   }
 );
-router14.post(
+router16.post(
   "/panel/v1/insurer/rides/:rideId/transport-documents",
   requirePanelAuth,
-  import_express14.default.raw({ type: "*/*", limit: "8mb" }),
+  import_express16.default.raw({ type: "*/*", limit: "8mb" }),
   async (req, res, next) => {
     try {
       const ctx = await assertInsurerPanel(req, res);
@@ -71845,7 +74018,7 @@ router14.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path9.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID28()}.${ext}`);
+      const rel = path9.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID31()}.${ext}`);
       const dest = path9.join(INSURER_UPLOAD_ROOT, rel);
       await fs2.mkdir(path9.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
@@ -71871,7 +74044,7 @@ router14.post(
     }
   }
 );
-router14.get(
+router16.get(
   "/panel/v1/insurer/transport-documents/:docId/file",
   requirePanelAuth,
   async (req, res, next) => {
@@ -71894,14 +74067,14 @@ router14.get(
     }
   }
 );
-var insurerPanelApi_default = router14;
+var insurerPanelApi_default = router16;
 
 // src/routes/publicHomepageApi.ts
-var import_express15 = __toESM(require_express2(), 1);
+var import_express17 = __toESM(require_express2(), 1);
 init_client();
 init_appOperationalData();
-var router15 = (0, import_express15.Router)();
-router15.get("/public/homepage-placeholders", async (_req, res, next) => {
+var router17 = (0, import_express17.Router)();
+router17.get("/public/homepage-placeholders", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -71914,7 +74087,7 @@ router15.get("/public/homepage-placeholders", async (_req, res, next) => {
     next(e);
   }
 });
-router15.get("/public/homepage-hints", async (_req, res, next) => {
+router17.get("/public/homepage-hints", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -71927,7 +74100,7 @@ router15.get("/public/homepage-hints", async (_req, res, next) => {
     next(e);
   }
 });
-router15.get("/public/homepage-content", async (_req, res, next) => {
+router17.get("/public/homepage-content", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, item: null });
@@ -71940,7 +74113,7 @@ router15.get("/public/homepage-content", async (_req, res, next) => {
     next(e);
   }
 });
-router15.get("/public/homepage-faq", async (_req, res, next) => {
+router17.get("/public/homepage-faq", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -71953,7 +74126,7 @@ router15.get("/public/homepage-faq", async (_req, res, next) => {
     next(e);
   }
 });
-router15.get("/public/homepage-how", async (_req, res, next) => {
+router17.get("/public/homepage-how", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -71966,7 +74139,7 @@ router15.get("/public/homepage-how", async (_req, res, next) => {
     next(e);
   }
 });
-router15.get("/public/homepage-trust", async (_req, res, next) => {
+router17.get("/public/homepage-trust", async (_req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
       res.json({ ok: true, items: [] });
@@ -71979,7 +74152,7 @@ router15.get("/public/homepage-trust", async (_req, res, next) => {
     next(e);
   }
 });
-router15.get("/public/app-operational", async (_req, res, next) => {
+router17.get("/public/app-operational", async (_req, res, next) => {
   try {
     const [config2, serviceRegions] = await Promise.all([
       getOperationalConfigPayload(),
@@ -71991,13 +74164,13 @@ router15.get("/public/app-operational", async (_req, res, next) => {
     next(e);
   }
 });
-var publicHomepageApi_default = router15;
+var publicHomepageApi_default = router17;
 
 // src/routes/appConfigApi.ts
-var import_express16 = __toESM(require_express2(), 1);
+var import_express18 = __toESM(require_express2(), 1);
 init_appOperationalData();
-var router16 = (0, import_express16.Router)();
-router16.get("/app/config", async (_req, res, next) => {
+var router18 = (0, import_express18.Router)();
+router18.get("/app/config", async (_req, res, next) => {
   try {
     const data = await getAppConfigForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -72006,7 +74179,7 @@ router16.get("/app/config", async (_req, res, next) => {
     next(e);
   }
 });
-router16.get("/app/pricing", async (_req, res, next) => {
+router18.get("/app/pricing", async (_req, res, next) => {
   try {
     const data = await getAppPricingForPublic();
     res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=60");
@@ -72015,7 +74188,7 @@ router16.get("/app/pricing", async (_req, res, next) => {
     next(e);
   }
 });
-router16.get("/app/news", async (req, res, next) => {
+router18.get("/app/news", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppNewsAudience(q);
@@ -72028,7 +74201,16 @@ router16.get("/app/news", async (req, res, next) => {
     next(e);
   }
 });
-router16.get("/app/sponsors", async (req, res, next) => {
+router18.get("/app/faq", async (_req, res, next) => {
+  try {
+    const items = await listAppFaqPublic();
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=120");
+    res.json({ ok: true, items });
+  } catch (e) {
+    next(e);
+  }
+});
+router18.get("/app/sponsors", async (req, res, next) => {
   try {
     const q = typeof req.query.audience === "string" ? req.query.audience : "customer";
     const audience = parseAppSponsorAudience(q);
@@ -72041,12 +74223,16 @@ router16.get("/app/sponsors", async (req, res, next) => {
     next(e);
   }
 });
-var appConfigApi_default = router16;
+var appConfigApi_default = router18;
 
 // src/routes/customerApi.ts
-var import_express17 = __toESM(require_express2(), 1);
+var import_express19 = __toESM(require_express2(), 1);
+init_fleetAssignmentsData();
+init_fleetVehiclesData();
 init_ridesData();
-var router17 = (0, import_express17.Router)();
+init_passengerExpoPushData();
+init_client();
+var router19 = (0, import_express19.Router)();
 async function buildRidePlateMap(rides) {
   const companyIds = Array.from(
     new Set(
@@ -72094,7 +74280,7 @@ function attachDriverPlate(ride, plateByRideId) {
     driverPlate: plate
   };
 }
-router17.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
+router19.get("/customer/v1/rides", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -72110,7 +74296,7 @@ router17.get("/customer/v1/rides", requireCustomerSession, async (req, res, next
     next(e);
   }
 });
-router17.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
+router19.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -72135,7 +74321,7 @@ router17.get("/customer/v1/rides/:id", requireCustomerSession, async (req, res, 
     next(e);
   }
 });
-router17.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
+router19.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -72172,7 +74358,42 @@ router17.patch("/customer/v1/rides/:id/payment-method", requireCustomerSession, 
     next(e);
   }
 });
-router17.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
+router19.patch("/customer/v1/rides/:id/cancel", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.id ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const cancelReason = String(req.body?.cancelReason ?? "").trim();
+    const result = await cancelRideForVerifiedCustomerSession(
+      customerPassengerId(sess),
+      rideId,
+      cancelReason
+    );
+    if (!result.ok) {
+      res.status(result.status).json({
+        error: result.error,
+        ...result.message ? { message: result.message } : {},
+        ...result.from ? { from: result.from } : {},
+        ...result.to ? { to: result.to } : {}
+      });
+      return;
+    }
+    res.json({
+      ...stripPartnerOnlyRideFields(result.ride),
+      cancelReason: result.cancelReason
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+router19.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, async (req, res, next) => {
   try {
     const sess = req.customerSession;
     if (!sess) {
@@ -72210,30 +74431,101 @@ router17.patch("/customer/v1/rides/:id/driver-note", requireCustomerSession, asy
     next(e);
   }
 });
-var customerApi_default = router17;
+router19.post("/customer/v1/help-tickets", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const body = req.body;
+    const message2 = typeof body.message === "string" ? body.message.trim() : "";
+    if (message2.length < 5) {
+      res.status(400).json({ ok: false, error: "message_too_short" });
+      return;
+    }
+    if (message2.length > 8e3) {
+      res.status(400).json({ ok: false, error: "message_too_long" });
+      return;
+    }
+    const category = parseAppHelpCategory(typeof body.category === "string" ? body.category : "other");
+    const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 200) : null;
+    const passengerId = customerPassengerId(sess);
+    const passengerEmail = typeof body.passengerEmail === "string" && body.passengerEmail.trim() ? body.passengerEmail.trim() : typeof sess.email === "string" && sess.email.trim() ? sess.email.trim() : "";
+    if (!passengerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(passengerEmail)) {
+      res.status(400).json({ ok: false, error: "email_required" });
+      return;
+    }
+    const passengerName = typeof body.passengerName === "string" && body.passengerName.trim() ? body.passengerName.trim() : typeof sess.name === "string" && sess.name.trim() ? sess.name.trim() : null;
+    const passengerPhone = typeof body.passengerPhone === "string" && body.passengerPhone.trim() ? body.passengerPhone.trim() : null;
+    const ticket = await createAppHelpTicket({
+      passengerId,
+      passengerName,
+      passengerEmail,
+      passengerPhone,
+      category,
+      subject,
+      message: message2,
+      source: "mobile_help"
+    });
+    if (!ticket) {
+      res.status(503).json({ ok: false, error: "create_failed" });
+      return;
+    }
+    console.log(`[app-help-ticket] id=${ticket.id} passenger=${passengerId} category=${category}`);
+    res.status(201).json({ ok: true, ticketId: ticket.id });
+  } catch (e) {
+    next(e);
+  }
+});
+router19.post("/customer/v1/expo-push-token", requireCustomerSession, async (req, res, next) => {
+  try {
+    const sess = req.customerSession;
+    if (!sess) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const raw = req.body?.expoPushToken;
+    const expoPushToken = typeof raw === "string" ? raw.trim() : "";
+    if (!expoPushToken) {
+      res.status(400).json({ error: "expo_push_token_required" });
+      return;
+    }
+    const passengerId = customerPassengerId(sess);
+    await upsertPassengerExpoPushToken(passengerId, expoPushToken);
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+var customerApi_default = router19;
 
 // src/routes/index.ts
-var router18 = (0, import_express18.Router)();
-router18.use(health_default);
-router18.use(appConfigApi_default);
-router18.use(auth_default);
-router18.use(emailAuth_default);
-router18.use(panelAuth_default);
-router18.use(fleetAuth_default);
-router18.use(fleetDriverApi_default);
-router18.use(fleetPanelApi_default);
-router18.use(insurerPanelApi_default);
-router18.use(publicHomepageApi_default);
-router18.use(panelApi_default);
-router18.use(adminApi_default);
-router18.use(customerApi_default);
-router18.use(rides_default);
-var routes_default = router18;
+var router20 = (0, import_express20.Router)();
+router20.use(health_default);
+router20.use(appConfigApi_default);
+router20.use(auth_default);
+router20.use(emailAuth_default);
+router20.use(panelAuth_default);
+router20.use(fleetAuth_default);
+router20.use(fleetDriverApi_default);
+router20.use(fleetPanelApi_default);
+router20.use(insurerPanelApi_default);
+router20.use(publicHomepageApi_default);
+router20.use(panelApi_default);
+router20.use(adminApi_default);
+router20.use(customerApi_default);
+router20.use(rides_default);
+var routes_default = router20;
 
 // src/routes/admin.ts
-var import_express19 = __toESM(require_express2(), 1);
-var router19 = (0, import_express19.Router)();
-router19.get("/admin", (_req, res) => {
+var import_express21 = __toESM(require_express2(), 1);
+var router21 = (0, import_express21.Router)();
+router21.get("/admin", (_req, res) => {
   res.type("html").send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -72253,10 +74545,11 @@ router19.get("/admin", (_req, res) => {
 </body>
 </html>`);
 });
-var admin_default = router19;
+var admin_default = router21;
 
 // src/app.ts
-var app = (0, import_express20.default)();
+init_logger2();
+var app = (0, import_express22.default)();
 function isPanelBrowserHost(h) {
   return h === "panel.onroda.de";
 }
@@ -72343,9 +74636,9 @@ app.use((req, res, next) => {
   const partnerRegInitialPost = req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);
   const partnerRegDocPost = req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
   const limit = medicalUpload ? "6mb" : partnerRegInitialPost ? "25mb" : partnerRegDocPost ? "12mb" : "200kb";
-  import_express20.default.json({ limit })(req, res, next);
+  import_express22.default.json({ limit })(req, res, next);
 });
-app.use(import_express20.default.urlencoded({ extended: true, limit: "200kb" }));
+app.use(import_express22.default.urlencoded({ extended: true, limit: "200kb" }));
 app.use("/api", routes_default);
 app.use(routes_default);
 app.use(admin_default);
@@ -72363,7 +74656,7 @@ app.use((req, res, next) => {
 var adminPublicRoot = resolvePublicRoot();
 app.use("/partners", (req, res, next) => {
   if (!isAdminBrowserHost(hostname(req))) return next();
-  import_express20.default.static(adminPublicRoot)(req, res, (err) => {
+  import_express22.default.static(adminPublicRoot)(req, res, (err) => {
     if (err) return next(err);
     return next();
   });
@@ -72377,7 +74670,7 @@ app.use("/partners", (req, res, next) => {
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
-  import_express20.default.static(panelPublicRoot)(req, res, next);
+  import_express22.default.static(panelPublicRoot)(req, res, next);
 });
 app.use((req, res, next) => {
   if (!isPanelBrowserHost(hostname(req))) return next();
@@ -72390,7 +74683,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const p = req.path;
   if (p === "/partners" || p.startsWith("/partners/")) return next();
-  import_express20.default.static(staticRoot, { index: false })(req, res, next);
+  import_express22.default.static(staticRoot, { index: false })(req, res, next);
 });
 app.get(["/partnerschaft", "/partner"], (req, res, next) => {
   const host = hostname(req);
@@ -72419,6 +74712,196 @@ app.get("/", (req, res, next) => {
 var app_default = app;
 
 // src/index.ts
+init_logger2();
+
+// src/wsRideSocketHub.ts
+init_rideDriverLocationData();
+init_ridesData();
+init_logger2();
+
+// src/lib/wsRideJoinAuth.ts
+init_fleetDriversData();
+function stripBearer(raw) {
+  const s = raw.trim();
+  const m = s.match(/^Bearer\s+(.+)$/i);
+  return (m?.[1] ?? s).trim();
+}
+async function resolveWsJoinPrincipal(rawToken) {
+  if (typeof rawToken !== "string") return { kind: "invalid" };
+  const token = stripBearer(rawToken);
+  if (!token) return { kind: "invalid" };
+  try {
+    const claims = await verifyFleetDriverJwt(token);
+    const row = await findFleetDriverAuthRow(claims.fleetDriverId);
+    if (!row || row.company_id !== claims.companyId || !row.is_active || row.session_version !== claims.sessionVersion) {
+      return { kind: "invalid" };
+    }
+    return { kind: "fleet", fleetDriverId: claims.fleetDriverId, companyId: claims.companyId };
+  } catch {
+  }
+  if (!isSessionJwtConfigured()) return { kind: "invalid" };
+  try {
+    const c = await verifySessionJwt(token);
+    const passengerGoogleId = c.googleId?.trim();
+    if (!passengerGoogleId) return { kind: "invalid" };
+    return { kind: "customer", passengerGoogleId };
+  } catch {
+    return { kind: "invalid" };
+  }
+}
+function wsJoinPrincipalMatchesRide(ride, p) {
+  if (p.kind === "customer") {
+    const id = ride.passengerId?.trim();
+    return Boolean(id && id === p.passengerGoogleId);
+  }
+  const assigned = (ride.driverId ?? "").trim();
+  if (!assigned || assigned !== p.fleetDriverId) return false;
+  if (ride.companyId && ride.companyId !== p.companyId) return false;
+  return true;
+}
+
+// src/wsRideSocketHub.ts
+var socketMeta = /* @__PURE__ */ new WeakMap();
+var rooms = /* @__PURE__ */ new Map();
+function leaveRoom(socket, rideId) {
+  const set = rooms.get(rideId);
+  if (!set) return;
+  set.delete(socket);
+  if (set.size === 0) rooms.delete(rideId);
+}
+function sendWsError(socket, code) {
+  if (socket.readyState !== wrapper_default.OPEN) return;
+  try {
+    socket.send(JSON.stringify({ type: "ws_error", code }));
+  } catch {
+  }
+}
+function registerRideWebSockets(wss2) {
+  wss2.on("connection", (socket) => {
+    socket.on("message", async (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        const msgType = typeof msg.type === "string" ? msg.type : "";
+        const meta = socketMeta.get(socket);
+        if (msgType === "join") {
+          const rideIdRaw = typeof msg.rideId === "string" ? msg.rideId.trim() : "";
+          const tokenRaw = msg.token ?? msg.auth;
+          if (!rideIdRaw) {
+            sendWsError(socket, "join_ride_id_required");
+            return;
+          }
+          if (typeof tokenRaw !== "string" || !tokenRaw.trim()) {
+            sendWsError(socket, "join_token_required");
+            return;
+          }
+          const principal = await resolveWsJoinPrincipal(tokenRaw);
+          if (principal.kind === "invalid") {
+            sendWsError(socket, "join_auth_invalid");
+            return;
+          }
+          const ride = await findRide(rideIdRaw);
+          if (!ride) {
+            sendWsError(socket, "join_ride_not_found");
+            return;
+          }
+          if (!wsJoinPrincipalMatchesRide(ride, principal)) {
+            sendWsError(socket, "join_forbidden");
+            logger.warn({ rideId: rideIdRaw, role: principal.kind }, "[ws] join forbidden");
+            return;
+          }
+          const prev = socketMeta.get(socket);
+          if (prev && prev.rideId !== rideIdRaw) {
+            leaveRoom(socket, prev.rideId);
+          }
+          const role = principal.kind === "fleet" ? "driver" : "customer";
+          socketMeta.set(socket, {
+            rideId: rideIdRaw,
+            role,
+            fleetDriverId: principal.kind === "fleet" ? principal.fleetDriverId : void 0
+          });
+          if (!rooms.has(rideIdRaw)) rooms.set(rideIdRaw, /* @__PURE__ */ new Set());
+          rooms.get(rideIdRaw).add(socket);
+          if (socket.readyState === wrapper_default.OPEN) {
+            try {
+              socket.send(JSON.stringify({ type: "joined", rideId: rideIdRaw, role }));
+            } catch {
+            }
+          }
+          return;
+        }
+        if (!meta) {
+          sendWsError(socket, "join_required");
+          return;
+        }
+        const boundRideId = meta.rideId;
+        const msgRideId = typeof msg.rideId === "string" ? msg.rideId.trim() : "";
+        if (msgRideId && msgRideId !== boundRideId) {
+          sendWsError(socket, "ride_id_mismatch");
+          return;
+        }
+        if (msgType === "location:driver") {
+          if (meta.role !== "driver") return;
+          if (msg.lat == null || msg.lon == null) return;
+          const updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+          driverLocations.set(boundRideId, { lat: msg.lat, lon: msg.lon, updatedAt });
+          if (meta.fleetDriverId) {
+            void upsertRideDriverLocation(boundRideId, meta.fleetDriverId, msg.lat, msg.lon);
+          }
+          rooms.get(boundRideId)?.forEach((client) => {
+            if (client !== socket && client.readyState === wrapper_default.OPEN) {
+              client.send(JSON.stringify({ type: "location:driver:update", lat: msg.lat, lon: msg.lon }));
+            }
+          });
+          return;
+        }
+        if (msgType === "location:customer") {
+          if (meta.role !== "customer") return;
+          if (msg.lat == null || msg.lon == null) return;
+          customerLocations.set(boundRideId, { lat: msg.lat, lon: msg.lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+          rooms.get(boundRideId)?.forEach((client) => {
+            if (client !== socket && client.readyState === wrapper_default.OPEN) {
+              client.send(JSON.stringify({ type: "location:customer:update", lat: msg.lat, lon: msg.lon }));
+            }
+          });
+          return;
+        }
+        if (msgType === "chat:ride") {
+          const text2 = typeof msg.text === "string" ? msg.text.trim() : "";
+          const sender = msg.sender === "driver" ? "driver" : "customer";
+          if (!text2) return;
+          if (sender !== meta.role) return;
+          const replyToText = typeof msg.replyToText === "string" ? msg.replyToText.trim() : "";
+          const replyToSender = msg.replyToSender === "driver" ? "driver" : msg.replyToSender === "customer" ? "customer" : null;
+          const replyPayload = replyToText && replyToSender ? { replyTo: { sender: replyToSender, text: replyToText } } : {};
+          const ts = (/* @__PURE__ */ new Date()).toISOString();
+          rooms.get(boundRideId)?.forEach((client) => {
+            if (client.readyState === wrapper_default.OPEN) {
+              client.send(
+                JSON.stringify({
+                  type: "chat:ride:update",
+                  sender,
+                  text: text2,
+                  ts,
+                  ...replyPayload
+                })
+              );
+            }
+          });
+        }
+      } catch {
+      }
+    });
+    socket.on("close", () => {
+      const m = socketMeta.get(socket);
+      socketMeta.delete(socket);
+      if (m) leaveRoom(socket, m.rideId);
+    });
+    socket.on("error", () => {
+    });
+  });
+}
+
+// src/index.ts
 var rawPort = process.env["PORT"];
 if (!rawPort) {
   throw new Error(
@@ -72431,60 +74914,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 var httpServer = createServer(app_default);
 var wss = new import_websocket_server.default({ server: httpServer, path: "/ws" });
-var rooms = /* @__PURE__ */ new Map();
-wss.on("connection", (socket) => {
-  let rideId = null;
-  socket.on("message", (data) => {
-    try {
-      const msg = JSON.parse(data.toString());
-      if (msg.type === "join" && msg.rideId) {
-        rideId = msg.rideId;
-        if (!rooms.has(rideId)) rooms.set(rideId, /* @__PURE__ */ new Set());
-        rooms.get(rideId).add(socket);
-      }
-      if (msg.type === "location:driver" && rideId && msg.lat != null && msg.lon != null) {
-        driverLocations.set(rideId, { lat: msg.lat, lon: msg.lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
-        rooms.get(rideId)?.forEach((client) => {
-          if (client !== socket && client.readyState === import_websocket.default.OPEN) {
-            client.send(JSON.stringify({ type: "location:driver:update", lat: msg.lat, lon: msg.lon }));
-          }
-        });
-      }
-      if (msg.type === "location:customer" && rideId && msg.lat != null && msg.lon != null) {
-        customerLocations.set(rideId, { lat: msg.lat, lon: msg.lon, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
-        rooms.get(rideId)?.forEach((client) => {
-          if (client !== socket && client.readyState === import_websocket.default.OPEN) {
-            client.send(JSON.stringify({ type: "location:customer:update", lat: msg.lat, lon: msg.lon }));
-          }
-        });
-      }
-      if (msg.type === "chat:ride" && rideId) {
-        const text2 = typeof msg.text === "string" ? msg.text.trim() : "";
-        const sender = msg.sender === "driver" ? "driver" : "customer";
-        if (!text2) return;
-        rooms.get(rideId)?.forEach((client) => {
-          if (client.readyState === import_websocket.default.OPEN) {
-            client.send(JSON.stringify({
-              type: "chat:ride:update",
-              sender,
-              text: text2,
-              ts: (/* @__PURE__ */ new Date()).toISOString()
-            }));
-          }
-        });
-      }
-    } catch {
-    }
-  });
-  socket.on("close", () => {
-    if (rideId) {
-      rooms.get(rideId)?.delete(socket);
-      if (rooms.get(rideId)?.size === 0) rooms.delete(rideId);
-    }
-  });
-  socket.on("error", () => {
-  });
-});
+registerRideWebSockets(wss);
 httpServer.listen(port, () => {
   logger.info({ port }, "Server listening");
   void seedAdminDefaultsIfEmpty().catch((err) => {
@@ -72492,21 +74922,75 @@ httpServer.listen(port, () => {
   });
   setInterval(async () => {
     try {
-      const { db: db2 } = await Promise.resolve().then(() => (init_client(), client_exports));
+      const { getDb: getDb2, isPostgresConfigured: isPostgresConfigured2 } = await Promise.resolve().then(() => (init_client(), client_exports));
+      if (!isPostgresConfigured2()) return;
+      const db2 = getDb2();
+      if (!db2) return;
       const { ridesTable: ridesTable2 } = await Promise.resolve().then(() => (init_schema2(), schema_exports));
-      const { and: and3, eq: eq2, isNotNull: isNotNull2, lt: lt2, inArray: inArray2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
-      const expired = await db2.update(ridesTable2).set({ status: "expired" }).where(
+      const { and: and3, eq: eq2, inArray: inArray2, isNotNull: isNotNull2, lt: lt2, lte: lte2 } = await Promise.resolve().then(() => (init_drizzle_orm(), drizzle_orm_exports));
+      const { setReservationSuspension: setReservationSuspension2 } = await Promise.resolve().then(() => (init_fleetDriversData(), fleetDriversData_exports));
+      const now = /* @__PURE__ */ new Date();
+      const nowMs = now.getTime();
+      const cancelThreshold = new Date(nowMs + 10 * 60 * 1e3);
+      const noDriverCancelled = await db2.update(ridesTable2).set({ status: "cancelled_by_system" }).where(and3(eq2(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lte2(ridesTable2.scheduled_at, cancelThreshold))).returning({ id: ridesTable2.id, passenger_id: ridesTable2.passenger_id });
+      if (noDriverCancelled.length > 0) {
+        logger.info({ count: noDriverCancelled.length }, "[Cron] Kein Fahrer \u2192 cancelled_by_system");
+        const { notifyPassengerRideCancelledBySystem: notifyPassengerRideCancelledBySystem2 } = await Promise.resolve().then(() => (init_passengerRideExpoPush(), passengerRideExpoPush_exports));
+        for (const row of noDriverCancelled) {
+          const pid = typeof row.passenger_id === "string" ? row.passenger_id.trim() : "";
+          if (pid) void notifyPassengerRideCancelledBySystem2(pid, row.id);
+        }
+      }
+      const { claimRidesForDriverActivationReminderPush: claimRidesForDriverActivationReminderPush2 } = await Promise.resolve().then(() => (init_ridePushNotificationMarkers(), ridePushNotificationMarkers_exports));
+      const { notifyDriverReservationActivationReminder: notifyDriverReservationActivationReminder2 } = await Promise.resolve().then(() => (init_driverRideExpoPush(), driverRideExpoPush_exports));
+      const reminderRows = await claimRidesForDriverActivationReminderPush2(now);
+      for (const row of reminderRows) {
+        const did = typeof row.driver_id === "string" ? row.driver_id.trim() : "";
+        const cid = typeof row.company_id === "string" ? row.company_id.trim() : "";
+        if (did && cid) void notifyDriverReservationActivationReminder2(did, cid, row.id);
+      }
+      const activationDeadline = new Date(nowMs - 45 * 60 * 1e3);
+      const missedActivation = await db2.select({ id: ridesTable2.id, driver_id: ridesTable2.driver_id, company_id: ridesTable2.company_id }).from(ridesTable2).where(
         and3(
-          eq2(ridesTable2.status, "scheduled"),
+          eq2(ridesTable2.status, "scheduled_assigned"),
           isNotNull2(ridesTable2.scheduled_at),
-          lt2(ridesTable2.scheduled_at, /* @__PURE__ */ new Date())
+          lte2(ridesTable2.scheduled_at, activationDeadline)
         )
-      ).returning({ id: ridesTable2.id });
-      if (expired.length > 0) {
-        logger.info({ count: expired.length }, "[Cron] Reservierungen abgelaufen \u2192 expired");
+      );
+      const missedIds = missedActivation.map((r) => r.id).filter((id) => id.length > 0);
+      if (missedIds.length > 0) {
+        await db2.update(ridesTable2).set({
+          status: "scheduled",
+          driver_id: null,
+          push_driver_activation_reminder_at: null,
+          push_customer_reservation_assigned_at: null
+        }).where(inArray2(ridesTable2.id, missedIds));
+      }
+      const { notifyDriverMissedActivationReservation: notifyDriverMissedActivationReservation2 } = await Promise.resolve().then(() => (init_driverRideExpoPush(), driverRideExpoPush_exports));
+      for (const ride of missedActivation) {
+        const did = typeof ride.driver_id === "string" ? ride.driver_id.trim() : "";
+        const cid = typeof ride.company_id === "string" ? ride.company_id.trim() : "";
+        if (did && cid) {
+          await setReservationSuspension2(did, cid, new Date(nowMs + 24 * 60 * 60 * 1e3));
+          logger.warn({ driverId: did, rideId: ride.id }, "[Cron] Aktivierung verpasst \u2192 24h Sperre");
+          void notifyDriverMissedActivationReservation2(did, cid, ride.id);
+        }
+      }
+      const expiredAssigned = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq2(ridesTable2.status, "scheduled_assigned"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
+      if (expiredAssigned.length > 0) {
+        logger.info({ count: expiredAssigned.length }, "[Cron] scheduled_assigned \u2192 expired");
+      }
+      const expiredScheduled = await db2.update(ridesTable2).set({ status: "expired" }).where(and3(eq2(ridesTable2.status, "scheduled"), isNotNull2(ridesTable2.scheduled_at), lt2(ridesTable2.scheduled_at, now))).returning({ id: ridesTable2.id });
+      if (expiredScheduled.length > 0) {
+        logger.info({ count: expiredScheduled.length }, "[Cron] scheduled \u2192 expired");
+      }
+      const { recoverGhostAcceptedRides: recoverGhostAcceptedRides2 } = await Promise.resolve().then(() => (init_ghostRideRecovery(), ghostRideRecovery_exports));
+      const ghostRecovered = await recoverGhostAcceptedRides2(nowMs);
+      if (ghostRecovered.length > 0) {
+        logger.info({ count: ghostRecovered.length, rideIds: ghostRecovered }, "[Cron] Ghost-Rides recovered");
       }
     } catch (err) {
-      logger.error({ err }, "[Cron] expireReservations failed");
+      logger.error({ err }, "[Cron] reservationLifecycle failed");
     }
   }, 2 * 60 * 1e3);
 });
