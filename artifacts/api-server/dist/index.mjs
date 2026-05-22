@@ -41240,6 +41240,7 @@ __export(schema_exports, {
   passengerExpoPushTokensTable: () => passengerExpoPushTokensTable,
   paymentsTable: () => paymentsTable,
   rideBillingCorrectionsTable: () => rideBillingCorrectionsTable,
+  rideDriverDispatchOffersTable: () => rideDriverDispatchOffersTable,
   rideDriverLocationsTable: () => rideDriverLocationsTable,
   rideEventsTable: () => rideEventsTable,
   rideFinancialsTable: () => rideFinancialsTable,
@@ -41250,7 +41251,7 @@ __export(schema_exports, {
   supportMessagesTable: () => supportMessagesTable,
   supportThreadsTable: () => supportThreadsTable
 });
-var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
+var adminCompaniesTable, fleetDriversTable, fleetVehiclesTable, driverVehicleAssignmentsTable, accessCodesTable, fareAreasTable, panelUsersTable, companyComplianceDocumentsTable, adminAuthUsersTable, adminAuthPasswordResetsTable, adminAuthAuditLogTable, panelAuditLogTable, companyChangeRequestsTable, partnerRegistrationRequestsTable, partnerRegistrationDocumentsTable, partnerRegistrationTimelineTable, ridesTable, rideDriverLocationsTable, rideDriverDispatchOffersTable, fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable, rideEventsTable, rideSupportTicketsTable, appHelpTicketsTable, medicalDocumentExtractionsTable, billingAccountsTable, rideFinancialsTable, invoicesTable, invoiceItemsTable, settlementsTable, settlementRideAllocationsTable, paymentsTable, financialAuditLogTable, supportThreadsTable, supportMessagesTable, partnerRideSeriesTable, billingExportBatchesTable, rideBillingCorrectionsTable, homepagePlaceholdersTable, homepageContentTable, insurerCostCentersTable, insurerRideTransportDocumentsTable, homepageFaqItemsTable, homepageHowStepsTable, homepageTrustMetricsTable, appOperationalConfigTable, emailVerificationCodesTable, appNewsItemsTable, appFaqTable, driverMessagesTable, driverMessageDismissalsTable, appSponsorsTable, appServiceRegionsTable;
 var init_schema2 = __esm({
   "src/db/schema.ts"() {
     init_pg_core();
@@ -41310,7 +41311,9 @@ var init_schema2 = __esm({
        * Nach vollständig ausgefüllten Basis-Stammdaten im Partner-Panel: keine Self-Service-PATCHes mehr
        * für diese Felder — nur noch `company_change_requests`.
        */
-      partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false)
+      partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false),
+      /** ONRODA-Provision (0.10 = 10 %), siehe ride_financials bei completed. */
+      commission_rate: doublePrecision("commission_rate").notNull().default(0.1)
     });
     fleetDriversTable = pgTable("fleet_drivers", {
       id: text("id").primaryKey(),
@@ -41641,6 +41644,15 @@ var init_schema2 = __esm({
       lat: doublePrecision("lat").notNull(),
       lon: doublePrecision("lon").notNull(),
       updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    });
+    rideDriverDispatchOffersTable = pgTable("ride_driver_dispatch_offers", {
+      id: text("id").primaryKey(),
+      ride_id: text("ride_id").notNull().references(() => ridesTable.id, { onDelete: "cascade" }),
+      fleet_driver_id: text("fleet_driver_id").notNull(),
+      company_id: text("company_id").notNull(),
+      sent_at: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+      seen_at: timestamp("seen_at", { withTimezone: true }),
+      accepted_at: timestamp("accepted_at", { withTimezone: true })
     });
     fleetDriverExpoPushTokensTable = pgTable("fleet_driver_expo_push_tokens", {
       expo_push_token: text("expo_push_token").primaryKey(),
@@ -44034,6 +44046,27 @@ function calculateRideFinancialsV1(input) {
     }
   };
 }
+function previewDriverSettlementFromGross(grossEur, pricingContext) {
+  const grossSafe = toSafeNonNegative(grossEur, 0);
+  const ride = {
+    id: "preview",
+    status: "completed",
+    finalFare: grossSafe,
+    estimatedFare: grossSafe,
+    rideKind: "standard",
+    payerKind: "passenger",
+    pricingMode: "taxi_tariff"
+  };
+  const calc = calculateRideFinancialsV1({ ride, pricingContext });
+  const rate = calc.commissionValue;
+  return {
+    grossAmount: calc.grossAmount,
+    commissionRate: rate,
+    commissionRatePercent: Math.round(rate * 1e3) / 10,
+    commissionAmount: calc.commissionAmount,
+    driverPayoutAmount: calc.operatorPayoutAmount
+  };
+}
 function deriveFinanceInitialStatuses(ride) {
   return {
     billingStatus: deriveInitialBillingStatus(ride),
@@ -44062,6 +44095,7 @@ __export(rideFinancialsData_exports, {
   getSettlementEligibility: () => getSettlementEligibility,
   lockRideFinancialSnapshot: () => lockRideFinancialSnapshot,
   logFinancialAuditForRide: () => logFinancialAuditForRide,
+  mapBillingStatusByRideIds: () => mapBillingStatusByRideIds,
   updateRideFinancialStatuses: () => updateRideFinancialStatuses,
   upsertRideFinancialSnapshot: () => upsertRideFinancialSnapshot
 });
@@ -44161,6 +44195,25 @@ function isValidBillingStatus(value) {
 }
 function isValidSettlementStatus(value) {
   return RIDE_FINANCIAL_SETTLEMENT_STATUSES.includes(value);
+}
+async function mapBillingStatusByRideIds(rideIds) {
+  const out = /* @__PURE__ */ new Map();
+  const db2 = getDb();
+  if (!db2 || rideIds.length === 0) return out;
+  const ids = [...new Set(rideIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return out;
+  const rows = await db2.select({
+    rideId: rideFinancialsTable.ride_id,
+    billingStatus: rideFinancialsTable.billing_status,
+    settlementStatus: rideFinancialsTable.settlement_status
+  }).from(rideFinancialsTable).where(inArray(rideFinancialsTable.ride_id, ids));
+  for (const row of rows) {
+    out.set(row.rideId, {
+      billingStatus: String(row.billingStatus ?? "unbilled"),
+      settlementStatus: String(row.settlementStatus ?? "open")
+    });
+  }
+  return out;
 }
 async function getRideFinancialSnapshotByRideId(rideId) {
   const db2 = getDb();
@@ -44592,6 +44645,220 @@ var init_rideDriverLocationData = __esm({
   }
 });
 
+// src/domain/panelModules.ts
+function asModuleIdSet(ids) {
+  return new Set(ids);
+}
+function allowedPanelModuleIdsForCompanyKind(companyKind) {
+  const k = (companyKind || "general").trim();
+  return PANEL_MODULES_BY_COMPANY_KIND[k] ?? GENERAL_LIKE_KIND_MODULES;
+}
+function getAllowedModulesForKind(companyKind) {
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
+  return ALL_PANEL_MODULE_IDS.filter((id) => allowed.has(id));
+}
+function normalizeStoredPanelModules(raw) {
+  if (raw == null) return null;
+  if (!Array.isArray(raw)) return null;
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const x of raw) {
+    if (typeof x !== "string") continue;
+    const id = x.trim();
+    if (!id || seen.has(id)) continue;
+    if (!ID_SET.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+function resolveEffectivePanelModules(stored, companyKind) {
+  if (stored == null) {
+    return getAllowedModulesForKind(companyKind);
+  }
+  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
+  const set = new Set(stored);
+  for (const id of PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED) {
+    if (allowed.has(id)) set.add(id);
+  }
+  return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
+}
+var PANEL_MODULE_DEFINITIONS, ID_SET, ALL_PANEL_MODULE_IDS, GENERAL_LIKE_KIND_MODULES, PANEL_MODULES_BY_COMPANY_KIND, PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED;
+var init_panelModules = __esm({
+  "src/domain/panelModules.ts"() {
+    PANEL_MODULE_DEFINITIONS = [
+      {
+        id: "overview",
+        label: "\xDCbersicht",
+        description: "Startseite, Kennzahlen-Hinweise, eigenes Passwort",
+        productIntent: "Einstieg pro Login: Session, Kurz\xFCberblick, Hinweise auf freigeschaltete Module; eigenes Passwort \xE4ndern."
+      },
+      {
+        id: "support",
+        label: "Anfragen",
+        description: "Nachrichten an die Plattform (Stammdaten, Dokumente, \u2026)",
+        productIntent: "Chat-Threads je Mandant mit der Plattform: neue Anfrage, Verlauf, Status \u2014 getrennt von Taxi-Fachlogik."
+      },
+      {
+        id: "help",
+        label: "Hilfe",
+        description: "Schnellhilfe, FAQ und Einstieg in Support-Anfragen",
+        productIntent: "Self-Service-Hilfe zur Reduktion wiederkehrender Support-Anfragen; klare Weiterleitung in das bestehende Anfragen-Modul."
+      },
+      {
+        id: "rides_list",
+        label: "Fahrtenliste & Verlauf",
+        description: "\u201EMeine Fahrten\u201C und \u201EVerlauf\u201C (gemeinsame API)",
+        productIntent: "Alle Mandantenfahrten listen (live + Verlauf), filtern, CSV; inkl. Abrechnungs- und Code-Spuren wo vorhanden."
+      },
+      {
+        id: "rides_create",
+        label: "Neue Fahrt",
+        description: "Auftrag erfassen (POST /panel/v1/rides)",
+        productIntent: "Manuelle oder dispositionelle Erfassung einer Fahrt f\xFCr den Mandanten; optional Freigabe-Code / Referenzen gem\xE4\xDF weiterer Module."
+      },
+      {
+        id: "company_profile",
+        label: "Profil / Firma",
+        description: "Firmenstammdaten bearbeiten",
+        productIntent: "Pflege von Name, Kontakt, Adresse, USt-Id \u2014 alles, was auf Rechnungen und Zuordnung erscheinen soll."
+      },
+      {
+        id: "team",
+        label: "Mitarbeiter",
+        description: "Panel-Zug\xE4nge und Rollen",
+        productIntent: "Nutzerverwaltung f\xFCr das Partner-Portal (Rollen, Aktivierung, Passwort-Reset) innerhalb des Mandanten."
+      },
+      {
+        id: "access_codes",
+        label: "Freigabe-Codes",
+        description: "Digitale Kosten\xFCbernahme: Codes verwalten und nachverfolgen",
+        productIntent: "Lebenszyklus digitaler Freigaben: Codes anlegen, begrenzen (Zeit, Nutzungen, Mandant), in Buchungen einl\xF6sen. Verlauf: welcher Code, welche Fahrt, Zahler, Preis, Status; Nutzung/Storno/Zeitablauf nachvollziehbar (Snapshot auf der Fahrt + Code-Metadaten)."
+      },
+      {
+        id: "hotel_mode",
+        label: "Hotelmodus",
+        description: "Hotel-spezifische Oberfl\xE4che und Logik",
+        productIntent: "Voreinstellungen und Formulare f\xFCr Beherbergung (Zimmer/Gast-Referenz, Concierge-Workflow, Kennzeichnung Hotel-Kosten\xFCbernahme), ohne separates System."
+      },
+      {
+        id: "company_rides",
+        label: "Firmenfahrten",
+        description: "Sicht auf Firmen- und Sachkostenfahrten",
+        productIntent: "Gefilterte Ansichten, KPIs und Exporte f\xFCr typische B2B-/Firmenfahrten (z. B. nur payerKind company, Kostenstellen, Abgleich mit Buchhaltung)."
+      },
+      {
+        id: "recurring_rides",
+        label: "Serienfahrten",
+        description: "Wiederkehrende oder geb\xFCndelte Auftr\xE4ge",
+        productIntent: "Vorlagen und Serien (t\xE4glich/w\xF6chentlich, feste Strecke oder Kunde), Erzeugung offener Fahrten aus Serien, \xC4nderungen/Storno auf Serien-Ebene."
+      },
+      {
+        id: "billing",
+        label: "Abrechnung",
+        description: "Ums\xE4tze, Perioden, Exporte",
+        productIntent: "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostentr\xE4ger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik."
+      },
+      {
+        id: "insurer_workspace",
+        label: "Krankenkasse-Portal",
+        description: "Eigener Bereich: Fahrten-Controlling, Kostenstellen, Transportnachweise (V1)",
+        productIntent: "Mandant company_kind=insurer: getrennte Panel-API; keine medizinischen Befunde persistieren, nur Fahrt-/Orga-/Kostenstellen-Logik."
+      },
+      {
+        id: "taxi_fleet",
+        label: "Flotte & Fahrer",
+        description: "Fahrzeuge, Fahrer-Logins, Zuweisung (nur Mandant Taxi)",
+        productIntent: "Taxi-Unternehmer: eigene PKW-Flotte, Fahrer mit Passwort/Session, P-Schein/T\xDCV-Felder, Compliance-Uploads; Multi-Tenancy strikt \xFCber company_id."
+      }
+    ];
+    ID_SET = new Set(PANEL_MODULE_DEFINITIONS.map((d) => d.id));
+    ALL_PANEL_MODULE_IDS = PANEL_MODULE_DEFINITIONS.map((d) => d.id);
+    GENERAL_LIKE_KIND_MODULES = asModuleIdSet(
+      ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet" && id !== "insurer_workspace")
+    );
+    PANEL_MODULES_BY_COMPANY_KIND = {
+      taxi: asModuleIdSet([
+        "overview",
+        "support",
+        "help",
+        "rides_list",
+        "rides_create",
+        "company_profile",
+        "team",
+        "access_codes",
+        "billing",
+        "taxi_fleet"
+      ]),
+      hotel: asModuleIdSet([
+        "overview",
+        "support",
+        "help",
+        "rides_list",
+        "rides_create",
+        "company_profile",
+        "team",
+        "access_codes",
+        "hotel_mode",
+        "billing"
+      ]),
+      insurer: asModuleIdSet([
+        "overview",
+        "insurer_workspace",
+        "support",
+        "help",
+        "rides_list",
+        "rides_create",
+        "company_profile",
+        "team",
+        "access_codes",
+        "billing",
+        "company_rides",
+        "recurring_rides"
+      ]),
+      medical: asModuleIdSet([
+        "overview",
+        "support",
+        "help",
+        "rides_list",
+        "rides_create",
+        "company_profile",
+        "team",
+        "access_codes",
+        "billing",
+        "company_rides",
+        "recurring_rides"
+      ]),
+      corporate: asModuleIdSet([
+        "overview",
+        "support",
+        "help",
+        "rides_list",
+        "rides_create",
+        "company_profile",
+        "team",
+        "access_codes",
+        "billing",
+        "company_rides",
+        "recurring_rides"
+      ]),
+      voucher_client: asModuleIdSet([
+        "overview",
+        "support",
+        "help",
+        "rides_list",
+        "rides_create",
+        "company_profile",
+        "team",
+        "access_codes",
+        "billing"
+      ]),
+      general: GENERAL_LIKE_KIND_MODULES
+    };
+    PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED = ["support", "help"];
+  }
+});
+
 // src/lib/logger.ts
 var import_pino, isProduction, logger;
 var init_logger2 = __esm({
@@ -45002,11 +45269,12 @@ __export(appOperationalData_exports, {
   getOutOfServiceAreaMessage: () => getOutOfServiceAreaMessage,
   insertServiceRegion: () => insertServiceRegion,
   listServiceRegionsForApi: () => listServiceRegionsForApi,
+  resolveFinancePricingContextForRide: () => resolveFinancePricingContextForRide,
   resolveFinancePricingContextFromOperational: () => resolveFinancePricingContextFromOperational,
   updateOperationalConfigPayload: () => updateOperationalConfigPayload,
   updateServiceRegionById: () => updateServiceRegionById
 });
-import { randomUUID as randomUUID5 } from "node:crypto";
+import { randomUUID as randomUUID6 } from "node:crypto";
 function isPlainObject(x) {
   return x !== null && typeof x === "object" && !Array.isArray(x);
 }
@@ -45321,6 +45589,18 @@ function resolveFinancePricingContextFromOperational(ride, opPayload, serviceReg
   const minCommissionEur = typeof minPe === "number" && Number.isFinite(minPe) && minPe > 0 ? minPe : null;
   return { commissionType: "percentage", commissionValue: rate, minCommissionEur };
 }
+async function resolveFinancePricingContextForRide(ride, opPayload, serviceRegions) {
+  const opCtx = resolveFinancePricingContextFromOperational(ride, opPayload, serviceRegions);
+  const companyId = typeof ride.companyId === "string" ? ride.companyId.trim() : "";
+  if (!companyId) return opCtx;
+  const companyRate = await getAdminCompanyCommissionRate(companyId);
+  return {
+    commissionType: "percentage",
+    commissionValue: companyRate,
+    minCommissionEur: opCtx.minCommissionEur ?? null,
+    vatRate: opCtx.vatRate
+  };
+}
 async function updateOperationalConfigPayload(patch) {
   const cur = await getOperationalConfigPayload();
   let effPatch = patch;
@@ -45375,7 +45655,7 @@ async function updateServiceRegionById(id, input) {
   return u.length > 0;
 }
 async function insertServiceRegion(input) {
-  const id = `asr-${randomUUID5()}`;
+  const id = `asr-${randomUUID6()}`;
   const mode = typeof input.matchMode === "string" && input.matchMode.trim() ? input.matchMode.trim() : "substring";
   const next = {
     id,
@@ -45514,6 +45794,7 @@ var init_appOperationalData = __esm({
     init_drizzle_orm();
     init_operationalTariffEngine();
     init_dispatchStatus();
+    init_adminData();
     init_client();
     init_schema2();
     init_serviceRegionMatch();
@@ -45688,6 +45969,1004 @@ var init_appOperationalData = __esm({
   }
 });
 
+// src/db/adminData.ts
+import { randomUUID as randomUUID7 } from "node:crypto";
+function flattenPgError(err) {
+  const parts = [];
+  const seen = /* @__PURE__ */ new Set();
+  let cur = err;
+  for (let depth = 0; depth < 10 && cur != null && !seen.has(cur); depth++) {
+    seen.add(cur);
+    if (cur instanceof Error) {
+      parts.push(cur.message);
+      cur = cur.cause;
+      continue;
+    }
+    if (typeof cur === "object") {
+      const o = cur;
+      for (const k of ["message", "detail", "constraint", "column", "table", "schema"]) {
+        const v = o[k];
+        if (typeof v === "string" && v.trim()) parts.push(v.trim());
+      }
+      if (typeof o.code === "string" && o.code.trim()) parts.push(`code=${o.code.trim()}`);
+      cur = o.cause;
+      continue;
+    }
+    if (typeof cur === "string") {
+      parts.push(cur);
+      break;
+    }
+    break;
+  }
+  return parts.join(" | ");
+}
+function rowToCompany(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    contact_name: r.contact_name,
+    email: r.email,
+    phone: r.phone,
+    address_line1: r.address_line1,
+    address_line2: r.address_line2,
+    postal_code: r.postal_code,
+    city: r.city,
+    country: r.country,
+    vat_id: r.vat_id,
+    company_kind: r.company_kind ?? "general",
+    tax_id: r.tax_id ?? "",
+    concession_number: r.concession_number ?? "",
+    compliance_gewerbe_storage_key: r.compliance_gewerbe_storage_key ?? null,
+    compliance_insurance_storage_key: r.compliance_insurance_storage_key ?? null,
+    legal_form: r.legal_form ?? "",
+    owner_name: r.owner_name ?? "",
+    billing_name: r.billing_name ?? "",
+    billing_address_line1: r.billing_address_line1 ?? "",
+    billing_address_line2: r.billing_address_line2 ?? "",
+    billing_postal_code: r.billing_postal_code ?? "",
+    billing_city: r.billing_city ?? "",
+    billing_country: r.billing_country ?? "",
+    bank_iban: r.bank_iban ?? "",
+    bank_bic: r.bank_bic ?? "",
+    support_email: r.support_email ?? "",
+    dispo_phone: r.dispo_phone ?? "",
+    logo_url: r.logo_url ?? "",
+    opening_hours: r.opening_hours ?? "",
+    business_notes: r.business_notes ?? "",
+    verification_status: r.verification_status ?? "pending",
+    compliance_status: r.compliance_status ?? "pending",
+    contract_status: r.contract_status ?? "inactive",
+    is_blocked: r.is_blocked ?? false,
+    max_drivers: r.max_drivers ?? 100,
+    max_vehicles: r.max_vehicles ?? 100,
+    fare_permissions: r.fare_permissions ?? {},
+    insurer_permissions: r.insurer_permissions ?? {},
+    area_assignments: r.area_assignments ?? [],
+    is_active: r.is_active,
+    is_priority_company: r.is_priority_company,
+    priority_for_live_rides: r.priority_for_live_rides,
+    priority_for_reservations: r.priority_for_reservations,
+    priority_price_threshold: r.priority_price_threshold,
+    priority_timeout_seconds: r.priority_timeout_seconds,
+    release_radius_km: r.release_radius_km,
+    panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
+    partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
+    commission_rate: typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1
+  };
+}
+function rowToFareArea(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    ruleType: r.rule_type,
+    isRequiredArea: r.is_required_area,
+    fixedPriceAllowed: r.fixed_price_allowed,
+    status: r.status,
+    isDefault: r.is_default,
+    baseFareEur: r.base_fare_eur,
+    rateFirstKmEur: r.rate_first_km_eur,
+    rateAfterKmEur: r.rate_after_km_eur,
+    thresholdKm: r.threshold_km,
+    waitingPerHourEur: r.waiting_per_hour_eur,
+    serviceFeeEur: r.service_fee_eur,
+    onrodaBaseFareEur: r.onroda_base_fare_eur,
+    onrodaPerKmEur: r.onroda_per_km_eur,
+    onrodaMinFareEur: r.onroda_min_fare_eur,
+    manualFixedPriceEur: r.manual_fixed_price_eur ?? null
+  };
+}
+function asMoney(v, fallback) {
+  const n4 = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n4)) return fallback;
+  return n4;
+}
+async function getPublicFareProfile(fromFull, pickup) {
+  const { getOperationalConfigPayload: getOperationalConfigPayload2, listServiceRegionsForApi: listServiceRegionsForApi2 } = await Promise.resolve().then(() => (init_appOperationalData(), appOperationalData_exports));
+  const { mergeTariffsForServiceRegion: mergeTariffsForServiceRegion2, mergedTariffToPublicProfile: mergedTariffToPublicProfile2, resolveMergedTariff: resolveMergedTariff2 } = await Promise.resolve().then(() => (init_operationalTariffEngine(), operationalTariffEngine_exports));
+  const op = await getOperationalConfigPayload2();
+  const tSec = isPlainObject2(op.tariffs) ? op.tariffs : {};
+  const regions = await listServiceRegionsForApi2();
+  const from = fromFull && String(fromFull).trim() ? String(fromFull).trim() : "";
+  const lat0 = pickup?.lat != null && Number.isFinite(Number(pickup.lat)) ? Number(pickup.lat) : null;
+  const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
+  const { merged, serviceRegionId } = from ? resolveMergedTariff2(op, regions, from, { lat: lat0, lon: lon0 }) : { merged: mergeTariffsForServiceRegion2(tSec, null), serviceRegionId: null };
+  const regLabel = serviceRegionId ? regions.find((r) => r.id === serviceRegionId)?.label ?? "Standard" : "Standard";
+  const p = mergedTariffToPublicProfile2(merged, serviceRegionId, regLabel, null);
+  const areas = await listFareAreas();
+  const active = areas.filter((x) => x.status === "aktiv");
+  const row = active.find((x) => x.isDefault) ?? active[0] ?? areas[0];
+  if (row) {
+    return { ...p, areaId: row.id, areaName: p.areaName };
+  }
+  return p;
+}
+function isPlainObject2(x) {
+  return x !== null && typeof x === "object" && !Array.isArray(x);
+}
+function num(v) {
+  const n4 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n4) ? n4 : 0;
+}
+function rideRevenueAmount(r) {
+  if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
+  return r.estimatedFare;
+}
+async function getAdminStats(opts) {
+  const revenueFrom = opts?.revenueFrom;
+  const revenueTo = opts?.revenueTo;
+  const revenueFiltered = Boolean(revenueFrom && revenueTo);
+  const db2 = getDb();
+  if (!db2) {
+    const { listRides: listRides2 } = await Promise.resolve().then(() => (init_ridesData(), ridesData_exports));
+    const rides = await listRides2();
+    const byStatus2 = (s) => rides.filter((r) => r.status === s).length;
+    const active2 = ACTIVE_RIDE_STATUSES.reduce((acc, s) => acc + byStatus2(s), 0);
+    const driverIds = new Set(
+      rides.map((r) => r.driverId).filter((id) => Boolean(id && String(id).trim()))
+    );
+    const completedInPeriod = rides.filter((r) => {
+      if (r.status !== "completed") return false;
+      if (!revenueFiltered || !revenueFrom || !revenueTo) return true;
+      const t = new Date(r.createdAt).getTime();
+      return t >= revenueFrom.getTime() && t <= revenueTo.getTime();
+    });
+    const completedSum = completedInPeriod.reduce((s, r) => s + rideRevenueAmount(r), 0);
+    return {
+      rides: {
+        total: rides.length,
+        pending: byStatus2("pending"),
+        active: active2,
+        completed: byStatus2("completed"),
+        cancelled: byStatus2("cancelled"),
+        rejected: byStatus2("rejected")
+      },
+      companies: {
+        total: memCompanies.length,
+        active: memCompanies.filter((c) => c.is_active).length
+      },
+      drivers: { distinctWithRide: driverIds.size },
+      panelUsers: { active: 0 },
+      revenue: {
+        currency: "EUR",
+        periodFrom: revenueFiltered && revenueFrom ? revenueFrom.toISOString() : null,
+        periodTo: revenueFiltered && revenueTo ? revenueTo.toISOString() : null,
+        completedSum,
+        completedRideCount: completedInPeriod.length
+      }
+    };
+  }
+  const statusRows = await db2.select({ status: ridesTable.status, n: count() }).from(ridesTable).groupBy(ridesTable.status);
+  const byStatus = {};
+  let ridesTotal = 0;
+  for (const row of statusRows) {
+    const c = Number(row.n ?? 0);
+    byStatus[row.status] = c;
+    ridesTotal += c;
+  }
+  const active = ACTIVE_RIDE_STATUSES.reduce((acc, s) => acc + (byStatus[s] ?? 0), 0);
+  const [companiesTotalRow] = await db2.select({ n: count() }).from(adminCompaniesTable);
+  const [companiesActiveRow] = await db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_active, true));
+  const [driversRow] = await db2.select({
+    n: sql2`count(distinct ${ridesTable.driver_id})::int`
+  }).from(ridesTable).where(and(isNotNull(ridesTable.driver_id), ne(ridesTable.driver_id, "")));
+  const [panelUsersRow] = await db2.select({ n: count() }).from(panelUsersTable).where(eq(panelUsersTable.is_active, true));
+  const revConds = [eq(ridesTable.status, "completed")];
+  if (revenueFiltered && revenueFrom && revenueTo) {
+    revConds.push(gte(ridesTable.created_at, revenueFrom));
+    revConds.push(lte(ridesTable.created_at, revenueTo));
+  }
+  const [revRow] = await db2.select({
+    completedSum: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
+    completedRideCount: count()
+  }).from(ridesTable).where(and(...revConds));
+  return {
+    rides: {
+      total: ridesTotal,
+      pending: byStatus.pending ?? 0,
+      active,
+      completed: byStatus.completed ?? 0,
+      cancelled: byStatus.cancelled ?? 0,
+      rejected: byStatus.rejected ?? 0
+    },
+    companies: {
+      total: Number(companiesTotalRow?.n ?? 0),
+      active: Number(companiesActiveRow?.n ?? 0)
+    },
+    drivers: { distinctWithRide: num(driversRow?.n) },
+    panelUsers: { active: Number(panelUsersRow?.n ?? 0) },
+    revenue: {
+      currency: "EUR",
+      periodFrom: revenueFiltered && revenueFrom ? revenueFrom.toISOString() : null,
+      periodTo: revenueFiltered && revenueTo ? revenueTo.toISOString() : null,
+      completedSum: num(revRow?.completedSum),
+      completedRideCount: Number(revRow?.completedRideCount ?? 0)
+    }
+  };
+}
+async function listCompanies() {
+  const db2 = getDb();
+  if (!db2) return [...memCompanies];
+  const rows = await db2.select().from(adminCompaniesTable);
+  return rows.map(rowToCompany);
+}
+async function getCompanyKpis(companyId, now = /* @__PURE__ */ new Date()) {
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  const openStatuses = ["pending", "accepted", "arrived", "in_progress"];
+  const db2 = getDb();
+  if (!db2) {
+    const { listRidesForCompany: listRidesForCompany2 } = await Promise.resolve().then(() => (init_ridesData(), ridesData_exports));
+    const rides = await listRidesForCompany2(companyId);
+    const monthlyRevenue = rides.filter((r) => {
+      if (r.status !== "completed") return false;
+      const t = new Date(r.createdAt).getTime();
+      return t >= monthStart.getTime() && t < nextMonthStart.getTime();
+    }).reduce((sum2, r) => sum2 + rideRevenueAmount(r), 0);
+    const openRides = rides.filter((r) => openStatuses.includes(r.status)).length;
+    return { monthlyRevenue, openRides, voucherLimitAvailable: null };
+  }
+  const [revRow, openRow, voucherRow] = await Promise.all([
+    db2.select({
+      monthlyRevenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
+    }).from(ridesTable).where(
+      and(
+        eq(ridesTable.company_id, companyId),
+        eq(ridesTable.status, "completed"),
+        gte(ridesTable.created_at, monthStart),
+        lt(ridesTable.created_at, nextMonthStart)
+      )
+    ),
+    db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, openStatuses))),
+    db2.select({
+      remaining: sql2`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`
+    }).from(accessCodesTable).where(
+      and(
+        eq(accessCodesTable.company_id, companyId),
+        eq(accessCodesTable.code_type, "voucher"),
+        eq(accessCodesTable.is_active, true),
+        or(sql2`${accessCodesTable.valid_from} is null`, lte(accessCodesTable.valid_from, now)),
+        or(sql2`${accessCodesTable.valid_until} is null`, gte(accessCodesTable.valid_until, now)),
+        isNotNull(accessCodesTable.max_uses)
+      )
+    )
+  ]);
+  return {
+    monthlyRevenue: num(revRow[0]?.monthlyRevenue),
+    openRides: Number(openRow[0]?.n ?? 0),
+    voucherLimitAvailable: Number(voucherRow[0]?.remaining ?? 0)
+  };
+}
+async function getAdminCompanyCommissionRate(companyId) {
+  const id = companyId.trim();
+  const fallback = 0.1;
+  if (!id) return fallback;
+  const db2 = getDb();
+  if (!db2) {
+    const c = memCompanies.find((x) => x.id === id);
+    const r2 = c?.commission_rate;
+    if (typeof r2 === "number" && Number.isFinite(r2) && r2 >= 0 && r2 <= 1) return r2;
+    return fallback;
+  }
+  const rows = await db2.select({ commission_rate: adminCompaniesTable.commission_rate }).from(adminCompaniesTable).where(eq(adminCompaniesTable.id, id)).limit(1);
+  const r = rows[0]?.commission_rate;
+  if (typeof r === "number" && Number.isFinite(r) && r >= 0 && r <= 1) return r;
+  return fallback;
+}
+async function findCompanyById(companyId) {
+  const db2 = getDb();
+  if (!db2) {
+    return memCompanies.find((c) => c.id === companyId) ?? null;
+  }
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  return rows[0] ? rowToCompany(rows[0]) : null;
+}
+function companyRowToDbValues(c) {
+  return {
+    id: c.id,
+    name: c.name,
+    contact_name: c.contact_name,
+    email: c.email,
+    phone: c.phone,
+    address_line1: c.address_line1,
+    address_line2: c.address_line2,
+    postal_code: c.postal_code,
+    city: c.city,
+    country: c.country,
+    vat_id: c.vat_id,
+    company_kind: c.company_kind,
+    tax_id: c.tax_id,
+    concession_number: c.concession_number,
+    compliance_gewerbe_storage_key: c.compliance_gewerbe_storage_key,
+    compliance_insurance_storage_key: c.compliance_insurance_storage_key,
+    legal_form: c.legal_form,
+    owner_name: c.owner_name,
+    billing_name: c.billing_name,
+    billing_address_line1: c.billing_address_line1,
+    billing_address_line2: c.billing_address_line2,
+    billing_postal_code: c.billing_postal_code,
+    billing_city: c.billing_city,
+    billing_country: c.billing_country,
+    bank_iban: c.bank_iban,
+    bank_bic: c.bank_bic,
+    support_email: c.support_email,
+    dispo_phone: c.dispo_phone,
+    logo_url: c.logo_url,
+    opening_hours: c.opening_hours,
+    business_notes: c.business_notes,
+    verification_status: c.verification_status,
+    compliance_status: c.compliance_status,
+    contract_status: c.contract_status,
+    is_blocked: c.is_blocked,
+    max_drivers: c.max_drivers,
+    max_vehicles: c.max_vehicles,
+    fare_permissions: c.fare_permissions,
+    insurer_permissions: c.insurer_permissions,
+    area_assignments: c.area_assignments,
+    is_active: c.is_active,
+    is_priority_company: c.is_priority_company,
+    priority_for_live_rides: c.priority_for_live_rides,
+    priority_for_reservations: c.priority_for_reservations,
+    priority_price_threshold: c.priority_price_threshold,
+    priority_timeout_seconds: c.priority_timeout_seconds,
+    release_radius_km: c.release_radius_km,
+    panel_modules: c.panel_modules ?? null,
+    partner_panel_profile_locked: c.partner_panel_profile_locked,
+    commission_rate: c.commission_rate
+  };
+}
+function applyAdminCompanyPatch(cur, body) {
+  const next = { ...cur };
+  if (typeof body.name === "string") {
+    const t = body.name.trim();
+    if (t) next.name = t;
+  }
+  if (typeof body.contact_name === "string") next.contact_name = body.contact_name.trim();
+  if (typeof body.email === "string") next.email = body.email.trim();
+  if (typeof body.phone === "string") next.phone = body.phone.trim();
+  if (typeof body.address_line1 === "string") next.address_line1 = body.address_line1.trim();
+  if (typeof body.address_line2 === "string") next.address_line2 = body.address_line2.trim();
+  if (typeof body.postal_code === "string") next.postal_code = body.postal_code.trim();
+  if (typeof body.city === "string") next.city = body.city.trim();
+  if (typeof body.country === "string") next.country = body.country.trim();
+  if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
+  if (typeof body.company_kind === "string") {
+    const k = body.company_kind.trim();
+    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate", "medical"].includes(k)) {
+      next.company_kind = k;
+    }
+  }
+  if (typeof body.tax_id === "string") next.tax_id = body.tax_id.trim();
+  if (typeof body.concession_number === "string") next.concession_number = body.concession_number.trim();
+  if (body.compliance_gewerbe_storage_key === null) next.compliance_gewerbe_storage_key = null;
+  if (typeof body.compliance_gewerbe_storage_key === "string") {
+    next.compliance_gewerbe_storage_key = body.compliance_gewerbe_storage_key.trim() || null;
+  }
+  if (body.compliance_insurance_storage_key === null) next.compliance_insurance_storage_key = null;
+  if (typeof body.compliance_insurance_storage_key === "string") {
+    next.compliance_insurance_storage_key = body.compliance_insurance_storage_key.trim() || null;
+  }
+  if (typeof body.legal_form === "string") next.legal_form = body.legal_form.trim();
+  if (typeof body.owner_name === "string") next.owner_name = body.owner_name.trim();
+  if (typeof body.billing_name === "string") next.billing_name = body.billing_name.trim();
+  if (typeof body.billing_address_line1 === "string") next.billing_address_line1 = body.billing_address_line1.trim();
+  if (typeof body.billing_address_line2 === "string") next.billing_address_line2 = body.billing_address_line2.trim();
+  if (typeof body.billing_postal_code === "string") next.billing_postal_code = body.billing_postal_code.trim();
+  if (typeof body.billing_city === "string") next.billing_city = body.billing_city.trim();
+  if (typeof body.billing_country === "string") next.billing_country = body.billing_country.trim();
+  if (typeof body.bank_iban === "string") next.bank_iban = body.bank_iban.trim();
+  if (typeof body.bank_bic === "string") next.bank_bic = body.bank_bic.trim();
+  if (typeof body.support_email === "string") next.support_email = body.support_email.trim();
+  if (typeof body.dispo_phone === "string") next.dispo_phone = body.dispo_phone.trim();
+  if (typeof body.logo_url === "string") next.logo_url = body.logo_url.trim();
+  if (typeof body.opening_hours === "string") next.opening_hours = body.opening_hours.trim();
+  if (typeof body.business_notes === "string") next.business_notes = body.business_notes.trim();
+  if (typeof body.verification_status === "string") {
+    const v = body.verification_status.trim();
+    if (["pending", "in_review", "verified", "rejected"].includes(v)) next.verification_status = v;
+  }
+  if (typeof body.compliance_status === "string") {
+    const v = body.compliance_status.trim();
+    if (["pending", "in_review", "compliant", "non_compliant"].includes(v)) next.compliance_status = v;
+  }
+  if (typeof body.contract_status === "string") {
+    const v = body.contract_status.trim();
+    if (["inactive", "active", "suspended", "terminated"].includes(v)) next.contract_status = v;
+  }
+  if (typeof body.is_blocked === "boolean") next.is_blocked = body.is_blocked;
+  if (typeof body.max_drivers === "number" && Number.isFinite(body.max_drivers)) {
+    next.max_drivers = Math.max(0, Math.floor(body.max_drivers));
+  }
+  if (typeof body.max_vehicles === "number" && Number.isFinite(body.max_vehicles)) {
+    next.max_vehicles = Math.max(0, Math.floor(body.max_vehicles));
+  }
+  if (body.fare_permissions && typeof body.fare_permissions === "object" && !Array.isArray(body.fare_permissions)) {
+    next.fare_permissions = body.fare_permissions;
+  }
+  if (body.insurer_permissions && typeof body.insurer_permissions === "object" && !Array.isArray(body.insurer_permissions)) {
+    next.insurer_permissions = body.insurer_permissions;
+  }
+  if (Array.isArray(body.area_assignments)) {
+    next.area_assignments = body.area_assignments.filter((x) => typeof x === "string");
+  }
+  if (typeof body.is_active === "boolean") next.is_active = body.is_active;
+  if (typeof body.is_priority_company === "boolean") next.is_priority_company = body.is_priority_company;
+  if (typeof body.priority_for_live_rides === "boolean") next.priority_for_live_rides = body.priority_for_live_rides;
+  if (typeof body.priority_for_reservations === "boolean") next.priority_for_reservations = body.priority_for_reservations;
+  if (typeof body.priority_price_threshold === "number" && Number.isFinite(body.priority_price_threshold)) {
+    next.priority_price_threshold = body.priority_price_threshold;
+  }
+  if (typeof body.priority_timeout_seconds === "number" && Number.isFinite(body.priority_timeout_seconds)) {
+    next.priority_timeout_seconds = Math.max(0, Math.floor(body.priority_timeout_seconds));
+  }
+  if (typeof body.release_radius_km === "number" && Number.isFinite(body.release_radius_km)) {
+    next.release_radius_km = Math.max(0, body.release_radius_km);
+  }
+  if (body.panel_modules !== void 0) {
+    if (body.panel_modules === null) {
+      next.panel_modules = null;
+    } else if (Array.isArray(body.panel_modules)) {
+      const normalized = normalizeStoredPanelModules(body.panel_modules);
+      next.panel_modules = normalized && normalized.length > 0 ? normalized : null;
+    }
+  }
+  if (typeof body.partner_panel_profile_locked === "boolean") {
+    next.partner_panel_profile_locked = body.partner_panel_profile_locked;
+  }
+  if (typeof body.commission_rate === "number" && Number.isFinite(body.commission_rate)) {
+    next.commission_rate = Math.min(1, Math.max(0, body.commission_rate));
+  }
+  return next;
+}
+async function insertAdminCompany(body) {
+  const name2 = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name2) return { error: "name_required" };
+  const id = `co-${randomUUID7()}`;
+  const base = {
+    id,
+    name: name2,
+    contact_name: "",
+    email: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "",
+    vat_id: "",
+    company_kind: "general",
+    tax_id: "",
+    concession_number: "",
+    compliance_gewerbe_storage_key: null,
+    compliance_insurance_storage_key: null,
+    legal_form: "",
+    owner_name: "",
+    billing_name: "",
+    billing_address_line1: "",
+    billing_address_line2: "",
+    billing_postal_code: "",
+    billing_city: "",
+    billing_country: "",
+    bank_iban: "",
+    bank_bic: "",
+    support_email: "",
+    dispo_phone: "",
+    logo_url: "",
+    opening_hours: "",
+    business_notes: "",
+    verification_status: "pending",
+    compliance_status: "pending",
+    contract_status: "inactive",
+    is_blocked: false,
+    max_drivers: 100,
+    max_vehicles: 100,
+    fare_permissions: {},
+    insurer_permissions: {},
+    area_assignments: [],
+    is_active: true,
+    is_priority_company: false,
+    priority_for_live_rides: false,
+    priority_for_reservations: false,
+    priority_price_threshold: 25,
+    priority_timeout_seconds: 90,
+    release_radius_km: 10,
+    panel_modules: null,
+    partner_panel_profile_locked: false,
+    commission_rate: 0.1
+  };
+  const next = applyAdminCompanyPatch(base, body);
+  const db2 = getDb();
+  if (!db2) {
+    memCompanies = [...memCompanies, next];
+    return next;
+  }
+  try {
+    await db2.insert(adminCompaniesTable).values(companyRowToDbValues(next));
+  } catch (err) {
+    const flat = flattenPgError(err);
+    logger.error({ err, flat }, "insertAdminCompany failed");
+    const low = flat.toLowerCase();
+    if (low.includes("partner_panel_profile_locked") || low.includes("42703") && low.includes("partner_panel")) {
+      return { error: "db_schema_partner_panel_profile_locked" };
+    }
+    if (low.includes("admin_companies_company_kind_chk") || low.includes("23514") && low.includes("company_kind") || low.includes("check constraint") && low.includes("company_kind")) {
+      return { error: "db_schema_company_kind_constraint" };
+    }
+    return {
+      error: "db_insert_admin_company_failed",
+      hint: flat.slice(0, 2e3) || "Unbekannter Datenbankfehler beim Anlegen des Mandanten."
+    };
+  }
+  return next;
+}
+async function syncCompanyBillingAccountEmail(companyId, email) {
+  const db2 = getDb();
+  if (!db2) return;
+  const normalized = email.trim();
+  const [row] = await db2.select({ id: billingAccountsTable.id }).from(billingAccountsTable).where(and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true))).limit(1);
+  const now = /* @__PURE__ */ new Date();
+  if (row) {
+    await db2.update(billingAccountsTable).set({ billing_email: normalized, updated_at: now }).where(eq(billingAccountsTable.id, row.id));
+    return;
+  }
+  await db2.insert(billingAccountsTable).values({
+    id: `ba-${randomUUID7()}`,
+    company_id: companyId,
+    account_name: "Partner-Abrechnung",
+    billing_email: normalized
+  });
+}
+async function updateAdminCompany(companyId, body) {
+  const { billing_account_email: billingAccountEmail, ...patchBody } = body;
+  const cur = await findCompanyById(companyId);
+  if (!cur) return null;
+  const next = applyAdminCompanyPatch(cur, patchBody);
+  const db2 = getDb();
+  if (!db2) {
+    const idx = memCompanies.findIndex((c) => c.id === companyId);
+    if (idx < 0) return null;
+    memCompanies[idx] = next;
+    return next;
+  }
+  await db2.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
+  if (typeof billingAccountEmail === "string") {
+    try {
+      await syncCompanyBillingAccountEmail(companyId, billingAccountEmail);
+    } catch (e) {
+      logger.error({ err: e, companyId }, "syncCompanyBillingAccountEmail failed");
+    }
+  }
+  return next;
+}
+async function patchCompanyPriority(companyId, body) {
+  const db2 = getDb();
+  if (!db2) {
+    const idx = memCompanies.findIndex((c) => c.id === companyId);
+    if (idx < 0) return null;
+    const cur2 = memCompanies[idx];
+    const next2 = {
+      ...cur2,
+      ...typeof body.is_priority_company === "boolean" ? { is_priority_company: body.is_priority_company } : {},
+      ...typeof body.priority_for_live_rides === "boolean" ? { priority_for_live_rides: body.priority_for_live_rides } : {},
+      ...typeof body.priority_for_reservations === "boolean" ? { priority_for_reservations: body.priority_for_reservations } : {}
+    };
+    memCompanies[idx] = next2;
+    return next2;
+  }
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  const r0 = rows[0];
+  if (!r0) return null;
+  const cur = rowToCompany(r0);
+  const next = {
+    ...cur,
+    ...typeof body.is_priority_company === "boolean" ? { is_priority_company: body.is_priority_company } : {},
+    ...typeof body.priority_for_live_rides === "boolean" ? { priority_for_live_rides: body.priority_for_live_rides } : {},
+    ...typeof body.priority_for_reservations === "boolean" ? { priority_for_reservations: body.priority_for_reservations } : {}
+  };
+  await db2.update(adminCompaniesTable).set({
+    is_priority_company: next.is_priority_company,
+    priority_for_live_rides: next.priority_for_live_rides,
+    priority_for_reservations: next.priority_for_reservations
+  }).where(eq(adminCompaniesTable.id, companyId));
+  return next;
+}
+async function patchCompanyPanelModules(companyId, modules) {
+  const db2 = getDb();
+  const normalized = modules == null ? null : normalizeStoredPanelModules(modules);
+  if (!db2) {
+    const idx = memCompanies.findIndex((c) => c.id === companyId);
+    if (idx < 0) return null;
+    const cur = memCompanies[idx];
+    const next = { ...cur, panel_modules: normalized };
+    memCompanies[idx] = next;
+    return next;
+  }
+  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  if (!rows[0]) return null;
+  await db2.update(adminCompaniesTable).set({ panel_modules: normalized }).where(eq(adminCompaniesTable.id, companyId));
+  const again = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
+  return again[0] ? rowToCompany(again[0]) : null;
+}
+async function listFareAreas() {
+  const db2 = getDb();
+  if (!db2) return [...memFareAreas];
+  const rows = await db2.select().from(fareAreasTable);
+  return rows.map(rowToFareArea);
+}
+async function addFareArea(body) {
+  const id = `fa-${Date.now()}`;
+  const row = {
+    id,
+    name: body.name,
+    ruleType: body.ruleType,
+    isRequiredArea: body.isRequiredArea,
+    fixedPriceAllowed: body.fixedPriceAllowed,
+    status: body.status,
+    isDefault: body.isDefault === true,
+    baseFareEur: asMoney(body.baseFareEur, 4.3),
+    rateFirstKmEur: asMoney(body.rateFirstKmEur, 3),
+    rateAfterKmEur: asMoney(body.rateAfterKmEur, 2.5),
+    thresholdKm: asMoney(body.thresholdKm, 4),
+    waitingPerHourEur: asMoney(body.waitingPerHourEur, 38),
+    serviceFeeEur: asMoney(body.serviceFeeEur, 0),
+    onrodaBaseFareEur: asMoney(body.onrodaBaseFareEur, 3.5),
+    onrodaPerKmEur: asMoney(body.onrodaPerKmEur, 2.2),
+    onrodaMinFareEur: asMoney(body.onrodaMinFareEur, 0),
+    manualFixedPriceEur: body.manualFixedPriceEur == null ? null : asMoney(body.manualFixedPriceEur, 0)
+  };
+  const db2 = getDb();
+  if (!db2) {
+    memFareAreas = [...memFareAreas, row];
+    return [...memFareAreas];
+  }
+  await db2.insert(fareAreasTable).values({
+    id: row.id,
+    name: row.name,
+    rule_type: row.ruleType,
+    is_required_area: row.isRequiredArea,
+    fixed_price_allowed: row.fixedPriceAllowed,
+    status: row.status,
+    is_default: row.isDefault,
+    base_fare_eur: row.baseFareEur,
+    rate_first_km_eur: row.rateFirstKmEur,
+    rate_after_km_eur: row.rateAfterKmEur,
+    threshold_km: row.thresholdKm,
+    waiting_per_hour_eur: row.waitingPerHourEur,
+    service_fee_eur: row.serviceFeeEur,
+    onroda_base_fare_eur: row.onrodaBaseFareEur,
+    onroda_per_km_eur: row.onrodaPerKmEur,
+    onroda_min_fare_eur: row.onrodaMinFareEur,
+    manual_fixed_price_eur: row.manualFixedPriceEur
+  });
+  if (row.isDefault) {
+    await db2.update(fareAreasTable).set({ is_default: false }).where(and(ne(fareAreasTable.id, row.id), eq(fareAreasTable.is_default, true)));
+    await db2.update(fareAreasTable).set({ is_default: true }).where(eq(fareAreasTable.id, row.id));
+  }
+  return listFareAreas();
+}
+async function updateFareArea(id, patch) {
+  const db2 = getDb();
+  if (!db2) {
+    const idx = memFareAreas.findIndex((a) => a.id === id);
+    if (idx < 0) return null;
+    const cur2 = memFareAreas[idx];
+    const next2 = {
+      ...cur2,
+      ...typeof patch.name === "string" ? { name: patch.name.trim() || cur2.name } : {},
+      ...typeof patch.ruleType === "string" ? { ruleType: patch.ruleType } : {},
+      ...typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {},
+      ...typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {},
+      ...typeof patch.status === "string" ? { status: patch.status } : {},
+      ...typeof patch.isDefault === "boolean" ? { isDefault: patch.isDefault } : {},
+      ...typeof patch.baseFareEur === "number" ? { baseFareEur: patch.baseFareEur } : {},
+      ...typeof patch.rateFirstKmEur === "number" ? { rateFirstKmEur: patch.rateFirstKmEur } : {},
+      ...typeof patch.rateAfterKmEur === "number" ? { rateAfterKmEur: patch.rateAfterKmEur } : {},
+      ...typeof patch.thresholdKm === "number" ? { thresholdKm: patch.thresholdKm } : {},
+      ...typeof patch.waitingPerHourEur === "number" ? { waitingPerHourEur: patch.waitingPerHourEur } : {},
+      ...typeof patch.serviceFeeEur === "number" ? { serviceFeeEur: patch.serviceFeeEur } : {},
+      ...typeof patch.onrodaBaseFareEur === "number" ? { onrodaBaseFareEur: patch.onrodaBaseFareEur } : {},
+      ...typeof patch.onrodaPerKmEur === "number" ? { onrodaPerKmEur: patch.onrodaPerKmEur } : {},
+      ...typeof patch.onrodaMinFareEur === "number" ? { onrodaMinFareEur: patch.onrodaMinFareEur } : {},
+      ...patch.manualFixedPriceEur === null || typeof patch.manualFixedPriceEur === "number" ? { manualFixedPriceEur: patch.manualFixedPriceEur } : {}
+    };
+    memFareAreas = memFareAreas.map((a, i) => i === idx ? next2 : a);
+    return next2;
+  }
+  const rows = await db2.select().from(fareAreasTable).where(eq(fareAreasTable.id, id)).limit(1);
+  const r0 = rows[0];
+  if (!r0) return null;
+  const cur = rowToFareArea(r0);
+  const next = {
+    ...cur,
+    ...typeof patch.name === "string" ? { name: patch.name.trim() || cur.name } : {},
+    ...typeof patch.ruleType === "string" ? { ruleType: patch.ruleType } : {},
+    ...typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {},
+    ...typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {},
+    ...typeof patch.status === "string" ? { status: patch.status } : {},
+    ...typeof patch.isDefault === "boolean" ? { isDefault: patch.isDefault } : {},
+    ...typeof patch.baseFareEur === "number" ? { baseFareEur: patch.baseFareEur } : {},
+    ...typeof patch.rateFirstKmEur === "number" ? { rateFirstKmEur: patch.rateFirstKmEur } : {},
+    ...typeof patch.rateAfterKmEur === "number" ? { rateAfterKmEur: patch.rateAfterKmEur } : {},
+    ...typeof patch.thresholdKm === "number" ? { thresholdKm: patch.thresholdKm } : {},
+    ...typeof patch.waitingPerHourEur === "number" ? { waitingPerHourEur: patch.waitingPerHourEur } : {},
+    ...typeof patch.serviceFeeEur === "number" ? { serviceFeeEur: patch.serviceFeeEur } : {},
+    ...typeof patch.onrodaBaseFareEur === "number" ? { onrodaBaseFareEur: patch.onrodaBaseFareEur } : {},
+    ...typeof patch.onrodaPerKmEur === "number" ? { onrodaPerKmEur: patch.onrodaPerKmEur } : {},
+    ...typeof patch.onrodaMinFareEur === "number" ? { onrodaMinFareEur: patch.onrodaMinFareEur } : {},
+    ...patch.manualFixedPriceEur === null || typeof patch.manualFixedPriceEur === "number" ? { manualFixedPriceEur: patch.manualFixedPriceEur } : {}
+  };
+  if (next.isDefault) {
+    await db2.update(fareAreasTable).set({ is_default: false }).where(and(ne(fareAreasTable.id, id), eq(fareAreasTable.is_default, true)));
+  }
+  await db2.update(fareAreasTable).set({
+    name: next.name,
+    rule_type: next.ruleType,
+    is_required_area: next.isRequiredArea,
+    fixed_price_allowed: next.fixedPriceAllowed,
+    status: next.status,
+    is_default: next.isDefault,
+    base_fare_eur: next.baseFareEur,
+    rate_first_km_eur: next.rateFirstKmEur,
+    rate_after_km_eur: next.rateAfterKmEur,
+    threshold_km: next.thresholdKm,
+    waiting_per_hour_eur: next.waitingPerHourEur,
+    service_fee_eur: next.serviceFeeEur,
+    onroda_base_fare_eur: next.onrodaBaseFareEur,
+    onroda_per_km_eur: next.onrodaPerKmEur,
+    onroda_min_fare_eur: next.onrodaMinFareEur,
+    manual_fixed_price_eur: next.manualFixedPriceEur
+  }).where(eq(fareAreasTable.id, id));
+  return next;
+}
+async function countRidesReferencingFareAreaId(fareAreaId) {
+  const db2 = getDb();
+  if (!db2) {
+    void fareAreaId;
+    return 0;
+  }
+  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(sql2`${ridesTable.partner_booking_meta}->>'fareAreaId' = ${fareAreaId}`);
+  return Number(row?.n ?? 0);
+}
+async function deleteFareArea(id) {
+  const db2 = getDb();
+  const idx = memFareAreas.findIndex((a) => a.id === id);
+  if (!db2) {
+    if (idx < 0) return { ok: false, error: "not_found", rideCount: 0 };
+    const blocked2 = await countRidesReferencingFareAreaId(id);
+    if (blocked2 > 0) return { ok: false, error: "fare_area_in_use", rideCount: blocked2 };
+    memFareAreas = memFareAreas.filter((a) => a.id !== id);
+    return { ok: true };
+  }
+  const rows = await db2.select().from(fareAreasTable).where(eq(fareAreasTable.id, id)).limit(1);
+  if (!rows[0]) return { ok: false, error: "not_found", rideCount: 0 };
+  const blocked = await countRidesReferencingFareAreaId(id);
+  if (blocked > 0) return { ok: false, error: "fare_area_in_use", rideCount: blocked };
+  await db2.delete(fareAreasTable).where(eq(fareAreasTable.id, id));
+  return { ok: true };
+}
+async function seedAdminDefaultsIfEmpty() {
+  const db2 = getDb();
+  if (!db2) return;
+  const [c] = await db2.select({ n: count() }).from(adminCompaniesTable);
+  if (Number(c?.n ?? 0) === 0) {
+    await db2.insert(adminCompaniesTable).values(
+      seedCompanies.map((co) => ({
+        id: co.id,
+        name: co.name,
+        contact_name: co.contact_name,
+        email: co.email,
+        phone: co.phone,
+        address_line1: co.address_line1,
+        address_line2: co.address_line2,
+        postal_code: co.postal_code,
+        city: co.city,
+        country: co.country,
+        vat_id: co.vat_id,
+        is_active: co.is_active,
+        is_priority_company: co.is_priority_company,
+        priority_for_live_rides: co.priority_for_live_rides,
+        priority_for_reservations: co.priority_for_reservations,
+        priority_price_threshold: co.priority_price_threshold,
+        priority_timeout_seconds: co.priority_timeout_seconds,
+        release_radius_km: co.release_radius_km,
+        panel_modules: co.panel_modules ?? null
+      }))
+    );
+  }
+  const [f] = await db2.select({ n: count() }).from(fareAreasTable);
+  if (Number(f?.n ?? 0) === 0) {
+    await db2.insert(fareAreasTable).values(
+      seedFareAreas.map((a) => ({
+        id: a.id,
+        name: a.name,
+        rule_type: a.ruleType,
+        is_required_area: a.isRequiredArea,
+        fixed_price_allowed: a.fixedPriceAllowed,
+        status: a.status,
+        is_default: a.isDefault,
+        base_fare_eur: a.baseFareEur,
+        rate_first_km_eur: a.rateFirstKmEur,
+        rate_after_km_eur: a.rateAfterKmEur,
+        threshold_km: a.thresholdKm,
+        waiting_per_hour_eur: a.waitingPerHourEur,
+        service_fee_eur: a.serviceFeeEur,
+        onroda_base_fare_eur: a.onrodaBaseFareEur,
+        onroda_per_km_eur: a.onrodaPerKmEur,
+        onroda_min_fare_eur: a.onrodaMinFareEur,
+        manual_fixed_price_eur: a.manualFixedPriceEur
+      }))
+    );
+  }
+}
+var seedCompanies, seedFareAreas, memCompanies, memFareAreas, ACTIVE_RIDE_STATUSES;
+var init_adminData = __esm({
+  "src/db/adminData.ts"() {
+    init_drizzle_orm();
+    init_client();
+    init_schema2();
+    init_panelModules();
+    init_logger2();
+    seedCompanies = [
+      {
+        id: "co-demo-1",
+        name: "Demo Taxi GmbH",
+        contact_name: "",
+        email: "demo@example.com",
+        phone: "+49 711 000000",
+        address_line1: "",
+        address_line2: "",
+        postal_code: "",
+        city: "",
+        country: "",
+        vat_id: "",
+        company_kind: "taxi",
+        tax_id: "",
+        concession_number: "",
+        compliance_gewerbe_storage_key: null,
+        compliance_insurance_storage_key: null,
+        legal_form: "",
+        owner_name: "",
+        billing_name: "",
+        billing_address_line1: "",
+        billing_address_line2: "",
+        billing_postal_code: "",
+        billing_city: "",
+        billing_country: "",
+        bank_iban: "",
+        bank_bic: "",
+        support_email: "",
+        dispo_phone: "",
+        logo_url: "",
+        opening_hours: "",
+        business_notes: "",
+        verification_status: "verified",
+        compliance_status: "compliant",
+        contract_status: "active",
+        is_blocked: false,
+        max_drivers: 100,
+        max_vehicles: 100,
+        fare_permissions: {},
+        insurer_permissions: {},
+        area_assignments: [],
+        is_active: true,
+        is_priority_company: true,
+        priority_for_live_rides: true,
+        priority_for_reservations: false,
+        priority_price_threshold: 25,
+        priority_timeout_seconds: 90,
+        release_radius_km: 12,
+        panel_modules: [
+          "overview",
+          "rides_list",
+          "rides_create",
+          "company_profile",
+          "team",
+          "access_codes",
+          "billing",
+          "taxi_fleet"
+        ],
+        partner_panel_profile_locked: false,
+        commission_rate: 0.1
+      },
+      {
+        id: "co-demo-2",
+        name: "Musterfahrdienst",
+        contact_name: "",
+        email: "kontakt@muster.de",
+        phone: "+49 711 111111",
+        address_line1: "",
+        address_line2: "",
+        postal_code: "",
+        city: "",
+        country: "",
+        vat_id: "",
+        company_kind: "general",
+        tax_id: "",
+        concession_number: "",
+        compliance_gewerbe_storage_key: null,
+        compliance_insurance_storage_key: null,
+        legal_form: "",
+        owner_name: "",
+        billing_name: "",
+        billing_address_line1: "",
+        billing_address_line2: "",
+        billing_postal_code: "",
+        billing_city: "",
+        billing_country: "",
+        bank_iban: "",
+        bank_bic: "",
+        support_email: "",
+        dispo_phone: "",
+        logo_url: "",
+        opening_hours: "",
+        business_notes: "",
+        verification_status: "pending",
+        compliance_status: "pending",
+        contract_status: "inactive",
+        is_blocked: false,
+        max_drivers: 100,
+        max_vehicles: 100,
+        fare_permissions: {},
+        insurer_permissions: {},
+        area_assignments: [],
+        is_active: true,
+        is_priority_company: false,
+        priority_for_live_rides: false,
+        priority_for_reservations: false,
+        priority_price_threshold: 18,
+        priority_timeout_seconds: 120,
+        release_radius_km: 8,
+        panel_modules: null,
+        partner_panel_profile_locked: false,
+        commission_rate: 0.1
+      }
+    ];
+    seedFareAreas = [
+      {
+        id: "fa-1",
+        name: "Stuttgart Zentrum",
+        ruleType: "official_metered_tariff",
+        isRequiredArea: "Ja",
+        fixedPriceAllowed: "Pr\xFCfen",
+        status: "aktiv",
+        isDefault: true,
+        baseFareEur: 4.3,
+        rateFirstKmEur: 3,
+        rateAfterKmEur: 2.5,
+        thresholdKm: 4,
+        waitingPerHourEur: 38,
+        serviceFeeEur: 0,
+        onrodaBaseFareEur: 3.5,
+        onrodaPerKmEur: 2.2,
+        onrodaMinFareEur: 0,
+        manualFixedPriceEur: null
+      }
+    ];
+    memCompanies = [...seedCompanies];
+    memFareAreas = [...seedFareAreas];
+    ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
+  }
+});
+
 // src/db/fleetMatchingData.ts
 function normalizeVehicleText(value) {
   return (value ?? "").trim().toLowerCase();
@@ -45755,7 +47034,7 @@ var init_fleetMatchingData = __esm({
 });
 
 // src/db/companyComplianceDocumentsData.ts
-import { randomUUID as randomUUID7 } from "node:crypto";
+import { randomUUID as randomUUID8 } from "node:crypto";
 function asReview(s) {
   const v = String(s ?? "").trim();
   if (v === "approved" || v === "rejected" || v === "pending") return v;
@@ -45870,7 +47149,7 @@ async function insertComplianceDocumentUpload(companyId, kind, storageKey, panel
   if (!db2) {
     throw new Error("database_not_configured");
   }
-  const docId = randomUUID7();
+  const docId = randomUUID8();
   const col = kind === "gewerbe" ? { compliance_gewerbe_storage_key: storageKey } : { compliance_insurance_storage_key: storageKey };
   await db2.transaction(async (tx) => {
     await tx.update(companyComplianceDocumentsTable).set({ is_current: false }).where(
@@ -46044,7 +47323,7 @@ __export(fleetDriversData_exports, {
   touchFleetDriverLogin: () => touchFleetDriverLogin,
   updateFleetDriverPassword: () => updateFleetDriverPassword
 });
-import { randomUUID as randomUUID8 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 function normalizeFleetDriverApproval(raw) {
   const t = String(raw ?? "").toLowerCase().trim();
   if (t === "in_review" || t === "pending" || t === "missing_documents" || t === "rejected" || t === "approved")
@@ -46167,7 +47446,7 @@ async function insertFleetDriver(input) {
   if (existing) {
     return { ok: false, error: "email_taken" };
   }
-  const id = `fd-${randomUUID8()}`;
+  const id = `fd-${randomUUID9()}`;
   const pExp = input.pScheinExpiry?.trim();
   const dlExp = input.driversLicenseExpiry?.trim();
   await db2.insert(fleetDriversTable).values({
@@ -46521,7 +47800,7 @@ var init_fleetDriversData = __esm({
 });
 
 // src/db/fleetAssignmentsData.ts
-import { randomUUID as randomUUID9 } from "node:crypto";
+import { randomUUID as randomUUID10 } from "node:crypto";
 function toRow(r) {
   return {
     id: r.id,
@@ -46558,7 +47837,7 @@ async function setDriverVehicleAssignment(input) {
     await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.driver_id, input.driverId));
     await tx.delete(driverVehicleAssignmentsTable).where(eq(driverVehicleAssignmentsTable.vehicle_id, input.vehicleId));
     await tx.insert(driverVehicleAssignmentsTable).values({
-      id: `fva-${randomUUID9()}`,
+      id: `fva-${randomUUID10()}`,
       company_id: input.companyId,
       driver_id: input.driverId,
       vehicle_id: input.vehicleId
@@ -46586,7 +47865,7 @@ var init_fleetAssignmentsData = __esm({
 });
 
 // src/db/fleetVehiclesData.ts
-import { randomUUID as randomUUID10 } from "node:crypto";
+import { randomUUID as randomUUID11 } from "node:crypto";
 function parseFleetVehicleDocumentKind(raw) {
   if (typeof raw !== "string") return void 0;
   const k = raw.trim().toLowerCase();
@@ -46721,7 +48000,7 @@ async function insertFleetVehicle(input) {
   if (!plate) return { ok: false, error: "license_plate_required" };
   const kz = (input.konzessionNumber ?? "").trim();
   if (!kz) return { ok: false, error: "konzession_number_required" };
-  const id = `fv-${randomUUID10()}`;
+  const id = `fv-${randomUUID11()}`;
   const status = input.approvalStatus;
   const isActive = syncIsActiveForStatus(status);
   const docs = input.vehicleDocuments ?? [];
@@ -47305,6 +48584,13 @@ function isLikelyExponentPushToken(raw) {
   const t = raw.trim();
   return t.startsWith("ExponentPushToken[") && t.endsWith("]");
 }
+async function deletePassengerExpoPushTokenByToken(expoPushToken) {
+  const db2 = getDb();
+  if (!db2) return;
+  const tok = expoPushToken.trim();
+  if (!tok || !isLikelyExponentPushToken(tok)) return;
+  await db2.delete(passengerExpoPushTokensTable).where(eq(passengerExpoPushTokensTable.expo_push_token, tok));
+}
 async function upsertFleetDriverExpoPushToken(fleetDriverId, companyId, expoPushToken) {
   const db2 = getDb();
   if (!db2) return;
@@ -47312,6 +48598,7 @@ async function upsertFleetDriverExpoPushToken(fleetDriverId, companyId, expoPush
   const cid = companyId.trim();
   const tok = expoPushToken.trim();
   if (!did || !cid || !tok || !isLikelyExponentPushToken(tok)) return;
+  await deletePassengerExpoPushTokenByToken(tok);
   await db2.insert(fleetDriverExpoPushTokensTable).values({
     expo_push_token: tok,
     fleet_driver_id: did,
@@ -47458,12 +48745,20 @@ function isLikelyExponentPushToken2(raw) {
   const t = raw.trim();
   return t.startsWith("ExponentPushToken[") && t.endsWith("]");
 }
+async function deleteFleetDriverExpoPushTokenByToken(expoPushToken) {
+  const db2 = getDb();
+  if (!db2) return;
+  const tok = expoPushToken.trim();
+  if (!tok || !isLikelyExponentPushToken2(tok)) return;
+  await db2.delete(fleetDriverExpoPushTokensTable).where(eq(fleetDriverExpoPushTokensTable.expo_push_token, tok));
+}
 async function upsertPassengerExpoPushToken(passengerId, expoPushToken) {
   const db2 = getDb();
   if (!db2) return;
   const pid = passengerId.trim();
   const tok = expoPushToken.trim();
   if (!pid || !tok || !isLikelyExponentPushToken2(tok)) return;
+  await deleteFleetDriverExpoPushTokenByToken(tok);
   await db2.insert(passengerExpoPushTokensTable).values({
     expo_push_token: tok,
     passenger_id: pid,
@@ -51746,7 +53041,7 @@ init_accessCodesData();
 init_client();
 init_ridePushNotificationMarkers();
 init_ridesData();
-import { randomUUID as randomUUID12, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { randomUUID as randomUUID13, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path2 from "node:path";
 
@@ -51935,6 +53230,22 @@ function supplementalEventForTransition(from, to) {
   return null;
 }
 
+// src/lib/rideAntiFraud.ts
+init_ridesData();
+async function logRideAntiFraudAttempt(rideId, input) {
+  await insertSupplementalRideEvent(rideId, {
+    eventType: input.eventType,
+    fromStatus: input.fromStatus,
+    toStatus: input.targetStatus,
+    actorType: input.actorType,
+    actorId: input.actorId,
+    payload: {
+      error: input.error,
+      ...input.details ?? {}
+    }
+  });
+}
+
 // src/lib/rideOpsTransitionGuards.ts
 var PICKUP_GEOFENCE_MAX_M = 300;
 var DRIVER_LOCATION_MAX_AGE_MS = 12e4;
@@ -52052,6 +53363,134 @@ function validateRideStatusTransition(cur, nextStatus, ctx) {
     }
   }
   return { ok: true };
+}
+
+// src/db/rideDispatchOfferData.ts
+init_drizzle_orm();
+init_client();
+init_ridesData();
+init_schema2();
+import { randomUUID as randomUUID5 } from "node:crypto";
+var INSTANT_DISPATCH_STATUSES = /* @__PURE__ */ new Set([
+  "pending",
+  "requested",
+  "searching_driver",
+  "offered"
+]);
+function makeDispatchOfferId() {
+  return `RDO-${Date.now()}-${randomUUID5().slice(0, 8)}`;
+}
+async function recordDispatchOffersSentForDriver(fleetDriverId, companyId, rideIds) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  if (!did || !cid) return;
+  const uniqueRideIds = [...new Set(rideIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueRideIds.length === 0) return;
+  for (const rideId of uniqueRideIds) {
+    const existing = await db2.select({ id: rideDriverDispatchOffersTable.id }).from(rideDriverDispatchOffersTable).where(
+      and(
+        eq(rideDriverDispatchOffersTable.ride_id, rideId),
+        eq(rideDriverDispatchOffersTable.fleet_driver_id, did)
+      )
+    ).limit(1);
+    const now = /* @__PURE__ */ new Date();
+    if (existing[0]) {
+      await db2.update(rideDriverDispatchOffersTable).set({ company_id: cid }).where(eq(rideDriverDispatchOffersTable.id, existing[0].id));
+      continue;
+    }
+    await db2.insert(rideDriverDispatchOffersTable).values({
+      id: makeDispatchOfferId(),
+      ride_id: rideId,
+      fleet_driver_id: did,
+      company_id: cid,
+      sent_at: now
+    });
+    void insertSupplementalRideEvent(rideId, {
+      eventType: "offer_sent",
+      fromStatus: null,
+      toStatus: null,
+      actorType: "driver",
+      actorId: did,
+      payload: { fleetDriverId: did, companyId: cid }
+    });
+  }
+}
+async function recordDispatchOfferSeen(fleetDriverId, companyId, rideId) {
+  if (!isPostgresConfigured()) return { ok: false, error: "database_not_configured" };
+  const db2 = getDb();
+  if (!db2) return { ok: false, error: "database_not_configured" };
+  const did = fleetDriverId.trim();
+  const cid = companyId.trim();
+  const rid = rideId.trim();
+  if (!did || !cid || !rid) return { ok: false, error: "invalid_input" };
+  const rows = await db2.select().from(rideDriverDispatchOffersTable).where(
+    and(
+      eq(rideDriverDispatchOffersTable.ride_id, rid),
+      eq(rideDriverDispatchOffersTable.fleet_driver_id, did)
+    )
+  ).limit(1);
+  const now = /* @__PURE__ */ new Date();
+  let firstSeen = false;
+  if (!rows[0]) {
+    firstSeen = true;
+    await db2.insert(rideDriverDispatchOffersTable).values({
+      id: makeDispatchOfferId(),
+      ride_id: rid,
+      fleet_driver_id: did,
+      company_id: cid,
+      sent_at: now,
+      seen_at: now
+    });
+  } else if (!rows[0].seen_at) {
+    firstSeen = true;
+    await db2.update(rideDriverDispatchOffersTable).set({ seen_at: now, company_id: cid }).where(eq(rideDriverDispatchOffersTable.id, rows[0].id));
+  }
+  if (firstSeen) {
+    void insertSupplementalRideEvent(rid, {
+      eventType: "offer_seen",
+      actorType: "driver",
+      actorId: did,
+      payload: { fleetDriverId: did, companyId: cid }
+    });
+  }
+  return { ok: true };
+}
+async function markDispatchOfferAccepted(fleetDriverId, rideId) {
+  if (!isPostgresConfigured()) return;
+  const db2 = getDb();
+  if (!db2) return;
+  const did = fleetDriverId.trim();
+  const rid = rideId.trim();
+  if (!did || !rid) return;
+  const now = /* @__PURE__ */ new Date();
+  await db2.update(rideDriverDispatchOffersTable).set({ accepted_at: now }).where(
+    and(
+      eq(rideDriverDispatchOffersTable.ride_id, rid),
+      eq(rideDriverDispatchOffersTable.fleet_driver_id, did)
+    )
+  );
+}
+async function listDispatchOffersForRide(rideId) {
+  if (!isPostgresConfigured()) return [];
+  const db2 = getDb();
+  if (!db2) return [];
+  const rid = rideId.trim();
+  if (!rid) return [];
+  const rows = await db2.select().from(rideDriverDispatchOffersTable).where(eq(rideDriverDispatchOffersTable.ride_id, rid));
+  return rows.map((r) => ({
+    rideId: r.ride_id,
+    fleetDriverId: r.fleet_driver_id,
+    companyId: r.company_id,
+    sentAt: r.sent_at.toISOString(),
+    seenAt: r.seen_at?.toISOString() ?? null,
+    acceptedAt: r.accepted_at?.toISOString() ?? null
+  }));
+}
+function isInstantDispatchRideStatus(status) {
+  return INSTANT_DISPATCH_STATUSES.has(status);
 }
 
 // src/routes/rides.ts
@@ -52178,1184 +53617,8 @@ function toPartnerRideView(r) {
   };
 }
 
-// src/db/adminData.ts
-init_drizzle_orm();
-init_client();
-init_schema2();
-import { randomUUID as randomUUID6 } from "node:crypto";
-
-// src/domain/panelModules.ts
-var PANEL_MODULE_DEFINITIONS = [
-  {
-    id: "overview",
-    label: "\xDCbersicht",
-    description: "Startseite, Kennzahlen-Hinweise, eigenes Passwort",
-    productIntent: "Einstieg pro Login: Session, Kurz\xFCberblick, Hinweise auf freigeschaltete Module; eigenes Passwort \xE4ndern."
-  },
-  {
-    id: "support",
-    label: "Anfragen",
-    description: "Nachrichten an die Plattform (Stammdaten, Dokumente, \u2026)",
-    productIntent: "Chat-Threads je Mandant mit der Plattform: neue Anfrage, Verlauf, Status \u2014 getrennt von Taxi-Fachlogik."
-  },
-  {
-    id: "help",
-    label: "Hilfe",
-    description: "Schnellhilfe, FAQ und Einstieg in Support-Anfragen",
-    productIntent: "Self-Service-Hilfe zur Reduktion wiederkehrender Support-Anfragen; klare Weiterleitung in das bestehende Anfragen-Modul."
-  },
-  {
-    id: "rides_list",
-    label: "Fahrtenliste & Verlauf",
-    description: "\u201EMeine Fahrten\u201C und \u201EVerlauf\u201C (gemeinsame API)",
-    productIntent: "Alle Mandantenfahrten listen (live + Verlauf), filtern, CSV; inkl. Abrechnungs- und Code-Spuren wo vorhanden."
-  },
-  {
-    id: "rides_create",
-    label: "Neue Fahrt",
-    description: "Auftrag erfassen (POST /panel/v1/rides)",
-    productIntent: "Manuelle oder dispositionelle Erfassung einer Fahrt f\xFCr den Mandanten; optional Freigabe-Code / Referenzen gem\xE4\xDF weiterer Module."
-  },
-  {
-    id: "company_profile",
-    label: "Profil / Firma",
-    description: "Firmenstammdaten bearbeiten",
-    productIntent: "Pflege von Name, Kontakt, Adresse, USt-Id \u2014 alles, was auf Rechnungen und Zuordnung erscheinen soll."
-  },
-  {
-    id: "team",
-    label: "Mitarbeiter",
-    description: "Panel-Zug\xE4nge und Rollen",
-    productIntent: "Nutzerverwaltung f\xFCr das Partner-Portal (Rollen, Aktivierung, Passwort-Reset) innerhalb des Mandanten."
-  },
-  {
-    id: "access_codes",
-    label: "Freigabe-Codes",
-    description: "Digitale Kosten\xFCbernahme: Codes verwalten und nachverfolgen",
-    productIntent: "Lebenszyklus digitaler Freigaben: Codes anlegen, begrenzen (Zeit, Nutzungen, Mandant), in Buchungen einl\xF6sen. Verlauf: welcher Code, welche Fahrt, Zahler, Preis, Status; Nutzung/Storno/Zeitablauf nachvollziehbar (Snapshot auf der Fahrt + Code-Metadaten)."
-  },
-  {
-    id: "hotel_mode",
-    label: "Hotelmodus",
-    description: "Hotel-spezifische Oberfl\xE4che und Logik",
-    productIntent: "Voreinstellungen und Formulare f\xFCr Beherbergung (Zimmer/Gast-Referenz, Concierge-Workflow, Kennzeichnung Hotel-Kosten\xFCbernahme), ohne separates System."
-  },
-  {
-    id: "company_rides",
-    label: "Firmenfahrten",
-    description: "Sicht auf Firmen- und Sachkostenfahrten",
-    productIntent: "Gefilterte Ansichten, KPIs und Exporte f\xFCr typische B2B-/Firmenfahrten (z. B. nur payerKind company, Kostenstellen, Abgleich mit Buchhaltung)."
-  },
-  {
-    id: "recurring_rides",
-    label: "Serienfahrten",
-    description: "Wiederkehrende oder geb\xFCndelte Auftr\xE4ge",
-    productIntent: "Vorlagen und Serien (t\xE4glich/w\xF6chentlich, feste Strecke oder Kunde), Erzeugung offener Fahrten aus Serien, \xC4nderungen/Storno auf Serien-Ebene."
-  },
-  {
-    id: "billing",
-    label: "Abrechnung",
-    description: "Ums\xE4tze, Perioden, Exporte",
-    productIntent: "Abrechnungslauf pro Mandant und Periode: abgeschlossene Fahrten, finalFare, Kostentr\xE4ger, Steuern/CSV/PDF-Vorbereitung; Abgleich mit Zahlungs- und Code-Logik."
-  },
-  {
-    id: "insurer_workspace",
-    label: "Krankenkasse-Portal",
-    description: "Eigener Bereich: Fahrten-Controlling, Kostenstellen, Transportnachweise (V1)",
-    productIntent: "Mandant company_kind=insurer: getrennte Panel-API; keine medizinischen Befunde persistieren, nur Fahrt-/Orga-/Kostenstellen-Logik."
-  },
-  {
-    id: "taxi_fleet",
-    label: "Flotte & Fahrer",
-    description: "Fahrzeuge, Fahrer-Logins, Zuweisung (nur Mandant Taxi)",
-    productIntent: "Taxi-Unternehmer: eigene PKW-Flotte, Fahrer mit Passwort/Session, P-Schein/T\xDCV-Felder, Compliance-Uploads; Multi-Tenancy strikt \xFCber company_id."
-  }
-];
-var ID_SET = new Set(PANEL_MODULE_DEFINITIONS.map((d) => d.id));
-var ALL_PANEL_MODULE_IDS = PANEL_MODULE_DEFINITIONS.map((d) => d.id);
-function asModuleIdSet(ids) {
-  return new Set(ids);
-}
-var GENERAL_LIKE_KIND_MODULES = asModuleIdSet(
-  ALL_PANEL_MODULE_IDS.filter((id) => id !== "taxi_fleet" && id !== "insurer_workspace")
-);
-var PANEL_MODULES_BY_COMPANY_KIND = {
-  taxi: asModuleIdSet([
-    "overview",
-    "support",
-    "help",
-    "rides_list",
-    "rides_create",
-    "company_profile",
-    "team",
-    "access_codes",
-    "billing",
-    "taxi_fleet"
-  ]),
-  hotel: asModuleIdSet([
-    "overview",
-    "support",
-    "help",
-    "rides_list",
-    "rides_create",
-    "company_profile",
-    "team",
-    "access_codes",
-    "hotel_mode",
-    "billing"
-  ]),
-  insurer: asModuleIdSet([
-    "overview",
-    "insurer_workspace",
-    "support",
-    "help",
-    "rides_list",
-    "rides_create",
-    "company_profile",
-    "team",
-    "access_codes",
-    "billing",
-    "company_rides",
-    "recurring_rides"
-  ]),
-  medical: asModuleIdSet([
-    "overview",
-    "support",
-    "help",
-    "rides_list",
-    "rides_create",
-    "company_profile",
-    "team",
-    "access_codes",
-    "billing",
-    "company_rides",
-    "recurring_rides"
-  ]),
-  corporate: asModuleIdSet([
-    "overview",
-    "support",
-    "help",
-    "rides_list",
-    "rides_create",
-    "company_profile",
-    "team",
-    "access_codes",
-    "billing",
-    "company_rides",
-    "recurring_rides"
-  ]),
-  voucher_client: asModuleIdSet([
-    "overview",
-    "support",
-    "help",
-    "rides_list",
-    "rides_create",
-    "company_profile",
-    "team",
-    "access_codes",
-    "billing"
-  ]),
-  general: GENERAL_LIKE_KIND_MODULES
-};
-function allowedPanelModuleIdsForCompanyKind(companyKind) {
-  const k = (companyKind || "general").trim();
-  return PANEL_MODULES_BY_COMPANY_KIND[k] ?? GENERAL_LIKE_KIND_MODULES;
-}
-function getAllowedModulesForKind(companyKind) {
-  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
-  return ALL_PANEL_MODULE_IDS.filter((id) => allowed.has(id));
-}
-function normalizeStoredPanelModules(raw) {
-  if (raw == null) return null;
-  if (!Array.isArray(raw)) return null;
-  const seen = /* @__PURE__ */ new Set();
-  const out = [];
-  for (const x of raw) {
-    if (typeof x !== "string") continue;
-    const id = x.trim();
-    if (!id || seen.has(id)) continue;
-    if (!ID_SET.has(id)) continue;
-    seen.add(id);
-    out.push(id);
-  }
-  return out;
-}
-var PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED = ["support", "help"];
-function resolveEffectivePanelModules(stored, companyKind) {
-  if (stored == null) {
-    return getAllowedModulesForKind(companyKind);
-  }
-  const allowed = allowedPanelModuleIdsForCompanyKind(companyKind ?? "general");
-  const set = new Set(stored);
-  for (const id of PANEL_MODULE_IDS_AUTO_MERGE_WHEN_ALLOWED) {
-    if (allowed.has(id)) set.add(id);
-  }
-  return ALL_PANEL_MODULE_IDS.filter((id) => set.has(id));
-}
-
-// src/db/adminData.ts
-init_logger2();
-function flattenPgError(err) {
-  const parts = [];
-  const seen = /* @__PURE__ */ new Set();
-  let cur = err;
-  for (let depth = 0; depth < 10 && cur != null && !seen.has(cur); depth++) {
-    seen.add(cur);
-    if (cur instanceof Error) {
-      parts.push(cur.message);
-      cur = cur.cause;
-      continue;
-    }
-    if (typeof cur === "object") {
-      const o = cur;
-      for (const k of ["message", "detail", "constraint", "column", "table", "schema"]) {
-        const v = o[k];
-        if (typeof v === "string" && v.trim()) parts.push(v.trim());
-      }
-      if (typeof o.code === "string" && o.code.trim()) parts.push(`code=${o.code.trim()}`);
-      cur = o.cause;
-      continue;
-    }
-    if (typeof cur === "string") {
-      parts.push(cur);
-      break;
-    }
-    break;
-  }
-  return parts.join(" | ");
-}
-var seedCompanies = [
-  {
-    id: "co-demo-1",
-    name: "Demo Taxi GmbH",
-    contact_name: "",
-    email: "demo@example.com",
-    phone: "+49 711 000000",
-    address_line1: "",
-    address_line2: "",
-    postal_code: "",
-    city: "",
-    country: "",
-    vat_id: "",
-    company_kind: "taxi",
-    tax_id: "",
-    concession_number: "",
-    compliance_gewerbe_storage_key: null,
-    compliance_insurance_storage_key: null,
-    legal_form: "",
-    owner_name: "",
-    billing_name: "",
-    billing_address_line1: "",
-    billing_address_line2: "",
-    billing_postal_code: "",
-    billing_city: "",
-    billing_country: "",
-    bank_iban: "",
-    bank_bic: "",
-    support_email: "",
-    dispo_phone: "",
-    logo_url: "",
-    opening_hours: "",
-    business_notes: "",
-    verification_status: "verified",
-    compliance_status: "compliant",
-    contract_status: "active",
-    is_blocked: false,
-    max_drivers: 100,
-    max_vehicles: 100,
-    fare_permissions: {},
-    insurer_permissions: {},
-    area_assignments: [],
-    is_active: true,
-    is_priority_company: true,
-    priority_for_live_rides: true,
-    priority_for_reservations: false,
-    priority_price_threshold: 25,
-    priority_timeout_seconds: 90,
-    release_radius_km: 12,
-    panel_modules: [
-      "overview",
-      "rides_list",
-      "rides_create",
-      "company_profile",
-      "team",
-      "access_codes",
-      "billing",
-      "taxi_fleet"
-    ],
-    partner_panel_profile_locked: false
-  },
-  {
-    id: "co-demo-2",
-    name: "Musterfahrdienst",
-    contact_name: "",
-    email: "kontakt@muster.de",
-    phone: "+49 711 111111",
-    address_line1: "",
-    address_line2: "",
-    postal_code: "",
-    city: "",
-    country: "",
-    vat_id: "",
-    company_kind: "general",
-    tax_id: "",
-    concession_number: "",
-    compliance_gewerbe_storage_key: null,
-    compliance_insurance_storage_key: null,
-    legal_form: "",
-    owner_name: "",
-    billing_name: "",
-    billing_address_line1: "",
-    billing_address_line2: "",
-    billing_postal_code: "",
-    billing_city: "",
-    billing_country: "",
-    bank_iban: "",
-    bank_bic: "",
-    support_email: "",
-    dispo_phone: "",
-    logo_url: "",
-    opening_hours: "",
-    business_notes: "",
-    verification_status: "pending",
-    compliance_status: "pending",
-    contract_status: "inactive",
-    is_blocked: false,
-    max_drivers: 100,
-    max_vehicles: 100,
-    fare_permissions: {},
-    insurer_permissions: {},
-    area_assignments: [],
-    is_active: true,
-    is_priority_company: false,
-    priority_for_live_rides: false,
-    priority_for_reservations: false,
-    priority_price_threshold: 18,
-    priority_timeout_seconds: 120,
-    release_radius_km: 8,
-    panel_modules: null,
-    partner_panel_profile_locked: false
-  }
-];
-var seedFareAreas = [
-  {
-    id: "fa-1",
-    name: "Stuttgart Zentrum",
-    ruleType: "official_metered_tariff",
-    isRequiredArea: "Ja",
-    fixedPriceAllowed: "Pr\xFCfen",
-    status: "aktiv",
-    isDefault: true,
-    baseFareEur: 4.3,
-    rateFirstKmEur: 3,
-    rateAfterKmEur: 2.5,
-    thresholdKm: 4,
-    waitingPerHourEur: 38,
-    serviceFeeEur: 0,
-    onrodaBaseFareEur: 3.5,
-    onrodaPerKmEur: 2.2,
-    onrodaMinFareEur: 0,
-    manualFixedPriceEur: null
-  }
-];
-var memCompanies = [...seedCompanies];
-var memFareAreas = [...seedFareAreas];
-function rowToCompany(r) {
-  return {
-    id: r.id,
-    name: r.name,
-    contact_name: r.contact_name,
-    email: r.email,
-    phone: r.phone,
-    address_line1: r.address_line1,
-    address_line2: r.address_line2,
-    postal_code: r.postal_code,
-    city: r.city,
-    country: r.country,
-    vat_id: r.vat_id,
-    company_kind: r.company_kind ?? "general",
-    tax_id: r.tax_id ?? "",
-    concession_number: r.concession_number ?? "",
-    compliance_gewerbe_storage_key: r.compliance_gewerbe_storage_key ?? null,
-    compliance_insurance_storage_key: r.compliance_insurance_storage_key ?? null,
-    legal_form: r.legal_form ?? "",
-    owner_name: r.owner_name ?? "",
-    billing_name: r.billing_name ?? "",
-    billing_address_line1: r.billing_address_line1 ?? "",
-    billing_address_line2: r.billing_address_line2 ?? "",
-    billing_postal_code: r.billing_postal_code ?? "",
-    billing_city: r.billing_city ?? "",
-    billing_country: r.billing_country ?? "",
-    bank_iban: r.bank_iban ?? "",
-    bank_bic: r.bank_bic ?? "",
-    support_email: r.support_email ?? "",
-    dispo_phone: r.dispo_phone ?? "",
-    logo_url: r.logo_url ?? "",
-    opening_hours: r.opening_hours ?? "",
-    business_notes: r.business_notes ?? "",
-    verification_status: r.verification_status ?? "pending",
-    compliance_status: r.compliance_status ?? "pending",
-    contract_status: r.contract_status ?? "inactive",
-    is_blocked: r.is_blocked ?? false,
-    max_drivers: r.max_drivers ?? 100,
-    max_vehicles: r.max_vehicles ?? 100,
-    fare_permissions: r.fare_permissions ?? {},
-    insurer_permissions: r.insurer_permissions ?? {},
-    area_assignments: r.area_assignments ?? [],
-    is_active: r.is_active,
-    is_priority_company: r.is_priority_company,
-    priority_for_live_rides: r.priority_for_live_rides,
-    priority_for_reservations: r.priority_for_reservations,
-    priority_price_threshold: r.priority_price_threshold,
-    priority_timeout_seconds: r.priority_timeout_seconds,
-    release_radius_km: r.release_radius_km,
-    panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
-    partner_panel_profile_locked: r.partner_panel_profile_locked ?? false
-  };
-}
-function rowToFareArea(r) {
-  return {
-    id: r.id,
-    name: r.name,
-    ruleType: r.rule_type,
-    isRequiredArea: r.is_required_area,
-    fixedPriceAllowed: r.fixed_price_allowed,
-    status: r.status,
-    isDefault: r.is_default,
-    baseFareEur: r.base_fare_eur,
-    rateFirstKmEur: r.rate_first_km_eur,
-    rateAfterKmEur: r.rate_after_km_eur,
-    thresholdKm: r.threshold_km,
-    waitingPerHourEur: r.waiting_per_hour_eur,
-    serviceFeeEur: r.service_fee_eur,
-    onrodaBaseFareEur: r.onroda_base_fare_eur,
-    onrodaPerKmEur: r.onroda_per_km_eur,
-    onrodaMinFareEur: r.onroda_min_fare_eur,
-    manualFixedPriceEur: r.manual_fixed_price_eur ?? null
-  };
-}
-function asMoney(v, fallback) {
-  const n4 = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n4)) return fallback;
-  return n4;
-}
-async function getPublicFareProfile(fromFull, pickup) {
-  const { getOperationalConfigPayload: getOperationalConfigPayload2, listServiceRegionsForApi: listServiceRegionsForApi2 } = await Promise.resolve().then(() => (init_appOperationalData(), appOperationalData_exports));
-  const { mergeTariffsForServiceRegion: mergeTariffsForServiceRegion2, mergedTariffToPublicProfile: mergedTariffToPublicProfile2, resolveMergedTariff: resolveMergedTariff2 } = await Promise.resolve().then(() => (init_operationalTariffEngine(), operationalTariffEngine_exports));
-  const op = await getOperationalConfigPayload2();
-  const tSec = isPlainObject2(op.tariffs) ? op.tariffs : {};
-  const regions = await listServiceRegionsForApi2();
-  const from = fromFull && String(fromFull).trim() ? String(fromFull).trim() : "";
-  const lat0 = pickup?.lat != null && Number.isFinite(Number(pickup.lat)) ? Number(pickup.lat) : null;
-  const lon0 = pickup?.lon != null && Number.isFinite(Number(pickup.lon)) ? Number(pickup.lon) : null;
-  const { merged, serviceRegionId } = from ? resolveMergedTariff2(op, regions, from, { lat: lat0, lon: lon0 }) : { merged: mergeTariffsForServiceRegion2(tSec, null), serviceRegionId: null };
-  const regLabel = serviceRegionId ? regions.find((r) => r.id === serviceRegionId)?.label ?? "Standard" : "Standard";
-  const p = mergedTariffToPublicProfile2(merged, serviceRegionId, regLabel, null);
-  const areas = await listFareAreas();
-  const active = areas.filter((x) => x.status === "aktiv");
-  const row = active.find((x) => x.isDefault) ?? active[0] ?? areas[0];
-  if (row) {
-    return { ...p, areaId: row.id, areaName: p.areaName };
-  }
-  return p;
-}
-function isPlainObject2(x) {
-  return x !== null && typeof x === "object" && !Array.isArray(x);
-}
-var ACTIVE_RIDE_STATUSES = ["accepted", "arrived", "in_progress"];
-function num(v) {
-  const n4 = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
-  return Number.isFinite(n4) ? n4 : 0;
-}
-function rideRevenueAmount(r) {
-  if (r.finalFare != null && Number.isFinite(r.finalFare)) return r.finalFare;
-  return r.estimatedFare;
-}
-async function getAdminStats(opts) {
-  const revenueFrom = opts?.revenueFrom;
-  const revenueTo = opts?.revenueTo;
-  const revenueFiltered = Boolean(revenueFrom && revenueTo);
-  const db2 = getDb();
-  if (!db2) {
-    const { listRides: listRides2 } = await Promise.resolve().then(() => (init_ridesData(), ridesData_exports));
-    const rides = await listRides2();
-    const byStatus2 = (s) => rides.filter((r) => r.status === s).length;
-    const active2 = ACTIVE_RIDE_STATUSES.reduce((acc, s) => acc + byStatus2(s), 0);
-    const driverIds = new Set(
-      rides.map((r) => r.driverId).filter((id) => Boolean(id && String(id).trim()))
-    );
-    const completedInPeriod = rides.filter((r) => {
-      if (r.status !== "completed") return false;
-      if (!revenueFiltered || !revenueFrom || !revenueTo) return true;
-      const t = new Date(r.createdAt).getTime();
-      return t >= revenueFrom.getTime() && t <= revenueTo.getTime();
-    });
-    const completedSum = completedInPeriod.reduce((s, r) => s + rideRevenueAmount(r), 0);
-    return {
-      rides: {
-        total: rides.length,
-        pending: byStatus2("pending"),
-        active: active2,
-        completed: byStatus2("completed"),
-        cancelled: byStatus2("cancelled"),
-        rejected: byStatus2("rejected")
-      },
-      companies: {
-        total: memCompanies.length,
-        active: memCompanies.filter((c) => c.is_active).length
-      },
-      drivers: { distinctWithRide: driverIds.size },
-      panelUsers: { active: 0 },
-      revenue: {
-        currency: "EUR",
-        periodFrom: revenueFiltered && revenueFrom ? revenueFrom.toISOString() : null,
-        periodTo: revenueFiltered && revenueTo ? revenueTo.toISOString() : null,
-        completedSum,
-        completedRideCount: completedInPeriod.length
-      }
-    };
-  }
-  const statusRows = await db2.select({ status: ridesTable.status, n: count() }).from(ridesTable).groupBy(ridesTable.status);
-  const byStatus = {};
-  let ridesTotal = 0;
-  for (const row of statusRows) {
-    const c = Number(row.n ?? 0);
-    byStatus[row.status] = c;
-    ridesTotal += c;
-  }
-  const active = ACTIVE_RIDE_STATUSES.reduce((acc, s) => acc + (byStatus[s] ?? 0), 0);
-  const [companiesTotalRow] = await db2.select({ n: count() }).from(adminCompaniesTable);
-  const [companiesActiveRow] = await db2.select({ n: count() }).from(adminCompaniesTable).where(eq(adminCompaniesTable.is_active, true));
-  const [driversRow] = await db2.select({
-    n: sql2`count(distinct ${ridesTable.driver_id})::int`
-  }).from(ridesTable).where(and(isNotNull(ridesTable.driver_id), ne(ridesTable.driver_id, "")));
-  const [panelUsersRow] = await db2.select({ n: count() }).from(panelUsersTable).where(eq(panelUsersTable.is_active, true));
-  const revConds = [eq(ridesTable.status, "completed")];
-  if (revenueFiltered && revenueFrom && revenueTo) {
-    revConds.push(gte(ridesTable.created_at, revenueFrom));
-    revConds.push(lte(ridesTable.created_at, revenueTo));
-  }
-  const [revRow] = await db2.select({
-    completedSum: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`,
-    completedRideCount: count()
-  }).from(ridesTable).where(and(...revConds));
-  return {
-    rides: {
-      total: ridesTotal,
-      pending: byStatus.pending ?? 0,
-      active,
-      completed: byStatus.completed ?? 0,
-      cancelled: byStatus.cancelled ?? 0,
-      rejected: byStatus.rejected ?? 0
-    },
-    companies: {
-      total: Number(companiesTotalRow?.n ?? 0),
-      active: Number(companiesActiveRow?.n ?? 0)
-    },
-    drivers: { distinctWithRide: num(driversRow?.n) },
-    panelUsers: { active: Number(panelUsersRow?.n ?? 0) },
-    revenue: {
-      currency: "EUR",
-      periodFrom: revenueFiltered && revenueFrom ? revenueFrom.toISOString() : null,
-      periodTo: revenueFiltered && revenueTo ? revenueTo.toISOString() : null,
-      completedSum: num(revRow?.completedSum),
-      completedRideCount: Number(revRow?.completedRideCount ?? 0)
-    }
-  };
-}
-async function listCompanies() {
-  const db2 = getDb();
-  if (!db2) return [...memCompanies];
-  const rows = await db2.select().from(adminCompaniesTable);
-  return rows.map(rowToCompany);
-}
-async function getCompanyKpis(companyId, now = /* @__PURE__ */ new Date()) {
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
-  const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-  const openStatuses = ["pending", "accepted", "arrived", "in_progress"];
-  const db2 = getDb();
-  if (!db2) {
-    const { listRidesForCompany: listRidesForCompany2 } = await Promise.resolve().then(() => (init_ridesData(), ridesData_exports));
-    const rides = await listRidesForCompany2(companyId);
-    const monthlyRevenue = rides.filter((r) => {
-      if (r.status !== "completed") return false;
-      const t = new Date(r.createdAt).getTime();
-      return t >= monthStart.getTime() && t < nextMonthStart.getTime();
-    }).reduce((sum2, r) => sum2 + rideRevenueAmount(r), 0);
-    const openRides = rides.filter((r) => openStatuses.includes(r.status)).length;
-    return { monthlyRevenue, openRides, voucherLimitAvailable: null };
-  }
-  const [revRow, openRow, voucherRow] = await Promise.all([
-    db2.select({
-      monthlyRevenue: sql2`coalesce(sum(coalesce(${ridesTable.final_fare}, ${ridesTable.estimated_fare})), 0)`
-    }).from(ridesTable).where(
-      and(
-        eq(ridesTable.company_id, companyId),
-        eq(ridesTable.status, "completed"),
-        gte(ridesTable.created_at, monthStart),
-        lt(ridesTable.created_at, nextMonthStart)
-      )
-    ),
-    db2.select({ n: count() }).from(ridesTable).where(and(eq(ridesTable.company_id, companyId), inArray(ridesTable.status, openStatuses))),
-    db2.select({
-      remaining: sql2`coalesce(sum(greatest(0, coalesce(${accessCodesTable.max_uses},0) - coalesce(${accessCodesTable.uses_count},0))), 0)`
-    }).from(accessCodesTable).where(
-      and(
-        eq(accessCodesTable.company_id, companyId),
-        eq(accessCodesTable.code_type, "voucher"),
-        eq(accessCodesTable.is_active, true),
-        or(sql2`${accessCodesTable.valid_from} is null`, lte(accessCodesTable.valid_from, now)),
-        or(sql2`${accessCodesTable.valid_until} is null`, gte(accessCodesTable.valid_until, now)),
-        isNotNull(accessCodesTable.max_uses)
-      )
-    )
-  ]);
-  return {
-    monthlyRevenue: num(revRow[0]?.monthlyRevenue),
-    openRides: Number(openRow[0]?.n ?? 0),
-    voucherLimitAvailable: Number(voucherRow[0]?.remaining ?? 0)
-  };
-}
-async function findCompanyById(companyId) {
-  const db2 = getDb();
-  if (!db2) {
-    return memCompanies.find((c) => c.id === companyId) ?? null;
-  }
-  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  return rows[0] ? rowToCompany(rows[0]) : null;
-}
-function companyRowToDbValues(c) {
-  return {
-    id: c.id,
-    name: c.name,
-    contact_name: c.contact_name,
-    email: c.email,
-    phone: c.phone,
-    address_line1: c.address_line1,
-    address_line2: c.address_line2,
-    postal_code: c.postal_code,
-    city: c.city,
-    country: c.country,
-    vat_id: c.vat_id,
-    company_kind: c.company_kind,
-    tax_id: c.tax_id,
-    concession_number: c.concession_number,
-    compliance_gewerbe_storage_key: c.compliance_gewerbe_storage_key,
-    compliance_insurance_storage_key: c.compliance_insurance_storage_key,
-    legal_form: c.legal_form,
-    owner_name: c.owner_name,
-    billing_name: c.billing_name,
-    billing_address_line1: c.billing_address_line1,
-    billing_address_line2: c.billing_address_line2,
-    billing_postal_code: c.billing_postal_code,
-    billing_city: c.billing_city,
-    billing_country: c.billing_country,
-    bank_iban: c.bank_iban,
-    bank_bic: c.bank_bic,
-    support_email: c.support_email,
-    dispo_phone: c.dispo_phone,
-    logo_url: c.logo_url,
-    opening_hours: c.opening_hours,
-    business_notes: c.business_notes,
-    verification_status: c.verification_status,
-    compliance_status: c.compliance_status,
-    contract_status: c.contract_status,
-    is_blocked: c.is_blocked,
-    max_drivers: c.max_drivers,
-    max_vehicles: c.max_vehicles,
-    fare_permissions: c.fare_permissions,
-    insurer_permissions: c.insurer_permissions,
-    area_assignments: c.area_assignments,
-    is_active: c.is_active,
-    is_priority_company: c.is_priority_company,
-    priority_for_live_rides: c.priority_for_live_rides,
-    priority_for_reservations: c.priority_for_reservations,
-    priority_price_threshold: c.priority_price_threshold,
-    priority_timeout_seconds: c.priority_timeout_seconds,
-    release_radius_km: c.release_radius_km,
-    panel_modules: c.panel_modules ?? null,
-    partner_panel_profile_locked: c.partner_panel_profile_locked
-  };
-}
-function applyAdminCompanyPatch(cur, body) {
-  const next = { ...cur };
-  if (typeof body.name === "string") {
-    const t = body.name.trim();
-    if (t) next.name = t;
-  }
-  if (typeof body.contact_name === "string") next.contact_name = body.contact_name.trim();
-  if (typeof body.email === "string") next.email = body.email.trim();
-  if (typeof body.phone === "string") next.phone = body.phone.trim();
-  if (typeof body.address_line1 === "string") next.address_line1 = body.address_line1.trim();
-  if (typeof body.address_line2 === "string") next.address_line2 = body.address_line2.trim();
-  if (typeof body.postal_code === "string") next.postal_code = body.postal_code.trim();
-  if (typeof body.city === "string") next.city = body.city.trim();
-  if (typeof body.country === "string") next.country = body.country.trim();
-  if (typeof body.vat_id === "string") next.vat_id = body.vat_id.trim();
-  if (typeof body.company_kind === "string") {
-    const k = body.company_kind.trim();
-    if (["taxi", "general", "voucher_client", "insurer", "hotel", "corporate", "medical"].includes(k)) {
-      next.company_kind = k;
-    }
-  }
-  if (typeof body.tax_id === "string") next.tax_id = body.tax_id.trim();
-  if (typeof body.concession_number === "string") next.concession_number = body.concession_number.trim();
-  if (body.compliance_gewerbe_storage_key === null) next.compliance_gewerbe_storage_key = null;
-  if (typeof body.compliance_gewerbe_storage_key === "string") {
-    next.compliance_gewerbe_storage_key = body.compliance_gewerbe_storage_key.trim() || null;
-  }
-  if (body.compliance_insurance_storage_key === null) next.compliance_insurance_storage_key = null;
-  if (typeof body.compliance_insurance_storage_key === "string") {
-    next.compliance_insurance_storage_key = body.compliance_insurance_storage_key.trim() || null;
-  }
-  if (typeof body.legal_form === "string") next.legal_form = body.legal_form.trim();
-  if (typeof body.owner_name === "string") next.owner_name = body.owner_name.trim();
-  if (typeof body.billing_name === "string") next.billing_name = body.billing_name.trim();
-  if (typeof body.billing_address_line1 === "string") next.billing_address_line1 = body.billing_address_line1.trim();
-  if (typeof body.billing_address_line2 === "string") next.billing_address_line2 = body.billing_address_line2.trim();
-  if (typeof body.billing_postal_code === "string") next.billing_postal_code = body.billing_postal_code.trim();
-  if (typeof body.billing_city === "string") next.billing_city = body.billing_city.trim();
-  if (typeof body.billing_country === "string") next.billing_country = body.billing_country.trim();
-  if (typeof body.bank_iban === "string") next.bank_iban = body.bank_iban.trim();
-  if (typeof body.bank_bic === "string") next.bank_bic = body.bank_bic.trim();
-  if (typeof body.support_email === "string") next.support_email = body.support_email.trim();
-  if (typeof body.dispo_phone === "string") next.dispo_phone = body.dispo_phone.trim();
-  if (typeof body.logo_url === "string") next.logo_url = body.logo_url.trim();
-  if (typeof body.opening_hours === "string") next.opening_hours = body.opening_hours.trim();
-  if (typeof body.business_notes === "string") next.business_notes = body.business_notes.trim();
-  if (typeof body.verification_status === "string") {
-    const v = body.verification_status.trim();
-    if (["pending", "in_review", "verified", "rejected"].includes(v)) next.verification_status = v;
-  }
-  if (typeof body.compliance_status === "string") {
-    const v = body.compliance_status.trim();
-    if (["pending", "in_review", "compliant", "non_compliant"].includes(v)) next.compliance_status = v;
-  }
-  if (typeof body.contract_status === "string") {
-    const v = body.contract_status.trim();
-    if (["inactive", "active", "suspended", "terminated"].includes(v)) next.contract_status = v;
-  }
-  if (typeof body.is_blocked === "boolean") next.is_blocked = body.is_blocked;
-  if (typeof body.max_drivers === "number" && Number.isFinite(body.max_drivers)) {
-    next.max_drivers = Math.max(0, Math.floor(body.max_drivers));
-  }
-  if (typeof body.max_vehicles === "number" && Number.isFinite(body.max_vehicles)) {
-    next.max_vehicles = Math.max(0, Math.floor(body.max_vehicles));
-  }
-  if (body.fare_permissions && typeof body.fare_permissions === "object" && !Array.isArray(body.fare_permissions)) {
-    next.fare_permissions = body.fare_permissions;
-  }
-  if (body.insurer_permissions && typeof body.insurer_permissions === "object" && !Array.isArray(body.insurer_permissions)) {
-    next.insurer_permissions = body.insurer_permissions;
-  }
-  if (Array.isArray(body.area_assignments)) {
-    next.area_assignments = body.area_assignments.filter((x) => typeof x === "string");
-  }
-  if (typeof body.is_active === "boolean") next.is_active = body.is_active;
-  if (typeof body.is_priority_company === "boolean") next.is_priority_company = body.is_priority_company;
-  if (typeof body.priority_for_live_rides === "boolean") next.priority_for_live_rides = body.priority_for_live_rides;
-  if (typeof body.priority_for_reservations === "boolean") next.priority_for_reservations = body.priority_for_reservations;
-  if (typeof body.priority_price_threshold === "number" && Number.isFinite(body.priority_price_threshold)) {
-    next.priority_price_threshold = body.priority_price_threshold;
-  }
-  if (typeof body.priority_timeout_seconds === "number" && Number.isFinite(body.priority_timeout_seconds)) {
-    next.priority_timeout_seconds = Math.max(0, Math.floor(body.priority_timeout_seconds));
-  }
-  if (typeof body.release_radius_km === "number" && Number.isFinite(body.release_radius_km)) {
-    next.release_radius_km = Math.max(0, body.release_radius_km);
-  }
-  if (body.panel_modules !== void 0) {
-    if (body.panel_modules === null) {
-      next.panel_modules = null;
-    } else if (Array.isArray(body.panel_modules)) {
-      const normalized = normalizeStoredPanelModules(body.panel_modules);
-      next.panel_modules = normalized && normalized.length > 0 ? normalized : null;
-    }
-  }
-  if (typeof body.partner_panel_profile_locked === "boolean") {
-    next.partner_panel_profile_locked = body.partner_panel_profile_locked;
-  }
-  return next;
-}
-async function insertAdminCompany(body) {
-  const name2 = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name2) return { error: "name_required" };
-  const id = `co-${randomUUID6()}`;
-  const base = {
-    id,
-    name: name2,
-    contact_name: "",
-    email: "",
-    phone: "",
-    address_line1: "",
-    address_line2: "",
-    postal_code: "",
-    city: "",
-    country: "",
-    vat_id: "",
-    company_kind: "general",
-    tax_id: "",
-    concession_number: "",
-    compliance_gewerbe_storage_key: null,
-    compliance_insurance_storage_key: null,
-    legal_form: "",
-    owner_name: "",
-    billing_name: "",
-    billing_address_line1: "",
-    billing_address_line2: "",
-    billing_postal_code: "",
-    billing_city: "",
-    billing_country: "",
-    bank_iban: "",
-    bank_bic: "",
-    support_email: "",
-    dispo_phone: "",
-    logo_url: "",
-    opening_hours: "",
-    business_notes: "",
-    verification_status: "pending",
-    compliance_status: "pending",
-    contract_status: "inactive",
-    is_blocked: false,
-    max_drivers: 100,
-    max_vehicles: 100,
-    fare_permissions: {},
-    insurer_permissions: {},
-    area_assignments: [],
-    is_active: true,
-    is_priority_company: false,
-    priority_for_live_rides: false,
-    priority_for_reservations: false,
-    priority_price_threshold: 25,
-    priority_timeout_seconds: 90,
-    release_radius_km: 10,
-    panel_modules: null,
-    partner_panel_profile_locked: false
-  };
-  const next = applyAdminCompanyPatch(base, body);
-  const db2 = getDb();
-  if (!db2) {
-    memCompanies = [...memCompanies, next];
-    return next;
-  }
-  try {
-    await db2.insert(adminCompaniesTable).values(companyRowToDbValues(next));
-  } catch (err) {
-    const flat = flattenPgError(err);
-    logger.error({ err, flat }, "insertAdminCompany failed");
-    const low = flat.toLowerCase();
-    if (low.includes("partner_panel_profile_locked") || low.includes("42703") && low.includes("partner_panel")) {
-      return { error: "db_schema_partner_panel_profile_locked" };
-    }
-    if (low.includes("admin_companies_company_kind_chk") || low.includes("23514") && low.includes("company_kind") || low.includes("check constraint") && low.includes("company_kind")) {
-      return { error: "db_schema_company_kind_constraint" };
-    }
-    return {
-      error: "db_insert_admin_company_failed",
-      hint: flat.slice(0, 2e3) || "Unbekannter Datenbankfehler beim Anlegen des Mandanten."
-    };
-  }
-  return next;
-}
-async function syncCompanyBillingAccountEmail(companyId, email) {
-  const db2 = getDb();
-  if (!db2) return;
-  const normalized = email.trim();
-  const [row] = await db2.select({ id: billingAccountsTable.id }).from(billingAccountsTable).where(and(eq(billingAccountsTable.company_id, companyId), eq(billingAccountsTable.is_active, true))).limit(1);
-  const now = /* @__PURE__ */ new Date();
-  if (row) {
-    await db2.update(billingAccountsTable).set({ billing_email: normalized, updated_at: now }).where(eq(billingAccountsTable.id, row.id));
-    return;
-  }
-  await db2.insert(billingAccountsTable).values({
-    id: `ba-${randomUUID6()}`,
-    company_id: companyId,
-    account_name: "Partner-Abrechnung",
-    billing_email: normalized
-  });
-}
-async function updateAdminCompany(companyId, body) {
-  const { billing_account_email: billingAccountEmail, ...patchBody } = body;
-  const cur = await findCompanyById(companyId);
-  if (!cur) return null;
-  const next = applyAdminCompanyPatch(cur, patchBody);
-  const db2 = getDb();
-  if (!db2) {
-    const idx = memCompanies.findIndex((c) => c.id === companyId);
-    if (idx < 0) return null;
-    memCompanies[idx] = next;
-    return next;
-  }
-  await db2.update(adminCompaniesTable).set(companyRowToDbValues(next)).where(eq(adminCompaniesTable.id, companyId));
-  if (typeof billingAccountEmail === "string") {
-    try {
-      await syncCompanyBillingAccountEmail(companyId, billingAccountEmail);
-    } catch (e) {
-      logger.error({ err: e, companyId }, "syncCompanyBillingAccountEmail failed");
-    }
-  }
-  return next;
-}
-async function patchCompanyPriority(companyId, body) {
-  const db2 = getDb();
-  if (!db2) {
-    const idx = memCompanies.findIndex((c) => c.id === companyId);
-    if (idx < 0) return null;
-    const cur2 = memCompanies[idx];
-    const next2 = {
-      ...cur2,
-      ...typeof body.is_priority_company === "boolean" ? { is_priority_company: body.is_priority_company } : {},
-      ...typeof body.priority_for_live_rides === "boolean" ? { priority_for_live_rides: body.priority_for_live_rides } : {},
-      ...typeof body.priority_for_reservations === "boolean" ? { priority_for_reservations: body.priority_for_reservations } : {}
-    };
-    memCompanies[idx] = next2;
-    return next2;
-  }
-  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  const r0 = rows[0];
-  if (!r0) return null;
-  const cur = rowToCompany(r0);
-  const next = {
-    ...cur,
-    ...typeof body.is_priority_company === "boolean" ? { is_priority_company: body.is_priority_company } : {},
-    ...typeof body.priority_for_live_rides === "boolean" ? { priority_for_live_rides: body.priority_for_live_rides } : {},
-    ...typeof body.priority_for_reservations === "boolean" ? { priority_for_reservations: body.priority_for_reservations } : {}
-  };
-  await db2.update(adminCompaniesTable).set({
-    is_priority_company: next.is_priority_company,
-    priority_for_live_rides: next.priority_for_live_rides,
-    priority_for_reservations: next.priority_for_reservations
-  }).where(eq(adminCompaniesTable.id, companyId));
-  return next;
-}
-async function patchCompanyPanelModules(companyId, modules) {
-  const db2 = getDb();
-  const normalized = modules == null ? null : normalizeStoredPanelModules(modules);
-  if (!db2) {
-    const idx = memCompanies.findIndex((c) => c.id === companyId);
-    if (idx < 0) return null;
-    const cur = memCompanies[idx];
-    const next = { ...cur, panel_modules: normalized };
-    memCompanies[idx] = next;
-    return next;
-  }
-  const rows = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  if (!rows[0]) return null;
-  await db2.update(adminCompaniesTable).set({ panel_modules: normalized }).where(eq(adminCompaniesTable.id, companyId));
-  const again = await db2.select().from(adminCompaniesTable).where(eq(adminCompaniesTable.id, companyId)).limit(1);
-  return again[0] ? rowToCompany(again[0]) : null;
-}
-async function listFareAreas() {
-  const db2 = getDb();
-  if (!db2) return [...memFareAreas];
-  const rows = await db2.select().from(fareAreasTable);
-  return rows.map(rowToFareArea);
-}
-async function addFareArea(body) {
-  const id = `fa-${Date.now()}`;
-  const row = {
-    id,
-    name: body.name,
-    ruleType: body.ruleType,
-    isRequiredArea: body.isRequiredArea,
-    fixedPriceAllowed: body.fixedPriceAllowed,
-    status: body.status,
-    isDefault: body.isDefault === true,
-    baseFareEur: asMoney(body.baseFareEur, 4.3),
-    rateFirstKmEur: asMoney(body.rateFirstKmEur, 3),
-    rateAfterKmEur: asMoney(body.rateAfterKmEur, 2.5),
-    thresholdKm: asMoney(body.thresholdKm, 4),
-    waitingPerHourEur: asMoney(body.waitingPerHourEur, 38),
-    serviceFeeEur: asMoney(body.serviceFeeEur, 0),
-    onrodaBaseFareEur: asMoney(body.onrodaBaseFareEur, 3.5),
-    onrodaPerKmEur: asMoney(body.onrodaPerKmEur, 2.2),
-    onrodaMinFareEur: asMoney(body.onrodaMinFareEur, 0),
-    manualFixedPriceEur: body.manualFixedPriceEur == null ? null : asMoney(body.manualFixedPriceEur, 0)
-  };
-  const db2 = getDb();
-  if (!db2) {
-    memFareAreas = [...memFareAreas, row];
-    return [...memFareAreas];
-  }
-  await db2.insert(fareAreasTable).values({
-    id: row.id,
-    name: row.name,
-    rule_type: row.ruleType,
-    is_required_area: row.isRequiredArea,
-    fixed_price_allowed: row.fixedPriceAllowed,
-    status: row.status,
-    is_default: row.isDefault,
-    base_fare_eur: row.baseFareEur,
-    rate_first_km_eur: row.rateFirstKmEur,
-    rate_after_km_eur: row.rateAfterKmEur,
-    threshold_km: row.thresholdKm,
-    waiting_per_hour_eur: row.waitingPerHourEur,
-    service_fee_eur: row.serviceFeeEur,
-    onroda_base_fare_eur: row.onrodaBaseFareEur,
-    onroda_per_km_eur: row.onrodaPerKmEur,
-    onroda_min_fare_eur: row.onrodaMinFareEur,
-    manual_fixed_price_eur: row.manualFixedPriceEur
-  });
-  if (row.isDefault) {
-    await db2.update(fareAreasTable).set({ is_default: false }).where(and(ne(fareAreasTable.id, row.id), eq(fareAreasTable.is_default, true)));
-    await db2.update(fareAreasTable).set({ is_default: true }).where(eq(fareAreasTable.id, row.id));
-  }
-  return listFareAreas();
-}
-async function updateFareArea(id, patch) {
-  const db2 = getDb();
-  if (!db2) {
-    const idx = memFareAreas.findIndex((a) => a.id === id);
-    if (idx < 0) return null;
-    const cur2 = memFareAreas[idx];
-    const next2 = {
-      ...cur2,
-      ...typeof patch.name === "string" ? { name: patch.name.trim() || cur2.name } : {},
-      ...typeof patch.ruleType === "string" ? { ruleType: patch.ruleType } : {},
-      ...typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {},
-      ...typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {},
-      ...typeof patch.status === "string" ? { status: patch.status } : {},
-      ...typeof patch.isDefault === "boolean" ? { isDefault: patch.isDefault } : {},
-      ...typeof patch.baseFareEur === "number" ? { baseFareEur: patch.baseFareEur } : {},
-      ...typeof patch.rateFirstKmEur === "number" ? { rateFirstKmEur: patch.rateFirstKmEur } : {},
-      ...typeof patch.rateAfterKmEur === "number" ? { rateAfterKmEur: patch.rateAfterKmEur } : {},
-      ...typeof patch.thresholdKm === "number" ? { thresholdKm: patch.thresholdKm } : {},
-      ...typeof patch.waitingPerHourEur === "number" ? { waitingPerHourEur: patch.waitingPerHourEur } : {},
-      ...typeof patch.serviceFeeEur === "number" ? { serviceFeeEur: patch.serviceFeeEur } : {},
-      ...typeof patch.onrodaBaseFareEur === "number" ? { onrodaBaseFareEur: patch.onrodaBaseFareEur } : {},
-      ...typeof patch.onrodaPerKmEur === "number" ? { onrodaPerKmEur: patch.onrodaPerKmEur } : {},
-      ...typeof patch.onrodaMinFareEur === "number" ? { onrodaMinFareEur: patch.onrodaMinFareEur } : {},
-      ...patch.manualFixedPriceEur === null || typeof patch.manualFixedPriceEur === "number" ? { manualFixedPriceEur: patch.manualFixedPriceEur } : {}
-    };
-    memFareAreas = memFareAreas.map((a, i) => i === idx ? next2 : a);
-    return next2;
-  }
-  const rows = await db2.select().from(fareAreasTable).where(eq(fareAreasTable.id, id)).limit(1);
-  const r0 = rows[0];
-  if (!r0) return null;
-  const cur = rowToFareArea(r0);
-  const next = {
-    ...cur,
-    ...typeof patch.name === "string" ? { name: patch.name.trim() || cur.name } : {},
-    ...typeof patch.ruleType === "string" ? { ruleType: patch.ruleType } : {},
-    ...typeof patch.isRequiredArea === "string" ? { isRequiredArea: patch.isRequiredArea } : {},
-    ...typeof patch.fixedPriceAllowed === "string" ? { fixedPriceAllowed: patch.fixedPriceAllowed } : {},
-    ...typeof patch.status === "string" ? { status: patch.status } : {},
-    ...typeof patch.isDefault === "boolean" ? { isDefault: patch.isDefault } : {},
-    ...typeof patch.baseFareEur === "number" ? { baseFareEur: patch.baseFareEur } : {},
-    ...typeof patch.rateFirstKmEur === "number" ? { rateFirstKmEur: patch.rateFirstKmEur } : {},
-    ...typeof patch.rateAfterKmEur === "number" ? { rateAfterKmEur: patch.rateAfterKmEur } : {},
-    ...typeof patch.thresholdKm === "number" ? { thresholdKm: patch.thresholdKm } : {},
-    ...typeof patch.waitingPerHourEur === "number" ? { waitingPerHourEur: patch.waitingPerHourEur } : {},
-    ...typeof patch.serviceFeeEur === "number" ? { serviceFeeEur: patch.serviceFeeEur } : {},
-    ...typeof patch.onrodaBaseFareEur === "number" ? { onrodaBaseFareEur: patch.onrodaBaseFareEur } : {},
-    ...typeof patch.onrodaPerKmEur === "number" ? { onrodaPerKmEur: patch.onrodaPerKmEur } : {},
-    ...typeof patch.onrodaMinFareEur === "number" ? { onrodaMinFareEur: patch.onrodaMinFareEur } : {},
-    ...patch.manualFixedPriceEur === null || typeof patch.manualFixedPriceEur === "number" ? { manualFixedPriceEur: patch.manualFixedPriceEur } : {}
-  };
-  if (next.isDefault) {
-    await db2.update(fareAreasTable).set({ is_default: false }).where(and(ne(fareAreasTable.id, id), eq(fareAreasTable.is_default, true)));
-  }
-  await db2.update(fareAreasTable).set({
-    name: next.name,
-    rule_type: next.ruleType,
-    is_required_area: next.isRequiredArea,
-    fixed_price_allowed: next.fixedPriceAllowed,
-    status: next.status,
-    is_default: next.isDefault,
-    base_fare_eur: next.baseFareEur,
-    rate_first_km_eur: next.rateFirstKmEur,
-    rate_after_km_eur: next.rateAfterKmEur,
-    threshold_km: next.thresholdKm,
-    waiting_per_hour_eur: next.waitingPerHourEur,
-    service_fee_eur: next.serviceFeeEur,
-    onroda_base_fare_eur: next.onrodaBaseFareEur,
-    onroda_per_km_eur: next.onrodaPerKmEur,
-    onroda_min_fare_eur: next.onrodaMinFareEur,
-    manual_fixed_price_eur: next.manualFixedPriceEur
-  }).where(eq(fareAreasTable.id, id));
-  return next;
-}
-async function countRidesReferencingFareAreaId(fareAreaId) {
-  const db2 = getDb();
-  if (!db2) {
-    void fareAreaId;
-    return 0;
-  }
-  const [row] = await db2.select({ n: sql2`count(*)::int` }).from(ridesTable).where(sql2`${ridesTable.partner_booking_meta}->>'fareAreaId' = ${fareAreaId}`);
-  return Number(row?.n ?? 0);
-}
-async function deleteFareArea(id) {
-  const db2 = getDb();
-  const idx = memFareAreas.findIndex((a) => a.id === id);
-  if (!db2) {
-    if (idx < 0) return { ok: false, error: "not_found", rideCount: 0 };
-    const blocked2 = await countRidesReferencingFareAreaId(id);
-    if (blocked2 > 0) return { ok: false, error: "fare_area_in_use", rideCount: blocked2 };
-    memFareAreas = memFareAreas.filter((a) => a.id !== id);
-    return { ok: true };
-  }
-  const rows = await db2.select().from(fareAreasTable).where(eq(fareAreasTable.id, id)).limit(1);
-  if (!rows[0]) return { ok: false, error: "not_found", rideCount: 0 };
-  const blocked = await countRidesReferencingFareAreaId(id);
-  if (blocked > 0) return { ok: false, error: "fare_area_in_use", rideCount: blocked };
-  await db2.delete(fareAreasTable).where(eq(fareAreasTable.id, id));
-  return { ok: true };
-}
-async function seedAdminDefaultsIfEmpty() {
-  const db2 = getDb();
-  if (!db2) return;
-  const [c] = await db2.select({ n: count() }).from(adminCompaniesTable);
-  if (Number(c?.n ?? 0) === 0) {
-    await db2.insert(adminCompaniesTable).values(
-      seedCompanies.map((co) => ({
-        id: co.id,
-        name: co.name,
-        contact_name: co.contact_name,
-        email: co.email,
-        phone: co.phone,
-        address_line1: co.address_line1,
-        address_line2: co.address_line2,
-        postal_code: co.postal_code,
-        city: co.city,
-        country: co.country,
-        vat_id: co.vat_id,
-        is_active: co.is_active,
-        is_priority_company: co.is_priority_company,
-        priority_for_live_rides: co.priority_for_live_rides,
-        priority_for_reservations: co.priority_for_reservations,
-        priority_price_threshold: co.priority_price_threshold,
-        priority_timeout_seconds: co.priority_timeout_seconds,
-        release_radius_km: co.release_radius_km,
-        panel_modules: co.panel_modules ?? null
-      }))
-    );
-  }
-  const [f] = await db2.select({ n: count() }).from(fareAreasTable);
-  if (Number(f?.n ?? 0) === 0) {
-    await db2.insert(fareAreasTable).values(
-      seedFareAreas.map((a) => ({
-        id: a.id,
-        name: a.name,
-        rule_type: a.ruleType,
-        is_required_area: a.isRequiredArea,
-        fixed_price_allowed: a.fixedPriceAllowed,
-        status: a.status,
-        is_default: a.isDefault,
-        base_fare_eur: a.baseFareEur,
-        rate_first_km_eur: a.rateFirstKmEur,
-        rate_after_km_eur: a.rateAfterKmEur,
-        threshold_km: a.thresholdKm,
-        waiting_per_hour_eur: a.waitingPerHourEur,
-        service_fee_eur: a.serviceFeeEur,
-        onroda_base_fare_eur: a.onrodaBaseFareEur,
-        onroda_per_km_eur: a.onrodaPerKmEur,
-        onroda_min_fare_eur: a.onrodaMinFareEur,
-        manual_fixed_price_eur: a.manualFixedPriceEur
-      }))
-    );
-  }
-}
+// src/routes/rides.ts
+init_adminData();
 
 // src/lib/bookingTariffEstimate.ts
 init_operationalTariffEngine();
@@ -53521,6 +53784,7 @@ init_fleetDriversData();
 init_dispatchStatus();
 init_driverRideExpoPush();
 init_appOperationalData();
+init_financeCalculationService();
 
 // src/lib/medicalTransportImage.ts
 var MEDICAL_TRANSPORT_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
@@ -55068,7 +55332,7 @@ function isSessionJwtConfigured() {
 
 // src/db/adminAuthData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID11 } from "node:crypto";
+import { randomUUID as randomUUID12 } from "node:crypto";
 
 // src/lib/adminConsoleRoles.ts
 var ADMIN_ROLE_VALUES = ["admin", "service", "taxi", "insurance", "hotel"];
@@ -55225,7 +55489,7 @@ async function upsertAdminAuthUser(input) {
     return;
   }
   await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID11(),
+    id: randomUUID12(),
     username,
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
@@ -55289,7 +55553,7 @@ async function createAdminAuthUser(input) {
   if (!username) return null;
   const scope = typeof input.scopeCompanyId === "string" && input.scopeCompanyId.trim() ? input.scopeCompanyId.trim() : null;
   const createdRows = await db2.insert(adminAuthUsersTable).values({
-    id: randomUUID11(),
+    id: randomUUID12(),
     username,
     email: (input.email ?? "").trim(),
     password_hash: input.passwordHash,
@@ -55406,7 +55670,7 @@ async function createAdminPasswordResetToken(input) {
   const db2 = getDb();
   if (!db2) return null;
   const rows = await db2.insert(adminAuthPasswordResetsTable).values({
-    id: randomUUID11(),
+    id: randomUUID12(),
     admin_user_id: input.adminUserId,
     token_hash: input.tokenHash,
     expires_at: input.expiresAt,
@@ -55450,7 +55714,7 @@ async function insertAdminAuthAuditLog(input) {
   const db2 = getDb();
   if (!db2) return;
   await db2.insert(adminAuthAuditLogTable).values({
-    id: randomUUID11(),
+    id: randomUUID12(),
     admin_user_id: input.adminUserId ?? null,
     username: (input.username ?? "").trim(),
     action: input.action,
@@ -56387,7 +56651,7 @@ router2.post("/rides/:id/medical/transport-document", requireFleetDriverAuth, as
       return;
     }
     const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const rel = path2.join(companyKey, "rides", rideId, `${randomUUID12()}.${decoded.ext}`).replace(/\\/g, "/");
+    const rel = path2.join(companyKey, "rides", rideId, `${randomUUID13()}.${decoded.ext}`).replace(/\\/g, "/");
     const dest = path2.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
     await mkdir(path2.dirname(dest), { recursive: true });
     await writeFile(dest, decoded.buffer);
@@ -56482,7 +56746,7 @@ router2.post("/rides/:id/medical/signature", requireFleetDriverAuth, async (req,
       return;
     }
     const companyKey = companyId.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const rel = path2.join(companyKey, "rides", rideId, `signature-${randomUUID12()}.${decoded.ext}`).replace(/\\/g, "/");
+    const rel = path2.join(companyKey, "rides", rideId, `signature-${randomUUID13()}.${decoded.ext}`).replace(/\\/g, "/");
     const dest = path2.join(MEDICAL_RIDE_UPLOAD_ROOT, rel);
     await mkdir(path2.dirname(dest), { recursive: true });
     await writeFile(dest, decoded.buffer);
@@ -57067,7 +57331,7 @@ router2.post("/rides", async (req, res, next) => {
       res.status(500).json({ error: "ride_insert_inconsistent" });
       return;
     }
-    const pcCreated = resolveFinancePricingContextFromOperational(created, opPayload, regions);
+    const pcCreated = await resolveFinancePricingContextForRide(created, opPayload, regions);
     void upsertRideFinancialSnapshot({
       ride: created,
       pricingContext: pcCreated,
@@ -57201,6 +57465,7 @@ async function patchRideStatusRoute(req, res, next) {
       res.status(gate.status).json({ error: gate.code });
       return;
     }
+    const mutActor = mutationActorFromRideMutator(actor);
     await hydrateRideDriverLocationCache(id, driverLocations);
     const opsGuard = validateRideStatusTransition(cur, nextStatus, {
       rideId: id,
@@ -57209,6 +57474,22 @@ async function patchRideStatusRoute(req, res, next) {
       parsedFinalFare
     });
     if (!opsGuard.ok) {
+      const fraudErrors = /* @__PURE__ */ new Set([
+        "pickup_geofence_failed",
+        "driver_location_required",
+        "trip_start_geofence_failed"
+      ]);
+      if (fraudErrors.has(opsGuard.error)) {
+        void logRideAntiFraudAttempt(id, {
+          eventType: nextStatus === "driver_waiting" ? "fake_arrival_attempt" : "trip_start_geofence_blocked",
+          fromStatus: cur.status,
+          targetStatus: nextStatus,
+          actorType: mutActor.actorType,
+          actorId: mutActor.actorId,
+          error: opsGuard.error,
+          details: opsGuard.details
+        });
+      }
       res.status(opsGuard.status).json({
         error: opsGuard.error,
         message: opsGuard.message,
@@ -57225,7 +57506,6 @@ async function patchRideStatusRoute(req, res, next) {
       });
       return;
     }
-    const mutActor = mutationActorFromRideMutator(actor);
     let companyIdOnAccept;
     if (nextStatus === "accepted" && driverId) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
@@ -57351,6 +57631,7 @@ async function patchRideStatusRoute(req, res, next) {
       }
       await applyRideMutationPersistence(id, claimed.previous, claimed.ride, mutActor);
       updated = claimed.ride;
+      void markDispatchOfferAccepted(bodyDriverIdTrim, id);
     } else {
       updated = await updateRide(
         id,
@@ -57365,6 +57646,9 @@ async function patchRideStatusRoute(req, res, next) {
       if (!updated) {
         res.status(500).json({ error: "update_failed" });
         return;
+      }
+      if (nextStatus === "accepted" && bodyDriverIdTrim) {
+        void markDispatchOfferAccepted(bodyDriverIdTrim, id);
       }
     }
     if (cancelReasonClean) {
@@ -57405,7 +57689,7 @@ async function patchRideStatusRoute(req, res, next) {
     if (nextStatus === "cancelled_by_customer" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled_by_system" || nextStatus === "cancelled") {
       const opPayloadCf = await getOperationalConfigPayload();
       const regionsCf = await listServiceRegionsForApi();
-      const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+      const pcCf = await resolveFinancePricingContextForRide(updated, opPayloadCf, regionsCf);
       const financeCf = await upsertRideFinancialSnapshot({
         ride: updated,
         pricingContext: pcCf,
@@ -57418,10 +57702,15 @@ async function patchRideStatusRoute(req, res, next) {
         return;
       }
     }
+    let driverSettlement = null;
     if (nextStatus === "completed") {
       const opPayloadComplete = await getOperationalConfigPayload();
       const regionsComplete = await listServiceRegionsForApi();
-      const pcComplete = resolveFinancePricingContextFromOperational(updated, opPayloadComplete, regionsComplete);
+      const pcComplete = await resolveFinancePricingContextForRide(
+        updated,
+        opPayloadComplete,
+        regionsComplete
+      );
       const finance = await upsertRideFinancialSnapshot({
         ride: updated,
         pricingContext: pcComplete,
@@ -57433,6 +57722,10 @@ async function patchRideStatusRoute(req, res, next) {
         res.status(500).json({ error: finance.error });
         return;
       }
+      driverSettlement = previewDriverSettlementFromGross(
+        Number(updated.finalFare ?? 0),
+        pcComplete
+      );
     }
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);
@@ -57475,7 +57768,19 @@ async function patchRideStatusRoute(req, res, next) {
         }
       });
     }
-    res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
+    res.json({
+      ...stripPartnerOnlyRideFields(updated),
+      cancelReason: customerCancelReasons.get(id) ?? null,
+      ...driverSettlement ? {
+        driverSettlement: {
+          grossAmount: driverSettlement.grossAmount,
+          commissionRate: driverSettlement.commissionRate,
+          commissionRatePercent: driverSettlement.commissionRatePercent,
+          commissionAmount: driverSettlement.commissionAmount,
+          driverPayoutAmount: driverSettlement.driverPayoutAmount
+        }
+      } : {}
+    });
   } catch (e) {
     next(e);
   }
@@ -57564,7 +57869,7 @@ async function cancelRideForVerifiedCustomerSession(passengerGoogleId, rideId, c
   customerCancelReasons.set(id, cancelReasonClean);
   const opPayloadCf = await getOperationalConfigPayload();
   const regionsCf = await listServiceRegionsForApi();
-  const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+  const pcCf = await resolveFinancePricingContextForRide(updated, opPayloadCf, regionsCf);
   const financeCf = await upsertRideFinancialSnapshot({
     ride: updated,
     pricingContext: pcCf,
@@ -58260,7 +58565,7 @@ var import_express4 = __toESM(require_express2(), 1);
 
 // src/lib/emailVerificationFlow.ts
 init_client();
-import { randomUUID as randomUUID13 } from "node:crypto";
+import { randomUUID as randomUUID14 } from "node:crypto";
 
 // src/db/emailVerificationCodesData.ts
 init_drizzle_orm();
@@ -58514,7 +58819,7 @@ async function dispatchEmailVerificationCode(opts) {
   } catch {
     return { ok: false, error: "email_verification_not_configured", status: 503 };
   }
-  const id = randomUUID13();
+  const id = randomUUID14();
   const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS);
   await insertVerificationCode({
     id,
@@ -58650,13 +58955,14 @@ var emailAuth_default = router4;
 
 // src/routes/adminApi.ts
 var import_express10 = __toESM(require_express2(), 1);
-import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID26 } from "node:crypto";
+import { createHash as createHash3, randomBytes as randomBytes6, randomUUID as randomUUID27 } from "node:crypto";
 import { createReadStream as createReadStream2 } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path6 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // src/domain/adminCompanyKindPanelModules.ts
+init_panelModules();
 function forbiddenPanelModulesForCompanyKind(companyKind, modules) {
   const allowed = allowedPanelModuleIdsForCompanyKind(companyKind);
   const bad = [];
@@ -58700,13 +59006,17 @@ function computeAccessCodePublicStatus(row) {
   return { status: "active", labelDe: "Frei / aktiv" };
 }
 
+// src/routes/adminApi.ts
+init_panelModules();
+
 // src/db/partnerRegistrationRequestsData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID14 } from "node:crypto";
-import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
-import path3 from "node:path";
+init_adminData();
 init_client();
 init_schema2();
+import { randomUUID as randomUUID15 } from "node:crypto";
+import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
+import path3 from "node:path";
 var PARTNER_TYPES = [
   "taxi",
   "hotel",
@@ -58817,7 +59127,7 @@ async function persistDocFile(opts) {
   const ext = path3.extname(safeName) || ".bin";
   const dir = path3.join(base, opts.requestId);
   await mkdir2(dir, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID14()}${ext}`;
+  const fileName = `${Date.now()}-${randomUUID15()}${ext}`;
   const absPath = path3.join(dir, fileName);
   const relPath = path3.relative(base, absPath);
   const cleaned = opts.contentBase64.includes(",") ? opts.contentBase64.split(",").pop() ?? "" : opts.contentBase64;
@@ -58834,7 +59144,7 @@ function isRegistrationStatus(v) {
 async function createPartnerRegistrationRequest(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prr-${randomUUID14()}`;
+  const id = `prr-${randomUUID15()}`;
   await db2.insert(partnerRegistrationRequestsTable).values({
     id,
     company_name: input.companyName,
@@ -59033,7 +59343,7 @@ async function attachCompanyToPartnerRegistrationRequest(id, companyId, opts = {
 async function addPartnerRegistrationTimelineEvent(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prtl-${randomUUID14()}`;
+  const id = `prtl-${randomUUID15()}`;
   await db2.insert(partnerRegistrationTimelineTable).values({
     id,
     request_id: input.requestId,
@@ -59057,7 +59367,7 @@ async function addPartnerRegistrationMessage(requestId, actorType, actorLabel, m
 async function addPartnerRegistrationDocument(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `prdoc-${randomUUID14()}`;
+  const id = `prdoc-${randomUUID15()}`;
   const persisted = await persistDocFile({
     requestId: input.requestId,
     originalFileName: input.originalFileName,
@@ -59361,6 +59671,7 @@ function getPartnerRegistrationPolicy(partnerType) {
 
 // src/routes/adminApi.ts
 init_rideBillingProfile();
+init_adminData();
 
 // src/db/adminFinanceData.ts
 init_drizzle_orm();
@@ -59685,10 +59996,10 @@ async function getFinanceEligibilitySummaryForRide(rideId) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID15 } from "node:crypto";
+import { randomUUID as randomUUID16 } from "node:crypto";
 async function insertFinancialAuditInTx(tx, input) {
   await tx.insert(financialAuditLogTable).values({
-    id: `fal-${randomUUID15()}`,
+    id: `fal-${randomUUID16()}`,
     entity_type: input.entityType,
     entity_id: input.entityId,
     action: input.action,
@@ -59754,8 +60065,8 @@ async function adminCreateSettlementWithRideAllocations(input) {
         }
         lockedRows.push({ rideId, rf });
       }
-      const settlementNumber = `ST-${Date.now().toString(36)}-${randomUUID15().slice(0, 8)}`;
-      const settlementId = `setl-${randomUUID15().replace(/-/g, "").slice(0, 22)}`;
+      const settlementNumber = `ST-${Date.now().toString(36)}-${randomUUID16().slice(0, 8)}`;
+      const settlementId = `setl-${randomUUID16().replace(/-/g, "").slice(0, 22)}`;
       await tx.insert(settlementsTable).values({
         id: settlementId,
         company_id: companyId,
@@ -59871,7 +60182,7 @@ async function adminRecordSettlementPayoutAttempt(input) {
         });
         return { ok: true, paymentId: openpay[0].id, idempotent: true };
       }
-      const pid = `pay-${randomUUID15()}`;
+      const pid = `pay-${randomUUID16()}`;
       await tx.insert(paymentsTable).values({
         id: pid,
         target_type: "settlement",
@@ -59952,7 +60263,7 @@ async function listPanelAuditForCompany(companyId, opts) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID16 } from "node:crypto";
+import { randomUUID as randomUUID17 } from "node:crypto";
 function toPublic(r) {
   return {
     id: r.id,
@@ -60009,7 +60320,7 @@ async function insertPanelUser(input) {
   if (!isPostgresConfigured()) return null;
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID16();
+  const id = randomUUID17();
   const username = input.username.trim();
   const email = input.email.trim();
   try {
@@ -60433,7 +60744,7 @@ function parseSupportThreadStatus(raw) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID17 } from "node:crypto";
+import { randomUUID as randomUUID18 } from "node:crypto";
 var APP_HELP_TICKET_STATUSES = ["open", "in_progress", "resolved"];
 var APP_HELP_CATEGORIES = ["booking", "account", "payment", "app_issue", "other"];
 function isStatus(v) {
@@ -60463,7 +60774,7 @@ function mapRow3(r) {
 async function createAppHelpTicket(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = `aht-${randomUUID17()}`;
+  const id = `aht-${randomUUID18()}`;
   const now = /* @__PURE__ */ new Date();
   const msg = input.message.trim().slice(0, 8e3);
   if (msg.length < 5) return null;
@@ -60937,7 +61248,7 @@ init_operationalTariffEngine();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID18 } from "node:crypto";
+import { randomUUID as randomUUID19 } from "node:crypto";
 var FAQ_DEFAULTS = [
   {
     id: "faq-default-1",
@@ -61006,7 +61317,7 @@ async function createHomepageFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID18();
+  const id = randomUUID19();
   await db2.insert(homepageFaqItemsTable).values({
     id,
     question: input.question,
@@ -61058,7 +61369,7 @@ async function createHomepageHowStep(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID18();
+  const id = randomUUID19();
   await db2.insert(homepageHowStepsTable).values({
     id,
     icon: input.icon,
@@ -61112,7 +61423,7 @@ async function createHomepageTrustMetric(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID18();
+  const id = randomUUID19();
   await db2.insert(homepageTrustMetricsTable).values({
     id,
     value: input.value,
@@ -61160,7 +61471,7 @@ async function deleteHomepageTrustMetric(id) {
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID19 } from "node:crypto";
+import { randomUUID as randomUUID20 } from "node:crypto";
 function normalizeHomepageHintType(raw) {
   const t = String(raw ?? "").trim().toLowerCase();
   if (t === "success") return "success";
@@ -61219,7 +61530,7 @@ async function createHomepagePlaceholder(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = `hpb-${randomUUID19()}`;
+  const id = `hpb-${randomUUID20()}`;
   const storedType = normalizeHomepageHintType(input.type);
   await db2.insert(homepagePlaceholdersTable).values({
     id,
@@ -61472,6 +61783,7 @@ init_drizzle_orm();
 init_client();
 init_accessCodesData();
 init_logger2();
+init_adminData();
 init_fleetDriverReadiness();
 init_fleetDriversData();
 init_fleetVehiclesData();
@@ -61953,6 +62265,7 @@ function emptyInsurer(company, sampleBillingReferences) {
 // src/routes/adminApi.ts
 init_client();
 init_ridesData();
+init_rideFinancialsData();
 
 // src/db/adminTaxiFleetVehiclesData.ts
 init_fleetAssignmentsData();
@@ -62017,7 +62330,7 @@ init_fleetDriverReadiness();
 // src/lib/persistPanelUserManualAttachment.ts
 import { mkdir as mkdir3, writeFile as writeFile3 } from "node:fs/promises";
 import path4 from "node:path";
-import { randomUUID as randomUUID20 } from "node:crypto";
+import { randomUUID as randomUUID21 } from "node:crypto";
 var MAX_BYTES = 6 * 1024 * 1024;
 function uploadsRoot() {
   const fromEnv = (process.env.PANEL_USER_MANUAL_UPLOAD_DIR ?? "").trim();
@@ -62043,7 +62356,7 @@ async function persistPanelUserManualAttachment(input) {
   const base = uploadsRoot();
   const dir = path4.join(base, input.companyId, input.panelUserId);
   await mkdir3(dir, { recursive: true });
-  const fileName = `${Date.now()}-${randomUUID20()}${ext}`;
+  const fileName = `${Date.now()}-${randomUUID21()}${ext}`;
   const absPath = path4.join(dir, fileName);
   const baseR = path4.resolve(base);
   const resolved = path4.resolve(absPath);
@@ -62540,7 +62853,7 @@ import { createReadStream, existsSync as existsSync2 } from "node:fs";
 
 // src/db/insurerRideProjectionData.ts
 init_drizzle_orm();
-import { randomUUID as randomUUID21 } from "node:crypto";
+import { randomUUID as randomUUID22 } from "node:crypto";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
 import path5 from "node:path";
 
@@ -62952,7 +63265,7 @@ async function createInsurerExportBatch(input) {
   const coIds = [...new Set(visible.map((r) => r.company_id).filter(Boolean))];
   const companies = coIds.length > 0 ? await db2.select({ id: adminCompaniesTable.id, name: adminCompaniesTable.name }).from(adminCompaniesTable).where(inArray(adminCompaniesTable.id, coIds)) : [];
   const coName = new Map(companies.map((c) => [c.id, c.name]));
-  const batchId = `insx-${randomUUID21()}`;
+  const batchId = `insx-${randomUUID22()}`;
   const lines = [];
   lines.push(
     "schema_version;ref_id;company_id;company_name;driver_id;vehicle;datetime_utc;from_plz;from_ort;to_plz;to_ort;amount_gross;ride_status;settlement_status;payer_kind;passenger_pseudonym_id;billing_ref"
@@ -63318,7 +63631,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID22 } from "node:crypto";
+import { randomUUID as randomUUID23 } from "node:crypto";
 var AUDIENCES = /* @__PURE__ */ new Set([
   "all",
   "customer",
@@ -63392,7 +63705,7 @@ async function findAppNewsAdmin(id) {
 async function createAppNewsItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID22();
+  const id = randomUUID23();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appNewsItemsTable).values({
     id,
@@ -63645,7 +63958,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID23 } from "node:crypto";
+import { randomUUID as randomUUID24 } from "node:crypto";
 var AUDIENCES2 = /* @__PURE__ */ new Set(["all", "customer", "driver"]);
 var CATEGORIES = /* @__PURE__ */ new Set(["sponsor", "partner", "angebot", "event"]);
 function parseAppSponsorAudience(raw) {
@@ -63720,7 +64033,7 @@ async function findAppSponsorAdmin(id) {
 async function createAppSponsorItem(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID23();
+  const id = randomUUID24();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(appSponsorsTable).values({
     id,
@@ -64017,7 +64330,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID24 } from "node:crypto";
+import { randomUUID as randomUUID25 } from "node:crypto";
 var CATEGORIES2 = /* @__PURE__ */ new Set(["general", "payment", "driver", "booking", "account"]);
 function parseAppFaqCategory(raw) {
   const s = String(raw ?? "").trim().toLowerCase();
@@ -64066,7 +64379,7 @@ async function createAppFaqItem(input) {
   const db2 = getDb();
   if (!db2) return null;
   const now = /* @__PURE__ */ new Date();
-  const id = randomUUID24();
+  const id = randomUUID25();
   await db2.insert(appFaqTable).values({
     id,
     question: input.question,
@@ -64226,7 +64539,7 @@ init_client();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID25 } from "node:crypto";
+import { randomUUID as randomUUID26 } from "node:crypto";
 function rowToDto(r, targetDriverLabel = null) {
   return {
     id: r.id,
@@ -64285,7 +64598,7 @@ async function dismissDriverMessage(fleetDriverId, messageId) {
 async function insertDriverMessage(input) {
   const db2 = getDb();
   if (!db2) return null;
-  const id = randomUUID25();
+  const id = randomUUID26();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(driverMessagesTable).values({
     id,
@@ -65477,7 +65790,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -65505,7 +65818,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.approval",
@@ -65525,7 +65838,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_driver.missing_documents",
@@ -65547,7 +65860,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/approval", asyn
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.approval",
@@ -65583,7 +65896,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/suspend", async
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.suspended",
@@ -65613,7 +65926,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/activate", asyn
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.activated",
@@ -65650,7 +65963,7 @@ adminJson.post("/taxi-fleet-drivers/:companyId/drivers/:driverId/readiness-overr
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.readiness_override_system",
@@ -65690,7 +66003,7 @@ adminJson.patch("/taxi-fleet-drivers/:companyId/drivers/:driverId/notes", async 
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_driver.notes_patched",
@@ -65796,7 +66109,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/approve", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -65843,7 +66156,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/reject", asy
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -65878,7 +66191,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/mark-missing
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.missing_documents",
@@ -65921,7 +66234,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/block", asyn
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -65958,7 +66271,7 @@ adminJson.post("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/unblock", as
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.unblocked",
@@ -65996,7 +66309,7 @@ adminJson.patch("/taxi-fleet-vehicles/:companyId/vehicles/:vehicleId/notes", asy
     }
     const adminId = await resolveAdminAuthUserIdForSupport(req);
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.fleet_vehicle.notes_patched",
@@ -66946,7 +67259,7 @@ adminJson.post("/support/threads/:threadId/messages", async (req, res, next) => 
     }
     const senderAdminUserId = await resolveAdminAuthUserIdForSupport(req);
     const result = await insertAdminSupportMessage({
-      messageId: randomUUID26(),
+      messageId: randomUUID27(),
       threadId,
       body,
       senderAdminUserId
@@ -67614,7 +67927,7 @@ adminJson.post("/company-registration-requests/:id/approve", async (req, res, ne
           ownerProvisioningWarning = "Owner-Zugang konnte nicht angelegt werden (Benutzername/E-Mail-Konflikt). Bitte im Unternehmen manuell einen Panel-Benutzer anlegen.";
         } else {
           await insertPanelAuditLog({
-            id: randomUUID26(),
+            id: randomUUID27(),
             companyId: createdCompany.id,
             actorPanelUserId: null,
             action: "admin.panel_user.created",
@@ -67770,7 +68083,7 @@ adminJson.post("/companies/:companyId/panel-users", async (req, res, next) => {
       welcomeEmail = mail.ok ? { sent: true } : { sent: false, reason: mail.reason };
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.created",
@@ -67847,7 +68160,7 @@ adminJson.patch("/companies/:companyId/panel-users/:userId", async (req, res, ne
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: patch.isActive === false ? "admin.panel_user.deactivated" : "admin.panel_user.updated",
@@ -67883,7 +68196,7 @@ adminJson.post("/companies/:companyId/panel-users/:userId/reset-password", async
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID26(),
+      id: randomUUID27(),
       companyId,
       actorPanelUserId: null,
       action: "admin.panel_user.password_reset",
@@ -67912,7 +68225,16 @@ adminJson.get("/rides", async (req, res, next) => {
       countRidesAdmin(scopedQuery),
       listRidesAdminPage(scopedQuery, pageSize, offset)
     ]);
-    const items = await attachAccessCodeSummariesToRides(rows);
+    const withCodes = await attachAccessCodeSummariesToRides(rows);
+    const billingMap = await mapBillingStatusByRideIds(withCodes.map((r) => r.id));
+    const items = withCodes.map((ride) => {
+      const fin = billingMap.get(ride.id);
+      return {
+        ...ride,
+        billingStatus: fin?.billingStatus ?? null,
+        settlementStatus: fin?.settlementStatus ?? null
+      };
+    });
     res.json({ ok: true, items, total, page, pageSize });
   } catch (e) {
     next(e);
@@ -67936,9 +68258,11 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
       return;
     }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
-    const [events, panelAudit] = await Promise.all([
+    const [events, panelAudit, financial, dispatchOffers] = await Promise.all([
       listAdminRideEventsByRideId(id),
-      row.companyId ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 }) : Promise.resolve([])
+      row.companyId ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 }) : Promise.resolve([]),
+      getRideFinancialSnapshotByRideId(id),
+      listDispatchOffersForRide(id)
     ]);
     const auditAsc = [...panelAudit].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const meta = row.partnerBookingMeta;
@@ -67946,9 +68270,14 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
     const supportTicketId = meta && typeof meta === "object" && typeof meta.supportTicketId === "string" ? meta.supportTicketId : null;
     res.json({
       ok: true,
-      ride,
+      ride: {
+        ...ride,
+        billingStatus: financial?.billingStatus ?? null,
+        settlementStatus: financial?.settlementStatus ?? null
+      },
       events,
       panelAudit: auditAsc,
+      dispatchOffers,
       links: {
         billingReference: row.billingReference ?? null,
         supportTicketId: supportTicketId || null,
@@ -68407,7 +68736,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/approve", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.approved",
@@ -68451,7 +68780,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/reject", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.rejected",
@@ -68481,7 +68810,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/mark-missing-documents", async (req, 
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.missing_documents",
@@ -68518,7 +68847,7 @@ adminJson.post("/fleet-vehicles/:vehicleId/block", async (req, res, next) => {
     const d0 = await getFleetVehicleAdminDetail(vehicleId);
     if (d0) {
       await insertPanelAuditLog({
-        id: randomUUID26(),
+        id: randomUUID27(),
         companyId: d0.vehicle.companyId,
         actorPanelUserId: null,
         action: "admin.fleet_vehicle.blocked",
@@ -68613,6 +68942,7 @@ var import_express11 = __toESM(require_express2(), 1);
 
 // src/db/panelAuthData.ts
 init_drizzle_orm();
+init_panelModules();
 init_client();
 init_schema2();
 async function findActivePanelUserByUsername(username) {
@@ -69474,7 +69804,7 @@ var panelAuth_default = router11;
 var import_express12 = __toESM(require_express2(), 1);
 init_rideBillingProfile();
 init_client();
-import { randomUUID as randomUUID28 } from "node:crypto";
+import { randomUUID as randomUUID29 } from "node:crypto";
 import { mkdir as mkdir5, readFile as readFile2, writeFile as writeFile5 } from "node:fs/promises";
 import path7 from "node:path";
 
@@ -69725,7 +70055,7 @@ init_dispatchStatus();
 init_drizzle_orm();
 init_client();
 init_schema2();
-import { randomUUID as randomUUID27 } from "node:crypto";
+import { randomUUID as randomUUID28 } from "node:crypto";
 var memSeries = [];
 function rowToSeries(r) {
   return {
@@ -69743,7 +70073,7 @@ function rowToSeries(r) {
   };
 }
 async function insertPartnerRideSeries(input) {
-  const id = `SRS-${randomUUID27()}`;
+  const id = `SRS-${randomUUID28()}`;
   const db2 = getDb();
   if (!db2) {
     const row = {
@@ -69811,6 +70141,9 @@ function computeAccessCodeDefinitionState(row, now) {
   if (row.max_uses != null && row.uses_count >= row.max_uses) return "exhausted";
   return "valid";
 }
+
+// src/routes/panelApi.ts
+init_panelModules();
 
 // src/middleware/panelAccess.ts
 function denyUnlessPanelPermission(res, profileRole, permission) {
@@ -70051,7 +70384,7 @@ async function enrichPanelRidesForResponse(rides) {
   }));
 }
 function reqRideId() {
-  return `REQ-${randomUUID28()}`;
+  return `REQ-${randomUUID29()}`;
 }
 function parsePartnerFlowParam(v) {
   if (typeof v !== "string" || !v.trim()) return null;
@@ -70462,7 +70795,7 @@ router12.patch("/panel/v1/company", requirePanelAuth, async (req, res, next) => 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.profile_updated",
@@ -70500,7 +70833,7 @@ router12.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     const created = await insertCompanyChangeRequest({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       requestedByPanelUserId: ctx.claims.panelUserId,
       requestType,
@@ -70512,7 +70845,7 @@ router12.post("/panel/v1/company/change-requests", requirePanelAuth, async (req,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "company.change_request.created",
@@ -70555,8 +70888,8 @@ router12.post("/panel/v1/support/threads", requirePanelAuth, async (req, res, ne
       res.status(400).json({ error: "body_invalid", hint: "max 10000" });
       return;
     }
-    const threadId = randomUUID28();
-    const messageId = randomUUID28();
+    const threadId = randomUUID29();
+    const messageId = randomUUID29();
     const created = await insertSupportThreadWithFirstMessage({
       threadId,
       messageId,
@@ -70614,7 +70947,7 @@ router12.post("/panel/v1/support/threads/:threadId/messages", requirePanelAuth, 
       return;
     }
     const result = await insertPartnerSupportMessage({
-      messageId: randomUUID28(),
+      messageId: randomUUID29(),
       threadId,
       companyId: ctx.claims.companyId,
       panelUserId: ctx.claims.panelUserId,
@@ -70770,7 +71103,7 @@ router12.post("/panel/v1/rides/:id/create-invoice", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "billing.invoice_created",
@@ -71030,7 +71363,7 @@ router12.post("/panel/v1/rides", requirePanelAuth, async (req, res, next) => {
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "ride.created",
@@ -71210,7 +71543,7 @@ router12.post("/panel/v1/bookings/hotel-guest", requirePanelAuth, async (req, re
     const rideOut = saved ? toPartnerRideView((await enrichPanelRidesForResponse([saved]))[0]) : toPartnerRideView(newReq);
     if (saved) await upsertFinanceAfterPartnerRideCreated(saved);
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.hotel_guest_created",
@@ -71481,7 +71814,7 @@ router12.post("/panel/v1/bookings/medical-round-trip", requirePanelAuth, async (
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_round_trip_created",
@@ -71705,7 +72038,7 @@ router12.post("/panel/v1/bookings/medical-series", requirePanelAuth, async (req,
       if (r) await upsertFinanceAfterPartnerRideCreated(r);
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "booking.medical_series_created",
@@ -71834,7 +72167,7 @@ router12.post("/panel/v1/access-codes", requirePanelAuth, async (req, res, next)
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.created",
@@ -71881,7 +72214,7 @@ router12.patch("/panel/v1/access-codes/:id", requirePanelAuth, async (req, res, 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "access_code.updated",
@@ -71926,7 +72259,7 @@ router12.post("/panel/v1/me/change-password", requirePanelAuth, async (req, res,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.self_password_change",
@@ -71995,7 +72328,7 @@ router12.post("/panel/v1/users", requirePanelAuth, async (req, res, next) => {
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.created",
@@ -72082,7 +72415,7 @@ router12.patch("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) =
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: patch.isActive === false ? "user.deactivated" : "user.updated",
@@ -72137,7 +72470,7 @@ router12.delete("/panel/v1/users/:id", requirePanelAuth, async (req, res, next) 
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.deleted",
@@ -72187,7 +72520,7 @@ router12.post("/panel/v1/users/:id/reset-password", requirePanelAuth, async (req
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID28(),
+      id: randomUUID29(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "user.password_reset",
@@ -72397,6 +72730,9 @@ async function listActualDurationMinutesByRideIds(rideIds) {
 }
 
 // src/routes/fleetDriverApi.ts
+init_adminData();
+init_appOperationalData();
+init_financeCalculationService();
 var router14 = (0, import_express14.Router)();
 router14.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
   if (!isPostgresConfigured()) {
@@ -72430,10 +72766,23 @@ router14.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
     driverBlockKind: "other"
   } : einsatzbereit ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" } : buildFleetDriverMeClientHints(readinessR, listRow);
   const isMarketOnline = Boolean(row.is_market_online);
+  const commissionRate = await getAdminCompanyCommissionRate(a.companyId);
+  const opPayload = await getOperationalConfigPayload();
+  const regions = await listServiceRegionsForApi();
+  const pricingCtx = await resolveFinancePricingContextForRide(
+    { rideKind: "standard", companyId: a.companyId },
+    opPayload,
+    regions
+  );
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    companyCommission: {
+      rate: commissionRate,
+      ratePercent: Math.round(commissionRate * 1e3) / 10,
+      minCommissionEur: pricingCtx.minCommissionEur ?? null
+    },
     notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
     blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
     driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
@@ -72461,6 +72810,32 @@ router14.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => 
       vehicleClass: assignedVehicleVisible.vehicleClass
     } : null
   });
+});
+router14.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const raw = String(req.query.grossEur ?? req.query.gross ?? "0").replace(",", ".");
+    const grossEur = Number.parseFloat(raw);
+    if (!Number.isFinite(grossEur) || grossEur < 0) {
+      res.status(400).json({ error: "invalid_gross_eur" });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const regions = await listServiceRegionsForApi();
+    const pc = await resolveFinancePricingContextForRide(
+      { rideKind: "standard", companyId: a.companyId },
+      opPayload,
+      regions
+    );
+    const preview = previewDriverSettlementFromGross(grossEur, pc);
+    res.json({ ok: true, ...preview });
+  } catch (e) {
+    next(e);
+  }
 });
 router14.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {
   const a = req.fleetDriverAuth;
@@ -72612,6 +72987,8 @@ router14.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req
     });
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    const openInstantIds = marketRows.filter((r) => !r.driverId && isInstantDispatchRideStatus(r.status)).map((r) => r.id);
+    void recordDispatchOffersSentForDriver(a.fleetDriverId, a.companyId, openInstantIds);
     res.json({
       ok: true,
       einsatzbereit: true,
@@ -72726,6 +73103,28 @@ router14.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriver
     next(e);
   }
 });
+router14.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = req.fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const result = await recordDispatchOfferSeen(a.fleetDriverId, a.companyId, rideId);
+    if (!result.ok) {
+      res.status(503).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true, rideId });
+  } catch (e) {
+    next(e);
+  }
+});
 router14.post("/fleet-driver/v1/expo-push-token", requireFleetDriverAuth, async (req, res, next) => {
   try {
     if (!isPostgresConfigured()) {
@@ -72833,7 +73232,7 @@ var fleetDriverApi_default = router14;
 // src/routes/fleetPanelApi.ts
 var import_express15 = __toESM(require_express2(), 1);
 init_companyComplianceDocumentsData();
-import { randomUUID as randomUUID29 } from "node:crypto";
+import { randomUUID as randomUUID30 } from "node:crypto";
 import fs from "node:fs/promises";
 import { createReadStream as createReadStream3 } from "node:fs";
 import path8 from "node:path";
@@ -72843,6 +73242,8 @@ init_fleetDriversData();
 init_fleetVehiclesData();
 init_fleetAssignmentsData();
 init_companyGovernanceData();
+init_adminData();
+init_panelModules();
 init_fleetDriverReadiness();
 var router15 = (0, import_express15.Router)();
 router15.use((_req, res, next) => {
@@ -73009,7 +73410,7 @@ router15.post("/panel/v1/fleet/drivers", requirePanelAuth, async (req, res, next
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_created",
@@ -73080,7 +73481,7 @@ router15.patch("/panel/v1/fleet/drivers/:id", requirePanelAuth, async (req, res,
       }
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_updated",
@@ -73104,7 +73505,7 @@ router15.post("/panel/v1/fleet/drivers/:id/suspend", requirePanelAuth, async (re
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_suspended",
@@ -73128,7 +73529,7 @@ router15.post("/panel/v1/fleet/drivers/:id/activate", requirePanelAuth, async (r
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_activated",
@@ -73155,7 +73556,7 @@ router15.post("/panel/v1/fleet/drivers/:id/reset-password", requirePanelAuth, as
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.driver_password_reset",
@@ -73188,7 +73589,7 @@ router15.post(
         res.status(404).json({ error: "not_found" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID29()}.pdf`);
+      const rel = path8.join(ctx.claims.companyId, "drivers", `${id}-${randomUUID30()}.pdf`);
       const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -73276,7 +73677,7 @@ router15.post("/panel/v1/fleet/vehicles", requirePanelAuth, async (req, res, nex
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_created",
@@ -73403,7 +73804,7 @@ router15.post(
         res.status(400).json({ error: "vehicle_document_kind_invalid", hint: "Query ?kind=concession|registration|insurance|taximeter|accessibility" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID29()}.pdf`);
+      const rel = path8.join(ctx.claims.companyId, "vehicles", `${id}-${randomUUID30()}.pdf`);
       const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -73418,7 +73819,7 @@ router15.post(
         return;
       }
       await insertPanelAuditLog({
-        id: randomUUID29(),
+        id: randomUUID30(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: "fleet.vehicle_document_uploaded",
@@ -73450,7 +73851,7 @@ router15.post("/panel/v1/fleet/vehicles/:id/submit-for-approval", requirePanelAu
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID29(),
+      id: randomUUID30(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "fleet.vehicle_submitted_for_approval",
@@ -73515,7 +73916,7 @@ router15.post(
         res.status(400).json({ error: "pdf_body_required" });
         return;
       }
-      const rel = path8.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID29()}.pdf`);
+      const rel = path8.join(ctx.claims.companyId, "compliance", `${kind}-${randomUUID30()}.pdf`);
       const dest = path8.join(FLEET_UPLOAD_ROOT, rel);
       await fs.mkdir(path8.dirname(dest), { recursive: true });
       await fs.writeFile(dest, buf);
@@ -73540,7 +73941,7 @@ router15.post(
         throw e;
       }
       await insertPanelAuditLog({
-        id: randomUUID29(),
+        id: randomUUID30(),
         companyId: ctx.claims.companyId,
         actorPanelUserId: ctx.claims.panelUserId,
         action: kind === "gewerbe" ? "fleet.compliance_gewerbe_uploaded" : "fleet.compliance_insurance_uploaded",
@@ -73559,7 +73960,7 @@ var fleetPanelApi_default = router15;
 // src/routes/insurerPanelApi.ts
 var import_express16 = __toESM(require_express2(), 1);
 init_client();
-import { randomUUID as randomUUID31 } from "node:crypto";
+import { randomUUID as randomUUID32 } from "node:crypto";
 import fs2 from "node:fs/promises";
 import { createReadStream as createReadStream4 } from "node:fs";
 import path9 from "node:path";
@@ -73572,7 +73973,7 @@ init_partnerBookingMeta();
 init_client();
 init_schema2();
 init_ridesData();
-import { randomUUID as randomUUID30 } from "node:crypto";
+import { randomUUID as randomUUID31 } from "node:crypto";
 var OPEN = [
   "draft",
   "scheduled",
@@ -73695,7 +74096,7 @@ async function insertInsurerCostCenter(companyId, input) {
   if (!db2) return { ok: false, error: "database_not_configured" };
   const code = input.code.trim();
   if (!code) return { ok: false, error: "code_required" };
-  const id = randomUUID30();
+  const id = randomUUID31();
   const now = /* @__PURE__ */ new Date();
   try {
     await db2.insert(insurerCostCentersTable).values({
@@ -73787,7 +74188,7 @@ async function insertInsurerTransportDocument(companyId, rideId, panelUserId, in
   if (!r || (r.companyId ?? null) !== companyId) return { ok: false, error: "ride_not_found" };
   const db2 = getDb();
   if (!db2) return { ok: false, error: "database_not_configured" };
-  const id = randomUUID30();
+  const id = randomUUID31();
   const now = /* @__PURE__ */ new Date();
   await db2.insert(insurerRideTransportDocumentsTable).values({
     id,
@@ -73821,6 +74222,7 @@ async function getInsurerTransportDocumentFile(companyId, docId) {
 }
 
 // src/routes/insurerPanelApi.ts
+init_panelModules();
 var router16 = (0, import_express16.Router)();
 var pkgRoot2 = path9.join(path9.dirname(fileURLToPath4(import.meta.url)), "..", "..");
 var INSURER_UPLOAD_ROOT = (process.env.INSURER_UPLOAD_DIR ?? "").trim() || path9.join(pkgRoot2, "uploads", "insurer-transport");
@@ -73965,7 +74367,7 @@ router16.patch("/panel/v1/insurer/rides/:rideId/organization", requirePanelAuth,
       return;
     }
     await insertPanelAuditLog({
-      id: randomUUID31(),
+      id: randomUUID32(),
       companyId: ctx.claims.companyId,
       actorPanelUserId: ctx.claims.panelUserId,
       action: "insurer.ride_org_meta_patched",
@@ -74018,7 +74420,7 @@ router16.post(
       const ext = ct === "image/jpeg" ? "jpg" : ct === "image/png" ? "png" : "pdf";
       const nameHeader = req.headers["x-file-name"]?.trim() || `transport.${ext}`;
       const safeName = nameHeader.replace(/[\\/]+/g, "-").slice(0, 180);
-      const rel = path9.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID31()}.${ext}`);
+      const rel = path9.join(ctx.claims.companyId, "rides", req.params.rideId, `${randomUUID32()}.${ext}`);
       const dest = path9.join(INSURER_UPLOAD_ROOT, rel);
       await fs2.mkdir(path9.dirname(dest), { recursive: true });
       await fs2.writeFile(dest, buf);
@@ -74712,6 +75114,7 @@ app.get("/", (req, res, next) => {
 var app_default = app;
 
 // src/index.ts
+init_adminData();
 init_logger2();
 
 // src/wsRideSocketHub.ts

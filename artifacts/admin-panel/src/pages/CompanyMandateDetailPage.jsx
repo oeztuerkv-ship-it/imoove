@@ -120,6 +120,18 @@ function boolJaNein(v) {
   return NA;
 }
 
+function fmtCommissionPercent(c) {
+  const r = typeof c?.commission_rate === "number" ? c.commission_rate : Number(c?.commission_rate);
+  if (!Number.isFinite(r) || r < 0) return "10 %";
+  return `${Math.round(r * 1000) / 10} %`;
+}
+
+function commissionPercentFromCompany(c) {
+  const r = typeof c?.commission_rate === "number" ? c.commission_rate : Number(c?.commission_rate);
+  if (!Number.isFinite(r) || r < 0) return 10;
+  return Math.round(r * 1000) / 10;
+}
+
 function fmtAuditMeta(meta) {
   if (meta == null || typeof meta !== "object") return null;
   try {
@@ -176,6 +188,7 @@ function formFromCompany(c, billingAccountEmail) {
     insurer_def_ref: strFromRec(ip, IP_ADMIN.defaultBillingRef),
     insurer_cost_note: strFromRec(ip, IP_ADMIN.costCentersNote),
     insurer_booking_types_note: strFromRec(ip, IP_ADMIN.bookingTypesNote),
+    commission_rate_percent: commissionPercentFromCompany(c),
   };
 }
 
@@ -491,6 +504,11 @@ export default function CompanyMandateDetailPage({
   const onSave = useCallback(() => {
     if (!form || !c || !companyId) return;
     setSaveErr("");
+    const pct = Number(form.commission_rate_percent);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      setSaveErr("ONRODA Provision: bitte einen Wert zwischen 0 und 100 % eingeben.");
+      return;
+    }
     setSaving(true);
 
     const nextFp = { ...asObj(c.fare_permissions) };
@@ -549,6 +567,7 @@ export default function CompanyMandateDetailPage({
         business_notes: form.business_notes,
         max_drivers: form.max_drivers,
         max_vehicles: form.max_vehicles,
+        commission_rate: pct / 100,
         fare_permissions: nextFp,
         insurer_permissions: nextIp,
       }),
@@ -1044,6 +1063,10 @@ export default function CompanyMandateDetailPage({
                     <div>
                       {KIND_LABEL[c.company_kind] || fmtText(c.company_kind)} ({c.company_kind})
                     </div>
+                  </div>
+                  <div>
+                    <div className="admin-table-sub">ONRODA Provisionssatz</div>
+                    <div style={{ fontWeight: 600 }}>{fmtCommissionPercent(c)}</div>
                   </div>
                   <div>
                     <div className="admin-table-sub">Ansprechpartner</div>

@@ -1452,10 +1452,11 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     requests.filter((r) => r.status === "completed").slice(-1)[0] ?? null;
 
   const passengerAcceptedRequest = passengerId
-    ? requests
-        .filter(
+    ? (() => {
+        const pid = passengerId;
+        const candidates = requests.filter(
           (r) =>
-            r.passengerId === passengerId &&
+            r.passengerId === pid &&
             (r.status === "ready_for_dispatch" ||
               r.status === "accepted" ||
               r.status === "driver_arriving" ||
@@ -1463,8 +1464,25 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
               r.status === "passenger_onboard" ||
               r.status === "arrived" ||
               r.status === "in_progress"),
-        )
-        .slice(-1)[0] ?? null
+        );
+        if (candidates.length === 0) return null;
+        const lastId = lastAddedRequestId?.trim();
+        if (lastId) {
+          const match = candidates.find((r) => r.id === lastId);
+          if (match) return match;
+        }
+        return [...candidates].sort((a, b) => {
+          const ta =
+            a.createdAt instanceof Date
+              ? a.createdAt.getTime()
+              : new Date(a.createdAt as string).getTime();
+          const tb =
+            b.createdAt instanceof Date
+              ? b.createdAt.getTime()
+              : new Date(b.createdAt as string).getTime();
+          return tb - ta;
+        })[0] ?? null;
+      })()
     : null;
 
   const passengerCompletedRequest = passengerId

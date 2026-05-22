@@ -37,7 +37,29 @@ export function customerLivePhaseFromRideStatus(
 ): CustomerLiveRidePhase | null {
   if (status === "in_progress") return "driving";
   if (status === "passenger_onboard" || status === "arrived" || status === "driver_waiting") return "arrived";
-  if (opts.scheduledAt && opts.withinPickupHour) return "preparing";
+  if (
+    opts.scheduledAt &&
+    opts.withinPickupHour &&
+    (status === "accepted" ||
+      status === "driver_arriving" ||
+      status === "ready_for_dispatch" ||
+      status === "scheduled_assigned")
+  ) {
+    return "preparing";
+  }
   if (status === "accepted" || status === "driver_arriving" || status === "ready_for_dispatch") return "accepted";
   return null;
+}
+
+/** Fahrer zugewiesen / Live-Fahrt — nicht „Suche Fahrer“. */
+export function isCustomerDriverAssignedStatus(status: string): boolean {
+  return (
+    status === "ready_for_dispatch" ||
+    status === "accepted" ||
+    status === "driver_arriving" ||
+    status === "driver_waiting" ||
+    status === "passenger_onboard" ||
+    status === "arrived" ||
+    status === "in_progress"
+  );
 }

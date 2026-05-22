@@ -91,6 +91,17 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
   const driverBlockKind =
     typeof me.driverBlockKind === "string" && me.driverBlockKind.trim() ? me.driverBlockKind.trim() : "";
   const accessStatus = String(d.accessStatus ?? "");
+  const cc = (me.companyCommission ?? {}) as Record<string, unknown>;
+  const commissionRate =
+    typeof cc.rate === "number" && Number.isFinite(cc.rate) && cc.rate >= 0 ? cc.rate : 0.1;
+  const commissionRatePercent =
+    typeof cc.ratePercent === "number" && Number.isFinite(cc.ratePercent)
+      ? cc.ratePercent
+      : Math.round(commissionRate * 1000) / 10;
+  const minCommissionEur =
+    typeof cc.minCommissionEur === "number" && Number.isFinite(cc.minCommissionEur)
+      ? cc.minCommissionEur
+      : null;
   return {
     ...prev,
     id: String(d.id ?? prev.id ?? ""),
@@ -111,6 +122,11 @@ function mergeFleetDriverMeIntoProfile(prev: DriverProfile, me: Record<string, u
     notFreigegebenMessage,
     blockBannerTitle: einsatzbereit ? "" : blockBannerTitle,
     driverBlockKind: einsatzbereit ? "" : driverBlockKind,
+    companyCommission: {
+      rate: commissionRate,
+      ratePercent: commissionRatePercent,
+      minCommissionEur,
+    },
   };
 }
 
@@ -136,8 +152,34 @@ function normalizeProfileFromStorage(parsed: unknown): DriverProfile {
     notFreigegebenMessage: typeof p.notFreigegebenMessage === "string" ? p.notFreigegebenMessage : "",
     blockBannerTitle: typeof p.blockBannerTitle === "string" ? p.blockBannerTitle : "",
     driverBlockKind: typeof p.driverBlockKind === "string" ? p.driverBlockKind : "",
+    companyCommission: normalizeCompanyCommissionFromStorage(p.companyCommission),
   };
 }
+
+function normalizeCompanyCommissionFromStorage(
+  raw: unknown,
+): DriverCompanyCommission {
+  const cc = (raw ?? {}) as Record<string, unknown>;
+  const rate =
+    typeof cc.rate === "number" && Number.isFinite(cc.rate) && cc.rate >= 0 ? cc.rate : 0.1;
+  return {
+    rate,
+    ratePercent:
+      typeof cc.ratePercent === "number" && Number.isFinite(cc.ratePercent)
+        ? cc.ratePercent
+        : Math.round(rate * 1000) / 10,
+    minCommissionEur:
+      typeof cc.minCommissionEur === "number" && Number.isFinite(cc.minCommissionEur)
+        ? cc.minCommissionEur
+        : null,
+  };
+}
+
+export type DriverCompanyCommission = {
+  rate: number;
+  ratePercent: number;
+  minCommissionEur: number | null;
+};
 
 export interface DriverProfile {
   id: string;
@@ -158,6 +200,8 @@ export interface DriverProfile {
   blockBannerTitle: string;
   /** z. B. access_suspended | vehicle | compliance | other */
   driverBlockKind: string;
+  /** ONRODA-Provisionssatz des Mandanten (aus `/fleet-driver/v1/me`). */
+  companyCommission: DriverCompanyCommission;
 }
 
 interface DriverContextValue {
@@ -306,6 +350,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
         notFreigegebenMessage: DEFAULT_NICHT_FREI_MSG,
         blockBannerTitle: "",
         driverBlockKind: "",
+        companyCommission: { rate: 0.1, ratePercent: 10, minCommissionEur: null },
       };
       setDriver(profile);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));

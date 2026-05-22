@@ -27,6 +27,13 @@ import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { getAdminCompanyCommissionRate } from "../db/adminData";
+import {
+  getOperationalConfigPayload,
+  listServiceRegionsForApi,
+  resolveFinancePricingContextForRide,
+} from "../db/appOperationalData";
+import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 const router: IRouter = Router();
@@ -71,10 +78,23 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
         ? { notFreigegebenMessage: "", blockBannerTitle: "", driverBlockKind: "other" as const }
         : buildFleetDriverMeClientHints(readinessR, listRow);
   const isMarketOnline = Boolean(row.is_market_online);
+  const commissionRate = await getAdminCompanyCommissionRate(a.companyId);
+  const opPayload = await getOperationalConfigPayload();
+  const regions = await listServiceRegionsForApi();
+  const pricingCtx = await resolveFinancePricingContextForRide(
+    { rideKind: "standard", companyId: a.companyId },
+    opPayload,
+    regions,
+  );
   res.json({
     ok: true,
     einsatzbereit,
     isMarketOnline,
+    companyCommission: {
+      rate: commissionRate,
+      ratePercent: Math.round(commissionRate * 1000) / 10,
+      minCommissionEur: pricingCtx.minCommissionEur ?? null,
+    },
     notFreigegebenMessage: einsatzbereit ? null : hints.notFreigegebenMessage,
     blockBannerTitle: einsatzbereit ? null : hints.blockBannerTitle || null,
     driverBlockKind: einsatzbereit ? null : hints.driverBlockKind,
@@ -104,6 +124,34 @@ router.get("/fleet-driver/v1/me", requireFleetDriverAuth, async (req, res) => {
         }
       : null,
   });
+});
+
+/** Live-Vorschau Fahrer-Anteil (gleiche Logik wie ride_financials bei completed). */
+router.get("/fleet-driver/v1/fare-settlement-preview", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const raw = String(req.query.grossEur ?? req.query.gross ?? "0").replace(",", ".");
+    const grossEur = Number.parseFloat(raw);
+    if (!Number.isFinite(grossEur) || grossEur < 0) {
+      res.status(400).json({ error: "invalid_gross_eur" });
+      return;
+    }
+    const opPayload = await getOperationalConfigPayload();
+    const regions = await listServiceRegionsForApi();
+    const pc = await resolveFinancePricingContextForRide(
+      { rideKind: "standard", companyId: a.companyId },
+      opPayload,
+      regions,
+    );
+    const preview = previewDriverSettlementFromGross(grossEur, pc);
+    res.json({ ok: true, ...preview });
+  } catch (e) {
+    next(e);
+  }
 });
 
 router.get("/fleet-driver/v1/vehicles", requireFleetDriverAuth, async (req, res) => {

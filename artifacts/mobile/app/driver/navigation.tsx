@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
@@ -50,6 +51,8 @@ import {
   formatDriverFareInputDe,
   validateDriverFinalFareInput,
 } from "@/utils/driverRideCompletion";
+import { computeDriverFareSettlementPreview } from "@/utils/driverFareSettlementPreview";
+import { formatEuro } from "@/utils/fareCalculator";
 
 const API_BASE = getApiBaseUrl();
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
@@ -158,6 +161,7 @@ export default function DriverNavigationScreen() {
   }>();
 
   const { driverCancelRequest } = useRideRequests();
+  const { driver, refreshEinsatzbereit } = useDriver();
   const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";
@@ -555,6 +559,23 @@ export default function DriverNavigationScreen() {
         driverArrivingSentRef.current = false;
       });
   }, [params.rideId, rideFleetStatus, patchStatus]);
+
+  const fareSettlementPreview = useMemo(() => {
+    if (!driverMayBillPositiveFare(rideFleetStatus)) return null;
+    const parsed = parseFloat(fareInput.replace(",", "."));
+    const gross = Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    const cc = driver?.companyCommission;
+    return computeDriverFareSettlementPreview(
+      gross,
+      cc?.rate ?? 0.1,
+      cc?.minCommissionEur,
+    );
+  }, [fareInput, rideFleetStatus, driver?.companyCommission]);
+
+  useEffect(() => {
+    if (!showFareModal) return;
+    void refreshEinsatzbereit();
+  }, [showFareModal, refreshEinsatzbereit]);
 
   const handleFahrtBeenden = () => {
     trySpeak("Fahrt wird beendet.", soundRef.current);
@@ -977,12 +998,41 @@ export default function DriverNavigationScreen() {
                   selectTextOnFocus
                 />
               </View>
-            ) : (
+            ) : null}
+            {driverMayBillPositiveFare(rideFleetStatus) &&
+            fareSettlementPreview &&
+            fareSettlementPreview.grossEur > 0 ? (
+              <View style={styles.settlementBox}>
+                <View style={styles.settlementRow}>
+                  <Text style={styles.settlementLabel}>Fahrtpreis</Text>
+                  <Text style={styles.settlementValue}>{formatEuro(fareSettlementPreview.grossEur)}</Text>
+                </View>
+                <View style={styles.settlementRow}>
+                  <Text style={styles.settlementLabel}>
+                    ONRODA Provision ({fareSettlementPreview.commissionRatePercent} %)
+                  </Text>
+                  <Text style={[styles.settlementValue, styles.settlementMinus]}>
+                    −{formatEuro(fareSettlementPreview.commissionEur)}
+                  </Text>
+                </View>
+                <View style={styles.settlementDivider} />
+                <View style={styles.settlementRow}>
+                  <Text style={styles.settlementPayoutLabel}>Ihr Anteil</Text>
+                  <Text style={styles.settlementPayoutValue}>
+                    {formatEuro(fareSettlementPreview.payoutEur)}
+                  </Text>
+                </View>
+                <Text style={styles.settlementHint}>
+                  nach {fareSettlementPreview.commissionRatePercent} % ONRODA-Provision
+                </Text>
+              </View>
+            ) : null}
+            {!driverMayBillPositiveFare(rideFleetStatus) ? (
               <View style={[styles.fareBox, { backgroundColor: "#F0FDF4", borderColor: "#86EFAC" }]}>
                 <Text style={[styles.fareBoxLabel, { color: "#15803D" }]}>Endpreis</Text>
                 <Text style={{ fontSize: 28, fontFamily: "Inter_700Bold", color: "#15803D" }}>0,00 €</Text>
               </View>
-            )}
+            ) : null}
             <View style={styles.modalBtns}>
               <Pressable style={styles.cancelBtn} onPress={() => setShowFareModal(false)}>
                 <Text style={styles.cancelBtnText}>Abbrechen</Text>
@@ -1430,6 +1480,29 @@ const styles = StyleSheet.create({
   fareBoxLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: 8 },
   fareInput: { fontSize: 34, fontFamily: "Inter_700Bold", color: "#111827", paddingVertical: 8 },
   fareHint: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#9CA3AF", textAlign: "center" },
+  settlementBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  settlementRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  settlementLabel: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#64748B", flex: 1 },
+  settlementValue: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#334155" },
+  settlementMinus: { color: "#DC2626" },
+  settlementDivider: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 2 },
+  settlementPayoutLabel: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#111827" },
+  settlementPayoutValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#15803D" },
+  settlementHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#94A3B8",
+    textAlign: "right",
+    marginTop: -4,
+  },
   modalBtns: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelBtn: {
     flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: "#E5E7EB",

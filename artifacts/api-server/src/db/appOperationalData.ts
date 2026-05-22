@@ -7,6 +7,7 @@ import {
   resolveMergedTariff,
 } from "../lib/operationalTariffEngine";
 import { isFarFutureReservation } from "../lib/dispatchStatus";
+import { getAdminCompanyCommissionRate } from "./adminData";
 import { getDb, isPostgresConfigured } from "./client";
 import { appOperationalConfigTable, appServiceRegionsTable } from "./schema";
 import {
@@ -623,6 +624,35 @@ export function resolveFinancePricingContextFromOperational(
   const minPe = c.minProvisionEur;
   const minCommissionEur = typeof minPe === "number" && Number.isFinite(minPe) && minPe > 0 ? minPe : null;
   return { commissionType: "percentage", commissionValue: rate, minCommissionEur };
+}
+
+type RideFinanceContextInput = {
+  rideKind: string;
+  companyId?: string | null;
+  fromFull?: string | null;
+  fromLat?: number | null;
+  fromLon?: number | null;
+};
+
+/**
+ * Provision für ride_financials: zuerst `admin_companies.commission_rate`,
+ * sonst Betriebs-Konfiguration (`commission` in app_operational_config).
+ */
+export async function resolveFinancePricingContextForRide(
+  ride: RideFinanceContextInput,
+  opPayload: Record<string, unknown>,
+  serviceRegions: ServiceRegionPublic[],
+): Promise<FinancePricingContext> {
+  const opCtx = resolveFinancePricingContextFromOperational(ride, opPayload, serviceRegions);
+  const companyId = typeof ride.companyId === "string" ? ride.companyId.trim() : "";
+  if (!companyId) return opCtx;
+  const companyRate = await getAdminCompanyCommissionRate(companyId);
+  return {
+    commissionType: "percentage",
+    commissionValue: companyRate,
+    minCommissionEur: opCtx.minCommissionEur ?? null,
+    vatRate: opCtx.vatRate,
+  };
 }
 
 // --- Admin mutations ---

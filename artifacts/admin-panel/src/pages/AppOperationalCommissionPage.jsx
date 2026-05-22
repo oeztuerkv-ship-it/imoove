@@ -153,6 +153,11 @@ export default function AppOperationalCommissionPage() {
       {okMsg ? <div className="admin-info-banner admin-info-banner--ok">{okMsg}</div> : null}
       <div className="admin-panel-card" style={{ marginBottom: 16 }}>
         <div className="admin-panel-card__title">Standard-Provision &amp; Schalter</div>
+        <p className="admin-table-sub" style={{ marginBottom: 12 }}>
+          Verbindlicher Provisionssatz pro Unternehmen: Mandantenzentrale → Mandant bearbeiten →{" "}
+          <strong>ONRODA Provision (Mandant)</strong> (<code>admin_companies.commission_rate</code>). Die Werte
+          hier sind Fallback / Mindestprovision für die App-Konfiguration, wenn kein Mandantensatz greift.
+        </p>
         <div className="admin-form-vertical" style={{ maxWidth: 400 }}>
           <label className="admin-form-label" htmlFor="comPct">
             Standard-Provision (%)

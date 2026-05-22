@@ -104,6 +104,7 @@ const seedCompanies: CompanyRow[] = [
       "taxi_fleet",
     ],
     partner_panel_profile_locked: false,
+    commission_rate: 0.1,
   },
   {
     id: "co-demo-2",
@@ -155,6 +156,7 @@ const seedCompanies: CompanyRow[] = [
     release_radius_km: 8,
     panel_modules: null,
     partner_panel_profile_locked: false,
+    commission_rate: 0.1,
   },
 ];
 
@@ -234,6 +236,8 @@ function rowToCompany(r: typeof adminCompaniesTable.$inferSelect): CompanyRow {
     release_radius_km: r.release_radius_km,
     panel_modules: normalizeStoredPanelModules(r.panel_modules ?? null) ?? null,
     partner_panel_profile_locked: r.partner_panel_profile_locked ?? false,
+    commission_rate:
+      typeof r.commission_rate === "number" && Number.isFinite(r.commission_rate) ? r.commission_rate : 0.1,
   };
 }
 
@@ -568,6 +572,8 @@ export type AdminCompanyUpdateBody = Partial<{
   insurer_permissions: Record<string, unknown>;
   area_assignments: string[];
   partner_panel_profile_locked: boolean;
+  /** Dezimal 0–1 (0.10 = 10 %). */
+  commission_rate: number;
   is_active: boolean;
   is_priority_company: boolean;
   priority_for_live_rides: boolean;
@@ -583,6 +589,28 @@ export type AdminCompanyUpdateBody = Partial<{
    */
   billing_account_email?: string;
 }>;
+
+/** ONRODA-Provisionssatz des Mandanten (0.10 = 10 %). Fallback 10 % wenn ungültig. */
+export async function getAdminCompanyCommissionRate(companyId: string): Promise<number> {
+  const id = companyId.trim();
+  const fallback = 0.1;
+  if (!id) return fallback;
+  const db = getDb();
+  if (!db) {
+    const c = memCompanies.find((x) => x.id === id);
+    const r = (c as { commission_rate?: number } | undefined)?.commission_rate;
+    if (typeof r === "number" && Number.isFinite(r) && r >= 0 && r <= 1) return r;
+    return fallback;
+  }
+  const rows = await db
+    .select({ commission_rate: adminCompaniesTable.commission_rate })
+    .from(adminCompaniesTable)
+    .where(eq(adminCompaniesTable.id, id))
+    .limit(1);
+  const r = rows[0]?.commission_rate;
+  if (typeof r === "number" && Number.isFinite(r) && r >= 0 && r <= 1) return r;
+  return fallback;
+}
 
 export async function findCompanyById(companyId: string): Promise<CompanyRow | null> {
   const db = getDb();
@@ -644,6 +672,7 @@ function companyRowToDbValues(c: CompanyRow) {
     release_radius_km: c.release_radius_km,
     panel_modules: c.panel_modules ?? null,
     partner_panel_profile_locked: c.partner_panel_profile_locked,
+    commission_rate: c.commission_rate,
   };
 }
 
@@ -749,6 +778,9 @@ function applyAdminCompanyPatch(cur: CompanyRow, body: AdminCompanyUpdateBody): 
   if (typeof body.partner_panel_profile_locked === "boolean") {
     next.partner_panel_profile_locked = body.partner_panel_profile_locked;
   }
+  if (typeof body.commission_rate === "number" && Number.isFinite(body.commission_rate)) {
+    next.commission_rate = Math.min(1, Math.max(0, body.commission_rate));
+  }
   return next;
 }
 
@@ -809,6 +841,7 @@ export async function insertAdminCompany(
     release_radius_km: 10,
     panel_modules: null,
     partner_panel_profile_locked: false,
+    commission_rate: 0.1,
   };
   const next = applyAdminCompanyPatch(base, body);
 

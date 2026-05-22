@@ -72,8 +72,10 @@ import {
   getOperationalConfigPayload,
   getOutOfServiceAreaMessage,
   listServiceRegionsForApi,
+  resolveFinancePricingContextForRide,
   resolveFinancePricingContextFromOperational,
 } from "../db/appOperationalData";
+import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
 import { decodeValidatedMedicalTransportImage } from "../lib/medicalTransportImage";
 import { calculateMedicalBillingReadiness } from "../lib/medicalBillingReadiness";
 import { createMedicalQrToken, formatMedicalQrPayload } from "../lib/medicalQrToken";
@@ -1526,7 +1528,7 @@ router.post("/rides", async (req, res, next) => {
       res.status(500).json({ error: "ride_insert_inconsistent" });
       return;
     }
-    const pcCreated = resolveFinancePricingContextFromOperational(created, opPayload, regions);
+    const pcCreated = await resolveFinancePricingContextForRide(created, opPayload, regions);
     void upsertRideFinancialSnapshot({
       ride: created,
       pricingContext: pcCreated,
@@ -1953,7 +1955,7 @@ export async function patchRideStatusRoute(
     ) {
       const opPayloadCf = await getOperationalConfigPayload();
       const regionsCf = await listServiceRegionsForApi();
-      const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+      const pcCf = await resolveFinancePricingContextForRide(updated, opPayloadCf, regionsCf);
       const financeCf = await upsertRideFinancialSnapshot({
         ride: updated,
         pricingContext: pcCf,
@@ -1967,10 +1969,15 @@ export async function patchRideStatusRoute(
       }
     }
 
+    let driverSettlement: ReturnType<typeof previewDriverSettlementFromGross> | null = null;
     if (nextStatus === "completed") {
       const opPayloadComplete = await getOperationalConfigPayload();
       const regionsComplete = await listServiceRegionsForApi();
-      const pcComplete = resolveFinancePricingContextFromOperational(updated, opPayloadComplete, regionsComplete);
+      const pcComplete = await resolveFinancePricingContextForRide(
+        updated,
+        opPayloadComplete,
+        regionsComplete,
+      );
       const finance = await upsertRideFinancialSnapshot({
         ride: updated,
         pricingContext: pcComplete,
@@ -1982,6 +1989,10 @@ export async function patchRideStatusRoute(
         res.status(500).json({ error: finance.error });
         return;
       }
+      driverSettlement = previewDriverSettlementFromGross(
+        Number(updated.finalFare ?? 0),
+        pcComplete,
+      );
     }
     if (nextStatus === "completed" || nextStatus === "cancelled_by_driver" || nextStatus === "cancelled" || nextStatus === "cancelled_by_system") {
       customerCancelReasons.delete(id);
@@ -2026,7 +2037,21 @@ export async function patchRideStatusRoute(
       });
     }
 
-    res.json({ ...stripPartnerOnlyRideFields(updated), cancelReason: customerCancelReasons.get(id) ?? null });
+    res.json({
+      ...stripPartnerOnlyRideFields(updated),
+      cancelReason: customerCancelReasons.get(id) ?? null,
+      ...(driverSettlement
+        ? {
+            driverSettlement: {
+              grossAmount: driverSettlement.grossAmount,
+              commissionRate: driverSettlement.commissionRate,
+              commissionRatePercent: driverSettlement.commissionRatePercent,
+              commissionAmount: driverSettlement.commissionAmount,
+              driverPayoutAmount: driverSettlement.driverPayoutAmount,
+            },
+          }
+        : {}),
+    });
   } catch (e) {
     next(e);
   }
@@ -2142,7 +2167,7 @@ export async function cancelRideForVerifiedCustomerSession(
 
   const opPayloadCf = await getOperationalConfigPayload();
   const regionsCf = await listServiceRegionsForApi();
-  const pcCf = resolveFinancePricingContextFromOperational(updated, opPayloadCf, regionsCf);
+  const pcCf = await resolveFinancePricingContextForRide(updated, opPayloadCf, regionsCf);
   const financeCf = await upsertRideFinancialSnapshot({
     ride: updated,
     pricingContext: pcCf,

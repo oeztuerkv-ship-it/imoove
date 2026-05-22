@@ -56,6 +56,8 @@ export interface CompanyRow {
   panel_modules: string[] | null;
   /** Partner-Panel: Basis-Stammdaten per Self-Service abgeschlossen — nur noch Change-Requests. */
   partner_panel_profile_locked: boolean;
+  /** ONRODA-Provisionssatz (0.10 = 10 %), Plattform-Admin je Mandant. */
+  commission_rate: number;
 }
 
 export interface FareAreaRow {

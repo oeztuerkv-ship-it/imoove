@@ -68,6 +68,8 @@ export const adminCompaniesTable = pgTable("admin_companies", {
    * für diese Felder — nur noch `company_change_requests`.
    */
   partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false),
+  /** ONRODA-Provision (0.10 = 10 %), siehe ride_financials bei completed. */
+  commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
 });
 
 /** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */

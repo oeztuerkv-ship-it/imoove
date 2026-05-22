@@ -40,7 +40,12 @@ import {
   isCustomerOpenDispatchStatus,
 } from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
-import { customerShowsTripEstimate } from "@/utils/onrodaRideOpsFlow";
+import {
+  type CustomerLiveRidePhase,
+  customerLivePhaseFromRideStatus,
+  customerShowsTripEstimate,
+  isCustomerDriverAssignedStatus,
+} from "@/utils/onrodaRideOpsFlow";
 import { rs, rf } from "@/utils/scale";
 import {
   mergeRideChatMessages,
@@ -337,27 +342,30 @@ export default function StatusScreen() {
     if (acceptedRequest) stickyAcceptedRef.current = acceptedRequest;
   }, [acceptedRequest]);
 
+  /**
+   * Nur die Fahrt mit `currentRideId` — nie eine andere „accepted“-Fahrt aus dem Context,
+   * sonst springt die UI während `searching_driver` auf Tracking / „Fahrer da“.
+   */
   const effectiveAcceptedRequest = useMemo(() => {
-    if (acceptedRequest) return acceptedRequest;
-    const sticky = stickyAcceptedRef.current;
-    if (!sticky || !currentRideId || sticky.id !== currentRideId) return null;
-    const live = requests.find((r) => r.id === currentRideId);
-    if (!live) return sticky;
-    if (isCustomerFinalCancelledStatus(live.status)) return null;
-    if (isCustomerOpenDispatchStatus(live.status)) {
+    if (!currentRideId) {
+      return acceptedRequest;
+    }
+    const live = requests.find((r) => r.id === currentRideId) ?? null;
+    if (live) {
+      if (isCustomerFinalCancelledStatus(live.status)) {
+        stickyAcceptedRef.current = null;
+        return null;
+      }
+      if (isCustomerOpenDispatchStatus(live.status)) {
+        stickyAcceptedRef.current = null;
+        return null;
+      }
+      if (isCustomerDriverAssignedStatus(live.status)) return live;
       stickyAcceptedRef.current = null;
       return null;
     }
-    const activeStatuses = new Set([
-      "ready_for_dispatch",
-      "accepted",
-      "driver_arriving",
-      "driver_waiting",
-      "passenger_onboard",
-      "arrived",
-      "in_progress",
-    ]);
-    return activeStatuses.has(live.status) ? live : sticky;
+    const sticky = stickyAcceptedRef.current;
+    return sticky?.id === currentRideId ? sticky : null;
   }, [acceptedRequest, currentRideId, requests]);
 
   const serverRideForUi = rideMatchingCurrentId ?? effectiveAcceptedRequest;
@@ -419,40 +427,49 @@ export default function StatusScreen() {
     pickupDiffMs >= 0 &&
     pickupDiffMs <= 60 * 60 * 1000;
 
-  const rawPhase:
-    | "searching"
-    | "reserved"
-    | "reservation_unfulfilled"
+  const rawPhase = useMemo(():
+    | CustomerLiveRidePhase
     | "ride_cancelled"
-    | "accepted"
-    | "preparing"
-    | "arrived"
-    | "driving"
-    | "completed" =
-    completedForCurrentRide ? "completed"
-    : rideMatchingCurrentId && isCustomerFinalCancelledStatus(rideMatchingCurrentId.status)
-      ? "ride_cancelled"
-    : effectiveAcceptedRequest?.status === "in_progress" ? "driving"
-    : effectiveAcceptedRequest?.status === "passenger_onboard" ||
-        effectiveAcceptedRequest?.status === "arrived" ||
-        effectiveAcceptedRequest?.status === "driver_waiting"
-      ? "arrived"
-    : effectiveAcceptedRequest && effectiveAcceptedRequest.scheduledAt && withinPickupHour ? "preparing"
-    : effectiveAcceptedRequest?.status === "accepted" || effectiveAcceptedRequest?.status === "driver_arriving" ? "accepted"
-    : effectiveAcceptedRequest ? "accepted"
-    : (() => {
-        const cur = rideMatchingCurrentId;
-        const st = cur?.scheduledAt;
-        const hasSched =
-          st != null &&
-          (st instanceof Date ? Number.isFinite(st.getTime()) : String(st).trim().length > 0);
-        const term = cur?.status === "expired" || cur?.status === "rejected";
-        return term && hasSched;
-      })()
-      ? "reservation_unfulfilled"
-    : rideMatchingCurrentId?.status === "scheduled" || rideMatchingCurrentId?.status === "scheduled_assigned"
-      ? "reserved"
-    : "searching";
+    | "completed" => {
+    if (completedForCurrentRide) return "completed";
+
+    const cur = rideMatchingCurrentId;
+    if (currentRideId && cur?.id === currentRideId) {
+      if (isCustomerFinalCancelledStatus(cur.status)) return "ride_cancelled";
+      if (isCustomerOpenDispatchStatus(cur.status)) return "searching";
+      const st = cur.scheduledAt;
+      const hasSched =
+        st != null &&
+        (st instanceof Date ? Number.isFinite(st.getTime()) : String(st).trim().length > 0);
+      if ((cur.status === "expired" || cur.status === "rejected") && hasSched) {
+        return "reservation_unfulfilled";
+      }
+      if (cur.status === "scheduled" || cur.status === "scheduled_assigned") return "reserved";
+      const ops = customerLivePhaseFromRideStatus(cur.status, {
+        scheduledAt: cur.scheduledAt,
+        withinPickupHour,
+      });
+      if (ops) return ops;
+      return "searching";
+    }
+
+    const eff = effectiveAcceptedRequest;
+    if (eff && (!currentRideId || eff.id === currentRideId)) {
+      const ops = customerLivePhaseFromRideStatus(eff.status, {
+        scheduledAt: eff.scheduledAt,
+        withinPickupHour,
+      });
+      if (ops) return ops;
+    }
+
+    return "searching";
+  }, [
+    completedForCurrentRide,
+    rideMatchingCurrentId,
+    currentRideId,
+    effectiveAcceptedRequest,
+    withinPickupHour,
+  ]);
 
   const customerPhase = isCompleted ? "completed" : rawPhase;
 

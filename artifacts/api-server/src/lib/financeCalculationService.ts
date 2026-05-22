@@ -192,6 +192,37 @@ export function calculateRideFinancialsV1(input: FinanceCalculationInput): Finan
   };
 }
 
+export function previewDriverSettlementFromGross(
+  grossEur: number,
+  pricingContext: FinancePricingContext,
+): {
+  grossAmount: number;
+  commissionRate: number;
+  commissionRatePercent: number;
+  commissionAmount: number;
+  driverPayoutAmount: number;
+} {
+  const grossSafe = toSafeNonNegative(grossEur, 0);
+  const ride = {
+    id: "preview",
+    status: "completed",
+    finalFare: grossSafe,
+    estimatedFare: grossSafe,
+    rideKind: "standard",
+    payerKind: "passenger",
+    pricingMode: "taxi_tariff",
+  } as RideRequest;
+  const calc = calculateRideFinancialsV1({ ride, pricingContext });
+  const rate = calc.commissionValue;
+  return {
+    grossAmount: calc.grossAmount,
+    commissionRate: rate,
+    commissionRatePercent: Math.round(rate * 1000) / 10,
+    commissionAmount: calc.commissionAmount,
+    driverPayoutAmount: calc.operatorPayoutAmount,
+  };
+}
+
 export function deriveFinanceInitialStatuses(ride: RideRequest): {
   billingStatus: RideFinancialBillingStatus;
   settlementStatus: RideFinancialSettlementStatus;

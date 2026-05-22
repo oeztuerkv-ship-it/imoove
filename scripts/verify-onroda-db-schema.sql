@@ -363,6 +363,13 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'commission_rate'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.commission_rate (Migration 073)');
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'company_compliance_documents'
   ) THEN
