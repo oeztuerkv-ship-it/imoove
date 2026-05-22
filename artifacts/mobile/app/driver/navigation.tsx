@@ -26,6 +26,7 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
   replaceDriverStackExclusive,
+  resetDriverStackScreen,
   setDriverNavigationPhaseParams,
 } from "@/utils/driverNavigationRoute";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
@@ -518,29 +519,26 @@ export default function DriverNavigationScreen() {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId || stackCollapsedForRideRef.current === rideId) return;
     stackCollapsedForRideRef.current = rideId;
-    replaceDriverStackExclusive({
-      pathname: "/driver/navigation",
-      params: {
-        rideId,
-        phase: params.phase ?? "pickup",
-        fromLat: params.fromLat ?? "0",
-        fromLon: params.fromLon ?? "0",
-        fromName: params.fromName ?? "",
-        toLat: params.toLat ?? "0",
-        toLon: params.toLon ?? "0",
-        toName: params.toName ?? "",
-        customerName: params.customerName ?? "",
-        pickupLat: params.pickupLat ?? params.toLat ?? "0",
-        pickupLon: params.pickupLon ?? params.toLon ?? "0",
-        pickupName: params.pickupName ?? params.toName ?? "Abholort",
-        destLat: params.destLat ?? "0",
-        destLon: params.destLon ?? "0",
-        destName: params.destName ?? params.toName ?? "Ziel",
-        estimatedFare: params.estimatedFare ?? "0",
-        paymentMethod: params.paymentMethod ?? "",
-        driverId: params.driverId ?? "",
-        arrived: params.arrived ?? "0",
-      },
+    resetDriverStackScreen("navigation", {
+      rideId,
+      phase: params.phase ?? "pickup",
+      fromLat: params.fromLat ?? "0",
+      fromLon: params.fromLon ?? "0",
+      fromName: params.fromName ?? "",
+      toLat: params.toLat ?? "0",
+      toLon: params.toLon ?? "0",
+      toName: params.toName ?? "",
+      customerName: params.customerName ?? "",
+      pickupLat: params.pickupLat ?? params.toLat ?? "0",
+      pickupLon: params.pickupLon ?? params.toLon ?? "0",
+      pickupName: params.pickupName ?? params.toName ?? "Abholort",
+      destLat: params.destLat ?? "0",
+      destLon: params.destLon ?? "0",
+      destName: params.destName ?? params.toName ?? "Ziel",
+      estimatedFare: params.estimatedFare ?? "0",
+      paymentMethod: params.paymentMethod ?? "",
+      driverId: params.driverId ?? "",
+      arrived: params.arrived ?? "0",
     });
   }, [params.rideId]);
 

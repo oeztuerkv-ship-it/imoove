@@ -1,7 +1,10 @@
 import { type Href, router } from "expo-router";
 
 import type { RequestStatus, RideRequest } from "@/context/RideRequestContext";
-import { resetNavigationStackExclusive } from "@/utils/rootNavigationRef";
+import {
+  requestDriverStackReset,
+  type DriverStackScreen,
+} from "@/utils/driverStackReset";
 
 export type DriverNavigationPhase = "pickup" | "driving";
 
@@ -92,13 +95,39 @@ export function buildDriverNavigationHref(
   } as Href;
 }
 
+function parseDriverHref(href: Href): { screen: DriverStackScreen; params?: Record<string, string> } | null {
+  const pathname =
+    typeof href === "string"
+      ? (href.split("?")[0]?.trim() || "/")
+      : (href.pathname?.trim() || "/");
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  if (!normalized.startsWith("/driver/")) return null;
+  const screen = normalized.slice("/driver/".length) as DriverStackScreen;
+  const params =
+    typeof href === "string" ? undefined : (href.params as Record<string, string> | undefined);
+  return { screen, params };
+}
+
 /**
- * Stack auf genau eine Route setzen (Session-Restore, Auto-Navi).
- * Nutzt CommonActions.reset — dismissTo/replace allein lassen Duplikate von
- * `/driver/navigation` mit anderen Params im nativen Stack (App-Neustart).
+ * Stack auf genau eine Fahrer-Route setzen (Session-Restore, Auto-Navi).
+ * RESET läuft im Fahrer-Stack (`driver/_layout`), nicht im Root-Container.
  */
 export function replaceDriverStackExclusive(href: Href): void {
-  resetNavigationStackExclusive(href);
+  const parsed = parseDriverHref(href);
+  if (parsed) {
+    requestDriverStackReset(parsed.screen, parsed.params);
+    router.replace(href);
+    return;
+  }
+  router.replace(href);
+}
+
+/** Nur inneren Fahrer-Stack leeren (bereits auf /driver/*). */
+export function resetDriverStackScreen(
+  screen: DriverStackScreen,
+  params?: Record<string, string>,
+): void {
+  requestDriverStackReset(screen, params);
 }
 
 /** Phase pickup → driving: gleicher Screen, nur Params (kein zweiter Stack-Eintrag). */

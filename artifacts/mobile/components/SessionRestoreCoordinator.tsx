@@ -120,10 +120,7 @@ export function SessionRestoreCoordinator() {
     }
 
     if (ride) {
-      // Kurz verzögern: Native-Stack aus App-Neustart ist oft erst nach dem ersten Frame da.
-      const href = buildDriverNavigationHref(ride, driver.id);
-      replaceDriverStackExclusive(href);
-      requestAnimationFrame(() => replaceDriverStackExclusive(href));
+      replaceDriverStackExclusive(buildDriverNavigationHref(ride, driver.id));
       return;
     }
 

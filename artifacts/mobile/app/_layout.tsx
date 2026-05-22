@@ -21,7 +21,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { RootNavigationRefBinder } from "@/components/RootNavigationRefBinder";
 import { SessionRestoreCoordinator } from "@/components/SessionRestoreCoordinator";
 import { HOME_SHEET_BG } from "@/constants/homeSheetChrome";
 import { AppConfigProvider } from "@/context/AppConfigContext";
@@ -129,7 +128,6 @@ export default function RootLayout() {
                   <DriverProvider>
                     <RideRequestProvider>
                       <RideProvider>
-                        <RootNavigationRefBinder />
                         <SessionRestoreCoordinator />
                         <RootLayoutNav />
                       </RideProvider>
