@@ -1236,7 +1236,9 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       if (!API_BASE) return;
       setRequests((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, status: "cancelled_by_driver" as RequestStatus } : r,
+          r.id === id
+            ? { ...r, status: "searching_driver" as RequestStatus, driverId: null }
+            : r,
         ),
       );
       const res = await fetch(`${API_BASE}/rides/${id}/driver-cancel`, {

@@ -34,7 +34,10 @@ import {
   CUSTOMER_RIDE_STATUS_RESERVATION_UNFULFILLED,
   customerReservationFlowHeadline,
 } from "@/utils/customerRideStatusLabel";
-import { isCustomerCancelledStatus } from "@/utils/customerRideListFilters";
+import {
+  isCustomerFinalCancelledStatus,
+  isCustomerOpenDispatchStatus,
+} from "@/utils/customerRideListFilters";
 import { formatEuro } from "@/utils/fareCalculator";
 import { customerShowsTripEstimate } from "@/utils/onrodaRideOpsFlow";
 import { rs, rf } from "@/utils/scale";
@@ -226,8 +229,13 @@ export default function StatusScreen() {
   const refreshRequestsRef = useRef(refreshRequests);
   /** Verhindert doppelte Meldung bei wiederholtem Poll nach `expired`/`rejected`. */
   const handledReservationUnfulfilledRef = useRef<string | null>(null);
-  /** Verhindert doppelte Meldung nach Fahrer-/System-Storno auf dem Live-Screen. */
+  /** Verhindert doppelte Meldung nach endgültigem Storno auf dem Live-Screen. */
   const handledRideCancelledRef = useRef<string | null>(null);
+  /** Szenario C: Fahrer → searching_driver, Meldung + Such-UI (einmal pro rideId). */
+  const handledDriverReassignedRef = useRef<string | null>(null);
+  /** War diese rideId schon in Fahrer-/Live-Phase (vor Rückkehr in Suche). */
+  const hadDriverPhaseForRideRef = useRef<string | null>(null);
+  const [driverReassignedBanner, setDriverReassignedBanner] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -267,7 +275,11 @@ export default function StatusScreen() {
     if (!sticky || !currentRideId || sticky.id !== currentRideId) return null;
     const live = requests.find((r) => r.id === currentRideId);
     if (!live) return sticky;
-    if (isCustomerCancelledStatus(live.status)) return null;
+    if (isCustomerFinalCancelledStatus(live.status)) return null;
+    if (isCustomerOpenDispatchStatus(live.status)) {
+      stickyAcceptedRef.current = null;
+      return null;
+    }
     const activeStatuses = new Set([
       "ready_for_dispatch",
       "accepted",
@@ -307,7 +319,7 @@ export default function StatusScreen() {
     | "driving"
     | "completed" =
     completedForCurrentRide ? "completed"
-    : rideMatchingCurrentId && isCustomerCancelledStatus(rideMatchingCurrentId.status)
+    : rideMatchingCurrentId && isCustomerFinalCancelledStatus(rideMatchingCurrentId.status)
       ? "ride_cancelled"
     : effectiveAcceptedRequest?.status === "in_progress" ? "driving"
     : effectiveAcceptedRequest?.status === "passenger_onboard" ||
@@ -506,7 +518,26 @@ export default function StatusScreen() {
 
   useEffect(() => {
     setIsCompleted(false);
+    setDriverReassignedBanner(false);
+    if (handledDriverReassignedRef.current && handledDriverReassignedRef.current !== currentRideId) {
+      handledDriverReassignedRef.current = null;
+    }
+    if (hadDriverPhaseForRideRef.current && hadDriverPhaseForRideRef.current !== currentRideId) {
+      hadDriverPhaseForRideRef.current = null;
+    }
   }, [currentRideId]);
+
+  useEffect(() => {
+    if (!currentRideId) return;
+    if (
+      customerPhase === "accepted" ||
+      customerPhase === "preparing" ||
+      customerPhase === "arrived" ||
+      customerPhase === "driving"
+    ) {
+      hadDriverPhaseForRideRef.current = currentRideId;
+    }
+  }, [customerPhase, currentRideId]);
 
   useEffect(() => {
     if (completedForCurrentRide && !isCompleted) {
@@ -689,10 +720,38 @@ export default function StatusScreen() {
     if (handledRideCancelledRef.current && handledRideCancelledRef.current !== currentRideId) {
       handledRideCancelledRef.current = null;
     }
+    if (handledDriverReassignedRef.current && handledDriverReassignedRef.current !== currentRideId) {
+      handledDriverReassignedRef.current = null;
+    }
   }, [currentRideId]);
 
   /**
-   * Fahrer (oder System) hat storniert — Kunde informieren, Live-Navi/Map beenden, zur Startseite.
+   * Szenario C: Fahrer hat abgesagt → DB `searching_driver`, Kunde bleibt auf Such-Screen.
+   */
+  useEffect(() => {
+    if (customerPhase !== "searching") return;
+    const id = currentRideId;
+    if (!id || hadDriverPhaseForRideRef.current !== id) return;
+    if (handledDriverReassignedRef.current === id) return;
+    const ride = requests.find((r) => r.id === id) ?? rideMatchingCurrentId;
+    if (!ride || !isCustomerOpenDispatchStatus(ride.status)) return;
+    handledDriverReassignedRef.current = id;
+    hadDriverPhaseForRideRef.current = null;
+    stickyAcceptedRef.current = null;
+    disconnectSocket();
+    setDriverMarker(null);
+    setDriverReassignedBanner(true);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Alert.alert(
+      "Neuer Fahrer gesucht",
+      "Fahrer hat abgesagt — wir suchen einen neuen Fahrer",
+      [{ text: "OK" }],
+      { cancelable: true },
+    );
+  }, [customerPhase, currentRideId, requests, rideMatchingCurrentId]);
+
+  /**
+   * Endgültiges Storno — Live-Navi beenden, zur Startseite (nicht Szenario C / searching_driver).
    */
   useEffect(() => {
     if (customerPhase !== "ride_cancelled") return;
@@ -701,22 +760,23 @@ export default function StatusScreen() {
     if (handledRideCancelledRef.current === id) return;
     if (cancelFlowStartedRef.current) return;
     const ride = requests.find((r) => r.id === id) ?? rideMatchingCurrentId;
-    if (!ride || !isCustomerCancelledStatus(ride.status)) return;
+    if (!ride || !isCustomerFinalCancelledStatus(ride.status)) return;
     handledRideCancelledRef.current = id;
     stickyAcceptedRef.current = null;
     disconnectSocket();
+    setDriverMarker(null);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const reason =
       typeof ride.cancelReason === "string" && ride.cancelReason.trim().length > 0
         ? ride.cancelReason.trim()
         : null;
     let title = "Fahrt beendet";
-    let message = "Die Fahrt wurde storniert.";
+    let message = "Die Fahrt wurde beendet.";
     if (ride.status === "cancelled_by_driver") {
-      title = "Fahrer hat storniert";
+      title = "Fahrt beendet";
       message = reason
-        ? `Der Fahrer hat die Fahrt abgebrochen.\n\nGrund: ${reason}`
-        : "Der Fahrer hat die Fahrt abgebrochen.";
+        ? `Die Fahrt wurde beendet.\n\nGrund: ${reason}`
+        : "Die Fahrt wurde beendet.";
     } else if (ride.status === "cancelled_by_customer") {
       title = "Fahrt storniert";
       message = reason
@@ -986,7 +1046,7 @@ export default function StatusScreen() {
           destination={destination}
           polyline={route?.polyline}
           style={styles.map}
-          driverMarker={driverMarker}
+          driverMarker={driverReassignedBanner ? null : driverMarker}
         />
 
         {/* Such-Animation + Route-Info unten */}
@@ -1009,7 +1069,11 @@ export default function StatusScreen() {
               </View>
               <View style={styles.searchAnimTextCol}>
                 <Text style={styles.searchCardTitle}>Suche Fahrer...</Text>
-                <Text style={styles.searchCardSub}>Deine Anfrage wird bearbeitet</Text>
+                <Text style={styles.searchCardSub}>
+                  {driverReassignedBanner
+                    ? "Fahrer hat abgesagt — wir suchen einen neuen Fahrer"
+                    : "Deine Anfrage wird bearbeitet"}
+                </Text>
               </View>
               <Pressable
                 style={({ pressed }) => [styles.searchCancelBtn, pressed && { opacity: 0.72 }]}

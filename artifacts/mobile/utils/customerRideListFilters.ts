@@ -32,6 +32,20 @@ export function isCustomerCancelledStatus(status: RequestStatus): boolean {
   return CUSTOMER_CANCELLED_STATUSES.has(status);
 }
 
+/** Sofort-Suche / Markt (Fahrer hat abgesagt → gleiche rideId, neuer Pool). */
+export function isCustomerOpenDispatchStatus(status: RequestStatus): boolean {
+  return OPEN_DISPATCH_STATUSES.has(status);
+}
+
+/** Endgültiges Storno — Kunde verlässt Live-Fahrt zur Startseite (nicht Szenario C). */
+export function isCustomerFinalCancelledStatus(status: RequestStatus): boolean {
+  return (
+    status === "cancelled_by_driver" ||
+    status === "cancelled_by_customer" ||
+    status === "cancelled_by_system"
+  );
+}
+
 function rideCreatedAtMs(createdAt: Date | string | undefined): number {
   if (createdAt instanceof Date) return createdAt.getTime();
   if (typeof createdAt === "string") {
