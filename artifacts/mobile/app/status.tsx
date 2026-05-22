@@ -184,15 +184,6 @@ function trackingProgressActiveStep(status: RideRequest["status"] | undefined): 
   return 0;
 }
 
-function DriverTrackingAvatar({ name }: { name: string }) {
-  const initial = (name.trim().charAt(0) || "F").toUpperCase();
-  return (
-    <View style={styles.trackingAvatar}>
-      <Text style={styles.trackingAvatarText}>{initial}</Text>
-    </View>
-  );
-}
-
 function TrackingProgressStep({
   icon,
   label,
@@ -1464,7 +1455,6 @@ export default function StatusScreen() {
               </Text>
             ) : null}
           </View>
-          <Feather name="chevron-down" size={rf(18)} color="#6B7280" />
         </View>
       </View>
 
@@ -1509,12 +1499,8 @@ export default function StatusScreen() {
           <View style={styles.trackingDivider} />
 
           <View style={styles.trackingDriverInfo}>
-            <DriverTrackingAvatar name={driverName} />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.trackingDriverName} numberOfLines={1}>
-                {driverFirstName}
-              </Text>
-              <Text style={styles.trackingDriverStatus} numberOfLines={1}>
+              <Text style={styles.trackingDriverStatus} numberOfLines={2}>
                 {driverStatusLabel}
               </Text>
               <Text style={styles.trackingPlateLine} numberOfLines={1}>
@@ -1567,7 +1553,9 @@ export default function StatusScreen() {
             style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.9 }]}
             onPress={() => handleCancel()}
           >
-            <Feather name="x" size={rf(22)} color="#FFFFFF" />
+            <View style={styles.trackingCancelIconCircle}>
+              <Feather name="x" size={rf(18)} color="#FFFFFF" />
+            </View>
             <Text style={styles.trackingCancelText}>Fahrt stornieren</Text>
           </Pressable>
         </View>
@@ -1975,7 +1963,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: rs(8),
+    gap: rs(10),
+  },
+  trackingCancelIconCircle: {
+    width: rs(28),
+    height: rs(28),
+    borderRadius: rs(14),
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   trackingCancelText: {
     fontSize: rf(15),
