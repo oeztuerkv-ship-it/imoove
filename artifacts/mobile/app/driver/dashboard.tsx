@@ -2415,7 +2415,8 @@ export default function DriverDashboard() {
   useFocusEffect(
     useCallback(() => {
       void refreshInboxState();
-    }, [refreshInboxState]),
+      if (driver?.authToken) void refreshDriverMarketHard();
+    }, [refreshInboxState, driver?.authToken, refreshDriverMarketHard]),
   );
 
   // Foreground-Push: Posteingang + Sofortfahrt-Markt

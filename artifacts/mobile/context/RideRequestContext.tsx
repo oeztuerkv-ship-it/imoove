@@ -26,6 +26,7 @@ import {
   instantMarketOfferIdsKey,
 } from "@/utils/driverInstantMarketOffers";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
+import { setNotificationAudience, shouldPresentDriverRideOfferNotification } from "@/utils/notificationAudience";
 import { sendNewRideNotification, stopRideSound } from "@/utils/notifications";
 
 export type RequestStatus =
@@ -127,6 +128,10 @@ interface RideRequestContextValue {
   passengerCompletedRequest: RideRequest | null;
   lastAddedRequestId: string | null;
   isConnected: boolean;
+  /** Erster Abruf Kunden-Fahrten (`GET /customer/v1/rides`) abgeschlossen — für Session-Restore. */
+  customerRidesHydrated: boolean;
+  /** Erster Abruf Fahrer-Markt abgeschlossen — für Session-Restore. */
+  driverMarketHydrated: boolean;
   passengerId: string;
   myActiveRequests: RideRequest[];
   /** Offene Sofort-Fahrtanfragen (requested / searching_driver / offered / pending). */
@@ -189,6 +194,8 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   passengerCompletedRequest: null,
   lastAddedRequestId: null,
   isConnected: false,
+  customerRidesHydrated: false,
+  driverMarketHydrated: false,
   passengerId: "",
   myActiveRequests: [],
   myRideRequests: [],
@@ -573,6 +580,17 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   fleetDriverMarketOnlineRef.current = Boolean(fleetDriver?.isAvailable);
   const isDriverSurfaceRef = useRef(isDriverSurface);
   isDriverSurfaceRef.current = isDriverSurface;
+
+  useEffect(() => {
+    setNotificationAudience({
+      driverSurface: isDriverSurface,
+      fleetSession: Boolean(fleetAuthToken),
+    });
+  }, [isDriverSurface, fleetAuthToken]);
+
+  useEffect(() => {
+    if (!isDriverSurface) void stopRideSound();
+  }, [isDriverSurface]);
   const driverMarketPrevPendingIdsRef = useRef<Set<string>>(new Set());
   const driverMarketNotifyBootstrappedRef = useRef(false);
   const driverMarketOnlinePrevRef = useRef(Boolean(fleetDriver?.einsatzbereit && fleetDriver?.isAvailable));
@@ -679,6 +697,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       if (opts?.hardReset) {
         setDriverMarketRequests([]);
         setDriverMarketScheduledPool([]);
+        setDriverMarketHydrated(false);
         if (isDriverSurfaceRef.current) {
           setRequests([]);
           setScheduledPoolRequests([]);
@@ -745,16 +764,19 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const fetchAll = useCallback(async () => {
-    if (!API_BASE) return;
+    if (!API_BASE) {
+      if (!isDriverSurfaceRef.current) setCustomerRidesHydrated(true);
+      return;
+    }
     try {
       const token = await readFleetAuthToken();
 
       const customerIdentity = await readStoredCustomerIdentity();
       const customerSessionToken = customerIdentity.sessionToken;
 
-      if (token) {
+      if (token && isDriverSurfaceRef.current) {
         await fetchDriverMarket({ hardReset: false });
-        if (isDriverSurfaceRef.current) return;
+        return;
       }
 
       if (customerIdentity.passengerId) {
@@ -802,6 +824,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       lastCountRef.current = normalized.length;
     } catch {
       setIsConnected(false);
+    } finally {
+      if (!isDriverSurfaceRef.current) setCustomerRidesHydrated(true);
     }
   }, [customerSessionTokenLive, fetchDriverMarket, readFleetAuthToken, ridesFromPayload]);
 
@@ -823,6 +847,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       setDriverMarketRequests([]);
       setDriverMarketScheduledPool([]);
       setIsDriverMarketConnected(false);
+      setDriverMarketHydrated(false);
       driverMarketPrevPendingIdsRef.current = new Set();
       driverMarketNotifyBootstrappedRef.current = false;
       if (isDriverSurface) {
@@ -838,7 +863,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   }, [isDriverSurface, fleetAuthToken, fetchDriverMarket]);
 
   useEffect(() => {
-    if (!fleetAuthToken) return;
+    if (!fleetAuthToken || !isDriverSurface) return;
     let sub: { remove: () => void } | null = null;
     void import("expo-notifications").then((Notifications) => {
       sub = Notifications.addNotificationReceivedListener((notification) => {
@@ -851,7 +876,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     return () => {
       sub?.remove();
     };
-  }, [fleetAuthToken, fetchDriverMarket]);
+  }, [fleetAuthToken, isDriverSurface, fetchDriverMarket]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -1320,6 +1345,13 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   );
 
   useEffect(() => {
+    if (!isDriverSurface) {
+      void stopRideSound();
+      driverMarketPrevPendingIdsRef.current = new Set();
+      driverMarketNotifyBootstrappedRef.current = false;
+      return;
+    }
+
     const driverOnline = driverMarketOnline;
     const pool = eligibleInstantOffers;
     const currentIds = new Set(pool.map((r) => r.id));
@@ -1358,7 +1390,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       const req = newReqs[0];
       const schedMs = req.scheduledAt ? new Date(req.scheduledAt as Date).getTime() : 0;
       const isFarScheduled = Number.isFinite(schedMs) && schedMs > Date.now() + 60 * 60 * 1000;
-      if (!isFarScheduled) {
+      if (!isFarScheduled && shouldPresentDriverRideOfferNotification()) {
         void sendNewRideNotification({
           customerName: req.customerName || "Kunde",
           fromAddress: req.fromFull || req.from || "—",
@@ -1373,6 +1405,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
     eligibleInstantOffers,
     fleetAuthToken,
     driverMarketOnline,
+    isDriverSurface,
   ]);
   const acceptedRequest =
     requests.find((r) =>
@@ -1441,6 +1474,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         passengerCompletedRequest,
         lastAddedRequestId,
         isConnected,
+        customerRidesHydrated,
+        driverMarketHydrated,
         passengerId,
         myActiveRequests,
         myRideRequests,

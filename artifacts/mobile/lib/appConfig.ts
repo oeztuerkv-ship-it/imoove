@@ -186,7 +186,7 @@ export const MESSAGE_ADDRESS_PICK_SUGGESTION_DE =
   "Adresse konnte nicht eindeutig geprüft werden. Bitte Adresse aus Vorschlägen auswählen.";
 
 export const MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE =
-  "Bitte gib eine vollständige Adresse mit Hausnummer ein oder wähle einen eindeutigen Vorschlag aus.";
+  "Bitte Straße, Hausnummer und Stadt eingeben — am besten einen Vorschlag aus der Liste wählen.";
 
 const BOOKING_PREFER_MAP_OVER_API_MESSAGE = new Set([
   "ride_coordinates_required",
@@ -258,11 +258,69 @@ function hasHouseNumberInFirstAddressPart(address: string): boolean {
   return /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(firstPart);
 }
 
+function extractCityFromBookingAddress(fullName: string, subline?: string): string {
+  const sub = String(subline ?? "").trim();
+  if (sub) {
+    const plzCity = sub.match(/^\d{5}\s+(.+)$/);
+    if (plzCity?.[1]) return plzCity[1].trim();
+    if (!/^\d{5}$/.test(sub)) return sub;
+  }
+  const parts = String(fullName ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  for (let i = 1; i < parts.length; i++) {
+    const p = parts[i];
+    if (/^\d{5}$/.test(p)) continue;
+    if (/deutschland|germany|baden-württemberg|landkreis|region/i.test(p)) continue;
+    if (/^\d{5}\s+/.test(p)) return p.replace(/^\d{5}\s+/, "").trim();
+    if (!/\d/.test(p) && p.length >= 2) return p;
+  }
+  return "";
+}
+
+export function isCompleteStreetAddressForBooking(input: {
+  fullName: string;
+  subline?: string;
+  isPoiAddress?: boolean;
+}): boolean {
+  const full = String(input.fullName ?? "").trim();
+  if (!full) return false;
+  if (input.isPoiAddress) return false;
+  if (!hasHouseNumberInFirstAddressPart(full)) return false;
+  const city = extractCityFromBookingAddress(full, input.subline);
+  if (!city || city.length < 2) return false;
+  const line1 = full.split(",")[0].trim();
+  if (line1.replace(/[\d\s./-]/g, "").length < 2) return false;
+  return true;
+}
+
 export function validateAddressCompletenessForBooking(
   fromFull: string,
   toFull: string,
+  opts?: {
+    fromSubline?: string;
+    toSubline?: string;
+    fromPoi?: boolean;
+    toPoi?: boolean;
+  },
 ): { ok: true } | { ok: false; message: string } {
-  if (!hasHouseNumberInFirstAddressPart(fromFull) || !hasHouseNumberInFirstAddressPart(toFull)) {
+  if (
+    !isCompleteStreetAddressForBooking({
+      fullName: fromFull,
+      subline: opts?.fromSubline,
+      isPoiAddress: opts?.fromPoi,
+    })
+  ) {
+    return { ok: false, message: MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE };
+  }
+  if (
+    !isCompleteStreetAddressForBooking({
+      fullName: toFull,
+      subline: opts?.toSubline,
+      isPoiAddress: opts?.toPoi,
+    })
+  ) {
     return { ok: false, message: MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE };
   }
   return { ok: true };

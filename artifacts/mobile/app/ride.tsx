@@ -37,6 +37,7 @@ import {
   validateServiceAreaForBooking,
 } from "@/lib/appOperationalConfig";
 import { CUSTOMER_BROKER_NOTICE_DE } from "@/constants/customerBrokerNoticeDe";
+import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useColors } from "@/hooks/useColors";
@@ -135,6 +136,88 @@ function companionLabel(v: CompanionCount): string {
   return m[v];
 }
 
+function AccessCodeModal({
+  visible,
+  value,
+  onClose,
+  onConfirm,
+  colors,
+}: {
+  visible: boolean;
+  value: string;
+  onClose: () => void;
+  onConfirm: (code: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setDraft(value);
+      const t = setTimeout(() => inputRef.current?.focus(), 120);
+      return () => clearTimeout(t);
+    }
+    inputRef.current?.blur();
+    return undefined;
+  }, [visible, value]);
+
+  const confirm = () => {
+    onConfirm(draft.trim());
+    Haptics.selectionAsync();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={accessCodeModalStyles.overlay}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        <Pressable style={accessCodeModalStyles.overlayInner} onPress={onClose}>
+          <Pressable
+            style={[accessCodeModalStyles.card, { backgroundColor: HOME_SHEET_PANEL }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[accessCodeModalStyles.header, { borderBottomColor: HOME_SHEET_RIM }]}>
+              <Pressable onPress={onClose} hitSlop={10}>
+                <Text style={[accessCodeModalStyles.headerAction, { color: colors.mutedForeground }]}>
+                  Abbrechen
+                </Text>
+              </Pressable>
+              <Text style={[accessCodeModalStyles.headerTitle, { color: colors.foreground }]}>
+                Gutschein / Code
+              </Text>
+              <Pressable onPress={confirm} hitSlop={10}>
+                <Text style={[accessCodeModalStyles.headerAction, { color: HOME_SHEET_TEXT }]}>Fertig</Text>
+              </Pressable>
+            </View>
+            <View style={accessCodeModalStyles.body}>
+              <Text style={[accessCodeModalStyles.hint, { color: colors.mutedForeground }]}>
+                Bei gültigem Code erfolgt die Abrechnung über den Partner (z. B. Hotel, Firma, Krankenhaus).
+              </Text>
+              <TextInput
+                ref={inputRef}
+                style={[
+                  accessCodeModalStyles.input,
+                  { color: colors.foreground, backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM },
+                ]}
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Freigabe- oder Gutscheincode"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                autoComplete="off"
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 export default function RideScreen() {
   const colors = useColors();
   const { config: appCfg } = useOnrodaAppConfig();
@@ -211,6 +294,7 @@ export default function RideScreen() {
   const [preAuthLoading, setPreAuthLoading] = useState(false);
   const [tokenErrorMethod, setTokenErrorMethod] = useState<PaymentMethod | null>(null);
   const [accessCodeInput, setAccessCodeInput] = useState("");
+  const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
   const [accessibilityOpen, setAccessibilityOpen] = useState(false);
   const [assistanceLevel, setAssistanceLevel] = useState<AssistanceLevel | null>(null);
   const [wheelchairType, setWheelchairType] = useState<WheelchairType | null>(null);
@@ -231,6 +315,14 @@ export default function RideScreen() {
   useEffect(() => {
     if (paymentMethod == null) setPaymentMethod("cash");
   }, [paymentMethod, setPaymentMethod]);
+
+  useEffect(() => {
+    if (paymentMethod !== "access_code") return;
+    const t = setTimeout(() => {
+      rideScrollRef.current?.scrollToEnd({ animated: true });
+    }, 160);
+    return () => clearTimeout(t);
+  }, [paymentMethod]);
 
   /* Prüft Token nur für explizit gewählte Online-Zahlung (Bar als Fallback ohne Token). */
   const checkPaymentTokenFor = async (m: PaymentMethod): Promise<boolean> => {
@@ -258,7 +350,8 @@ export default function RideScreen() {
   const handleOrder = async () => {
     if (!fareBreakdown || !paymentMethod) return;
     if (paymentMethod === "access_code" && !accessCodeInput.trim()) {
-      Alert.alert("Code fehlt", "Bitte geben Sie den Gutschein- oder Freigabe-Code ein.");
+      setShowAccessCodeModal(true);
+      Alert.alert("Code fehlt", "Bitte Gutschein- oder Freigabe-Code eingeben.");
       return;
     }
     const isWheelchair = selectedVehicle === "wheelchair";
@@ -477,6 +570,33 @@ export default function RideScreen() {
 
   const vehicle = VEHICLES.find((v) => v.id === selectedVehicle)!;
   const payerBlock = customerPayerBlockFromBooking(paymentMethod, isExempted);
+  const brokerInScroll = paymentMethod === "access_code";
+  const scrollBottomInset = brokerInScroll ? bottomPad + rs(118) : bottomPad + rs(200);
+
+  const renderBrokerNotice = () => (
+    <View
+      style={[
+        styles.brokerNoticeBox,
+        {
+          backgroundColor: "#F0FDFA",
+          borderColor: "#99F6E4",
+        },
+        Platform.select({
+          ios: {
+            shadowColor: "#0F766E",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 6,
+          },
+          android: { elevation: 3 },
+          default: {},
+        }),
+      ]}
+    >
+      <MaterialCommunityIcons name="information-outline" size={20} color="#0D9488" style={{ marginTop: 1 }} />
+      <Text style={[styles.brokerNoticeText, { color: colors.foreground }]}>{brokerNoticeDe}</Text>
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -499,7 +619,7 @@ export default function RideScreen() {
         ref={rideScrollRef}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPad + 130 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: scrollBottomInset }]}
       >
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.locationRow}>
@@ -585,9 +705,15 @@ export default function RideScreen() {
                     if (voucherBlockedByOnroda) {
                     }
                     if (opt.id !== "voucher") setIsExempted(false);
-                    if (opt.id !== "access_code") setAccessCodeInput("");
+                    if (opt.id !== "access_code") {
+                      setAccessCodeInput("");
+                      setShowAccessCodeModal(false);
+                    }
                     setPaymentMethod(opt.id);
                     Haptics.selectionAsync();
+                    if (opt.id === "access_code") {
+                      setShowAccessCodeModal(true);
+                    }
                   }}
                 >
                   {opt.isEuro ? (
@@ -611,36 +737,30 @@ export default function RideScreen() {
         </View>
 
         {paymentMethod === "access_code" ? (
-          <View style={{ borderRadius: 16, borderWidth: 1.5, borderColor: "#86EFAC", backgroundColor: "#F0FDF4", padding: 16, gap: 10 }}>
-            <Text style={[styles.cardLabel, { color: "#15803D" }]}>CODE EINGEBEN</Text>
-            <Text style={{ fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#166534", lineHeight: rf(19) }}>
-              Den Code erhalten Sie z. B. von Hotel, Firma oder Krankenhaus. Er wird bei der Buchung geprüft und mit dieser Fahrt verknüpft.
-            </Text>
-            <TextInput
-              value={accessCodeInput}
-              onChangeText={setAccessCodeInput}
-              placeholder="Freigabe- oder Gutscheincode"
-              placeholderTextColor={colors.mutedForeground}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              autoComplete="off"
-              onFocus={() => {
-                setTimeout(() => {
-                  rideScrollRef.current?.scrollToEnd({ animated: true });
-                }, 120);
-              }}
-              style={{
-                borderWidth: 1.5,
-                borderColor: "#86EFAC",
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                fontSize: rf(16),
-                fontFamily: "Inter_600SemiBold",
-                color: colors.foreground,
-                backgroundColor: colors.card,
-              }}
-            />
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.accessCodeTitleRow}>
+              <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>GUTSCHEIN / CODE</Text>
+              {accessCodeInput.trim().length > 0 ? (
+                <Feather name="check-circle" size={18} color="#16A34A" accessibilityLabel="Code eingetragen" />
+              ) : null}
+            </View>
+            <Pressable
+              style={[styles.accessCodeField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}
+              onPress={() => setShowAccessCodeModal(true)}
+            >
+              <MaterialCommunityIcons name="shield-check-outline" size={18} color="#15803D" />
+              <Text
+                style={[
+                  styles.accessCodeFieldText,
+                  { color: accessCodeInput.trim() ? colors.foreground : colors.mutedForeground },
+                ]}
+                numberOfLines={2}
+              >
+                {accessCodeInput.trim() ? accessCodeInput.trim() : "Code eingeben"}
+              </Text>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </Pressable>
+            {brokerInScroll ? renderBrokerNotice() : null}
           </View>
         ) : null}
 
@@ -693,28 +813,7 @@ export default function RideScreen() {
       </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: bottomPad + 16 }]}>
-        <View
-          style={[
-            styles.brokerNoticeBox,
-            {
-              backgroundColor: "#F0FDFA",
-              borderColor: "#99F6E4",
-            },
-            Platform.select({
-              ios: {
-                shadowColor: "#0F766E",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 6,
-              },
-              android: { elevation: 3 },
-              default: {},
-            }),
-          ]}
-        >
-          <MaterialCommunityIcons name="information-outline" size={20} color="#0D9488" style={{ marginTop: 1 }} />
-          <Text style={[styles.brokerNoticeText, { color: colors.foreground }]}>{brokerNoticeDe}</Text>
-        </View>
+        {!brokerInScroll ? renderBrokerNotice() : null}
         <View style={styles.bottomContent}>
           {paymentMethod === "voucher" ? (
             <View style={[styles.priceBox, { borderColor: "#93C5FD", backgroundColor: "#EFF6FF" }]}>
@@ -857,6 +956,17 @@ export default function RideScreen() {
         </Pressable>
       </Modal>
 
+      <AccessCodeModal
+        visible={showAccessCodeModal}
+        value={accessCodeInput}
+        onClose={() => setShowAccessCodeModal(false)}
+        onConfirm={(code) => {
+          setAccessCodeInput(code);
+          setShowAccessCodeModal(false);
+        }}
+        colors={colors}
+      />
+
       <Modal
         visible={noTokenVisible}
         transparent
@@ -966,4 +1076,67 @@ const styles = StyleSheet.create({
   noTokenBtnText: { fontSize: rf(15), fontFamily: "Inter_600SemiBold", color: "#fff" },
   noTokenCancel: { paddingVertical: rs(8) },
   noTokenCancelText: { fontSize: rf(14), fontFamily: "Inter_400Regular" },
+  accessCodeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: rs(8),
+  },
+  accessCodeField: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: rs(12),
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(14),
+    marginTop: rs(4),
+  },
+  accessCodeFieldText: { flex: 1, fontSize: rf(15), fontFamily: "Inter_500Medium", lineHeight: rf(21) },
+});
+
+const accessCodeModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "#00000055",
+    paddingHorizontal: rs(24),
+  },
+  overlayInner: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+  },
+  card: {
+    width: "100%",
+    maxWidth: rs(360),
+    borderRadius: rs(20),
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(8) },
+    shadowOpacity: 0.15,
+    shadowRadius: rs(24),
+    elevation: 12,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerTitle: { fontSize: rf(16), fontFamily: "Inter_600SemiBold" },
+  headerAction: { fontSize: rf(15), fontFamily: "Inter_500Medium" },
+  body: { paddingHorizontal: rs(16), paddingTop: rs(14), paddingBottom: rs(16), gap: rs(10) },
+  hint: { fontSize: rf(13), fontFamily: "Inter_400Regular", lineHeight: rf(19) },
+  input: {
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(12),
+    fontSize: rf(16),
+    fontFamily: "Inter_600SemiBold",
+  },
 });

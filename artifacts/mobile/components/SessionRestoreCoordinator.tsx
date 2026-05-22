@@ -1,0 +1,133 @@
+import { router, usePathname, useSegments } from "expo-router";
+import { useEffect, useRef } from "react";
+
+import { useDriver } from "@/context/DriverContext";
+import { useRideRequests } from "@/context/RideRequestContext";
+import { useUser } from "@/context/UserContext";
+import {
+  pickCustomerSessionRestoreRide,
+  pickDriverSessionRestoreRide,
+} from "@/utils/sessionRideRestore";
+
+const CUSTOMER_SKIP_PREFIXES = [
+  "/status",
+  "/ride",
+  "/ride-select",
+  "/new-booking",
+  "/google-auth",
+  "/login-success",
+  "/driver/",
+  "/fahrt-reservieren",
+  "/reserve-ride",
+  "/booking-",
+];
+
+const DRIVER_SKIP_PREFIXES = [
+  "/driver/navigation",
+  "/driver/login",
+  "/driver/change-password",
+];
+
+/**
+ * Einmaliger Restore nach Server-Load: Kunde → Status, Fahrer → Dashboard (aktive Fahrt dort).
+ */
+export function SessionRestoreCoordinator() {
+  const pathname = usePathname();
+  const segments = useSegments();
+  const { profile } = useUser();
+  const { isLoggedIn: isDriverLoggedIn, driver, loading: driverLoading } = useDriver();
+  const {
+    requests,
+    driverMarketRequests,
+    passengerId,
+    customerRidesHydrated,
+    driverMarketHydrated,
+    refreshDriverMarketHard,
+  } = useRideRequests();
+
+  const customerRestoreDone = useRef(false);
+  const driverRestoreDone = useRef(false);
+  const driverMarketPrimed = useRef(false);
+
+  const onDriverSurface = segments[0] === "driver";
+  const customerLoggedIn =
+    profile.isLoggedIn &&
+    typeof profile.sessionToken === "string" &&
+    profile.sessionToken.trim().length > 0;
+
+  useEffect(() => {
+    if (!customerLoggedIn) customerRestoreDone.current = false;
+  }, [customerLoggedIn]);
+
+  useEffect(() => {
+    if (!isDriverLoggedIn) {
+      driverRestoreDone.current = false;
+      driverMarketPrimed.current = false;
+    }
+  }, [isDriverLoggedIn]);
+
+  useEffect(() => {
+    if (customerRestoreDone.current) return;
+    if (!customerLoggedIn || isDriverLoggedIn || onDriverSurface) return;
+    if (!customerRidesHydrated) return;
+    if (pathname !== "/" && pathname !== "/index") {
+      return;
+    }
+    if (CUSTOMER_SKIP_PREFIXES.some((p) => pathname.startsWith(p))) {
+      customerRestoreDone.current = true;
+      return;
+    }
+
+    const ride = pickCustomerSessionRestoreRide(requests, passengerId || profile.googleId || "");
+    customerRestoreDone.current = true;
+    if (!ride) return;
+    router.replace({ pathname: "/status", params: { rideId: ride.id } } as never);
+  }, [
+    customerLoggedIn,
+    isDriverLoggedIn,
+    onDriverSurface,
+    customerRidesHydrated,
+    pathname,
+    requests,
+    passengerId,
+    profile.googleId,
+  ]);
+
+  useEffect(() => {
+    if (driverLoading) return;
+    if (!isDriverLoggedIn || !driver?.id) return;
+    if (!driverMarketHydrated) return;
+
+    if (!driverMarketPrimed.current) {
+      driverMarketPrimed.current = true;
+      void refreshDriverMarketHard();
+      return;
+    }
+
+    if (driverRestoreDone.current) return;
+    if (DRIVER_SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return;
+
+    const ride = pickDriverSessionRestoreRide(driverMarketRequests, driver.id);
+    driverRestoreDone.current = true;
+    if (!ride) return;
+
+    if (driver?.mustChangePassword) {
+      router.replace("/driver/change-password" as never);
+      return;
+    }
+    if (!pathname.startsWith("/driver/dashboard")) {
+      router.replace("/driver/dashboard" as never);
+    }
+  }, [
+    driverLoading,
+    isDriverLoggedIn,
+    driver?.id,
+    driver?.mustChangePassword,
+    driverMarketHydrated,
+    driverMarketRequests,
+    pathname,
+    refreshDriverMarketHard,
+  ]);
+
+  return null;
+}

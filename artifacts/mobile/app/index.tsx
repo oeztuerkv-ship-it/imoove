@@ -206,7 +206,7 @@ export default function HomeScreen() {
     }
     setScheduledTime(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.replace("/new-booking" as Href);
+    router.push("/new-booking" as Href);
   }, [customerAppBlocked, blockedCustomerAlert, setScheduledTime]);
 
   const goMedicalBooking = useCallback(() => {

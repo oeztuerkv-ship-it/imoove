@@ -3,7 +3,9 @@ export interface GeoLocation {
   lon: number;
   displayName: string;
   street?: string;
+  housenumber?: string;
   city?: string;
+  postcode?: string;
   country?: string;
 }
 
@@ -132,7 +134,9 @@ export async function searchLocation(
         lon: f.geometry.coordinates[0],
         displayName: photonLabel(f),
         street: f.properties.street,
+        housenumber: f.properties.housenumber,
         city: f.properties.city ?? f.properties.town ?? f.properties.village,
+        postcode: f.properties.postcode,
         country: f.properties.country,
       }))
       .filter((loc) => loc.displayName.length > 0);

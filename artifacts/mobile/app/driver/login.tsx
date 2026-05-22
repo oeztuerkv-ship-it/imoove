@@ -45,7 +45,8 @@ export default function DriverLoginScreen() {
     if (result.ok) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await refreshDriverMarketHard();
-      router.replace(result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard");
+      const target = result.mustChangePassword ? "/driver/change-password" : "/driver/dashboard";
+      router.replace(target as never);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Anmeldung fehlgeschlagen", result.error || "E-Mail oder Passwort ist falsch.");

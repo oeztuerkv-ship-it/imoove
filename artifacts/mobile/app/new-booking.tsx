@@ -2,13 +2,14 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import RNDateTimePicker, { type DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState, useRef } from "react";
+import { router, useLocalSearchParams, type Href } from "expo-router";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
   InputAccessoryView,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -30,11 +31,14 @@ import {
   accountSheetSecondaryLabel,
   accountSheetToolbarAction,
 } from "@/constants/accountSheetTypography";
+import { CUSTOMER_BROKER_NOTICE_DE } from "@/constants/customerBrokerNoticeDe";
 import { HOME_SHEET_INNER, HOME_SHEET_PANEL, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
+import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { effectivePricingModeForCustomerRide, VEHICLES, type VehicleType, type VehicleOption } from "@/context/RideContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import {
+  isCompleteStreetAddressForBooking,
   MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
   MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
   userFacingBookingErrorMessage,
@@ -43,15 +47,14 @@ import {
 } from "@/lib/appOperationalConfig";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useColors } from "@/hooks/useColors";
-import { getRoute, fetchWithTimeout, type GeoLocation } from "@/utils/routing";
+import { getRoute, fetchWithTimeout, searchLocation, type GeoLocation } from "@/utils/routing";
 import { rf, rs } from "@/utils/scale";
 
 const NB_CAR_ICON = "#171717";
 const NB_WHEELCHAIR_ICON = "#0369A1";
-const DRIVER_NOTE_ACCESSORY_ID = "new-booking-driver-note-keyboard";
-const ADDRESS_PICKUP_ACCESSORY_ID = "new-booking-pickup-keyboard";
-const ADDRESS_DEST_ACCESSORY_ID = "new-booking-dest-keyboard";
 const HELP_FIELD_FOCUS = "#111111";
+/** Gleiche Fläche wie Sofortfahrt-Suchoverlay (`index.tsx`). */
+const SEARCH_OVERLAY_BG = "#FFFFFF";
 
 type NominatimAddress = {
   road?: string;
@@ -192,7 +195,7 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
       !/deutschland|baden-württemberg|landkreis|region/i.test(p),
   );
   const city = String(cityRaw || cityFromDisplay || "").trim();
-  const line1Street = street && house ? `${street} ${house}` : "";
+  const line1Street = street && house ? `${street} ${house}` : street || "";
 
   const poiLabel =
     (typeof item.name === "string" && item.name.trim()) ||
@@ -209,7 +212,7 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
   let line1 = line1Street || poiText;
   let subline = [postcode, city].filter(Boolean).join(" ");
 
-  if (!subline || (!line1Street && !poiText)) {
+  if (!subline || (!line1 && !poiText)) {
     const fallback = parseDisplayNameFallback(item.display_name);
     if (!line1) line1 = fallback.line1;
     if (!subline) subline = fallback.subline;
@@ -220,9 +223,60 @@ function buildStructuredAddressFromGeo(item: GeoItem): {
     name: line1,
     subline,
     fullName,
-    isStreetAddress: Boolean(line1Street),
+    isStreetAddress: Boolean(street && house),
     isPoiAddress,
   };
+}
+
+function plzCitySubline(loc: GeoLocation, displayParts: string[]): string {
+  const plz =
+    loc.postcode?.trim() ||
+    displayParts.find((p) => /^\d{5}$/.test(p)) ||
+    "";
+  const city =
+    loc.city?.trim() ||
+    displayParts.find(
+      (p, i) =>
+        i > 0 &&
+        !/^\d{5}$/.test(p) &&
+        !/\d/.test(p) &&
+        !/deutschland|germany|baden-württemberg|landkreis|region/i.test(p),
+    ) ||
+    "";
+  return [plz, city].filter(Boolean).join(" ");
+}
+
+function geoLocationToSelectedAddress(loc: GeoLocation): SelectedAddress {
+  const parts = loc.displayName.split(",").map((p) => p.trim()).filter(Boolean);
+  const street = loc.street?.trim() ?? "";
+  const house = loc.housenumber?.trim() ?? "";
+  let name = (parts[0] ?? loc.displayName).trim();
+  if (street) {
+    name = house ? `${street} ${house}` : street;
+  }
+  const subline = plzCitySubline(loc, parts) || parts.slice(1, 3).join(", ").trim();
+  const fullName = subline ? `${name}, ${subline}` : loc.displayName;
+  const hasHouse =
+    Boolean(house) || /\b\d{1,5}[a-z]?(?:\s*[-/]\s*\d{1,5}[a-z]?)?\b/i.test(name);
+  const hasCity = Boolean(loc.city?.trim() || subline);
+  const isPoiAddress = !hasHouse || !hasCity;
+  return {
+    name,
+    subline,
+    fullName,
+    lat: loc.lat,
+    lon: loc.lon,
+    isStreetAddress: !isPoiAddress,
+    isPoiAddress,
+  };
+}
+
+function selectedAddressIsBookingComplete(addr: SelectedAddress): boolean {
+  return isCompleteStreetAddressForBooking({
+    fullName: addr.fullName || addr.name,
+    subline: addr.subline,
+    isPoiAddress: addr.isPoiAddress,
+  });
 }
 
 async function reverseGeocodeLatLon(lat: number, lon: number): Promise<SelectedAddress | null> {
@@ -254,7 +308,7 @@ async function reverseGeocodeLatLon(lat: number, lon: number): Promise<SelectedA
 }
 
 function AddressInput({
-  label,
+  label = "",
   value,
   subline,
   placeholder,
@@ -270,8 +324,13 @@ function AddressInput({
   inputAccessoryViewID,
   onRouteFocus,
   onRouteClear,
+  userGps,
+  onAfterSelect,
+  showClear = false,
+  isDestination = false,
+  inputRef: externalInputRef,
 }: {
-  label: string;
+  label?: string;
   value: string;
   subline: string;
   placeholder: string;
@@ -287,23 +346,35 @@ function AddressInput({
   inputAccessoryViewID?: string;
   onRouteFocus?: () => void;
   onRouteClear?: () => void;
+  userGps?: { lat: number; lon: number } | null;
+  onAfterSelect?: () => void;
+  showClear?: boolean;
+  isDestination?: boolean;
+  inputRef?: React.RefObject<TextInput | null>;
 }) {
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<GeoItem[]>([]);
+  const [nominatimResults, setNominatimResults] = useState<GeoItem[]>([]);
+  const [photonResults, setPhotonResults] = useState<GeoLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const localInputRef = useRef<TextInput>(null);
+  const inputRef = externalInputRef ?? localInputRef;
 
   useEffect(() => {
-    if (focused) return;
     if (!value.trim()) {
       setQuery("");
       return;
     }
-    setQuery(subline ? `${value}, ${subline}` : value);
-  }, [focused, value, subline]);
+    if (taxiRoute) {
+      if (!focused) return;
+      setQuery(value);
+      return;
+    }
+    const next = subline ? `${value}, ${subline}` : value;
+    if (!focused) setQuery(next);
+  }, [focused, value, subline, taxiRoute]);
 
   useEffect(
     () => () => {
@@ -312,30 +383,49 @@ function AddressInput({
     [],
   );
 
-  const showResults = focused && results.length > 0 && query.length >= 2;
+  const showPhotonResults = taxiRoute && focused && query.length >= 2;
+  const showNominatimResults = !taxiRoute && focused && nominatimResults.length > 0 && query.length >= 2;
 
   const dismissEdit = () => {
     inputRef.current?.blur();
     Keyboard.dismiss();
     setFocused(false);
-    setResults([]);
+    setNominatimResults([]);
+    setPhotonResults([]);
   };
 
   const enterEditMode = () => {
-    const editQuery = subline ? `${value}, ${subline}` : value;
-    setQuery(editQuery);
+    setQuery(taxiRoute ? value : subline ? `${value}, ${subline}` : value);
     setFocused(true);
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   const handleChange = (text: string) => {
     setQuery(text);
-    setResults([]);
+    setNominatimResults([]);
+    setPhotonResults([]);
     if (text.length === 0) {
       onSelect(EMPTY_SELECTED_ADDRESS);
     }
     if (debounce.current) clearTimeout(debounce.current);
-    if (text.length < 2) return;
+    if (text.length < 2) {
+      setLoading(false);
+      return;
+    }
+    if (taxiRoute) {
+      setLoading(true);
+      debounce.current = setTimeout(async () => {
+        try {
+          const locs = await searchLocation(text, userGps ?? undefined);
+          setPhotonResults(locs.slice(0, isDestination ? 6 : 5));
+        } catch {
+          setPhotonResults([]);
+        } finally {
+          setLoading(false);
+        }
+      }, 300);
+      return;
+    }
     debounce.current = setTimeout(async () => {
       searchAbortRef.current?.abort();
       const ac = new AbortController();
@@ -343,7 +433,7 @@ function AddressInput({
       setLoading(true);
       try {
         const r = await nominatimSearch(text, ac.signal);
-        if (!ac.signal.aborted) setResults(r);
+        if (!ac.signal.aborted) setNominatimResults(r);
       } finally {
         if (searchAbortRef.current === ac) setLoading(false);
       }
@@ -351,21 +441,38 @@ function AddressInput({
   };
 
   const handlePick = (selection: SelectedAddress) => {
+    if (!selectedAddressIsBookingComplete(selection)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Adresse unvollständig", MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE);
+      return;
+    }
     setQuery(selection.name);
-    setResults([]);
+    setNominatimResults([]);
+    setPhotonResults([]);
     setFocused(false);
     inputRef.current?.blur();
     onSelect(selection);
     Haptics.selectionAsync();
+    onAfterSelect?.();
+  };
+
+  const handlePhotonPick = (loc: GeoLocation) => {
+    handlePick(geoLocationToSelectedAddress(loc));
   };
 
   const hasSelection = value.trim().length > 0;
-  const showSelectedPreview = (compact || routeRow) && hasSelection && !focused;
+  /** taxiRoute: Straße+Nr. / PLZ+Stadt zweizeilig; sonst Preview wie bisher. */
+  const showSelectedPreview =
+    hasSelection && !focused && (taxiRoute || compact || routeRow);
+  const FieldShell = showSelectedPreview ? Pressable : View;
 
   const handleClear = () => {
     searchAbortRef.current?.abort();
+    if (debounce.current) clearTimeout(debounce.current);
     setQuery("");
-    setResults([]);
+    setNominatimResults([]);
+    setPhotonResults([]);
+    setLoading(false);
     onSelect(EMPTY_SELECTED_ADDRESS);
     onRouteClear?.();
   };
@@ -378,8 +485,10 @@ function AddressInput({
   const fieldBorder = focused ? HELP_FIELD_FOCUS : HOME_SHEET_RIM;
   const fieldBorderWidth = focused ? 1.5 : StyleSheet.hairlineWidth;
 
-  const showGpsBtn = routeRow && showGps && !focused && !hasSelection && !loading;
-  const showRouteEditActions = routeRow && focused;
+  const showGpsBtn = routeRow && showGps && (taxiRoute || (!focused && !hasSelection && !loading));
+  const showClearBtn = taxiRoute && showClear && focused && query.length > 0 && !loading;
+  const showDestSpinner = taxiRoute && isDestination && loading;
+  const showRouteEditActions = routeRow && focused && !taxiRoute;
 
   return (
     <>
@@ -393,11 +502,16 @@ function AddressInput({
           </View>
         </InputAccessoryView>
       ) : null}
-    <View style={[routeRow ? styles.routeRowWrap : undefined, routeRow && focused ? styles.routeRowWrapFocused : null]}>
+    <View
+      style={[
+        routeRow ? styles.routeRowWrap : undefined,
+        routeRow && focused && !taxiRoute ? styles.routeRowWrapFocused : null,
+      ]}
+    >
       {!compact && !routeRow ? (
         <Text style={[styles.inputLabel, { color: colors.mutedForeground }]}>{label}</Text>
       ) : null}
-      <Pressable
+      <FieldShell
         style={[
           routeRow ? styles.routeRowPress : styles.inputBox,
           !routeRow && compact && styles.inputBoxRoute,
@@ -418,21 +532,37 @@ function AddressInput({
             borderWidth: focused ? fieldBorderWidth : showSelectedPreview ? StyleSheet.hairlineWidth : 0,
           },
         ]}
-        onPress={() => {
-          if (showSelectedPreview) enterEditMode();
-        }}
+        {...(showSelectedPreview
+          ? {
+              onPress: () => {
+                enterEditMode();
+              },
+            }
+          : {})}
       >
         <View style={[routeRow ? styles.routeRowBody : styles.inputBody, routeRow ? styles.routeRowBodyGrow : null]}>
           {routeRow && fieldLabel ? (
             <Text style={[styles.routeRowCaption, { color: colors.mutedForeground }]}>{fieldLabel}</Text>
           ) : null}
           {showSelectedPreview ? (
-            <View style={styles.addressPreview}>
-              <Text style={[styles.addressLine1, { color: colors.foreground }]} numberOfLines={2}>
+            <View style={[styles.addressPreview, routeRow && styles.routeAddressPreview]}>
+              <Text
+                style={[
+                  routeRow ? styles.routeAddressLine1 : styles.addressLine1,
+                  { color: colors.foreground },
+                ]}
+                numberOfLines={2}
+              >
                 {value}
               </Text>
               {subline ? (
-                <Text style={[styles.addressLine2, { color: colors.mutedForeground }]} numberOfLines={1}>
+                <Text
+                  style={[
+                    routeRow ? styles.routeAddressLine2 : styles.addressLine2,
+                    { color: colors.mutedForeground },
+                  ]}
+                  numberOfLines={1}
+                >
                   {subline}
                 </Text>
               ) : null}
@@ -466,14 +596,22 @@ function AddressInput({
             />
           )}
         </View>
-        {loading ? <ActivityIndicator size="small" color={colors.foreground} style={styles.routePreviewTrailing} /> : null}
+        {loading && !taxiRoute ? (
+          <ActivityIndicator size="small" color={colors.foreground} style={styles.routePreviewTrailing} />
+        ) : null}
         {showGpsBtn && onGpsPress ? (
-          <Pressable hitSlop={8} onPress={onGpsPress} style={styles.routeGpsBtn}>
+          <Pressable hitSlop={8} onPress={onGpsPress} style={taxiRoute ? styles.liveGpsIconBtn : styles.routeGpsBtn}>
             {gpsLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Feather name="navigation" size={17} color={colors.primary} />
+              <Feather name="navigation" size={taxiRoute ? 15 : 17} color={colors.primary} />
             )}
+          </Pressable>
+        ) : null}
+        {showDestSpinner ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+        {showClearBtn ? (
+          <Pressable onPress={handleClear} hitSlop={8}>
+            <Feather name="x" size={16} color={colors.mutedForeground} />
           </Pressable>
         ) : null}
         {showRouteEditActions && taxiRoute ? (
@@ -499,7 +637,7 @@ function AddressInput({
         {routeRow && showSelectedPreview && !showRouteEditActions ? (
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={styles.routePreviewTrailing} />
         ) : null}
-      </Pressable>
+      </FieldShell>
       {showRouteEditActions && !taxiRoute ? (
         <View style={styles.routeEditBarBelow}>
           <View style={styles.routeEditActions}>
@@ -513,19 +651,66 @@ function AddressInput({
         </View>
       ) : null}
 
-      {/* Nominatim results */}
-      {showResults && (
+      {/* Photon (Sofortfahrt / Reservieren — wie Startseiten-Suche) */}
+      {showPhotonResults ? (
+        <View style={[styles.liveResultGroup, { borderColor: colors.border, marginTop: rs(4) }]}>
+          {loading && photonResults.length === 0 ? (
+            <View style={styles.liveSearchingRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.liveSearchingText, { color: colors.mutedForeground }]}>Suche läuft...</Text>
+            </View>
+          ) : (
+            photonResults.map((loc, i) => {
+              const structured = geoLocationToSelectedAddress(loc);
+              return (
+                <React.Fragment key={`${loc.lat}-${loc.lon}-${i}`}>
+                  {i > 0 ? <View style={[styles.liveResultDivider, { backgroundColor: colors.border }]} /> : null}
+                  <Pressable
+                    style={({ pressed }) => [styles.liveResultRow, pressed && { backgroundColor: colors.muted }]}
+                    onPress={() => handlePhotonPick(loc)}
+                  >
+                    <View
+                      style={[
+                        styles.liveResultIcon,
+                        { backgroundColor: isDestination ? colors.muted : "#F0F9FF" },
+                      ]}
+                    >
+                      <Feather name="map-pin" size={15} color={isDestination ? colors.primary : "#3B82F6"} />
+                    </View>
+                    <View style={styles.liveResultText}>
+                      <Text style={[styles.liveResultTitle, { color: colors.foreground }]} numberOfLines={1}>
+                        {structured.name}
+                      </Text>
+                      <Text style={[styles.liveResultSub, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        {structured.subline || loc.displayName.split(",").slice(1, 3).join(",").trim()}
+                      </Text>
+                    </View>
+                  </Pressable>
+                </React.Fragment>
+              );
+            })
+          )}
+        </View>
+      ) : null}
+
+      {/* Nominatim (Legacy-Felder) */}
+      {showNominatimResults ? (
         <View
           style={[
             styles.suggestionBox,
-            taxiRoute && styles.suggestionBoxTaxi,
-            { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM },
+            { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
           ]}
         >
-          {results.map((s, i) => (
+          {nominatimResults.map((s, i) => (
             <Pressable
               key={i}
-              style={[styles.suggestionItem, i < results.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: HOME_SHEET_RIM }]}
+              style={[
+                styles.suggestionItem,
+                i < nominatimResults.length - 1 && {
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: HOME_SHEET_RIM,
+                },
+              ]}
               onPress={() => {
                 const structured = buildStructuredAddressFromGeo(s);
                 handlePick({
@@ -560,7 +745,7 @@ function AddressInput({
             </Pressable>
           ))}
         </View>
-      )}
+      ) : null}
     </View>
     </>
   );
@@ -597,32 +782,11 @@ function BookingDateTimePicker({
     Haptics.selectionAsync();
   };
 
-  if (Platform.OS === "android" && visible) {
-    return (
-      <RNDateTimePicker
-        value={draft}
-        mode="datetime"
-        display="default"
-        is24Hour
-        minimumDate={minDate}
-        onChange={(event, next) => {
-          if (event.type === "dismissed") {
-            onClose();
-            return;
-          }
-          if (next) {
-            onConfirm(next);
-            onClose();
-          }
-        }}
-      />
-    );
-  }
-
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={[styles.dtModal, { backgroundColor: HOME_SHEET_PANEL }]} onPress={(e) => e.stopPropagation()}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.dtModalOverlay} onPress={onClose}>
+        <Pressable style={styles.dtModalOverlayInner} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.dtModalCard, { backgroundColor: HOME_SHEET_PANEL }]} onPress={(e) => e.stopPropagation()}>
           <View style={[styles.dtSheetHeader, { borderBottomColor: HOME_SHEET_RIM }]}>
             <Pressable onPress={onClose} hitSlop={10}>
               <Text style={[styles.dtSheetAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
@@ -643,23 +807,92 @@ function BookingDateTimePicker({
             style={styles.dtSpinner}
             textColor={colors.foreground}
           />
+          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
   );
 }
 
-function DriverNoteAccessory({ onDone }: { onDone: () => void }) {
-  if (Platform.OS !== "ios") return null;
+function DriverNoteModal({
+  visible,
+  value,
+  onClose,
+  onConfirm,
+  colors,
+}: {
+  visible: boolean;
+  value: string;
+  onClose: () => void;
+  onConfirm: (note: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setDraft(value);
+      const t = setTimeout(() => inputRef.current?.focus(), 120);
+      return () => clearTimeout(t);
+    }
+    inputRef.current?.blur();
+    return undefined;
+  }, [visible, value]);
+
+  const confirm = () => {
+    onConfirm(draft.trim());
+    Haptics.selectionAsync();
+  };
+
   return (
-    <InputAccessoryView nativeID={DRIVER_NOTE_ACCESSORY_ID}>
-      <View style={[styles.accessoryBar, { borderTopColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={onDone} hitSlop={10}>
-          <Text style={styles.accessoryDone}>Fertig</Text>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.dtModalOverlay}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        <Pressable style={styles.dtModalOverlayInner} onPress={onClose}>
+          <Pressable
+            style={[styles.dtModalCard, styles.driverNoteModalCard, { backgroundColor: HOME_SHEET_PANEL }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.dtSheetHeader, { borderBottomColor: HOME_SHEET_RIM }]}>
+              <Pressable onPress={onClose} hitSlop={10}>
+                <Text style={[styles.dtSheetAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
+              </Pressable>
+              <Text style={[styles.dtSheetTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+              <Pressable onPress={confirm} hitSlop={10}>
+                <Text style={[styles.dtSheetAction, { color: HOME_SHEET_TEXT }]}>Fertig</Text>
+              </Pressable>
+            </View>
+            <View style={styles.driverNoteModalBody}>
+              <TextInput
+                ref={inputRef}
+                style={[
+                  styles.driverNoteModalInput,
+                  { color: colors.foreground, backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM },
+                ]}
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="z. B. Bitte am Haupteingang warten"
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                textAlignVertical="top"
+                maxLength={140}
+                autoCorrect
+              />
+              <Text style={[styles.driverNoteModalCount, { color: colors.mutedForeground }]}>
+                {draft.length}/140
+              </Text>
+              <Text style={[styles.driverNoteHint, { color: colors.mutedForeground }]}>
+                Optional — nur für den Fahrer sichtbar.
+              </Text>
+            </View>
+          </Pressable>
         </Pressable>
-      </View>
-    </InputAccessoryView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -678,6 +911,10 @@ export default function NewBookingScreen() {
 
   const { addRequest, passengerId } = useRideRequests();
   const { profile } = useUser();
+  const { config: appCfg } = useOnrodaAppConfig();
+  const brokerNoticeDe =
+    (typeof appCfg.system?.globalNoticeDe === "string" ? appCfg.system.globalNoticeDe.trim() : "") ||
+    CUSTOMER_BROKER_NOTICE_DE;
 
   const [from, setFrom] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
   const [to, setTo] = useState<SelectedAddress>(EMPTY_SELECTED_ADDRESS);
@@ -692,12 +929,54 @@ export default function NewBookingScreen() {
   const [fareLoading, setFareLoading] = useState(false);
   const [wheelchairFoldable, setWheelchairFoldable] = useState(false);
   const [wheelchairCompanion, setWheelchairCompanion] = useState(false);
-  const [driverNoteFocused, setDriverNoteFocused] = useState(false);
+  const [showDriverNoteModal, setShowDriverNoteModal] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [zielEngaged, setZielEngaged] = useState(false);
-  const driverNoteRef = useRef<TextInput>(null);
 
-  const showFahrzielSwap = to.name.trim().length > 0 || zielEngaged;
+  const [searchUserGps, setSearchUserGps] = useState<{ lat: number; lon: number } | null>(null);
+  const originAddressInputRef = useRef<TextInput>(null);
+  const destAddressInputRef = useRef<TextInput>(null);
+
+  const exitBookingScreen = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/" as Href);
+  }, []);
+
+  const dismissBookingKeyboard = useCallback(() => {
+    originAddressInputRef.current?.blur();
+    destAddressInputRef.current?.blur();
+    Keyboard.dismiss();
+  }, []);
+
+  const openDriverNoteModal = useCallback(() => {
+    dismissBookingKeyboard();
+    setShowDriverNoteModal(true);
+  }, [dismissBookingKeyboard]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || cancelled) return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (!cancelled) setSearchUserGps({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const focusDestAddressField = useCallback(() => {
+    originAddressInputRef.current?.blur();
+    setTimeout(() => destAddressInputRef.current?.focus(), 150);
+  }, []);
 
   const handleGpsPickup = async () => {
     setGpsLoading(true);
@@ -708,10 +987,12 @@ export default function NewBookingScreen() {
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setSearchUserGps({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       const picked = await reverseGeocodeLatLon(pos.coords.latitude, pos.coords.longitude);
-      if (picked) {
+      if (picked?.name.trim()) {
         setFrom(picked);
         Haptics.selectionAsync();
+        focusDestAddressField();
       } else {
         Alert.alert("Standort", "Adresse konnte nicht ermittelt werden.");
       }
@@ -732,7 +1013,10 @@ export default function NewBookingScreen() {
     setFareEstimates({});
   }, []);
 
-  const formComplete = from.name.length > 0 && to.name.length > 0 && (isInstant || scheduledAt !== null);
+  const formComplete =
+    selectedAddressIsBookingComplete(from) &&
+    selectedAddressIsBookingComplete(to) &&
+    (isInstant || scheduledAt !== null);
 
   useEffect(() => {
     if (!from.lat || !from.lon || !to.lat || !to.lon) {
@@ -792,12 +1076,6 @@ export default function NewBookingScreen() {
       cancelled = true;
     };
   }, [from.lat, from.lon, from.fullName, from.name, to.lat, to.lon, to.fullName, to.name]);
-  const swapFromTo = () => {
-    setFrom(to);
-    setTo(from);
-    Haptics.selectionAsync();
-  };
-
   function accessCodeErrorMessage(code: string): string {
     const m: Record<string, string> = {
       pickup_coordinates_required: MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
@@ -862,17 +1140,6 @@ export default function NewBookingScreen() {
       const destinationLat = readCoord(to as unknown, "lat", "latitude");
       const destinationLon = readCoord(to as unknown, "lon", "longitude");
 
-      console.log("NEW_BOOKING_ADDRESS_DEBUG", {
-        origin: from,
-        destination: to,
-        originDisplayName: fromFull,
-        destinationDisplayName: toFull,
-        originLat,
-        originLon,
-        destinationLat,
-        destinationLon,
-      });
-
       const hasGeoSelection =
         originLat != null &&
         originLon != null &&
@@ -880,7 +1147,12 @@ export default function NewBookingScreen() {
         destinationLon != null;
 
       if (!hasGeoSelection) {
-        const addressCheck = validateAddressCompletenessForBooking(fromFull, toFull);
+        const addressCheck = validateAddressCompletenessForBooking(fromFull, toFull, {
+          fromSubline: from.subline,
+          toSubline: to.subline,
+          fromPoi: from.isPoiAddress,
+          toPoi: to.isPoiAddress,
+        });
         if (!addressCheck.ok) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert("Buchung nicht möglich", addressCheck.message);
@@ -933,7 +1205,9 @@ export default function NewBookingScreen() {
         ...(pricingMode ? { pricingMode } : {}),
         ...(driverNote.trim() ? { partnerBookingMeta: { customer_driver_note: driverNote.trim() } } : {}),
         ...(codeTrim ? { accessCode: codeTrim } : {}),
-        ...(profile.billingType === "company" && profile.costCenter.trim() ? { billingReference: profile.costCenter.trim() } : {}),
+        ...(profile.billingType === "company" && profile.costCenter.trim()
+          ? { billingReference: profile.costCenter.trim() }
+          : {}),
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/my-rides");
@@ -945,99 +1219,76 @@ export default function NewBookingScreen() {
     }
   };
 
-  const dismissDriverNote = () => {
-    driverNoteRef.current?.blur();
-    Keyboard.dismiss();
-  };
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.back();
-          }}
-          style={styles.backBtn}
-          hitSlop={10}
-        >
-          <Feather name="x" size={22} color={colors.foreground} />
-        </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            {isInstant ? "Sofortfahrt" : "Reservieren"}
-          </Text>
-          {!isInstant ? (
-            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Fahrt im Voraus planen</Text>
-          ) : null}
-        </View>
-        <View style={{ width: rs(36) }} />
-      </View>
-
-      <KeyboardAwareScrollViewCompat
-        style={{ flex: 1 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        bottomOffset={insets.bottom + rs(8)}
+  const renderCustomerBrokerNotice = () => (
+      <View
+        style={[
+          styles.brokerNoticeBox,
+          {
+            backgroundColor: "#F0FDFA",
+            borderColor: "#99F6E4",
+          },
+          Platform.select({
+            ios: {
+              shadowColor: "#0F766E",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 6,
+            },
+            android: { elevation: 3 },
+            default: {},
+          }),
+        ]}
       >
-        <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
-          <View style={[styles.fahrzielBody, { backgroundColor: "#FFFFFF", borderColor: "transparent" }]}>
-            <View style={styles.fahrzielRoute}>
-              <View style={styles.fahrzielTimeline}>
-                <View style={styles.fahrzielDotOrigin} />
-                <View style={[styles.fahrzielConnector, { backgroundColor: HOME_SHEET_RIM }]} />
-                <View style={[styles.fahrzielDotDest, { backgroundColor: colors.primary }]} />
-              </View>
-              <View style={styles.fahrzielFieldsCol}>
-                <View style={[styles.fahrzielFieldSlot, { borderColor: HOME_SHEET_RIM }]}>
-                  <AddressInput
-                    label="Von"
-                    routeRow
-                    taxiRoute
-                    inputAccessoryViewID={ADDRESS_PICKUP_ACCESSORY_ID}
-                    showGps
-                    onGpsPress={() => void handleGpsPickup()}
-                    gpsLoading={gpsLoading}
-                    value={from.name}
-                    subline={from.subline}
-                    placeholder="Wo sollen wir dich abholen?"
-                    onSelect={setFrom}
-                    colors={colors}
-                  />
-                </View>
-                {showFahrzielSwap ? (
-                  <View style={styles.fahrzielSwapRow}>
-                    <Pressable
-                      style={[styles.fahrzielSwap, { borderColor: HOME_SHEET_RIM, backgroundColor: "#FFFFFF" }]}
-                      onPress={swapFromTo}
-                      accessibilityLabel="Start und Ziel tauschen"
-                    >
-                      <MaterialCommunityIcons name="swap-vertical" size={17} color={HOME_SHEET_TEXT} />
-                    </Pressable>
-                  </View>
-                ) : null}
-                <View style={[styles.fahrzielFieldSlot, { borderColor: HOME_SHEET_RIM }]}>
-                  <AddressInput
-                    label="Ziel"
-                    routeRow
-                    taxiRoute
-                    inputAccessoryViewID={ADDRESS_DEST_ACCESSORY_ID}
-                    value={to.name}
-                    subline={to.subline}
-                    placeholder="Wohin möchtest du fahren?"
-                    onSelect={setTo}
-                    onRouteFocus={() => setZielEngaged(true)}
-                    onRouteClear={() => setZielEngaged(false)}
-                    colors={colors}
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
+        <MaterialCommunityIcons name="information-outline" size={20} color="#0D9488" style={{ marginTop: 1 }} />
+        <Text style={[styles.brokerNoticeText, { color: colors.foreground }]}>{brokerNoticeDe}</Text>
+      </View>
+  );
 
+  const renderRouteAddressCard = () => (
+    <View style={[styles.routeAddressCard, { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+      <View style={styles.fahrzielRoute}>
+        <View style={styles.fahrzielTimeline} pointerEvents="none">
+          <View style={styles.fahrzielDotOrigin} />
+          <View style={[styles.fahrzielConnector, { backgroundColor: colors.border }]} />
+          <View style={[styles.fahrzielDotDest, { backgroundColor: colors.primary }]} />
+        </View>
+        <View style={styles.fahrzielFieldsCol}>
+          <AddressInput
+            routeRow
+            taxiRoute
+            showGps
+            userGps={searchUserGps}
+            inputRef={originAddressInputRef}
+            onGpsPress={() => void handleGpsPickup()}
+            gpsLoading={gpsLoading}
+            value={from.name}
+            subline={from.subline}
+            placeholder="Startadresse eingeben..."
+            onSelect={setFrom}
+            onAfterSelect={focusDestAddressField}
+            colors={colors}
+          />
+          <View style={[styles.fahrzielFieldSep, { backgroundColor: colors.border }]} />
+          <AddressInput
+            routeRow
+            taxiRoute
+            showClear
+            isDestination
+            userGps={searchUserGps}
+            inputRef={destAddressInputRef}
+            value={to.name}
+            subline={to.subline}
+            placeholder="Ziel eingeben..."
+            onSelect={setTo}
+            colors={colors}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderBookingFormSections = () => (
+    <>
         <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
           {!isInstant && (
             <>
@@ -1068,57 +1319,32 @@ export default function NewBookingScreen() {
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
+        <View style={[styles.card, styles.driverNoteCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
           <View style={styles.driverNoteSectionTitleRow}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
+            <Text style={[styles.driverNoteSectionTitle, { color: colors.foreground }]}>Notiz an Fahrer</Text>
             {driverNote.trim().length > 0 ? (
               <Feather name="check-circle" size={20} color="#16A34A" accessibilityLabel="Notiz wird mitgeschickt" />
             ) : null}
           </View>
-          {driverNoteFocused ? (
-            <View style={[styles.composeToolbar, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}>
-              <Pressable
-                hitSlop={8}
-                onPress={() => {
-                  setDriverNote("");
-                  dismissDriverNote();
-                }}
-              >
-                <Text style={[styles.composeToolbarAction, { color: colors.mutedForeground }]}>Abbrechen</Text>
-              </Pressable>
-              <Pressable hitSlop={8} onPress={dismissDriverNote}>
-                <Text style={[styles.composeToolbarAction, { color: colors.foreground }]}>Fertig</Text>
-              </Pressable>
-            </View>
-          ) : null}
-          <View style={styles.driverNoteFieldWrap}>
-            <TextInput
-              ref={driverNoteRef}
-              value={driverNote}
-              onChangeText={setDriverNote}
-              placeholder="z. B. Bitte am Haupteingang warten"
-              placeholderTextColor={colors.mutedForeground}
-              multiline
-              textAlignVertical="top"
-              maxLength={140}
-              onFocus={() => setDriverNoteFocused(true)}
-              onBlur={() => setDriverNoteFocused(false)}
-              inputAccessoryViewID={Platform.OS === "ios" ? DRIVER_NOTE_ACCESSORY_ID : undefined}
+          <Pressable
+            style={[styles.dtField, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER }]}
+            onPress={openDriverNoteModal}
+          >
+            <Feather name="edit-3" size={18} color={colors.mutedForeground} />
+            <Text
               style={[
-                styles.driverNoteInput,
-                driverNoteFocused && styles.driverNoteInputFocused,
+                styles.dtFieldText,
                 {
-                  color: colors.foreground,
-                  backgroundColor: HOME_SHEET_INNER,
-                  borderColor: driverNoteFocused ? HELP_FIELD_FOCUS : HOME_SHEET_RIM,
+                  color: driverNote.trim() ? colors.foreground : colors.mutedForeground,
+                  flex: 1,
                 },
               ]}
-            />
-            <Text style={[styles.driverNoteCount, { color: colors.mutedForeground }]}>{driverNote.length}/140</Text>
-          </View>
-          <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
-            Optional — nur für den Fahrer dieser Reservierung sichtbar.
-          </Text>
+              numberOfLines={3}
+            >
+              {driverNote.trim() ? driverNote : "z. B. Bitte am Haupteingang warten"}
+            </Text>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
         </View>
 
         {/* Vehicle — only after all fields filled */}
@@ -1143,7 +1369,7 @@ export default function NewBookingScreen() {
                     <View style={[styles.vehicleIcon, { backgroundColor: active ? "#DC262622" : colors.border + "40" }]}>
                       <MaterialCommunityIcons
                         name={v.icon as any}
-                        size={22}
+                        size={28}
                         color={v.id === "wheelchair" ? NB_WHEELCHAIR_ICON : NB_CAR_ICON}
                       />
                     </View>
@@ -1151,12 +1377,17 @@ export default function NewBookingScreen() {
                       {v.name}
                     </Text>
                     {fareEstimates[v.id] != null && (
-                      <Text style={{ fontSize: 11, color: active ? "#DC2626" : colors.mutedForeground, fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
+                      <Text
+                        style={[
+                          styles.vehiclePrice,
+                          { color: active ? "#DC2626" : colors.mutedForeground },
+                        ]}
+                      >
                         {`ab ${fareEstimates[v.id]!.toFixed(2)} €`}
                       </Text>
                     )}
                     {fareLoading && fareEstimates[v.id] == null && (
-                      <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 }}>…</Text>
+                      <Text style={[styles.vehiclePriceLoading, { color: colors.mutedForeground }]}>…</Text>
                     )}
                     {active && (
                       <View style={styles.vehicleCheck}>
@@ -1196,9 +1427,9 @@ export default function NewBookingScreen() {
                 </View>
               </View>
             )}
-            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: rs(4) }]}>Freigabe-Code (optional)</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: rs(4) }]}>Kostenübernahme-Code</Text>
             <Text style={[styles.dtNote, { color: colors.mutedForeground }]}>
-              Kostenübernahme durch Firma oder Hotel — wird im System geprüft.
+              Bei gültigen Code erfolgt die Abrechnung über den Partner.
             </Text>
             <View style={[styles.inputBox, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_INNER, borderWidth: StyleSheet.hairlineWidth }]}>
               <Feather name="hash" size={16} color={colors.mutedForeground} />
@@ -1230,15 +1461,71 @@ export default function NewBookingScreen() {
           </Pressable>
         )}
 
-        {!formComplete && (
-          <View style={[styles.hintBox, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
-            <Feather name="info" size={15} color={colors.mutedForeground} />
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Bitte alle Felder ausfüllen, um die Fahrzeugauswahl zu sehen.
-            </Text>
+    </>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {isInstant ? (
+        <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+          <Pressable onPress={exitBookingScreen} style={styles.backBtn} hitSlop={10}>
+            <Feather name="x" size={22} color={colors.foreground} />
+          </Pressable>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Sofortfahrt</Text>
           </View>
-        )}
+          <View style={{ width: rs(36) }} />
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.liveSearchHeader,
+            { paddingTop: topPad + 8, backgroundColor: HOME_SHEET_PANEL, borderBottomColor: HOME_SHEET_RIM },
+          ]}
+        >
+          <View style={styles.liveSearchHeaderRow}>
+            <Pressable style={styles.liveSearchBackBtn} onPress={exitBookingScreen} hitSlop={10}>
+              <Feather name="arrow-left" size={22} color={colors.foreground} />
+            </Pressable>
+            <View style={styles.headerCenter}>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>Reservieren</Text>
+            </View>
+            <Pressable style={styles.liveSearchCancelBtn} onPress={exitBookingScreen} hitSlop={10}>
+              <Text style={[styles.liveSearchCancelBtnText, { color: colors.primary }]}>Abbrechen</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      <KeyboardAwareScrollViewCompat
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          !isInstant && { paddingBottom: rs(24) + insets.bottom + rs(88) },
+        ]}
+        bottomOffset={insets.bottom + rs(8)}
+      >
+        {renderRouteAddressCard()}
+        {renderBookingFormSections()}
       </KeyboardAwareScrollViewCompat>
+
+      {!isInstant ? (
+        <View
+          style={[
+            styles.reserveBottomBar,
+            {
+              backgroundColor: colors.background,
+              borderTopColor: colors.border,
+              paddingBottom: insets.bottom + rs(16),
+            },
+          ]}
+        >
+          {renderCustomerBrokerNotice()}
+        </View>
+      ) : null}
 
       <BookingDateTimePicker
         visible={showDtPicker}
@@ -1247,7 +1534,16 @@ export default function NewBookingScreen() {
         onConfirm={(d) => { setScheduledAt(d); setShowDtPicker(false); }}
         colors={colors}
       />
-      <DriverNoteAccessory onDone={dismissDriverNote} />
+      <DriverNoteModal
+        visible={showDriverNoteModal}
+        value={driverNote}
+        onClose={() => setShowDriverNoteModal(false)}
+        onConfirm={(note) => {
+          setDriverNote(note);
+          setShowDriverNoteModal(false);
+        }}
+        colors={colors}
+      />
     </View>
   );
 }
@@ -1278,66 +1574,65 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
 
-  fahrzielBody: {
-    width: "100%",
-    overflow: "hidden",
-    borderRadius: rs(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: rs(10),
-    paddingHorizontal: rs(8),
-    minHeight: rs(172),
+  routeAddressCard: {
+    borderRadius: rs(16),
+    borderWidth: 1.5,
+    overflow: "visible",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(2) },
+    shadowOpacity: 0.06,
+    shadowRadius: rs(8),
+    elevation: 3,
   },
   fahrzielRoute: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: rs(10),
   },
   fahrzielTimeline: {
-    width: rs(18),
+    width: rs(32),
     alignItems: "center",
-    paddingTop: rs(22),
-    paddingBottom: rs(22),
+    paddingTop: rs(18),
+    paddingBottom: rs(18),
+    gap: rs(2),
     flexShrink: 0,
   },
   fahrzielDotOrigin: {
-    width: rs(9),
-    height: rs(9),
+    width: rs(10),
+    height: rs(10),
     borderRadius: rs(5),
-    backgroundColor: "#9CA3AF",
+    backgroundColor: "#222222",
     borderWidth: 2,
-    borderColor: "#6B7280",
+    borderColor: "#555555",
   },
   fahrzielConnector: {
+    flex: 1,
     width: rs(2),
-    height: rs(12),
     borderRadius: rs(1),
     marginVertical: rs(3),
   },
   fahrzielDotDest: {
-    width: rs(9),
-    height: rs(9),
+    width: rs(10),
+    height: rs(10),
     borderRadius: rs(5),
   },
   fahrzielFieldsCol: {
     flex: 1,
     minWidth: 0,
-    gap: rs(6),
-  },
-  fahrzielFieldSlot: {
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: rs(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    minHeight: rs(54),
-    justifyContent: "center",
     overflow: "visible",
+    position: "relative",
+  },
+  fahrzielFieldSep: {
+    height: rs(2),
+    marginLeft: rs(8),
+    marginRight: rs(8),
+    opacity: 0.45,
   },
   fahrzielSwapRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingRight: rs(2),
-    marginTop: rs(-2),
-    marginBottom: rs(-2),
+    position: "absolute",
+    right: rs(10),
+    top: "50%",
+    marginTop: rs(-17),
+    zIndex: 5,
   },
   fahrzielSwap: {
     width: rs(34),
@@ -1423,8 +1718,19 @@ const styles = StyleSheet.create({
   },
   inputBoxRoute: { minHeight: rs(56), paddingVertical: rs(12), paddingHorizontal: rs(12), alignItems: "center" },
   addressPreview: { flex: 1, gap: rs(2), justifyContent: "center" },
+  routeAddressPreview: { flex: 1, gap: rs(2), justifyContent: "center", minWidth: 0 },
   addressLine1: accountSheetPrimaryLabel,
   addressLine2: accountSheetSecondaryLabel,
+  routeAddressLine1: {
+    fontSize: rf(15),
+    fontFamily: "Inter_500Medium",
+    lineHeight: rf(20),
+  },
+  routeAddressLine2: {
+    fontSize: rf(13),
+    fontFamily: "Inter_400Regular",
+    lineHeight: rf(18),
+  },
   inputText: { flex: 1, ...accountSheetInputText },
   inputTextRoute: { fontSize: rf(15), lineHeight: rf(21), fontFamily: "Inter_400Regular" },
 
@@ -1485,26 +1791,50 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(8),
-    borderRadius: rs(10),
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(6),
+    borderRadius: rs(8),
     borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: rs(8),
+    marginBottom: rs(6),
   },
   composeToolbarAction: accountSheetToolbarAction,
-  driverNoteFieldWrap: { position: "relative" },
-  driverNoteInput: {
+  driverNoteCard: {
+    padding: rs(12),
+    gap: rs(8),
+  },
+  driverNoteSectionTitle: {
+    ...accountSheetCardTitle,
+    fontSize: rf(15),
+  },
+  driverNoteHint: {
+    ...accountSheetCaptionLabel,
+    fontSize: rf(12),
+    lineHeight: rf(16),
+  },
+  driverNoteModalCard: {
+    maxWidth: rs(360),
+  },
+  driverNoteModalBody: {
+    paddingHorizontal: rs(16),
+    paddingTop: rs(14),
+    paddingBottom: rs(16),
+    gap: rs(8),
+  },
+  driverNoteModalInput: {
     minHeight: rs(120),
-    maxHeight: rs(200),
+    maxHeight: rs(160),
     borderRadius: rs(12),
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: rs(12),
-    paddingVertical: rs(12),
-    paddingBottom: rs(28),
-    ...accountSheetInputText,
+    paddingVertical: rs(10),
+    fontSize: rf(15),
+    lineHeight: rf(21),
+    fontFamily: "Inter_400Regular",
   },
-  driverNoteInputFocused: { borderWidth: 1.5 },
-  driverNoteCount: { position: "absolute", right: rs(12), bottom: rs(10), ...accountSheetCaptionLabel },
+  driverNoteModalCount: {
+    alignSelf: "flex-end",
+    ...accountSheetCaptionLabel,
+  },
 
   accessoryBar: {
     flexDirection: "row",
@@ -1533,8 +1863,20 @@ const styles = StyleSheet.create({
     gap: rs(8),
     position: "relative",
   },
-  vehicleIcon: { width: rs(48), height: rs(48), borderRadius: rs(12), justifyContent: "center", alignItems: "center" },
+  vehicleIcon: { width: rs(56), height: rs(56), borderRadius: rs(12), justifyContent: "center", alignItems: "center" },
   vehicleName: { ...accountSheetChipLabel, textAlign: "center" },
+  vehiclePrice: {
+    fontSize: rf(13),
+    fontFamily: "Inter_600SemiBold",
+    marginTop: rs(2),
+    textAlign: "center",
+  },
+  vehiclePriceLoading: {
+    fontSize: rf(13),
+    fontFamily: "Inter_400Regular",
+    marginTop: rs(2),
+    textAlign: "center",
+  },
   vehicleCheck: { position: "absolute", top: 6, right: 6 },
 
   submitBtn: {
@@ -1548,17 +1890,36 @@ const styles = StyleSheet.create({
   },
   submitBtnText: { ...accountSheetButtonLabel, color: "#fff" },
 
-  hintBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: rs(10),
-    borderRadius: rs(16),
-    padding: rs(14),
+  reserveBottomBar: {
+    paddingTop: rs(12),
+    paddingHorizontal: rs(8),
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  hintText: { flex: 1, ...accountSheetSecondaryLabel },
 
-  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "#00000055" },
-  dtModal: { borderTopLeftRadius: rs(20), borderTopRightRadius: rs(20), paddingBottom: rs(24) },
+  dtModalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "#00000055",
+    paddingHorizontal: rs(24),
+  },
+  dtModalOverlayInner: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+  },
+  dtModalCard: {
+    width: "100%",
+    maxWidth: rs(360),
+    borderRadius: rs(20),
+    paddingBottom: rs(16),
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: rs(8) },
+    shadowOpacity: 0.15,
+    shadowRadius: rs(24),
+    elevation: 12,
+  },
   dtSheetHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1570,4 +1931,49 @@ const styles = StyleSheet.create({
   dtSheetTitle: accountSheetCardTitle,
   dtSheetAction: accountSheetToolbarAction,
   dtSpinner: { height: rs(216), alignSelf: "center" },
+
+  liveSearchHeader: {
+    paddingHorizontal: rs(8),
+    paddingBottom: rs(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  liveSearchHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  liveSearchBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  liveSearchCancelBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  liveSearchCancelBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  liveGpsIconBtn: { padding: rs(4), flexShrink: 0 },
+  brokerNoticeBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(10),
+    padding: rs(12),
+    borderRadius: rs(12),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  brokerNoticeText: { flex: 1, fontSize: rf(11), fontFamily: "Inter_400Regular", lineHeight: rf(16) },
+  liveResultGroup: { borderRadius: rs(14), borderWidth: 1.5, overflow: "hidden" },
+  liveResultRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  liveResultIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  liveResultText: { flex: 1 },
+  liveResultTitle: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  liveResultSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
+  liveResultDivider: { height: StyleSheet.hairlineWidth, marginLeft: 64 },
+  liveSearchingRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
+  liveSearchingText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 });

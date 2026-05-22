@@ -9,6 +9,7 @@ export {
   getOutOfServiceDe as getOutOfServiceAreaDe,
   MESSAGE_ADDRESS_PICK_SUGGESTION_DE,
   MESSAGE_COMPLETE_ADDRESS_REQUIRED_DE,
+  isCompleteStreetAddressForBooking,
   userFacingBookingErrorMessage,
   validateAddressCompletenessForBooking,
   validateServiceAreaForBooking,
