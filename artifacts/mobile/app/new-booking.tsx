@@ -983,8 +983,7 @@ export default function NewBookingScreen() {
         bottomOffset={insets.bottom + rs(8)}
       >
         <View style={[styles.card, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, borderWidth: 1 }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Fahrziel</Text>
-          <View style={[styles.fahrzielBody, { backgroundColor: HOME_SHEET_INNER, borderColor: HOME_SHEET_RIM }]}>
+          <View style={[styles.fahrzielBody, { backgroundColor: "#FFFFFF", borderColor: "transparent" }]}>
             <View style={styles.fahrzielRoute}>
               <View style={styles.fahrzielTimeline}>
                 <View style={styles.fahrzielDotOrigin} />
@@ -997,7 +996,6 @@ export default function NewBookingScreen() {
                     label="Von"
                     routeRow
                     taxiRoute
-                    fieldLabel="Abholort"
                     inputAccessoryViewID={ADDRESS_PICKUP_ACCESSORY_ID}
                     showGps
                     onGpsPress={() => void handleGpsPickup()}
@@ -1025,7 +1023,6 @@ export default function NewBookingScreen() {
                     label="Ziel"
                     routeRow
                     taxiRoute
-                    fieldLabel="Zielort"
                     inputAccessoryViewID={ADDRESS_DEST_ACCESSORY_ID}
                     value={to.name}
                     subline={to.subline}
