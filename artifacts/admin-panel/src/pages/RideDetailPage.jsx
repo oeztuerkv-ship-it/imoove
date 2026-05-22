@@ -13,6 +13,19 @@ function formatDt(iso) {
   }
 }
 
+function billingStatusDe(status) {
+  const m = {
+    unbilled: "Nicht abgerechnet",
+    queued: "In Warteschlange",
+    invoiced: "Fakturiert",
+    partially_paid: "Teilweise bezahlt",
+    paid: "Bezahlt",
+    cancelled: "Abgerechnung storniert",
+    written_off: "Abgeschrieben",
+  };
+  return m[String(status || "")] || (status ? String(status) : "—");
+}
+
 function rideStatusDe(status) {
   const s = String(status || "");
   const m = {
@@ -76,6 +89,13 @@ function eventNarration(ev) {
   }
   if (t === "cancel_reason")
     return `Storno-Grund: ${String(p.reason || "").trim() || "—"}`;
+  if (t === "offer_sent") return "Angebot an Fahrer gesendet (Dispatch)";
+  if (t === "offer_seen") return "Fahrer hat Angebot gesehen";
+  if (t === "fake_arrival_attempt") {
+    const dist = p.distanceM != null ? `${p.distanceM} m` : "—";
+    return `Verdacht Fake-Ankunft (Geofence, ${dist} vom Abholort)`;
+  }
+  if (t === "trip_start_geofence_blocked") return "Fahrtbeginn geblockt (zu weit vom Abholort)";
   if (t === "admin_action") {
     return `Plattform-Aktion: ${String(p.action || "").trim() || "—"}`;
   }
@@ -305,6 +325,7 @@ export default function RideDetailPage({ rideId, onBack }) {
   const audits = data?.panelAudit ?? [];
   const supportTickets = data?.supportTickets ?? [];
   const links = data?.links;
+  const dispatchOffers = data?.dispatchOffers ?? [];
   const accessibilitySummary = accessibilitySummaryDe(r?.accessibilityOptions);
   const medicalMeta = medicalMetaViewModel(r?.partnerBookingMeta);
 
@@ -496,6 +517,24 @@ export default function RideDetailPage({ rideId, onBack }) {
           <section className="admin-panel-card admin-m-card admin-m-card--unified">
             <div className="admin-m-card__h">
               <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                Finanzen (ride_financials)
+              </span>
+            </div>
+            <div className="admin-ride-rec-kv">
+              <div>
+                <span className="admin-ride-rec-kv__k">billing_status</span>
+                <span className="admin-ride-rec-kv__v">{billingStatusDe(r.billingStatus)}</span>
+              </div>
+              <div>
+                <span className="admin-ride-rec-kv__k">settlement_status</span>
+                <span className="admin-ride-rec-kv__v">{r.settlementStatus || "—"}</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="admin-panel-card admin-m-card admin-m-card--unified">
+            <div className="admin-m-card__h">
+              <span className="admin-panel-card__title" style={{ margin: 0 }}>
                 Verknüpfungen
               </span>
             </div>
@@ -514,6 +553,41 @@ export default function RideDetailPage({ rideId, onBack }) {
               </div>
             </div>
           </section>
+
+          {dispatchOffers.length > 0 ? (
+            <section className="admin-panel-card admin-m-card admin-m-card--unified">
+              <div className="admin-m-card__h">
+                <span className="admin-panel-card__title" style={{ margin: 0 }}>
+                  Dispatch-Angebote (Fahrer)
+                </span>
+                <span className="admin-table-sub" style={{ margin: 0 }}>
+                  offer_sent / offer_seen / angenommen
+                </span>
+              </div>
+              <div style={{ padding: "0 16px 16px", overflowX: "auto" }}>
+                <table className="admin-rides-table">
+                  <thead>
+                    <tr>
+                      <th>Fahrer-ID</th>
+                      <th>Gesendet</th>
+                      <th>Gesehen</th>
+                      <th>Angenommen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dispatchOffers.map((o) => (
+                      <tr key={`${o.rideId}-${o.fleetDriverId}`}>
+                        <td className="admin-crisp-numeric">{o.fleetDriverId}</td>
+                        <td className="admin-crisp-numeric">{formatDt(o.sentAt)}</td>
+                        <td className="admin-crisp-numeric">{o.seenAt ? formatDt(o.seenAt) : "—"}</td>
+                        <td className="admin-crisp-numeric">{o.acceptedAt ? formatDt(o.acceptedAt) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
 
           <section className="admin-panel-card admin-m-card admin-m-card--unified">
             <div className="admin-m-card__h">

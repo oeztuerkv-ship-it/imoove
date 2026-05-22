@@ -18,6 +18,11 @@ import {
   listFleetDriverExpoPushTokens,
   upsertFleetDriverExpoPushToken,
 } from "../db/fleetDriverExpoPushData";
+import {
+  isInstantDispatchRideStatus,
+  recordDispatchOfferSeen,
+  recordDispatchOffersSentForDriver,
+} from "../db/rideDispatchOfferData";
 import { listRides, listRidesForDriver } from "../db/ridesData";
 import { stripPartnerOnlyRideFields } from "../domain/ridePublic";
 import { listActualDurationMinutesByRideIds } from "../lib/rideActualDuration";
@@ -275,6 +280,10 @@ router.get("/fleet-driver/v1/market-rides", requireFleetDriverAuth, async (req, 
     });
     const publicRows = marketRows.map(stripPartnerOnlyRideFields);
     const withCodes = await attachAccessCodeSummariesToRides(publicRows);
+    const openInstantIds = marketRows
+      .filter((r) => !r.driverId && isInstantDispatchRideStatus(r.status))
+      .map((r) => r.id);
+    void recordDispatchOffersSentForDriver(a.fleetDriverId, a.companyId, openInstantIds);
     res.json({
       ok: true,
       einsatzbereit: true,
@@ -398,6 +407,29 @@ router.delete("/fleet-driver/v1/admin-messages/:messageId", requireFleetDriverAu
     }
     await dismissDriverMessage(a.fleetDriverId, messageId);
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post("/fleet-driver/v1/rides/:rideId/dispatch-offer-seen", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const a = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!a) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const rideId = String(req.params.rideId ?? "").trim();
+    if (!rideId) {
+      res.status(400).json({ error: "ride_id_required" });
+      return;
+    }
+    const result = await recordDispatchOfferSeen(a.fleetDriverId, a.companyId, rideId);
+    if (!result.ok) {
+      res.status(503).json({ error: result.error });
+      return;
+    }
+    res.json({ ok: true, rideId });
   } catch (e) {
     next(e);
   }

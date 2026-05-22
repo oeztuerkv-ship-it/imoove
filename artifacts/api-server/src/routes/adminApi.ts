@@ -163,6 +163,11 @@ import {
   parseAdminDashboardDayBounds,
   type AdminRideListQuery,
 } from "../db/ridesData";
+import { listDispatchOffersForRide } from "../db/rideDispatchOfferData";
+import {
+  getRideFinancialSnapshotByRideId,
+  mapBillingStatusByRideIds,
+} from "../db/rideFinancialsData";
 import {
   getAdminTaxiFleetVehicleDetail,
   listAdminTaxiFleetVehicleRows,
@@ -4030,7 +4035,16 @@ adminJson.get("/rides", async (req, res, next) => {
       countRidesAdmin(scopedQuery),
       listRidesAdminPage(scopedQuery, pageSize, offset),
     ]);
-    const items = await attachAccessCodeSummariesToRides(rows);
+    const withCodes = await attachAccessCodeSummariesToRides(rows);
+    const billingMap = await mapBillingStatusByRideIds(withCodes.map((r) => r.id));
+    const items = withCodes.map((ride) => {
+      const fin = billingMap.get(ride.id);
+      return {
+        ...ride,
+        billingStatus: fin?.billingStatus ?? null,
+        settlementStatus: fin?.settlementStatus ?? null,
+      };
+    });
     res.json({ ok: true, items, total, page, pageSize });
   } catch (e) {
     next(e);
@@ -4059,11 +4073,13 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
       return;
     }
     const [ride] = await attachAccessCodeSummariesToRides([row]);
-    const [events, panelAudit] = await Promise.all([
+    const [events, panelAudit, financial, dispatchOffers] = await Promise.all([
       listAdminRideEventsByRideId(id),
       row.companyId
         ? listPanelAuditForCompany(row.companyId, { subjectId: id, limit: 200 })
         : Promise.resolve([]),
+      getRideFinancialSnapshotByRideId(id),
+      listDispatchOffersForRide(id),
     ]);
     const auditAsc = [...panelAudit].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     const meta = (row as { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
@@ -4077,9 +4093,14 @@ adminJson.get("/rides/:id/record", async (req, res, next) => {
         : null;
     res.json({
       ok: true,
-      ride,
+      ride: {
+        ...ride,
+        billingStatus: financial?.billingStatus ?? null,
+        settlementStatus: financial?.settlementStatus ?? null,
+      },
       events,
       panelAudit: auditAsc,
+      dispatchOffers,
       links: {
         billingReference: row.billingReference ?? null,
         supportTicketId: supportTicketId || null,

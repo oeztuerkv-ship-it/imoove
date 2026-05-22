@@ -45,6 +45,7 @@ import {
 } from "@/utils/driverRideCompletion";
 import { requestNotificationPermissions, stopRideSound } from "@/utils/notifications";
 import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsHandler";
+import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
 import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import {
@@ -727,13 +728,22 @@ function ScheduledCard({ req, onAccept, onReject, onActivate, onCancelAssigned, 
 }
 
 /* ─── Tab: Übersicht — Live-Karte mit Fahrerstandort + Auftrag-Popup ─── */
-function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvailable, marketLoading }: {
+function TabUebersicht({
+  pendingRequests,
+  onAccept,
+  onReject,
+  driverPos,
+  isAvailable,
+  marketLoading,
+  fleetAuthToken,
+}: {
   pendingRequests: RideRequest[];
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   driverPos?: { lat: number; lon: number } | null;
   isAvailable: boolean;
   marketLoading?: boolean;
+  fleetAuthToken?: string;
 }) {
   const slideAnim = useRef(new Animated.Value(300)).current;
   const prevCountRef = useRef(0);
@@ -762,6 +772,11 @@ function TabUebersicht({ pendingRequests, onAccept, onReject, driverPos, isAvail
     }
     slideAnim.setValue(0);
   }, [isAvailable, firstReq?.id, instantReqs.length]);
+
+  useEffect(() => {
+    if (!isAvailable || !firstReq?.id || !fleetAuthToken) return;
+    void markDispatchOfferSeen({ authToken: fleetAuthToken, rideId: firstReq.id });
+  }, [isAvailable, firstReq?.id, fleetAuthToken]);
 
   const mapLat = driverPos?.lat ?? 48.7394;
   const mapLon = driverPos?.lon ?? 9.3114;
@@ -3237,6 +3252,7 @@ export default function DriverDashboard() {
           <>
             {activeTab === "uebersicht" && (
               <TabUebersicht
+                fleetAuthToken={driver?.authToken}
                 key={marketPanelKey}
                 pendingRequests={pendingRequests}
                 onAccept={handleAccept}

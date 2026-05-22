@@ -1061,6 +1061,23 @@ CREATE TABLE IF NOT EXISTS ride_driver_locations (
 CREATE INDEX IF NOT EXISTS ride_driver_locations_updated_at_idx
   ON ride_driver_locations (updated_at DESC);
 
+CREATE TABLE IF NOT EXISTS ride_driver_dispatch_offers (
+  id TEXT PRIMARY KEY,
+  ride_id TEXT NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+  fleet_driver_id TEXT NOT NULL,
+  company_id TEXT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  seen_at TIMESTAMPTZ,
+  accepted_at TIMESTAMPTZ,
+  CONSTRAINT ride_driver_dispatch_offers_ride_driver_unique UNIQUE (ride_id, fleet_driver_id)
+);
+
+CREATE INDEX IF NOT EXISTS ride_driver_dispatch_offers_ride_idx
+  ON ride_driver_dispatch_offers (ride_id);
+
+CREATE INDEX IF NOT EXISTS ride_driver_dispatch_offers_driver_sent_idx
+  ON ride_driver_dispatch_offers (fleet_driver_id, sent_at DESC);
+
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_customer_reservation_assigned_at TIMESTAMPTZ NULL;
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS push_driver_activation_reminder_at TIMESTAMPTZ NULL;
 

@@ -478,6 +478,19 @@ export const rideDriverLocationsTable = pgTable("ride_driver_locations", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Dispatch-Angebot pro Fahrer und Sofortfahrt (offer_sent / offer_seen / accepted). */
+export const rideDriverDispatchOffersTable = pgTable("ride_driver_dispatch_offers", {
+  id: text("id").primaryKey(),
+  ride_id: text("ride_id")
+    .notNull()
+    .references(() => ridesTable.id, { onDelete: "cascade" }),
+  fleet_driver_id: text("fleet_driver_id").notNull(),
+  company_id: text("company_id").notNull(),
+  sent_at: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  seen_at: timestamp("seen_at", { withTimezone: true }),
+  accepted_at: timestamp("accepted_at", { withTimezone: true }),
+});
+
 /** Expo Push: Fahrer-App, Token pro Gerät (Mandant + Fahrer). */
 export const fleetDriverExpoPushTokensTable = pgTable("fleet_driver_expo_push_tokens", {
   expo_push_token: text("expo_push_token").primaryKey(),

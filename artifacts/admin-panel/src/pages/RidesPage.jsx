@@ -41,6 +41,27 @@ function authorizationSummary(ride) {
   return "Direktbuchung";
 }
 
+function billingStatusDe(status) {
+  const m = {
+    unbilled: "Nicht abgerechnet",
+    queued: "In Warteschlange",
+    invoiced: "Fakturiert",
+    partially_paid: "Teilweise bezahlt",
+    paid: "Bezahlt",
+    cancelled: "Abgerechnung storniert",
+    written_off: "Abgeschrieben",
+  };
+  return m[String(status || "")] || (status ? String(status) : "—");
+}
+
+function billingStatusToneClass(status) {
+  const s = String(status || "");
+  if (s === "paid") return "admin-status-pill admin-status-pill--ok";
+  if (s === "cancelled" || s === "written_off") return "admin-status-pill admin-status-pill--bad";
+  if (s === "queued" || s === "invoiced" || s === "partially_paid") return "admin-status-pill admin-status-pill--active";
+  return "admin-status-pill admin-status-pill--pending";
+}
+
 function rideStatusDe(status) {
   const s = String(status || "");
   const m = {
@@ -691,6 +712,7 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                   <th>Fahrt-ID</th>
                   <th>Kunde</th>
                   <th>Status</th>
+                  <th>Abrechnung</th>
                   <th className="admin-rides-table__col-actions">Aktion</th>
                 </tr>
               </thead>
@@ -745,6 +767,11 @@ export default function RidesPage({ initialDetailRideId, onInitialDetailRideCons
                         <td>
                           <span className={rideStatusToneClass(ride.status)}>{rideStatusDe(ride.status)}</span>
                           <div className="admin-table-sub">{formatMoney(ride.estimatedFare)}</div>
+                        </td>
+                        <td>
+                          <span className={billingStatusToneClass(ride.billingStatus)}>
+                            {billingStatusDe(ride.billingStatus)}
+                          </span>
                         </td>
                         <td className="admin-rides-table__actions">
                           {hasNote ? (

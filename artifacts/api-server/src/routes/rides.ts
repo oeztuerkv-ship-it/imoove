@@ -35,7 +35,9 @@ import {
   canTransitionRideStatus,
   supplementalEventForTransition,
 } from "../lib/rideStatusMachine";
+import { logRideAntiFraudAttempt } from "../lib/rideAntiFraud";
 import { validateRideStatusTransition } from "../lib/rideOpsTransitionGuards";
+import { markDispatchOfferAccepted } from "../db/rideDispatchOfferData";
 import {
   getRideDriverLocation,
   hydrateRideDriverLocationCache,
@@ -1685,6 +1687,8 @@ export async function patchRideStatusRoute(
       return;
     }
 
+    const mutActor = mutationActorFromRideMutator(actor);
+
     await hydrateRideDriverLocationCache(id, driverLocations);
     const opsGuard = validateRideStatusTransition(cur, nextStatus, {
       rideId: id,
@@ -1693,6 +1697,23 @@ export async function patchRideStatusRoute(
       parsedFinalFare,
     });
     if (!opsGuard.ok) {
+      const fraudErrors = new Set([
+        "pickup_geofence_failed",
+        "driver_location_required",
+        "trip_start_geofence_failed",
+      ]);
+      if (fraudErrors.has(opsGuard.error)) {
+        void logRideAntiFraudAttempt(id, {
+          eventType:
+            nextStatus === "driver_waiting" ? "fake_arrival_attempt" : "trip_start_geofence_blocked",
+          fromStatus: cur.status,
+          targetStatus: nextStatus,
+          actorType: mutActor.actorType,
+          actorId: mutActor.actorId,
+          error: opsGuard.error,
+          details: opsGuard.details,
+        });
+      }
       res.status(opsGuard.status).json({
         error: opsGuard.error,
         message: opsGuard.message,
@@ -1717,7 +1738,6 @@ export async function patchRideStatusRoute(
       return;
     }
 
-    const mutActor = mutationActorFromRideMutator(actor);
     let companyIdOnAccept: string | undefined;
     if (nextStatus === "accepted" && driverId) {
       const driverAuth = await findFleetDriverAuthRow(driverId);
@@ -1862,6 +1882,7 @@ export async function patchRideStatusRoute(
       }
       await applyRideMutationPersistence(id, claimed.previous, claimed.ride, mutActor);
       updated = claimed.ride;
+      void markDispatchOfferAccepted(bodyDriverIdTrim, id);
     } else {
       updated = await updateRide(
         id,
@@ -1876,6 +1897,9 @@ export async function patchRideStatusRoute(
       if (!updated) {
         res.status(500).json({ error: "update_failed" });
         return;
+      }
+      if (nextStatus === "accepted" && bodyDriverIdTrim) {
+        void markDispatchOfferAccepted(bodyDriverIdTrim, id);
       }
     }
     if (cancelReasonClean) {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import type { RideRequest } from "../domain/rideRequest";
 import {
   calculateRideFinancialsV1,
@@ -195,6 +195,31 @@ function isValidBillingStatus(value: string): value is RideFinancialBillingStatu
 
 function isValidSettlementStatus(value: string): value is RideFinancialSettlementStatus {
   return (RIDE_FINANCIAL_SETTLEMENT_STATUSES as readonly string[]).includes(value);
+}
+
+export async function mapBillingStatusByRideIds(
+  rideIds: string[],
+): Promise<Map<string, { billingStatus: string; settlementStatus: string }>> {
+  const out = new Map<string, { billingStatus: string; settlementStatus: string }>();
+  const db = getDb();
+  if (!db || rideIds.length === 0) return out;
+  const ids = [...new Set(rideIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return out;
+  const rows = await db
+    .select({
+      rideId: rideFinancialsTable.ride_id,
+      billingStatus: rideFinancialsTable.billing_status,
+      settlementStatus: rideFinancialsTable.settlement_status,
+    })
+    .from(rideFinancialsTable)
+    .where(inArray(rideFinancialsTable.ride_id, ids));
+  for (const row of rows) {
+    out.set(row.rideId, {
+      billingStatus: String(row.billingStatus ?? "unbilled"),
+      settlementStatus: String(row.settlementStatus ?? "open"),
+    });
+  }
+  return out;
 }
 
 export async function getRideFinancialSnapshotByRideId(rideId: string) {
