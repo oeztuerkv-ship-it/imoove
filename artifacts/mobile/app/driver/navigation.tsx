@@ -49,6 +49,9 @@ import {
 const API_BASE = getApiBaseUrl();
 const DRIVER_SESSION_KEY = "@Onroda_driver_session";
 const START_SLIDER_HANDLE = 52;
+/** Unteres Panel während Zielfahrt: eingeklappt vs. hochgezogen (px Inhalt ohne Safe-Area). */
+const DRIVE_SHEET_COLLAPSED_H = 96;
+const DRIVE_SHEET_EXPANDED_H = 252;
 
 async function fleetAuthHeadersJson(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -151,6 +154,7 @@ export default function DriverNavigationScreen() {
 
   const phase = params.phase ?? "pickup";
   const isPickupPhase = phase === "pickup";
+  const isDrivingPhase = !isPickupPhase;
 
   const fromLat = parseFloat(params.fromLat ?? "0");
   const fromLon = parseFloat(params.fromLon ?? "0");
@@ -207,6 +211,30 @@ export default function DriverNavigationScreen() {
   const [chatUnread, setChatUnread] = useState(false);
   const chatOpenRef = useRef(false);
   const cancelHandledRef = useRef(false);
+  const [driveSheetOpen, setDriveSheetOpen] = useState(false);
+  const driveSheetAnim = useRef(new Animated.Value(0)).current;
+  const driveSheetOpenRef = useRef(false);
+
+  const snapDriveSheet = useCallback(
+    (open: boolean) => {
+      driveSheetOpenRef.current = open;
+      setDriveSheetOpen(open);
+      Animated.spring(driveSheetAnim, {
+        toValue: open ? 1 : 0,
+        useNativeDriver: false,
+        friction: 9,
+        tension: 68,
+      }).start();
+    },
+    [driveSheetAnim],
+  );
+
+  useEffect(() => {
+    if (!isDrivingPhase) return;
+    snapDriveSheet(false);
+    setChatOpen(false);
+    setChatUnread(false);
+  }, [isDrivingPhase, snapDriveSheet]);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -382,6 +410,27 @@ export default function DriverNavigationScreen() {
       resetSlide();
     }
   }, [handleFahrtBeginnen, resetSlide]);
+
+  const driveSheetPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => isDrivingPhase,
+        onMoveShouldSetPanResponder: (_, g) => isDrivingPhase && Math.abs(g.dy) > 8,
+        onPanResponderMove: (_, g) => {
+          const base = driveSheetOpenRef.current ? 1 : 0;
+          const span = DRIVE_SHEET_EXPANDED_H - DRIVE_SHEET_COLLAPSED_H;
+          const next = Math.min(1, Math.max(0, base - g.dy / span));
+          driveSheetAnim.setValue(next);
+        },
+        onPanResponderRelease: (_, g) => {
+          driveSheetAnim.stopAnimation((v) => {
+            const open = v > 0.42 || g.vy < -0.45 ? true : g.vy > 0.45 ? false : v >= 0.5;
+            snapDriveSheet(open);
+          });
+        },
+      }),
+    [isDrivingPhase, driveSheetAnim, snapDriveSheet],
+  );
 
   /** PanResponder muss bei neuer Track-Breite neu erstellt werden — sonst bleibt maxSlideX=0 „eingefroren“. */
   const sliderResponder = useMemo(
@@ -587,6 +636,61 @@ export default function DriverNavigationScreen() {
         ? `in ${fmtDist(currentStep.distanceM)}`
         : "";
 
+  const bottomInset = Math.max(insets.bottom, 16);
+  const floatingControlsBottom =
+    bottomInset + (isDrivingPhase ? (driveSheetOpen ? DRIVE_SHEET_EXPANDED_H + 20 : DRIVE_SHEET_COLLAPSED_H + 16) : 230);
+
+  const driveSheetHeight = driveSheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [DRIVE_SHEET_COLLAPSED_H, DRIVE_SHEET_EXPANDED_H],
+  });
+  const driveDetailsHeight = driveSheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 118],
+  });
+  const driveCancelHeight = driveSheetAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 52],
+  });
+
+  const rideDetailsBlock = (
+    <View style={styles.etaRow}>
+      <View style={styles.etaBlock}>
+        <Text style={styles.etaMin}>{remainingMin > 0 ? `${remainingMin} min` : "—"}</Text>
+        <Text style={styles.etaDetail}>
+          {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
+          {remainingMin > 0 ? ` · ${fmtArrival(remainingMin)}` : ""}
+        </Text>
+      </View>
+      <View style={styles.etaCustomerBlock}>
+        {params.customerName ? (
+          <Text style={styles.etaCustomer} numberOfLines={1}>
+            {params.customerName}
+          </Text>
+        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+          <MaterialCommunityIcons
+            name={
+              (params.paymentMethod ?? "").startsWith("Krankenkasse")
+                ? "ticket-percent-outline"
+                : (params.paymentMethod ?? "").toLowerCase().includes("karte") ||
+                    (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte")
+                  ? "credit-card-outline"
+                  : (params.paymentMethod ?? "").toLowerCase().includes("paypal")
+                    ? "cellphone"
+                    : "cash"
+            }
+            size={15}
+            color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
+          />
+          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={1}>
+            {(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "Krankenkasse" : params.paymentMethod || "Bar"}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
   // ─── Bottom action button ───────────────────────────────────────────────────
   let actionBtn: React.ReactNode;
   if (isPickupPhase) {
@@ -698,8 +802,8 @@ export default function DriverNavigationScreen() {
         )}
       </View>
 
-      {/* Floating button column — right side above black bar */}
-      <View style={{ position: "absolute", right: 12, bottom: insets.bottom + 230, gap: 10 }}>
+      {/* Floating button column — right side above bottom panel */}
+      <View style={{ position: "absolute", right: 12, bottom: floatingControlsBottom, gap: 10 }}>
         <Pressable
           style={styles.compassBtn}
           onPress={() => mapRef.current?.animateCamera({ center: { latitude: driverLat, longitude: driverLon }, zoom: 17 })}
@@ -723,69 +827,85 @@ export default function DriverNavigationScreen() {
         >
           <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={18} color={soundEnabled ? "#1B6B3A" : "#DC2626"} />
         </Pressable>
-        <Pressable
-          style={styles.navChatBtn}
-          accessibilityLabel="Chat"
-          onPress={() => {
-            setChatUnread(false);
-            setChatOpen(true);
-          }}
-        >
-          <Text style={styles.navChatBtnLabel}>Chat</Text>
-          {chatUnread ? <View style={styles.navChatBadge} /> : null}
-        </Pressable>
+        {isPickupPhase ? (
+          <Pressable
+            style={styles.navChatBtn}
+            accessibilityLabel="Chat"
+            onPress={() => {
+              setChatUnread(false);
+              setChatOpen(true);
+            }}
+          >
+            <Text style={styles.navChatBtnLabel}>Chat</Text>
+            {chatUnread ? <View style={styles.navChatBadge} /> : null}
+          </Pressable>
+        ) : null}
       </View>
 
-      {/* Bottom bar — dark Google Maps style */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        {/* ETA + customer info row */}
-        <View style={styles.etaRow}>
-          <View style={styles.etaBlock}>
-            <Text style={styles.etaMin}>{remainingMin > 0 ? `${remainingMin} min` : "—"}</Text>
-            <Text style={styles.etaDetail}>
-              {remainingDistM > 0 ? fmtDist(remainingDistM) : "—"}
-              {remainingMin > 0 ? ` · ${fmtArrival(remainingMin)}` : ""}
-            </Text>
-          </View>
-          <View style={styles.etaCustomerBlock}>
-            {params.customerName ? (
-              <Text style={styles.etaCustomer} numberOfLines={1}>{params.customerName}</Text>
-            ) : null}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-              <MaterialCommunityIcons
-                name={
-                  (params.paymentMethod ?? "").startsWith("Krankenkasse")
-                    ? "ticket-percent-outline"
-                    : (params.paymentMethod ?? "").toLowerCase().includes("karte") ||
-                        (params.paymentMethod ?? "").toLowerCase().includes("kreditkarte")
-                      ? "credit-card-outline"
-                      : (params.paymentMethod ?? "").toLowerCase().includes("paypal")
-                        ? "cellphone"
-                        : "cash"
-                }
-                size={15}
-                color={(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "#60A5FA" : "#94A3B8"}
-              />
-              <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#0F172A" }} numberOfLines={1}>
-                {(params.paymentMethod ?? "").startsWith("Krankenkasse") ? "Krankenkasse" : (params.paymentMethod || "Bar")}
+      {isDrivingPhase ? (
+        <Animated.View
+          style={[
+            styles.driveBottomSheet,
+            { paddingBottom: bottomInset, height: Animated.add(driveSheetHeight, bottomInset) },
+          ]}
+        >
+          <View style={styles.sheetGrabRow} {...driveSheetPan.panHandlers}>
+            <Pressable
+              style={styles.sheetGrabHit}
+              onPress={() => snapDriveSheet(!driveSheetOpen)}
+              accessibilityLabel={driveSheetOpen ? "Fahrtdetails einklappen" : "Fahrtdetails ausklappen"}
+            >
+              <View style={styles.sheetGrabPill} />
+            </Pressable>
+            <Pressable style={styles.sheetPeekPress} onPress={() => snapDriveSheet(!driveSheetOpen)}>
+              <Text style={styles.sheetPeekText} numberOfLines={1}>
+                {remainingMin > 0 ? `${remainingMin} min` : "—"}
+                {remainingDistM > 0 ? ` · ${fmtDist(remainingDistM)}` : ""}
+                {params.customerName ? ` · ${params.customerName}` : ""}
               </Text>
-            </View>
+            </Pressable>
+            <Pressable onPress={() => snapDriveSheet(!driveSheetOpen)} hitSlop={10}>
+              <Feather name={driveSheetOpen ? "chevron-down" : "chevron-up"} size={22} color="#64748B" />
+            </Pressable>
+          </View>
+
+          <Animated.View style={{ maxHeight: driveDetailsHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
+            <View style={styles.driveDetailsWrap}>{rideDetailsBlock}</View>
+          </Animated.View>
+
+          <View style={styles.driveEndActionWrap}>
+            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+          </View>
+
+          <Animated.View style={{ maxHeight: driveCancelHeight, opacity: driveSheetAnim, overflow: "hidden" }}>
+            <View style={styles.driveCancelDivider} />
+            <Pressable
+              onPress={() => setShowCancelReasonModal(true)}
+              style={({ pressed }) => [styles.driveCancelBtn, pressed && { backgroundColor: "#FEF2F2" }]}
+            >
+              <Feather name="x-circle" size={18} color="#DC2626" />
+              <Text style={styles.driveCancelBtnText}>Fahrt stornieren</Text>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+      ) : (
+        <View style={[styles.bottomBar, { paddingBottom: bottomInset }]}>
+          {rideDetailsBlock}
+          <View style={styles.actionBlock}>
+            <View style={styles.actionBtnWrapper}>{actionBtn}</View>
+            <Pressable
+              onPress={() => setShowCancelReasonModal(true)}
+              style={({ pressed }) => [
+                styles.actionBlockCancel,
+                pressed && { backgroundColor: "#FEF2F2" },
+              ]}
+            >
+              <Feather name="x-circle" size={18} color="#DC2626" />
+              <Text style={styles.actionBlockCancelText}>Fahrt stornieren</Text>
+            </Pressable>
           </View>
         </View>
-        <View style={styles.actionBlock}>
-          <View style={styles.actionBtnWrapper}>{actionBtn}</View>
-          <Pressable
-            onPress={() => setShowCancelReasonModal(true)}
-            style={({ pressed }) => [
-              styles.actionBlockCancel,
-              pressed && { backgroundColor: "#FEF2F2" },
-            ]}
-          >
-            <Feather name="x-circle" size={18} color="#DC2626" />
-            <Text style={styles.actionBlockCancelText}>Fahrt stornieren</Text>
-          </Pressable>
-        </View>
-      </View>
+      )}
 
       {/* Fare Modal */}
       <Modal visible={showFareModal} transparent animationType="slide" onRequestClose={() => setShowFareModal(false)}>
@@ -1155,6 +1275,59 @@ const styles = StyleSheet.create({
     borderColor: "#FECACA",
   },
   actionBlockCancelText: { color: "#DC2626", fontFamily: "Inter_700Bold", fontSize: 15 },
+  driveBottomSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    paddingTop: 8,
+    paddingHorizontal: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    elevation: 18,
+    overflow: "hidden",
+  },
+  sheetGrabRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingBottom: 6,
+  },
+  sheetGrabHit: { paddingVertical: 4, paddingHorizontal: 4 },
+  sheetGrabPill: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#CBD5E1",
+  },
+  sheetPeekPress: { flex: 1, minWidth: 0 },
+  sheetPeekText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#475569" },
+  driveDetailsWrap: { paddingTop: 4, paddingBottom: 8 },
+  driveEndActionWrap: { marginTop: 2, marginBottom: 4 },
+  driveCancelDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#E5E7EB",
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  driveCancelBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#FECACA",
+    backgroundColor: "#FFFBFB",
+  },
+  driveCancelBtnText: { color: "#DC2626", fontFamily: "Inter_600SemiBold", fontSize: 14 },
   etaRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   etaBlock: { minWidth: 90 },
   etaMin: { fontSize: 30, fontFamily: "Inter_700Bold", color: "#15803D", lineHeight: 34 },
