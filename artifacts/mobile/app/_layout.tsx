@@ -90,6 +90,10 @@ function RootLayoutNav() {
       <Stack.Screen name="driver/login" options={{ headerShown: false }} />
       <Stack.Screen name="driver/change-password" options={{ headerShown: false }} />
       <Stack.Screen name="driver/dashboard" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="driver/navigation"
+        options={{ headerShown: false, gestureEnabled: false, animation: "slide_from_right" }}
+      />
     </Stack>
   );
 }

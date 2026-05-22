@@ -1,0 +1,51 @@
+---
+description: Agent — vor Änderungen relevantes Repo-Wissen laden; Wissens-Regeln pflegen (mitdenken)
+alwaysApply: true
+---
+
+# Agent: Wissen abrufen & dokumentieren (verbindlich)
+
+Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Systemwissen** einbeziehen und **fehlendes Wissen ins Repo** schreiben — nicht nur in der Chat-Antwort.
+
+## Vor jeder inhaltlichen Änderung
+
+1. **Thema identifizieren** (Mobile Fahrer, Push, Storno, Navigation, API-Auth, Panel, Deploy, …).
+2. **Passende `.cursor/rules/*.mdc` lesen** (nicht raten). Mindestens:
+   - Mobile allgemein: `imoove-mobile-expo-pnpm-workflow.mdc`
+   - Fahrer-Markt/Ghost: `imoove-mobile-driver-ghost-orders.mdc`
+   - Push/Banner/Ton: `imoove-mobile-notifications-push-knowledge.mdc`
+   - Ziel/Orte→Buchung: `imoove-mobile-destination-navigation.mdc`
+   - Rollen/API: `imoove-product-architecture.mdc`, `onroda-cross-impact.mdc`
+   - Deploy/DB: `AGENTS.md`, `imoove-git-deployment-workflow.mdc`
+3. **Code an den in den Regeln genannten Dateien** gegenprüfen (Regeln können hinter dem Code sein — dann Regel **oder** Code aktualisieren).
+4. **Auswirkungen** (Kurzblock) in Commit/PR mitdenken.
+
+## Wenn der Nutzer „merken“ / Wissenscript will
+
+- **Neues Wissen** → neue oder bestehende **`.cursor/rules/…mdc`** (Postmortem, Symptom, Ursache, Fix, Dateien, Abnahme).
+- **Querverweis** in `AGENTS.md` unter Pflichtlektüre ergänzen, wenn dauerhaft wichtig.
+- **Kein** langes README ohne Auftrag; **ja** kurze, actionable Rules (wie Ghost-Orders / Notifications).
+- Nach Fix im Code: Regel **im selben Auftrag** nachziehen, wenn Verhalten/Invariante neu ist.
+
+## Mobile-Änderung: Mindest-Kontext
+
+| Touch | Zusätzlich lesen |
+|-------|------------------|
+| `RideRequestContext`, Poll, Markt | Ghost-Orders + Notifications |
+| `dashboard.tsx`, ONLINE, Banner | Ghost-Orders + Notifications |
+| `status.tsx`, Kunde wartet | Destination-Navigation + Notifications + ggf. Storno-Szenario C in Code |
+| Push-Token / Expo | Notifications + `passengerExpoPushData` / `fleetDriverExpoPushData` |
+| `driver-cancel`, Status-API | `rides.ts` + Notifications + Core-Policy Storno |
+
+## Typische „vergessene“ Querschnitte
+
+- Gleiches Gerät **Kunde + Fahrer** (State + Push-Token).
+- **Globaler** `RideRequestProvider` — State überlebt Routenwechsel.
+- **Optimistisches UI** vs Poll 2,5 s — Race → Ghost oder Doppel-Benachrichtigung.
+- API-Deploy nötig vs nur Mobile-Reload.
+
+## Für Agents
+
+- Lieber **Regel anlegen/erweitern** als im Chat „merken Sie sich …“ ohne Repo-Spur.
+- Bei Unsicherheit: **kleinster Fix** + Regel-Ergänzung, nicht großer Umbau ohne Kontext.
+- Nutzer-Anfrage „alles checken“ → betroffene Regeln **lesen** + betroffene Flows **End-to-End** (Kunde und Fahrer getrennt).

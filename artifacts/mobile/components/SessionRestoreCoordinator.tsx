@@ -5,6 +5,10 @@ import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useUser } from "@/context/UserContext";
 import {
+  buildDriverNavigationHref,
+  replaceDriverStackExclusive,
+} from "@/utils/driverNavigationRoute";
+import {
   pickCustomerSessionRestoreRide,
   pickDriverSessionRestoreRide,
 } from "@/utils/sessionRideRestore";
@@ -22,14 +26,10 @@ const CUSTOMER_SKIP_PREFIXES = [
   "/booking-",
 ];
 
-const DRIVER_SKIP_PREFIXES = [
-  "/driver/navigation",
-  "/driver/login",
-  "/driver/change-password",
-];
+const DRIVER_SKIP_PREFIXES = ["/driver/login"];
 
 /**
- * Einmaliger Restore nach Server-Load: Kunde → Status, Fahrer → Dashboard (aktive Fahrt dort).
+ * Einmaliger Restore nach Server-Load: Kunde → Status, Fahrer mit aktiver Fahrt → Navigation (Stack reset).
  */
 export function SessionRestoreCoordinator() {
   const pathname = usePathname();
@@ -106,17 +106,26 @@ export function SessionRestoreCoordinator() {
 
     if (driverRestoreDone.current) return;
     if (DRIVER_SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return;
+    if (pathname.startsWith("/driver/change-password")) {
+      driverRestoreDone.current = true;
+      return;
+    }
 
     const ride = pickDriverSessionRestoreRide(driverMarketRequests, driver.id);
     driverRestoreDone.current = true;
-    if (!ride) return;
 
     if (driver?.mustChangePassword) {
-      router.replace("/driver/change-password" as never);
+      replaceDriverStackExclusive("/driver/change-password");
       return;
     }
+
+    if (ride) {
+      replaceDriverStackExclusive(buildDriverNavigationHref(ride, driver.id));
+      return;
+    }
+
     if (!pathname.startsWith("/driver/dashboard")) {
-      router.replace("/driver/dashboard" as never);
+      replaceDriverStackExclusive("/driver/dashboard");
     }
   }, [
     driverLoading,

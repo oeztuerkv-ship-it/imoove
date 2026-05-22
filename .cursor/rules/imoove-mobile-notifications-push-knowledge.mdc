@@ -1,0 +1,88 @@
+---
+description: Mobile Push/Banner/Ton — Kunde vs Fahrer, Token, Unterdrückung, typische Fehler (Pflichtwissen)
+globs: artifacts/mobile/**/*,artifacts/api-server/src/**/passengerExpoPush*,artifacts/api-server/src/**/fleetDriverExpoPush*,artifacts/api-server/src/lib/*ExpoPush*
+alwaysApply: false
+---
+
+# Mobile: Benachrichtigungen & Push (Wissensbasis)
+
+**Vor jeder Änderung an Ton, Banner, Expo-Push, Markt-Poll oder Storno:** diese Regel + **`imoove-mobile-driver-ghost-orders.mdc`** lesen.
+
+## Zwei Welten (nicht vermischen)
+
+| Rolle | Oberfläche | State / Poll | Push-Titel (Beispiele) |
+|-------|------------|-------------|-------------------------|
+| **Kunde** | `/`, `/status`, … | `GET /customer/v1/rides` → global `requests` | „Fahrer gefunden“, „Fahrer da“, Reservierung |
+| **Fahrer** | `/driver/*` | `GET /fleet-driver/v1/market-rides` → `driverMarketRequests` (+ auf Surface: `requests`) | **„Neue Fahrt“** (`instant_ride_offer`) |
+
+`isDriverSurface` = `useSegments()[0] === "driver"` (auch **`/driver/login`**).
+
+## Push-Token: ein Gerät = eine Rolle
+
+- Tabellen: `passenger_expo_push_tokens`, `fleet_driver_expo_push_tokens` (PK = `expo_push_token`).
+- **Gleiches Handy, mal Kunde mal Fahrer:** ohne Exklusivität bekam der Kunde Push **„Neue Fahrt“** (Fahrer-Titel).
+- **Fix (API):** `upsertPassengerExpoPushToken` löscht Token aus Fleet-Tabelle; `upsertFleetDriverExpoPushToken` löscht aus Passenger-Tabelle (`passengerExpoPushData.ts`, `fleetDriverExpoPushData.ts`).
+- Sync: `syncCustomerExpoPushToken.ts` (Kunde), `syncDriverExpoPushToken.ts` (Fahrer) — nach Login jeweils erneut syncen.
+
+## Foreground & lokaler Alarm
+
+| Mechanismus | Wo | Wann |
+|-------------|-----|------|
+| `shouldShowExpoNotification` | `utils/notificationAudience.ts` | Fahrer-Markt-Push **nur** wenn `driverSurfaceActive` |
+| `shouldPresentDriverRideOfferNotification` | dort | Sound/Banner in Context **nur** auf `/driver/*` + Fleet-Session |
+| `sendNewRideNotification` | `utils/notifications.ts` | Ton/Vibration (kein Expo-Local-Push) |
+| Markt-`useEffect` | `RideRequestContext.tsx` | Nur `isDriverSurface`; neue IDs vs `driverMarketPrevPendingIdsRef` |
+| In-App-Banner „Neuer Auftrag“ | `app/driver/dashboard.tsx` | Eigenes `prevPendingIds` + `isOnlineFlowRunning` — **nicht** mit Context verwechseln |
+
+## Unterdrückung nach Ablehnen / Abbruch (Pflicht)
+
+**Symptom:** Fahrer storniert → Fahrt wird `searching_driver` → **erneut** Klingeln/Banner („neue“ Fahrt, gleiche ID).
+
+**Ursache:** ID war aus `prevPendingIds` weg (während Annahme), kommt im Markt zurück → Diff = „neu“.
+
+**Fix-Linie (beides nutzen):**
+
+1. `suppressDriverInstantOffer(rideId)` in `RideRequestContext` — setzt `driverSuppressedOfferIdsRef` + `driverMarketPrevPendingIdsRef`, `stopRideSound()`.
+2. Aufruf bei: `rejectByDriver`, `driverCancelRequest`, Dashboard `handleCancel` / scheduled cancel, **nicht** roher `fetch` in `navigation.tsx` (dort `driverCancelRequest`).
+
+Filter: `filterDriverInstantMarketOffers(..., suppressedIds)` + `rejectedBy` in API.
+
+## API: wann Push wohin
+
+| Event | Funktion | An wen |
+|-------|----------|--------|
+| Neue Sofortfahrt erstellt | `notifyMarketOnlineDriversInstantRideOffer` | Online-Fahrer mit passendem Fahrzeug |
+| Fahrer-Storno | `POST …/driver-cancel` → `searching_driver` | **Kein** erneuter Markt-Push (nur Client-Diff-Bug) |
+| Fahrer angenommen / wartet | `notifyPassengerDriverAccepted` / `…Waiting` | Kunde (`passengerRideExpoPush.ts`) |
+
+Push-Marker / Cron: `ridePushNotificationMarkers.ts`, `index.ts` Jobs.
+
+## Kunde auf `/status` als Fahrer
+
+Fahrer eingeloggt + `/status` im Stack → **`app/status.tsx`:** `isDriverLoggedIn` → sofort `router.replace("/driver/dashboard")`, `return null` (kein Kunden-Such-Screen).
+
+## Häufige Fehler (Checkliste für Agents)
+
+1. Nur `refreshRequests()` ohne `suppressDriverInstantOffer` / ohne `rejectedBy`-Optimismus nach `driver-cancel`.
+2. Notification-Baseline (`prevPendingIds`) nicht nach ONLINE/Login mit **aktuellem** Markt setzen → Ghost (siehe Ghost-Orders-Regel).
+3. Push-Token nur Mobile, API-Exklusivität vergessen → Kunde sieht „Neue Fahrt“.
+4. `sendNewRideNotification` außerhalb `isDriverSurface` triggern.
+5. `driver-cancel` in Navi per bare `fetch` ohne Context-Unterdrückung.
+6. Gleiches Gerät: Fahrer-Poll füllt Kunden-`requests` — Login/Token-Effect in Context prüfen.
+
+## Dateien (Quick-Map)
+
+- `context/RideRequestContext.tsx` — Poll, Markt, Notification-Effect, `suppressDriverInstantOffer`
+- `app/driver/dashboard.tsx` — Banner, ONLINE-Flow, `suppressedMarketOfferIdsRef`
+- `utils/notificationAudience.ts`, `utils/notifications.ts`
+- `api-server/src/lib/driverRideExpoPush.ts`, `passengerRideExpoPush.ts`
+- `api-server/src/routes/rides.ts` — `driver-cancel`, Status-Patch + Kunden-Push
+
+## Abnahme (kurz)
+
+- [ ] Kunde auf Start/Status: **kein** „Neue Fahrt“ (Push + kein Fahrer-Ton)
+- [ ] Fahrer: eigener Abbruch → **kein** zweites Klingeln für dieselbe `rideId`
+- [ ] Echter neuer Marktauftrag → **einmal** Banner/Ton
+- [ ] Nach Kunden-Login erneut Push-Sync (Token nur Passenger-DB)
+
+**Bei Postmortem-Fix:** diese Regel + Ghost-Orders-Regel **aktualisieren**, nicht nur im Chat erwähnen.

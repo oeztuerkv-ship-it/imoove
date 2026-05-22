@@ -81,13 +81,28 @@ Wenn Ghost **nach** allen Mobile-Fixes bleibt: Ride-ID + Status + `rejected_by` 
 | `app/driver/login.tsx` | `refreshDriverMarketHard` nach erfolgreichem Login |
 | `api-server/.../fleetDriverApi.ts` | `market-rides` Filter + Cache-Header |
 
+## Benachrichtigungen (verknüpft)
+
+Details: **`imoove-mobile-notifications-push-knowledge.mdc`**.
+
+- Nach **driver-cancel** / **reject**: `suppressDriverInstantOffer(rideId)` — sonst erneut Ton/Banner für dieselbe ID (`searching_driver`).
+- Kunde sieht **„Neue Fahrt“** → oft **Push-Token** in beiden DB-Tabellen; API-Exklusivität bei Token-Upsert prüfen.
+
 ## Regeln für neue Änderungen
 
 1. **Niemals** nur `refreshRequests()`/`fetchAll()` erwarten, dass Ghost verschwindet — bei Login/ONLINE **`refreshDriverMarketHard()`** oder explizit `requests` leeren.
 2. **Notification-Baseline** (`prevPendingIds`) immer aus **aktuellem** Markt-Stand setzen — Ref (`allPendingRef`) + verzögertes Freigeben von `isOnlineFlowRunning`, nicht blind auf Effect-Reihenfolge vertrauen.
 3. **`setAvailable`:** PATCH **vor** oder **ohne** optimistisches UI-Online; Effect in `DriverContext` synct zusätzlich — Doppel-PATCH ist ok.
 4. Auf **`/driver/*`** ohne Fleet-Token: **keine** Kunden-`requests` im Provider lassen.
-5. Hook-Aufrufe: `const { refreshDriverMarketHard } = useRideRequests()` — ReferenceError wenn vergessen (Passiert bei `login.tsx`).
+5. Hook-Aufrufe: `const { refreshDriverMarketHard, suppressDriverInstantOffer } = useRideRequests()` — ReferenceError wenn vergessen (Passiert bei `login.tsx`).
+6. Storno/Abbruch: immer **`suppressDriverInstantOffer`** + Notifications-Regel lesen.
+
+## Session-Restore & Navigations-Stack
+
+- **Symptom:** App-Neustart zeigt richtige Navi, **Zurück-Swipe** zeigt alte Navigation / doppelte Buttons.
+- **Ursache:** `router.push` stapelt `/driver/navigation`; Restore nur `replace` auf Dashboard → Auto-`push` legt weiteren Screen drauf.
+- **Fix:** `utils/driverNavigationRoute.ts` → `replaceDriverStackExclusive` (`dismissTo` / `dismissAll` + `replace`); Restore mit aktiver Fahrt **direkt** auf Navigation; `driver/navigation` in Root-`Stack` mit `gestureEnabled: false`.
+- **Dateien:** `SessionRestoreCoordinator.tsx`, `app/_layout.tsx`, `dashboard.tsx` (ActiveRide), `navigation.tsx`.
 
 ## Abnahme-Checkliste
 

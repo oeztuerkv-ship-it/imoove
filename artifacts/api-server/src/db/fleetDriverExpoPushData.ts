@@ -1,10 +1,19 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "./client";
-import { fleetDriverExpoPushTokensTable } from "./schema";
+import { fleetDriverExpoPushTokensTable, passengerExpoPushTokensTable } from "./schema";
 
 function isLikelyExponentPushToken(raw: string): boolean {
   const t = raw.trim();
   return t.startsWith("ExponentPushToken[") && t.endsWith("]");
+}
+
+/** Ein Gerät = ein Push-Ziel: Fahrer-Registrierung entfernt Kunden-Zuordnung desselben Tokens. */
+export async function deletePassengerExpoPushTokenByToken(expoPushToken: string): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+  const tok = expoPushToken.trim();
+  if (!tok || !isLikelyExponentPushToken(tok)) return;
+  await db.delete(passengerExpoPushTokensTable).where(eq(passengerExpoPushTokensTable.expo_push_token, tok));
 }
 
 export async function upsertFleetDriverExpoPushToken(
@@ -18,6 +27,7 @@ export async function upsertFleetDriverExpoPushToken(
   const cid = companyId.trim();
   const tok = expoPushToken.trim();
   if (!did || !cid || !tok || !isLikelyExponentPushToken(tok)) return;
+  await deletePassengerExpoPushTokenByToken(tok);
   await db
     .insert(fleetDriverExpoPushTokensTable)
     .values({

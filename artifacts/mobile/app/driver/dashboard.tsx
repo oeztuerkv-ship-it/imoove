@@ -38,6 +38,10 @@ import { getApiBaseUrl } from "@/utils/apiBase";
 import { formatEuro } from "@/utils/fareCalculator";
 import { filterDriverInstantMarketOffers } from "@/utils/driverInstantMarketOffers";
 import {
+  buildDriverNavigationHref,
+  replaceDriverStackExclusive,
+} from "@/utils/driverNavigationRoute";
+import {
   defaultFinalFareForDriverCompletion,
   driverMayBillPositiveFare,
   formatDriverFareInputDe,
@@ -1601,30 +1605,8 @@ function ActiveRideScreen({
     if (req.status === "accepted" || req.status === "ready_for_dispatch") {
       void markDriverArriving(req.id);
     }
-    router.push({
-      pathname: "/driver/navigation" as "/driver/navigation",
-      params: {
-        rideId: req.id,
-        phase: "pickup",
-        fromLat: String(driverCoords.lat),
-        fromLon: String(driverCoords.lon),
-        fromName: "Ihr Standort",
-        toLat: String(req.fromLat),
-        toLon: String(req.fromLon),
-        toName: req.fromFull,
-        customerName: req.customerName,
-        pickupLat: String(req.fromLat),
-        pickupLon: String(req.fromLon),
-        pickupName: req.fromFull,
-        destLat: String(req.toLat ?? req.fromLat),
-        destLon: String(req.toLon ?? req.fromLon),
-        destName: req.toFull ?? req.fromFull,
-        estimatedFare: String(req.estimatedFare),
-        paymentMethod: req.paymentMethod,
-        driverId,
-      },
-    });
-  }, [driverCoords, phase, req, markDriverArriving]);
+    replaceDriverStackExclusive(buildDriverNavigationHref(req, driverId, driverCoords));
+  }, [driverCoords, phase, req, markDriverArriving, driverId]);
 
   // Open in-app navigation screen manually
   // Phase "pickup": Fahrerstandort → Abholort des Kunden
@@ -1640,63 +1622,15 @@ function ActiveRideScreen({
       if (req.status === "accepted" || req.status === "ready_for_dispatch") {
         void markDriverArriving(req.id);
       }
-      const destLat = req.toLat ?? req.fromLat;
-      const destLon = req.toLon ?? req.fromLon;
-      router.push({
-        pathname: "/driver/navigation" as "/driver/navigation",
-        params: {
-          rideId: req.id,
-          phase: "pickup",
-          fromLat: String(dLat),
-          fromLon: String(dLon),
-          fromName: "Ihr Standort",
-          toLat: String(req.fromLat),
-          toLon: String(req.fromLon),
-          toName: req.fromFull,
-          customerName: req.customerName,
-          pickupLat: String(req.fromLat),
-          pickupLon: String(req.fromLon),
-          pickupName: req.fromFull,
-          destLat: String(destLat),
-          destLon: String(destLon),
-          destName: req.toFull ?? req.fromFull,
-          estimatedFare: String(req.estimatedFare),
-          paymentMethod: req.paymentMethod,
-          driverId,
-        },
-      });
+      replaceDriverStackExclusive(buildDriverNavigationHref(req, driverId, { lat: dLat, lon: dLon }));
     } else {
       if (req.fromLat == null || req.fromLon == null) {
         Alert.alert("Navigation", "Für diese Fahrt fehlen Koordinaten zum Zielbereich.");
         return;
       }
-      const destLat = req.toLat ?? req.fromLat;
-      const destLon = req.toLon ?? req.fromLon;
-      router.push({
-        pathname: "/driver/navigation" as "/driver/navigation",
-        params: {
-          rideId: req.id,
-          phase: "driving",
-          fromLat: String(req.fromLat),
-          fromLon: String(req.fromLon),
-          fromName: req.fromFull,
-          toLat: String(destLat),
-          toLon: String(destLon),
-          toName: req.toFull ?? req.fromFull,
-          customerName: req.customerName,
-          pickupLat: String(req.fromLat),
-          pickupLon: String(req.fromLon),
-          pickupName: req.fromFull,
-          destLat: String(destLat),
-          destLon: String(destLon),
-          destName: req.toFull ?? req.fromFull,
-          estimatedFare: String(req.estimatedFare),
-          paymentMethod: req.paymentMethod,
-          driverId,
-        },
-      });
+      replaceDriverStackExclusive(buildDriverNavigationHref(req, driverId, null));
     }
-  }, [phase, req, driverCoords, markDriverArriving]);
+  }, [phase, req, driverCoords, markDriverArriving, driverId]);
 
   const canStart = !req.scheduledAt || (new Date(req.scheduledAt).getTime() - now) <= 60 * 60 * 1000;
   const minutesUntilUnlock = req.scheduledAt
@@ -2098,30 +2032,9 @@ function ActiveRideScreen({
                 style={activeStyles.startDrivingBtn}
                 onPress={() => {
                   if (req.toLat != null && req.toLon != null) {
-                    router.push({
-                      pathname: "/driver/navigation" as "/driver/navigation",
-                      params: {
-                        rideId: req.id,
-                        phase: "pickup",
-                        arrived: "1",
-                        fromLat: String(driverCoords?.lat ?? req.fromLat),
-                        fromLon: String(driverCoords?.lon ?? req.fromLon),
-                        fromName: driverCoords ? "Ihr Standort" : req.fromFull,
-                        toLat: String(req.fromLat),
-                        toLon: String(req.fromLon),
-                        toName: req.fromFull,
-                        customerName: req.customerName,
-                        pickupLat: String(req.fromLat),
-                        pickupLon: String(req.fromLon),
-                        pickupName: req.fromFull,
-                        destLat: String(req.toLat),
-                        destLon: String(req.toLon),
-                        destName: req.toFull ?? req.fromFull,
-                        estimatedFare: String(req.estimatedFare),
-                        paymentMethod: req.paymentMethod,
-                        driverId,
-                      },
-                    });
+                    replaceDriverStackExclusive(
+                      buildDriverNavigationHref(req, driverId, driverCoords),
+                    );
                   }
                 }}
               >
@@ -2333,6 +2246,7 @@ export default function DriverDashboard() {
     acceptRequest,
     rejectByDriver,
     driverCancelRequest,
+    suppressDriverInstantOffer,
     cancelRequest,
     completeRequest,
     refreshRequests,
@@ -2888,6 +2802,11 @@ export default function DriverDashboard() {
   const handleCancel = async (id: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const req = activeDriverRequest;
+    suppressDriverInstantOffer(id);
+    prevPendingIds.current.add(id);
+    if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    stopRideSound().catch(() => {});
+    setBannerRide(null);
     try {
       await driverCancelRequest(id, driverId);
       if (req?.scheduledAt) {
@@ -2929,6 +2848,11 @@ export default function DriverDashboard() {
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             try {
+              suppressDriverInstantOffer(req.id);
+              prevPendingIds.current.add(req.id);
+              if (bannerTimer.current) clearTimeout(bannerTimer.current);
+              stopRideSound().catch(() => {});
+              setBannerRide(null);
               await driverCancelRequest(req.id, driverId);
               if (nearPickup) {
                 await blockDriver48h();

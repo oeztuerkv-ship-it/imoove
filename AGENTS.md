@@ -33,9 +33,13 @@ Ziel: technische + betriebliche + rollenbasierte + end-to-end Abnahme statt rein
 
 ## Pflichtlektüre (Cursor Rules, immer aktiv)
 
+- `.cursor/rules/imoove-agent-knowledge-retrieval.mdc` — **vor Änderungen** passende Wissens-Regeln lesen; Postmortems in `.mdc` pflegen, nicht nur im Chat
 - `.cursor/rules/onroda-cross-impact.mdc` — **Auswirkungen** je Änderung (API/DB, Admin, Partner, Mobile, Marketing, Audit, E-Mail, Rechte; kein Mix Support/Onboarding/Panel)
 - `.cursor/rules/imoove-pre-completion-git-checklist.mdc` — **vor jeder Fertigmeldung:** sauberes `git status`, keine relevanten `??`, `git show --name-only HEAD`, erwartete Dateien auf `main` / Push
 - `.cursor/rules/imoove-mobile-expo-pnpm-workflow.mdc` — **Mobile:** Port **8081**, Metro/pnpm, **vor Push** lokaler Dev-Lauf + Bundle/App ok; kein Mix Admin/API/Partner; Details auch in `imoove-mobile-backup-expo-dev.mdc`
+- `.cursor/rules/imoove-mobile-driver-ghost-orders.mdc` — **Mobile Fahrer:** globaler `RideRequestContext`, Ghost-Aufträge, ONLINE-Baseline
+- `.cursor/rules/imoove-mobile-notifications-push-knowledge.mdc` — **Mobile Push/Banner/Ton:** Kunde vs Fahrer, Token-Exklusivität, `suppressDriverInstantOffer`
+- `.cursor/rules/imoove-mobile-destination-navigation.mdc` — **Mobile:** Orte → Ziel → `/ride-select` (keine URL-Params auf `/`)
 - `.cursor/rules/imoove-git-deployment-workflow.mdc` — Git, Deploy-Reihenfolge, Admin- und Partner-Builds
 - `.cursor/rules/imoove-server-infrastructure-onroda.mdc` — Domains, Port 3000, Nginx, **Panel-Postmortem** (scrypt `maxmem`, `rides.company_id` TEXT, serverseitiger API-Build)
 - **`artifacts/deploy/onroda-production-nginx-and-tls-reference.md`** — produktiver Nginx-/TLS-/Domain-Referenzstand (z. B. `sites-enabled/final-try`, `api.onroda.de`-SAN, Panel-`/partners`-Redirect)

@@ -178,6 +178,8 @@ interface RideRequestContextValue {
   refreshDriverMarketHard: () => Promise<boolean>;
   /** Sofort-Markt in der UI leeren (z. B. vor OFFLINE — kein Aufblitzen). */
   clearDriverMarketRequests: () => void;
+  /** Kein erneutes Klingeln/Banner für diese Auftrags-ID (Abbruch, Ablehnung, Storno). */
+  suppressDriverInstantOffer: (rideId: string) => void;
 }
 
 const RideRequestContext = createContext<RideRequestContextValue>({
@@ -217,6 +219,7 @@ const RideRequestContext = createContext<RideRequestContextValue>({
   refreshRequests: async () => {},
   refreshDriverMarketHard: async () => false,
   clearDriverMarketRequests: () => {},
+  suppressDriverInstantOffer: () => {},
 });
 
 const API_BASE = getApiBaseUrl();
@@ -578,6 +581,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const lastCountRef = useRef(0);
   /** Während POST /reject: Poll darf die Fahrt nicht zurück in den Markt legen (Ghost-Banner). */
   const rejectingRideIdsRef = useRef<Set<string>>(new Set());
+  /** Abgelehnt / abgebrochen — kein erneutes „Neue Fahrt“-Alarm (z. B. nach driver-cancel → searching_driver). */
+  const driverSuppressedOfferIdsRef = useRef<Set<string>>(new Set());
   const fleetDriverMarketOnlineRef = useRef(Boolean(fleetDriver?.isAvailable));
   fleetDriverMarketOnlineRef.current = Boolean(fleetDriver?.isAvailable);
   const isDriverSurfaceRef = useRef(isDriverSurface);
@@ -765,6 +770,14 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       lastCountRef.current = 0;
       setLastAddedRequestId(null);
     }
+  }, []);
+
+  const suppressDriverInstantOffer = useCallback((rideId: string) => {
+    const id = rideId.trim();
+    if (!id) return;
+    driverSuppressedOfferIdsRef.current.add(id);
+    driverMarketPrevPendingIdsRef.current.add(id);
+    void stopRideSound();
   }, []);
 
   const fetchAll = useCallback(async () => {
@@ -1173,6 +1186,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const rejectByDriver = useCallback(
     async (id: string, driverId: string) => {
       if (!API_BASE) return;
+      suppressDriverInstantOffer(id);
       rejectingRideIdsRef.current.add(id);
       setDriverMarketRequests((prev) => prev.filter((r) => r.id !== id));
       if (isDriverSurfaceRef.current) {
@@ -1201,7 +1215,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         rejectingRideIdsRef.current.delete(id);
       }
     },
-    [fetchAll, fetchDriverMarket],
+    [fetchAll, fetchDriverMarket, suppressDriverInstantOffer],
   );
 
   const cancelRequest = useCallback(
@@ -1236,13 +1250,20 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const driverCancelRequest = useCallback(
     async (id: string, driverId: string) => {
       if (!API_BASE) return;
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? { ...r, status: "searching_driver" as RequestStatus, driverId: null }
-            : r,
-        ),
-      );
+      const did = driverId.trim();
+      suppressDriverInstantOffer(id);
+      const patchReleased = (r: RideRequest): RideRequest => {
+        if (r.id !== id) return r;
+        const rejectedBy = did && !(r.rejectedBy ?? []).includes(did) ? [...(r.rejectedBy ?? []), did] : (r.rejectedBy ?? []);
+        return {
+          ...r,
+          status: "searching_driver" as RequestStatus,
+          driverId: null,
+          rejectedBy,
+        };
+      };
+      setRequests((prev) => prev.map(patchReleased));
+      setDriverMarketRequests((prev) => prev.map(patchReleased));
       const res = await fetch(`${API_BASE}/rides/${id}/driver-cancel`, {
         method: "POST",
         headers: await headersForFleetRidePost(),
@@ -1265,7 +1286,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         await fetchAll();
       }
     },
-    [fetchAll, fetchDriverMarket],
+    [fetchAll, fetchDriverMarket, suppressDriverInstantOffer],
   );
 
   const arriveAtCustomer = useCallback(
@@ -1341,6 +1362,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
       filterDriverInstantMarketOffers(driverMarketPending, {
         driverId: driverIdForMarket,
         driverMarketOnline,
+        suppressedIds: driverSuppressedOfferIdsRef.current,
       }),
     [driverMarketPending, driverIdForMarket, driverMarketOnline],
   );
@@ -1391,7 +1413,10 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
 
     driverMarketOnlinePrevRef.current = driverOnline;
 
-    const newReqs = pool.filter((r) => !driverMarketPrevPendingIdsRef.current.has(r.id));
+    const suppressed = driverSuppressedOfferIdsRef.current;
+    const newReqs = pool.filter(
+      (r) => !driverMarketPrevPendingIdsRef.current.has(r.id) && !suppressed.has(r.id),
+    );
     if (newReqs.length > 0) {
       const req = newReqs[0];
       const schedMs = req.scheduledAt ? new Date(req.scheduledAt as Date).getTime() : 0;
@@ -1503,6 +1528,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
         refreshRequests: fetchAll,
         refreshDriverMarketHard,
         clearDriverMarketRequests,
+        suppressDriverInstantOffer,
       }}
     >
       {children}

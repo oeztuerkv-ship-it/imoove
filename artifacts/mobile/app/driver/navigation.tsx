@@ -22,7 +22,9 @@ import * as Haptics from "expo-haptics";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
+import { replaceDriverStackExclusive } from "@/utils/driverNavigationRoute";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import {
   mergeRideChatMessages,
@@ -151,6 +153,8 @@ export default function DriverNavigationScreen() {
     driverId: string;
     arrived?: string;
   }>();
+
+  const { driverCancelRequest } = useRideRequests();
 
   const phase = params.phase ?? "pickup";
   const isPickupPhase = phase === "pickup";
@@ -352,8 +356,8 @@ export default function DriverNavigationScreen() {
     try {
       await patchStatus("in_progress");
       trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
-      router.replace({
-        pathname: "/driver/navigation" as "/driver/navigation",
+      replaceDriverStackExclusive({
+        pathname: "/driver/navigation",
         params: {
           rideId: params.rideId,
           phase: "driving",
@@ -363,7 +367,7 @@ export default function DriverNavigationScreen() {
           toLat: String(destLat),
           toLon: String(destLon),
           toName: destName,
-          customerName: params.customerName,
+          customerName: params.customerName ?? "",
           pickupLat: String(pickupLat),
           pickupLon: String(pickupLon),
           pickupName,
@@ -372,6 +376,8 @@ export default function DriverNavigationScreen() {
           destName,
           estimatedFare: String(estimatedFare),
           paymentMethod: params.paymentMethod ?? "",
+          driverId: params.driverId ?? "",
+          arrived: "0",
         },
       });
     } catch (e) {
@@ -494,7 +500,7 @@ export default function DriverNavigationScreen() {
         Alert.alert(
           "Kunde hat storniert",
           payload.cancelReason ? `Grund: ${payload.cancelReason}` : "Die Fahrt wurde vom Kunden storniert.",
-          [{ text: "OK", onPress: () => router.replace("/driver/dashboard") }],
+          [{ text: "OK", onPress: () => replaceDriverStackExclusive("/driver/dashboard") }],
         );
       } catch {
         /* ignore */
@@ -539,7 +545,7 @@ export default function DriverNavigationScreen() {
       setShowFareModal(false);
       disconnectSocket();
       trySpeak("Fahrt abgeschlossen. Vielen Dank.", soundRef.current);
-      router.replace("/driver/dashboard" as "/driver/dashboard");
+      replaceDriverStackExclusive("/driver/dashboard");
     } catch (e) {
       const code = e instanceof Error ? e.message : "status_update_failed";
       Alert.alert("Abschluss fehlgeschlagen", `Endpreis konnte nicht gespeichert werden (${code}).`);
@@ -1019,21 +1025,10 @@ export default function DriverNavigationScreen() {
                     return;
                   }
                   try {
-                    const res = await fetch(`${API_BASE}/rides/${params.rideId}/driver-cancel`, {
-                      method: "POST",
-                      headers: await fleetAuthHeadersJson(),
-                      body: JSON.stringify({ reason, driverId: params.driverId ?? "" }),
-                    });
-                    if (!res.ok) {
-                      let code = "driver_cancel_failed";
-                      try {
-                        const body = (await res.json()) as { error?: string };
-                        if (typeof body?.error === "string" && body.error) code = body.error;
-                      } catch {
-                        /* ignore */
-                      }
-                      throw new Error(code);
-                    }
+                    const rideId = params.rideId?.trim() ?? "";
+                    const driverId = (params.driverId ?? "").trim();
+                    if (!rideId || !driverId) throw new Error("driver_cancel_failed");
+                    await driverCancelRequest(rideId, driverId);
                   } catch (e) {
                     const code = e instanceof Error ? e.message : "driver_cancel_failed";
                     if (code === "reservation_storno_locked") {
@@ -1050,7 +1045,7 @@ export default function DriverNavigationScreen() {
                   setCancelReason("");
                   setCustomCancelReason("");
                   disconnectSocket();
-                  router.replace("/driver/dashboard" as "/driver/dashboard");
+                  replaceDriverStackExclusive("/driver/dashboard");
                 }}
               >
                 <Text style={styles.cancelReasonBtnDangerText}>Fahrt stornieren</Text>
