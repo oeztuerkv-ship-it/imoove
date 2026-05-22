@@ -194,6 +194,12 @@ export default function StatusScreen() {
     isConnected,
     customerRidesHydrated,
   } = useRideRequests();
+  const { isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
+
+  useEffect(() => {
+    if (!isDriverLoggedIn) return;
+    router.replace("/driver/dashboard" as "/driver/dashboard");
+  }, [isDriverLoggedIn]);
 
   const scheduledPassengerRide = useMemo(
     () =>
@@ -224,7 +230,6 @@ export default function StatusScreen() {
     if (!currentRideId) return null;
     return requests.find((r) => r.id === currentRideId && r.status === "completed") ?? null;
   }, [requests, currentRideId]);
-  const { driver: driverProfile } = useDriver();
 
   const driverName = driverProfile?.name ?? FALLBACK_DRIVER.name;
   const driverFirstName = driverName.split(" ")[0];
@@ -918,6 +923,10 @@ export default function StatusScreen() {
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
+
+  if (isDriverLoggedIn) {
+    return null;
+  }
 
   if (isCompleted) {
     return (
