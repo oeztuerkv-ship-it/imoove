@@ -100,9 +100,9 @@ Details: **`imoove-mobile-notifications-push-knowledge.mdc`**.
 ## Session-Restore & Navigations-Stack
 
 - **Symptom:** App-Neustart zeigt richtige Navi, **Zurück-Swipe** zeigt alte Navigation / doppelte Buttons.
-- **Ursache:** `router.push` stapelt `/driver/navigation`; Restore nur `replace` auf Dashboard → Auto-`push` legt weiteren Screen drauf.
-- **Fix:** `utils/driverNavigationRoute.ts` → `replaceDriverStackExclusive` (`dismissTo` / `dismissAll` + `replace`); Restore mit aktiver Fahrt **direkt** auf Navigation; `driver/navigation` in Root-`Stack` mit `gestureEnabled: false`.
-- **Dateien:** `SessionRestoreCoordinator.tsx`, `app/_layout.tsx`, `dashboard.tsx` (ActiveRide), `navigation.tsx`.
+- **Ursache (gespeichert wo?):** **Nicht** AsyncStorage — der **native React-Navigation-Stack** wird vom OS nach App-Kill oft wiederhergestellt. Mehrere Einträge **`driver/navigation`** mit **unterschiedlichen Params** (pickup vs driving). `router.replace` / `dismissTo` ersetzen nur den **obersten** Eintrag; ältere Navi-Screens bleiben darunter.
+- **Fix:** `app/driver/_layout.tsx` (eigener Fahrer-Stack) + `CommonActions.reset` über `utils/rootNavigationRef.ts` (`bindRootNavigationRef` in `RootNavigationRefBinder`). Phase pickup→driving: **`router.setParams`**, kein zweites `replace`. Beim Mount von `navigation.tsx` einmal pro `rideId` Stack resetten.
+- **Dateien:** `SessionRestoreCoordinator.tsx`, `rootNavigationRef.ts`, `driverNavigationRoute.ts`, `navigation.tsx`, `dashboard.tsx`.
 
 ## Abnahme-Checkliste
 

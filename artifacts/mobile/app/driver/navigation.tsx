@@ -24,7 +24,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { replaceDriverStackExclusive } from "@/utils/driverNavigationRoute";
+import {
+  replaceDriverStackExclusive,
+  setDriverNavigationPhaseParams,
+} from "@/utils/driverNavigationRoute";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
 import {
   mergeRideChatMessages,
@@ -155,6 +158,7 @@ export default function DriverNavigationScreen() {
   }>();
 
   const { driverCancelRequest } = useRideRequests();
+  const stackCollapsedForRideRef = useRef<string | null>(null);
 
   const phase = params.phase ?? "pickup";
   const isPickupPhase = phase === "pickup";
@@ -356,29 +360,26 @@ export default function DriverNavigationScreen() {
     try {
       await patchStatus("in_progress");
       trySpeak("Fahrt gestartet. Navigiere zum Ziel.", soundRef.current);
-      replaceDriverStackExclusive({
-        pathname: "/driver/navigation",
-        params: {
-          rideId: params.rideId,
-          phase: "driving",
-          fromLat: String(pickupLat),
-          fromLon: String(pickupLon),
-          fromName: pickupName,
-          toLat: String(destLat),
-          toLon: String(destLon),
-          toName: destName,
-          customerName: params.customerName ?? "",
-          pickupLat: String(pickupLat),
-          pickupLon: String(pickupLon),
-          pickupName,
-          destLat: String(destLat),
-          destLon: String(destLon),
-          destName,
-          estimatedFare: String(estimatedFare),
-          paymentMethod: params.paymentMethod ?? "",
-          driverId: params.driverId ?? "",
-          arrived: "0",
-        },
+      setDriverNavigationPhaseParams({
+        rideId: params.rideId,
+        phase: "driving",
+        fromLat: String(pickupLat),
+        fromLon: String(pickupLon),
+        fromName: pickupName,
+        toLat: String(destLat),
+        toLon: String(destLon),
+        toName: destName,
+        customerName: params.customerName ?? "",
+        pickupLat: String(pickupLat),
+        pickupLon: String(pickupLon),
+        pickupName,
+        destLat: String(destLat),
+        destLon: String(destLon),
+        destName,
+        estimatedFare: String(estimatedFare),
+        paymentMethod: params.paymentMethod ?? "",
+        driverId: params.driverId ?? "",
+        arrived: "0",
       });
     } catch (e) {
       const err = e as Error & { userMessage?: string };
@@ -507,6 +508,40 @@ export default function DriverNavigationScreen() {
       }
     }, 3500);
     return () => clearInterval(timer);
+  }, [params.rideId]);
+
+  /**
+   * Nach App-Neustart stellt iOS/Android oft den alten Native-Stack wieder her
+   * (mehrere `/driver/navigation` mit verschiedenen Params). Einmal pro Fahrt hart resetten.
+   */
+  useEffect(() => {
+    const rideId = params.rideId?.trim() ?? "";
+    if (!rideId || stackCollapsedForRideRef.current === rideId) return;
+    stackCollapsedForRideRef.current = rideId;
+    replaceDriverStackExclusive({
+      pathname: "/driver/navigation",
+      params: {
+        rideId,
+        phase: params.phase ?? "pickup",
+        fromLat: params.fromLat ?? "0",
+        fromLon: params.fromLon ?? "0",
+        fromName: params.fromName ?? "",
+        toLat: params.toLat ?? "0",
+        toLon: params.toLon ?? "0",
+        toName: params.toName ?? "",
+        customerName: params.customerName ?? "",
+        pickupLat: params.pickupLat ?? params.toLat ?? "0",
+        pickupLon: params.pickupLon ?? params.toLon ?? "0",
+        pickupName: params.pickupName ?? params.toName ?? "Abholort",
+        destLat: params.destLat ?? "0",
+        destLon: params.destLon ?? "0",
+        destName: params.destName ?? params.toName ?? "Ziel",
+        estimatedFare: params.estimatedFare ?? "0",
+        paymentMethod: params.paymentMethod ?? "",
+        driverId: params.driverId ?? "",
+        arrived: params.arrived ?? "0",
+      },
+    });
   }, [params.rideId]);
 
   /** Betriebslogik: Navigation startet → `driver_arriving` (Kunde: Fahrer unterwegs). */

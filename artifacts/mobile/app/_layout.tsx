@@ -21,6 +21,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RootNavigationRefBinder } from "@/components/RootNavigationRefBinder";
 import { SessionRestoreCoordinator } from "@/components/SessionRestoreCoordinator";
 import { HOME_SHEET_BG } from "@/constants/homeSheetChrome";
 import { AppConfigProvider } from "@/context/AppConfigContext";
@@ -87,13 +88,7 @@ function RootLayoutNav() {
       <Stack.Screen name="booking-qr" options={{ headerShown: false }} />
       <Stack.Screen name="service-detail" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="fahrer-login" options={{ headerShown: false }} />
-      <Stack.Screen name="driver/login" options={{ headerShown: false }} />
-      <Stack.Screen name="driver/change-password" options={{ headerShown: false }} />
-      <Stack.Screen name="driver/dashboard" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="driver/navigation"
-        options={{ headerShown: false, gestureEnabled: false, animation: "slide_from_right" }}
-      />
+      <Stack.Screen name="driver" options={{ headerShown: false }} />
     </Stack>
   );
 }
@@ -134,6 +129,7 @@ export default function RootLayout() {
                   <DriverProvider>
                     <RideRequestProvider>
                       <RideProvider>
+                        <RootNavigationRefBinder />
                         <SessionRestoreCoordinator />
                         <RootLayoutNav />
                       </RideProvider>
