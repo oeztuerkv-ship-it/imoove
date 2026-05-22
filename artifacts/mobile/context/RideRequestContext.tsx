@@ -861,7 +861,7 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   }, [fetchAll]);
 
   const patchStatus = useCallback(
-    async (id: string, status: RequestStatus, finalFare?: number, driverId?: string, cancelReason?: string) => {
+    async (id: string, status: RequestStatus, finalFare?: number, driverId?: string, cancelReason?: string, driverCoords?: { lat: number; lon: number }) => {
       if (!API_BASE) return;
       if (ENABLE_STORNO_TRACE && status === "cancelled_by_customer") {
         console.log(`[Storno-Trace] Initiating Cancel for ID: ${id}`);

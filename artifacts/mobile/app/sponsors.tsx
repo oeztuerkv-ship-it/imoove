@@ -161,11 +161,11 @@ export default function SponsorsScreen() {
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
               {selected.imageUrl ? (
-                <Image pointerEvents="none" source={{ uri: selected.imageUrl }} style={styles.heroLarge} resizeMode="cover" />
+                <Image source={{ uri: selected.imageUrl }} style={styles.heroLarge} resizeMode="cover" />
               ) : null}
               <View style={styles.body}>
                 {selected.logoUrl ? (
-                  <Image pointerEvents="none" source={{ uri: selected.logoUrl }} style={styles.logo} resizeMode="contain" />
+                  <Image source={{ uri: selected.logoUrl }} style={styles.logo} resizeMode="contain" />
                 ) : null}
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>{selected.title}</Text>
                 <Text style={[styles.cardDesc, { color: colors.mutedForeground }]}>{selected.description}</Text>
@@ -247,11 +247,11 @@ export default function SponsorsScreen() {
             {filteredItems.map((it) => (
               <Pressable key={it.id} style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => setSelected(it)}>
                 {it.imageUrl ? (
-                  <Image pointerEvents="none" source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" />
+                  <Image source={{ uri: it.imageUrl }} style={styles.hero} resizeMode="cover" />
                 ) : null}
                 <View style={styles.body}>
                   {it.logoUrl ? (
-                    <Image pointerEvents="none" source={{ uri: it.logoUrl }} style={styles.logo} resizeMode="contain" />
+                    <Image source={{ uri: it.logoUrl }} style={styles.logo} resizeMode="contain" />
                   ) : null}
                   <Text style={[styles.cardTitle, { color: colors.foreground }]}>{it.title}</Text>
                   <Text style={[styles.cardDesc, { color: colors.mutedForeground }]} numberOfLines={3}>{it.description}</Text>

@@ -1159,7 +1159,7 @@ export default function NewBookingScreen() {
                       </Text>
                     )}
                     {fareLoading && fareEstimates[v.id] == null && (
-                      <Text style={{ fontSize: 10, color: colors.mutedForeground, marginTop: 2 }}>…</Text>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 }}>…</Text>
                     )}
                     {active && (
                       <View style={styles.vehicleCheck}>
@@ -1176,7 +1176,7 @@ export default function NewBookingScreen() {
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                   <View>
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Rollstuhl klappbar</Text>
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Kann zusammengeklappt werden</Text>
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>Kann zusammengeklappt werden</Text>
                   </View>
                   <Pressable
                     onPress={() => { setWheelchairFoldable(!wheelchairFoldable); Haptics.selectionAsync(); }}
@@ -1188,7 +1188,7 @@ export default function NewBookingScreen() {
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                   <View>
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Begleitperson</Text>
-                    <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Eine Begleitperson mitfahrend</Text>
+                    <Text style={{ fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>Eine Begleitperson mitfahrend</Text>
                   </View>
                   <Pressable
                     onPress={() => { setWheelchairCompanion(!wheelchairCompanion); Haptics.selectionAsync(); }}
@@ -1375,7 +1375,7 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
     minHeight: rs(28),
-    fontSize: rf(16),
+    fontSize: rf(16), fontFamily: "Inter_400Regular",
     lineHeight: rf(22),
   },
   routeGpsBtn: {
@@ -1429,7 +1429,7 @@ const styles = StyleSheet.create({
   addressLine1: accountSheetPrimaryLabel,
   addressLine2: accountSheetSecondaryLabel,
   inputText: { flex: 1, ...accountSheetInputText },
-  inputTextRoute: { fontSize: rf(15), lineHeight: rf(21) },
+  inputTextRoute: { fontSize: rf(15), lineHeight: rf(21), fontFamily: "Inter_400Regular" },
 
   suggestionBox: { borderRadius: rs(12), borderWidth: StyleSheet.hairlineWidth, overflow: "hidden", marginTop: rs(4) },
   suggestionBoxTaxi: {
@@ -1522,7 +1522,7 @@ const styles = StyleSheet.create({
     borderRadius: rs(8),
     backgroundColor: HELP_FIELD_FOCUS,
   },
-  accessoryDoneText: { ...accountSheetButtonLabel, color: "#FFFFFF", fontSize: rf(14) },
+  accessoryDoneText: { ...accountSheetButtonLabel, color: "#FFFFFF", fontSize: rf(14), fontFamily: "Inter_600SemiBold" },
   accessoryDone: { ...accountSheetToolbarAction, color: "#007AFF" },
 
   vehicleRow: { flexDirection: "row", gap: rs(10) },
