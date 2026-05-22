@@ -343,9 +343,6 @@ export default function App() {
   const [authBooting, setAuthBooting] = useState(true);
   const [authUser, setAuthUser] = useState(null);
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
-  const [forgotIdentity, setForgotIdentity] = useState("");
-  const [forgotBusy, setForgotBusy] = useState(false);
-  const [forgotMessage, setForgotMessage] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [loginRevealed, setLoginRevealed] = useState(false);
@@ -577,31 +574,6 @@ export default function App() {
     }
   }
 
-  async function onForgotRequest(e) {
-    e.preventDefault();
-    setForgotBusy(true);
-    setForgotMessage("");
-    try {
-      const res = await fetch(`${API_BASE}/admin/auth/password-reset/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identity: forgotIdentity.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) {
-        setForgotMessage("Reset-Anfrage konnte nicht verarbeitet werden.");
-        return;
-      }
-      setForgotMessage(
-        data?.message || "Wenn ein Konto existiert, erhalten Sie in Kürze eine E-Mail mit einem Link zum Zurücksetzen.",
-      );
-    } catch {
-      setForgotMessage("Reset-Anfrage konnte nicht verarbeitet werden.");
-    } finally {
-      setForgotBusy(false);
-    }
-  }
-
   function renderPage() {
     const meta = PAGE_META[active];
     if (meta?.placeholder) {
@@ -810,7 +782,6 @@ export default function App() {
     if (!loginRevealed) {
       return <div style={{ minHeight: "100vh", width: "100%", background: "#fff" }} />;
     }
-    const resetPageHref = `${import.meta.env.BASE_URL}password-reset`.replace(/([^:]\/)\/+/g, "$1");
     return (
       <div className="admin-page" style={{ maxWidth: 460, margin: "40px auto" }}>
         <div className="admin-panel-card">
@@ -838,30 +809,6 @@ export default function App() {
               {authLoading ? "Anmeldung …" : "Anmelden"}
             </button>
           </form>
-          <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--onroda-border-subtle)" }}>
-            <div className="admin-table-sub" style={{ marginBottom: 10 }}>Passwort vergessen</div>
-            <p className="admin-table-sub" style={{ marginBottom: 10, lineHeight: 1.45 }}>
-              Schritt 1: Zugang anfragen. Schritt 2: Mit dem Link aus der E-Mail ein neues Passwort setzen —{" "}
-              <a href={resetPageHref} style={{ color: "var(--onroda-accent-strong, #0ea5e9)" }}>
-                Passwort zurücksetzen
-              </a>
-              .
-            </p>
-            <form onSubmit={onForgotRequest} className="admin-form-vertical">
-              <input
-                className="admin-input"
-                placeholder="Benutzername oder E-Mail"
-                value={forgotIdentity}
-                onChange={(e) => setForgotIdentity(e.target.value)}
-                autoComplete="username"
-                required
-              />
-              <button type="submit" className="admin-btn-refresh" disabled={forgotBusy}>
-                {forgotBusy ? "Sende …" : "Reset anfordern"}
-              </button>
-            </form>
-            {forgotMessage ? <div className="admin-info-banner" style={{ marginTop: 10 }}>{forgotMessage}</div> : null}
-          </div>
         </div>
       </div>
     );

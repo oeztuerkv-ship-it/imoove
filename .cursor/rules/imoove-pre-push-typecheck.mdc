@@ -1,0 +1,31 @@
+---
+description: Vor jedem Push Mobile-Typecheck ausführen (0 Fehler Pflicht)
+alwaysApply: true
+---
+
+# Pre-Push: Typecheck (Pflicht)
+
+**Kein Push** nach `origin/main` (oder anderem Remote-Branch), ohne vorher:
+
+```bash
+pnpm --filter @workspace/mobile run typecheck
+```
+
+## Anforderung
+
+- **Exit-Code 0**, **0 TypeScript-Fehler** in unseren Dateien (`artifacts/mobile`).
+- Typische Fehler (sofort auffällig): fehlende `useState`-Deklaration bei `setX`, falsche Props, fehlende Imports.
+
+## Wenn nicht grün
+
+- **Nicht pushen.** Fehler beheben oder beim Team nachfragen.
+- Bei Unsicherheit vor dem Push kurz Rückfrage statt „hoffen und pushen“.
+
+## Scope
+
+- Diese Regel gilt für **Commits, die Mobile betreffen** (`artifacts/mobile/**`).
+- Reine Admin-/Partner-/API-only-Änderungen ohne Mobile: Typecheck trotzdem sinnvoll, wenn Mobile-Dateien im Commit sind; sonst mindestens bestätigen, dass Mobile unberührt ist.
+
+## Für Agents
+
+Vor jeder Fertigmeldung mit Push: Typecheck **wirklich im Terminal ausführen** und Ergebnis nennen (grün / Fehlerliste). Keine Push-Empfehlung ohne grünen Mobile-Typecheck.
