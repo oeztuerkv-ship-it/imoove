@@ -27,6 +27,7 @@ import { RealMapView } from "@/components/RealMapView";
 import { useDriver } from "@/context/DriverContext";
 import { type PaymentMethod, useRide } from "@/context/RideContext";
 import { type RideRequest, useRideRequests } from "@/context/RideRequestContext";
+import type { GeoLocation } from "@/utils/routing";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import { customerPayerBlockFromRideRequest } from "@/utils/customerBillingCopy";
@@ -149,6 +150,21 @@ const NO_DRIVER_WAIT_MS = 60_000;
 /** Storno-Grund für API + Anzeige, wenn die Fahrersuche ohne Annahme endet. */
 const NO_DRIVER_CANCEL_REASON = "Kein Fahrer gefunden (Wartezeit abgelaufen)";
 
+function geoFromRideRequest(
+  shortLabel: string,
+  fullLabel: string | undefined,
+  lat?: number,
+  lon?: number,
+): GeoLocation | null {
+  const name = (shortLabel || fullLabel || "").trim();
+  if (!name) return null;
+  return {
+    displayName: shortLabel.trim() || name,
+    lat: lat != null && Number.isFinite(lat) ? lat : 0,
+    lon: lon != null && Number.isFinite(lon) ? lon : 0,
+  };
+}
+
 export default function StatusScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -156,7 +172,17 @@ export default function StatusScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const bottomPad = isWeb ? 34 : insets.bottom;
 
-  const { destination, origin, fareBreakdown, route, paymentMethod, completeRide, cancelRide } = useRide();
+  const {
+    destination,
+    origin,
+    fareBreakdown,
+    route,
+    paymentMethod,
+    completeRide,
+    cancelRide,
+    setOrigin,
+    setDestination,
+  } = useRide();
   const { rideId: rideIdParam } = useLocalSearchParams<{ rideId?: string }>();
   const {
     requests,
@@ -166,6 +192,7 @@ export default function StatusScreen() {
     refreshRequests,
     myActiveRequests,
     isConnected,
+    customerRidesHydrated,
   } = useRideRequests();
 
   const scheduledPassengerRide = useMemo(
@@ -291,6 +318,49 @@ export default function StatusScreen() {
     ]);
     return activeStatuses.has(live.status) ? live : sticky;
   }, [acceptedRequest, currentRideId, requests]);
+
+  const serverRideForUi = rideMatchingCurrentId ?? effectiveAcceptedRequest;
+
+  const displayOrigin = useMemo(() => {
+    if (origin?.displayName?.trim()) return origin;
+    const r = serverRideForUi;
+    if (!r) return origin;
+    return geoFromRideRequest(r.from, r.fromFull, r.fromLat, r.fromLon) ?? origin;
+  }, [origin, serverRideForUi]);
+
+  const displayDestination = useMemo(() => {
+    if (destination?.displayName?.trim()) return destination;
+    const r = serverRideForUi;
+    if (!r) return destination;
+    return geoFromRideRequest(r.to, r.toFull, r.toLat, r.toLon) ?? destination;
+  }, [destination, serverRideForUi]);
+
+  /** Kein „Suche Fahrer…“-Flash: warten bis Kunden-Fahrten vom Server da sind. */
+  const statusBootstrapPending =
+    !customerRidesHydrated || (Boolean(currentRideId) && customerRidesHydrated && !rideMatchingCurrentId);
+
+  useEffect(() => {
+    const r = rideMatchingCurrentId;
+    if (!r) return;
+    const o = geoFromRideRequest(r.from, r.fromFull, r.fromLat, r.fromLon);
+    const d = geoFromRideRequest(r.to, r.toFull, r.toLat, r.toLon);
+    if (o && !origin?.displayName?.trim()) setOrigin(o);
+    if (d && !destination?.displayName?.trim()) setDestination(d);
+  }, [
+    rideMatchingCurrentId?.id,
+    rideMatchingCurrentId?.from,
+    rideMatchingCurrentId?.to,
+    origin?.displayName,
+    destination?.displayName,
+    setOrigin,
+    setDestination,
+  ]);
+
+  useEffect(() => {
+    if (!customerRidesHydrated || !currentRideId) return;
+    if (rideMatchingCurrentId) return;
+    router.replace("/");
+  }, [customerRidesHydrated, currentRideId, rideMatchingCurrentId]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -1018,6 +1088,30 @@ export default function StatusScreen() {
     );
   }
 
+  if (statusBootstrapPending) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, justifyContent: "center", alignItems: "center", padding: rs(24) },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#DC2626" />
+        <Text
+          style={{
+            marginTop: rs(16),
+            fontSize: rf(15),
+            fontFamily: "Inter_600SemiBold",
+            color: colors.foreground,
+            textAlign: "center",
+          }}
+        >
+          Fahrt wird geladen…
+        </Text>
+      </View>
+    );
+  }
+
   if (customerPhase === "reservation_unfulfilled") {
     return (
       <View
@@ -1042,8 +1136,8 @@ export default function StatusScreen() {
       <View style={styles.container}>
         {/* Karte im Hintergrund */}
         <RealMapView
-          origin={origin}
-          destination={destination}
+          origin={displayOrigin}
+          destination={displayDestination}
           polyline={route?.polyline}
           style={styles.map}
           driverMarker={driverReassignedBanner ? null : driverMarker}
@@ -1091,7 +1185,7 @@ export default function StatusScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.searchRouteLabel}>Von</Text>
                 <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {origin?.displayName ?? "Esslingen am Neckar"}
+                  {displayOrigin?.displayName ?? "Esslingen am Neckar"}
                 </Text>
               </View>
             </View>
@@ -1101,7 +1195,7 @@ export default function StatusScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.searchRouteLabel}>Nach</Text>
                 <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {destination?.displayName ?? "–"}
+                  {displayDestination?.displayName ?? "–"}
                 </Text>
               </View>
             </View>
@@ -1167,8 +1261,8 @@ export default function StatusScreen() {
     return (
       <View style={styles.container}>
         <RealMapView
-          origin={origin}
-          destination={destination}
+          origin={displayOrigin}
+          destination={displayDestination}
           polyline={route?.polyline}
           style={styles.map}
           driverMarker={driverMarker}
@@ -1204,7 +1298,7 @@ export default function StatusScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.searchRouteLabel}>Von</Text>
                 <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {origin?.displayName ?? "Esslingen am Neckar"}
+                  {displayOrigin?.displayName ?? "Esslingen am Neckar"}
                 </Text>
               </View>
             </View>
@@ -1214,7 +1308,7 @@ export default function StatusScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.searchRouteLabel}>Nach</Text>
                 <Text style={styles.searchRouteAddr} numberOfLines={1}>
-                  {destination?.displayName ?? "–"}
+                  {displayDestination?.displayName ?? "–"}
                 </Text>
               </View>
             </View>
@@ -1273,8 +1367,8 @@ export default function StatusScreen() {
   return (
     <View style={styles.container}>
       <RealMapView
-        origin={origin}
-        destination={destination}
+        origin={displayOrigin}
+        destination={displayDestination}
         polyline={route?.polyline}
         style={styles.map}
         driverMarker={driverMarker}
@@ -1284,7 +1378,7 @@ export default function StatusScreen() {
       <View style={[styles.destCard, { top: topPad + 12 }]}>
         <MaterialCommunityIcons name="map-marker" size={14} color="#DC2626" />
         <Text style={styles.destCardText} numberOfLines={1}>
-          {destination?.displayName ?? "Ziel"}
+          {displayDestination?.displayName ?? "Ziel"}
         </Text>
       </View>
 
@@ -1314,7 +1408,7 @@ export default function StatusScreen() {
         <View style={styles.uberBarDivider} />
         <View style={styles.uberBarInfo}>
           <Text style={styles.uberBarAddr} numberOfLines={1}>
-            {isArrived ? "Fahrer wartet auf Sie" : (destination?.displayName ?? "Ziel")}
+            {isArrived ? "Fahrer wartet auf Sie" : (displayDestination?.displayName ?? "Ziel")}
           </Text>
           <Text style={styles.uberBarStatus}>
             {isDriving

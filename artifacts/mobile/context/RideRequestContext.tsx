@@ -744,6 +744,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
           }
         }
         return false;
+      } finally {
+        setDriverMarketHydrated(true);
       }
     },
     [applyDriverMarketPayload, readFleetAuthToken, ridesFromPayload],

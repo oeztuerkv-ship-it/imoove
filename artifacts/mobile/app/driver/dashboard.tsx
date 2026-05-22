@@ -2614,7 +2614,22 @@ export default function DriverDashboard() {
     driverId,
     driverMarketOnline,
     suppressedIds: suppressedMarketOfferIdsRef.current,
+    hideWhileOnActiveRide: true,
   });
+
+  const activeDriverRequest =
+    driverMarketRequests.find(
+      (r) =>
+        (r.status === "accepted" ||
+          r.status === "ready_for_dispatch" ||
+          r.status === "driver_arriving" ||
+          r.status === "driver_waiting" ||
+          r.status === "passenger_onboard" ||
+          r.status === "arrived" ||
+          r.status === "in_progress") &&
+        r.driverId === driverId,
+    ) ??
+    (acceptedRequest && acceptedRequest.driverId === driverId ? acceptedRequest : null);
 
   useEffect(() => {
     const suppressed = suppressedMarketOfferIdsRef.current;
@@ -2664,6 +2679,14 @@ export default function DriverDashboard() {
 
     prevDriverOnline.current = driverOnline;
 
+    if (activeDriverRequest) {
+      prevPendingIds.current = currentIds;
+      if (bannerTimer.current) clearTimeout(bannerTimer.current);
+      stopRideSound().catch(() => {});
+      setBannerRide(null);
+      return;
+    }
+
     const newReqs = pendingRequests.filter(
       (r) =>
         !prevPendingIds.current.has(r.id) &&
@@ -2678,7 +2701,15 @@ export default function DriverDashboard() {
       showBanner(req);
     }
     prevPendingIds.current = currentIds;
-  }, [pendingRequests, driver?.einsatzbereit, driver?.isAvailable, driverPos, showBanner, isConnected]);
+  }, [
+    pendingRequests,
+    driver?.einsatzbereit,
+    driver?.isAvailable,
+    driverPos,
+    showBanner,
+    isConnected,
+    activeDriverRequest,
+  ]);
 
   const scheduledPool = driverMarketScheduledPool.filter((r) => {
     if (!driverMarketOnline) return false;
@@ -2689,20 +2720,15 @@ export default function DriverDashboard() {
     if ((r.rejectedBy ?? []).includes(driverId)) return false;
     return true;
   });
-  const activeDriverRequest =
-    driverMarketRequests.find(
-      (r) =>
-        (r.status === "accepted" ||
-          r.status === "ready_for_dispatch" ||
-          r.status === "driver_arriving" ||
-          r.status === "driver_waiting" ||
-          r.status === "passenger_onboard" ||
-          r.status === "arrived" ||
-          r.status === "in_progress") &&
-        r.driverId === driverId,
-    ) ??
-    (acceptedRequest && acceptedRequest.driverId === driverId ? acceptedRequest : null);
   const cancelNoticeShownRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!activeDriverRequest) return;
+    prevPendingIds.current = new Set(pendingRequests.map((r) => r.id));
+    if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    stopRideSound().catch(() => {});
+    setBannerRide(null);
+  }, [activeDriverRequest?.id, pendingRequests]);
 
   useEffect(() => {
     if (!driverId) return;
@@ -3434,7 +3460,7 @@ export default function DriverDashboard() {
       </View>
 
       {/* ── In-App Notification Banner ── */}
-      {bannerRide && driverMarketOnline && (
+      {bannerRide && driverMarketOnline && !activeDriverRequest && (
         <Animated.View
           style={{
             position: "absolute",
