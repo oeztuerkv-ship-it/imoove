@@ -571,6 +571,8 @@ export function RideRequestProvider({ children }: { children: React.ReactNode })
   const [isDriverMarketConnected, setIsDriverMarketConnected] = useState(false);
   const [lastAddedRequestId, setLastAddedRequestId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [customerRidesHydrated, setCustomerRidesHydrated] = useState(false);
+  const [driverMarketHydrated, setDriverMarketHydrated] = useState(false);
   const [passengerId, setPassengerId] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCountRef = useRef(0);
