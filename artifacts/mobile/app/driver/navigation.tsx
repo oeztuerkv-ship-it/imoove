@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -26,7 +26,6 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
   replaceDriverStackExclusive,
-  resetDriverStackScreen,
   setDriverNavigationPhaseParams,
 } from "@/utils/driverNavigationRoute";
 import { driverRideStatusUserMessage } from "@/utils/driverRideStatusErrors";
@@ -513,33 +512,36 @@ export default function DriverNavigationScreen() {
 
   /**
    * Nach App-Neustart stellt iOS/Android oft den alten Native-Stack wieder her
-   * (mehrere `/driver/navigation` mit verschiedenen Params). Einmal pro Fahrt hart resetten.
+   * (mehrere `/driver/navigation` mit verschiedenen Params). Einmal pro Fahrt: dismissTo.
    */
   useEffect(() => {
     const rideId = params.rideId?.trim() ?? "";
     if (!rideId || stackCollapsedForRideRef.current === rideId) return;
     stackCollapsedForRideRef.current = rideId;
-    resetDriverStackScreen("navigation", {
-      rideId,
-      phase: params.phase ?? "pickup",
-      fromLat: params.fromLat ?? "0",
-      fromLon: params.fromLon ?? "0",
-      fromName: params.fromName ?? "",
-      toLat: params.toLat ?? "0",
-      toLon: params.toLon ?? "0",
-      toName: params.toName ?? "",
-      customerName: params.customerName ?? "",
-      pickupLat: params.pickupLat ?? params.toLat ?? "0",
-      pickupLon: params.pickupLon ?? params.toLon ?? "0",
-      pickupName: params.pickupName ?? params.toName ?? "Abholort",
-      destLat: params.destLat ?? "0",
-      destLon: params.destLon ?? "0",
-      destName: params.destName ?? params.toName ?? "Ziel",
-      estimatedFare: params.estimatedFare ?? "0",
-      paymentMethod: params.paymentMethod ?? "",
-      driverId: params.driverId ?? "",
-      arrived: params.arrived ?? "0",
-    });
+    router.dismissTo({
+      pathname: "/driver/navigation",
+      params: {
+        rideId,
+        phase: params.phase ?? "pickup",
+        fromLat: params.fromLat ?? "0",
+        fromLon: params.fromLon ?? "0",
+        fromName: params.fromName ?? "",
+        toLat: params.toLat ?? "0",
+        toLon: params.toLon ?? "0",
+        toName: params.toName ?? "",
+        customerName: params.customerName ?? "",
+        pickupLat: params.pickupLat ?? params.toLat ?? "0",
+        pickupLon: params.pickupLon ?? params.toLon ?? "0",
+        pickupName: params.pickupName ?? params.toName ?? "Abholort",
+        destLat: params.destLat ?? "0",
+        destLon: params.destLon ?? "0",
+        destName: params.destName ?? params.toName ?? "Ziel",
+        estimatedFare: params.estimatedFare ?? "0",
+        paymentMethod: params.paymentMethod ?? "",
+        driverId: params.driverId ?? "",
+        arrived: params.arrived ?? "0",
+      },
+    } as Href);
   }, [params.rideId]);
 
   /** Betriebslogik: Navigation startet → `driver_arriving` (Kunde: Fahrer unterwegs). */

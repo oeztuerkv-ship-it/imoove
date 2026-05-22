@@ -165,6 +165,51 @@ function geoFromRideRequest(
   };
 }
 
+const TRACKING_ACCENT = "#EF233C";
+
+function splitDestinationLines(displayName: string | undefined): { title: string; sub: string } {
+  const raw = (displayName ?? "Ziel").trim();
+  if (!raw) return { title: "Ziel", sub: "" };
+  const comma = raw.indexOf(",");
+  if (comma > 0) {
+    return { title: raw.slice(0, comma).trim(), sub: raw.slice(comma + 1).trim() };
+  }
+  return { title: raw, sub: "" };
+}
+
+/** Genau ein aktiver Schritt (0 = unterwegs, 1 = Ankunft, 2 = Ziel). */
+function trackingProgressActiveStep(status: RideRequest["status"] | undefined): 0 | 1 | 2 {
+  if (status === "completed") return 2;
+  if (status === "driver_waiting" || status === "in_progress") return 1;
+  return 0;
+}
+
+function DriverTrackingAvatar({ name }: { name: string }) {
+  const initial = (name.trim().charAt(0) || "F").toUpperCase();
+  return (
+    <View style={styles.trackingAvatar}>
+      <Text style={styles.trackingAvatarText}>{initial}</Text>
+    </View>
+  );
+}
+
+function TrackingProgressStep({
+  icon,
+  label,
+  active,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <View style={active ? styles.trackingProgressItemActive : styles.trackingProgressItem}>
+      <Feather name={icon} size={rf(17)} color={active ? "#2563EB" : "#6B7280"} />
+      <Text style={active ? styles.trackingProgressActiveText : styles.trackingProgressText}>{label}</Text>
+    </View>
+  );
+}
+
 export default function StatusScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -925,7 +970,11 @@ export default function StatusScreen() {
   });
 
   if (isDriverLoggedIn) {
-    return null;
+    return (
+      <View style={[styles.container, styles.cancelExitWrap]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
   }
 
   if (isCompleted) {
@@ -1372,6 +1421,25 @@ export default function StatusScreen() {
   const tripEstimateEur = effectiveAcceptedRequest?.estimatedFare ?? fareBreakdown?.total ?? 0;
   const readyForDispatch = effectiveAcceptedRequest?.status === "ready_for_dispatch";
   const readyDispatchHeadline = customerReservationFlowHeadline("ready_for_dispatch");
+  const destLines = splitDestinationLines(displayDestination?.displayName);
+  const rideStatus = effectiveAcceptedRequest?.status;
+  const progressActive = trackingProgressActiveStep(rideStatus);
+  const driverStatusLabel = isDriving
+    ? `${driverFirstName} ist unterwegs`
+    : isArrived
+      ? "Fahrer wartet auf Sie"
+      : readyForDispatch
+        ? readyDispatchHeadline
+        : isPreparing
+          ? `${driverFirstName} bereitet sich vor`
+          : rideStatus === "driver_arriving"
+            ? `${driverFirstName} ist unterwegs`
+            : "Fahrer gefunden";
+  const distanceKm = route?.distanceKm;
+  const etaDistanceText =
+    distanceKm != null && Number.isFinite(Number(distanceKm))
+      ? `ca. ${Number(distanceKm).toFixed(1).replace(".", ",")} km entfernt`
+      : null;
 
   return (
     <View style={styles.container}>
@@ -1383,76 +1451,124 @@ export default function StatusScreen() {
         driverMarker={driverMarker}
       />
 
-      {/* Ziel-Label oben rechts */}
-      <View style={[styles.destCard, { top: topPad + 12 }]}>
-        <MaterialCommunityIcons name="map-marker" size={14} color="#DC2626" />
-        <Text style={styles.destCardText} numberOfLines={1}>
-          {displayDestination?.displayName ?? "Ziel"}
-        </Text>
+      <View style={[styles.mapOverlayTop, { top: topPad + rs(6) }]}>
+        <View style={styles.destinationCard}>
+          <Feather name="map-pin" size={rf(18)} color={TRACKING_ACCENT} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.destinationTitle} numberOfLines={1}>
+              {destLines.title}
+            </Text>
+            {destLines.sub ? (
+              <Text style={styles.destinationSub} numberOfLines={1}>
+                {destLines.sub}
+              </Text>
+            ) : null}
+          </View>
+          <Feather name="chevron-down" size={rf(18)} color="#6B7280" />
+        </View>
       </View>
 
-      {/* "Ihr Fahrer ist da!" Banner — arrived phase */}
-      {isArrived && (
-        <Animated.View style={[styles.arrivedBanner, { top: topPad + 68 }, { transform: [{ scale: pulseAnim }] }]}>
-          <MaterialCommunityIcons name="car-emergency" size={22} color="#fff" />
+      <View style={[styles.targetChip, { top: topPad + rs(58) }]}>
+        <Feather name="crosshair" size={rf(15)} color={TRACKING_ACCENT} />
+        <Text style={styles.targetChipText}>Ziel</Text>
+      </View>
+
+      {isArrived ? (
+        <Animated.View
+          style={[styles.arrivedBanner, { top: topPad + rs(118) }, { transform: [{ scale: pulseAnim }] }]}
+        >
+          <MaterialCommunityIcons name="car-emergency" size={rf(18)} color="#fff" />
           <View>
             <Text style={styles.arrivedBannerTitle}>Ihr Fahrer ist da!</Text>
             <Text style={styles.arrivedBannerSub}>Bitte zum Fahrzeug kommen</Text>
           </View>
         </Animated.View>
-      )}
+      ) : null}
 
-      {/* Uber-Stil Statusleiste unten */}
-      <View style={[styles.uberBar, { paddingBottom: bottomPad + 16 }]}>
-        <View style={styles.uberBarEta}>
-          {isArrived ? (
-            <MaterialCommunityIcons name="map-marker-check" size={32} color="#22C55E" />
-          ) : (
-            <>
-              <Text style={styles.uberEtaNum}>{eta}</Text>
-              <Text style={styles.uberEtaUnit}>MIN.</Text>
-            </>
-          )}
+      <View style={[styles.trackingBottomSheet, { paddingBottom: bottomPad + rs(10) }]}>
+        <View style={styles.sheetHandle} />
+
+        <View style={styles.trackingDriverRow}>
+          <View style={styles.trackingEtaBox}>
+            {isArrived ? (
+              <MaterialCommunityIcons name="map-marker-check" size={rf(28)} color="#22C55E" />
+            ) : (
+              <>
+                <Text style={styles.trackingEtaLabel}>Ankunft in</Text>
+                <Text style={styles.trackingEtaNumber}>{eta}</Text>
+                <Text style={styles.trackingEtaMin}>min</Text>
+              </>
+            )}
+            {etaDistanceText && !isArrived ? (
+              <Text style={styles.trackingEtaDistance}>{etaDistanceText}</Text>
+            ) : isArrived ? (
+              <Text style={styles.trackingEtaDistance}>Am Abholort</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.trackingDivider} />
+
+          <View style={styles.trackingDriverInfo}>
+            <DriverTrackingAvatar name={driverName} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.trackingDriverName} numberOfLines={1}>
+                {driverFirstName}
+              </Text>
+              <Text style={styles.trackingDriverStatus} numberOfLines={1}>
+                {driverStatusLabel}
+              </Text>
+              <Text style={styles.trackingPlateLine} numberOfLines={1}>
+                {driverPlate}
+                {driverCar ? ` · ${driverCar}` : ""}
+              </Text>
+              {showTripEstimate && tripEstimateEur > 0 ? (
+                <Text style={styles.trackingEstimate} numberOfLines={1}>
+                  Schätzpreis ca. {formatEuro(tripEstimateEur)}
+                </Text>
+              ) : null}
+            </View>
+          </View>
         </View>
-        <View style={styles.uberBarDivider} />
-        <View style={styles.uberBarInfo}>
-          <Text style={styles.uberBarAddr} numberOfLines={1}>
-            {isArrived ? "Fahrer wartet auf Sie" : (displayDestination?.displayName ?? "Ziel")}
-          </Text>
-          <Text style={styles.uberBarStatus}>
-            {isDriving
-              ? `${driverFirstName} ist unterwegs · ${driverCar}`
-              : isArrived
-                ? `${driverFirstName} ist angekommen · ${driverPlate}`
-                : readyForDispatch
-                  ? readyDispatchHeadline
-                  : isPreparing
-                    ? `${driverFirstName} bereitet sich vor`
-                    : `Fahrer gefunden · ${driverPlate}`}
-          </Text>
-          {effectiveAcceptedRequest ? (
-            <Text style={styles.uberBarPayer} numberOfLines={2}>
-              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
-              {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
-            </Text>
-          ) : null}
-          {showTripEstimate && tripEstimateEur > 0 ? (
-            <Text style={styles.uberBarEstimate} numberOfLines={1}>
-              Schätzpreis ca. {formatEuro(tripEstimateEur)}
-            </Text>
-          ) : null}
+
+        <View style={styles.trackingProgressCard}>
+          <TrackingProgressStep
+            icon="truck"
+            label="Fahrer unterwegs"
+            active={progressActive === 0}
+          />
+          <Text style={styles.trackingProgressDash}>---</Text>
+          <TrackingProgressStep icon="map-pin" label="Ankunft" active={progressActive === 1} />
+          <Text style={styles.trackingProgressDash}>---</Text>
+          <TrackingProgressStep icon="flag" label="Ziel erreicht" active={progressActive === 2} />
         </View>
-        <View style={styles.uberActions}>
+
+        {effectiveAcceptedRequest ? (
+          <Text style={styles.trackingPayerLine} numberOfLines={2}>
+            {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).title}:{" "}
+            {customerPayerBlockFromRideRequest(effectiveAcceptedRequest).subtitle}
+          </Text>
+        ) : null}
+
+        <View style={styles.trackingActionRow}>
           <Pressable
-            style={styles.uberMsgBtn}
+            style={({ pressed }) => [styles.trackingChatActionButton, pressed && { opacity: 0.88 }]}
             accessibilityLabel="Chat"
-            onPress={handleMessage}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              handleMessage();
+            }}
           >
-            <Text style={styles.uberChatBtnLabel}>Chat</Text>
-            {chatUnread ? <View style={styles.chatBadgeDot} /> : null}
+            <Feather name="message-circle" size={rf(20)} color="#111827" />
+            <Text style={styles.trackingChatActionText}>Chat</Text>
+            {chatUnread ? <View style={styles.trackingChatActionBadge} /> : null}
           </Pressable>
-          <Pressable style={styles.uberCloseBtn} onPress={() => handleCancel()}>
-            <Feather name="x" size={22} color="#fff" />
+
+          <Pressable
+            style={({ pressed }) => [styles.trackingCancelButton, pressed && { opacity: 0.9 }]}
+            onPress={() => handleCancel()}
+          >
+            <Feather name="x" size={rf(22)} color="#FFFFFF" />
+            <Text style={styles.trackingCancelText}>Fahrt stornieren</Text>
           </Pressable>
         </View>
       </View>
@@ -1612,73 +1728,259 @@ const styles = StyleSheet.create({
   },
   map: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
 
-  /* Uber-Stil: Ziel-Karte oben rechts */
-  destCard: {
+  /* Live-Tracking: Ziel oben + helles Bottom-Sheet (kompakt) */
+  mapOverlayTop: {
     position: "absolute",
+    left: rs(16),
     right: rs(16),
-    flexDirection: "row", alignItems: "center", gap: rs(5),
-    backgroundColor: "#fff",
-    borderRadius: rs(12),
-    paddingHorizontal: rs(12), paddingVertical: rs(10),
-    maxWidth: "58%",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 6, elevation: 6,
+    zIndex: 20,
   },
-  destCardText: { fontSize: rf(13), fontFamily: "Inter_600SemiBold", color: "#111", flexShrink: 1 },
-
-  /* Uber-Stil: Dunkle Statusleiste unten */
-  uberBar: {
-    position: "absolute",
-    bottom: 0, left: 0, right: 0,
-    backgroundColor: "#1C1C1E",
+  destinationCard: {
+    minHeight: rs(48),
+    borderRadius: rs(18),
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: rs(14),
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: rs(18),
-    minHeight: rs(140),
-    paddingHorizontal: rs(18),
-    gap: rs(14),
+    gap: rs(10),
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: rs(12),
+    shadowOffset: { width: 0, height: rs(4) },
+    elevation: 5,
   },
-  uberBarEta: { alignItems: "center", minWidth: rs(48) },
-  uberEtaNum: { fontSize: rf(34), fontFamily: "Inter_700Bold", color: "#fff", lineHeight: rf(38) },
-  uberEtaUnit: { fontSize: rf(12), fontFamily: "Inter_600SemiBold", color: "#9CA3AF", letterSpacing: 1 },
-  uberBarDivider: { width: 1, height: rs(40), backgroundColor: "#374151" },
-  uberBarInfo: { flex: 1 },
-  uberBarAddr: { fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#fff", marginBottom: rs(3) },
-  uberBarStatus: { fontSize: rf(13), fontFamily: "Inter_400Regular", color: "#9CA3AF" },
-  uberBarPayer: { fontSize: rf(12), fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: rs(5), lineHeight: rf(16) },
-  uberBarEstimate: { fontSize: rf(13), fontFamily: "Inter_600SemiBold", color: "#FDE68A", marginTop: rs(4) },
-  uberActions: { gap: rs(8) },
-  uberMsgBtn: {
-    minWidth: rs(56),
-    paddingHorizontal: rs(12),
-    height: rs(42),
-    borderRadius: rs(21),
-    backgroundColor: "#374151",
+  destinationTitle: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  destinationSub: {
+    marginTop: rs(2),
+    fontSize: rf(13),
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
+  },
+  targetChip: {
+    position: "absolute",
+    alignSelf: "center",
+    zIndex: 20,
+    height: rs(36),
+    borderRadius: rs(18),
+    paddingHorizontal: rs(16),
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
+    gap: rs(6),
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: rs(10),
+    shadowOffset: { width: 0, height: rs(4) },
+    elevation: 4,
   },
-  uberChatBtnLabel: {
+  targetChipText: {
     fontSize: rf(14),
     fontFamily: "Inter_700Bold",
-    color: "#fff",
-    letterSpacing: 0.3,
+    color: "#111827",
   },
-  uberCloseBtn: {
-    width: rs(42), height: rs(42), borderRadius: rs(21),
-    backgroundColor: "#DC2626",
-    alignItems: "center", justifyContent: "center",
-  },
-  chatBadgeDot: {
+  trackingBottomSheet: {
     position: "absolute",
-    top: 2,
-    right: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#EF4444",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: rs(8),
+    paddingHorizontal: rs(16),
+    borderTopLeftRadius: rs(22),
+    borderTopRightRadius: rs(22),
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: rs(20),
+    shadowOffset: { width: 0, height: -rs(6) },
+    elevation: 10,
+    zIndex: 30,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: rs(40),
+    height: rs(4),
+    borderRadius: 99,
+    backgroundColor: "#D1D5DB",
+    marginBottom: rs(8),
+  },
+  trackingDriverRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  trackingEtaBox: {
+    width: rs(88),
+  },
+  trackingEtaLabel: {
+    fontSize: rf(13),
+    fontFamily: "Inter_500Medium",
+    color: "#6B7280",
+  },
+  trackingEtaNumber: {
+    marginTop: rs(4),
+    fontSize: rf(34),
+    lineHeight: rf(36),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  trackingEtaMin: {
+    marginTop: -rs(2),
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  trackingEtaDistance: {
+    marginTop: rs(8),
+    fontSize: rf(12),
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+  },
+  trackingDivider: {
+    width: 1,
+    height: rs(68),
+    backgroundColor: "#E5E7EB",
+    marginHorizontal: rs(10),
+  },
+  trackingDriverInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(8),
+    minWidth: 0,
+  },
+  trackingAvatar: {
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(22),
+    backgroundColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trackingAvatarText: {
+    fontSize: rf(18),
+    fontFamily: "Inter_700Bold",
+    color: "#374151",
+  },
+  trackingDriverName: {
+    fontSize: rf(16),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  trackingDriverStatus: {
+    marginTop: rs(1),
+    fontSize: rf(12),
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+  },
+  trackingPlateLine: {
+    marginTop: rs(2),
+    fontSize: rf(12),
+    fontFamily: "Inter_600SemiBold",
+    color: "#374151",
+  },
+  trackingEstimate: {
+    marginTop: rs(2),
+    fontSize: rf(11),
+    fontFamily: "Inter_600SemiBold",
+    color: "#2563EB",
+  },
+  trackingProgressCard: {
+    marginTop: rs(10),
+    borderRadius: rs(14),
     borderWidth: 1,
-    borderColor: "#111827",
+    borderColor: "#E5E7EB",
+    paddingVertical: rs(8),
+    paddingHorizontal: rs(6),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  trackingProgressItemActive: {
+    alignItems: "center",
+    gap: rs(4),
+    flex: 1,
+  },
+  trackingProgressItem: {
+    alignItems: "center",
+    gap: rs(4),
+    flex: 1,
+  },
+  trackingProgressActiveText: {
+    fontSize: rf(11),
+    fontFamily: "Inter_700Bold",
+    color: "#2563EB",
+    textAlign: "center",
+  },
+  trackingProgressText: {
+    fontSize: rf(11),
+    fontFamily: "Inter_600SemiBold",
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  trackingProgressDash: {
+    color: "#D1D5DB",
+    fontSize: rf(14),
+    fontFamily: "Inter_700Bold",
+    marginHorizontal: rs(1),
+  },
+  trackingPayerLine: {
+    marginTop: rs(10),
+    fontSize: rf(12),
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    lineHeight: rf(16),
+  },
+  trackingActionRow: {
+    marginTop: rs(10),
+    flexDirection: "row",
+    gap: rs(10),
+  },
+  trackingChatActionButton: {
+    flex: 1,
+    height: rs(48),
+    borderRadius: rs(14),
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+    position: "relative",
+  },
+  trackingChatActionText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_700Bold",
+    color: "#111827",
+  },
+  trackingChatActionBadge: {
+    position: "absolute",
+    top: rs(10),
+    right: rs(14),
+    width: rs(8),
+    height: rs(8),
+    borderRadius: rs(4),
+    backgroundColor: TRACKING_ACCENT,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
+  },
+  trackingCancelButton: {
+    flex: 1.2,
+    height: rs(48),
+    borderRadius: rs(14),
+    backgroundColor: TRACKING_ACCENT,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+  },
+  trackingCancelText: {
+    fontSize: rf(15),
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
   },
 
   /* Arrived banner */

@@ -29,9 +29,9 @@ export type DriverPushTokenSyncResult =
     };
 
 function devLog(result: DriverPushTokenSyncResult): void {
-  if (typeof __DEV__ !== "undefined" && __DEV__) {
-    console.warn("[driver-push-sync]", result);
-  }
+  if (typeof __DEV__ === "undefined" || !__DEV__) return;
+  if (result.ok) return;
+  console.warn("[driver-push-sync]", result);
 }
 
 function resolveEasProjectId(Constants: {

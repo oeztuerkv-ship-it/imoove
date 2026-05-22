@@ -15,6 +15,7 @@ Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Syste
    - Fahrer-Markt/Ghost: `imoove-mobile-driver-ghost-orders.mdc`
    - Push/Banner/Ton: `imoove-mobile-notifications-push-knowledge.mdc`
    - Ziel/Orte→Buchung: `imoove-mobile-destination-navigation.mdc`
+   - Live-Fahrt Kunde/Fahrer (Status, Navi, dismissTo, Restore): `imoove-mobile-live-ride-flows.mdc`
    - Rollen/API: `imoove-product-architecture.mdc`, `onroda-cross-impact.mdc`
    - Deploy/DB: `AGENTS.md`, `imoove-git-deployment-workflow.mdc`
 3. **Code an den in den Regeln genannten Dateien** gegenprüfen (Regeln können hinter dem Code sein — dann Regel **oder** Code aktualisieren).
@@ -33,7 +34,9 @@ Der Nutzer erwartet: **nicht nur den aktuellen Diff**, sondern **bekanntes Syste
 |-------|------------------|
 | `RideRequestContext`, Poll, Markt | Ghost-Orders + Notifications |
 | `dashboard.tsx`, ONLINE, Banner | Ghost-Orders + Notifications |
-| `status.tsx`, Kunde wartet | Destination-Navigation + Notifications + ggf. Storno-Szenario C in Code |
+| `status.tsx`, Kunde wartet | **`imoove-mobile-live-ride-flows.mdc`** + Destination-Navigation + Notifications |
+| `driver/navigation`, Stack, RESET | **`imoove-mobile-live-ride-flows.mdc`** (nur `dismissTo`, kein Bridge-RESET) |
+| `SessionRestoreCoordinator` | **`imoove-mobile-live-ride-flows.mdc`** + Ghost-Orders wenn Markt |
 | Push-Token / Expo | Notifications + `passengerExpoPushData` / `fleetDriverExpoPushData` |
 | `driver-cancel`, Status-API | `rides.ts` + Notifications + Core-Policy Storno |
 

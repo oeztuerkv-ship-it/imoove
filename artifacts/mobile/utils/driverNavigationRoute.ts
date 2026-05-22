@@ -1,10 +1,14 @@
 import { type Href, router } from "expo-router";
 
 import type { RequestStatus, RideRequest } from "@/context/RideRequestContext";
-import {
-  requestDriverStackReset,
-  type DriverStackScreen,
-} from "@/utils/driverStackReset";
+
+/** Screens im Stack unter `app/driver/_layout.tsx` (ohne `driver/`-Prefix). */
+export type DriverStackScreen =
+  | "navigation"
+  | "dashboard"
+  | "login"
+  | "change-password"
+  | "inbox";
 
 export type DriverNavigationPhase = "pickup" | "driving";
 
@@ -109,25 +113,29 @@ function parseDriverHref(href: Href): { screen: DriverStackScreen; params?: Reco
 }
 
 /**
- * Stack auf genau eine Fahrer-Route setzen (Session-Restore, Auto-Navi).
- * RESET läuft im Fahrer-Stack (`driver/_layout`), nicht im Root-Container.
+ * Stack auf genau eine Fahrer-Navi-Route (Session-Restore, keine doppelten navigation-Einträge).
+ * `dismissTo` statt Root-RESET — CommonActions.reset auf dem falschen Navigator wirft in Dev.
  */
 export function replaceDriverStackExclusive(href: Href): void {
   const parsed = parseDriverHref(href);
-  if (parsed) {
-    requestDriverStackReset(parsed.screen, parsed.params);
-    router.replace(href);
+  if (parsed?.screen === "navigation") {
+    router.dismissTo(href);
     return;
   }
   router.replace(href);
 }
 
-/** Nur inneren Fahrer-Stack leeren (bereits auf /driver/*). */
+/** Einmal pro Fahrt: Navi-Stack auf einen Eintrag reduzieren (App-Neustart / Restore). */
 export function resetDriverStackScreen(
   screen: DriverStackScreen,
   params?: Record<string, string>,
 ): void {
-  requestDriverStackReset(screen, params);
+  const href = { pathname: `/driver/${screen}`, params } as Href;
+  if (screen === "navigation") {
+    router.dismissTo(href);
+    return;
+  }
+  router.replace(href);
 }
 
 /** Phase pickup → driving: gleicher Screen, nur Params (kein zweiter Stack-Eintrag). */

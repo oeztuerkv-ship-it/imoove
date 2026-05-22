@@ -59,7 +59,7 @@ Push-Marker / Cron: `ridePushNotificationMarkers.ts`, `index.ts` Jobs.
 
 ## Kunde auf `/status` als Fahrer
 
-Fahrer eingeloggt + `/status` im Stack → **`app/status.tsx`:** `isDriverLoggedIn` → sofort `router.replace("/driver/dashboard")`, `return null` (kein Kunden-Such-Screen).
+Fahrer eingeloggt + Route `/status` → **`app/status.tsx`:** `isDriverLoggedIn` → kurzer Ladeindikator + `useEffect` → `router.replace("/driver/dashboard")` (kein Kunden-Tracking). Session-Restore: Fahrer nicht von `/status` weg umleiten — **`imoove-mobile-live-ride-flows.mdc`**.
 
 ## Häufige Fehler (Checkliste für Agents)
 

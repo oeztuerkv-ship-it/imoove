@@ -26,6 +26,9 @@ const CUSTOMER_SKIP_PREFIXES = [
   "/booking-",
 ];
 
+/** Kunde in aktiver Fahrt — Fahrer-Restore darf nicht auf Navi umleiten. */
+const CUSTOMER_ACTIVE_FLOW_PREFIXES = ["/status", "/ride", "/ride-select"];
+
 const DRIVER_SKIP_PREFIXES = ["/driver/login"];
 
 /**
@@ -106,6 +109,13 @@ export function SessionRestoreCoordinator() {
 
     if (driverRestoreDone.current) return;
     if (DRIVER_SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return;
+    if (
+      customerLoggedIn &&
+      !onDriverSurface &&
+      CUSTOMER_ACTIVE_FLOW_PREFIXES.some((p) => pathname.startsWith(p))
+    ) {
+      return;
+    }
     if (pathname.startsWith("/driver/change-password")) {
       driverRestoreDone.current = true;
       return;
@@ -128,6 +138,8 @@ export function SessionRestoreCoordinator() {
       replaceDriverStackExclusive("/driver/dashboard");
     }
   }, [
+    customerLoggedIn,
+    onDriverSurface,
     driverLoading,
     isDriverLoggedIn,
     driver?.id,

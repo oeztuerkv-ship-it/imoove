@@ -1,0 +1,130 @@
+---
+description: Mobile — Live-Fahrt Abläufe Kunde/Fahrer (Status, Navi, Stack, Session-Restore) — Debug-Karte
+globs: artifacts/mobile/**/*
+alwaysApply: false
+---
+
+# Mobile: Live-Fahrt — Ablauf & Fehlersuche (Kunde + Fahrer)
+
+**Zweck:** Wenn etwas in der **Fahrer-Navi** oder beim **Kunden-Tracking** klemmt — zuerst **welcher Flow** und **welche Schicht**, nicht blind in Zeilennummern suchen.
+
+## Zwei getrennte Navigations-Welten
+
+| Welt | Root-Routen | Innerer Stack |
+|------|-------------|----------------|
+| **Kunde** | `/`, `/status`, `/ride`, `/my-rides`, … | Root-`Stack` in `app/_layout.tsx` |
+| **Fahrer** | `/driver/*` (Gruppe) | `app/driver/_layout.tsx` → `login`, `dashboard`, `navigation`, … |
+
+**Invariante:** Kunden-Screens und Fahrer-Stack **nicht** mit `CommonActions.reset` über den **Root**-Navigator verheiraten. Expo Router meldet sonst *The action 'RESET' … was not handled by any navigator* (oft Stacktrace `navigation.tsx` ~150 / ~330 oder altes `_layout` Bridge).
+
+---
+
+## Kunde: Suche → Tracking (`app/status.tsx`)
+
+```mermaid
+flowchart LR
+  index["/ index"] --> searching["status: searching_driver"]
+  searching --> accepted["status: accepted / driver_arriving"]
+  accepted --> arrived["status: driver_waiting"]
+  arrived --> driving["status: in_progress"]
+  driving --> completed["status: completed"]
+```
+
+| Phase (`customerPhase`) | UI (Stand) | API-Status (typ.) |
+|-------------------------|------------|-------------------|
+| `searching` | Suche-Fahrer (rot, Spinner) | `searching_driver`, … |
+| `accepted` / `preparing` | Karte + **helles Bottom-Sheet** (Ziel oben, ETA, Fahrer, Fortschritt) — **kein** ☰-Menü; Aktionen: **Chat** + Storno | `accepted`, `driver_arriving`, … |
+| `arrived` | wie oben + grünes „Fahrer ist da“ | `driver_waiting` |
+| `driving` | wie oben | `in_progress` |
+
+**Fortschritt (genau ein Schritt aktiv):** `trackingProgressActiveStep` in `status.tsx` — (0) `accepted`/`driver_arriving` → „Fahrer unterwegs“; (1) `driver_waiting`/`in_progress` → „Ankunft“; (2) nur `completed` → „Ziel erreicht“.
+| `completed` | Danke + Beleg | terminal |
+
+**Ziel von Orte/extern:** siehe **`imoove-mobile-destination-navigation.mdc`** — **nicht** URL-Params auf `/`.
+
+**Gleiches Gerät, Fahrer auch eingeloggt:**
+
+1. `status.tsx`: `isDriverLoggedIn` → Ladeindikator + `useEffect` → `router.replace("/driver/dashboard")` (kein Kunden-Tracking für Fahrer).
+2. `SessionRestoreCoordinator`: Fahrer-Restore **pausiert**, wenn Kunde auf `/status`, `/ride`, `/ride-select` (kein Hijack zur Navi).
+
+---
+
+## Fahrer: Dashboard → Navi (`app/driver/navigation.tsx`)
+
+```mermaid
+flowchart TD
+  dash["/driver/dashboard"] --> nav["/driver/navigation?phase=pickup"]
+  nav --> arriving["PATCH driver_arriving"]
+  nav --> waiting["Angekommen → driver_waiting"]
+  waiting --> driving["Slide Fahrt beginnen → phase=driving"]
+  driving --> end["Fahrt beenden → completed"]
+```
+
+| Aktion | Navigation | Status (Server) |
+|--------|------------|-----------------|
+| Auftrag annehmen / Restore | `replaceDriverStackExclusive(buildDriverNavigationHref)` | `accepted` / … |
+| Navi Mount | einmal `router.dismissTo(/driver/navigation, params)` pro `rideId` | — |
+| pickup → Ziel | **`router.setParams`** (`setDriverNavigationPhaseParams`) — **kein** zweiter `push` | `in_progress` |
+| Kunde storniert | Alert → `replaceDriverStackExclusive("/driver/dashboard")` | `cancelled_by_customer` |
+
+**Stack nach App-Kill (iOS/Android):**
+
+- OS stellt oft **mehrere** `navigation`-Einträge mit verschiedenen Params wieder her.
+- `router.replace` allein reicht **nicht** (ersetzt nur obersten Eintrag).
+- **Fix:** `router.dismissTo({ pathname: "/driver/navigation", params })` in `navigation.tsx` (einmal pro `rideId`, Ref `stackCollapsedForRideRef`).
+- Hilfsfunktionen: `utils/driverNavigationRoute.ts` — `replaceDriverStackExclusive`, `resetDriverStackScreen`, `buildDriverNavigationHref`.
+
+**Explizit nicht tun:**
+
+- `DriverStackResetBridge` neben `<Stack>` + `useNavigation().dispatch(reset)` → falscher Navigator.
+- Root-RESET `{ name: "driver", state: { routes: [navigation] } }`.
+
+---
+
+## Session-Restore (`components/SessionRestoreCoordinator.tsx`)
+
+| Wer | Bedingung | Ziel |
+|-----|-----------|------|
+| Kunde | eingeloggt, Hydration, nur von `/` | `router.replace(/status?rideId=…)` wenn offene Fahrt |
+| Fahrer | eingeloggt, Markt hydr., **nicht** auf Kunden-Flow-Prefix | `replaceDriverStackExclusive` → Navi oder Dashboard |
+
+**Kunden-Flow-Prefixe (Fahrer-Restore blockiert):** `/status`, `/ride`, `/ride-select`.
+
+---
+
+## Symptom → zuerst hier (Debug-Tabelle)
+
+| Symptom | Wahrscheinliche Schicht | Erste Dateien |
+|---------|-------------------------|---------------|
+| `RESET` / *not handled by any navigator* | Falscher Navigator / alte Bridge | `driverNavigationRoute.ts`, `navigation.tsx` — nur **`dismissTo`** |
+| Kunde sieht Fahrer-Navi / umgekehrt | Session-Restore oder Dual-Login | `SessionRestoreCoordinator.tsx`, `status.tsx` |
+| Zurück-Swipe: alte Navi | Native Stack-Restore | `navigation.tsx` `dismissTo`; pickup→driving nur `setParams` |
+| Ghost-Sofortauftrag nach ONLINE | Markt-State / Notification-Baseline | **`imoove-mobile-driver-ghost-orders.mdc`** |
+| Kunde: „Neue Fahrt“-Push falsch | Token in zwei Rollen | **`imoove-mobile-notifications-push-knowledge.mdc`** + API Upsert |
+| Ziel fehlt nach Orte-Taxi | Pending-Destination | **`imoove-mobile-destination-navigation.mdc`** |
+| UI Tracking „zu groß“ | Nur `status.tsx` Styles (`tracking*`) | Kein Fahrer-Code mischen |
+
+---
+
+## Globale State-Falle (beide Rollen)
+
+`RideRequestProvider` in **`app/_layout.tsx`** — `requests` **überlebt** Routenwechsel.
+
+- Fahrer auf `/driver/login` ohne Token: Context muss Kunden-`requests` **leeren** (siehe Ghost-Orders).
+- Poll 2,5 s: Race zwischen UI und Fetch → Ghost oder Doppel-Banner.
+
+---
+
+## Abnahme kurz (nach Stack-/Tracking-Änderung)
+
+1. Kunde: Fahrt mit Fahrer → `/status` — Ziel oben, Sheet unten, Storno/Chat.
+2. Fahrer: Navi → Zurück-Swipe **keine** zweite Navi-Instanz.
+3. App-Kill mit offener Fahrer-Fahrt → Restore → eine Navi, korrekte Phase.
+4. Gleiches Gerät: Kunde auf `/status`, Fahrer-Session aktiv → Kunde bleibt auf Status, **kein** RESET-Error in Metro.
+
+## Referenz-Commits / Dateien (Stand 2026-05)
+
+- `driverNavigationRoute.ts`, `app/driver/navigation.tsx`, `app/driver/_layout.tsx` (nur `<Stack>`, keine Bridge)
+- `app/status.tsx` — Tracking-UI + Fahrer-Redirect
+- `SessionRestoreCoordinator.tsx`
+- Entfernt: `utils/driverStackReset.ts` (Queue + RESET — ersetzt durch `dismissTo`)
