@@ -829,6 +829,11 @@ export default function HomeScreen() {
     }
   }, [emailOtpDigits, obRegEmail]);
 
+  const focusObRegNameInput = useCallback(() => {
+    obRegNameRef.current?.blur();
+    setTimeout(() => obRegNameRef.current?.focus(), 50);
+  }, []);
+
   const completeLocalRegistrationDetails = useCallback(() => {
     const email = obRegEmail.trim().toLowerCase();
     const name = obRegName.trim();
@@ -2525,7 +2530,10 @@ export default function HomeScreen() {
                   <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
                     E-Mail ist bestätigt. Bitte Namen und Telefon für die Buchung angeben.
                   </Text>
-                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                  <Pressable
+                    style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    onPress={focusObRegNameInput}
+                  >
                     <Feather name="user" size={18} color={colors.mutedForeground} />
                     <TextInput
                       ref={obRegNameRef}
@@ -2536,9 +2544,11 @@ export default function HomeScreen() {
                       onChangeText={setObRegName}
                       autoCapitalize="words"
                       returnKeyType="done"
+                      editable
+                      onPressIn={focusObRegNameInput}
                       onSubmitEditing={() => obRegPhoneRef.current?.focus()}
                     />
-                  </View>
+                  </Pressable>
                   <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                     <Feather name="phone" size={18} color={colors.mutedForeground} />
                     <TextInput

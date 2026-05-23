@@ -1060,6 +1060,11 @@ export default function ProfileScreen() {
     }
   }, [API_URL, regEmail, regOtpDigits]);
 
+  const focusRegNameInput = useCallback(() => {
+    regNameRef.current?.blur();
+    setTimeout(() => regNameRef.current?.focus(), 50);
+  }, []);
+
   const handleRegisterComplete = () => {
     const email = regEmail.trim().toLowerCase();
     const name = regName.trim();
@@ -1492,7 +1497,10 @@ export default function ProfileScreen() {
                     E-Mail bestätigt. Name und Telefon für Buchungen angeben.
                   </Text>
 
-                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                  <Pressable
+                    style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}
+                    onPress={focusRegNameInput}
+                  >
                     <Feather name="user" size={16} color={colors.mutedForeground} />
                     <TextInput
                       ref={regNameRef}
@@ -1503,9 +1511,11 @@ export default function ProfileScreen() {
                       onChangeText={setRegName}
                       autoCapitalize="words"
                       returnKeyType="done"
+                      editable
+                      onPressIn={focusRegNameInput}
                       onSubmitEditing={() => regPhoneRef.current?.focus()}
                     />
-                  </View>
+                  </Pressable>
 
                   <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="phone" size={16} color={colors.mutedForeground} />
