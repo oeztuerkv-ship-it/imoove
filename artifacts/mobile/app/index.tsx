@@ -2541,10 +2541,9 @@ export default function HomeScreen() {
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
-              justifyContent: "center",
               paddingHorizontal: 24,
               paddingTop: topPad + 16,
-              paddingBottom: bottomPad + 16,
+              paddingBottom: bottomPad + 6,
               gap: obGap,
             }}
             keyboardShouldPersistTaps="handled"
@@ -2706,26 +2705,36 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
 
-                <OnboardingFeatureIconsRow
-                  mutedColor={colors.mutedForeground}
-                  compact={isSmallScreen}
-                />
+                <View
+                  style={{
+                    marginTop: "auto",
+                    gap: isSmallScreen ? 12 : 14,
+                    paddingTop: isSmallScreen ? 20 : 28,
+                  }}
+                >
+                  <OnboardingFeatureIconsRow
+                    mutedColor={colors.mutedForeground}
+                    dividerColor={colors.border}
+                    titleColor={colors.foreground}
+                    compact={isSmallScreen}
+                  />
 
-                <OnboardingSignupLegalFooter
-                  mutedColor={colors.mutedForeground}
-                  fontSize={isSmallScreen ? 11 : 12}
-                  onAgbPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({ pathname: "/legal-web", params: { url: ONRODA_AGB_URL, title: "AGB" } } as Href);
-                  }}
-                  onDatenschutzPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({
-                      pathname: "/legal-web",
-                      params: { url: ONRODA_DATENSCHUTZ_URL, title: "Datenschutz" },
-                    } as Href);
-                  }}
-                />
+                  <OnboardingSignupLegalFooter
+                    mutedColor={colors.mutedForeground}
+                    fontSize={isSmallScreen ? 9 : 10}
+                    onAgbPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push({ pathname: "/legal-web", params: { url: ONRODA_AGB_URL, title: "AGB" } } as Href);
+                    }}
+                    onDatenschutzPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push({
+                        pathname: "/legal-web",
+                        params: { url: ONRODA_DATENSCHUTZ_URL, title: "Datenschutz" },
+                      } as Href);
+                    }}
+                  />
+                </View>
               </>
             ) : (
             <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
@@ -2758,24 +2767,23 @@ export default function HomeScreen() {
                     />
                   </View>
                   <Pressable
-                    style={[styles.socialBtn, {
+                    style={loginActionButtonStyle({
                       backgroundColor: "#111111",
-                      borderColor: "#111111",
                       paddingVertical: isSmallScreen ? 13 : 16,
+                      borderRadius: 14,
                       opacity: emailStartLoading ? 0.72 : 1,
-                    }]}
+                    })}
                     onPress={() => void submitEmailVerificationStart()}
                     disabled={emailStartLoading}
                   >
-                    {emailStartLoading
-                      ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                      <Feather name="send" size={20} color="#fff" />
-                      )}
-                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
-                      Bestätigungscode senden
-                    </Text>
+                    {emailStartLoading ? (
+                      <Text style={loginActionLabelStyle({ color: "#fff" })}>Bestätigungscode senden…</Text>
+                    ) : (
+                      <>
+                        <Feather name="send" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        <Text style={loginActionLabelStyle({ color: "#fff" })}>Bestätigungscode senden</Text>
+                      </>
+                    )}
                   </Pressable>
                 </>
               ) : onboardingCustomerStep === "verify" ? (
@@ -3090,22 +3098,23 @@ export default function HomeScreen() {
                     />
                   </View>
                   <Pressable
-                    style={[styles.socialBtn, {
+                    style={loginActionButtonStyle({
                       backgroundColor: "#111111",
                       paddingVertical: isSmallScreen ? 13 : 16,
+                      borderRadius: 14,
                       opacity: emailStartLoading ? 0.72 : 1,
-                    }]}
+                    })}
                     onPress={() => void submitPasswordResetStart()}
                     disabled={emailStartLoading}
                   >
                     {emailStartLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={loginActionLabelStyle({ color: "#fff" })}>Code senden…</Text>
                     ) : (
-                      <Feather name="send" size={20} color="#fff" />
+                      <>
+                        <Feather name="send" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        <Text style={loginActionLabelStyle({ color: "#fff" })}>Code senden</Text>
+                      </>
                     )}
-                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
-                      Code senden
-                    </Text>
                   </Pressable>
                 </>
               ) : onboardingCustomerStep === "password_reset_verify" ? (

@@ -1402,14 +1402,23 @@ export default function ProfileScreen() {
                         />
                       </View>
                       <Pressable
-                        style={[styles.registerBtn, { backgroundColor: "#111111" }]}
+                        style={loginActionButtonStyle({
+                          backgroundColor: "#111111",
+                          paddingVertical: rs(16),
+                          borderRadius: rs(14),
+                          marginTop: rs(4),
+                          opacity: emailStartLoading ? 0.72 : 1,
+                        })}
                         onPress={() => void startProfilePasswordReset()}
                         disabled={emailStartLoading}
                       >
                         {emailStartLoading ? (
-                          <ActivityIndicator size="small" color="#fff" />
+                          <Text style={loginActionLabelStyle({ color: "#fff" })}>Code senden…</Text>
                         ) : (
-                          <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code senden</Text>
+                          <>
+                            <Feather name="send" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                            <Text style={loginActionLabelStyle({ color: "#fff" })}>Code senden</Text>
+                          </>
                         )}
                       </Pressable>
                     </View>
@@ -1893,14 +1902,23 @@ export default function ProfileScreen() {
                     />
                   </View>
                   <Pressable
-                    style={[styles.registerBtn, { backgroundColor: "#111111" }]}
+                    style={loginActionButtonStyle({
+                      backgroundColor: "#111111",
+                      paddingVertical: rs(16),
+                      borderRadius: rs(14),
+                      marginTop: rs(4),
+                      opacity: emailStartLoading ? 0.72 : 1,
+                    })}
                     onPress={() => void startProfilePasswordReset()}
                     disabled={emailStartLoading}
                   >
                     {emailStartLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={loginActionLabelStyle({ color: "#fff" })}>Code senden…</Text>
                     ) : (
-                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code senden</Text>
+                      <>
+                        <Feather name="send" size={LOGIN_ACTION_ICON_SIZE} color="#fff" />
+                        <Text style={loginActionLabelStyle({ color: "#fff" })}>Code senden</Text>
+                      </>
                     )}
                   </Pressable>
                 </View>

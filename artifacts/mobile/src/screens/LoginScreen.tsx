@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 
@@ -212,43 +212,69 @@ const ONBOARDING_FEATURES = [
 
 type OnboardingFeatureIconsRowProps = {
   mutedColor: string;
+  dividerColor: string;
+  titleColor: string;
   compact?: boolean;
 };
 
 /** Vier Feature-Icons unter dem Login (Onboarding). */
-export function OnboardingFeatureIconsRow({ mutedColor, compact = false }: OnboardingFeatureIconsRowProps) {
+export function OnboardingFeatureIconsRow({
+  mutedColor,
+  dividerColor,
+  titleColor,
+  compact = false,
+}: OnboardingFeatureIconsRowProps) {
   const iconSize = compact ? 20 : 24;
-  const titleSize = compact ? 10 : 11;
-  const textSize = compact ? 9 : 10;
+  const titleSize = compact ? 8 : 9;
+  const textSize = compact ? 7 : 8;
 
   return (
-    <View style={{ flexDirection: "row", gap: compact ? 6 : 8 }}>
-      {ONBOARDING_FEATURES.map((feature) => (
-        <View key={feature.title} style={{ flex: 1, alignItems: "center", gap: compact ? 4 : 6 }}>
-          <MaterialCommunityIcons name={feature.icon} size={iconSize} color={ONRODA_MARK_RED} />
-          <Text
-            style={{
-              fontSize: titleSize,
-              fontFamily: "Inter_600SemiBold",
-              color: ONRODA_MARK_RED,
-              textAlign: "center",
-              lineHeight: titleSize + 4,
-            }}
-          >
-            {feature.title}
-          </Text>
-          <Text
-            style={{
-              fontSize: textSize,
-              fontFamily: "Inter_400Regular",
-              color: mutedColor,
-              textAlign: "center",
-              lineHeight: textSize + 5,
-            }}
-          >
-            {feature.text}
-          </Text>
-        </View>
+    <View style={{ flexDirection: "row", alignItems: "stretch" }}>
+      {ONBOARDING_FEATURES.map((feature, index) => (
+        <React.Fragment key={feature.title}>
+          {index > 0 ? (
+            <View
+              style={{
+                width: StyleSheet.hairlineWidth,
+                backgroundColor: dividerColor,
+                marginVertical: compact ? 2 : 4,
+                opacity: 0.85,
+              }}
+            />
+          ) : null}
+          <View style={{ flex: 1, alignItems: "center", gap: compact ? 3 : 4, paddingHorizontal: compact ? 1 : 2 }}>
+            <MaterialCommunityIcons name={feature.icon} size={iconSize} color={ONRODA_MARK_RED} />
+            <Text
+              style={{
+                textAlign: "center",
+                fontSize: textSize,
+                lineHeight: textSize + 3,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  color: titleColor,
+                  fontSize: titleSize,
+                  lineHeight: titleSize + 3,
+                }}
+              >
+                {feature.title}
+              </Text>
+              {"\n"}
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  color: mutedColor,
+                  fontSize: textSize,
+                  lineHeight: textSize + 3,
+                }}
+              >
+                {feature.text}
+              </Text>
+            </Text>
+          </View>
+        </React.Fragment>
       ))}
     </View>
   );
@@ -266,8 +292,9 @@ export function OnboardingSignupLegalFooter({
   mutedColor,
   onAgbPress,
   onDatenschutzPress,
-  fontSize = 12,
+  fontSize = 10,
 }: OnboardingSignupLegalFooterProps) {
+  const linkSize = fontSize;
   return (
     <Text
       style={{
@@ -275,20 +302,20 @@ export function OnboardingSignupLegalFooter({
         fontSize,
         fontFamily: "Inter_400Regular",
         color: mutedColor,
-        lineHeight: fontSize + 6,
+        lineHeight: fontSize + 5,
         paddingHorizontal: 8,
       }}
     >
       Mit deiner Anmeldung stimmst du unseren{" "}
       <Text
-        style={{ color: ONRODA_MARK_RED, fontFamily: "Inter_600SemiBold" }}
+        style={{ color: ONRODA_MARK_RED, fontFamily: "Inter_600SemiBold", fontSize: linkSize }}
         onPress={onAgbPress}
       >
         AGB
       </Text>
       {" "}und{" "}
       <Text
-        style={{ color: ONRODA_MARK_RED, fontFamily: "Inter_600SemiBold" }}
+        style={{ color: ONRODA_MARK_RED, fontFamily: "Inter_600SemiBold", fontSize: linkSize }}
         onPress={onDatenschutzPress}
       >
         Datenschutzrichtlinien
