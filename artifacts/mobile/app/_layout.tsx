@@ -12,6 +12,7 @@ import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
+import { Image, StyleSheet, useWindowDimensions, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -49,6 +50,24 @@ const ROOT_FONT_MAP = {
 };
 
 const queryClient = new QueryClient();
+
+/** Eigenes Splash (Expo Go cached oft das alte Native-Splash) — offizielles ONRODA-Logo. */
+function OnrodaStartupSplash({ visible }: { visible: boolean }) {
+  const { width } = useWindowDimensions();
+  if (!visible) return null;
+  const logoWidth = Math.min(width * 0.78, 320);
+  const logoHeight = logoWidth * (682 / 1024);
+  return (
+    <View style={styles.startupSplashOverlay} pointerEvents="auto">
+      <Image
+        source={require("../assets/images/onroda-logo-official.png")}
+        style={{ width: logoWidth, height: logoHeight }}
+        resizeMode="contain"
+        accessibilityLabel="ONRODA"
+      />
+    </View>
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -95,6 +114,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [fontError, setFontError] = useState<Error | null>(null);
+  const showStartupSplash = !fontsLoaded && !fontError;
+
+  useEffect(() => {
+    void SplashScreen.hideAsync();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +164,18 @@ export default function RootLayout() {
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
+      <OnrodaStartupSplash visible={showStartupSplash} />
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  startupSplashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+    elevation: 9999,
+  },
+});
