@@ -66,7 +66,11 @@ import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { EMAIL_VERIFICATION_PURPOSE, mapEmailVerificationApiError } from "@/utils/emailVerificationErrors";
+import {
+  EMAIL_VERIFICATION_PURPOSE,
+  isEmailStartAccountExistsResponse,
+  mapEmailVerificationApiError,
+} from "@/utils/emailVerificationErrors";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
@@ -752,7 +756,7 @@ export default function HomeScreen() {
       };
       if (!res.ok || data?.ok === false) {
         const errCode = data?.error;
-        if (res.status === 409 && errCode === "account_exists") {
+        if (isEmailStartAccountExistsResponse(res.status, errCode)) {
           Alert.alert(
             "Bereits registriert",
             mapEmailVerificationApiError("account_exists"),
@@ -831,6 +835,10 @@ export default function HomeScreen() {
         proofToken?: string;
       };
       if (!res.ok || data?.ok === false) {
+        if (isEmailStartAccountExistsResponse(res.status, data?.error)) {
+          Alert.alert("Bereits registriert", mapEmailVerificationApiError("account_exists"));
+          return;
+        }
         Alert.alert(
           data?.error === "too_many_attempts" ? "Gesperrt" : "Hinweis",
           mapEmailVerificationApiError(data?.error),

@@ -58724,6 +58724,48 @@ async function getLastCreatedAtForEmail(normalizedEmail) {
 init_drizzle_orm();
 init_client();
 init_schema2();
+
+// src/lib/emailVerificationCode.ts
+import { createHash as createHash2, randomInt } from "node:crypto";
+var EMAIL_VERIFICATION_TTL_MS = 10 * 60 * 1e3;
+var EMAIL_VERIFICATION_MAX_ATTEMPTS = 5;
+var CUSTOMER_REGISTRATION_PURPOSE = "customer_registration";
+var PURPOSE_SAFE = /^[a-z][a-z0-9_]{0,62}$/;
+function normalizeCustomerEmail(raw) {
+  return raw.trim().toLowerCase();
+}
+function isPlausibleRegistrationEmail(normalized) {
+  if (normalized.length < 6 || normalized.length > 254) return false;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return false;
+  return true;
+}
+function sanitizePurpose(raw) {
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : CUSTOMER_REGISTRATION_PURPOSE;
+  return PURPOSE_SAFE.test(s) ? s : CUSTOMER_REGISTRATION_PURPOSE;
+}
+function pepper() {
+  const p = (process.env.EMAIL_VERIFICATION_CODE_PEPPER ?? "").trim();
+  if (p.length >= 16) return p;
+  const j = (process.env.AUTH_JWT_SECRET ?? "").trim();
+  if (j.length >= 32) return j.slice(0, 64);
+  return "";
+}
+function hashEmailVerificationCode(normalizedEmail, sixDigitCode) {
+  const p = pepper();
+  if (!p) {
+    throw new Error("EMAIL_VERIFICATION_CODE_PEPPER oder AUTH_JWT_SECRET (lang) fehlt");
+  }
+  const digits = sixDigitCode.replace(/\D/g, "").trim();
+  return createHash2("sha256").update(`${p}|${normalizedEmail}|${digits}`, "utf8").digest("hex");
+}
+function isPepperConfigured() {
+  return pepper().length >= 16;
+}
+function generateSixDigitCode() {
+  return String(randomInt(1e5, 1e6));
+}
+
+// src/db/customerAccountsData.ts
 function mapRow(r) {
   return {
     id: r.id,
@@ -58736,9 +58778,11 @@ function mapRow(r) {
     updated_at: r.updated_at
   };
 }
-async function findCustomerAccountByEmail(normalizedEmail) {
+async function findCustomerAccountByEmail(email) {
   const db2 = getDb();
   if (!db2) throw new Error("database_not_configured");
+  const normalizedEmail = normalizeCustomerEmail(email);
+  if (!normalizedEmail) return null;
   const rows = await db2.select().from(customerAccountsTable).where(eq(customerAccountsTable.email, normalizedEmail)).limit(1);
   const r = rows[0];
   return r ? mapRow(r) : null;
@@ -58790,46 +58834,6 @@ async function listCustomerAccountsAdmin(limit = 500) {
     emailVerifiedAt: r.email_verified_at.toISOString(),
     createdAt: r.created_at.toISOString()
   }));
-}
-
-// src/lib/emailVerificationCode.ts
-import { createHash as createHash2, randomInt } from "node:crypto";
-var EMAIL_VERIFICATION_TTL_MS = 10 * 60 * 1e3;
-var EMAIL_VERIFICATION_MAX_ATTEMPTS = 5;
-var CUSTOMER_REGISTRATION_PURPOSE = "customer_registration";
-var PURPOSE_SAFE = /^[a-z][a-z0-9_]{0,62}$/;
-function normalizeCustomerEmail(raw) {
-  return raw.trim().toLowerCase();
-}
-function isPlausibleRegistrationEmail(normalized) {
-  if (normalized.length < 6 || normalized.length > 254) return false;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return false;
-  return true;
-}
-function sanitizePurpose(raw) {
-  const s = typeof raw === "string" ? raw.trim().toLowerCase() : CUSTOMER_REGISTRATION_PURPOSE;
-  return PURPOSE_SAFE.test(s) ? s : CUSTOMER_REGISTRATION_PURPOSE;
-}
-function pepper() {
-  const p = (process.env.EMAIL_VERIFICATION_CODE_PEPPER ?? "").trim();
-  if (p.length >= 16) return p;
-  const j = (process.env.AUTH_JWT_SECRET ?? "").trim();
-  if (j.length >= 32) return j.slice(0, 64);
-  return "";
-}
-function hashEmailVerificationCode(normalizedEmail, sixDigitCode) {
-  const p = pepper();
-  if (!p) {
-    throw new Error("EMAIL_VERIFICATION_CODE_PEPPER oder AUTH_JWT_SECRET (lang) fehlt");
-  }
-  const digits = sixDigitCode.replace(/\D/g, "").trim();
-  return createHash2("sha256").update(`${p}|${normalizedEmail}|${digits}`, "utf8").digest("hex");
-}
-function isPepperConfigured() {
-  return pepper().length >= 16;
-}
-function generateSixDigitCode() {
-  return String(randomInt(1e5, 1e6));
 }
 
 // src/lib/emailVerificationMail.ts
@@ -58919,6 +58923,31 @@ function throttleIpRollingHour(ipKey, maxHits, windowMs) {
 }
 
 // src/lib/emailVerificationFlow.ts
+init_logger2();
+async function checkCustomerRegistrationAccount(normalizedEmail) {
+  try {
+    const existing = await findCustomerAccountByEmail(normalizedEmail);
+    const emailDomain = normalizedEmail.includes("@") ? normalizedEmail.split("@")[1] : "";
+    logger.info(
+      {
+        event: "auth.email.customer_account_check",
+        found: Boolean(existing),
+        emailDomain
+      },
+      "customer_accounts lookup for email verification"
+    );
+    if (existing) {
+      logger.info(
+        { event: "auth.email.start.blocked_account_exists", emailDomain },
+        "blocked verification code send \u2014 customer account already exists"
+      );
+    }
+    return { ok: true, exists: Boolean(existing) };
+  } catch (err) {
+    logger.error({ err, event: "auth.email.customer_account_check_failed" }, "customer_accounts lookup failed");
+    return { ok: false, error: "database_error", status: 503 };
+  }
+}
 function maxSendsEmailPerHour() {
   const n4 = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_EMAIL_HOUR ?? "5");
   return Number.isFinite(n4) && n4 >= 1 && n4 <= 100 ? Math.floor(n4) : 5;
@@ -58947,8 +58976,11 @@ async function dispatchEmailVerificationCode(opts) {
     return { ok: false, error: "invalid_email", status: 400 };
   }
   if (purpose === CUSTOMER_REGISTRATION_PURPOSE) {
-    const existing = await findCustomerAccountByEmail(normalized);
-    if (existing) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (accountCheck.exists) {
       return { ok: false, error: "account_exists", status: 409 };
     }
   }
@@ -59023,6 +59055,15 @@ async function verifyEmailCode(opts) {
   const digits = typeof opts.bodyCode === "string" ? opts.bodyCode.replace(/\D/g, "").trim() : "";
   if (!isPlausibleRegistrationEmail(normalized) || digits.length !== 6) {
     return { ok: false, error: "invalid_params", status: 400 };
+  }
+  if (purpose === CUSTOMER_REGISTRATION_PURPOSE) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (accountCheck.exists) {
+      return { ok: false, error: "account_exists", status: 409 };
+    }
   }
   const row = await getLatestUnconsumedRowAnyExpiry(normalized, purpose);
   if (!row) {

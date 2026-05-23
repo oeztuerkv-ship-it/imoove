@@ -32,7 +32,11 @@ import { type UserProfile, useUser } from "@/context/UserContext";
 import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
-import { EMAIL_VERIFICATION_PURPOSE, mapEmailVerificationApiError } from "@/utils/emailVerificationErrors";
+import {
+  EMAIL_VERIFICATION_PURPOSE,
+  isEmailStartAccountExistsResponse,
+  mapEmailVerificationApiError,
+} from "@/utils/emailVerificationErrors";
 import { getGoogleOAuthRedirectUri } from "@/utils/googleOAuthReturnUrl";
 import { parseJwtPayloadUnsafe } from "@/utils/parseJwtPayload";
 import { readOAuthReturnParams } from "@/utils/readOAuthReturnParams";
@@ -982,7 +986,7 @@ export default function ProfileScreen() {
         retryAfterSeconds?: number;
       };
       if (!res.ok || data?.ok === false) {
-        if (res.status === 409 && data?.error === "account_exists") {
+        if (isEmailStartAccountExistsResponse(res.status, data?.error)) {
           Alert.alert("Bereits registriert", mapEmailVerificationApiError("account_exists"));
           return;
         }
@@ -1050,6 +1054,10 @@ export default function ProfileScreen() {
         proofToken?: string;
       };
       if (!res.ok || data?.ok === false) {
+        if (isEmailStartAccountExistsResponse(res.status, data?.error)) {
+          Alert.alert("Bereits registriert", mapEmailVerificationApiError("account_exists"));
+          return;
+        }
         Alert.alert(
           data?.error === "too_many_attempts" ? "Gesperrt" : "Hinweis",
           mapEmailVerificationApiError(data?.error),

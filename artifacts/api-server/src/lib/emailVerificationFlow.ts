@@ -25,6 +25,38 @@ import {
 import { sendOnrodaVerificationEmailPlain } from "./emailVerificationMail";
 import { signEmailVerificationProofJwt } from "./emailVerificationJwt";
 import { throttleIpRollingHour } from "./emailVerificationIpThrottle";
+import { logger } from "./logger";
+
+type CustomerAccountCheckResult =
+  | { ok: true; exists: boolean }
+  | { ok: false; error: string; status: number };
+
+async function checkCustomerRegistrationAccount(
+  normalizedEmail: string,
+): Promise<CustomerAccountCheckResult> {
+  try {
+    const existing = await findCustomerAccountByEmail(normalizedEmail);
+    const emailDomain = normalizedEmail.includes("@") ? normalizedEmail.split("@")[1] : "";
+    logger.info(
+      {
+        event: "auth.email.customer_account_check",
+        found: Boolean(existing),
+        emailDomain,
+      },
+      "customer_accounts lookup for email verification",
+    );
+    if (existing) {
+      logger.info(
+        { event: "auth.email.start.blocked_account_exists", emailDomain },
+        "blocked verification code send — customer account already exists",
+      );
+    }
+    return { ok: true, exists: Boolean(existing) };
+  } catch (err) {
+    logger.error({ err, event: "auth.email.customer_account_check_failed" }, "customer_accounts lookup failed");
+    return { ok: false, error: "database_error", status: 503 };
+  }
+}
 
 function maxSendsEmailPerHour(): number {
   const n = Number(process.env.EMAIL_VERIFICATION_MAX_SENDS_PER_EMAIL_HOUR ?? "5");
@@ -69,8 +101,11 @@ export async function dispatchEmailVerificationCode(opts: {
   }
 
   if (purpose === CUSTOMER_REGISTRATION_PURPOSE) {
-    const existing = await findCustomerAccountByEmail(normalized);
-    if (existing) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (accountCheck.exists) {
       return { ok: false, error: "account_exists", status: 409 };
     }
   }
@@ -163,6 +198,16 @@ export async function verifyEmailCode(opts: {
 
   if (!isPlausibleRegistrationEmail(normalized) || digits.length !== 6) {
     return { ok: false, error: "invalid_params", status: 400 };
+  }
+
+  if (purpose === CUSTOMER_REGISTRATION_PURPOSE) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (accountCheck.exists) {
+      return { ok: false, error: "account_exists", status: 409 };
+    }
   }
 
   const row = await getLatestUnconsumedRowAnyExpiry(normalized, purpose);

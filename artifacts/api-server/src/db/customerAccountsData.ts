@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "./client";
 import { customerAccountsTable } from "./schema";
+import { normalizeCustomerEmail } from "../lib/emailVerificationCode";
 
 export type CustomerAccountRow = {
   id: string;
@@ -26,9 +27,11 @@ function mapRow(r: typeof customerAccountsTable.$inferSelect): CustomerAccountRo
   };
 }
 
-export async function findCustomerAccountByEmail(normalizedEmail: string): Promise<CustomerAccountRow | null> {
+export async function findCustomerAccountByEmail(email: string): Promise<CustomerAccountRow | null> {
   const db = getDb();
   if (!db) throw new Error("database_not_configured");
+  const normalizedEmail = normalizeCustomerEmail(email);
+  if (!normalizedEmail) return null;
   const rows = await db
     .select()
     .from(customerAccountsTable)

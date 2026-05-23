@@ -10,6 +10,9 @@ export function mapEmailVerificationApiError(code: unknown): string {
   if (k === "database_not_configured" || k === "email_verification_not_configured") {
     return "Server noch nicht bereit für E-Mail-Bestätigung.";
   }
+  if (k === "database_error") {
+    return "Server-Datenbank vorübergehend nicht erreichbar — bitte später erneut.";
+  }
   if (k === "rate_limit_email" || k === "rate_limit_ip" || k === "rate_limit_resend") {
     return "Zu viele Anfragen — bitte kurz warten und erneut versuchen.";
   }
@@ -20,4 +23,12 @@ export function mapEmailVerificationApiError(code: unknown): string {
     return "Bereits registriert — bitte einloggen. Diese E-Mail-Adresse hat schon ein Konto.";
   }
   return "Es ist ein Fehler aufgetreten.";
+}
+
+/** 409 vom Server bei bereits registrierter E-Mail (customer_accounts). */
+export function isEmailStartAccountExistsResponse(
+  status: number,
+  errorCode: unknown,
+): boolean {
+  return status === 409 && (errorCode === "account_exists" || errorCode === undefined);
 }
