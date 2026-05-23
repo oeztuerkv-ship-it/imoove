@@ -31,6 +31,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import {
   BottomTabBar,
@@ -160,7 +161,7 @@ export default function HomeScreen() {
   /** Verhindert zweites useFocusEffect (Strict Mode / Re-Focus), das sonst frisch gesetztes Ziel wieder löscht. */
   const homePendingDestinationGuardUntilRef = useRef(0);
   const { loading: driverLoading, isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
-  const { profile, updateProfile, loginWithGoogle, registerLocalCustomer } = useUser();
+  const { profile, updateProfile, loginWithGoogle, registerCustomerAccount } = useUser();
 
   const {
     origin, viaStops, destination, selectedVehicle, paymentMethod,
@@ -338,7 +339,12 @@ export default function HomeScreen() {
     setAppNewsDetail(item);
   }, [SPONSORS_DETAIL_ROUTE]);
 
-  type OnboardingCustomerStep = "social" | "email_enter" | "verify" | "register_details";
+  type OnboardingCustomerStep =
+    | "social"
+    | "email_enter"
+    | "verify"
+    | "register_details"
+    | "register_password";
   const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
   const [obRegName, setObRegName] = useState("");
   const [obRegEmail, setObRegEmail] = useState("");
@@ -349,6 +355,9 @@ export default function HomeScreen() {
   const [cooldownSecs, setCooldownSecs] = useState(0);
   const [emailStartLoading, setEmailStartLoading] = useState(false);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  const [obRegPassword, setObRegPassword] = useState("");
+  const [obRegPasswordConfirm, setObRegPasswordConfirm] = useState("");
+  const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
   const obRegNameRef = useRef<TextInput>(null);
   const obRegPhoneRef = useRef<TextInput>(null);
 
@@ -378,6 +387,9 @@ export default function HomeScreen() {
       setCooldownSecs(0);
       setEmailStartLoading(false);
       setEmailVerifyLoading(false);
+      setObRegPassword("");
+      setObRegPasswordConfirm("");
+      setRegisterSubmitLoading(false);
     }
   }, [showOnboarding]);
 
@@ -739,7 +751,15 @@ export default function HomeScreen() {
         retryAfterSeconds?: number;
       };
       if (!res.ok || data?.ok === false) {
-        const msg = mapEmailVerificationApiError(data?.error);
+        const errCode = data?.error;
+        if (res.status === 409 && errCode === "account_exists") {
+          Alert.alert(
+            "Bereits registriert",
+            mapEmailVerificationApiError("account_exists"),
+          );
+          return;
+        }
+        const msg = mapEmailVerificationApiError(errCode);
         Alert.alert(
           res.status === 429 ? "Bitte warten" : "Hinweis",
           typeof data?.retryAfterSeconds === "number" && data.retryAfterSeconds > 5
@@ -834,7 +854,7 @@ export default function HomeScreen() {
     setTimeout(() => obRegNameRef.current?.focus(), 50);
   }, []);
 
-  const completeLocalRegistrationDetails = useCallback(() => {
+  const continueToRegisterPassword = useCallback(() => {
     const email = obRegEmail.trim().toLowerCase();
     const name = obRegName.trim();
     const phone = obRegPhone.trim();
@@ -842,18 +862,50 @@ export default function HomeScreen() {
       Alert.alert("Hinweis", "Bitte Namen und Telefonnummer ausfüllen (E-Mail ist bereits bestätigt).");
       return;
     }
-    registerLocalCustomer(
-      {
+    setObRegPassword("");
+    setObRegPasswordConfirm("");
+    setOnboardingCustomerStep("register_password");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [obRegEmail, obRegName, obRegPhone]);
+
+  const submitCustomerRegistration = useCallback(async () => {
+    const email = obRegEmail.trim().toLowerCase();
+    const name = obRegName.trim();
+    const phone = obRegPhone.trim();
+    const proof = pendingEmailProofToken?.trim() ?? "";
+    if (!name || !phone || !isPlausibleEmail(email) || !proof) {
+      Alert.alert("Hinweis", "Bitte den Registrierungsflow von vorne starten (E-Mail bestätigen).");
+      return;
+    }
+    setRegisterSubmitLoading(true);
+    try {
+      const outcome = await registerCustomerAccount({
         name,
         email,
         phone,
-      },
-      pendingEmailProofToken?.trim()
-        ? { emailVerificationProofToken: pendingEmailProofToken.trim() }
-        : undefined,
-    );
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [obRegEmail, obRegName, obRegPhone, pendingEmailProofToken, registerLocalCustomer]);
+        password: obRegPassword,
+        passwordConfirm: obRegPasswordConfirm,
+        emailVerificationProofToken: proof,
+      });
+      if (!outcome.ok) {
+        Alert.alert("Hinweis", outcome.error);
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte Verbindung prüfen.");
+    } finally {
+      setRegisterSubmitLoading(false);
+    }
+  }, [
+    obRegEmail,
+    obRegName,
+    obRegPhone,
+    obRegPassword,
+    obRegPasswordConfirm,
+    pendingEmailProofToken,
+    registerCustomerAccount,
+  ]);
 
   /* ── Route fetch: nach Ziel- und Fahrzeugwahl Preis live neu berechnen ── */
   useEffect(() => {
@@ -2517,7 +2569,7 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
                 </>
-              ) : (
+              ) : onboardingCustomerStep === "register_details" ? (
                 <>
                   <Pressable
                     style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
@@ -2560,6 +2612,7 @@ export default function HomeScreen() {
                       onChangeText={setObRegPhone}
                       keyboardType="phone-pad"
                       returnKeyType="done"
+                      editable
                     />
                   </View>
                   <Pressable
@@ -2568,10 +2621,78 @@ export default function HomeScreen() {
                       borderColor: "#111111",
                       paddingVertical: isSmallScreen ? 13 : 16,
                     }]}
-                    onPress={completeLocalRegistrationDetails}
+                    onPress={continueToRegisterPassword}
                   >
-                    <Feather name="check" size={20} color="#fff" />
+                    <Feather name="arrow-right" size={20} color="#fff" />
                     <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                      Weiter
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("register_details")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Passwort setzen</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    Wähle ein sicheres Passwort für dein Onroda-Konto.
+                  </Text>
+                  <CustomerPasswordFields
+                    password={obRegPassword}
+                    confirm={obRegPasswordConfirm}
+                    onChangePassword={setObRegPassword}
+                    onChangeConfirm={setObRegPasswordConfirm}
+                    colors={{
+                      foreground: colors.foreground,
+                      mutedForeground: colors.mutedForeground,
+                      border: colors.border,
+                      surface: colors.surface,
+                    }}
+                    inputWrapStyle={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    inputFieldStyle={styles.onboardingInputField}
+                    onSubmitPassword={() => void submitCustomerRegistration()}
+                  />
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                        ? "#111111"
+                        : colors.muted,
+                      borderColor: isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                        ? "#111111"
+                        : colors.border,
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                      opacity: registerSubmitLoading ? 0.75 : 1,
+                    }]}
+                    onPress={() => void submitCustomerRegistration()}
+                    disabled={
+                      !isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm) || registerSubmitLoading
+                    }
+                  >
+                    {registerSubmitLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather
+                        name="check"
+                        size={20}
+                        color={
+                          isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                            ? "#fff"
+                            : colors.mutedForeground
+                        }
+                      />
+                    )}
+                    <Text style={[styles.socialBtnText, {
+                      color: isCustomerPasswordFormValid(obRegPassword, obRegPasswordConfirm)
+                        ? "#fff"
+                        : colors.mutedForeground,
+                      fontSize: isSmallScreen ? 15 : 16,
+                    }]}
+                    >
                       Registrierung abschließen
                     </Text>
                   </Pressable>

@@ -215,6 +215,7 @@ import {
 import { logger } from "../lib/logger";
 import adminInsuranceRouter from "./adminInsuranceApi";
 import adminAppNewsRouter from "./adminAppNewsRouter";
+import adminCustomerAccountsRouter from "./adminCustomerAccountsRouter";
 import adminAppSponsorsRouter from "./adminAppSponsorsRouter";
 import adminAppFaqRouter from "./adminAppFaqRouter";
 import adminDriverMessagesRouter from "./adminDriverMessagesRouter";
@@ -830,6 +831,7 @@ adminJson.use(requireAdminApiBearer);
 adminJson.use("/insurance", adminInsuranceRouter);
 /** Mobile App-Neuigkeiten (CMS, Admin + Service). */
 adminJson.use("/app-news", adminAppNewsRouter);
+adminJson.use("/customer-accounts", adminCustomerAccountsRouter);
 adminJson.use("/app-sponsors", adminAppSponsorsRouter);
 adminJson.use("/faq", adminAppFaqRouter);
 adminJson.use("/driver-messages", adminDriverMessagesRouter);

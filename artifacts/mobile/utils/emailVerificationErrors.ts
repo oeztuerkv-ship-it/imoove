@@ -16,5 +16,8 @@ export function mapEmailVerificationApiError(code: unknown): string {
   if (k === "invalid_code") return "Der Code ist ungültig.";
   if (k === "code_expired") return "Der Code ist abgelaufen. Bitte einen neuen anfordern.";
   if (k === "too_many_attempts") return "Zu viele Fehlversuche. Bitte einen neuen Code anfordern.";
+  if (k === "account_exists") {
+    return "Bereits registriert — bitte einloggen. Diese E-Mail-Adresse hat schon ein Konto.";
+  }
   return "Es ist ein Fehler aufgetreten.";
 }

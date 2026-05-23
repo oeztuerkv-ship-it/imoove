@@ -269,6 +269,18 @@ export const adminAuthUsersTable = pgTable("admin_auth_users", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Kunden-App: Registrierung per E-Mail + Passwort (JWT sub = id). */
+export const customerAccountsTable = pgTable("customer_accounts", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  password_hash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email_verified_at: timestamp("email_verified_at", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Einmal-Tokens für Admin-Passwort-Reset (gehasht, ablaufend, single-use). */
 export const adminAuthPasswordResetsTable = pgTable("admin_auth_password_resets", {
   id: text("id").primaryKey(),

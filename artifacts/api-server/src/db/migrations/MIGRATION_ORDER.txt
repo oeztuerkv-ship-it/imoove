@@ -74,6 +74,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Fahrer Markt ONLINE/OFFLINE (fleet_drivers.is_market_online)          → 066_fleet_drivers_market_online.sql
   Mobile App-FAQ (Admin-CMS, GET /api/app/faq)                          → 067_app_faq.sql
   Operator-Nachrichten an Fahrer (Push + In-App)                        → 068_driver_messages.sql
+  Kundenkonten E-Mail/Passwort (Mobile-Registrierung)                   → 074_customer_accounts.sql
 
 Nach Migrationen Schema prüfen:
 

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { mapCustomerAuthApiError, registerCustomerWithPassword } from "@/utils/customerAuthApi";
 import { syncCustomerExpoPushToken } from "@/utils/syncCustomerExpoPushToken";
 
 export interface UserProfile {
@@ -95,11 +96,20 @@ interface UserContextValue {
   updateProfile: (updates: Partial<UserProfile>) => void;
   logout: () => void;
   loginWithGoogle: (data: Partial<UserProfile> | Record<string, unknown>) => void;
-  /** Registrierung ohne Google (lokal); E-Mail-Verifizierung vorher über `/api/auth/email/*`. */
+  /** @deprecated Nur Legacy — nutze `registerCustomerAccount`. */
   registerLocalCustomer: (
     data: { name: string; email: string; phone: string },
     options?: { emailVerificationProofToken?: string },
   ) => void;
+  /** E-Mail-Registrierung mit Passwort (Server-Konto + Session-JWT). */
+  registerCustomerAccount: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    passwordConfirm: string;
+    emailVerificationProofToken: string;
+  }) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Telefonnummer-Flow: Profil anlegen/aktualisieren, angemeldet. */
   loginWithPhone: (data: {
     phone: string;
@@ -129,10 +139,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!profile.isLoggedIn || !profile.sessionToken?.trim() || !profile.googleId?.trim()) return;
+    const passengerId = profile.googleId?.trim();
+    if (!profile.isLoggedIn || !profile.sessionToken?.trim() || !passengerId) return;
     void syncCustomerExpoPushToken({
       sessionToken: profile.sessionToken.trim(),
-      googleId: profile.googleId.trim(),
+      googleId: passengerId,
     });
   }, [profile.isLoggedIn, profile.sessionToken, profile.googleId]);
 
@@ -177,6 +188,43 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [save],
   );
 
+  const registerCustomerAccount = useCallback(
+    async (data: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      passwordConfirm: string;
+      emailVerificationProofToken: string;
+    }): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const outcome = await registerCustomerWithPassword({
+        email: data.email,
+        proofToken: data.emailVerificationProofToken,
+        name: data.name,
+        phone: data.phone,
+        password: data.password,
+        passwordConfirm: data.passwordConfirm,
+      });
+      if (!outcome.ok) {
+        return { ok: false, error: mapCustomerAuthApiError(outcome.error) };
+      }
+      const updated: UserProfile = {
+        ...DEFAULT_PROFILE,
+        name: outcome.customer.name.trim() || data.name.trim(),
+        email: outcome.customer.email.trim() || data.email.trim(),
+        phone: (outcome.customer.phone ?? data.phone).trim(),
+        isLoggedIn: true,
+        photoUri: null,
+        googleId: outcome.customer.id,
+        sessionToken: outcome.sessionToken,
+        emailVerificationProofToken: null,
+      };
+      save(updated);
+      return { ok: true };
+    },
+    [save],
+  );
+
   const loginWithPhone = useCallback(
     (data: { phone: string; firstName: string; lastName: string; email?: string }) => {
       const name = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
@@ -208,7 +256,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <UserContext.Provider
-      value={{ profile, updateProfile, logout, loginWithGoogle, registerLocalCustomer, loginWithPhone }}
+      value={{
+        profile,
+        updateProfile,
+        logout,
+        loginWithGoogle,
+        registerLocalCustomer,
+        registerCustomerAccount,
+        loginWithPhone,
+      }}
     >
       {children}
     </UserContext.Provider>

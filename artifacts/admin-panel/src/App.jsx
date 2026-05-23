@@ -41,6 +41,7 @@ import AppOperationalFeaturesPage from "./pages/AppOperationalFeaturesPage.jsx";
 import AppOperationalDriverRulesPage from "./pages/AppOperationalDriverRulesPage.jsx";
 import AppOperationalBookingRulesPage from "./pages/AppOperationalBookingRulesPage.jsx";
 import AppOperationalSystemPage from "./pages/AppOperationalSystemPage.jsx";
+import CustomerAccountsPage from "./pages/CustomerAccountsPage.jsx";
 import AppNewsPage from "./pages/AppNewsPage.jsx";
 import AppFaqPage from "./pages/AppFaqPage.jsx";
 import AppSponsorsPage from "./pages/AppSponsorsPage.jsx";
@@ -293,6 +294,10 @@ const PAGE_META = {
   "homepage-content": {
     title: "Homepage-Inhalte",
     subtitle: "Hero-Texte und Hinweiszeile der Marketing-Homepage ohne Codeänderung steuern",
+  },
+  "customer-accounts": {
+    title: "Kundenkonten (App)",
+    subtitle: "Registrierte Endkunden per E-Mail und Passwort",
   },
   "app-news": {
     title: "App-Neuigkeiten",
@@ -716,6 +721,8 @@ export default function App() {
         return <HomepagePlaceholdersPage />;
       case "homepage-content":
         return <HomepageContentPage />;
+      case "customer-accounts":
+        return <CustomerAccountsPage />;
       case "app-news":
         return <AppNewsPage />;
       case "app-faq":

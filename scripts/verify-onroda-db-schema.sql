@@ -698,6 +698,27 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'customer_accounts'
+  ) THEN
+    errs := array_append(errs, 'table customer_accounts (Migration 074)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'customer_accounts' AND column_name = 'password_hash'
+  ) THEN
+    errs := array_append(errs, 'customer_accounts.password_hash (Migration 074)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'customer_accounts' AND column_name = 'email_verified_at'
+  ) THEN
+    errs := array_append(errs, 'customer_accounts.email_verified_at (Migration 074)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'app_news_items'
   ) THEN
     errs := array_append(errs, 'table app_news_items (Migration 057)');

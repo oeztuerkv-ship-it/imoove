@@ -10,7 +10,9 @@ import {
   insertVerificationCode,
   markConsumed,
 } from "../db/emailVerificationCodesData";
+import { findCustomerAccountByEmail } from "../db/customerAccountsData";
 import {
+  CUSTOMER_REGISTRATION_PURPOSE,
   EMAIL_VERIFICATION_MAX_ATTEMPTS,
   EMAIL_VERIFICATION_TTL_MS,
   generateSixDigitCode,
@@ -64,6 +66,13 @@ export async function dispatchEmailVerificationCode(opts: {
 
   if (!isPlausibleRegistrationEmail(normalized)) {
     return { ok: false, error: "invalid_email", status: 400 };
+  }
+
+  if (purpose === CUSTOMER_REGISTRATION_PURPOSE) {
+    const existing = await findCustomerAccountByEmail(normalized);
+    if (existing) {
+      return { ok: false, error: "account_exists", status: 409 };
+    }
   }
 
   const ipKey = clientIpKey(opts.ip);

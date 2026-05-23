@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
@@ -838,7 +839,7 @@ export default function ProfileScreen() {
   const topPad = isWeb ? 44 : insets.top;
   const { t, setLocale, languageLabel } = useTranslation();
 
-  const { profile, loginWithGoogle, updateProfile, logout, registerLocalCustomer } = useUser();
+  const { profile, loginWithGoogle, updateProfile, logout, registerCustomerAccount } = useUser();
 
   const pickLanguage = useCallback(() => {
     Alert.alert(
@@ -857,7 +858,7 @@ export default function ProfileScreen() {
   }, [setLocale, t]);
 
   const [profileStep, setProfileStep] = useState<"social" | "register">("social");
-  const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile">("email");
+  const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile" | "password">("email");
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
@@ -866,6 +867,9 @@ export default function ProfileScreen() {
   const [cooldownSecs, setCooldownSecs] = useState(0);
   const [emailStartLoading, setEmailStartLoading] = useState(false);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  const [regPassword, setRegPassword] = useState("");
+  const [regPasswordConfirm, setRegPasswordConfirm] = useState("");
+  const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
   const regNameRef = useRef<TextInput>(null);
   const regPhoneRef = useRef<TextInput>(null);
 
@@ -978,6 +982,10 @@ export default function ProfileScreen() {
         retryAfterSeconds?: number;
       };
       if (!res.ok || data?.ok === false) {
+        if (res.status === 409 && data?.error === "account_exists") {
+          Alert.alert("Bereits registriert", mapEmailVerificationApiError("account_exists"));
+          return;
+        }
         Alert.alert(
           res.status === 429 ? "Bitte warten" : "Hinweis",
           typeof data?.retryAfterSeconds === "number" && data.retryAfterSeconds > 30
@@ -1065,7 +1073,7 @@ export default function ProfileScreen() {
     setTimeout(() => regNameRef.current?.focus(), 50);
   }, []);
 
-  const handleRegisterComplete = () => {
+  const continueToRegisterPassword = () => {
     const email = regEmail.trim().toLowerCase();
     const name = regName.trim();
     const phone = regPhone.trim();
@@ -1073,14 +1081,43 @@ export default function ProfileScreen() {
       Alert.alert("Hinweis", "Bitte Namen und Telefon ausfüllen.");
       return;
     }
-    registerLocalCustomer(
-      { name, email, phone },
-      pendingEmailProofToken?.trim()
-        ? { emailVerificationProofToken: pendingEmailProofToken.trim() }
-        : undefined,
-    );
-    setProfileStep("social");
-    setRegSubStep("email");
+    setRegPassword("");
+    setRegPasswordConfirm("");
+    setRegSubStep("password");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleRegisterComplete = async () => {
+    const email = regEmail.trim().toLowerCase();
+    const name = regName.trim();
+    const phone = regPhone.trim();
+    const proof = pendingEmailProofToken?.trim() ?? "";
+    if (!name || !phone || !isPlausibleEmail(email) || !proof) {
+      Alert.alert("Hinweis", "Bitte Registrierung von vorne starten.");
+      return;
+    }
+    setRegisterSubmitLoading(true);
+    try {
+      const outcome = await registerCustomerAccount({
+        name,
+        email,
+        phone,
+        password: regPassword,
+        passwordConfirm: regPasswordConfirm,
+        emailVerificationProofToken: proof,
+      });
+      if (!outcome.ok) {
+        Alert.alert("Hinweis", outcome.error);
+        return;
+      }
+      setProfileStep("social");
+      setRegSubStep("email");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setRegisterSubmitLoading(false);
+    }
   };
 
   const kontoBalanceEuro = 0;
@@ -1485,7 +1522,7 @@ export default function ProfileScreen() {
                     </Text>
                   </Pressable>
                 </View>
-              ) : (
+              ) : regSubStep === "profile" ? (
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setRegSubStep("verify")}>
                     <Feather name="arrow-left" size={16} color={colors.foreground} />
@@ -1528,6 +1565,7 @@ export default function ProfileScreen() {
                       onChangeText={setRegPhone}
                       keyboardType="phone-pad"
                       returnKeyType="done"
+                      editable
                     />
                   </View>
 
@@ -1536,16 +1574,72 @@ export default function ProfileScreen() {
                       backgroundColor:
                         regName.trim() && regPhone.trim() ? "#111111" : colors.muted,
                     }]}
-                    onPress={handleRegisterComplete}
+                    onPress={continueToRegisterPassword}
                     disabled={!regName.trim() || !regPhone.trim()}
                   >
                     <Feather
-                      name="check"
+                      name="arrow-right"
                       size={18}
                       color={regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground}
                     />
                     <Text style={[styles.registerBtnText, {
                       color: regName.trim() && regPhone.trim() ? "#fff" : colors.mutedForeground,
+                    }]}
+                    >
+                      Weiter
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setRegSubStep("profile")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 4 }}>Passwort setzen</Text>
+                  <CustomerPasswordFields
+                    password={regPassword}
+                    confirm={regPasswordConfirm}
+                    onChangePassword={setRegPassword}
+                    onChangeConfirm={setRegPasswordConfirm}
+                    colors={{
+                      foreground: colors.foreground,
+                      mutedForeground: colors.mutedForeground,
+                      border: HOME_SHEET_RIM,
+                      surface: HOME_SHEET_PANEL,
+                    }}
+                    inputWrapStyle={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}
+                    inputFieldStyle={styles.inputField}
+                    onSubmitPassword={() => void handleRegisterComplete()}
+                  />
+                  <Pressable
+                    style={[styles.registerBtn, {
+                      backgroundColor: isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                        ? "#111111"
+                        : colors.muted,
+                    }]}
+                    onPress={() => void handleRegisterComplete()}
+                    disabled={
+                      !isCustomerPasswordFormValid(regPassword, regPasswordConfirm) || registerSubmitLoading
+                    }
+                  >
+                    {registerSubmitLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather
+                        name="check"
+                        size={18}
+                        color={
+                          isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                            ? "#fff"
+                            : colors.mutedForeground
+                        }
+                      />
+                    )}
+                    <Text style={[styles.registerBtnText, {
+                      color: isCustomerPasswordFormValid(regPassword, regPasswordConfirm)
+                        ? "#fff"
+                        : colors.mutedForeground,
                     }]}
                     >
                       Registrierung abschließen
