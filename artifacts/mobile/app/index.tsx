@@ -2259,28 +2259,19 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Logo + Branding */}
-            <View style={[styles.onboardingBranding, { gap: isSmallScreen ? 4 : 6, marginBottom: isSmallScreen ? 4 : 8 }]}>
-              <OnrodaOrMark
-                size={isSmallScreen ? 52 : 62}
-                style={{ marginBottom: isSmallScreen ? 4 : 8 }}
+            <View style={[styles.onboardingBranding, { marginBottom: isSmallScreen ? 4 : 8, alignItems: "center", gap: 8 }]}>
+              <Image
+                source={require("../assets/images/onroda-logo-transparent.png")}
+                style={{ width: isSmallScreen ? 180 : 220, height: isSmallScreen ? 80 : 100 }}
+                resizeMode="contain"
               />
-              <Text style={[styles.onboardingTitle, { color: colors.foreground, fontSize: obTitleSize }]}>
-                Onroda
-              </Text>
-              <View
-                style={{
-                  height: 3,
-                  width: 44,
-                  borderRadius: 2,
-                  backgroundColor: ONRODA_MARK_RED,
-                  alignSelf: "center",
-                  marginTop: 2,
-                  marginBottom: 2,
-                }}
-              />
-              <Text style={[styles.onboardingTagline, { color: colors.mutedForeground, fontSize: isSmallScreen ? 12 : 14 }]}>
-                Mobilität ohne Grenzen
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+                <View style={{ height: 1, width: 28, backgroundColor: "#EF1D26", borderRadius: 1 }} />
+                <Text style={{ fontSize: isSmallScreen ? 13 : 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, letterSpacing: 0.3 }}>
+                  Mobilität für jeden
+                </Text>
+                <View style={{ height: 1, width: 28, backgroundColor: "#EF1D26", borderRadius: 1 }} />
+              </View>
             </View>
 
             {/* ── KUNDEN-BLOCK (+ separate Fahrer-Karte wie Profil) ── */}
