@@ -62,7 +62,19 @@ import { useRideRequests } from "@/context/RideRequestContext";
 import { useOnrodaAppConfig } from "@/context/AppConfigContext";
 import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
-import { FahrerRegistrierenFooter, NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
+import {
+  LOGIN_ACTION_ICON_SIZE,
+  LoginActionIcon,
+  NeuBeiOnrodaRegisterRow,
+  ONRODA_AGB_URL,
+  ONRODA_DATENSCHUTZ_URL,
+  OnboardingFeatureIconsRow,
+  OnboardingSignupLegalFooter,
+  emailLoginSubmitButtonStyle,
+  loginActionButtonStyle,
+  loginActionLabelStyle,
+  socialLoginButtonStyle,
+} from "@/src/screens/LoginScreen";
 import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
@@ -2575,7 +2587,7 @@ export default function HomeScreen() {
                   />
                   <View style={{ gap: isSmallScreen ? 8 : 10 }}>
                     <Pressable
-                      style={[styles.socialBtn, {
+                      style={[styles.socialBtn, socialLoginButtonStyle({
                         backgroundColor: "#FFFFFF",
                         borderColor: colors.border,
                         paddingVertical: isSmallScreen ? 13 : 16,
@@ -2585,19 +2597,27 @@ export default function HomeScreen() {
                         shadowOpacity: 0.05,
                         shadowRadius: 4,
                         elevation: 1,
-                      }]}
+                      })]}
                       onPress={handleGoogleSignIn}
                       disabled={googleSignInLoading}
                     >
-                      {googleSignInLoading
-                        ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
-                        : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
+                      <LoginActionIcon>
+                        {googleSignInLoading
+                          ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                          : (
+                            <Image
+                              source={require("../assets/images/google-icon.png")}
+                              style={{ width: LOGIN_ACTION_ICON_SIZE, height: LOGIN_ACTION_ICON_SIZE }}
+                              resizeMode="contain"
+                            />
+                          )}
+                      </LoginActionIcon>
+                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
                         {googleSignInLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
                       </Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.socialBtn, {
+                      style={[styles.socialBtn, socialLoginButtonStyle({
                         backgroundColor: "#FFFFFF",
                         borderColor: colors.border,
                         paddingVertical: isSmallScreen ? 13 : 16,
@@ -2606,7 +2626,7 @@ export default function HomeScreen() {
                         shadowOpacity: 0.05,
                         shadowRadius: 4,
                         elevation: 1,
-                      }]}
+                      })]}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setObLoginEmail("");
@@ -2614,13 +2634,15 @@ export default function HomeScreen() {
                         setOnboardingCustomerStep("email_login");
                       }}
                     >
-                      <Feather name="mail" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
+                      <LoginActionIcon>
+                        <Feather name="mail" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
+                      </LoginActionIcon>
+                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
                         Mit E-Mail anmelden
                       </Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.socialBtn, {
+                      style={[styles.socialBtn, socialLoginButtonStyle({
                         backgroundColor: "#FFFFFF",
                         borderColor: colors.border,
                         paddingVertical: isSmallScreen ? 13 : 16,
@@ -2629,11 +2651,13 @@ export default function HomeScreen() {
                         shadowOpacity: 0.05,
                         shadowRadius: 4,
                         elevation: 1,
-                      }]}
+                      })]}
                       onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
                     >
-                      <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
+                      <LoginActionIcon>
+                        <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
+                      </LoginActionIcon>
+                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
                         Weiter mit Apple
                       </Text>
                     </Pressable>
@@ -2664,11 +2688,7 @@ export default function HomeScreen() {
 
                 <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad }]}>
                   <Pressable
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 12,
+                    style={({ pressed }) => loginActionButtonStyle({
                       paddingVertical: isSmallScreen ? 14 : 16,
                       borderRadius: 14,
                       backgroundColor: "#111111",
@@ -2679,12 +2699,33 @@ export default function HomeScreen() {
                       router.push("/driver/login" as Href);
                     }}
                   >
-                    <Feather name="log-in" size={22} color="#FFFFFF" />
-                    <Text style={{ fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" }}>
+                    <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
+                    <Text style={loginActionLabelStyle({ color: "#FFFFFF" })}>
                       Fahrer-Login
                     </Text>
                   </Pressable>
                 </View>
+
+                <OnboardingFeatureIconsRow
+                  mutedColor={colors.mutedForeground}
+                  compact={isSmallScreen}
+                />
+
+                <OnboardingSignupLegalFooter
+                  mutedColor={colors.mutedForeground}
+                  fontSize={isSmallScreen ? 11 : 12}
+                  onAgbPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push({ pathname: "/legal-web", params: { url: ONRODA_AGB_URL, title: "AGB" } } as Href);
+                  }}
+                  onDatenschutzPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push({
+                      pathname: "/legal-web",
+                      params: { url: ONRODA_DATENSCHUTZ_URL, title: "Datenschutz" },
+                    } as Href);
+                  }}
+                />
               </>
             ) : (
             <View style={[styles.onboardingBlock, { backgroundColor: colors.muted, borderColor: colors.border, padding: obBlockPad, gap: isSmallScreen ? 10 : 14 }]}>
@@ -2986,26 +3027,39 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.socialBtn, {
+                    style={emailLoginSubmitButtonStyle({
                       backgroundColor: obLoginEmail.trim() && obLoginPassword ? "#111111" : colors.muted,
                       paddingVertical: isSmallScreen ? 13 : 16,
+                      borderRadius: 14,
                       opacity: emailLoginLoading ? 0.72 : 1,
-                    }]}
+                    })}
                     onPress={() => void submitEmailLogin()}
                     disabled={emailLoginLoading || !obLoginEmail.trim() || !obLoginPassword}
                   >
                     {emailLoginLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={loginActionLabelStyle({
+                        color: obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground,
+                      })}
+                      >
+                        Anmelden…
+                      </Text>
                     ) : (
-                      <Feather name="log-in" size={20} color={obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground} />
+                      <>
+                        <LoginActionIcon>
+                          <Feather
+                            name="log-in"
+                            size={LOGIN_ACTION_ICON_SIZE}
+                            color={obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground}
+                          />
+                        </LoginActionIcon>
+                        <Text style={loginActionLabelStyle({
+                          color: obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground,
+                        })}
+                        >
+                          Anmelden
+                        </Text>
+                      </>
                     )}
-                    <Text style={[styles.socialBtnText, {
-                      color: obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground,
-                      fontSize: isSmallScreen ? 15 : 16,
-                    }]}
-                    >
-                      Anmelden
-                    </Text>
                   </Pressable>
                 </>
               ) : onboardingCustomerStep === "password_reset_email" ? (
@@ -3179,24 +3233,6 @@ export default function HomeScreen() {
                 </>
               ) : null}
             </View>
-            )}
-
-            {onboardingCustomerStep === "social" ? null : (
-              <>
-                <FahrerRegistrierenFooter
-                  colors={{
-                    foreground: colors.foreground,
-                    mutedForeground: colors.mutedForeground,
-                    muted: colors.muted,
-                    border: colors.border,
-                  }}
-                  padding={isSmallScreen ? 12 : 14}
-                  onAnmeldenPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push("/driver/login" as Href);
-                  }}
-                />
-              </>
             )}
 
           </ScrollView>
@@ -3852,8 +3888,8 @@ const styles = StyleSheet.create({
   modalBtnSecondary: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: 14, borderWidth: 1.5 },
   modalBtnSecondaryText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   socialBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 14, paddingVertical: 16, borderRadius: 14, borderWidth: 1,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   socialBtnText: { fontSize: 17, fontFamily: "Inter_500Medium" },
 

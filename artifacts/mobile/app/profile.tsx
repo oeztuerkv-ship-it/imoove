@@ -26,7 +26,15 @@ import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/component
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
-import { NeuBeiOnrodaRegisterRow } from "@/src/screens/LoginScreen";
+import {
+  LOGIN_ACTION_ICON_SIZE,
+  LoginActionIcon,
+  NeuBeiOnrodaRegisterRow,
+  emailLoginSubmitButtonStyle,
+  loginActionButtonStyle,
+  loginActionLabelStyle,
+  socialLoginButtonStyle,
+} from "@/src/screens/LoginScreen";
 import { useTranslation } from "@/context/LanguageContext";
 import { type UserProfile, useUser } from "@/context/UserContext";
 import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
@@ -1648,24 +1656,33 @@ export default function ProfileScreen() {
                     <Pressable
                       style={({ pressed }) => [
                         styles.socialBtn,
-                        {
+                        socialLoginButtonStyle({
                           backgroundColor: HOME_SHEET_PANEL,
                           borderColor: HOME_SHEET_RIM,
+                          paddingVertical: rs(16),
                           opacity: (pressed || googleLoading) ? 0.9 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: 0.05,
                           shadowRadius: 4,
                           elevation: 1,
-                        },
+                        }),
                       ]}
                       onPress={handleGoogleLogin}
                       disabled={googleLoading}
                     >
-                      {googleLoading
-                        ? <ActivityIndicator size="small" color={colors.mutedForeground} style={{ width: 22, height: 22 }} />
-                        : <Image source={require("../assets/images/google-icon.png")} style={{ width: 22, height: 22 }} resizeMode="contain" />}
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
+                      <LoginActionIcon>
+                        {googleLoading
+                          ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                          : (
+                            <Image
+                              source={require("../assets/images/google-icon.png")}
+                              style={{ width: LOGIN_ACTION_ICON_SIZE, height: LOGIN_ACTION_ICON_SIZE }}
+                              resizeMode="contain"
+                            />
+                          )}
+                      </LoginActionIcon>
+                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
                         {googleLoading ? "Anmeldung läuft…" : "Weiter mit Google"}
                       </Text>
                     </Pressable>
@@ -1673,16 +1690,17 @@ export default function ProfileScreen() {
                     <Pressable
                       style={({ pressed }) => [
                         styles.socialBtn,
-                        {
+                        socialLoginButtonStyle({
                           backgroundColor: HOME_SHEET_PANEL,
                           borderColor: HOME_SHEET_RIM,
+                          paddingVertical: rs(16),
                           opacity: pressed ? 0.9 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: 0.05,
                           shadowRadius: 4,
                           elevation: 1,
-                        },
+                        }),
                       ]}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1691,8 +1709,10 @@ export default function ProfileScreen() {
                         setProfileStep("email_login");
                       }}
                     >
-                      <Feather name="mail" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
+                      <LoginActionIcon>
+                        <Feather name="mail" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
+                      </LoginActionIcon>
+                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
                         Mit E-Mail anmelden
                       </Text>
                     </Pressable>
@@ -1700,21 +1720,26 @@ export default function ProfileScreen() {
                     <Pressable
                       style={({ pressed }) => [
                         styles.socialBtn,
-                        {
+                        socialLoginButtonStyle({
                           backgroundColor: HOME_SHEET_PANEL,
                           borderColor: HOME_SHEET_RIM,
+                          paddingVertical: rs(16),
                           opacity: pressed ? 0.9 : 1,
                           shadowColor: "#000",
                           shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: 0.05,
                           shadowRadius: 4,
                           elevation: 1,
-                        },
+                        }),
                       ]}
                       onPress={() => Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"))}
                     >
-                      <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
-                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>Weiter mit Apple</Text>
+                      <LoginActionIcon>
+                        <MaterialCommunityIcons name="apple" size={LOGIN_ACTION_ICON_SIZE} color={colors.foreground} />
+                      </LoginActionIcon>
+                      <Text style={loginActionLabelStyle({ color: colors.foreground })}>
+                        Weiter mit Apple
+                      </Text>
                     </Pressable>
                   </View>
                 </View>
@@ -1743,11 +1768,7 @@ export default function ProfileScreen() {
 
                 <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}>
                   <Pressable
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: rs(12),
+                    style={({ pressed }) => loginActionButtonStyle({
                       paddingVertical: rs(16),
                       borderRadius: rs(14),
                       backgroundColor: "#111111",
@@ -1758,8 +1779,8 @@ export default function ProfileScreen() {
                       router.push("/driver/login");
                     }}
                   >
-                    <Feather name="log-in" size={22} color="#FFFFFF" />
-                    <Text style={{ fontSize: rf(16), fontFamily: "Inter_600SemiBold", color: "#FFFFFF" }}>
+                    <MaterialCommunityIcons name="steering" size={LOGIN_ACTION_ICON_SIZE} color="#FFFFFF" />
+                    <Text style={loginActionLabelStyle({ color: "#FFFFFF" })}>
                       Fahrer-Login
                     </Text>
                   </Pressable>
@@ -1812,16 +1833,39 @@ export default function ProfileScreen() {
                     <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.primary }}>Passwort vergessen?</Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.registerBtn, {
+                    style={emailLoginSubmitButtonStyle({
                       backgroundColor: loginEmail.trim() && loginPassword ? "#111111" : colors.muted,
-                    }]}
+                      paddingVertical: rs(16),
+                      borderRadius: rs(14),
+                      marginTop: rs(4),
+                      opacity: loginLoading ? 0.72 : 1,
+                    })}
                     onPress={() => void submitProfileEmailLogin()}
                     disabled={loginLoading || !loginEmail.trim() || !loginPassword}
                   >
                     {loginLoading ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={loginActionLabelStyle({
+                        color: loginEmail.trim() && loginPassword ? "#fff" : colors.mutedForeground,
+                      })}
+                      >
+                        Anmelden…
+                      </Text>
                     ) : (
-                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Anmelden</Text>
+                      <>
+                        <LoginActionIcon>
+                          <Feather
+                            name="log-in"
+                            size={LOGIN_ACTION_ICON_SIZE}
+                            color={loginEmail.trim() && loginPassword ? "#fff" : colors.mutedForeground}
+                          />
+                        </LoginActionIcon>
+                        <Text style={loginActionLabelStyle({
+                          color: loginEmail.trim() && loginPassword ? "#fff" : colors.mutedForeground,
+                        })}
+                        >
+                          Anmelden
+                        </Text>
+                      </>
                     )}
                   </Pressable>
                 </View>
@@ -2227,11 +2271,6 @@ const styles = StyleSheet.create({
     gap: rs(14),
   },
   socialBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: rs(12),
-    paddingVertical: rs(16),
     borderRadius: rs(14),
     borderWidth: 1,
   },

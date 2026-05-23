@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +19,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDriver } from "@/context/DriverContext";
 import { useRideRequests } from "@/context/RideRequestContext";
 import { useColors } from "@/hooks/useColors";
+import { FahrerRegistrierenFooter } from "@/src/screens/LoginScreen";
+
+const PARTNER_REGISTER_URL = "https://onroda.de/#partner";
 
 export default function DriverLoginScreen() {
   const colors = useColors();
@@ -147,8 +151,8 @@ export default function DriverLoginScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               Alert.alert(
-                "Fahrer-Registrierung",
-                "Um dich als Fahrer zu registrieren, wende dich bitte direkt an die Onroda-Zentrale:\n\n📞 0711 / 123 456\n✉ fahrer@onroda.de\n\nWir melden uns innerhalb von 24 Stunden.",
+                "Als Fahrer bewerben",
+                "Interesse als Fahrer bei ONRODA zu arbeiten?\n\n✉ onroda@mail.de\n🌐 www.onroda.de\n\nSchreib uns oder besuche unsere Website — wir melden uns zeitnah bei dir.",
                 [{ text: "OK" }]
               );
             }}
@@ -156,6 +160,25 @@ export default function DriverLoginScreen() {
             <Feather name="user-plus" size={17} color={colors.foreground} />
             <Text style={[styles.registerBtnText, { color: colors.foreground }]}>Als Fahrer registrieren</Text>
           </Pressable>
+
+          <FahrerRegistrierenFooter
+            colors={{
+              foreground: colors.foreground,
+              mutedForeground: colors.mutedForeground,
+              muted: colors.muted,
+              border: colors.border,
+            }}
+            padding={16}
+            onPartnerRegisterPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              void Linking.openURL(PARTNER_REGISTER_URL).catch(() => {
+                Alert.alert(
+                  "Hinweis",
+                  "Partner-Registrierung konnte nicht geöffnet werden. Bitte im Browser onroda.de aufrufen.",
+                );
+              });
+            }}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

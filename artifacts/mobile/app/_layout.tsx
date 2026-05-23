@@ -71,6 +71,7 @@ function RootLayoutNav() {
       <Stack.Screen name="sponsors" options={{ headerShown: false }} />
       <Stack.Screen name="help" options={{ headerShown: false }} />
       <Stack.Screen name="impressum" options={{ headerShown: false }} />
+      <Stack.Screen name="legal-web" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="personal-info" options={{ headerShown: false }} />
       <Stack.Screen name="wallet" options={{ headerShown: false, animation: "none" }} />
       <Stack.Screen name="reserve-ride" options={{ headerShown: false, presentation: "modal" }} />
