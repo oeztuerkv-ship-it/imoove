@@ -81,6 +81,31 @@ export async function insertPartnerRideSeries(input: {
   return rowToSeries(r);
 }
 
+export async function findPartnerRideSeriesById(
+  id: string,
+  companyId?: string,
+): Promise<PartnerRideSeriesRow | null> {
+  const db = getDb();
+  const sid = id.trim();
+  if (!sid) return null;
+  if (!db) {
+    const row = memSeries.find((s) => s.id === sid);
+    if (!row) return null;
+    if (companyId && row.companyId !== companyId.trim()) return null;
+    return row;
+  }
+  const rows = await db
+    .select()
+    .from(partnerRideSeriesTable)
+    .where(eq(partnerRideSeriesTable.id, sid))
+    .limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  const mapped = rowToSeries(r);
+  if (companyId && mapped.companyId !== companyId.trim()) return null;
+  return mapped;
+}
+
 export async function listPartnerRideSeriesForCompany(companyId: string): Promise<PartnerRideSeriesRow[]> {
   const db = getDb();
   if (!db) {

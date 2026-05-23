@@ -114,8 +114,9 @@ app.use((req, res, next) => {
   const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
   const medicalUpload =
     req.method === "POST" &&
-    u.includes("/rides/") &&
-    (u.includes("/medical/transport-document") || u.includes("/medical/signature"));
+    (u.includes("/fleet-driver/v1/medical/scan") ||
+      (u.includes("/rides/") &&
+        (u.includes("/medical/transport-document") || u.includes("/medical/signature"))));
   // Mehrere Base64-PDFs (Taxi): Nginx braucht passendes client_max_body_size (siehe nginx-onroda.example.conf).
   const partnerRegInitialPost =
     req.method === "POST" && /\/panel-auth\/registration-request\/?$/.test(u);

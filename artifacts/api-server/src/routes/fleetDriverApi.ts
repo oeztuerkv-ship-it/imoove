@@ -34,6 +34,7 @@ import {
   resolveFinancePricingContextForRide,
 } from "../db/appOperationalData";
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
+import { runMedicalTransportDocumentScan } from "../lib/medical/medicalScanService";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 const router: IRouter = Router();
@@ -577,6 +578,62 @@ router.post("/fleet-driver/v1/change-password", requireFleetDriverAuth, async (r
     return;
   }
   res.json({ ok: true });
+});
+
+router.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    if (!isPostgresConfigured()) {
+      res.status(503).json({ ok: false, error: "database_not_configured" });
+      return;
+    }
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!auth) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body as {
+      rideId?: unknown;
+      imageBase64?: unknown;
+      dateLogicType?: unknown;
+      seriesId?: unknown;
+      returnRideId?: unknown;
+    };
+    const rideId = typeof body.rideId === "string" ? body.rideId.trim() : "";
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    if (!rideId) {
+      res.status(400).json({ ok: false, error: "ride_id_required" });
+      return;
+    }
+
+    const result = await runMedicalTransportDocumentScan({
+      fleetDriverId: auth.fleetDriverId,
+      companyId: auth.companyId,
+      rideId,
+      imageBase64,
+      dateLogicType: typeof body.dateLogicType === "string" ? body.dateLogicType : undefined,
+      seriesId: typeof body.seriesId === "string" ? body.seriesId : undefined,
+      returnRideId: typeof body.returnRideId === "string" ? body.returnRideId : undefined,
+    });
+
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      caseId: result.caseId,
+      documentId: result.documentId,
+      reviewId: result.reviewId,
+      trafficLight: result.trafficLight,
+      warnings: result.warnings,
+      extracted: result.extracted,
+      dateLogic: result.dateLogic,
+      storageKey: result.storageKey,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get("/fleet-driver/v1/completed-rides", requireFleetDriverAuth, async (req, res, next) => {
