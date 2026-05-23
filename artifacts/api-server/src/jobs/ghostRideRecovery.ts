@@ -1,4 +1,5 @@
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, lt } from "drizzle-orm";
+import type { RideRequest } from "../domain/rideRequest";
 import { getDb, isPostgresConfigured } from "../db/client";
 import { getRideDriverLocation } from "../db/rideDriverLocationData";
 import { insertSupplementalRideEvent, updateRide } from "../db/ridesData";
@@ -7,11 +8,90 @@ import { isFarFutureReservation } from "../lib/dispatchStatus";
 import { logger } from "../lib/logger";
 
 const DEFAULT_IDLE_MINUTES = 15;
+const DEFAULT_STALE_EXPIRE_HOURS = 8;
+
+const STALE_EXPIRE_STATUSES: RideRequest["status"][] = [
+  "searching_driver",
+  "ready_for_dispatch",
+  "in_progress",
+];
 
 function ghostIdleMs(): number {
   const raw = Number(process.env.ONRODA_GHOST_RIDE_IDLE_MINUTES ?? DEFAULT_IDLE_MINUTES);
   const minutes = Number.isFinite(raw) && raw >= 5 && raw <= 120 ? raw : DEFAULT_IDLE_MINUTES;
   return minutes * 60 * 1000;
+}
+
+function staleRideMaxAgeMs(): number {
+  const raw = Number(process.env.ONRODA_STALE_RIDE_EXPIRE_HOURS ?? DEFAULT_STALE_EXPIRE_HOURS);
+  const hours = Number.isFinite(raw) && raw >= 1 && raw <= 168 ? raw : DEFAULT_STALE_EXPIRE_HOURS;
+  return hours * 60 * 60 * 1000;
+}
+
+/**
+ * Offene Test-/Hänger-Fahrten (älter als 8h) → `expired`, damit sie nicht ewig in Listen bleiben.
+ */
+export async function expireStaleOpenRides(nowMs: number = Date.now()): Promise<string[]> {
+  if (!isPostgresConfigured()) return [];
+  const db = getDb();
+  if (!db) return [];
+
+  const createdBefore = new Date(nowMs - staleRideMaxAgeMs());
+  const rows = await db
+    .select({
+      id: ridesTable.id,
+      status: ridesTable.status,
+      createdAt: ridesTable.created_at,
+    })
+    .from(ridesTable)
+    .where(
+      and(
+        inArray(ridesTable.status, STALE_EXPIRE_STATUSES),
+        lt(ridesTable.created_at, createdBefore),
+      ),
+    );
+
+  const expired: string[] = [];
+  const staleHours = staleRideMaxAgeMs() / (60 * 60 * 1000);
+
+  for (const row of rows) {
+    const id = row.id?.trim();
+    const fromStatus = row.status as RideRequest["status"];
+    if (!id || !STALE_EXPIRE_STATUSES.includes(fromStatus)) continue;
+
+    const updated = await updateRide(
+      id,
+      { status: "expired" },
+      { mutationActor: { actorType: "system", actorId: null } },
+    );
+    if (!updated) continue;
+
+    await insertSupplementalRideEvent(id, {
+      eventType: "stale_ride_expired",
+      fromStatus,
+      toStatus: "expired",
+      actorType: "system",
+      actorId: null,
+      payload: {
+        staleAfterHours: staleHours,
+        createdAt:
+          row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt ?? ""),
+      },
+    });
+
+    expired.push(id);
+    logger.warn(
+      {
+        rideId: id,
+        fromStatus,
+        createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+        staleAfterHours: staleHours,
+      },
+      "[Cron] Stale open ride → expired",
+    );
+  }
+
+  return expired;
 }
 
 /**

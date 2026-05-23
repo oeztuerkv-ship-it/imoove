@@ -130,10 +130,16 @@ httpServer.listen(port, () => {
       }
 
       // Job 6: accepted ohne GPS-Fortschritt → zurück in Pool (Ghost-Ride Recovery)
-      const { recoverGhostAcceptedRides } = await import("./jobs/ghostRideRecovery.js");
+      const { recoverGhostAcceptedRides, expireStaleOpenRides } = await import("./jobs/ghostRideRecovery.js");
       const ghostRecovered = await recoverGhostAcceptedRides(nowMs);
       if (ghostRecovered.length > 0) {
         logger.info({ count: ghostRecovered.length, rideIds: ghostRecovered }, "[Cron] Ghost-Rides recovered");
+      }
+
+      // Job 7: >8h in searching_driver / ready_for_dispatch / in_progress → expired (Test-Hänger)
+      const staleExpired = await expireStaleOpenRides(nowMs);
+      if (staleExpired.length > 0) {
+        logger.info({ count: staleExpired.length, rideIds: staleExpired }, "[Cron] Stale open rides → expired");
       }
 
     } catch (err) {
