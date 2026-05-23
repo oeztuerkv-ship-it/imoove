@@ -66,8 +66,7 @@ import {
   LOGIN_ACTION_ICON_SIZE,
   LoginActionIcon,
   NeuBeiOnrodaRegisterRow,
-  ONRODA_AGB_URL,
-  ONRODA_DATENSCHUTZ_URL,
+  ONRODA_LEGAL_DOC,
   OnboardingFeatureIconsRow,
   OnboardingSignupLegalFooter,
   emailLoginSubmitButtonStyle,
@@ -2724,13 +2723,13 @@ export default function HomeScreen() {
                     fontSize={isSmallScreen ? 9 : 10}
                     onAgbPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push({ pathname: "/legal-web", params: { url: ONRODA_AGB_URL, title: "AGB" } } as Href);
+                      router.push({ pathname: "/legal-web", params: { doc: ONRODA_LEGAL_DOC.agb } } as Href);
                     }}
                     onDatenschutzPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push({
                         pathname: "/legal-web",
-                        params: { url: ONRODA_DATENSCHUTZ_URL, title: "Datenschutz" },
+                        params: { doc: ONRODA_LEGAL_DOC.datenschutz },
                       } as Href);
                     }}
                   />

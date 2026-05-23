@@ -4,8 +4,12 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type
 
 import { ONRODA_MARK_RED } from "@/constants/onrodaBrand";
 
-export const ONRODA_AGB_URL = "https://onroda.de/agb";
-export const ONRODA_DATENSCHUTZ_URL = "https://onroda.de/datenschutz";
+export type OnrodaLegalDocId = "agb" | "datenschutz";
+
+export const ONRODA_LEGAL_DOC = {
+  agb: "agb",
+  datenschutz: "datenschutz",
+} as const satisfies Record<OnrodaLegalDocId, OnrodaLegalDocId>;
 
 /** Wie Fahrer-Login (`app/driver/login.tsx`): Icon 18px, gap 10, Label 15/600. */
 export const LOGIN_ACTION_GAP = 10;

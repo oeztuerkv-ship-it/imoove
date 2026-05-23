@@ -1,20 +1,34 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 
+import { LegalDocumentView } from "@/components/LegalDocumentView";
 import { useColors } from "@/hooks/useColors";
+import { isOnrodaLegalDocId, ONRODA_LEGAL_BY_ID } from "@/src/content/onrodaLegal";
 
 export default function LegalWebScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ url?: string; title?: string }>();
-  const uri = typeof params.url === "string" && params.url.length > 0 ? params.url : "https://onroda.de";
-  const title = typeof params.title === "string" && params.title.length > 0 ? params.title : "Onroda";
+  const params = useLocalSearchParams<{ doc?: string }>();
+  const docId = typeof params.doc === "string" ? params.doc : undefined;
+  const legalDoc = isOnrodaLegalDocId(docId) ? ONRODA_LEGAL_BY_ID[docId] : null;
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
+
+  if (!legalDoc) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: topPad + 24, paddingHorizontal: 24 }}>
+        <Pressable onPress={() => router.back()} hitSlop={10} style={{ marginBottom: 16 }}>
+          <Feather name="x" size={22} color={colors.foreground} />
+        </Pressable>
+        <Text style={{ fontSize: 16, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+          Rechtstext nicht gefunden.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -43,20 +57,11 @@ export default function LegalWebScreen() {
           }}
           numberOfLines={1}
         >
-          {title}
+          {legalDoc.screenTitle}
         </Text>
         <View style={{ width: 40 }} />
       </View>
-      <WebView
-        source={{ uri }}
-        style={{ flex: 1, backgroundColor: colors.background }}
-        startInLoadingState
-        renderLoading={() => (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        )}
-      />
+      <LegalDocumentView document={legalDoc} bottomPad={insets.bottom + 24} />
     </View>
   );
 }
