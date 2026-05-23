@@ -2,12 +2,13 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -865,12 +866,23 @@ export default function ProfileScreen() {
   const [cooldownSecs, setCooldownSecs] = useState(0);
   const [emailStartLoading, setEmailStartLoading] = useState(false);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  const regNameRef = useRef<TextInput>(null);
+  const regPhoneRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (cooldownSecs <= 0) return undefined;
     const id = setTimeout(() => setCooldownSecs((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(id);
   }, [cooldownSecs]);
+
+  useEffect(() => {
+    if (regSubStep !== "profile") return undefined;
+    const id = requestAnimationFrame(() => {
+      Keyboard.dismiss();
+      regNameRef.current?.blur();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [regSubStep]);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [personalDataOpen, setPersonalDataOpen] = useState(false);
   const [patientProfileOpen, setPatientProfileOpen] = useState(false);
@@ -1038,6 +1050,7 @@ export default function ProfileScreen() {
       }
       setPendingEmailProofToken(typeof data.proofToken === "string" ? data.proofToken : undefined);
       setRegEmail(email);
+      Keyboard.dismiss();
       setRegSubStep("profile");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -1482,19 +1495,22 @@ export default function ProfileScreen() {
                   <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="user" size={16} color={colors.mutedForeground} />
                     <TextInput
+                      ref={regNameRef}
                       style={[styles.inputField, { color: colors.foreground }]}
                       placeholder="Vor- und Nachname"
                       placeholderTextColor={colors.mutedForeground}
                       value={regName}
                       onChangeText={setRegName}
                       autoCapitalize="words"
-                      returnKeyType="next"
+                      returnKeyType="done"
+                      onSubmitEditing={() => regPhoneRef.current?.focus()}
                     />
                   </View>
 
                   <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
                     <Feather name="phone" size={16} color={colors.mutedForeground} />
                     <TextInput
+                      ref={regPhoneRef}
                       style={[styles.inputField, { color: colors.foreground }]}
                       placeholder="Telefonnummer"
                       placeholderTextColor={colors.mutedForeground}

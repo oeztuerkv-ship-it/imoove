@@ -349,12 +349,23 @@ export default function HomeScreen() {
   const [cooldownSecs, setCooldownSecs] = useState(0);
   const [emailStartLoading, setEmailStartLoading] = useState(false);
   const [emailVerifyLoading, setEmailVerifyLoading] = useState(false);
+  const obRegNameRef = useRef<TextInput>(null);
+  const obRegPhoneRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (cooldownSecs <= 0) return undefined;
     const id = setTimeout(() => setCooldownSecs((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(id);
   }, [cooldownSecs]);
+
+  useEffect(() => {
+    if (onboardingCustomerStep !== "register_details") return undefined;
+    const id = requestAnimationFrame(() => {
+      Keyboard.dismiss();
+      obRegNameRef.current?.blur();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [onboardingCustomerStep]);
 
   useEffect(() => {
     if (!showOnboarding) {
@@ -2517,18 +2528,21 @@ export default function HomeScreen() {
                   <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                     <Feather name="user" size={18} color={colors.mutedForeground} />
                     <TextInput
+                      ref={obRegNameRef}
                       style={[styles.onboardingInputField, { color: colors.foreground }]}
                       placeholder="Vor- und Nachname"
                       placeholderTextColor={colors.mutedForeground}
                       value={obRegName}
                       onChangeText={setObRegName}
                       autoCapitalize="words"
-                      returnKeyType="next"
+                      returnKeyType="done"
+                      onSubmitEditing={() => obRegPhoneRef.current?.focus()}
                     />
                   </View>
                   <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
                     <Feather name="phone" size={18} color={colors.mutedForeground} />
                     <TextInput
+                      ref={obRegPhoneRef}
                       style={[styles.onboardingInputField, { color: colors.foreground }]}
                       placeholder="Telefonnummer"
                       placeholderTextColor={colors.mutedForeground}
