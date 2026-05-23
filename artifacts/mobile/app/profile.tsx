@@ -33,6 +33,14 @@ import { SUPPORTED_LOCALES, type AppLocale } from "@/src/i18n";
 import { useColors } from "@/hooks/useColors";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
+  confirmCustomerPasswordReset,
+  mapCustomerAuthApiError,
+  resendEmailVerification,
+  startEmailVerification,
+  verifyEmailVerificationCode,
+} from "@/utils/customerAuthApi";
+import {
+  CUSTOMER_PASSWORD_RESET_PURPOSE,
   EMAIL_VERIFICATION_PURPOSE,
   isEmailStartAccountExistsResponse,
   mapEmailVerificationApiError,
@@ -843,7 +851,7 @@ export default function ProfileScreen() {
   const topPad = isWeb ? 44 : insets.top;
   const { t, setLocale, languageLabel } = useTranslation();
 
-  const { profile, loginWithGoogle, updateProfile, logout, registerCustomerAccount } = useUser();
+  const { profile, loginWithGoogle, loginWithEmailAccount, updateProfile, logout, registerCustomerAccount } = useUser();
 
   const pickLanguage = useCallback(() => {
     Alert.alert(
@@ -861,7 +869,26 @@ export default function ProfileScreen() {
     );
   }, [setLocale, t]);
 
-  const [profileStep, setProfileStep] = useState<"social" | "register">("social");
+  const [profileStep, setProfileStep] = useState<
+    | "social"
+    | "register"
+    | "email_login"
+    | "pwd_reset_email"
+    | "pwd_reset_verify"
+    | "pwd_reset_new"
+  >("social");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [pwdResetEmail, setPwdResetEmail] = useState("");
+  const [pwdResetOtp, setPwdResetOtp] = useState("");
+  const [pendingPwdResetProof, setPendingPwdResetProof] = useState<string | undefined>(undefined);
+  const [pwdResetPassword, setPwdResetPassword] = useState("");
+  const [pwdResetPasswordConfirm, setPwdResetPasswordConfirm] = useState("");
+  const [pwdResetSubmitLoading, setPwdResetSubmitLoading] = useState(false);
+  const [pwdResetCooldown, setPwdResetCooldown] = useState(0);
+  const [accountPwdFlow, setAccountPwdFlow] = useState(false);
   const [regSubStep, setRegSubStep] = useState<"email" | "verify" | "profile" | "password">("email");
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
@@ -882,6 +909,12 @@ export default function ProfileScreen() {
     const id = setTimeout(() => setCooldownSecs((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(id);
   }, [cooldownSecs]);
+
+  useEffect(() => {
+    if (pwdResetCooldown <= 0) return undefined;
+    const id = setTimeout(() => setPwdResetCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [pwdResetCooldown]);
 
   useEffect(() => {
     if (regSubStep !== "profile") return undefined;
@@ -1095,6 +1128,153 @@ export default function ProfileScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const submitProfileEmailLogin = async () => {
+    const email = loginEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email) || !loginPassword) {
+      Alert.alert("Hinweis", "Bitte E-Mail und Passwort eingeben.");
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const outcome = await loginWithEmailAccount({ email, password: loginPassword });
+      if (!outcome.ok) {
+        Alert.alert("Anmeldung fehlgeschlagen", outcome.error);
+        return;
+      }
+      setProfileStep("social");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const startProfilePasswordReset = async () => {
+    const email = pwdResetEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_email"));
+      return;
+    }
+    setEmailStartLoading(true);
+    try {
+      const outcome = await startEmailVerification({
+        email,
+        purpose: CUSTOMER_PASSWORD_RESET_PURPOSE,
+      });
+      if (!outcome.ok) {
+        Alert.alert(
+          outcome.status === 429 ? "Bitte warten" : "Hinweis",
+          mapEmailVerificationApiError(outcome.error),
+        );
+        return;
+      }
+      setPwdResetOtp("");
+      setPendingPwdResetProof(undefined);
+      setPwdResetCooldown(60);
+      setProfileStep("pwd_reset_verify");
+      if (profile.isLoggedIn) {
+        setAccountPwdFlow(true);
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  };
+
+  const verifyProfilePasswordReset = async () => {
+    const email = pwdResetEmail.trim().toLowerCase();
+    const digits = pwdResetOtp.replace(/\D/g, "").slice(0, 6);
+    if (!isPlausibleEmail(email) || digits.length !== 6) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_params"));
+      return;
+    }
+    setEmailVerifyLoading(true);
+    try {
+      const outcome = await verifyEmailVerificationCode({
+        email,
+        code: digits,
+        purpose: CUSTOMER_PASSWORD_RESET_PURPOSE,
+      });
+      if (!outcome.ok) {
+        Alert.alert("Hinweis", mapEmailVerificationApiError(outcome.error));
+        return;
+      }
+      if (!outcome.proofToken?.trim()) {
+        Alert.alert("Hinweis", "Code ungültig — bitte erneut anfordern.");
+        return;
+      }
+      setPendingPwdResetProof(outcome.proofToken);
+      setPwdResetPassword("");
+      setPwdResetPasswordConfirm("");
+      if (profile.isLoggedIn) {
+        setAccountPwdFlow(true);
+      }
+      setProfileStep("pwd_reset_new");
+      Keyboard.dismiss();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setEmailVerifyLoading(false);
+    }
+  };
+
+  const confirmProfilePasswordReset = async () => {
+    const email = pwdResetEmail.trim().toLowerCase();
+    const proof = pendingPwdResetProof?.trim() ?? "";
+    if (!isPlausibleEmail(email) || !proof) {
+      Alert.alert("Hinweis", "Bitte Passwort-Reset von vorne starten.");
+      return;
+    }
+    setPwdResetSubmitLoading(true);
+    try {
+      const outcome = await confirmCustomerPasswordReset({
+        email,
+        proofToken: proof,
+        password: pwdResetPassword,
+        passwordConfirm: pwdResetPasswordConfirm,
+      });
+      if (!outcome.ok) {
+        Alert.alert("Hinweis", mapCustomerAuthApiError(outcome.error));
+        return;
+      }
+      setAccountPwdFlow(false);
+      setProfileStep("social");
+      if (profile.isLoggedIn) {
+        Alert.alert("Passwort geändert", "Dein Passwort wurde aktualisiert.");
+      } else {
+        Alert.alert("Passwort gespeichert", "Du kannst dich jetzt anmelden.", [{
+          text: "Zum Login",
+          onPress: () => {
+            setLoginEmail(email);
+            setLoginPassword("");
+            setProfileStep("email_login");
+          },
+        }]);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setPwdResetSubmitLoading(false);
+    }
+  };
+
+  const openAccountPasswordChange = () => {
+    const email = profile.email?.trim().toLowerCase() ?? "";
+    setPwdResetEmail(email);
+    setPwdResetOtp("");
+    setPendingPwdResetProof(undefined);
+    setPwdResetPassword("");
+    setPwdResetPasswordConfirm("");
+    setProfileStep("pwd_reset_email");
+    setAccountPwdFlow(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   const handleRegisterComplete = async () => {
     const email = regEmail.trim().toLowerCase();
     const name = regName.trim();
@@ -1182,6 +1362,134 @@ export default function ProfileScreen() {
         {profile.isLoggedIn ? (
           /* ══ LOGGED IN ══ */
           <>
+              {accountPwdFlow ? (
+                <View style={[styles.loginCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM, marginHorizontal: rs(24) }]}>
+                  {profileStep === "pwd_reset_email" ? (
+                    <View style={styles.signInBlock}>
+                      <Pressable
+                        style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}
+                        onPress={() => {
+                          setAccountPwdFlow(false);
+                          setProfileStep("social");
+                        }}
+                      >
+                        <Feather name="arrow-left" size={16} color={colors.foreground} />
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                      </Pressable>
+                      <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Passwort ändern</Text>
+                      <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                        Code an deine E-Mail — danach neues Passwort setzen.
+                      </Text>
+                      <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                        <Feather name="mail" size={16} color={colors.mutedForeground} />
+                        <TextInput
+                          style={[styles.inputField, { color: colors.foreground }]}
+                          placeholder="E-Mail"
+                          placeholderTextColor={colors.mutedForeground}
+                          value={pwdResetEmail}
+                          onChangeText={setPwdResetEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          editable={!emailStartLoading}
+                        />
+                      </View>
+                      <Pressable
+                        style={[styles.registerBtn, { backgroundColor: "#111111" }]}
+                        onPress={() => void startProfilePasswordReset()}
+                        disabled={emailStartLoading}
+                      >
+                        {emailStartLoading ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code senden</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  ) : profileStep === "pwd_reset_verify" ? (
+                    <View style={styles.signInBlock}>
+                      <Pressable
+                        style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}
+                        onPress={() => setProfileStep("pwd_reset_email")}
+                      >
+                        <Feather name="arrow-left" size={16} color={colors.foreground} />
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                      </Pressable>
+                      <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Code eingeben</Text>
+                      <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                        <Feather name="hash" size={16} color={colors.mutedForeground} />
+                        <TextInput
+                          style={[styles.inputField, { color: colors.foreground, letterSpacing: 4 }]}
+                          placeholder="6-stelliger Code"
+                          placeholderTextColor={colors.mutedForeground}
+                          value={pwdResetOtp}
+                          onChangeText={(t) => setPwdResetOtp(t.replace(/\D/g, "").slice(0, 6))}
+                          keyboardType="number-pad"
+                          maxLength={6}
+                          editable={!emailVerifyLoading}
+                        />
+                      </View>
+                      <Pressable
+                        style={[styles.registerBtn, {
+                          backgroundColor: pwdResetOtp.length === 6 ? "#111111" : colors.muted,
+                        }]}
+                        onPress={() => void verifyProfilePasswordReset()}
+                        disabled={pwdResetOtp.length !== 6 || emailVerifyLoading}
+                      >
+                        {emailVerifyLoading ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code prüfen</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={styles.signInBlock}>
+                      <Pressable
+                        style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}
+                        onPress={() => setProfileStep("pwd_reset_verify")}
+                      >
+                        <Feather name="arrow-left" size={16} color={colors.foreground} />
+                        <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                      </Pressable>
+                      <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Neues Passwort</Text>
+                      <CustomerPasswordFields
+                        password={pwdResetPassword}
+                        confirm={pwdResetPasswordConfirm}
+                        onChangePassword={setPwdResetPassword}
+                        onChangeConfirm={setPwdResetPasswordConfirm}
+                        colors={{
+                          foreground: colors.foreground,
+                          mutedForeground: colors.mutedForeground,
+                          border: HOME_SHEET_RIM,
+                          surface: HOME_SHEET_PANEL,
+                        }}
+                        inputWrapStyle={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}
+                        inputFieldStyle={styles.inputField}
+                        onSubmitPassword={() => void confirmProfilePasswordReset()}
+                      />
+                      <Pressable
+                        style={[styles.registerBtn, {
+                          backgroundColor: isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
+                            ? "#111111"
+                            : colors.muted,
+                        }]}
+                        onPress={() => void confirmProfilePasswordReset()}
+                        disabled={
+                          !isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
+                          || pwdResetSubmitLoading
+                        }
+                      >
+                        {pwdResetSubmitLoading ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={[styles.registerBtnText, { color: "#fff" }]}>Passwort speichern</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              ) : (
+              <>
               <View style={styles.accountSection}>
                 <AccountProfileHeroCard
                   name={profile.name ?? ""}
@@ -1243,6 +1551,11 @@ export default function ProfileScreen() {
                     onPress={pickLanguage}
                   />
                   <AccountRow
+                    icon={<MaterialCommunityIcons name="lock-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
+                    label="Passwort ändern"
+                    onPress={openAccountPasswordChange}
+                  />
+                  <AccountRow
                     icon={<MaterialCommunityIcons name="help-circle-outline" size={ACCOUNT_TILE_ICON} color={colors.foreground} />}
                     label={t("profile.helpSupport")}
                     onPress={() => {
@@ -1265,6 +1578,8 @@ export default function ProfileScreen() {
                   />
                 </SectionCard>
               </View>
+              </>
+              )}
 
             {/* Personal Data Modal */}
             <PersonalDataModal
@@ -1369,6 +1684,33 @@ export default function ProfileScreen() {
                           elevation: 1,
                         },
                       ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setLoginEmail("");
+                        setLoginPassword("");
+                        setProfileStep("email_login");
+                      }}
+                    >
+                      <Feather name="mail" size={22} color={colors.foreground} />
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontFamily: "Inter_600SemiBold" }]}>
+                        Mit E-Mail anmelden
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.socialBtn,
+                        {
+                          backgroundColor: HOME_SHEET_PANEL,
+                          borderColor: HOME_SHEET_RIM,
+                          opacity: pressed ? 0.9 : 1,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 4,
+                          elevation: 1,
+                        },
+                      ]}
                       onPress={() => Alert.alert(t("common.comingSoon"), t("profile.appleLoginSoon"))}
                     >
                       <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
@@ -1423,9 +1765,177 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
                 </>
-              ) : regSubStep === "email" ? (
+              ) : profileStep === "email_login" ? (
                 <View style={styles.signInBlock}>
                   <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("social")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Mit E-Mail anmelden</Text>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                    <Feather name="mail" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground }]}
+                      placeholder="E-Mail"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={loginEmail}
+                      onChangeText={setLoginEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!loginLoading}
+                    />
+                  </View>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                    <Feather name="lock" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground, flex: 1 }]}
+                      placeholder="Passwort"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={loginPassword}
+                      onChangeText={setLoginPassword}
+                      secureTextEntry={!showLoginPassword}
+                      autoCapitalize="none"
+                      editable={!loginLoading}
+                      onSubmitEditing={() => void submitProfileEmailLogin()}
+                    />
+                    <Pressable onPress={() => setShowLoginPassword((v) => !v)} hitSlop={10}>
+                      <Feather name={showLoginPassword ? "eye-off" : "eye"} size={16} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                  <Pressable
+                    style={{ alignSelf: "flex-start", paddingVertical: 4 }}
+                    onPress={() => {
+                      setPwdResetEmail(loginEmail.trim().toLowerCase());
+                      setProfileStep("pwd_reset_email");
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.primary }}>Passwort vergessen?</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.registerBtn, {
+                      backgroundColor: loginEmail.trim() && loginPassword ? "#111111" : colors.muted,
+                    }]}
+                    onPress={() => void submitProfileEmailLogin()}
+                    disabled={loginLoading || !loginEmail.trim() || !loginPassword}
+                  >
+                    {loginLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Anmelden</Text>
+                    )}
+                  </Pressable>
+                </View>
+              ) : profileStep === "pwd_reset_email" ? (
+                <View style={styles.signInBlock}>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}
+                    onPress={() => setProfileStep(profile.isLoggedIn ? "social" : "email_login")}
+                  >
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Passwort zurücksetzen</Text>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                    <Feather name="mail" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground }]}
+                      placeholder="E-Mail"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={pwdResetEmail}
+                      onChangeText={setPwdResetEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!emailStartLoading}
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.registerBtn, { backgroundColor: "#111111" }]}
+                    onPress={() => void startProfilePasswordReset()}
+                    disabled={emailStartLoading}
+                  >
+                    {emailStartLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code senden</Text>
+                    )}
+                  </Pressable>
+                </View>
+              ) : profileStep === "pwd_reset_verify" ? (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("pwd_reset_email")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Code eingeben</Text>
+                  <View style={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}>
+                    <Feather name="hash" size={16} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.inputField, { color: colors.foreground, letterSpacing: 4 }]}
+                      placeholder="6-stelliger Code"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={pwdResetOtp}
+                      onChangeText={(t) => setPwdResetOtp(t.replace(/\D/g, "").slice(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      editable={!emailVerifyLoading}
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.registerBtn, { backgroundColor: pwdResetOtp.length === 6 ? "#111111" : colors.muted }]}
+                    onPress={() => void verifyProfilePasswordReset()}
+                    disabled={pwdResetOtp.length !== 6 || emailVerifyLoading}
+                  >
+                    {emailVerifyLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Code prüfen</Text>
+                    )}
+                  </Pressable>
+                </View>
+              ) : profileStep === "pwd_reset_new" ? (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => setProfileStep("pwd_reset_verify")}>
+                    <Feather name="arrow-left" size={16} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.foreground }}>Neues Passwort</Text>
+                  <CustomerPasswordFields
+                    password={pwdResetPassword}
+                    confirm={pwdResetPasswordConfirm}
+                    onChangePassword={setPwdResetPassword}
+                    onChangeConfirm={setPwdResetPasswordConfirm}
+                    colors={{
+                      foreground: colors.foreground,
+                      mutedForeground: colors.mutedForeground,
+                      border: HOME_SHEET_RIM,
+                      surface: HOME_SHEET_PANEL,
+                    }}
+                    inputWrapStyle={[styles.inputRow, { borderColor: HOME_SHEET_RIM, backgroundColor: HOME_SHEET_PANEL }]}
+                    inputFieldStyle={styles.inputField}
+                    onSubmitPassword={() => void confirmProfilePasswordReset()}
+                  />
+                  <Pressable
+                    style={[styles.registerBtn, {
+                      backgroundColor: isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
+                        ? "#111111"
+                        : colors.muted,
+                    }]}
+                    onPress={() => void confirmProfilePasswordReset()}
+                    disabled={
+                      !isCustomerPasswordFormValid(pwdResetPassword, pwdResetPasswordConfirm)
+                      || pwdResetSubmitLoading
+                    }
+                  >
+                    {pwdResetSubmitLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={[styles.registerBtnText, { color: "#fff" }]}>Passwort speichern</Text>
+                    )}
+                  </Pressable>
+                </View>
+              ) : regSubStep === "email" ? (
+                <View style={styles.signInBlock}>
+                  <Pressable style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }} onPress={() => { setProfileStep("social"); setRegSubStep("email"); }}>
                     <Feather name="arrow-left" size={16} color={colors.foreground} />
                     <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
                   </Pressable>

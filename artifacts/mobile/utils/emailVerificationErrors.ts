@@ -1,4 +1,5 @@
 export const EMAIL_VERIFICATION_PURPOSE = "customer_registration";
+export const CUSTOMER_PASSWORD_RESET_PURPOSE = "customer_password_reset";
 
 export function mapEmailVerificationApiError(code: unknown): string {
   const k = typeof code === "string" ? code : "";

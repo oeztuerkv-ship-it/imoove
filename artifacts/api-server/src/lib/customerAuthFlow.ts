@@ -3,9 +3,11 @@ import { getDb, isPostgresConfigured } from "../db/client";
 import {
   findCustomerAccountByEmail,
   insertCustomerAccount,
+  updateCustomerAccountPassword,
   type CustomerAccountRow,
 } from "../db/customerAccountsData";
 import {
+  CUSTOMER_PASSWORD_RESET_PURPOSE,
   CUSTOMER_REGISTRATION_PURPOSE,
   isPlausibleRegistrationEmail,
   normalizeCustomerEmail,
@@ -160,4 +162,57 @@ export async function loginCustomerAccount(opts: {
   }
 
   return { ok: true, sessionToken, customer: toPublicDto(row) };
+}
+
+export async function confirmCustomerPasswordReset(opts: {
+  bodyEmail: unknown;
+  bodyProofToken: unknown;
+  bodyPassword: unknown;
+  bodyPasswordConfirm: unknown;
+}): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  if (!isPostgresConfigured() || !getDb()) {
+    return { ok: false, error: "database_not_configured", status: 503 };
+  }
+
+  const email = normalizeCustomerEmail(typeof opts.bodyEmail === "string" ? opts.bodyEmail : "");
+  const proofToken = typeof opts.bodyProofToken === "string" ? opts.bodyProofToken.trim() : "";
+  const password = typeof opts.bodyPassword === "string" ? opts.bodyPassword : "";
+  const passwordConfirm =
+    typeof opts.bodyPasswordConfirm === "string" ? opts.bodyPasswordConfirm : "";
+
+  if (!isPlausibleRegistrationEmail(email) || !proofToken) {
+    return { ok: false, error: "invalid_params", status: 400 };
+  }
+
+  const pwCheck = validateCustomerPassword(password);
+  if (!pwCheck.ok) {
+    return { ok: false, error: pwCheck.error, status: 400 };
+  }
+  if (!passwordsMatch(password, passwordConfirm)) {
+    return { ok: false, error: "password_mismatch", status: 400 };
+  }
+
+  const proof = await verifyEmailVerificationProofJwt(proofToken);
+  if (!proof || proof.email !== email || proof.purpose !== CUSTOMER_PASSWORD_RESET_PURPOSE) {
+    return { ok: false, error: "invalid_proof_token", status: 400 };
+  }
+
+  const existing = await findCustomerAccountByEmail(email);
+  if (!existing) {
+    return { ok: false, error: "invalid_params", status: 400 };
+  }
+
+  let passwordHash: string;
+  try {
+    passwordHash = await hashPassword(password);
+  } catch {
+    return { ok: false, error: "password_hash_failed", status: 500 };
+  }
+
+  const updated = await updateCustomerAccountPassword(email, passwordHash);
+  if (!updated) {
+    return { ok: false, error: "account_not_found", status: 400 };
+  }
+
+  return { ok: true };
 }

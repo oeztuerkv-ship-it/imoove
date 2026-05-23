@@ -12,6 +12,7 @@ import {
 } from "../db/emailVerificationCodesData";
 import { findCustomerAccountByEmail } from "../db/customerAccountsData";
 import {
+  CUSTOMER_PASSWORD_RESET_PURPOSE,
   CUSTOMER_REGISTRATION_PURPOSE,
   EMAIL_VERIFICATION_MAX_ATTEMPTS,
   EMAIL_VERIFICATION_TTL_MS,
@@ -107,6 +108,20 @@ export async function dispatchEmailVerificationCode(opts: {
     }
     if (accountCheck.exists) {
       return { ok: false, error: "account_exists", status: 409 };
+    }
+  }
+
+  if (purpose === CUSTOMER_PASSWORD_RESET_PURPOSE) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (!accountCheck.exists) {
+      logger.info(
+        { event: "auth.email.start.password_reset_no_account", emailDomain: normalized.split("@")[1] ?? "" },
+        "password reset requested for unknown email — neutral ok, no code sent",
+      );
+      return { ok: true };
     }
   }
 
@@ -207,6 +222,16 @@ export async function verifyEmailCode(opts: {
     }
     if (accountCheck.exists) {
       return { ok: false, error: "account_exists", status: 409 };
+    }
+  }
+
+  if (purpose === CUSTOMER_PASSWORD_RESET_PURPOSE) {
+    const accountCheck = await checkCustomerRegistrationAccount(normalized);
+    if (!accountCheck.ok) {
+      return { ok: false, error: accountCheck.error, status: accountCheck.status };
+    }
+    if (!accountCheck.exists) {
+      return { ok: false, error: "invalid_code", status: 400 };
     }
   }
 

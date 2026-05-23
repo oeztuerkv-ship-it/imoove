@@ -1,5 +1,9 @@
 import { Router, type Request } from "express";
-import { loginCustomerAccount, registerCustomerAccount } from "../lib/customerAuthFlow";
+import {
+  confirmCustomerPasswordReset,
+  loginCustomerAccount,
+  registerCustomerAccount,
+} from "../lib/customerAuthFlow";
 
 const router = Router();
 
@@ -44,6 +48,20 @@ router.post("/auth/customer/login", async (req, res) => {
     return;
   }
   res.json({ ok: true, sessionToken: outcome.sessionToken, customer: outcome.customer });
+});
+
+router.post("/auth/customer/password-reset/confirm", async (req, res) => {
+  const outcome = await confirmCustomerPasswordReset({
+    bodyEmail: req.body?.email,
+    bodyProofToken: req.body?.proofToken ?? req.body?.proof_token,
+    bodyPassword: req.body?.password,
+    bodyPasswordConfirm: req.body?.passwordConfirm ?? req.body?.password_confirm,
+  });
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ ok: false, error: outcome.error });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 export default router;

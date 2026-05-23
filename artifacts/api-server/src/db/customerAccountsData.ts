@@ -90,6 +90,23 @@ export type CustomerAccountAdminDto = {
   createdAt: string;
 };
 
+export async function updateCustomerAccountPassword(
+  email: string,
+  passwordHash: string,
+): Promise<boolean> {
+  const db = getDb();
+  if (!db) throw new Error("database_not_configured");
+  const normalizedEmail = normalizeCustomerEmail(email);
+  if (!normalizedEmail) return false;
+  const now = new Date();
+  const rows = await db
+    .update(customerAccountsTable)
+    .set({ password_hash: passwordHash, updated_at: now })
+    .where(eq(customerAccountsTable.email, normalizedEmail))
+    .returning({ id: customerAccountsTable.id });
+  return rows.length > 0;
+}
+
 export async function listCustomerAccountsAdmin(limit = 500): Promise<CustomerAccountAdminDto[]> {
   const db = getDb();
   if (!db) throw new Error("database_not_configured");

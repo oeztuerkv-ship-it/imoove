@@ -67,6 +67,14 @@ import { formatEuro } from "@/utils/fareCalculator";
 import { type GeoLocation, searchLocation } from "@/utils/routing";
 import { getApiBaseUrl } from "@/utils/apiBase";
 import {
+  confirmCustomerPasswordReset,
+  mapCustomerAuthApiError,
+  resendEmailVerification,
+  startEmailVerification,
+  verifyEmailVerificationCode,
+} from "@/utils/customerAuthApi";
+import {
+  CUSTOMER_PASSWORD_RESET_PURPOSE,
   EMAIL_VERIFICATION_PURPOSE,
   isEmailStartAccountExistsResponse,
   mapEmailVerificationApiError,
@@ -165,7 +173,7 @@ export default function HomeScreen() {
   /** Verhindert zweites useFocusEffect (Strict Mode / Re-Focus), das sonst frisch gesetztes Ziel wieder löscht. */
   const homePendingDestinationGuardUntilRef = useRef(0);
   const { loading: driverLoading, isLoggedIn: isDriverLoggedIn, driver: driverProfile } = useDriver();
-  const { profile, updateProfile, loginWithGoogle, registerCustomerAccount } = useUser();
+  const { profile, updateProfile, loginWithGoogle, loginWithEmailAccount, registerCustomerAccount } = useUser();
 
   const {
     origin, viaStops, destination, selectedVehicle, paymentMethod,
@@ -348,7 +356,11 @@ export default function HomeScreen() {
     | "email_enter"
     | "verify"
     | "register_details"
-    | "register_password";
+    | "register_password"
+    | "email_login"
+    | "password_reset_email"
+    | "password_reset_verify"
+    | "password_reset_password";
   const [onboardingCustomerStep, setOnboardingCustomerStep] = useState<OnboardingCustomerStep>("social");
   const [obRegName, setObRegName] = useState("");
   const [obRegEmail, setObRegEmail] = useState("");
@@ -362,6 +374,17 @@ export default function HomeScreen() {
   const [obRegPassword, setObRegPassword] = useState("");
   const [obRegPasswordConfirm, setObRegPasswordConfirm] = useState("");
   const [registerSubmitLoading, setRegisterSubmitLoading] = useState(false);
+  const [obLoginEmail, setObLoginEmail] = useState("");
+  const [obLoginPassword, setObLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [emailLoginLoading, setEmailLoginLoading] = useState(false);
+  const [obResetEmail, setObResetEmail] = useState("");
+  const [resetOtpDigits, setResetOtpDigits] = useState("");
+  const [pendingResetProofToken, setPendingResetProofToken] = useState<string | undefined>(undefined);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
+  const [resetSubmitLoading, setResetSubmitLoading] = useState(false);
+  const [resetCooldownSecs, setResetCooldownSecs] = useState(0);
   const obRegNameRef = useRef<TextInput>(null);
   const obRegPhoneRef = useRef<TextInput>(null);
 
@@ -370,6 +393,12 @@ export default function HomeScreen() {
     const id = setTimeout(() => setCooldownSecs((s) => Math.max(0, s - 1)), 1000);
     return () => clearTimeout(id);
   }, [cooldownSecs]);
+
+  useEffect(() => {
+    if (resetCooldownSecs <= 0) return undefined;
+    const id = setTimeout(() => setResetCooldownSecs((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [resetCooldownSecs]);
 
   useEffect(() => {
     if (onboardingCustomerStep !== "register_details") return undefined;
@@ -394,6 +423,17 @@ export default function HomeScreen() {
       setObRegPassword("");
       setObRegPasswordConfirm("");
       setRegisterSubmitLoading(false);
+      setObLoginEmail("");
+      setObLoginPassword("");
+      setShowLoginPassword(false);
+      setEmailLoginLoading(false);
+      setObResetEmail("");
+      setResetOtpDigits("");
+      setPendingResetProofToken(undefined);
+      setResetPassword("");
+      setResetPasswordConfirm("");
+      setResetSubmitLoading(false);
+      setResetCooldownSecs(0);
     }
   }, [showOnboarding]);
 
@@ -913,6 +953,168 @@ export default function HomeScreen() {
     obRegPasswordConfirm,
     pendingEmailProofToken,
     registerCustomerAccount,
+  ]);
+
+  const submitEmailLogin = useCallback(async () => {
+    const email = obLoginEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email) || !obLoginPassword) {
+      Alert.alert("Hinweis", "Bitte E-Mail und Passwort eingeben.");
+      return;
+    }
+    setEmailLoginLoading(true);
+    try {
+      const outcome = await loginWithEmailAccount({ email, password: obLoginPassword });
+      if (!outcome.ok) {
+        Alert.alert("Anmeldung fehlgeschlagen", outcome.error);
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte Verbindung prüfen.");
+    } finally {
+      setEmailLoginLoading(false);
+    }
+  }, [loginWithEmailAccount, obLoginEmail, obLoginPassword]);
+
+  const submitPasswordResetStart = useCallback(async () => {
+    const email = obResetEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email)) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_email"));
+      return;
+    }
+    setEmailStartLoading(true);
+    try {
+      const outcome = await startEmailVerification({
+        email,
+        purpose: CUSTOMER_PASSWORD_RESET_PURPOSE,
+      });
+      if (!outcome.ok) {
+        const msg = mapEmailVerificationApiError(outcome.error);
+        Alert.alert(
+          outcome.status === 429 ? "Bitte warten" : "Hinweis",
+          typeof outcome.retryAfterSeconds === "number" && outcome.retryAfterSeconds > 5
+            ? `${msg}\n\nBitte etwa ${Math.ceil(outcome.retryAfterSeconds / 60)} Min. später erneut.`
+            : msg,
+        );
+        return;
+      }
+      setResetOtpDigits("");
+      setPendingResetProofToken(undefined);
+      setResetCooldownSecs(60);
+      setOnboardingCustomerStep("password_reset_verify");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler — bitte Verbindung prüfen.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  }, [obResetEmail]);
+
+  const submitPasswordResetResend = useCallback(async () => {
+    const email = obResetEmail.trim().toLowerCase();
+    if (!isPlausibleEmail(email) || resetCooldownSecs > 0) return;
+    setEmailStartLoading(true);
+    try {
+      const outcome = await resendEmailVerification({
+        email,
+        purpose: CUSTOMER_PASSWORD_RESET_PURPOSE,
+      });
+      if (!outcome.ok) {
+        Alert.alert(
+          outcome.status === 429 ? "Bitte warten" : "Hinweis",
+          mapEmailVerificationApiError(outcome.error),
+        );
+        return;
+      }
+      setResetCooldownSecs(60);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setEmailStartLoading(false);
+    }
+  }, [obResetEmail, resetCooldownSecs]);
+
+  const submitPasswordResetVerify = useCallback(async () => {
+    const email = obResetEmail.trim().toLowerCase();
+    const digits = resetOtpDigits.replace(/\D/g, "").slice(0, 6);
+    if (!isPlausibleEmail(email) || digits.length !== 6) {
+      Alert.alert("Hinweis", mapEmailVerificationApiError("invalid_params"));
+      return;
+    }
+    setEmailVerifyLoading(true);
+    try {
+      const outcome = await verifyEmailVerificationCode({
+        email,
+        code: digits,
+        purpose: CUSTOMER_PASSWORD_RESET_PURPOSE,
+      });
+      if (!outcome.ok) {
+        Alert.alert(
+          outcome.error === "too_many_attempts" ? "Gesperrt" : "Hinweis",
+          mapEmailVerificationApiError(outcome.error),
+        );
+        return;
+      }
+      if (!outcome.proofToken?.trim()) {
+        Alert.alert("Hinweis", "Bestätigung fehlgeschlagen — bitte Code erneut anfordern.");
+        return;
+      }
+      setPendingResetProofToken(outcome.proofToken);
+      setResetPassword("");
+      setResetPasswordConfirm("");
+      Keyboard.dismiss();
+      setOnboardingCustomerStep("password_reset_password");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setEmailVerifyLoading(false);
+    }
+  }, [obResetEmail, resetOtpDigits]);
+
+  const submitPasswordResetConfirm = useCallback(async () => {
+    const email = obResetEmail.trim().toLowerCase();
+    const proof = pendingResetProofToken?.trim() ?? "";
+    if (!isPlausibleEmail(email) || !proof) {
+      Alert.alert("Hinweis", "Bitte den Passwort-Reset von vorne starten.");
+      return;
+    }
+    setResetSubmitLoading(true);
+    try {
+      const outcome = await confirmCustomerPasswordReset({
+        email,
+        proofToken: proof,
+        password: resetPassword,
+        passwordConfirm: resetPasswordConfirm,
+      });
+      if (!outcome.ok) {
+        Alert.alert("Hinweis", mapCustomerAuthApiError(outcome.error));
+        return;
+      }
+      Alert.alert(
+        "Passwort gespeichert",
+        "Du kannst dich jetzt mit deiner E-Mail und dem neuen Passwort anmelden.",
+        [{
+          text: "Zum Login",
+          onPress: () => {
+            setObLoginEmail(email);
+            setObLoginPassword("");
+            setOnboardingCustomerStep("email_login");
+          },
+        }],
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Hinweis", "Netzwerkfehler.");
+    } finally {
+      setResetSubmitLoading(false);
+    }
+  }, [
+    obResetEmail,
+    pendingResetProofToken,
+    resetPassword,
+    resetPasswordConfirm,
   ]);
 
   /* ── Route fetch: nach Ziel- und Fahrzeugwahl Preis live neu berechnen ── */
@@ -2405,6 +2607,29 @@ export default function HomeScreen() {
                         shadowRadius: 4,
                         elevation: 1,
                       }]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setObLoginEmail("");
+                        setObLoginPassword("");
+                        setOnboardingCustomerStep("email_login");
+                      }}
+                    >
+                      <Feather name="mail" size={22} color={colors.foreground} />
+                      <Text style={[styles.socialBtnText, { color: colors.foreground, fontSize: isSmallScreen ? 15 : 16, fontFamily: "Inter_600SemiBold" }]}>
+                        Mit E-Mail anmelden
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.socialBtn, {
+                        backgroundColor: "#FFFFFF",
+                        borderColor: colors.border,
+                        paddingVertical: isSmallScreen ? 13 : 16,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                        elevation: 1,
+                      }]}
                       onPress={() => Alert.alert("Apple-Login", "Apple-Anmeldung ist noch nicht verfügbar.")}
                     >
                       <MaterialCommunityIcons name="apple" size={22} color={colors.foreground} />
@@ -2637,7 +2862,7 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
                 </>
-              ) : (
+              ) : onboardingCustomerStep === "register_password" ? (
                 <>
                   <Pressable
                     style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
@@ -2705,7 +2930,254 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
                 </>
-              )}
+              ) : onboardingCustomerStep === "email_login" ? (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("social")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Mit E-Mail anmelden</Text>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="mail" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground }]}
+                      placeholder="E-Mail"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obLoginEmail}
+                      onChangeText={setObLoginEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!emailLoginLoading}
+                    />
+                  </View>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="lock" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground, flex: 1 }]}
+                      placeholder="Passwort"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obLoginPassword}
+                      onChangeText={setObLoginPassword}
+                      secureTextEntry={!showLoginPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!emailLoginLoading}
+                      onSubmitEditing={() => void submitEmailLogin()}
+                    />
+                    <Pressable onPress={() => setShowLoginPassword((v) => !v)} hitSlop={10}>
+                      <Feather name={showLoginPassword ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                  <Pressable
+                    style={{ alignSelf: "flex-start", paddingVertical: 4 }}
+                    onPress={() => {
+                      setObResetEmail(obLoginEmail.trim().toLowerCase());
+                      setResetOtpDigits("");
+                      setPendingResetProofToken(undefined);
+                      setOnboardingCustomerStep("password_reset_email");
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.primary }}>
+                      Passwort vergessen?
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: obLoginEmail.trim() && obLoginPassword ? "#111111" : colors.muted,
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                      opacity: emailLoginLoading ? 0.72 : 1,
+                    }]}
+                    onPress={() => void submitEmailLogin()}
+                    disabled={emailLoginLoading || !obLoginEmail.trim() || !obLoginPassword}
+                  >
+                    {emailLoginLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather name="log-in" size={20} color={obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground} />
+                    )}
+                    <Text style={[styles.socialBtnText, {
+                      color: obLoginEmail.trim() && obLoginPassword ? "#fff" : colors.mutedForeground,
+                      fontSize: isSmallScreen ? 15 : 16,
+                    }]}
+                    >
+                      Anmelden
+                    </Text>
+                  </Pressable>
+                </>
+              ) : onboardingCustomerStep === "password_reset_email" ? (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("email_login")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Passwort zurücksetzen</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    Wir senden einen Code an deine E-Mail, falls ein Konto existiert.
+                  </Text>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="mail" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground }]}
+                      placeholder="E-Mail-Adresse"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={obResetEmail}
+                      onChangeText={setObResetEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!emailStartLoading}
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: "#111111",
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                      opacity: emailStartLoading ? 0.72 : 1,
+                    }]}
+                    onPress={() => void submitPasswordResetStart()}
+                    disabled={emailStartLoading}
+                  >
+                    {emailStartLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather name="send" size={20} color="#fff" />
+                    )}
+                    <Text style={[styles.socialBtnText, { color: "#fff", fontSize: isSmallScreen ? 15 : 16 }]}>
+                      Code senden
+                    </Text>
+                  </Pressable>
+                </>
+              ) : onboardingCustomerStep === "password_reset_verify" ? (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("password_reset_email")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Code eingeben</Text>
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -6 }}>
+                    Code an <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{obResetEmail.trim() || "deine E-Mail"}</Text>
+                  </Text>
+                  <View style={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                    <Feather name="hash" size={18} color={colors.mutedForeground} />
+                    <TextInput
+                      style={[styles.onboardingInputField, { color: colors.foreground, letterSpacing: 4 }]}
+                      placeholder="6-stelliger Code"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={resetOtpDigits}
+                      onChangeText={(t) => setResetOtpDigits(t.replace(/\D/g, "").slice(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      editable={!emailVerifyLoading}
+                    />
+                  </View>
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: resetOtpDigits.length === 6 ? "#111111" : colors.muted,
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                    }]}
+                    onPress={() => void submitPasswordResetVerify()}
+                    disabled={resetOtpDigits.length !== 6 || emailVerifyLoading}
+                  >
+                    {emailVerifyLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather name="check" size={20} color={resetOtpDigits.length === 6 ? "#fff" : colors.mutedForeground} />
+                    )}
+                    <Text style={[styles.socialBtnText, {
+                      color: resetOtpDigits.length === 6 ? "#fff" : colors.mutedForeground,
+                      fontSize: isSmallScreen ? 15 : 16,
+                    }]}
+                    >
+                      Code prüfen
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={{ alignSelf: "center", paddingVertical: 8 }}
+                    onPress={() => void submitPasswordResetResend()}
+                    disabled={resetCooldownSecs > 0 || emailStartLoading}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      fontFamily: "Inter_500Medium",
+                      color: resetCooldownSecs > 0 ? colors.mutedForeground : colors.primary,
+                    }}
+                    >
+                      {resetCooldownSecs > 0 ? `Erneut senden in ${resetCooldownSecs}s` : "Code erneut senden"}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : onboardingCustomerStep === "password_reset_password" ? (
+                <>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+                    onPress={() => setOnboardingCustomerStep("password_reset_verify")}
+                  >
+                    <Feather name="arrow-left" size={18} color={colors.foreground} />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground }}>Zurück</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>Neues Passwort</Text>
+                  <CustomerPasswordFields
+                    password={resetPassword}
+                    confirm={resetPasswordConfirm}
+                    onChangePassword={setResetPassword}
+                    onChangeConfirm={setResetPasswordConfirm}
+                    colors={{
+                      foreground: colors.foreground,
+                      mutedForeground: colors.mutedForeground,
+                      border: colors.border,
+                      surface: colors.surface,
+                    }}
+                    inputWrapStyle={[styles.onboardingInput, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    inputFieldStyle={styles.onboardingInputField}
+                    onSubmitPassword={() => void submitPasswordResetConfirm()}
+                  />
+                  <Pressable
+                    style={[styles.socialBtn, {
+                      backgroundColor: isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm)
+                        ? "#111111"
+                        : colors.muted,
+                      paddingVertical: isSmallScreen ? 13 : 16,
+                    }]}
+                    onPress={() => void submitPasswordResetConfirm()}
+                    disabled={
+                      !isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm) || resetSubmitLoading
+                    }
+                  >
+                    {resetSubmitLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather
+                        name="check"
+                        size={20}
+                        color={
+                          isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm)
+                            ? "#fff"
+                            : colors.mutedForeground
+                        }
+                      />
+                    )}
+                    <Text style={[styles.socialBtnText, {
+                      color: isCustomerPasswordFormValid(resetPassword, resetPasswordConfirm)
+                        ? "#fff"
+                        : colors.mutedForeground,
+                      fontSize: isSmallScreen ? 15 : 16,
+                    }]}
+                    >
+                      Passwort speichern
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
             </View>
             )}
 

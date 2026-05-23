@@ -1,6 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { mapCustomerAuthApiError, registerCustomerWithPassword } from "@/utils/customerAuthApi";
+import {
+  loginCustomerWithPassword,
+  mapCustomerAuthApiError,
+  registerCustomerWithPassword,
+  type CustomerAuthDto,
+} from "@/utils/customerAuthApi";
 import { syncCustomerExpoPushToken } from "@/utils/syncCustomerExpoPushToken";
 
 export interface UserProfile {
@@ -110,6 +115,11 @@ interface UserContextValue {
     passwordConfirm: string;
     emailVerificationProofToken: string;
   }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** E-Mail + Passwort Login (customer_accounts). */
+  loginWithEmailAccount: (data: {
+    email: string;
+    password: string;
+  }) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** Telefonnummer-Flow: Profil anlegen/aktualisieren, angemeldet. */
   loginWithPhone: (data: {
     phone: string;
@@ -188,6 +198,42 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [save],
   );
 
+  const applyCustomerSession = useCallback(
+    (customer: CustomerAuthDto, sessionToken: string) => {
+      const updated: UserProfile = {
+        ...DEFAULT_PROFILE,
+        name: customer.name.trim(),
+        email: customer.email.trim(),
+        phone: (customer.phone ?? "").trim(),
+        isLoggedIn: true,
+        photoUri: null,
+        googleId: customer.id,
+        sessionToken,
+        emailVerificationProofToken: null,
+      };
+      save(updated);
+    },
+    [save],
+  );
+
+  const loginWithEmailAccount = useCallback(
+    async (data: {
+      email: string;
+      password: string;
+    }): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const outcome = await loginCustomerWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+      if (!outcome.ok) {
+        return { ok: false, error: mapCustomerAuthApiError(outcome.error) };
+      }
+      applyCustomerSession(outcome.customer, outcome.sessionToken);
+      return { ok: true };
+    },
+    [applyCustomerSession],
+  );
+
   const registerCustomerAccount = useCallback(
     async (data: {
       name: string;
@@ -208,21 +254,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!outcome.ok) {
         return { ok: false, error: mapCustomerAuthApiError(outcome.error) };
       }
-      const updated: UserProfile = {
-        ...DEFAULT_PROFILE,
-        name: outcome.customer.name.trim() || data.name.trim(),
-        email: outcome.customer.email.trim() || data.email.trim(),
-        phone: (outcome.customer.phone ?? data.phone).trim(),
-        isLoggedIn: true,
-        photoUri: null,
-        googleId: outcome.customer.id,
-        sessionToken: outcome.sessionToken,
-        emailVerificationProofToken: null,
-      };
-      save(updated);
+      applyCustomerSession(outcome.customer, outcome.sessionToken);
+      if (!outcome.customer.name.trim() && data.name.trim()) {
+        updateProfile({ name: data.name.trim() });
+      }
+      if (!outcome.customer.phone && data.phone.trim()) {
+        updateProfile({ phone: data.phone.trim() });
+      }
       return { ok: true };
     },
-    [save],
+    [applyCustomerSession, updateProfile],
   );
 
   const loginWithPhone = useCallback(
@@ -263,6 +304,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         loginWithGoogle,
         registerLocalCustomer,
         registerCustomerAccount,
+        loginWithEmailAccount,
         loginWithPhone,
       }}
     >

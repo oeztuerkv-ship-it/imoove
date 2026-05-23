@@ -4,6 +4,7 @@ export const EMAIL_VERIFICATION_TTL_MS = 10 * 60 * 1000;
 export const EMAIL_VERIFICATION_MAX_ATTEMPTS = 5;
 
 export const CUSTOMER_REGISTRATION_PURPOSE = "customer_registration";
+export const CUSTOMER_PASSWORD_RESET_PURPOSE = "customer_password_reset";
 
 const PURPOSE_SAFE = /^[a-z][a-z0-9_]{0,62}$/;
 
