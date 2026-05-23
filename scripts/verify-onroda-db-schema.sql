@@ -48,6 +48,8 @@
 --   063 → passenger_expo_push_tokens (Kunden-Expo-Push)
 --   064 → fleet_driver_expo_push_tokens + rides.push_*_at (Push-Dedupe)
 --   065 → app_help_tickets (Kunden-App Tab Hilfe)
+--   074 → customer_accounts (Kunden E-Mail/Passwort)
+--   075 → medical_cases, medical_documents, medical_reviews + admin_companies.partner_ik_number
 
 DO $$
 DECLARE
@@ -715,6 +717,55 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'customer_accounts' AND column_name = 'email_verified_at'
   ) THEN
     errs := array_append(errs, 'customer_accounts.email_verified_at (Migration 074)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'partner_ik_number'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.partner_ik_number (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'medical_cases'
+  ) THEN
+    errs := array_append(errs, 'table medical_cases (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'medical_cases' AND column_name = 'date_logic_type'
+  ) THEN
+    errs := array_append(errs, 'medical_cases.date_logic_type (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'medical_documents'
+  ) THEN
+    errs := array_append(errs, 'table medical_documents (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'medical_documents' AND column_name = 'ocr_raw_json'
+  ) THEN
+    errs := array_append(errs, 'medical_documents.ocr_raw_json (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'medical_reviews'
+  ) THEN
+    errs := array_append(errs, 'table medical_reviews (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'medical_reviews' AND column_name = 'traffic_light'
+  ) THEN
+    errs := array_append(errs, 'medical_reviews.traffic_light (Migration 075)');
   END IF;
 
   IF NOT EXISTS (

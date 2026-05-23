@@ -70,6 +70,8 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   partner_panel_profile_locked: boolean("partner_panel_profile_locked").notNull().default(false),
   /** ONRODA-Provision (0.10 = 10 %), siehe ride_financials bei completed. */
   commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
+  /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
+  partner_ik_number: text("partner_ik_number").notNull().default(""),
 });
 
 /** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */
@@ -828,6 +830,70 @@ export const partnerRideSeriesTable = pgTable("partner_ride_series", {
   total_rides: integer("total_rides").notNull(),
   status: text("status").notNull().default("active"),
   meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Medical-Fall (Patient/KK/IK, Datumslogik) — Phase 1 Scan-Workflow. */
+export const medicalCasesTable = pgTable("medical_cases", {
+  id: text("id").primaryKey(),
+  company_id: text("company_id")
+    .notNull()
+    .references(() => adminCompaniesTable.id, { onDelete: "cascade" }),
+  ride_id: text("ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+  series_id: text("series_id").references(() => partnerRideSeriesTable.id, { onDelete: "set null" }),
+  patient_display_name: text("patient_display_name").notNull().default(""),
+  patient_reference: text("patient_reference").notNull().default(""),
+  insurance_name: text("insurance_name").notNull().default(""),
+  insurance_ik: text("insurance_ik").notNull().default(""),
+  partner_ik_number: text("partner_ik_number").notNull().default(""),
+  case_type: text("case_type").notNull().default("transport_sheet"),
+  date_logic_type: text("date_logic_type").notNull().default("today"),
+  date_logic_context_json: jsonb("date_logic_context_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  status: text("status").notNull().default("open"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Transportschein-Scan inkl. OCR-Rohdaten (Claude Vision Phase 1). */
+export const medicalDocumentsTable = pgTable("medical_documents", {
+  id: text("id").primaryKey(),
+  case_id: text("case_id")
+    .notNull()
+    .references(() => medicalCasesTable.id, { onDelete: "cascade" }),
+  ride_id: text("ride_id").references(() => ridesTable.id, { onDelete: "set null" }),
+  document_type: text("document_type").notNull().default("transport_sheet"),
+  storage_key: text("storage_key").notNull().default(""),
+  mime_type: text("mime_type").notNull().default(""),
+  ocr_provider: text("ocr_provider").notNull().default(""),
+  ocr_model: text("ocr_model").notNull().default(""),
+  ocr_raw_json: jsonb("ocr_raw_json").$type<Record<string, unknown>>().notNull().default({}),
+  ocr_extracted_json: jsonb("ocr_extracted_json").$type<Record<string, unknown>>().notNull().default({}),
+  ocr_confidence_json: jsonb("ocr_confidence_json").$type<Record<string, unknown>>().notNull().default({}),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Ampel-Review (green/yellow/red) — keine automatische Freigabe (auto_approved bleibt false). */
+export const medicalReviewsTable = pgTable("medical_reviews", {
+  id: text("id").primaryKey(),
+  case_id: text("case_id")
+    .notNull()
+    .references(() => medicalCasesTable.id, { onDelete: "cascade" }),
+  document_id: text("document_id")
+    .notNull()
+    .references(() => medicalDocumentsTable.id, { onDelete: "cascade" }),
+  traffic_light: text("traffic_light").notNull().default("yellow"),
+  warnings_json: jsonb("warnings_json").$type<unknown[]>().notNull().default([]),
+  date_logic_result_json: jsonb("date_logic_result_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
+  reviewer_actor_kind: text("reviewer_actor_kind").notNull().default("system"),
+  reviewer_actor_id: text("reviewer_actor_id"),
+  reviewed_at: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
+  auto_approved: boolean("auto_approved").notNull().default(false),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
