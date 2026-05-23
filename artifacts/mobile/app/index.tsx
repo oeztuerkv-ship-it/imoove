@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -807,6 +808,7 @@ export default function HomeScreen() {
       }
       setPendingEmailProofToken(typeof data.proofToken === "string" ? data.proofToken : undefined);
       setObRegEmail(email);
+      Keyboard.dismiss();
       setOnboardingCustomerStep("register_details");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {

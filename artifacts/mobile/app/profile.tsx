@@ -1109,6 +1109,7 @@ export default function ProfileScreen() {
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scroll,
           profile.isLoggedIn && styles.scrollAccountLoggedIn,
