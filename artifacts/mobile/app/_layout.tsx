@@ -1,5 +1,5 @@
 import "react-native-gesture-handler";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -12,7 +12,7 @@ import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
-import { Image, StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,6 +22,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { IntroSplash, wasIntroSplashShownThisSession } from "@/components/IntroSplash";
 import { SessionRestoreCoordinator } from "@/components/SessionRestoreCoordinator";
 import { HOME_SHEET_BG } from "@/constants/homeSheetChrome";
 import { AppConfigProvider } from "@/context/AppConfigContext";
@@ -50,24 +51,6 @@ const ROOT_FONT_MAP = {
 };
 
 const queryClient = new QueryClient();
-
-/** Eigenes Splash (Expo Go cached oft das alte Native-Splash) — offizielles ONRODA-Logo. */
-function OnrodaStartupSplash({ visible }: { visible: boolean }) {
-  const { width } = useWindowDimensions();
-  if (!visible) return null;
-  const logoWidth = Math.min(width * 0.78, 320);
-  const logoHeight = logoWidth * (682 / 1024);
-  return (
-    <View style={styles.startupSplashOverlay} pointerEvents="auto">
-      <Image
-        source={require("../assets/images/onroda-logo-official.png")}
-        style={{ width: logoWidth, height: logoHeight }}
-        resizeMode="contain"
-        accessibilityLabel="ONRODA"
-      />
-    </View>
-  );
-}
 
 function RootLayoutNav() {
   return (
@@ -114,7 +97,14 @@ function RootLayoutNav() {
 export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [fontError, setFontError] = useState<Error | null>(null);
-  const showStartupSplash = !fontsLoaded && !fontError;
+  const [introFinished, setIntroFinished] = useState(() => wasIntroSplashShownThisSession());
+
+  const showIntro = !introFinished;
+  const appReady = introFinished && (fontsLoaded || Boolean(fontError));
+
+  const handleIntroFinish = useCallback(() => {
+    setIntroFinished(true);
+  }, []);
 
   useEffect(() => {
     void SplashScreen.hideAsync();
@@ -135,8 +125,8 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (fontsLoaded || fontError) void SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+    if (appReady) void SplashScreen.hideAsync();
+  }, [appReady]);
 
   /** Kein frühes `return null`: sonst fehlt `UserProvider` kurz → useUser in Screens wirft. */
   return (
@@ -144,7 +134,10 @@ export default function RootLayout() {
       <StatusBar style="dark" backgroundColor={HOME_SHEET_BG} />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1, backgroundColor: HOME_SHEET_BG }}>
+          <GestureHandlerRootView
+            style={{ flex: 1, backgroundColor: HOME_SHEET_BG }}
+            pointerEvents={appReady ? "auto" : "none"}
+          >
             <KeyboardProvider>
               <LanguageProvider>
               <UserProvider>
@@ -164,17 +157,16 @@ export default function RootLayout() {
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
-      <OnrodaStartupSplash visible={showStartupSplash} />
+      {showIntro ? <IntroSplash onFinish={handleIntroFinish} /> : null}
+      {!appReady && introFinished ? <View style={styles.bootBackdrop} pointerEvents="auto" /> : null}
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  startupSplashOverlay: {
+  bootBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
     zIndex: 9999,
     elevation: 9999,
   },
