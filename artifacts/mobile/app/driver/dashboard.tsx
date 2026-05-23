@@ -52,6 +52,13 @@ import { ensureExpoNotificationsHandler } from "@/utils/ensureExpoNotificationsH
 import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
 import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
+import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
+import {
+  medicalScanContextFromRide,
+  medicalScanErrorMessageDe,
+  postMedicalTransportScan,
+  type MedicalScanSuccess,
+} from "@/utils/medicalScanApi";
 import {
   driverPaymentMethodLabelDe,
 } from "@/utils/driverPaymentMethodLabel";
@@ -1205,6 +1212,9 @@ function MedicalRideProofActions({
   const meta = (req as RideRequest & { partnerBookingMeta?: Record<string, unknown> }).partnerBookingMeta;
   const [camOpen, setCamOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [scanResult, setScanResult] = useState<MedicalScanSuccess | null>(null);
+  const [lastScanResult, setLastScanResult] = useState<MedicalScanSuccess | null>(null);
   const [busy, setBusy] = useState(false);
   const [perm, requestPerm] = useCameraPermissions();
   const scannedRef = useRef(false);
@@ -1269,6 +1279,61 @@ function MedicalRideProofActions({
       return;
     }
     setCamOpen(true);
+  }
+
+  async function onPressTransportScan() {
+    if (Platform.OS === "web") {
+      Alert.alert("Transportschein scannen", "Bitte in der nativen App (iOS/Android) scannen.");
+      return;
+    }
+    const p = await ImagePicker.requestCameraPermissionsAsync();
+    if (!p.granted) {
+      Alert.alert("Kamera", "Kamerazugriff wird benötigt.");
+      return;
+    }
+    const r = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      base64: true,
+    });
+    if (r.canceled || !r.assets?.[0]?.base64) return;
+    const mime = r.assets[0].mimeType ?? "image/jpeg";
+    const b64url = `data:${mime};base64,${r.assets[0].base64}`;
+    setBusy(true);
+    try {
+      const ctx = medicalScanContextFromRide(
+        (req.partnerBookingMeta ?? meta) as Record<string, unknown> | null | undefined,
+      );
+      const result = await postMedicalTransportScan({
+        authToken: fleetAuthToken,
+        rideId: req.id,
+        imageBase64: b64url,
+        dateLogicType: ctx.dateLogicType,
+        seriesId: ctx.seriesId,
+        returnRideId: ctx.returnRideId,
+      });
+      if (!result.ok) {
+        throw new Error(medicalScanErrorMessageDe(result.error));
+      }
+      setScanResult(result);
+      setLastScanResult(result);
+      setScanModalOpen(true);
+      Haptics.notificationAsync(
+        result.trafficLight === "green"
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning,
+      );
+      await onUpdated();
+    } catch (e) {
+      Alert.alert("Transportschein-Scan", e instanceof Error ? e.message : "Fehler");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function dismissScanModal() {
+    setScanModalOpen(false);
+    setScanResult(null);
   }
 
   async function onPressTransportPhoto() {
@@ -1349,6 +1414,21 @@ function MedicalRideProofActions({
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           <Pressable
+            onPress={() => void onPressTransportScan()}
+            disabled={busy}
+            style={({ pressed }) => ({
+              backgroundColor: "#DCFCE7",
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: "#86EFAC",
+              opacity: pressed ? 0.9 : busy ? 0.55 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: "#166534" }}>Transportschein scannen</Text>
+          </Pressable>
+          <Pressable
             onPress={() => void onPressScan()}
             disabled={busy}
             style={({ pressed }) => ({
@@ -1396,7 +1476,72 @@ function MedicalRideProofActions({
             </Text>
           </Pressable>
         </View>
+        {lastScanResult ? (
+          <Pressable
+            onPress={() => {
+              setScanResult(lastScanResult);
+              setScanModalOpen(true);
+            }}
+            style={({ pressed }) => ({
+              marginTop: 10,
+              paddingVertical: 8,
+              paddingHorizontal: 10,
+              borderRadius: 8,
+              backgroundColor:
+                lastScanResult.trafficLight === "green"
+                  ? "#DCFCE7"
+                  : lastScanResult.trafficLight === "yellow"
+                    ? "#FEF3C7"
+                    : "#FEE2E2",
+              opacity: pressed ? 0.9 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#334155" }}>
+              Letzter Scan:{" "}
+              {lastScanResult.trafficLight === "green"
+                ? "Grün"
+                : lastScanResult.trafficLight === "yellow"
+                  ? "Gelb"
+                  : "Rot"}{" "}
+              · Tippen für Details
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
+      <Modal visible={scanModalOpen} animationType="slide" transparent onRequestClose={dismissScanModal}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(15,23,42,0.45)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#F8FAFC",
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              padding: 16,
+              paddingBottom: 28,
+              maxHeight: "88%",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A", marginBottom: 12 }}>
+              Scan-Ergebnis
+            </Text>
+            {scanResult ? (
+              <MedicalTrafficLightCard
+                trafficLight={scanResult.trafficLight}
+                warnings={scanResult.warnings}
+                insuranceName={scanResult.extracted?.insuranceName}
+                transportDate={scanResult.extracted?.transportDate}
+                onPrimaryAction={dismissScanModal}
+                primaryBusy={busy}
+              />
+            ) : null}
+          </View>
+        </View>
+      </Modal>
       <Modal visible={camOpen} animationType="slide" onRequestClose={() => setCamOpen(false)}>
         <View style={{ flex: 1, backgroundColor: "#000" }}>
           <CameraView
