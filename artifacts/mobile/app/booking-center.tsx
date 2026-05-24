@@ -5,12 +5,14 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar, BOTTOM_TAB_BAR_HOME_OFFSET_Y, tabMainScreenScrollPaddingBottom } from "@/components/BottomTabBar";
+import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import {
   accountSheetHeaderTitle,
   accountSheetPrimaryLabel,
   accountSheetSecondaryLabel,
 } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
+import { useUser } from "@/context/UserContext";
 import { useColors } from "@/hooks/useColors";
 import { rs } from "@/utils/scale";
 
@@ -25,6 +27,9 @@ type BookingCard = {
 
 export default function BookingCenterScreen() {
   const colors = useColors();
+  const { profile } = useUser();
+  const customerSessionToken =
+    typeof profile.sessionToken === "string" && profile.sessionToken.trim() ? profile.sessionToken.trim() : "";
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 44 : insets.top;
@@ -139,6 +144,17 @@ export default function BookingCenterScreen() {
             <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
           </Pressable>
         ))}
+        {profile.isLoggedIn && customerSessionToken ? (
+          <View
+            style={[styles.scanCard, { backgroundColor: HOME_SHEET_PANEL, borderColor: HOME_SHEET_RIM }]}
+          >
+            <MedicalTransportScanTestTool
+              authToken={customerSessionToken}
+              scanApi="customer"
+              variant="card"
+            />
+          </View>
+        ) : null}
         <View style={[styles.notice, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
           <MaterialCommunityIcons name="shield-check-outline" size={16} color="#166534" />
           <Text style={styles.noticeText}>
@@ -185,6 +201,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: accountSheetPrimaryLabel,
   cardSub: { ...accountSheetSecondaryLabel, marginTop: rs(2) },
+  scanCard: {
+    borderRadius: rs(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: rs(14),
+    paddingHorizontal: rs(14),
+  },
   notice: {
     borderRadius: rs(14),
     borderWidth: StyleSheet.hairlineWidth,

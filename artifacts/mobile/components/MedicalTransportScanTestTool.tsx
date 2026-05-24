@@ -8,6 +8,7 @@ import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
 import {
   medicalScanErrorMessageDe,
+  postCustomerMedicalTransportScanTest,
   postMedicalTransportScanTest,
   type MedicalScanTestSuccess,
 } from "@/utils/medicalScanApi";
@@ -16,11 +17,22 @@ const TEST_DISCLAIMER =
   "Testprüfung ohne Fahrt – nicht abrechnungsrelevant. Keine Diagnose, keine Zahlungsgarantie.";
 
 type Props = {
-  fleetAuthToken: string;
+  /** Kunden-Session oder explizites Token */
+  authToken?: string;
+  /** Fahrer-Fleet-Token (Legacy-Prop) */
+  fleetAuthToken?: string;
+  /** fleet = Fahrer-App; customer = Kunden-Session */
+  scanApi?: "fleet" | "customer";
   variant?: "button" | "card" | "dashboard";
 };
 
-export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button" }: Props) {
+export function MedicalTransportScanTestTool({
+  fleetAuthToken,
+  authToken,
+  scanApi = "fleet",
+  variant = "button",
+}: Props) {
+  const sessionToken = (authToken ?? fleetAuthToken ?? "").trim();
   const [busy, setBusy] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [scanResult, setScanResult] = useState<MedicalScanTestSuccess | null>(null);
@@ -28,19 +40,21 @@ export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button
   const runScan = useCallback(
     async (fromCamera: boolean) => {
       if (Platform.OS === "web") {
-        Alert.alert("Transportschein prüfen", "Bitte in der nativen App (iOS/Android) testen.");
+        Alert.alert("Transportschein testen", "Bitte in der nativen App (iOS/Android) testen.");
         return;
       }
-      const token = fleetAuthToken.trim();
+      const token = sessionToken;
       if (!token) {
-        Alert.alert("Transportschein prüfen", "Fahrer-Session fehlt. Bitte neu anmelden.");
+        Alert.alert("Transportschein testen", "Bitte zuerst anmelden.");
         return;
       }
       const b64url = await pickTransportImageBase64(fromCamera);
       if (!b64url) return;
       setBusy(true);
       try {
-        const result = await postMedicalTransportScanTest({ authToken: token, imageBase64: b64url });
+        const postScan =
+          scanApi === "customer" ? postCustomerMedicalTransportScanTest : postMedicalTransportScanTest;
+        const result = await postScan({ authToken: token, imageBase64: b64url });
         if (!result.ok) {
           throw new Error(medicalScanErrorMessageDe(result.error));
         }
@@ -52,12 +66,12 @@ export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button
             : Haptics.NotificationFeedbackType.Warning,
         );
       } catch (e) {
-        Alert.alert("Transportschein prüfen", e instanceof Error ? e.message : "Fehler");
+        Alert.alert("Transportschein testen", e instanceof Error ? e.message : "Fehler");
       } finally {
         setBusy(false);
       }
     },
-    [fleetAuthToken],
+    [scanApi, sessionToken],
   );
 
   const openScanPicker = useCallback(() => {
@@ -174,9 +188,9 @@ export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button
             />
           </View>
           <View style={styles.copyBlock}>
-            <Text style={isCard ? styles.cardTitle : styles.compactTitle}>Transportschein prüfen</Text>
+            <Text style={isCard ? styles.cardTitle : styles.compactTitle}>🔍 Transportschein testen</Text>
             <Text style={isCard ? styles.cardSub : styles.compactSub}>
-              Test ohne Fahrt · OCR · Ampel · Krankenkasse
+              Test ohne Fahrt · OCR · Ampel · Krankenkasse · nichts wird gespeichert
             </Text>
           </View>
         </View>

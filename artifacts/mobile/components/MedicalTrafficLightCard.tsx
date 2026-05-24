@@ -280,10 +280,12 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   metaBox: {
-    backgroundColor: "rgba(255,255,255,0.65)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 10,
     gap: 4,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   verifyHeading: {
     fontSize: 11,
@@ -303,7 +305,7 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
   insuranceBox: {
-    backgroundColor: "rgba(255,255,255,0.72)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 10,
     gap: 6,
@@ -355,10 +357,12 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   warnBox: {
-    backgroundColor: "rgba(255,255,255,0.72)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 10,
     gap: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   warnHeading: {
     fontSize: 12,

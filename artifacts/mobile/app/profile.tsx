@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CustomerPasswordFields, isCustomerPasswordFormValid } from "@/components/CustomerPasswordFields";
+import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import { OnrodaOrMark } from "@/components/OnrodaOrMark";
 import { accountSheetPrimaryLabel } from "@/constants/accountSheetTypography";
 import { HOME_SHEET_PANEL, HOME_SHEET_RIM } from "@/constants/homeSheetChrome";
@@ -648,10 +649,12 @@ function BillingModal({ visible, profile, onClose }: { visible: boolean; profile
 function PatientProfileModal({
   visible,
   profile,
+  customerSessionToken,
   onClose,
 }: {
   visible: boolean;
   profile: UserProfile;
+  customerSessionToken?: string;
   onClose: (data: Partial<UserProfile> | null) => void;
 }) {
   const colors = useColors();
@@ -733,6 +736,28 @@ function PatientProfileModal({
                 />
               </View>
             </View>
+
+            {customerSessionToken?.trim() ? (
+              <>
+                <View style={{ paddingHorizontal: 0 }}>
+                  <AccountSectionTitle title="Transportschein" />
+                </View>
+                <View
+                  style={[
+                    styles.sectionCard,
+                    styles.sectionCardCompact,
+                    billingCardShell,
+                    { backgroundColor: BILLING_FIELD_CARD, borderColor: HOME_SHEET_RIM, padding: rs(12) },
+                  ]}
+                >
+                  <MedicalTransportScanTestTool
+                    authToken={customerSessionToken.trim()}
+                    scanApi="customer"
+                    variant="card"
+                  />
+                </View>
+              </>
+            ) : null}
 
             <View style={{ paddingHorizontal: 0 }}>
               <AccountSectionTitle title="Mobilitätsbedarf" />
@@ -1628,6 +1653,9 @@ export default function ProfileScreen() {
             <PatientProfileModal
               visible={patientProfileOpen}
               profile={profile}
+              customerSessionToken={
+                typeof profile.sessionToken === "string" ? profile.sessionToken : undefined
+              }
               onClose={(data) => {
                 if (data) {
                   updateProfile(data);

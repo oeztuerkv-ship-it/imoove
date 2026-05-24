@@ -52,6 +52,11 @@ export type MedicalScanTestServiceInput = {
   imageBase64: string;
 };
 
+export type MedicalScanCustomerTestServiceInput = {
+  customerPassengerId: string;
+  imageBase64: string;
+};
+
 export type MedicalScanWarningDto = {
   code: string;
   message: string;
@@ -236,6 +241,41 @@ export async function runMedicalTransportDocumentScanTest(
     return { ok: false, error: "bad_request", status: 400 };
   }
 
+  return runMedicalTransportDocumentScanTestCore({
+    imageBase64: input.imageBase64,
+    companyId,
+    partnerIkSnapshot: await resolvePartnerIk(companyId),
+    insuranceRideId: "test",
+  });
+}
+
+/** Kunden-Testscan ohne Mandant/Fahrt — Partner-IK nicht verfügbar bis zur Buchung. */
+export async function runMedicalTransportDocumentScanTestForCustomer(
+  input: MedicalScanCustomerTestServiceInput,
+): Promise<MedicalScanTestServiceResult> {
+  if (!isMedicalTestScanEnabled()) {
+    return { ok: false, error: "test_scan_disabled", status: 403 };
+  }
+
+  const customerPassengerId = input.customerPassengerId.trim();
+  if (!customerPassengerId) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+
+  return runMedicalTransportDocumentScanTestCore({
+    imageBase64: input.imageBase64,
+    companyId: "",
+    partnerIkSnapshot: "",
+    insuranceRideId: `customer-test:${customerPassengerId}`,
+  });
+}
+
+async function runMedicalTransportDocumentScanTestCore(input: {
+  imageBase64: string;
+  companyId: string;
+  partnerIkSnapshot: string;
+  insuranceRideId: string;
+}): Promise<MedicalScanTestServiceResult> {
   const b64 = input.imageBase64.trim();
   if (!b64) {
     return { ok: false, error: "image_base64_required", status: 400 };
@@ -248,15 +288,14 @@ export async function runMedicalTransportDocumentScanTest(
     return { ok: false, error: decoded.error, status };
   }
 
-  const partnerIkSnapshot = await resolvePartnerIk(companyId);
   const pipeline = await runMedicalOcrPipeline({
     buffer: decoded.buffer,
     mime: decoded.mime,
-    companyId,
-    partnerIkSnapshot,
+    companyId: input.companyId,
+    partnerIkSnapshot: input.partnerIkSnapshot,
     dateLogicType: "today",
     rideScheduledAt: null,
-    insuranceRideId: "test",
+    insuranceRideId: input.insuranceRideId,
   });
 
   return {
