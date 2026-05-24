@@ -4,7 +4,7 @@
  */
 
 export const MEDICAL_OCR_PROVIDER = "anthropic_claude_vision";
-export const DEFAULT_MEDICAL_OCR_MODEL = "claude-sonnet-4-20250514";
+export const DEFAULT_MEDICAL_OCR_MODEL = "claude-sonnet-4-6";
 
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -170,12 +170,6 @@ export async function runClaudeVisionMedicalOcr(input: {
   } catch {
     return { ok: false, error: "ocr_response_invalid" };
   }
-
-  // TEMP DEBUG: rohe Claude-Antwort (nach Deploy entfernen)
-  console.log(
-    "[medical-ocr-debug] claude raw response",
-    JSON.stringify({ httpStatus: response.status, ok: response.ok, body }, null, 2),
-  );
 
   if (!response.ok) {
     const errType =
