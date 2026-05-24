@@ -129,6 +129,7 @@ export async function runMedicalTransportDocumentScanForCustomerBooking(
     dateLogicType: "today",
     rideScheduledAt: null,
     insuranceRideId: `customer-booking:${scanId}`,
+    omitPartnerIkWarnings: true,
   });
 
   const scannedAt = new Date().toISOString();
@@ -284,6 +285,7 @@ async function runMedicalOcrPipeline(input: {
   } | null;
   returnRideScheduledAt?: Date | null;
   completedRidesInSeries?: number;
+  omitPartnerIkWarnings?: boolean;
 }): Promise<MedicalOcrPipelineResult> {
   const ocrResult = await runClaudeVisionMedicalOcr({
     buffer: input.buffer,
@@ -324,16 +326,22 @@ async function runMedicalOcrPipeline(input: {
     hasSignatureOnDocument: ocrResult.ok
       ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson)
       : undefined,
+    omitPartnerIkWarnings: input.omitPartnerIkWarnings,
   });
 
-  const insuranceRules = evaluateMedicalInsuranceRules(normalized.extracted, {
-    companyId: input.companyId,
-    partnerIkNumber: input.partnerIkSnapshot,
-  }, {
-    rideId: input.insuranceRideId,
-    scheduledAt: input.rideScheduledAt,
-    dateLogicType: input.dateLogicType,
-  });
+  const insuranceRules = evaluateMedicalInsuranceRules(
+    normalized.extracted,
+    {
+      companyId: input.companyId,
+      partnerIkNumber: input.partnerIkSnapshot,
+    },
+    {
+      rideId: input.insuranceRideId,
+      scheduledAt: input.rideScheduledAt,
+      dateLogicType: input.dateLogicType,
+      omitPartnerIkWarnings: input.omitPartnerIkWarnings,
+    },
+  );
 
   return {
     trafficLight: traffic.trafficLight,
@@ -400,6 +408,7 @@ export async function runMedicalTransportDocumentScanTestForCustomer(
     companyId: "",
     partnerIkSnapshot: "",
     insuranceRideId: `customer-test:${customerPassengerId}`,
+    omitPartnerIkWarnings: true,
   });
 }
 
@@ -408,6 +417,7 @@ async function runMedicalTransportDocumentScanTestCore(input: {
   companyId: string;
   partnerIkSnapshot: string;
   insuranceRideId: string;
+  omitPartnerIkWarnings?: boolean;
 }): Promise<MedicalScanTestServiceResult> {
   const b64 = input.imageBase64.trim();
   if (!b64) {
@@ -429,6 +439,7 @@ async function runMedicalTransportDocumentScanTestCore(input: {
     dateLogicType: "today",
     rideScheduledAt: null,
     insuranceRideId: input.insuranceRideId,
+    omitPartnerIkWarnings: input.omitPartnerIkWarnings,
   });
 
   return {

@@ -34,6 +34,8 @@ export type MedicalInsuranceRideContext = {
   rideId: string;
   scheduledAt: string | null;
   dateLogicType: string;
+  /** Kunden-Scan: Partner-IK wird erst beim Fahrer/Mandanten geprüft. */
+  omitPartnerIkWarnings?: boolean;
 };
 
 type ProfileDefinition = {
@@ -226,8 +228,10 @@ export function evaluateMedicalInsuranceRules(
     warnings.push("Keine Krankenkasse auf dem Transportschein erkannt.");
   }
 
-  const partnerWarn = partnerIkWarning(normalizedOcr, companyProfile);
-  if (partnerWarn) warnings.push(partnerWarn);
+  if (!rideContext.omitPartnerIkWarnings) {
+    const partnerWarn = partnerIkWarning(normalizedOcr, companyProfile);
+    if (partnerWarn) warnings.push(partnerWarn);
+  }
 
   if (profile === "UNKNOWN") {
     warnings.push("Profilzuordnung unsicher — keine automatische Kassenregel anwendbar.");

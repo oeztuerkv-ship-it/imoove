@@ -26,6 +26,11 @@ export type MedicalTrafficLightInput = {
   ocrProviderSucceeded?: boolean;
   /** Patientenunterschrift auf dem Schein erkannt (optional, Phase 1 oft unbekannt). */
   hasSignatureOnDocument?: boolean;
+  /**
+   * Kunden-Scan vor Buchung: Partner-IK kommt vom Taxiunternehmen, nicht vom Schein —
+   * keine Leistungserbringer-/Partner-IK-Warnungen.
+   */
+  omitPartnerIkWarnings?: boolean;
 };
 
 export type MedicalTrafficLightResult = {
@@ -97,7 +102,7 @@ function evaluateBehandlungsArtRules(
         severity: "warn",
       });
     }
-    if (!input.partnerIkSnapshot.trim()) {
+    if (!input.omitPartnerIkWarnings && !input.partnerIkSnapshot.trim()) {
       warnings.push({
         code: "stationaer_missing_taxi_ik",
         message: "Stationär: Leistungserbringer-IK (Taxi) nicht erkennbar",
@@ -111,11 +116,8 @@ function evaluateBehandlungsArtRules(
         severity: "warn",
       });
     }
-    if (
-      hasTransportDate(extracted) &&
-      input.partnerIkSnapshot.trim() &&
-      input.hasSignatureOnDocument !== false
-    ) {
+    const taxiIkSatisfied = input.omitPartnerIkWarnings || Boolean(input.partnerIkSnapshot.trim());
+    if (hasTransportDate(extracted) && taxiIkSatisfied && input.hasSignatureOnDocument !== false) {
       warnings.push({
         code: "stationaer_checks_ok",
         message: "Stationär: Datum, Taxi-IK und Unterschrift — keine KK-Genehmigungsnummer nötig",
@@ -203,7 +205,7 @@ export function evaluateMedicalTrafficLight(input: MedicalTrafficLightInput): Me
     });
   }
 
-  if (!input.partnerIkSnapshot.trim()) {
+  if (!input.omitPartnerIkWarnings && !input.partnerIkSnapshot.trim()) {
     warnings.push({
       code: "missing_partner_ik",
       message: "Leistungserbringer-IK (Unternehmen) nicht hinterlegt",

@@ -11,6 +11,26 @@ import type {
   MedicalTrafficLight,
 } from "@/utils/medicalScanApi";
 
+/** Partner-IK-Warnungen nur für Fahrer-Scan — beim Kunden ausblenden. */
+function isPartnerIkWarningHiddenFromCustomer(item: { code?: string; message?: string }): boolean {
+  if (item.code === "stationaer_missing_taxi_ik" || item.code === "missing_partner_ik") return true;
+  const m = (item.message ?? "").toLowerCase();
+  return m.includes("leistungserbringer-ik") || m.includes("partner-ik");
+}
+
+function warningsForCustomerDisplay(warnings: MedicalScanWarning[]): MedicalScanWarning[] {
+  return warnings.filter((w) => !isPartnerIkWarningHiddenFromCustomer(w));
+}
+
+function insuranceRulesForCustomerDisplay(
+  rules: MedicalInsuranceRuleResult | null | undefined,
+): MedicalInsuranceRuleResult | null {
+  if (!rules) return null;
+  const warnings = rules.warnings.filter((w) => !isPartnerIkWarningHiddenFromCustomer({ message: w }));
+  if (warnings.length === rules.warnings.length) return rules;
+  return { ...rules, warnings };
+}
+
 const TRAFFIC_CONFIG: Record<
   MedicalTrafficLight,
   { title: string; subtitle: string; bg: string; border: string; accent: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }
@@ -133,10 +153,13 @@ function pickPrimaryCustomerReason(
   warnings: MedicalScanWarning[],
   insuranceRules?: MedicalInsuranceRuleResult | null,
 ): string | null {
-  const visible = warnings.filter((w) => w.severity !== "info" && (w.message?.trim() || w.code));
+  const visible = warningsForCustomerDisplay(warnings).filter(
+    (w) => w.severity !== "info" && (w.message?.trim() || w.code),
+  );
   const fromWarning = visible.find((w) => w.severity === "block_recommended") ?? visible[0];
   if (fromWarning?.message?.trim()) return fromWarning.message.trim();
-  const fromRules = insuranceRules?.warnings.find((w) => w.trim());
+  const rules = insuranceRulesForCustomerDisplay(insuranceRules);
+  const fromRules = rules?.warnings.find((w) => w.trim());
   if (fromRules?.trim()) return fromRules.trim();
   const summary = insuranceRules?.summary?.trim();
   if (summary) return summary;
@@ -160,11 +183,15 @@ export function MedicalTrafficLightCard({
   bookingFlow = false,
   customerReasonOverride,
 }: Props) {
+  const customerWarnings = scanApi === "customer" ? warningsForCustomerDisplay(warnings) : warnings;
+  const customerInsuranceRules =
+    scanApi === "customer" ? insuranceRulesForCustomerDisplay(insuranceRules) : insuranceRules;
+
   if (scanApi === "customer") {
     const cfg = CUSTOMER_TRAFFIC_CONFIG[trafficLight];
     const reason =
       customerReasonOverride?.trim() ||
-      pickPrimaryCustomerReason(trafficLight, warnings, insuranceRules);
+      pickPrimaryCustomerReason(trafficLight, customerWarnings, customerInsuranceRules);
     let subtitle =
       trafficLight === "red" || trafficLight === "yellow"
         ? reason ?? cfg.subtitle
