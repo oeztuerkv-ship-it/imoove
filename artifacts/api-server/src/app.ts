@@ -109,7 +109,7 @@ app.use(
   }),
 );
 
-/** Größeres Body-Limit nur wo Base64 in JSON nötig ist; übrige Routen bleiben klein. */
+/** Größeres Body-Limit nur wo Base64 in JSON nötig ist; u. a. POST /customer/v1/medical/scan (Buchungs-Scan). */
 app.use((req, res, next) => {
   const u = (req.originalUrl ?? req.url ?? "").split("?")[0] ?? "";
   const medicalUpload =
