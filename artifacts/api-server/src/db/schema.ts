@@ -72,6 +72,8 @@ export const adminCompaniesTable = pgTable("admin_companies", {
   commission_rate: doublePrecision("commission_rate").notNull().default(0.1),
   /** Institutionskennzeichen (IK) des Partners — Snapshot in medical_cases. */
   partner_ik_number: text("partner_ik_number").notNull().default(""),
+  /** ONRODA-Admin: Krankenfahrten + Transportschein-Scanner für diesen Mandanten. */
+  medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
 });
 
 /** Mandanten-Fahrer (eigenes Login / Fleet-App), nicht zu verwechseln mit rides.driver_id (Freitext/Legacy). */
@@ -113,6 +115,12 @@ export const fleetDriversTable = pgTable("fleet_drivers", {
   last_heartbeat_at: timestamp("last_heartbeat_at", { withTimezone: true }),
   /** Fleet-App: neue Markt-Sofortaufträge annehmen (false = offline am Markt). */
   is_market_online: boolean("is_market_online").notNull().default(false),
+  /** ONRODA-Admin: Fahrer-Override für Krankenfahrten (wirksam wenn inherit=false). */
+  medical_transport_enabled: boolean("medical_transport_enabled").notNull().default(false),
+  /** true = medical_transport_enabled vom Unternehmen erben. */
+  medical_transport_inherit_from_company: boolean("medical_transport_inherit_from_company")
+    .notNull()
+    .default(true),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   reservation_suspended_until: timestamp("reservation_suspended_until", { withTimezone: true }),

@@ -50,6 +50,7 @@
 --   065 → app_help_tickets (Kunden-App Tab Hilfe)
 --   074 → customer_accounts (Kunden E-Mail/Passwort)
 --   075 → medical_cases, medical_documents, medical_reviews + admin_companies.partner_ik_number
+--   076 → admin_companies.medical_transport_enabled + fleet_drivers medical transport flags
 
 DO $$
 DECLARE
@@ -766,6 +767,27 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'medical_reviews' AND column_name = 'traffic_light'
   ) THEN
     errs := array_append(errs, 'medical_reviews.traffic_light (Migration 075)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'admin_companies' AND column_name = 'medical_transport_enabled'
+  ) THEN
+    errs := array_append(errs, 'admin_companies.medical_transport_enabled (Migration 076)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'medical_transport_enabled'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.medical_transport_enabled (Migration 076)');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'fleet_drivers' AND column_name = 'medical_transport_inherit_from_company'
+  ) THEN
+    errs := array_append(errs, 'fleet_drivers.medical_transport_inherit_from_company (Migration 076)');
   END IF;
 
   IF NOT EXISTS (

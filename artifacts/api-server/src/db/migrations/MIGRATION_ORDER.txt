@@ -76,6 +76,7 @@ Wichtige rides-Spalten (Panel / API) und Migrationen:
   Operator-Nachrichten an Fahrer (Push + In-App)                        → 068_driver_messages.sql
   Kundenkonten E-Mail/Passwort (Mobile-Registrierung)                   → 074_customer_accounts.sql
   Medical Scan-Workflow Phase 1 (Fälle, Dokumente, Ampel-Reviews, Partner-IK) → 075_medical_workflow_phase1.sql
+  Krankenfahrt-Freigabe (admin_companies + fleet_drivers medical transport flags) → 076_medical_transport_authorization.sql
 
 Nach Migrationen Schema prüfen:
 

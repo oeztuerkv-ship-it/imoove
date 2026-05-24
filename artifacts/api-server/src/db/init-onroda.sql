@@ -323,6 +323,8 @@ CREATE TABLE IF NOT EXISTS fleet_drivers (
   last_login_at TIMESTAMPTZ,
   last_heartbeat_at TIMESTAMPTZ,
   is_market_online BOOLEAN NOT NULL DEFAULT FALSE,
+  medical_transport_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  medical_transport_inherit_from_company BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fleet_drivers_access_status_chk CHECK (access_status IN ('active', 'suspended')),
@@ -1193,6 +1195,16 @@ CREATE INDEX IF NOT EXISTS medical_reviews_case_reviewed_idx
 
 CREATE INDEX IF NOT EXISTS medical_reviews_document_idx
   ON medical_reviews (document_id);
+
+-- Krankenfahrt-Freigabe (Migration 076)
+ALTER TABLE admin_companies
+  ADD COLUMN IF NOT EXISTS medical_transport_enabled BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE fleet_drivers
+  ADD COLUMN IF NOT EXISTS medical_transport_enabled BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE fleet_drivers
+  ADD COLUMN IF NOT EXISTS medical_transport_inherit_from_company BOOLEAN NOT NULL DEFAULT true;
 
 -- Ersten Benutzer: company_id = bestehende admin_companies.id; password_hash = Ausgabe von
 -- hashPassword() (artifacts/api-server/src/lib/password.ts), Präfix v1.*.
