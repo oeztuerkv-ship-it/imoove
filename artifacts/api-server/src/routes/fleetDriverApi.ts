@@ -629,6 +629,7 @@ router.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req,
       warnings: result.warnings,
       extracted: result.extracted,
       dateLogic: result.dateLogic,
+      insuranceRules: result.insuranceRules,
       storageKey: result.storageKey,
     });
   } catch (err) {

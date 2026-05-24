@@ -24,7 +24,10 @@ import {
   type MedicalDateLogicType,
 } from "./medicalDateLogic";
 import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument } from "./medicalOcrNormalize";
-import { evaluateMedicalTrafficLight } from "./medicalTrafficLight";
+import {
+  evaluateMedicalInsuranceRules,
+  type MedicalInsuranceRuleResult,
+} from "./medicalInsuranceRules";
 
 export const MEDICAL_RIDE_UPLOAD_ROOT =
   (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() ||
@@ -56,6 +59,7 @@ export type MedicalScanServiceResult =
       warnings: MedicalScanWarningDto[];
       extracted: ReturnType<typeof normalizeMedicalOcrPayload>["extracted"];
       dateLogic: ReturnType<typeof evaluateMedicalDateLogic>;
+      insuranceRules: MedicalInsuranceRuleResult;
       storageKey: string;
     }
   | { ok: false; error: string; status: number };
@@ -203,6 +207,15 @@ export async function runMedicalTransportDocumentScan(
       : undefined,
   });
 
+  const insuranceRules = evaluateMedicalInsuranceRules(normalized.extracted, {
+    companyId,
+    partnerIkNumber: partnerIkSnapshot,
+  }, {
+    rideId,
+    scheduledAt: ride.scheduledAt ?? null,
+    dateLogicType,
+  });
+
   const dateLogicContextJson: Record<string, unknown> = {
     dateLogicType,
     seriesId,
@@ -261,6 +274,8 @@ export async function runMedicalTransportDocumentScan(
       reviewId: review.id,
       trafficLight: traffic.trafficLight,
       warningCodes: traffic.warnings.map((w) => w.code),
+      insuranceProfile: insuranceRules.profile,
+      insuranceManualReview: insuranceRules.manualReviewRequired,
     },
   });
 
@@ -273,6 +288,7 @@ export async function runMedicalTransportDocumentScan(
     warnings: traffic.warnings,
     extracted: normalized.extracted,
     dateLogic: dateLogicResult,
+    insuranceRules,
     storageKey: rel,
   };
 }

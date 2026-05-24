@@ -1660,6 +1660,7 @@ function MedicalRideProofActions({
                 transportDate={scanResult.extracted?.transportDate}
                 extracted={scanResult.extracted}
                 dateLogic={scanResult.dateLogic}
+                insuranceRules={scanResult.insuranceRules}
                 onPrimaryAction={dismissScanModal}
                 primaryBusy={busy}
               />

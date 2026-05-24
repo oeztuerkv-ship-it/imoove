@@ -2,7 +2,14 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { MedicalDateLogicResultDto, MedicalScanExtracted, MedicalScanWarning, MedicalTrafficLight } from "@/utils/medicalScanApi";
+import type {
+  MedicalDateLogicResultDto,
+  MedicalInsuranceProfileId,
+  MedicalInsuranceRuleResult,
+  MedicalScanExtracted,
+  MedicalScanWarning,
+  MedicalTrafficLight,
+} from "@/utils/medicalScanApi";
 
 const TRAFFIC_CONFIG: Record<
   MedicalTrafficLight,
@@ -48,6 +55,19 @@ function behandlungsArtDe(v: string | undefined): string | null {
   return null;
 }
 
+function profileLabel(profile: MedicalInsuranceProfileId): string {
+  switch (profile) {
+    case "AOK_BW":
+      return "AOK BW (Basisprofil)";
+    case "VDEK_STANDARD":
+      return "GKV / vdek-Standard (Basisprofil)";
+    case "PRIVATE":
+      return "Privat / PKV (Basisprofil)";
+    default:
+      return "Unbekannt";
+  }
+}
+
 type Props = {
   trafficLight: MedicalTrafficLight;
   warnings: MedicalScanWarning[];
@@ -55,6 +75,7 @@ type Props = {
   transportDate?: string | null;
   extracted?: Partial<MedicalScanExtracted>;
   dateLogic?: MedicalDateLogicResultDto | null;
+  insuranceRules?: MedicalInsuranceRuleResult | null;
   onPrimaryAction: () => void;
   primaryBusy?: boolean;
 };
@@ -66,6 +87,7 @@ export function MedicalTrafficLightCard({
   transportDate,
   extracted,
   dateLogic,
+  insuranceRules,
   onPrimaryAction,
   primaryBusy = false,
 }: Props) {
@@ -121,6 +143,54 @@ export function MedicalTrafficLightCard({
               {row.value}
             </Text>
           ))}
+        </View>
+      ) : null}
+
+      {insuranceRules ? (
+        <View style={styles.insuranceBox}>
+          <Text style={styles.insuranceHeading}>Krankenkasse prüfen</Text>
+          <Text style={styles.insuranceDisclaimer}>
+            ONRODA-Vorprüfung — keine Diagnose, keine Zahlungsgarantie durch die Krankenkasse.
+          </Text>
+          <Text style={styles.metaLine}>
+            <Text style={styles.metaLabel}>Erkannte Krankenkasse: </Text>
+            {insuranceRules.detectedInsuranceName.trim() || "—"}
+            {insuranceRules.detectedInsuranceIk.trim()
+              ? ` (IK ${insuranceRules.detectedInsuranceIk.trim()})`
+              : ""}
+          </Text>
+          <Text style={styles.metaLine}>
+            <Text style={styles.metaLabel}>Erkanntes Profil: </Text>
+            {profileLabel(insuranceRules.profile)}
+          </Text>
+          {insuranceRules.summary.trim() ? (
+            <Text style={styles.insuranceSummary}>{insuranceRules.summary}</Text>
+          ) : null}
+          {insuranceRules.requiredFields.length > 0 ? (
+            <Text style={styles.insuranceRequired}>
+              Erwartete Pflichtfelder: {insuranceRules.requiredFields.join(" · ")}
+            </Text>
+          ) : null}
+          {insuranceRules.warnings.length > 0 ? (
+            <View style={{ gap: 6, marginTop: 4 }}>
+              {insuranceRules.warnings.map((w) => (
+                <View key={w} style={styles.warnRow}>
+                  <Feather name="alert-triangle" size={14} color="#B45309" />
+                  <Text style={styles.warnText}>{w}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {insuranceRules.manualReviewRequired ? (
+            <View style={styles.manualReviewBox}>
+              <Text style={styles.manualReviewTitle}>Manuelle Prüfung empfohlen</Text>
+              <Text style={styles.manualReviewText}>
+                {insuranceRules.profile === "UNKNOWN"
+                  ? "Profilzuordnung unsicher — bitte Transportschein und Abrechnungsdaten manuell gegenprüfen."
+                  : "Basisprofil ohne finale Kassenregeln — bitte vor Abrechnung manuell freigeben."}
+              </Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -208,6 +278,58 @@ const styles = StyleSheet.create({
   metaLabel: {
     fontFamily: "Inter_600SemiBold",
     color: "#64748B",
+  },
+  insuranceBox: {
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  insuranceHeading: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#1E40AF",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  insuranceDisclaimer: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#64748B",
+    lineHeight: 16,
+  },
+  insuranceSummary: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#334155",
+    lineHeight: 18,
+  },
+  insuranceRequired: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#475569",
+    lineHeight: 16,
+  },
+  manualReviewBox: {
+    marginTop: 4,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  manualReviewTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#92400E",
+  },
+  manualReviewText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#78350F",
+    lineHeight: 17,
   },
   warnBox: {
     backgroundColor: "rgba(255,255,255,0.72)",

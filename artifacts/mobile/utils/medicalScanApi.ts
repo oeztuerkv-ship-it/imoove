@@ -32,6 +32,19 @@ export type MedicalDateLogicResultDto = {
   details: Record<string, unknown>;
 };
 
+export type MedicalInsuranceProfileId = "AOK_BW" | "VDEK_STANDARD" | "PRIVATE" | "UNKNOWN";
+
+export type MedicalInsuranceRuleResult = {
+  profile: MedicalInsuranceProfileId;
+  title: string;
+  summary: string;
+  warnings: string[];
+  requiredFields: string[];
+  manualReviewRequired: boolean;
+  detectedInsuranceName: string;
+  detectedInsuranceIk: string;
+};
+
 export type MedicalScanSuccess = {
   ok: true;
   caseId: string;
@@ -41,6 +54,7 @@ export type MedicalScanSuccess = {
   warnings: MedicalScanWarning[];
   extracted: MedicalScanExtracted;
   dateLogic: MedicalDateLogicResultDto;
+  insuranceRules?: MedicalInsuranceRuleResult | null;
   storageKey: string;
 };
 
@@ -76,6 +90,31 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
 
 export function medicalScanErrorMessageDe(code: string): string {
   return ERROR_MESSAGES_DE[code] ?? `Scan fehlgeschlagen (${code})`;
+}
+
+const INSURANCE_PROFILES: MedicalInsuranceProfileId[] = ["AOK_BW", "VDEK_STANDARD", "PRIVATE", "UNKNOWN"];
+
+function parseInsuranceRules(raw: unknown): MedicalInsuranceRuleResult | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const profileRaw = typeof r.profile === "string" ? r.profile : "UNKNOWN";
+  const profile = INSURANCE_PROFILES.includes(profileRaw as MedicalInsuranceProfileId)
+    ? (profileRaw as MedicalInsuranceProfileId)
+    : "UNKNOWN";
+  return {
+    profile,
+    title: typeof r.title === "string" ? r.title : "ONRODA-Vorprüfung",
+    summary: typeof r.summary === "string" ? r.summary : "",
+    warnings: Array.isArray(r.warnings)
+      ? r.warnings.filter((w): w is string => typeof w === "string" && w.trim().length > 0)
+      : [],
+    requiredFields: Array.isArray(r.requiredFields)
+      ? r.requiredFields.filter((f): f is string => typeof f === "string" && f.trim().length > 0)
+      : [],
+    manualReviewRequired: r.manualReviewRequired === true,
+    detectedInsuranceName: typeof r.detectedInsuranceName === "string" ? r.detectedInsuranceName : "",
+    detectedInsuranceIk: typeof r.detectedInsuranceIk === "string" ? r.detectedInsuranceIk : "",
+  };
 }
 
 export type PostMedicalTransportScanInput = {
@@ -156,6 +195,7 @@ export async function postMedicalTransportScan(
       warningCodes: [],
       details: {},
     }) as MedicalDateLogicResultDto,
+    insuranceRules: parseInsuranceRules(data.insuranceRules),
     storageKey: String(data.storageKey ?? ""),
   };
 }
