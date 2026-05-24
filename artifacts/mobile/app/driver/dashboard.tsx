@@ -53,6 +53,7 @@ import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
 import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
+import { MedicalScanResultSheet } from "@/components/MedicalScanResultSheet";
 import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import {
   medicalScanContextFromRide,
@@ -1620,43 +1621,24 @@ function MedicalRideProofActions({
           </Pressable>
         ) : null}
       </View>
-      <Modal visible={scanModalOpen} animationType="slide" transparent onRequestClose={dismissScanModal}>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(15,23,42,0.45)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: "#F8FAFC",
-              borderTopLeftRadius: 18,
-              borderTopRightRadius: 18,
-              padding: 16,
-              paddingBottom: 28,
-              maxHeight: "88%",
-            }}
-          >
-            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0F172A", marginBottom: 12 }}>
-              {orderCheckMode ? "Transportschein — Prüfergebnis" : "Scan-Ergebnis"}
-            </Text>
-            {scanResult ? (
-              <MedicalTrafficLightCard
-                trafficLight={scanResult.trafficLight}
-                warnings={scanResult.warnings}
-                insuranceName={scanResult.extracted?.insuranceName}
-                transportDate={scanResult.extracted?.transportDate}
-                extracted={scanResult.extracted}
-                dateLogic={scanResult.dateLogic}
-                insuranceRules={scanResult.insuranceRules}
-                onPrimaryAction={dismissScanModal}
-                primaryBusy={busy}
-              />
-            ) : null}
-          </View>
-        </View>
-      </Modal>
+      <MedicalScanResultSheet
+        visible={scanModalOpen}
+        title={orderCheckMode ? "Transportschein — Prüfergebnis" : "Scan-Ergebnis"}
+        onClose={dismissScanModal}
+      >
+        {scanResult ? (
+          <MedicalTrafficLightCard
+            trafficLight={scanResult.trafficLight}
+            warnings={scanResult.warnings}
+            insuranceName={scanResult.extracted?.insuranceName}
+            transportDate={scanResult.extracted?.transportDate}
+            extracted={scanResult.extracted}
+            dateLogic={scanResult.dateLogic}
+            insuranceRules={scanResult.insuranceRules}
+            onPrimaryAction={dismissScanModal}
+          />
+        ) : null}
+      </MedicalScanResultSheet>
       <Modal visible={camOpen} animationType="slide" onRequestClose={() => setCamOpen(false)}>
         <View style={{ flex: 1, backgroundColor: "#000" }}>
           <CameraView

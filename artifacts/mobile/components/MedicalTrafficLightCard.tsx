@@ -119,8 +119,9 @@ export function MedicalTrafficLightCard({
         }
       : null,
   ].filter(Boolean) as { label: string; value: string }[];
-  const primaryLabel =
-    trafficLight === "yellow"
+  const primaryLabel = testDisclaimer?.trim()
+    ? "Schließen"
+    : trafficLight === "yellow"
       ? "Trotzdem fortfahren"
       : trafficLight === "red"
         ? "Schließen"

@@ -1,8 +1,9 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { MedicalScanResultSheet } from "@/components/MedicalScanResultSheet";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
 import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
 import {
@@ -111,33 +112,30 @@ export function MedicalTransportScanTestTool({ fleetAuthToken, variant = "button
               Test ohne Fahrt · OCR · Ampel · Krankenkasse
             </Text>
           </View>
-          {variant === "card" ? <Feather name="chevron-right" size={18} color="#94A3B8" /> : null}
         </View>
         {actionRow}
       </View>
 
-      <Modal visible={scanModalOpen} animationType="slide" transparent onRequestClose={dismissModal}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Transportschein — Testprüfung</Text>
-            <Text style={styles.modalDisclaimer}>{TEST_DISCLAIMER}</Text>
-            {scanResult ? (
-              <MedicalTrafficLightCard
-                trafficLight={scanResult.trafficLight}
-                warnings={scanResult.warnings}
-                insuranceName={scanResult.extracted?.insuranceName}
-                transportDate={scanResult.extracted?.transportDate}
-                extracted={scanResult.extracted}
-                dateLogic={scanResult.dateLogic}
-                insuranceRules={scanResult.insuranceRules}
-                testDisclaimer={scanResult.testDisclaimer}
-                onPrimaryAction={dismissModal}
-                primaryBusy={busy}
-              />
-            ) : null}
-          </View>
-        </View>
-      </Modal>
+      <MedicalScanResultSheet
+        visible={scanModalOpen}
+        title="Transportschein — Testprüfung"
+        disclaimer={TEST_DISCLAIMER}
+        onClose={dismissModal}
+      >
+        {scanResult ? (
+          <MedicalTrafficLightCard
+            trafficLight={scanResult.trafficLight}
+            warnings={scanResult.warnings}
+            insuranceName={scanResult.extracted?.insuranceName}
+            transportDate={scanResult.extracted?.transportDate}
+            extracted={scanResult.extracted}
+            dateLogic={scanResult.dateLogic}
+            insuranceRules={scanResult.insuranceRules}
+            testDisclaimer={scanResult.testDisclaimer}
+            onPrimaryAction={dismissModal}
+          />
+        ) : null}
+      </MedicalScanResultSheet>
     </>
   );
 }
@@ -223,35 +221,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_700Bold",
     color: "#1E40AF",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15,23,42,0.45)",
-    justifyContent: "flex-end",
-  },
-  modalSheet: {
-    backgroundColor: "#F8FAFC",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 16,
-    paddingBottom: 28,
-    maxHeight: "90%",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#0F172A",
-    marginBottom: 8,
-  },
-  modalDisclaimer: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#92400E",
-    backgroundColor: "#FFFBEB",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 12,
-    lineHeight: 17,
   },
 });
