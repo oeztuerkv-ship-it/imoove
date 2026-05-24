@@ -148,6 +148,10 @@ async function runMedicalOcrPipeline(input: {
     buffer: input.buffer,
     mime: input.mime,
   });
+  console.log(
+    "[medical-scan-debug] ocrResult",
+    JSON.stringify({ ok: ocrResult.ok, error: (ocrResult as any).error }, null, 2),
+  );
 
   const normalized = normalizeMedicalOcrPayload(
     ocrResult.ok ? (ocrResult.rawJson.extracted ?? ocrResult.rawJson) : {},
