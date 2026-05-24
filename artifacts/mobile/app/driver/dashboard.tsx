@@ -53,12 +53,14 @@ import { markDispatchOfferSeen } from "@/utils/markDispatchOfferSeen";
 import { syncDriverExpoPushTokenWithRetry } from "@/utils/syncDriverExpoPushToken";
 import { parseMedicalQrPayload } from "@/utils/medicalQrPayload";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
+import { MedicalTransportScanTestTool } from "@/components/MedicalTransportScanTestTool";
 import {
   medicalScanContextFromRide,
   medicalScanErrorMessageDe,
   postMedicalTransportScan,
   type MedicalScanSuccess,
 } from "@/utils/medicalScanApi";
+import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
 import {
   driverPaymentMethodLabelDe,
 } from "@/utils/driverPaymentMethodLabel";
@@ -1125,6 +1127,7 @@ function TabGeldbeutel({ allRides, driverRating }: { allRides: RideEntry[]; driv
 /* ─── Tab: Profil ─── */
 function TabProfil({
   driver,
+  fleetAuthToken,
   onLogout,
   offersTeaserTitle,
   offersTeaserBody,
@@ -1132,6 +1135,7 @@ function TabProfil({
   inboxUnreadCount,
 }: {
   driver: DriverProfile;
+  fleetAuthToken?: string;
   onLogout: () => void;
   offersTeaserTitle: string;
   offersTeaserBody: string;
@@ -1196,6 +1200,15 @@ function TabProfil({
         ) : null}
       </View>
 
+      {fleetAuthToken?.trim() ? (
+        <View style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border, padding: 0, overflow: "hidden" }]}>
+          <Text style={[styles.profilSectionTitle, { color: colors.mutedForeground, paddingHorizontal: 16, paddingTop: 14 }]}>
+            TOOLS
+          </Text>
+          <MedicalTransportScanTestTool fleetAuthToken={fleetAuthToken.trim()} variant="card" />
+        </View>
+      ) : null}
+
       <Pressable
         style={[styles.profilCard, { backgroundColor: colors.card, borderColor: colors.border }]}
         onPress={() => router.push("/sponsors")}
@@ -1254,30 +1267,6 @@ function isMedicalRideRequest(req: RideRequest): boolean {
 function canDriverVerifyMedicalRide(req: RideRequest, driverId: string): boolean {
   const assigned = (req.driverId ?? "").trim();
   return assigned.length > 0 && assigned === driverId.trim();
-}
-
-async function pickTransportImageBase64(fromCamera: boolean): Promise<string | null> {
-  const perm = fromCamera
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!perm.granted) {
-    Alert.alert(fromCamera ? "Kamera" : "Fotos", "Zugriff wird benötigt.");
-    return null;
-  }
-  const r = fromCamera
-    ? await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.85,
-        base64: true,
-      })
-    : await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.85,
-        base64: true,
-      });
-  if (r.canceled || !r.assets?.[0]?.base64) return null;
-  const mime = r.assets[0].mimeType ?? "image/jpeg";
-  return `data:${mime};base64,${r.assets[0].base64}`;
 }
 
 function MedicalRideProofActions({
@@ -3497,6 +3486,9 @@ export default function DriverDashboard() {
             )}
             {activeTab === "auftraege" && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
+                {driver.authToken?.trim() ? (
+                  <MedicalTransportScanTestTool fleetAuthToken={driver.authToken.trim()} variant="button" />
+                ) : null}
                 <View style={{ flexDirection: "row", marginBottom: 18, backgroundColor: colors.muted, borderRadius: 12, padding: 3 }}>
                   <Pressable
                     onPress={() => setOrdersView("anfragen")}
@@ -3660,6 +3652,7 @@ export default function DriverDashboard() {
             {activeTab === "profil" && (
               <TabProfil
                 driver={driver}
+                fleetAuthToken={driver.authToken}
                 onLogout={handleLogout}
                 offersTeaserTitle={offersTeaserTitle}
                 offersTeaserBody={offersTeaserBody}

@@ -76,6 +76,7 @@ type Props = {
   extracted?: Partial<MedicalScanExtracted>;
   dateLogic?: MedicalDateLogicResultDto | null;
   insuranceRules?: MedicalInsuranceRuleResult | null;
+  testDisclaimer?: string;
   onPrimaryAction: () => void;
   primaryBusy?: boolean;
 };
@@ -88,6 +89,7 @@ export function MedicalTrafficLightCard({
   extracted,
   dateLogic,
   insuranceRules,
+  testDisclaimer,
   onPrimaryAction,
   primaryBusy = false,
 }: Props) {
@@ -133,6 +135,12 @@ export function MedicalTrafficLightCard({
           <Text style={styles.subtitle}>{cfg.subtitle}</Text>
         </View>
       </View>
+
+      {testDisclaimer?.trim() ? (
+        <View style={styles.testBanner}>
+          <Text style={styles.testBannerText}>{testDisclaimer.trim()}</Text>
+        </View>
+      ) : null}
 
       {verificationRows.length > 0 ? (
         <View style={styles.metaBox}>
@@ -255,6 +263,20 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: "#475569",
     lineHeight: 18,
+  },
+  testBanner: {
+    backgroundColor: "#FFFBEB",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  testBannerText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "#92400E",
+    lineHeight: 17,
   },
   metaBox: {
     backgroundColor: "rgba(255,255,255,0.65)",

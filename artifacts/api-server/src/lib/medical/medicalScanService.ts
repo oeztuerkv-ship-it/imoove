@@ -10,9 +10,7 @@ import {
 } from "../../db/medicalCasesData";
 import { insertMedicalDocument } from "../../db/medicalDocumentsData";
 import { insertMedicalReview } from "../../db/medicalReviewsData";
-import {
-  findPartnerRideSeriesById,
-} from "../../db/partnerRideSeriesData";
+import { findPartnerRideSeriesById } from "../../db/partnerRideSeriesData";
 import { findRide, insertSupplementalRideEvent } from "../../db/ridesData";
 import { ridesTable } from "../../db/schema";
 import { parsePartnerBookingMeta } from "../../domain/partnerBookingMeta";
@@ -21,17 +19,22 @@ import { runClaudeVisionMedicalOcr } from "./claudeVisionOcr";
 import {
   evaluateMedicalDateLogic,
   parseMedicalDateLogicType,
+  type MedicalDateLogicResult,
   type MedicalDateLogicType,
 } from "./medicalDateLogic";
-import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument } from "./medicalOcrNormalize";
 import {
   evaluateMedicalInsuranceRules,
   type MedicalInsuranceRuleResult,
 } from "./medicalInsuranceRules";
+import { normalizeMedicalOcrPayload, parseHasSignatureOnDocument, type MedicalOcrExtracted } from "./medicalOcrNormalize";
+import { evaluateMedicalTrafficLight, type MedicalWarning } from "./medicalTrafficLight";
 
 export const MEDICAL_RIDE_UPLOAD_ROOT =
   (process.env.MEDICAL_RIDE_UPLOAD_DIR ?? "").trim() ||
   path.resolve(process.cwd(), "artifacts/api-server/uploads/medical-ride");
+
+export const MEDICAL_TEST_SCAN_DISCLAIMER =
+  "Testprüfung ohne Fahrt – nicht abrechnungsrelevant.";
 
 export type MedicalScanServiceInput = {
   fleetDriverId: string;
@@ -43,26 +46,58 @@ export type MedicalScanServiceInput = {
   returnRideId?: string;
 };
 
+export type MedicalScanTestServiceInput = {
+  fleetDriverId: string;
+  companyId: string;
+  imageBase64: string;
+};
+
 export type MedicalScanWarningDto = {
   code: string;
   message: string;
   severity: "info" | "warn" | "block_recommended";
 };
 
+type MedicalScanEvaluationCore = {
+  trafficLight: "green" | "yellow" | "red";
+  warnings: MedicalScanWarningDto[];
+  extracted: MedicalOcrExtracted;
+  dateLogic: MedicalDateLogicResult;
+  insuranceRules: MedicalInsuranceRuleResult;
+};
+
+type MedicalOcrPipelineResult = MedicalScanEvaluationCore & {
+  ocrRawJson: unknown;
+  ocrProvider: string;
+  ocrModel: string;
+  ocrConfidence: ReturnType<typeof normalizeMedicalOcrPayload>["confidence"];
+};
+
 export type MedicalScanServiceResult =
-  | {
+  | ({
       ok: true;
       caseId: string;
       documentId: string;
       reviewId: string;
-      trafficLight: "green" | "yellow" | "red";
-      warnings: MedicalScanWarningDto[];
-      extracted: ReturnType<typeof normalizeMedicalOcrPayload>["extracted"];
-      dateLogic: ReturnType<typeof evaluateMedicalDateLogic>;
-      insuranceRules: MedicalInsuranceRuleResult;
       storageKey: string;
-    }
+    } & MedicalScanEvaluationCore)
   | { ok: false; error: string; status: number };
+
+export type MedicalScanTestServiceResult =
+  | ({
+      ok: true;
+      testMode: true;
+      testDisclaimer: string;
+    } & MedicalScanEvaluationCore)
+  | { ok: false; error: string; status: number };
+
+/** Feature-Flag: Testscan ohne Fahrt (Prod standardmäßig aus). */
+export function isMedicalTestScanEnabled(): boolean {
+  const v = (process.env.MEDICAL_TEST_SCAN_ENABLED ?? "").trim().toLowerCase();
+  if (v === "1" || v === "true" || v === "yes" || v === "on") return true;
+  if (v === "0" || v === "false" || v === "no" || v === "off") return false;
+  return process.env.NODE_ENV !== "production";
+}
 
 async function countCompletedRidesForSeries(seriesId: string, companyId: string): Promise<number> {
   const db = getDb();
@@ -81,6 +116,141 @@ async function countCompletedRidesForSeries(seriesId: string, companyId: string)
       ),
     );
   return Number(row?.n ?? 0);
+}
+
+async function resolvePartnerIk(companyId: string): Promise<string> {
+  if (!isPostgresConfigured()) return "";
+  try {
+    return (await getAdminCompanyPartnerIkNumber(companyId)) || "";
+  } catch {
+    return "";
+  }
+}
+
+async function runMedicalOcrPipeline(input: {
+  buffer: Buffer;
+  mime: string;
+  companyId: string;
+  partnerIkSnapshot: string;
+  dateLogicType: MedicalDateLogicType;
+  rideScheduledAt: string | null;
+  insuranceRideId: string;
+  seriesRow?: {
+    id: string;
+    validFrom: string | null;
+    validUntil: string | null;
+    totalRides: number;
+  } | null;
+  returnRideScheduledAt?: Date | null;
+  completedRidesInSeries?: number;
+}): Promise<MedicalOcrPipelineResult> {
+  const ocrResult = await runClaudeVisionMedicalOcr({
+    buffer: input.buffer,
+    mime: input.mime,
+  });
+
+  const normalized = normalizeMedicalOcrPayload(
+    ocrResult.ok ? (ocrResult.rawJson.extracted ?? ocrResult.rawJson) : {},
+  );
+
+  const dateLogicResult = evaluateMedicalDateLogic({
+    dateLogicType: input.dateLogicType,
+    rideScheduledAt: input.rideScheduledAt,
+    series: input.seriesRow
+      ? {
+          id: input.seriesRow.id,
+          validFrom: input.seriesRow.validFrom,
+          validUntil: input.seriesRow.validUntil,
+          totalRides: input.seriesRow.totalRides,
+          completedRides: input.completedRidesInSeries,
+        }
+      : null,
+    returnRideScheduledAt: input.returnRideScheduledAt ?? null,
+    extracted: normalized.extracted,
+  });
+
+  const traffic = evaluateMedicalTrafficLight({
+    extracted: normalized.extracted,
+    confidence: normalized.confidence,
+    partnerIkSnapshot: input.partnerIkSnapshot,
+    dateLogicResult,
+    ocrProviderSucceeded: ocrResult.ok,
+    hasSignatureOnDocument: ocrResult.ok
+      ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson)
+      : undefined,
+  });
+
+  const insuranceRules = evaluateMedicalInsuranceRules(normalized.extracted, {
+    companyId: input.companyId,
+    partnerIkNumber: input.partnerIkSnapshot,
+  }, {
+    rideId: input.insuranceRideId,
+    scheduledAt: input.rideScheduledAt,
+    dateLogicType: input.dateLogicType,
+  });
+
+  return {
+    trafficLight: traffic.trafficLight,
+    warnings: traffic.warnings as MedicalWarning[],
+    extracted: normalized.extracted,
+    dateLogic: dateLogicResult,
+    insuranceRules,
+    ocrRawJson: ocrResult.ok ? ocrResult.rawJson : { error: ocrResult.error },
+    ocrProvider: ocrResult.ok ? ocrResult.provider : "",
+    ocrModel: ocrResult.ok ? ocrResult.model : "",
+    ocrConfidence: normalized.confidence,
+  };
+}
+
+/**
+ * Testscan: OCR + Ampel + KK-Profil — ohne DB-Schreibzugriffe, ohne Ride-Events, ohne Abrechnung.
+ */
+export async function runMedicalTransportDocumentScanTest(
+  input: MedicalScanTestServiceInput,
+): Promise<MedicalScanTestServiceResult> {
+  if (!isMedicalTestScanEnabled()) {
+    return { ok: false, error: "test_scan_disabled", status: 403 };
+  }
+
+  const companyId = input.companyId.trim();
+  const fleetDriverId = input.fleetDriverId.trim();
+  if (!companyId || !fleetDriverId) {
+    return { ok: false, error: "bad_request", status: 400 };
+  }
+
+  const b64 = input.imageBase64.trim();
+  if (!b64) {
+    return { ok: false, error: "image_base64_required", status: 400 };
+  }
+
+  const decoded = decodeValidatedMedicalTransportImage(b64);
+  if (!decoded.ok) {
+    const status =
+      decoded.error === "payload_too_large" ? 413 : decoded.error === "image_size_invalid" ? 413 : 400;
+    return { ok: false, error: decoded.error, status };
+  }
+
+  const partnerIkSnapshot = await resolvePartnerIk(companyId);
+  const pipeline = await runMedicalOcrPipeline({
+    buffer: decoded.buffer,
+    mime: decoded.mime,
+    companyId,
+    partnerIkSnapshot,
+    dateLogicType: "today",
+    rideScheduledAt: null,
+    insuranceRideId: "test",
+  });
+
+  return {
+    ok: true,
+    testMode: true,
+    testDisclaimer: MEDICAL_TEST_SCAN_DISCLAIMER,
+    trafficLight: pipeline.trafficLight,
+    warnings: pipeline.warnings,
+    extracted: pipeline.extracted,
+    dateLogic: pipeline.dateLogic,
+    insuranceRules: pipeline.insuranceRules,
+  };
 }
 
 /** Bild → OCR → Normalize → DateLogic → TrafficLight → DB (ohne Auto-Freigabe). */
@@ -159,61 +329,24 @@ export async function runMedicalTransportDocumentScan(
   await mkdir(path.dirname(dest), { recursive: true });
   await writeFile(dest, decoded.buffer);
 
-  const partnerIkSnapshot = await getAdminCompanyPartnerIkNumber(companyId);
-
-  const ocrResult = await runClaudeVisionMedicalOcr({
-    buffer: decoded.buffer,
-    mime: decoded.mime,
-  });
-
-  const ocrProviderSucceeded = ocrResult.ok;
-  const ocrRawJson = ocrResult.ok ? ocrResult.rawJson : { error: ocrResult.error };
-  const ocrProvider = ocrResult.ok ? ocrResult.provider : "";
-  const ocrModel = ocrResult.ok ? ocrResult.model : "";
-
-  const normalized = normalizeMedicalOcrPayload(
-    ocrResult.ok ? (ocrResult.rawJson.extracted ?? ocrResult.rawJson) : {},
-  );
+  const partnerIkSnapshot = await resolvePartnerIk(companyId);
 
   let completedRidesInSeries: number | undefined;
   if (seriesRow) {
     completedRidesInSeries = await countCompletedRidesForSeries(seriesRow.id, companyId);
   }
 
-  const dateLogicResult = evaluateMedicalDateLogic({
+  const pipeline = await runMedicalOcrPipeline({
+    buffer: decoded.buffer,
+    mime: decoded.mime,
+    companyId,
+    partnerIkSnapshot,
     dateLogicType,
     rideScheduledAt: ride.scheduledAt ?? null,
-    series: seriesRow
-      ? {
-          id: seriesRow.id,
-          validFrom: seriesRow.validFrom,
-          validUntil: seriesRow.validUntil,
-          totalRides: seriesRow.totalRides,
-          completedRides: completedRidesInSeries,
-        }
-      : null,
+    insuranceRideId: rideId,
+    seriesRow,
     returnRideScheduledAt,
-    extracted: normalized.extracted,
-  });
-
-  const traffic = evaluateMedicalTrafficLight({
-    extracted: normalized.extracted,
-    confidence: normalized.confidence,
-    partnerIkSnapshot,
-    dateLogicResult,
-    ocrProviderSucceeded,
-    hasSignatureOnDocument: ocrResult.ok
-      ? parseHasSignatureOnDocument(ocrResult.rawJson.extracted ?? ocrResult.rawJson)
-      : undefined,
-  });
-
-  const insuranceRules = evaluateMedicalInsuranceRules(normalized.extracted, {
-    companyId,
-    partnerIkNumber: partnerIkSnapshot,
-  }, {
-    rideId,
-    scheduledAt: ride.scheduledAt ?? null,
-    dateLogicType,
+    completedRidesInSeries,
   });
 
   const dateLogicContextJson: Record<string, unknown> = {
@@ -227,12 +360,12 @@ export async function runMedicalTransportDocumentScan(
     companyId,
     rideId,
     seriesId,
-    patientDisplayName: normalized.extracted.patientDisplayName,
+    patientDisplayName: pipeline.extracted.patientDisplayName,
     patientReference:
-      normalized.extracted.patientReference || partnerMeta?.medical?.patientReference?.trim() || "",
-    insuranceName: normalized.extracted.insuranceName,
-    insuranceIk: normalized.extracted.insuranceIk,
-    partnerIkNumber: partnerIkSnapshot || normalized.extracted.partnerIkNumber,
+      pipeline.extracted.patientReference || partnerMeta?.medical?.patientReference?.trim() || "",
+    insuranceName: pipeline.extracted.insuranceName,
+    insuranceIk: pipeline.extracted.insuranceIk,
+    partnerIkNumber: partnerIkSnapshot || pipeline.extracted.partnerIkNumber,
     caseType: "transport_sheet",
     dateLogicType,
     dateLogicContextJson,
@@ -245,19 +378,19 @@ export async function runMedicalTransportDocumentScan(
     documentType: "transport_sheet",
     storageKey: rel,
     mimeType: decoded.mime,
-    ocrProvider,
-    ocrModel,
-    ocrRawJson,
-    ocrExtractedJson: normalized.extracted,
-    ocrConfidenceJson: normalized.confidence,
+    ocrProvider: pipeline.ocrProvider,
+    ocrModel: pipeline.ocrModel,
+    ocrRawJson: pipeline.ocrRawJson,
+    ocrExtractedJson: pipeline.extracted,
+    ocrConfidenceJson: pipeline.ocrConfidence,
   });
 
   const review = await insertMedicalReview({
     caseId: medicalCase.id,
     documentId: document.id,
-    trafficLight: traffic.trafficLight,
-    warnings: traffic.warnings,
-    dateLogicResultJson: dateLogicResult,
+    trafficLight: pipeline.trafficLight,
+    warnings: pipeline.warnings,
+    dateLogicResultJson: pipeline.dateLogic,
     reviewerActorKind: "system",
     reviewerActorId: fleetDriverId,
   });
@@ -272,10 +405,10 @@ export async function runMedicalTransportDocumentScan(
       caseId: medicalCase.id,
       documentId: document.id,
       reviewId: review.id,
-      trafficLight: traffic.trafficLight,
-      warningCodes: traffic.warnings.map((w) => w.code),
-      insuranceProfile: insuranceRules.profile,
-      insuranceManualReview: insuranceRules.manualReviewRequired,
+      trafficLight: pipeline.trafficLight,
+      warningCodes: pipeline.warnings.map((w) => w.code),
+      insuranceProfile: pipeline.insuranceRules.profile,
+      insuranceManualReview: pipeline.insuranceRules.manualReviewRequired,
     },
   });
 
@@ -284,11 +417,11 @@ export async function runMedicalTransportDocumentScan(
     caseId: medicalCase.id,
     documentId: document.id,
     reviewId: review.id,
-    trafficLight: traffic.trafficLight,
-    warnings: traffic.warnings,
-    extracted: normalized.extracted,
-    dateLogic: dateLogicResult,
-    insuranceRules,
+    trafficLight: pipeline.trafficLight,
+    warnings: pipeline.warnings,
+    extracted: pipeline.extracted,
+    dateLogic: pipeline.dateLogic,
+    insuranceRules: pipeline.insuranceRules,
     storageKey: rel,
   };
 }

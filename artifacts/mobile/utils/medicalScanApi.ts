@@ -45,6 +45,17 @@ export type MedicalInsuranceRuleResult = {
   detectedInsuranceIk: string;
 };
 
+export type MedicalScanTestSuccess = {
+  ok: true;
+  testMode: true;
+  testDisclaimer: string;
+  trafficLight: MedicalTrafficLight;
+  warnings: MedicalScanWarning[];
+  extracted: MedicalScanExtracted;
+  dateLogic: MedicalDateLogicResultDto;
+  insuranceRules?: MedicalInsuranceRuleResult | null;
+};
+
 export type MedicalScanSuccess = {
   ok: true;
   caseId: string;
@@ -65,6 +76,7 @@ export type MedicalScanError = {
 };
 
 export type MedicalScanResult = MedicalScanSuccess | MedicalScanError;
+export type MedicalScanTestResult = MedicalScanTestSuccess | MedicalScanError;
 
 const ERROR_MESSAGES_DE: Record<string, string> = {
   ride_id_required: "Fahrt-ID fehlt.",
@@ -86,6 +98,7 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   invalid_base64: "Bildformat ungültig.",
   unsupported_or_corrupt_image: "Bild beschädigt oder nicht unterstützt.",
   unauthorized: "Nicht angemeldet.",
+  test_scan_disabled: "Testscan ist auf dem Server deaktiviert.",
 };
 
 export function medicalScanErrorMessageDe(code: string): string {
@@ -197,6 +210,81 @@ export async function postMedicalTransportScan(
     }) as MedicalDateLogicResultDto,
     insuranceRules: parseInsuranceRules(data.insuranceRules),
     storageKey: String(data.storageKey ?? ""),
+  };
+}
+
+export type PostMedicalTransportScanTestInput = {
+  authToken: string;
+  imageBase64: string;
+};
+
+export async function postMedicalTransportScanTest(
+  input: PostMedicalTransportScanTestInput,
+): Promise<MedicalScanTestResult> {
+  const token = input.authToken.trim();
+  const API_BASE = getApiBaseUrl();
+  if (!API_BASE) {
+    return { ok: false, error: "api_not_configured", httpStatus: 0 };
+  }
+  if (!token) {
+    return { ok: false, error: "unauthorized", httpStatus: 401 };
+  }
+  const imageBase64 = input.imageBase64.trim();
+  if (!imageBase64) {
+    return { ok: false, error: "image_base64_required", httpStatus: 400 };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/fleet-driver/v1/medical/scan-test`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ imageBase64 }),
+    });
+  } catch {
+    return { ok: false, error: "network_error", httpStatus: 0 };
+  }
+
+  const data = (await res.json().catch(() => ({}))) as Partial<MedicalScanTestSuccess> & { error?: string };
+  if (!res.ok || data.ok !== true || data.testMode !== true) {
+    const error = typeof data.error === "string" ? data.error : `http_${res.status}`;
+    return { ok: false, error, httpStatus: res.status };
+  }
+
+  return {
+    ok: true,
+    testMode: true,
+    testDisclaimer:
+      typeof data.testDisclaimer === "string" && data.testDisclaimer.trim()
+        ? data.testDisclaimer.trim()
+        : "Testprüfung ohne Fahrt – nicht abrechnungsrelevant.",
+    trafficLight:
+      data.trafficLight === "green" || data.trafficLight === "yellow" || data.trafficLight === "red"
+        ? data.trafficLight
+        : "yellow",
+    warnings: Array.isArray(data.warnings)
+      ? data.warnings.filter(
+          (w): w is MedicalScanWarning =>
+            !!w &&
+            typeof w === "object" &&
+            typeof (w as MedicalScanWarning).code === "string" &&
+            typeof (w as MedicalScanWarning).message === "string",
+        )
+      : [],
+    extracted: (data.extracted ?? {}) as MedicalScanExtracted,
+    dateLogic: (data.dateLogic ?? {
+      type: "today",
+      passed: false,
+      severity: "warn",
+      expectedDate: null,
+      ocrDate: null,
+      warningCodes: [],
+      details: {},
+    }) as MedicalDateLogicResultDto,
+    insuranceRules: parseInsuranceRules(data.insuranceRules),
   };
 }
 

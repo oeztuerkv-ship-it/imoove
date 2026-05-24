@@ -115,6 +115,7 @@ app.use((req, res, next) => {
   const medicalUpload =
     req.method === "POST" &&
     (u.includes("/fleet-driver/v1/medical/scan") ||
+      u.includes("/fleet-driver/v1/medical/scan-test") ||
       (u.includes("/rides/") &&
         (u.includes("/medical/transport-document") || u.includes("/medical/signature"))));
   // Mehrere Base64-PDFs (Taxi): Nginx braucht passendes client_max_body_size (siehe nginx-onroda.example.conf).

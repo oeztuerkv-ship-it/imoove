@@ -34,7 +34,7 @@ import {
   resolveFinancePricingContextForRide,
 } from "../db/appOperationalData";
 import { previewDriverSettlementFromGross } from "../lib/financeCalculationService";
-import { runMedicalTransportDocumentScan } from "../lib/medical/medicalScanService";
+import { runMedicalTransportDocumentScan, runMedicalTransportDocumentScanTest } from "../lib/medical/medicalScanService";
 import { requireFleetDriverAuth, type FleetDriverAuthRequest } from "../middleware/requireFleetDriverAuth";
 
 const router: IRouter = Router();
@@ -631,6 +631,39 @@ router.post("/fleet-driver/v1/medical/scan", requireFleetDriverAuth, async (req,
       dateLogic: result.dateLogic,
       insuranceRules: result.insuranceRules,
       storageKey: result.storageKey,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/fleet-driver/v1/medical/scan-test", requireFleetDriverAuth, async (req, res, next) => {
+  try {
+    const auth = (req as FleetDriverAuthRequest).fleetDriverAuth;
+    if (!auth) {
+      res.status(401).json({ ok: false, error: "unauthorized" });
+      return;
+    }
+    const body = req.body as { imageBase64?: unknown };
+    const imageBase64 = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+    const result = await runMedicalTransportDocumentScanTest({
+      fleetDriverId: auth.fleetDriverId,
+      companyId: auth.companyId,
+      imageBase64,
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error });
+      return;
+    }
+    res.json({
+      ok: true,
+      testMode: true,
+      testDisclaimer: result.testDisclaimer,
+      trafficLight: result.trafficLight,
+      warnings: result.warnings,
+      extracted: result.extracted,
+      dateLogic: result.dateLogic,
+      insuranceRules: result.insuranceRules,
     });
   } catch (err) {
     next(err);
