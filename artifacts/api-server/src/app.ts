@@ -124,7 +124,7 @@ app.use((req, res, next) => {
   const partnerRegDocPost =
     req.method === "POST" && /\/panel-auth\/registration-request\/[^/]+\/documents\/?$/.test(u);
   const limit = medicalUpload
-    ? "6mb"
+    ? "10mb"
     : partnerRegInitialPost
       ? "25mb"
       : partnerRegDocPost

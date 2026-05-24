@@ -99,9 +99,12 @@ const ERROR_MESSAGES_DE: Record<string, string> = {
   unsupported_or_corrupt_image: "Bild beschädigt oder nicht unterstützt.",
   unauthorized: "Nicht angemeldet.",
   test_scan_disabled: "Testscan ist auf dem Server deaktiviert.",
+  http_413: "Foto ist zu groß für den Upload. Bitte erneut aufnehmen.",
+  network_error: "Keine Verbindung zum Server.",
 };
 
 export function medicalScanErrorMessageDe(code: string): string {
+  if (code === "http_413") return ERROR_MESSAGES_DE.http_413!;
   return ERROR_MESSAGES_DE[code] ?? `Scan fehlgeschlagen (${code})`;
 }
 
