@@ -17,14 +17,26 @@ type Props = {
   disclaimer?: string;
   onClose: () => void;
   children: React.ReactNode;
+  /** customer = schlankes Ergebnis-Sheet ohne Technik-Hinweise */
+  scanApi?: "fleet" | "customer";
 };
 
 /** Scrollbares Bottom-Sheet für Medical-Scan-Ergebnisse (Test + Fahrt). */
-export function MedicalScanResultSheet({ visible, title, disclaimer, onClose, children }: Props) {
+export function MedicalScanResultSheet({
+  visible,
+  title,
+  disclaimer,
+  onClose,
+  children,
+  scanApi = "fleet",
+}: Props) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const maxSheetHeight = Math.round(windowHeight * 0.9);
-  const headerBlockHeight = disclaimer?.trim() ? 118 : 58;
+  const isCustomer = scanApi === "customer";
+  const showDisclaimer = !isCustomer && Boolean(disclaimer?.trim());
+  const sheetTitle = isCustomer ? "Transportschein" : title;
+  const maxSheetHeight = Math.round(windowHeight * (isCustomer ? 0.72 : 0.9));
+  const headerBlockHeight = showDisclaimer ? 118 : 58;
   const scrollMaxHeight = maxSheetHeight - headerBlockHeight - Math.max(insets.bottom, 16) - 14;
 
   return (
@@ -42,7 +54,7 @@ export function MedicalScanResultSheet({ visible, title, disclaimer, onClose, ch
         >
           <View style={styles.headerRow}>
             <Text style={styles.title} numberOfLines={2}>
-              {title}
+              {sheetTitle}
             </Text>
             <Pressable
               onPress={onClose}
@@ -55,7 +67,7 @@ export function MedicalScanResultSheet({ visible, title, disclaimer, onClose, ch
             </Pressable>
           </View>
 
-          {disclaimer?.trim() ? <Text style={styles.disclaimer}>{disclaimer.trim()}</Text> : null}
+          {showDisclaimer ? <Text style={styles.disclaimer}>{disclaimer!.trim()}</Text> : null}
 
           <ScrollView
             style={[styles.scroll, { maxHeight: Math.max(scrollMaxHeight, 220) }]}

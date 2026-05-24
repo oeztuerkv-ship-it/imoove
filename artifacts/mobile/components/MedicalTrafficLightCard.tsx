@@ -79,7 +79,67 @@ type Props = {
   testDisclaimer?: string;
   onPrimaryAction: () => void;
   primaryBusy?: boolean;
+  /** fleet = vollständige Fahrer-Ansicht; customer = vereinfachte Kunden-Ansicht */
+  scanApi?: "fleet" | "customer";
 };
+
+const CUSTOMER_TRAFFIC_CONFIG: Record<
+  MedicalTrafficLight,
+  {
+    title: string;
+    subtitle: string;
+    bg: string;
+    border: string;
+    accent: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    primaryLabel: string;
+  }
+> = {
+  green: {
+    title: "Ihr Transportschein ist gültig",
+    subtitle: "Sie können die Fahrt buchen",
+    bg: "#ECFDF5",
+    border: "#86EFAC",
+    accent: "#15803D",
+    icon: "check-circle",
+    primaryLabel: "Schließen",
+  },
+  yellow: {
+    title: "Bitte beim Fahrer vorzeigen",
+    subtitle: "Prüfung empfohlen",
+    bg: "#FFFBEB",
+    border: "#FCD34D",
+    accent: "#B45309",
+    icon: "alert-circle-outline",
+    primaryLabel: "Verstanden",
+  },
+  red: {
+    title: "Transportschein ungültig",
+    subtitle: "",
+    bg: "#FEF2F2",
+    border: "#FCA5A5",
+    accent: "#B91C1C",
+    icon: "close-circle-outline",
+    primaryLabel: "Schließen",
+  },
+};
+
+function pickPrimaryCustomerReason(
+  trafficLight: MedicalTrafficLight,
+  warnings: MedicalScanWarning[],
+  insuranceRules?: MedicalInsuranceRuleResult | null,
+): string | null {
+  const visible = warnings.filter((w) => w.severity !== "info" && (w.message?.trim() || w.code));
+  const fromWarning = visible.find((w) => w.severity === "block_recommended") ?? visible[0];
+  if (fromWarning?.message?.trim()) return fromWarning.message.trim();
+  const fromRules = insuranceRules?.warnings.find((w) => w.trim());
+  if (fromRules?.trim()) return fromRules.trim();
+  const summary = insuranceRules?.summary?.trim();
+  if (summary) return summary;
+  if (trafficLight === "yellow") return "Der Schein konnte nicht vollständig geprüft werden.";
+  if (trafficLight === "red") return "Der Schein erfüllt die Anforderungen nicht.";
+  return null;
+}
 
 export function MedicalTrafficLightCard({
   trafficLight,
@@ -92,7 +152,39 @@ export function MedicalTrafficLightCard({
   testDisclaimer,
   onPrimaryAction,
   primaryBusy = false,
+  scanApi = "fleet",
 }: Props) {
+  if (scanApi === "customer") {
+    const cfg = CUSTOMER_TRAFFIC_CONFIG[trafficLight];
+    const reason = pickPrimaryCustomerReason(trafficLight, warnings, insuranceRules);
+    const subtitle =
+      trafficLight === "red" || trafficLight === "yellow"
+        ? reason ?? cfg.subtitle
+        : cfg.subtitle;
+
+    return (
+      <View style={[styles.customerCard, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+        <MaterialCommunityIcons name={cfg.icon} size={56} color={cfg.accent} />
+        <Text style={[styles.customerTitle, { color: cfg.accent }]}>{cfg.title}</Text>
+        {subtitle ? <Text style={styles.customerSubtitle}>{subtitle}</Text> : null}
+        <Pressable
+          onPress={onPrimaryAction}
+          disabled={primaryBusy}
+          style={({ pressed }) => [
+            styles.primaryBtn,
+            styles.customerPrimaryBtn,
+            {
+              backgroundColor: trafficLight === "yellow" ? "#F59E0B" : trafficLight === "red" ? "#64748B" : "#16A34A",
+              opacity: pressed ? 0.9 : primaryBusy ? 0.55 : 1,
+            },
+          ]}
+        >
+          <Text style={styles.primaryBtnText}>{primaryBusy ? "Bitte warten…" : cfg.primaryLabel}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   const cfg = TRAFFIC_CONFIG[trafficLight];
   const visibleWarnings = warnings.filter((w) => w.severity !== "info");
   const kkName = insuranceName?.trim() || extracted?.insuranceName?.trim() || "";
@@ -404,5 +496,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     color: "#FFFFFF",
+  },
+  customerCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    gap: 12,
+  },
+  customerTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    lineHeight: 26,
+  },
+  customerSubtitle: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "#475569",
+    textAlign: "center",
+    lineHeight: 22,
+    maxWidth: 320,
+  },
+  customerPrimaryBtn: {
+    alignSelf: "stretch",
+    marginTop: 8,
   },
 });

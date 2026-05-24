@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View }
 
 import { MedicalScanResultSheet } from "@/components/MedicalScanResultSheet";
 import { MedicalTrafficLightCard } from "@/components/MedicalTrafficLightCard";
+import { HOME_SHEET_INNER, HOME_SHEET_MUTED, HOME_SHEET_RIM, HOME_SHEET_TEXT } from "@/constants/homeSheetChrome";
 import { pickTransportImageBase64 } from "@/utils/medicalScanCapture";
 import {
   medicalScanErrorMessageDe,
@@ -156,10 +157,12 @@ export function MedicalTransportScanTestTool({
           visible={scanModalOpen}
           title="Transportschein — Testprüfung"
           disclaimer={TEST_DISCLAIMER}
+          scanApi={scanApi}
           onClose={dismissModal}
         >
           {scanResult ? (
             <MedicalTrafficLightCard
+              scanApi={scanApi}
               trafficLight={scanResult.trafficLight}
               warnings={scanResult.warnings}
               insuranceName={scanResult.extracted?.insuranceName}
@@ -167,7 +170,7 @@ export function MedicalTransportScanTestTool({
               extracted={scanResult.extracted}
               dateLogic={scanResult.dateLogic}
               insuranceRules={scanResult.insuranceRules}
-              testDisclaimer={scanResult.testDisclaimer}
+              testDisclaimer={scanApi === "fleet" ? scanResult.testDisclaimer : undefined}
               onPrimaryAction={dismissModal}
             />
           ) : null}
@@ -202,10 +205,12 @@ export function MedicalTransportScanTestTool({
         visible={scanModalOpen}
         title="Transportschein — Testprüfung"
         disclaimer={TEST_DISCLAIMER}
+        scanApi={scanApi}
         onClose={dismissModal}
       >
         {scanResult ? (
           <MedicalTrafficLightCard
+            scanApi={scanApi}
             trafficLight={scanResult.trafficLight}
             warnings={scanResult.warnings}
             insuranceName={scanResult.extracted?.insuranceName}
@@ -213,7 +218,7 @@ export function MedicalTransportScanTestTool({
             extracted={scanResult.extracted}
             dateLogic={scanResult.dateLogic}
             insuranceRules={scanResult.insuranceRules}
-            testDisclaimer={scanResult.testDisclaimer}
+            testDisclaimer={scanApi === "fleet" ? scanResult.testDisclaimer : undefined}
             onPrimaryAction={dismissModal}
           />
         ) : null}
@@ -259,7 +264,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#F0FDF4",
+    backgroundColor: HOME_SHEET_INNER,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -282,18 +287,18 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
-    color: "#111827",
+    color: HOME_SHEET_TEXT,
   },
   cardSub: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#6B7280",
+    color: HOME_SHEET_MUTED,
     marginTop: 3,
     lineHeight: 18,
   },
   cardDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: HOME_SHEET_RIM,
     marginVertical: 12,
     width: "100%",
   },
@@ -324,9 +329,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#15803D",
   },
   actionBtnSecondary: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
+    backgroundColor: HOME_SHEET_INNER,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HOME_SHEET_RIM,
   },
   actionBtnPressed: {
     opacity: 0.92,
